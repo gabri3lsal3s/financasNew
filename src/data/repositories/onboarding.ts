@@ -1,5 +1,4 @@
 import { getSupabase } from "@/data/client";
-import { resolveQuery } from "@/data/query";
 import type { OnboardingCounts } from "@/domain/onboarding";
 import { AppError, classifyError } from "@/services/errors";
 
@@ -8,11 +7,29 @@ interface CountFilter {
   value: unknown;
 }
 
-/** Conta de forma leve (head: true) as linhas de uma tabela do usuário. */
+/** Resultado de contagem do supabase-js (count no topo, sem data). */
+interface CountResult {
+  count: number | null;
+  error: { message: string } | null;
+}
+
+/** Builder mínimo de contagem — `eq` aceita qualquer coluna/valor (cast controlado). */
+interface CountQuery {
+  eq(column: string, value: unknown): CountQuery;
+  then<TResult>(onfulfilled?: (value: CountResult) => TResult | PromiseLike<TResult>): Promise<TResult>;
+}
+
+/**
+ * Conta de forma leve (head: true) as linhas de uma tabela do usuário.
+ * O `count` vem no topo do resultado do builder (mesmo padrão de
+ * `getCategoryUsage` em categories.ts) — sem passar por resolveQuery.
+ */
 async function count(table: "categories" | "credit_cards" | "expenses" | "incomes", filters: CountFilter[] = []): Promise<number> {
-  let query = getSupabase().from(table).select("id", { count: "exact", head: true });
+  let query = getSupabase()
+    .from(table)
+    .select("id", { count: "exact", head: true }) as unknown as CountQuery;
   for (const filter of filters) query = query.eq(filter.column, filter.value);
-  const { count: total, error } = await resolveQuery<{ count: number } | null>(query);
+  const { count: total, error } = await query;
   if (error) {
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);

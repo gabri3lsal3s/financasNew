@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
-import "vitest-axe/extend-expect";
 import * as axeMatchers from "vitest-axe/matchers";
 import { cleanup } from "@testing-library/react";
 import { afterEach, expect } from "vitest";
+// Tipos do matcher toHaveNoViolations: ver src/tests/vitest-axe.d.ts.
 
 // Matcher toHaveNoViolations (axe-core) — auditoria a11y (F5.3).
 expect.extend(axeMatchers);
