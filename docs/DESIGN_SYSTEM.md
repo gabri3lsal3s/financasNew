@@ -236,7 +236,7 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 | `alert()` / `confirm()` / `prompt()` | `ConfirmDialog` / `Modal` + `Toast` |
 | `<dialog>` | `Modal` (componente do app) |
 | `<details>/<summary>` | `Accordion` |
-| Scrollbars padrão | Estilizadas via tokens (scrollbar-width/color) |
+| Scrollbars padrão | **Ocultas** (pós-F10): `scrollbar-width: none` + `::-webkit-scrollbar{display:none}` — o scroll permanece funcional (wheel/toque/teclado); tokens `--scrollbar-*` mantidos como reserva |
 
 **Exceção permitida:** inputs de texto base (`<input type="text">`, textarea) — desde que **sempre encapsulados** em primitivos do app (`Input`, `MoneyInput`, `Textarea`), nunca usados crus em telas.
 

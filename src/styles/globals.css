@@ -214,21 +214,17 @@
     outline-offset: 2px;
   }
 
-  /* Scrollbars via tokens (DESIGN_SYSTEM §13) — Firefox + WebKit */
+  /* Scrollbars ocultas (pós-F10): a barra visual quebrava o layout de algumas
+     páginas. A rolagem continua 100% funcional (wheel, toque, teclado e
+     navegação por foco) — apenas a barra deixa de ser exibida:
+     Firefox (scrollbar-width: none), WebKit/Blink (display: none) e Edge legado
+     (-ms-overflow-style). NUNCA usar overflow: hidden (desativaria o scroll). */
   * {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
   *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  *::-webkit-scrollbar-track {
-    background: hsl(var(--scrollbar-track));
-  }
-  *::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--scrollbar-thumb));
-    border-radius: 999px;
+    display: none;
   }
 
   /* Microinterações respeitam usuários com movimento reduzido (a11y) */
