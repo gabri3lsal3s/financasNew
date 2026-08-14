@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { useCurrencyInput } from "@/hooks/use-currency-input";
@@ -43,17 +43,29 @@ export function MoneyInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const currency = useCurrencyInput({ initialCents: cents });
 
-  // Campo ativo da calculadora (F9): registrado no focus e removido APENAS no
-  // unmount (modal fechado, passo trocado). NÃO desregistrar no blur: o foco
-  // sai do campo quando o painel da calculadora abre (Radix Dialog) e o alvo
-  // precisa continuar ativo para "Usar valor" injetar.
+  // Campo ativo da calculadora (F9): registrado no MOUNT — o FAB aparece assim
+  // que o modal abre, sem depender de foco — e removido apenas no unmount
+  // (modal fechado). O setter delega via ref (sempre o handler atual). O foco
+  // re-registra o MESMO alvo estável (campo em uso, quando há vários campos).
+  // NÃO desregistrar no blur: o painel da calculadora rouba o foco ao abrir e o
+  // alvo precisa continuar ativo para "Usar valor" injetar.
   const calculatorTargetRef = useRef<((cents: number) => void) | null>(null);
   useEffect(() => {
-    return () => {
-      const target = calculatorTargetRef.current;
-      if (target) unregisterCalculatorTarget(target);
+    calculatorTargetRef.current = (cents: number) => {
+      currency.setCents(cents);
+      onCentsChange?.(cents);
     };
-  }, []);
+  });
+  // Alvo com identidade estável: o cleanup do unmount consegue remover
+  // exatamente o registro deste campo (mesmo após re-registros de foco).
+  const calculatorTarget = useCallback(
+    (cents: number) => calculatorTargetRef.current?.(cents),
+    [],
+  );
+  useEffect(() => {
+    registerCalculatorTarget(calculatorTarget);
+    return () => unregisterCalculatorTarget(calculatorTarget);
+  }, [calculatorTarget]);
 
   // Sincroniza APENAS quando o valor controlado muda de fato (ex.: reset do
   // formulário). Nunca sobrescreve o que o usuário digitou: um re-render do
@@ -96,13 +108,8 @@ export function MoneyInput({
       }}
       onKeyDown={currency.handleKeyDown}
       onFocus={(event) => {
-        // Calculadora flutuante (F9): campo ativo recebe o valor "Usar valor".
-        const target = (cents: number) => {
-          currency.setCents(cents);
-          onCentsChange?.(cents);
-        };
-        calculatorTargetRef.current = target;
-        registerCalculatorTarget(target);
+        // Campo em uso recebe o valor (re-registra o alvo estável).
+        registerCalculatorTarget(calculatorTarget);
         rest.onFocus?.(event);
       }}
     />

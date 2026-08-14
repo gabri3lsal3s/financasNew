@@ -33,15 +33,19 @@ describe("MoneyInput (padrão Nubank)", () => {
     expect(input).toHaveValue("R$\u00a015,00");
   });
 
-  it("registra o campo ao focar e DESREGISTRA ao desmontar (modal fechado)", () => {
+  it("registra o campo no MOUNT (FAB aparece ao abrir o modal) e desregistra no unmount", () => {
     const { unmount } = render(<MoneyInput aria-label="Valor" />);
-    const input = screen.getByLabelText("Valor") as HTMLInputElement;
 
+    // Sem foco: já registrado — o FAB aparece assim que o modal abre.
+    expect(getCalculatorTarget()).not.toBeNull();
+
+    // O foco re-registra o alvo (continua ativo).
+    const input = screen.getByLabelText("Valor") as HTMLInputElement;
     fireEvent.focus(input);
     expect(getCalculatorTarget()).not.toBeNull();
 
     // Fecha o modal → o campo desmonta → o alvo da calculadora é limpo,
-    // fazendo o FAB desaparecer (bug pós-F10).
+    // fazendo o FAB desaparecer.
     unmount();
     expect(getCalculatorTarget()).toBeNull();
   });
