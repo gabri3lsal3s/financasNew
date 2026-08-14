@@ -174,3 +174,13 @@ export function allocationGap(
 export function convertToBRL(valueCents: number, currency: "BRL" | "USD", usdRate: number = 5.25): number {
   return currency === "USD" ? Math.round(valueCents * usdRate) : valueCents;
 }
+
+export {
+  FALLBACK_USD_RATE,
+  applySpikeGuardrail,
+  fallbackPriceFor,
+  inferCurrencyFromTicker,
+  resolvePrice,
+  valueAssetPosition,
+} from "./valuation";
+export type { AssetValuation, PriceCandidate, PriceSource, ResolvedPrice } from "./valuation";

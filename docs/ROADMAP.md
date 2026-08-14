@@ -245,6 +245,15 @@
 - Infra: `src/data/repositories/portfolio.ts` (assets + transações, conversão de borda numeric→number) + `usePortfolioAssets`/`useAssetPosition` (ledger derivado no hook)/`useCreatePortfolioAsset`/`useCreatePortfolioTransaction`.
 - Schema já existia (migrations 0001): `portfolio_assets`, `portfolio_transactions`, metas e `asset_prices` — sem migration nova.
 
+**Progresso da entrega 2 (Fase 4):**
+- `domain/portfolio/valuation.ts` — motor puro de valoração (§1.6 D5 + §3.11.2):
+  - `resolvePrice` — pipeline manual → cache (`api`) → fallback estático (USD 5,25); preço manual prevalece;
+  - `applySpikeGuardrail` — variação > 50% em 1 dia mantém o último preço válido (dado corrompido);
+  - `fallbackPriceFor` / `inferCurrencyFromTicker` — fallback por moeda e moeda inferida pelo padrão do ticker (2–5 letras sem números = USD);
+  - `valueAssetPosition` — valor de mercado convertido para BRL com a fonte repassada (manual/api/fallback) para marcação na UI.
+- Persistência: migration `0007_asset_price_override.sql` (unique parcial `(ticker, user_id)` para overrides) + `src/data/repositories/asset-prices.ts` (list: cache global + override do usuário; set/remove manual com moeda inferida) + `useAssetPrices`/`useSetManualPrice`/`useRemoveManualPrice`.
+- **21 testes verdes** (16 domínio + 5 repository).
+
 
 ### Fase 4 — Carteira & Rebalanceamento
 

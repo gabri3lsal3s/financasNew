@@ -40,3 +40,9 @@ export {
   portfolioAssetsKey,
   portfolioTransactionsKey,
 } from "./queries/use-portfolio";
+export {
+  useAssetPrices,
+  useSetManualPrice,
+  useRemoveManualPrice,
+  assetPricesKey,
+} from "./queries/use-asset-prices";
