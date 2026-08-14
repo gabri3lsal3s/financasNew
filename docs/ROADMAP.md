@@ -465,6 +465,15 @@
 - Header e busca funcionais e acessíveis em breakpoints `<640px` (mobile), `768px` (tablet) e `≥1024px` (desktop).
 - Suíte de testes unitários e de integração de layout 100% verde.
 
+**Progresso — Fase 7 (ciclo de implementação 2026-08-14):**
+- [x] **Entrega 1 — BottomNav 5 slots com FAB central** (`bottom-nav.tsx`): grid simétrico `Início | Transações | FAB Novo | Cartões | Mais` (ordem exata do roadmap), **Relatórios migrado** para o menu "Mais" (já listava todas as áreas) liberando o slot nobre para Cartões; FAB elevado com `ring-background` + `active:scale-95`; ícone `Ellipsis` lucide no slot Mais (substitui os spans decorativos — regra de ícones); **área de toque mínima 44×44px** (`min-h-11`) em todos os slots + destaque semântico do ativo; slots resolvidos da fonte única `nav-items` (`requiredSlot` — sem duplicação de rotas).
+- [x] **Entrega 2 — Sidebar colapsável** (`sidebar.tsx` + `use-sidebar-state.ts`): modo expandido (`w-64`, logo + texto + ícones) ↔ compacto (`w-20`, só ícones centralizados com `aria-label`/`title`); toggle no rodapé da sidebar (ChevronLeft/Right) com **persistência imediata** em `localStorage` (`financas_sidebar_collapsed`); transição nativa `transition-[width] duration-200 ease-out` com `motion-reduce:transition-none` (Decisão A — zero libs de animação); **estado elevado no PageShell** (fonte única — Sidebar é controlada via props `isCollapsed`/`onToggle`); axe sem violações nos dois modos.
+- [x] **Entrega 3 — PageShell dinâmico + header adaptativo** (`page-shell.tsx` + `command.tsx`): margem esquerda acompanha a sidebar em tempo real (`lg:pl-64` ↔ `lg:pl-20` com transição); header sticky fluido (`px-4 lg:px-8`, `bg-surface/80` + `backdrop-blur` — DESIGN_SYSTEM §6); busca responsiva: a paleta `Command` agora posiciona `top-4` no mobile (abaixo do header sticky) e `sm:top-[15%]`, com `max-h-[85dvh]` e largura `w-[calc(100vw-2rem)]` sem overflow horizontal.
+- [x] **Testes de layout (DoD)**: `use-sidebar-state.test.ts` (default/persistência/toggle), `bottom-nav.test.tsx` (5 slots na ordem, FAB `?novo=despesa`, Relatórios fora, toque 44px, ativo), `sidebar.test.tsx` (modos, aria-labels, callback, axe), `page-shell.test.tsx` (montagem completa com router real + margem dinâmica + persistência integrada).
+- [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente (pré-requisito manual)
+
+**Fase 7 concluída ✅** — entregas 1–3 verdes: BottomNav 5 slots, Sidebar colapsável persistida e PageShell/Header adaptativos; suíte completa **558 testes** verde + typecheck/lint/build sem erros.
+
 ---
 
 ### Fase 8 — Refinamento Visual Premium & Dashboard de Insights

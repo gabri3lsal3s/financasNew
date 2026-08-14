@@ -122,8 +122,9 @@
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
-    │                              #   use-draggable, use-scroll-position,
-    │                              #   use-swipe-action, use-privacy-mask…)
+    │                              #   use-sidebar-state, use-draggable,
+    │                              #   use-scroll-position, use-swipe-action,
+    │                              #   use-privacy-mask…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de input

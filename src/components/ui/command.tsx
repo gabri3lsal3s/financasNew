@@ -53,7 +53,7 @@ export function Command({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay backdrop-blur-sm" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-[15%] z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg focus:outline-none">
+        <DialogPrimitive.Content className="fixed left-1/2 top-4 z-50 max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg focus:outline-none sm:top-[15%]">
           <CommandPrimitive className="overflow-hidden">
             <div className="flex items-center gap-2 border-b border-border px-4">
               <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

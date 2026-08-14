@@ -1,16 +1,44 @@
 import { NavLink } from "react-router";
-import { Plus } from "lucide-react";
+import { Ellipsis, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/components/layout/nav-items";
+import type { NavItem } from "@/components/layout/nav-items";
 
-function pick(...paths: string[]) {
-  return paths
-    .map((path) => navItems.find((item) => item.path === path))
-    .filter((item): item is NonNullable<typeof item> => item !== undefined);
+/** Resolve um slot obrigatório da BottomNav a partir da fonte única de navegação. */
+function requiredSlot(path: string): NavItem {
+  const item = navItems.find((candidate) => candidate.path === path);
+  if (item === undefined) {
+    throw new Error(`BottomNav: slot de navegação ausente em navItems: ${path}`);
+  }
+  return item;
 }
 
-const tabs = pick("/", "/transacoes", "/relatorios");
+/** Grid de 5 posições simétrico (F7.1): Início | Transações | FAB Novo | Cartões | Mais. */
+const inicio = requiredSlot("/");
+const transacoes = requiredSlot("/transacoes");
+const cartoes = requiredSlot("/cartoes");
+
 const quickEntry = "/transacoes?novo=despesa";
+
+function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
+  return (
+    <NavLink
+      to={item.path}
+      end={end}
+      aria-label={item.label}
+      className={({ isActive }) =>
+        cn(
+          // Área de toque mínima 44×44px e destaque semântico (DESIGN_SYSTEM §13).
+          "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors",
+          isActive ? "text-primary-strong" : "text-muted-foreground",
+        )
+      }
+    >
+      <item.icon className="size-5" aria-hidden="true" />
+      <span>{item.label}</span>
+    </NavLink>
+  );
+}
 
 export function BottomNav() {
   return (
@@ -19,49 +47,33 @@ export function BottomNav() {
       aria-label="Navegação principal"
     >
       <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
-        {tabs.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === "/"}
-            className={({ isActive }) =>
-              cn(
-                "flex flex-col items-center gap-1 text-[11px] font-medium transition-colors",
-                isActive ? "text-primary-strong" : "text-muted-foreground",
-              )
-            }
-          >
-            <item.icon className="size-5" aria-hidden="true" />
-            {item.label}
-          </NavLink>
-        ))}
+        <SlotLink item={inicio} end />
+        <SlotLink item={transacoes} />
 
-        {/* FAB central: lançamento rápido (D10 — wizard abre via ?novo=despesa em F2). */}
+        {/* FAB central elevado: lançamento rápido (D10 — wizard abre via ?novo=despesa em F2). */}
         <NavLink
           to={quickEntry}
           aria-label="Lançar despesa ou receita"
-          className="flex items-center justify-center"
+          className="flex min-h-11 items-center justify-center"
         >
-          <span className="flex size-12 items-center justify-center rounded-full bg-primary-strong text-primary-foreground shadow-lg transition-transform active:scale-95">
+          <span className="-mt-6 flex size-12 items-center justify-center rounded-full bg-primary-strong text-primary-foreground shadow-lg ring-4 ring-background transition-transform active:scale-95">
             <Plus className="size-6" aria-hidden="true" />
           </span>
         </NavLink>
+
+        <SlotLink item={cartoes} />
 
         <NavLink
           to="/mais"
           className={({ isActive }) =>
             cn(
-              "flex flex-col items-center gap-1 text-[11px] font-medium transition-colors",
+              "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors",
               isActive ? "text-primary-strong" : "text-muted-foreground",
             )
           }
         >
-          <span className="flex size-5 items-center justify-center">
-            <span className="flex size-1.5 rounded-full bg-current" aria-hidden="true" />
-            <span className="flex size-1.5 rounded-full bg-current" aria-hidden="true" />
-            <span className="flex size-1.5 rounded-full bg-current" aria-hidden="true" />
-          </span>
-          Mais
+          <Ellipsis className="size-5" aria-hidden="true" />
+          <span>Mais</span>
         </NavLink>
       </div>
     </nav>
