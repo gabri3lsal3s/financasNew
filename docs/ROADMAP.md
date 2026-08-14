@@ -315,7 +315,7 @@
 1. ✅ **Busca global** (⌘K): normalização, scoring, recência, limites por tipo, deep-link com destaque.
 2. ✅ **Tema OLED refinado** (contraste/estados) + microinterações.
 3. ✅ **Auditoria de acessibilidade** (axe, contraste AA, foco, teclado) em todas as telas.
-4. Empty states completos + onboarding de primeiro uso.
+4. ✅ **Empty states completos** + onboarding de primeiro uso.
 5. Performance: bundle splitting, virtualização de listas, revisão de queries (N+1).
 6. **PWA polish:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, splash/iOS, auditoria Lighthouse PWA.
 
@@ -331,6 +331,11 @@
 - **Tokens OLED refinados** (`tokens.css`): sobre true black, hover `9%`/pressed `13%` (estados perceptíveis), borda `14%` + input `18%` (elevação por borda, sem sombra), `--muted-foreground` `50%` (AA 5.3:1) — §6 do DESIGN_SYSTEM.
 - **Tokens novos nos 3 temas:** `--overlay` (40/60/70%) para modais/command palette — substitui o `bg-black/50` hard-coded no `Modal` e `Command`; `--scrollbar-thumb`/`--scrollbar-track` com scrollbars estilizadas em `globals.css` (WebKit + Firefox) — §13.
 - **Microinterações:** `Button` ganha press `active:scale-[0.98]` + `transition` 150ms (DESIGN_SYSTEM §7); transições de hover padronizadas nos botões de ação de insights/lembretes; `prefers-reduced-motion: reduce` desativa animações (a11y).
+
+**Progresso — Fase 5, entrega 4 (empty states + onboarding):**
+- **Auditoria de empty states:** todas as telas com EmptyState dedicado (DESIGN_SYSTEM §11) — transações (receitas/despesas), cartões (sem cartão/fatura/pagamento), dívidas, orçamentos, categorias, relatórios, insights, lembretes, carteira (posição/metas/aporte) e wizard — tom "Nenhum/Nenhuma/Sem + substantivo" com descrição imperativa e ícone lucide contextual.
+- **Onboarding de primeiro uso (§5.7):** `domain/onboarding` (puro, 9 testes) — checklist de 4 passos (categorias de despesa/renda, cartão, primeiro lançamento) com progresso e conclusão derivados das contagens; `getOnboardingCounts` (repositório, 3 testes) com contagens leves em paralelo (head: true, is_reserved = false) + `useOnboardingCounts`.
+- **OnboardingCard** na Visão Geral (módulo + 5 testes, axe incluso): progresso `n/4`, passos done com check, CTAs "Configurar" com deep-link (`/categorias?type=`, `/cartoes`, `/transacoes/novo`); some automaticamente quando o setup completa (Online First — derivação por dados, sem persistência local).
 
 **Progresso — Fase 5, entrega 3 (auditoria a11y):**
 - **Axe automatizado:** `vitest-axe` + `axe-core` (devDeps) com matcher `toHaveNoViolations` no setup; auditoria de **10 telas P0** (auth ×3, overview, transações, cartões, dívidas, orçamentos, wizard + fluxo de diálogo) — todas sem violações; teste de sanidade garante que o matcher detecta violações reais.

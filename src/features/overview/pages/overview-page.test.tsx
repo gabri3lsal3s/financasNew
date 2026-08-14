@@ -73,6 +73,12 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useReallocateBudget: () => ({ mutateAsync: reallocateMock, isPending: false }),
+  useOnboardingCounts: () => ({
+    data: { expenseCategories: 2, incomeCategories: 1, cards: 1, transactions: 3 },
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {

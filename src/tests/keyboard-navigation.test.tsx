@@ -71,6 +71,12 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useOnboardingCounts: () => ({
+    data: { expenseCategories: 2, incomeCategories: 1, cards: 1, transactions: 3 },
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
   useReallocateBudget: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSetBudgetLimit: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRemoveBudgetLimit: () => ({ mutateAsync: vi.fn(), isPending: false }),

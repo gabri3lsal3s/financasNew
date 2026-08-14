@@ -88,6 +88,7 @@
     │   └── portfolio/             #   Carteira, metas, calculadora de aporte
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
+    │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…)
@@ -101,7 +102,8 @@
     ├── data/                      # INTEGRAÇÃO REMOTA
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
-    │   │                          #   budgets.ts, portfolio.ts, categories.ts
+    │   │                          #   budgets.ts, portfolio.ts, categories.ts,
+    │   │                          #   onboarding.ts (contagens do primeiro uso)
     │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
     │
     ├── state/                     # CONTRATOS DE ESTADO para a UI

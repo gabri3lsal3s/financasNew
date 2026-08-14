@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ArrowRight, Inbox, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Progress, Skeleton } from "@/components/ui";
-import { KpiCard, MonthPicker } from "@/components/modules";
+import { KpiCard, MonthPicker, OnboardingCard } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
+import { isOnboardingComplete } from "@/domain/onboarding";
 import {
   BUDGET_STATUS_LABELS,
   budgetStatus,
@@ -24,6 +25,7 @@ import {
   useDebts,
   useExpenses,
   useIncomes,
+  useOnboardingCounts,
   useReallocateBudget,
 } from "@/state";
 import { cn } from "@/lib/utils";
@@ -69,6 +71,8 @@ export function OverviewPage() {
   const [reallocateOpen, setReallocateOpen] = useState(false);
   const [reallocateError, setReallocateError] = useState<string | null>(null);
   const reallocate = useReallocateBudget();
+  const onboardingQuery = useOnboardingCounts();
+  const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
 
   const loading =
     incomesQuery.isLoading ||
@@ -181,6 +185,10 @@ export function OverviewPage() {
       <MonthPicker value={month} onValueChange={setMonth} />
 
       {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
+
+      {!loading && !error && !onboardingComplete && onboardingQuery.data ? (
+        <OnboardingCard counts={onboardingQuery.data} />
+      ) : null}
 
       {loading ? (
         <div className="flex flex-col gap-2">
