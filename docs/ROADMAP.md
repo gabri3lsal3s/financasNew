@@ -369,11 +369,38 @@
 **Objetivo:** confiança, segurança e produção.
 
 **Entregas (na ordem):**
-1. **Prova de fidelidade:** suíte completa espelhando cada regra do ESPECIFICAÇÃO (regressão contra o app anterior).
+1. ✅ **Prova de fidelidade:** suíte espelhando cada regra do ESPECIFICAÇÃO (regressão contra o app anterior).
 2. Segurança: revisão final de RLS, rate limit, secrets/ambiente.
 3. Observabilidade: logging de erros (**decisão aberta** — sugestão: Sentry) + métricas básicas.
 4. Deploy: **hosting do frontend = Vercel** (`vercel.json` com SPA rewrites, headers de segurança e cache PWA) + backend/banco = **Supabase** (Postgres + RLS + Auth + migrations em `supabase/`); pendente CI/CD de produção e env seguros (Supabase, proxy de cotações, R2).
 5. QA final multi-dispositivo + documento de release.
+
+**Progresso — Fase 6, entrega 1 (prova de fidelidade):**
+- **`src/tests/fidelity.test.ts`** — **63 testes** espelhando as regras do ESPECIFICAÇÃO §1.3–§4.5: um teste por regra com exemplo representativo, organizado por seção da spec, verificando a **invariante central** (soma de parcelas = original, saldo = rendas − despesas − investimentos, competência ≥ closing → mês seguinte, prioridade dos alertas 1–6, tetos setoriais, guardrail de spike, limites da busca, etc.). Complementa (não duplica) a cobertura profunda dos testes colocalizados de cada motor.
+- **Matriz de fidelidade (seção da spec → cobertura):**
+
+  | Spec | Regra central | Cobertura (testes colocalizados) |
+  |---|---|---|
+  | §1.3 D1 | RPCs transacionais (rollback, invariantes) | `supabase/migrations/0003` + `data/repositories/*.test.ts` |
+  | §1.4 D2 | Auditoria + hard delete | migrations + repositories |
+  | §1.5 D3 | Competência de fatura (snapshot + overrides) | `domain/competence/index.test.ts` |
+  | §3.1/3.2 | Receitas, despesas, parcelamento 1–60x (D12) | `domain/money/parcelar.test.ts` + `wizard-state.test.ts` |
+  | §3.3 | Cartões: fatura, estorno, seleção de mês | `domain/cards/index.test.ts` |
+  | §3.4 | Dívidas: status derivado + merge de pagas | `domain/debts` + `domain/reports/index.test.ts` |
+  | §3.5 | Categorias, orçamentos, metas de renda | `domain/budgets/index.test.ts` |
+  | §3.6 | Visão consolidada (KPIs, saldo de contas, fluxo) | `domain/overview/index.test.ts` |
+  | §3.7 | Insights (alertas, assinaturas, recorrências, desafios) | `domain/insights/*.test.ts` + `domain/savings/index.test.ts` |
+  | §3.8 | Projeção (diário, ritmo, fim de mês, pendências) | `domain/projection/index.test.ts` |
+  | §3.9 | Busca global (scoring, recência, limites) | `domain/search/index.test.ts` |
+  | §3.10 | Lembretes (lido/snooze com expiração) | `domain/reminders/index.test.ts` |
+  | §3.11 | Carteira (metas, ledger, valoração, aporte) | `domain/portfolio/*.test.ts` (65 testes) |
+  | §4.1 | Datas/calendário (ranges de mês locais) | `src/lib/date.test.ts` (novo, 6 testes) |
+  | §4.2 | Moeda pt-BR e arredondamento | `domain/money/parse.test.ts` + `services/masks/money.test.ts` |
+  | §4.4 | Ordenações padrão | `domain/reminders` + `domain/reports/index.test.ts` |
+  | §4.5 | Validações de formulário (pt-BR) | `fidelity.test.ts` + `wizard-state.test.ts` |
+
+- **Lacuna fechada:** `lib/date.ts` (monthRange/shiftMonth/isValidMonth) não tinha testes — novos 6 testes cobrindo §4.1 (ranges [start, end) em timezone local, sem `toISOString`).
+- **Total:** 63 testes de fidelidade + 6 de data = **69 testes novos**; suíte total **528 testes**. F6.1 concluída ✅.
 
 **✅ DoD**
 - Suíte de fidelidade 100% verde.
