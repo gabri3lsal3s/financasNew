@@ -113,7 +113,11 @@ export function TransactionListPage() {
               Receitas
             </h2>
             {(incomesQuery.data ?? []).length === 0 ? (
-              <EmptyState title="Nenhuma receita" description="Registre sua primeira renda do mês." />
+              <EmptyState
+                icon={<ArrowDownLeft className="size-6" aria-hidden="true" />}
+                title="Nenhuma receita"
+                description="Registre sua primeira renda do mês."
+              />
             ) : (
               (incomesQuery.data ?? []).map((income) => <IncomeRow key={income.id} income={income} />)
             )}
@@ -125,7 +129,11 @@ export function TransactionListPage() {
               Despesas
             </h2>
             {(expensesQuery.data ?? []).length === 0 ? (
-              <EmptyState title="Nenhuma despesa" description="Registre seu primeiro gasto do mês." />
+              <EmptyState
+                icon={<ArrowUpRight className="size-6" aria-hidden="true" />}
+                title="Nenhuma despesa"
+                description="Registre seu primeiro gasto do mês."
+              />
             ) : (
               (expensesQuery.data ?? []).map((expense) => (
                 <ExpenseRow key={expense.id} expense={expense} onClick={() => setSelectedExpense(expense)} />

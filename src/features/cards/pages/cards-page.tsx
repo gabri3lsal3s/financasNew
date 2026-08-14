@@ -79,6 +79,7 @@ export function CardsPage() {
         </div>
       ) : cards.length === 0 ? (
         <EmptyState
+          icon={<WalletCards className="size-6" aria-hidden="true" />}
           title="Nenhum cartão"
           description="Adicione seu primeiro cartão de crédito para acompanhar faturas, pagamentos e estornos."
           action={<Button onClick={() => openForm(null)}>Adicionar cartão</Button>}
@@ -146,7 +147,11 @@ export function CardsPage() {
               Despesas · {monthLabel(effectiveMonth)}
             </h2>
             {competenceExpenses.length === 0 ? (
-              <EmptyState title="Sem despesas nesta fatura" description="As compras no crédito aparecem aqui pela competência." />
+              <EmptyState
+                icon={<WalletCards className="size-6" aria-hidden="true" />}
+                title="Sem despesas nesta fatura"
+                description="As compras no crédito aparecem aqui pela competência."
+              />
             ) : (
               competenceExpenses.map((expense) => (
                 <TransactionRow
@@ -165,7 +170,11 @@ export function CardsPage() {
           <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Pagamentos e estornos</h2>
             {competencePayments.length === 0 ? (
-              <EmptyState title="Nenhum pagamento" description="Registre o pagamento da fatura quando efetuar." />
+              <EmptyState
+                icon={<WalletCards className="size-6" aria-hidden="true" />}
+                title="Nenhum pagamento"
+                description="Registre o pagamento da fatura quando efetuar."
+              />
             ) : (
               competencePayments.map((payment) =>
                 payment.amount < 0 ? (

@@ -1,3 +1,4 @@
+import { Tags } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,7 +34,11 @@ export function StepCategory({ categories, isLoading, isError, error, selectedId
 
   if (!categories || categories.length === 0) {
     return (
-      <EmptyState title="Nenhuma categoria" description="Crie categorias em Configurações antes de lançar." />
+      <EmptyState
+        icon={<Tags className="size-6" aria-hidden="true" />}
+        title="Nenhuma categoria"
+        description="Crie suas categorias na área Categorias antes de lançar."
+      />
     );
   }
 

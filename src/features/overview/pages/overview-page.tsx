@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, Inbox, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Progress, Skeleton } from "@/components/ui";
 import { KpiCard, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
@@ -327,6 +327,7 @@ export function OverviewPage() {
 
           {(incomesQuery.data ?? []).length === 0 && (expensesQuery.data ?? []).length === 0 ? (
             <EmptyState
+              icon={<Inbox className="size-6" aria-hidden="true" />}
               title="Sem lançamentos neste mês"
               description={`Registre receitas e despesas de ${monthLabel(month)} para ver os KPIs aqui.`}
             />

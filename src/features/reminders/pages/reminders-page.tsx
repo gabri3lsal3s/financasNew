@@ -1,3 +1,4 @@
+import { Bell } from "lucide-react";
 import { Alert, EmptyState, Skeleton } from "@/components/ui";
 import { ReminderItem } from "@/components/modules";
 import { autoSelectBillMonth, buildCompetenceSummaries } from "@/domain/cards";
@@ -102,6 +103,7 @@ export function RemindersPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
+          icon={<Bell className="size-6" aria-hidden="true" />}
           title="Tudo em dia"
           description="Nenhuma fatura ou dívida vencendo nos próximos dias."
         />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { DebtStatusBadge } from "@/components/modules";
 import { debtStatus } from "@/domain/debts";
@@ -127,6 +127,7 @@ export function DebtsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
+          icon={<HandCoins className="size-6" aria-hidden="true" />}
           title={tab === "payable" ? "Nenhuma conta a pagar" : "Nenhuma conta a receber"}
           description={
             tab === "payable"

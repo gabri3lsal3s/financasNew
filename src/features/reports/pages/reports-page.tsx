@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { ChartPie, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker, ReportTable, type ReportRow } from "@/components/modules";
@@ -179,7 +179,11 @@ export function ReportsPage() {
           <Skeleton className="h-40 w-full" />
         </div>
       ) : expenses.length === 0 && incomes.length === 0 ? (
-        <EmptyState title="Sem lançamentos no período" description={`Nenhuma receita ou despesa registrada em ${periodLabel}.`} />
+        <EmptyState
+          icon={<ChartPie className="size-6" aria-hidden="true" />}
+          title="Sem lançamentos no período"
+          description={`Nenhuma receita ou despesa registrada em ${periodLabel}.`}
+        />
       ) : (
         <>
           {/* Resumo com merge de dívidas (§4.3) e comparativo */}

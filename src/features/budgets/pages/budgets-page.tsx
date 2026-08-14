@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, Pencil, PiggyBank, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
@@ -162,6 +162,7 @@ export function BudgetsPage() {
             </div>
           ) : rows.length === 0 ? (
             <EmptyState
+              icon={<PiggyBank className="size-6" aria-hidden="true" />}
               title="Nenhum orçamento"
               description="Defina um limite mensal por categoria de despesa para acompanhar os gastos."
             />
@@ -231,7 +232,11 @@ export function BudgetsPage() {
             Defina a expectativa mensal por categoria de renda para comparar o realizado.
           </p>
           {(incomeCategories.data ?? []).length === 0 ? (
-            <EmptyState title="Sem categorias de renda" description="Crie categorias de renda para definir metas." />
+            <EmptyState
+              icon={<PiggyBank className="size-6" aria-hidden="true" />}
+              title="Sem categorias de renda"
+              description="Crie categorias de renda para definir metas."
+            />
           ) : (
             (incomeCategories.data ?? []).map((category) => {
               const realizedCents = realizedByCategory.get(category.id) ?? 0;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { Alert, Button, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules";
 import { getErrorMessage } from "@/services/errors";
@@ -59,6 +59,7 @@ export function CategoriesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
+          icon={<Tags className="size-6" aria-hidden="true" />}
           title={tab === "expense" ? "Nenhuma categoria de despesa" : "Nenhuma categoria de renda"}
           description="Crie categorias para classificar seus lançamentos."
           action={<Button onClick={openCreate}>Criar categoria</Button>}

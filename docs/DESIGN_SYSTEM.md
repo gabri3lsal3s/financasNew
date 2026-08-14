@@ -197,6 +197,7 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 - Despesa = `negative` · receita = `positive` · rebalanceamento = `portfolio` em qualquer contexto.
 - 1 KPI com glow por tela; demais com `shadow-md`.
 - Cores de categoria pela escala `cat-1..10` (mesma cor no ícone, badge e gráfico).
+- **Tom de voz dos empty states:** título no padrão "Nenhum/Nenhuma/Sem + substantivo" (ex.: "Nenhum cartão", "Sem lançamentos neste mês") e descrição em imperativo curto (ex.: "Registre…", "Crie…", "Adicione…", "Defina…") com **ícone lucide contextual** (`size-6`, `aria-hidden`) — nunca emoji, nunca tom coloquial exagerado.
 
 **❌ Don't**
 - Nada de hex hard-coded em componente (quebra a propagação global).

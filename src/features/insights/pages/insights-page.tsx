@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Repeat, Sparkles } from "lucide-react";
+import { Lightbulb, Repeat, Sparkles } from "lucide-react";
 import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { AlertCard, InsightList, ProjectionLine } from "@/components/modules";
 import { criticalAlerts } from "@/domain/insights/alerts";
@@ -240,7 +240,11 @@ export function InsightsPage() {
               label: "Alertas",
               content:
                 alerts.length === 0 ? (
-                  <EmptyState title="Nada crítico" description="Nenhum alerta ativo no momento." />
+                  <EmptyState
+                    icon={<Lightbulb className="size-6" aria-hidden="true" />}
+                    title="Nada crítico"
+                    description="Nenhum alerta ativo no momento."
+                  />
                 ) : (
                   <div className="flex flex-col gap-2">
                     {alerts.map((alert) => (
