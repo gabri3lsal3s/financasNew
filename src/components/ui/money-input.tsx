@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { useCurrencyInput } from "@/hooks/use-currency-input";
-import { registerCalculatorTarget } from "@/services/calculator-bridge";
+import { registerCalculatorTarget, unregisterCalculatorTarget } from "@/services/calculator-bridge";
 
 /**
  * MoneyInput — entrada monetária progressiva (padrão Nubank).
@@ -42,6 +42,18 @@ export function MoneyInput({
 }: MoneyInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const currency = useCurrencyInput({ initialCents: cents });
+
+  // Campo ativo da calculadora (F9): registrado no focus e removido APENAS no
+  // unmount (modal fechado, passo trocado). NÃO desregistrar no blur: o foco
+  // sai do campo quando o painel da calculadora abre (Radix Dialog) e o alvo
+  // precisa continuar ativo para "Usar valor" injetar.
+  const calculatorTargetRef = useRef<((cents: number) => void) | null>(null);
+  useEffect(() => {
+    return () => {
+      const target = calculatorTargetRef.current;
+      if (target) unregisterCalculatorTarget(target);
+    };
+  }, []);
 
   // Sincroniza APENAS quando o valor controlado muda de fato (ex.: reset do
   // formulário). Nunca sobrescreve o que o usuário digitou: um re-render do
@@ -85,10 +97,12 @@ export function MoneyInput({
       onKeyDown={currency.handleKeyDown}
       onFocus={(event) => {
         // Calculadora flutuante (F9): campo ativo recebe o valor "Usar valor".
-        registerCalculatorTarget((cents) => {
+        const target = (cents: number) => {
           currency.setCents(cents);
           onCentsChange?.(cents);
-        });
+        };
+        calculatorTargetRef.current = target;
+        registerCalculatorTarget(target);
         rest.onFocus?.(event);
       }}
     />
