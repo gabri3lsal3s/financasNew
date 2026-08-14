@@ -364,7 +364,7 @@
 1. **Prova de fidelidade:** suíte completa espelhando cada regra do ESPECIFICAÇÃO (regressão contra o app anterior).
 2. Segurança: revisão final de RLS, rate limit, secrets/ambiente.
 3. Observabilidade: logging de erros (**decisão aberta** — sugestão: Sentry) + métricas básicas.
-4. Deploy: **hosting do frontend (decisão aberta** — sugestão: Vercel) + CI/CD de produção; env seguros (Supabase, proxy de cotações, R2).
+4. Deploy: **hosting do frontend = Vercel** (`vercel.json` com SPA rewrites, headers de segurança e cache PWA) + backend/banco = **Supabase** (Postgres + RLS + Auth + migrations em `supabase/`); pendente CI/CD de produção e env seguros (Supabase, proxy de cotações, R2).
 5. QA final multi-dispositivo + documento de release.
 
 **✅ DoD**
@@ -387,6 +387,7 @@
 - **F0/F2:** `MoneyInput` é primitivo de UI (Fase 0); `CategoryIcon`, `MonthPicker`, `TransactionRow`, `KpiCard`, `BudgetProgressBar`, `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge`, `WizardShell`.
 - **F3:** `AlertCard`, `InsightList`, `ProjectionLine`, `ReminderItem`, `ReportTable`.
 - **F4:** `PositionTable`, `TargetEditor` (barra de soma), `AporteResult`.
+- **F5:** `GlobalSearch` (⌘K), `HighlightRow`, `OnboardingCard`, `VirtualList` (primitivo, `components/ui`).
 
 ### 4.3 Telas (por fase) — `features/`
 Sempre composição fina: layout (`components/layout`) + módulos (`components/modules`) + contratos (`state/`). Sem JSX duplicado entre telas — qualquer repetição vira módulo novo.

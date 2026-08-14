@@ -1,0 +1,10 @@
+.git
+.github
+docs
+supabase
+scripts
+tests
+*.test.ts
+*.test.tsx
+.env*
+!.env.example

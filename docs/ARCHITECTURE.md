@@ -266,9 +266,10 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 
 ---
 
-## 11. DECISÕES EM ABERTO
+## 11. DECISÕES EM ABERTO E RESOLVIDAS
 
 - ~~Cor primária e identidade da marca~~ — **RESOLVIDA** em `docs/DESIGN_SYSTEM.md` (tokens em `src/styles/tokens.css`).
-- Hosting do frontend (Fase 6 — sugestão: Vercel).
+- ~~Hosting do frontend~~ — **RESOLVIDA**: **Vercel** (`vercel.json` configurado com SPA rewrites, headers de segurança e cache PWA).
+- ~~Backend e banco de dados~~ — **RESOLVIDA**: **Supabase** (Postgres 17 + RLS + Auth + Migrations versionadas em `supabase/migrations/`).
+- ~~Notificações~~ — **RESOLVIDA**: in-app centralizado (`/lembretes`).
 - Observabilidade/erros (Fase 6 — sugestão: Sentry).
-- Notificações: in-app ou push (Fase 3).
