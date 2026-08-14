@@ -220,7 +220,7 @@ export function OverviewPage() {
               </p>
             </div>
             <p className="max-w-[12rem] text-right text-xs text-muted-foreground">
-              {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda) 🎉" : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
+              {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
             </p>
           </div>
 
@@ -289,7 +289,7 @@ export function OverviewPage() {
             <Progress value={globalPercent} tone={progressTone(globalPercent)} aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`} />
 
             {attentionRows.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhuma categoria excedeu o limite. 👍</p>
+              <p className="text-xs text-muted-foreground">Nenhuma categoria excedeu o limite.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {attentionRows.slice(0, 3).map((row) => (

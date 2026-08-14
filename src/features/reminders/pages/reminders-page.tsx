@@ -103,7 +103,7 @@ export function RemindersPage() {
       ) : items.length === 0 ? (
         <EmptyState
           title="Tudo em dia"
-          description="Nenhuma fatura ou dívida vencendo nos próximos dias. 👍"
+          description="Nenhuma fatura ou dívida vencendo nos próximos dias."
         />
       ) : (
         <div className="flex flex-col gap-2">

@@ -205,6 +205,7 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 - Não adicionar novas cores de categoria fora da escala — a paleta é restrita de propósito.
 - Não criar sombras ad-hoc (usar a escala sm/md/lg/kpi).
 - **Nunca** usar elementos nativos de controle (select, checkbox, date, file, range, alert/confirm/dialog) — sempre os primitivos do app (ver §13).
+- **Nunca** usar emojis/emoticons nem caracteres Unicode decorativos (✓, ▲, ●, 🎉, 👍…) em textos de UI, empty states, alertas ou mensagens — **toda representação gráfica usa ícones `lucide-react` padronizados** (tamanhos `size-3`/`size-4`/`size-5`, `aria-hidden`, mesmo estilo de stroke), mantendo o visual harmônico.
 
 ---
 

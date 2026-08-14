@@ -101,7 +101,7 @@ export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
       priority: 6,
       severity: "praise",
       title: "Poupança saudável",
-      description: `Você poupou ${input.savingsRatePercent.toFixed(0)}% da renda — acima de 20%. Continue assim! 🎉`,
+      description: `Você poupou ${input.savingsRatePercent.toFixed(0)}% da renda — acima de 20%. Continue assim!`,
     });
   }
 

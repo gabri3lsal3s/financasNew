@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker, ReportTable, type ReportRow } from "@/components/modules";
@@ -259,8 +260,9 @@ function SummaryCard({
         {value}
       </span>
       {delta !== null && delta !== undefined ? (
-        <span className={cn("num text-[11px]", good ? "text-positive-strong" : "text-critical")}>
-          {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}% vs anterior
+        <span className={cn("num inline-flex items-center gap-0.5 text-[11px]", good ? "text-positive-strong" : "text-critical")}>
+          {delta >= 0 ? <TrendingUp className="size-3" aria-hidden="true" /> : <TrendingDown className="size-3" aria-hidden="true" />}
+          {Math.abs(delta).toFixed(1)}% vs anterior
         </span>
       ) : null}
     </div>

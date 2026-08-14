@@ -240,7 +240,7 @@ export function InsightsPage() {
               label: "Alertas",
               content:
                 alerts.length === 0 ? (
-                  <EmptyState title="Nada crítico" description="Nenhum alerta ativo no momento. 👍" />
+                  <EmptyState title="Nada crítico" description="Nenhum alerta ativo no momento." />
                 ) : (
                   <div className="flex flex-col gap-2">
                     {alerts.map((alert) => (
