@@ -44,6 +44,7 @@
 │
 ├── public/                        # Assets estáticos servidos na raiz (não processados)
 │   ├── favicon.ico
+│   ├── brand/                     # Assets oficiais da marca (logo.png, logo-128, favicon-32, logo-full)
 │   └── pwa/                       # Artefatos PWA — ver PWA_GUIDELINES.md
 │       ├── manifest.webmanifest
 │       ├── icons/                 # icon-192, icon-512, maskable-512, apple-touch-icon-180

@@ -1,11 +1,15 @@
 import { Link } from "react-router";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { navItems } from "@/components/layout/nav-items";
 import { InstallAppButton } from "@/components/modules/install-app-button";
 
 export function MoreMenu() {
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-2xl font-bold tracking-tight">Mais</h1>
+      <div className="flex items-center justify-between rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs">
+        <BrandLogo markClassName="size-10" showSubtitle />
+      </div>
+      <h1 className="sr-only">Mais</h1>
       <nav className="grid gap-2" aria-label="Todas as áreas">
         {navItems.map((item) => (
           <Link

@@ -14,7 +14,7 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
     <div className="flex min-h-dvh items-center justify-center p-4">
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="flex-col items-center gap-3 text-center">
-          <BrandLogo />
+          <BrandLogo markClassName="size-12" showSubtitle />
           <div className="flex flex-col gap-1">
             <CardTitle className="font-display text-xl">{title}</CardTitle>
             {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}

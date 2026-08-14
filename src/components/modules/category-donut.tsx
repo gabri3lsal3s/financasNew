@@ -41,7 +41,7 @@ const CENTER = SIZE / 2;
 
 /**
  * CategoryDonut — distribuição visual das principais categorias de despesa (F8).
- * Anel SVG refinado com centro estruturado e lista com mini-barras de progresso relativas.
+ * Anel SVG de alto contraste com centro estruturado e lista com mini-barras de progresso relativas.
  */
 export function CategoryDonut({ slices, totalCents, centerValue, className }: CategoryDonutProps) {
   const total = totalCents ?? slices.reduce((acc, slice) => acc + slice.valueCents, 0);
@@ -49,7 +49,7 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
   if (total <= 0 || slices.length === 0) {
     return (
       <div className={cn("flex flex-col items-center justify-center py-6 text-center", className)}>
-        <div className="flex size-28 items-center justify-center rounded-full border-2 border-dashed border-border/60 bg-surface/40">
+        <div className="flex size-28 items-center justify-center rounded-full border-2 border-dashed border-border/80 bg-surface/60">
           <p className="text-xs font-medium text-muted-foreground">Sem despesas</p>
         </div>
       </div>
@@ -75,11 +75,11 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
 
   return (
     <div className={cn("flex flex-col items-center gap-6 sm:flex-row sm:items-center", className)}>
-      {/* Anel SVG */}
+      {/* Anel SVG de alto contraste */}
       <div className="relative shrink-0 flex items-center justify-center">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="size-34 -rotate-90 drop-shadow-xs"
+          className="size-34 -rotate-90"
           aria-hidden="true"
         >
           <circle
@@ -88,7 +88,7 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
             r={RADIUS}
             fill="none"
             strokeWidth={STROKE_WIDTH}
-            className="stroke-muted/30"
+            className="stroke-border/70 dark:stroke-border/80"
           />
           {arcs.map((arc) => (
             <circle
@@ -105,14 +105,14 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
           ))}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
-          <span className="text-[10px] font-medium tracking-wider uppercase text-muted-foreground">Total</span>
+          <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">Total</span>
           <p className="privacy-mask num text-xs sm:text-sm font-bold text-foreground tracking-tight">
             {centerValue ?? formatCentsAsBRL(total)}
           </p>
         </div>
       </div>
 
-      {/* Lista de fatias */}
+      {/* Lista de fatias com alto contraste */}
       <ul className="w-full min-w-0 space-y-2">
         {slices.map((slice, index) => {
           const percent = total > 0 ? (slice.valueCents / total) * 100 : 0;
@@ -128,17 +128,17 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
               <div className="flex items-center gap-2 text-xs">
                 <span
                   aria-hidden="true"
-                  className={cn("size-2 shrink-0 rounded-full ring-2 ring-surface", bgClass)}
+                  className={cn("size-2.5 shrink-0 rounded-full ring-2 ring-surface", bgClass)}
                 />
-                <span className="truncate font-medium text-foreground">{slice.label}</span>
-                <span className="num ml-auto font-semibold text-muted-foreground text-[11px]">
+                <span className="truncate font-semibold text-foreground">{slice.label}</span>
+                <span className="num ml-auto font-bold text-muted-foreground text-xs">
                   {percent.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%
                 </span>
-                <span className="privacy-mask num w-22 text-right font-medium text-foreground text-xs">
+                <span className="privacy-mask num w-22 text-right font-semibold text-foreground text-xs">
                   {formatCentsAsBRL(slice.valueCents)}
                 </span>
               </div>
-              <div className="h-1 w-full overflow-hidden rounded-full bg-muted/25" aria-hidden="true">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 dark:bg-border/60" aria-hidden="true">
                 <div
                   className={cn("h-full rounded-full transition-all duration-500", bgClass)}
                   style={{ width: `${Math.min(100, Math.max(2, percent))}%` }}
@@ -151,4 +151,3 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
     </div>
   );
 }
-

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { CalculatorButton } from "@/components/layout/calculator-button";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
@@ -42,6 +43,9 @@ export function PageShell() {
             de utilidade ficam alinhados à direita. */}
         <header className="sticky top-0 z-sticky flex h-16 items-center border-b border-border bg-surface/80 backdrop-blur">
           <div className="mx-auto flex w-full max-w-5xl items-center gap-1.5 px-4 lg:px-8">
+            <div className="flex items-center lg:hidden mr-1 shrink-0">
+              <BrandLogo showWordmark={false} markClassName="size-7" />
+            </div>
             <GlobalSearch className="flex-1" />
             <PrivacyToggle />
             <CalculatorButton />

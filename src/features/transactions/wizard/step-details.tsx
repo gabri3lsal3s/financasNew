@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/services/errors";
 import type { PaymentMethod, ReceiveType } from "@/types";
+import { CUSTOM_WEIGHT_VALUE, isPresetWeight } from "./wizard-state";
 import type { LaunchState } from "./wizard-state";
 
 export interface StepDetailsProps {
@@ -17,6 +18,7 @@ export interface StepDetailsProps {
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
   onReportWeightChange: (weight: number) => void;
+  onReportWeightCustomChange: (text: string) => void;
   onDebtToggle: (enabled: boolean) => void;
   onDebtAmountChange: (cents: number) => void;
   onDebtDueDateChange: (date: string) => void;
@@ -47,6 +49,7 @@ const WEIGHT_OPTIONS = [
   { value: "0.5", label: "50%" },
   { value: "0.25", label: "25%" },
   { value: "0", label: "Não contar nos relatórios" },
+  { value: "custom", label: "Personalizado…" },
 ];
 
 /** Passo 3 — detalhes do lançamento. */
@@ -58,6 +61,7 @@ export function StepDetails({
   onReceiveTypeChange,
   onDescriptionChange,
   onReportWeightChange,
+  onReportWeightCustomChange,
   onDebtToggle,
   onDebtAmountChange,
   onDebtDueDateChange,
@@ -129,11 +133,25 @@ export function StepDetails({
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Peso no relatório</span>
         <Select
-          value={String(state.reportWeight)}
-          onValueChange={(value) => onReportWeightChange(Number(value))}
+          value={isPresetWeight(state.reportWeight) ? String(state.reportWeight) : "custom"}
+          onValueChange={(value) =>
+            onReportWeightChange(value === "custom" ? CUSTOM_WEIGHT_VALUE : Number(value))
+          }
           options={WEIGHT_OPTIONS}
           ariaLabel="Peso no relatório"
         />
+        {!isPresetWeight(state.reportWeight) ? (
+          <div className="flex items-center gap-2">
+            <Input
+              value={state.reportWeightCustom}
+              onChange={(event) => onReportWeightCustomChange(event.target.value)}
+              inputMode="decimal"
+              placeholder="Ex.: 37,5"
+              aria-label="Percentual personalizado do peso no relatório"
+            />
+            <span className="shrink-0 text-sm text-muted-foreground">%</span>
+          </div>
+        ) : null}
       </div>
 
       {isExpense ? (

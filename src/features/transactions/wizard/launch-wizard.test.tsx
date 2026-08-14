@@ -82,4 +82,30 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByRole("button", { name: "Voltar" })).toBeDisabled();
   });
+
+  it("permite peso personalizado no relatório e persiste a fração resolvida", async () => {
+    const user = userEvent.setup();
+    render(<LaunchWizard />);
+
+    // Passo 1 — valor
+    await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "150000");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 2 — categoria
+    await user.click(screen.getByRole("button", { name: /alimentação/i }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 3 — escolhe "Personalizado…" e digita 37,5
+    await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
+    await user.click(screen.getByRole("option", { name: "Personalizado…" }));
+    await user.type(screen.getByRole("textbox", { name: "Percentual personalizado do peso no relatório" }), "37,5");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 4 — revisão confirma o peso resolvido (37,5%)
+    expect(screen.getByText("37,5%")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar lançamento" }));
+
+    expect(createExpenseMock).toHaveBeenCalledTimes(1);
+    expect(createExpenseMock.mock.calls[0]?.[0].reportWeight).toBe(0.375);
+  });
 });

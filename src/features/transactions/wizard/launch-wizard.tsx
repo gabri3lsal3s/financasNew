@@ -11,7 +11,14 @@ import { StepCategory } from "./step-category";
 import { StepDetails } from "./step-details";
 import { StepReview } from "./step-review";
 import { StepValue } from "./step-value";
-import { buildExpenseInstallments, canProceed, defaultLaunchState, WIZARD_STEPS } from "./wizard-state";
+import {
+  buildExpenseInstallments,
+  canProceed,
+  defaultLaunchState,
+  effectiveReportWeight,
+  isPresetWeight,
+  WIZARD_STEPS,
+} from "./wizard-state";
 import type { EntryType, LaunchState } from "./wizard-state";
 
 /** Wizard de lançamento em tela cheia (D10) — 4 passos navegáveis. */
@@ -51,7 +58,7 @@ export function LaunchWizard() {
           paymentMethod: state.paymentMethod,
           cardId: state.paymentMethod === "credit_card" ? state.cardId : null,
           description: state.description || null,
-          reportWeight: state.reportWeight,
+          reportWeight: effectiveReportWeight(state),
           installments: buildExpenseInstallments({
             totalCents: state.valueCents,
             count: state.installments,
@@ -68,7 +75,7 @@ export function LaunchWizard() {
           category_id: state.categoryId,
           receive_type: state.receiveType,
           description: state.description || null,
-          report_weight: state.reportWeight,
+          report_weight: effectiveReportWeight(state),
           source_ref: null,
         } satisfies Omit<DbInsert<Income>, "user_id">;
         await createIncome.mutateAsync(input);
@@ -134,7 +141,12 @@ export function LaunchWizard() {
           onCardChange={(cardId) => set("cardId", cardId)}
           onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
           onDescriptionChange={(description) => set("description", description)}
-          onReportWeightChange={(weight) => set("reportWeight", weight)}
+          onReportWeightChange={(weight) => {
+            set("reportWeight", weight);
+            // Ao voltar para um preset, limpa o texto do percentual personalizado.
+            if (isPresetWeight(weight)) set("reportWeightCustom", "");
+          }}
+          onReportWeightCustomChange={(text) => set("reportWeightCustom", text)}
           onDebtToggle={(enabled) => set("debtEnabled", enabled)}
           onDebtAmountChange={(cents) => set("debtAmountCents", cents)}
           onDebtDueDateChange={(date) => set("debtDueDate", date)}

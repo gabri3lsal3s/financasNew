@@ -1,6 +1,7 @@
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
-import { buildExpenseInstallments, type LaunchState } from "./wizard-state";
+import { buildExpenseInstallments, effectiveReportWeight, reportWeightLabel } from "./wizard-state";
+import type { LaunchState } from "./wizard-state";
 
 export interface StepReviewProps {
   state: LaunchState;
@@ -26,6 +27,7 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
         <Row label="Tipo" value={isExpense ? "Despesa" : "Renda"} />
         <Row label="Valor" value={formatCentsAsBRL(state.valueCents)} mono />
+        <Row label="Peso no relatório" value={reportWeightLabel(effectiveReportWeight(state))} />
         <Row label="Categoria" value={categoryName ?? "—"} />
         <Row label="Data" value={state.date} />
         {isExpense ? (

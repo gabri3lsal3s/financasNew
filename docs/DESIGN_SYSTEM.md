@@ -339,13 +339,18 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Componente:** `src/components/ui/sparkline.tsx`.
 - **Estilo:** Curva SVG vetorial minimalista (1px stroke com gradiente sutil de preenchimento opacidade 15%) exibida discretamente no canto de `KpiCard` para demonstrar a trajetória dos últimos 3 a 6 meses.
 
-### 14.7 Gráfico de Fluxo Diário com Scrubbing & Saldo Acumulado
+### 14.7 Gráfico de Fluxo Diário com Curvas Suaves (Bézier Cúbicas)
 - **Módulo:** `src/components/modules/daily-flow-chart.tsx`.
-- **Interatividade:** Linha guia de saldo acumulado sobreposta às barras de receitas/despesas; suporte a arraste tátil (scrubbing) com tooltip flutuante exibindo os dados consolidados do dia.
+- **Estilo & Interatividade:** Curvas suaves Bézier cúbicas orgânicas sem cantos pontiagudos e **sem sombras nas linhas**, com preenchimentos em gradiente leve e linhas guias horizontais limpas; suporte a scrubbing interativo (ponteiro/toque) com tooltip flutuante exibindo entradas, saídas e resultado do dia.
 
-### 14.8 Gráfico Donut de Categorias
+### 14.8 Gráfico Donut de Categorias (Alto Contraste)
 - **Módulo:** `src/components/modules/category-donut.tsx`.
-- **Estilo:** Rosca fina (espessura 8–10px) utilizando as cores `cat-1..10` com legenda de percentual e esmaecimento suave das outras fatias ao focar em uma categoria.
+- **Estilo:** Anel SVG de alto contraste com trilha de fundo nítida (`stroke-border/70`), centro tipográfico estruturado (Total) e lista de categorias com porcentagem, valores formatados e mini-barras de progresso relativas de alta legibilidade.
 
 ### 14.9 Transições de Rota no PageShell ("App-like Transitions")
 - **Estilo:** Fade + micro-slide suave de 150ms na entrada de novas páginas no `<Outlet />` (`opacity: 0 → 1`, `translateY: 4px → 0px`), automaticamente desativado se `prefers-reduced-motion: reduce`.
+
+### 14.10 Identidade Visual & Assets Oficiais da Marca
+- **Componente:** `src/components/layout/brand-logo.tsx`.
+- **Assets:** Gerados a partir de `identidadeVisual/` em `public/brand/` (`logo.png`, `logo-192.png`, `logo-128.png`, `logo-64.png`, `logo-32.png`, `logo-full.png`) e `public/pwa/icons/` (`icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon-180.png`, `favicon.ico`).
+- **Padrão:** O `BrandLogo` renderiza o emblema oficial com antialiasing de alta resolução, suporte a modos símbolo único, marca horizontal e lockup completo com subtítulo ("Organização & Economia"), padronizado em Header mobile, Sidebar desktop, AuthShell, MoreMenu e PWA.

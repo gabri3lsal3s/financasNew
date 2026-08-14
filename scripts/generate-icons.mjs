@@ -1,16 +1,19 @@
-// Gera ícones PWA da marca "Guia Financeiro" (F10): fundo Azul Petróleo,
-// moeda Teal Petróleo com vazado claro e órbita em Ouro Âmbar (carteira
-// orbital). Sem dependências — PNG codificado à mão.
-import { mkdirSync, writeFileSync } from "node:fs";
+// Gera e processa os assets oficiais da marca "Guia Financeiro" a partir
+// de identidadeVisual/foto-sem-fundo.png e identidadeVisual/Gemini_Generated_Image_ru6ti5ru6ti5ru6t (1).png
+// Suporta fundos transparentes e fundos sólidos da marca (#142531 Azul Petróleo).
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deflateSync } from "node:zlib";
+import { deflateSync, inflateSync } from "node:zlib";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const outDir = join(root, "public", "pwa", "icons");
-mkdirSync(outDir, { recursive: true });
+const pwaIconsDir = join(root, "public", "pwa", "icons");
+const brandDir = join(root, "public", "brand");
 
-// --- PNG encoder mínimo (RGB 8-bit, filtro None) ---
+mkdirSync(pwaIconsDir, { recursive: true });
+mkdirSync(brandDir, { recursive: true });
+
+// --- PNG CRC & Chunk Utilities ---
 const CRC_TABLE = new Uint32Array(256);
 for (let n = 0; n < 256; n++) {
   let c = n;
@@ -33,25 +36,110 @@ function chunk(type, data) {
   return Buffer.concat([len, typeBuf, data, crc]);
 }
 
-function encodePng(size, rgbFn) {
-  const stride = size * 3 + 1;
-  const raw = Buffer.alloc(stride * size);
-  for (let y = 0; y < size; y++) {
-    raw[y * stride] = 0; // filtro None
-    for (let x = 0; x < size; x++) {
-      const [r, g, b] = rgbFn(x, y, size);
-      const i = y * stride + 1 + x * 3;
-      raw[i] = r;
-      raw[i + 1] = g;
-      raw[i + 2] = b;
+// Decodificador PNG RGBA/RGB
+function decodePng(buffer) {
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let colorType = 6;
+  const idatChunks = [];
+
+  while (offset < buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString("ascii", offset + 4, offset + 8);
+    const data = buffer.subarray(offset + 8, offset + 8 + length);
+    offset += 12 + length;
+
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      colorType = data.readUInt8(9);
+    } else if (type === "IDAT") {
+      idatChunks.push(data);
+    } else if (type === "IEND") {
+      break;
     }
   }
+
+  const decompressed = inflateSync(Buffer.concat(idatChunks));
+  const bpp = colorType === 6 ? 4 : colorType === 2 ? 3 : 1;
+  const stride = width * bpp + 1;
+  const raw = Buffer.alloc(width * height * 4);
+  let prevRow = Buffer.alloc(width * bpp);
+
+  for (let y = 0; y < height; y++) {
+    const rowOffset = y * stride;
+    const filterType = decompressed[rowOffset];
+    const currentRow = Buffer.alloc(width * bpp);
+
+    for (let x = 0; x < width * bpp; x++) {
+      const rawByte = decompressed[rowOffset + 1 + x];
+      const a = x >= bpp ? currentRow[x - bpp] : 0;
+      const b = prevRow[x];
+      const c = x >= bpp ? prevRow[x - bpp] : 0;
+
+      let val = rawByte;
+      if (filterType === 0) val = rawByte;
+      else if (filterType === 1) val = (rawByte + a) & 0xff;
+      else if (filterType === 2) val = (rawByte + b) & 0xff;
+      else if (filterType === 3) val = (rawByte + Math.floor((a + b) / 2)) & 0xff;
+      else if (filterType === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a);
+        const pb = Math.abs(p - b);
+        const pc = Math.abs(p - c);
+        const pr = pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+        val = (rawByte + pr) & 0xff;
+      }
+      currentRow[x] = val;
+    }
+
+    for (let px = 0; px < width; px++) {
+      const srcIdx = px * bpp;
+      const dstIdx = (y * width + px) * 4;
+      if (colorType === 6) {
+        raw[dstIdx] = currentRow[srcIdx];
+        raw[dstIdx + 1] = currentRow[srcIdx + 1];
+        raw[dstIdx + 2] = currentRow[srcIdx + 2];
+        raw[dstIdx + 3] = currentRow[srcIdx + 3];
+      } else if (colorType === 2) {
+        raw[dstIdx] = currentRow[srcIdx];
+        raw[dstIdx + 1] = currentRow[srcIdx + 1];
+        raw[dstIdx + 2] = currentRow[srcIdx + 2];
+        raw[dstIdx + 3] = 255;
+      }
+    }
+    prevRow = currentRow;
+  }
+
+  return { width, height, data: raw };
+}
+
+// Codificador PNG RGBA 8-bit
+function encodePngRgba(width, height, getPixel) {
+  const stride = width * 4 + 1;
+  const raw = Buffer.alloc(stride * height);
+
+  for (let y = 0; y < height; y++) {
+    const rowOffset = y * stride;
+    raw[rowOffset] = 0; // Filter none
+    for (let x = 0; x < width; x++) {
+      const [r, g, b, a] = getPixel(x, y);
+      const dst = rowOffset + 1 + x * 4;
+      raw[dst] = r;
+      raw[dst + 1] = g;
+      raw[dst + 2] = b;
+      raw[dst + 3] = a;
+    }
+  }
+
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 2; // color type: RGB
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // 8 bits
+  ihdr[9] = 6; // RGBA
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
   return Buffer.concat([
     signature,
     chunk("IHDR", ihdr),
@@ -60,59 +148,182 @@ function encodePng(size, rgbFn) {
   ]);
 }
 
-// --- Paleta da marca (identidade "Guia Financeiro" — F10) ---
-const PETROLEUM = [20, 37, 49]; // #142531 — fundo
-const TEAL_TOP = [27, 107, 98]; // #1B6B62 — topo da esfera (primary-strong)
-const TEAL_BOTTOM = [42, 157, 143]; // #2A9D8F — base da esfera (primary)
-const CORE = [7, 58, 79]; // #073A4F — núcleo Azul Petróleo (referência)
-const GOLD = [221, 167, 38]; // #DDA726 — faixas orbitais e satélite
+// Codificador simples de arquivo ICO a partir de buffers PNG
+function encodeIco(pngBuffers) {
+  const count = pngBuffers.length;
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0); // reservado
+  header.writeUInt16LE(1, 2); // tipo 1 = ICO
+  header.writeUInt16LE(count, 4);
 
-const lerp = (a, b, t) => a + (b - a) * t;
+  const dirEntries = [];
+  let offset = 6 + count * 16;
 
-/**
- * Carteira orbital (design de referência `identidadeVisual/`): esfera teal
- * com gradiente vertical, faixas orbitais douradas (~38% e ~79% da altura),
- * núcleo Azul Petróleo e satélite dourado no topo. `scale` dimensiona o
- * conteúdo (maskable usa a zona segura de 80%).
- */
-function brandMark(x, y, s, scale) {
-  const cx = s / 2;
-  const cy = s / 2;
-  const dx = x + 0.5 - cx;
-  const dy = y + 0.5 - cy;
-
-  const R = 0.30 * s * scale; // raio da esfera
-  const bandHalf = 0.014 * s * scale; // meia espessura das faixas
-  const coreR = 0.07 * s * scale; // raio do núcleo
-  const satR = 0.045 * s * scale; // raio do satélite
-
-  // Satélite dourado no topo (checagem antes das faixas p/ prioridade).
-  const satDy = -0.88 * R;
-  if ((dx * dx + (dy - satDy) * (dy - satDy)) <= satR * satR) return GOLD;
-
-  if (dx * dx + dy * dy <= R * R) {
-    // Faixas orbitais douradas: superior (dy = -0.24R) e inferior (dy = +0.58R).
-    if (Math.abs(dy + 0.24 * R) <= bandHalf) return GOLD;
-    if (Math.abs(dy - 0.58 * R) <= bandHalf) return GOLD;
-    // Núcleo Azul Petróleo.
-    if (dx * dx + dy * dy <= coreR * coreR) return CORE;
-    // Esfera teal com gradiente vertical (escuro no topo, claro na base).
-    const t = Math.max(0, Math.min(1, (dy + R) / (2 * R)));
-    return [lerp(TEAL_TOP[0], TEAL_BOTTOM[0], t), lerp(TEAL_TOP[1], TEAL_BOTTOM[1], t), lerp(TEAL_TOP[2], TEAL_BOTTOM[2], t)];
+  for (const { width, height, buffer } of pngBuffers) {
+    const entry = Buffer.alloc(16);
+    entry.writeUInt8(width >= 256 ? 0 : width, 0);
+    entry.writeUInt8(height >= 256 ? 0 : height, 1);
+    entry.writeUInt8(0, 2); // color count
+    entry.writeUInt8(0, 3); // reserved
+    entry.writeUInt16LE(1, 4); // color planes
+    entry.writeUInt16LE(32, 6); // bpp
+    entry.writeUInt32LE(buffer.length, 8); // size
+    entry.writeUInt32LE(offset, 12); // offset
+    dirEntries.push(entry);
+    offset += buffer.length;
   }
-  return PETROLEUM;
+
+  return Buffer.concat([header, ...dirEntries, ...pngBuffers.map((p) => p.buffer)]);
 }
 
-const targets = [
-  ["icon-192.png", 192, 1.0],
-  ["icon-512.png", 512, 1.0],
-  ["maskable-512.png", 512, 0.72], // zona segura: 80% central
-  ["apple-touch-icon-180.png", 180, 1.0],
+// Carrega imagem base
+const baseImagePath = join(root, "identidadeVisual", "foto-sem-fundo.png");
+if (!existsSync(baseImagePath)) {
+  throw new Error(`Imagem base não encontrada em: ${baseImagePath}`);
+}
+
+const sourceImage = decodePng(readFileSync(baseImagePath));
+console.log(`Carregada imagem base: ${sourceImage.width}x${sourceImage.height} RGBA`);
+
+// Encontra a bounding box do conteúdo real (ignora margem vazia)
+let minX = sourceImage.width;
+let maxX = 0;
+let minY = sourceImage.height;
+let maxY = 0;
+
+for (let y = 0; y < sourceImage.height; y++) {
+  for (let x = 0; x < sourceImage.width; x++) {
+    const idx = (y * sourceImage.width + x) * 4;
+    const a = sourceImage.data[idx + 3];
+    if (a > 10) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+}
+
+const bboxW = maxX - minX + 1;
+const bboxH = maxY - minY + 1;
+const maxDim = Math.max(bboxW, bboxH);
+const bboxCx = minX + bboxW / 2;
+const bboxCy = minY + bboxH / 2;
+
+console.log(`Bounding box: ${bboxW}x${bboxH} centralizada em (${bboxCx.toFixed(1)}, ${bboxCy.toFixed(1)})`);
+
+// Amostragem bilinear com antialiasing de alta qualidade
+function sampleSource(normX, normY) {
+  // normX, normY no intervalo [-0.5, 0.5] relativo ao centro
+  const srcX = bboxCx + normX * maxDim;
+  const srcY = bboxCy + normY * maxDim;
+
+  if (srcX < 0 || srcX >= sourceImage.width - 1 || srcY < 0 || srcY >= sourceImage.height - 1) {
+    return [0, 0, 0, 0];
+  }
+
+  const x0 = Math.floor(srcX);
+  const y0 = Math.floor(srcY);
+  const x1 = x0 + 1;
+  const y1 = y0 + 1;
+  const fx = srcX - x0;
+  const fy = srcY - y0;
+
+  const idx00 = (y0 * sourceImage.width + x0) * 4;
+  const idx10 = (y0 * sourceImage.width + x1) * 4;
+  const idx01 = (y1 * sourceImage.width + x0) * 4;
+  const idx11 = (y1 * sourceImage.width + x1) * 4;
+
+  const out = [0, 0, 0, 0];
+  for (let c = 0; c < 4; c++) {
+    const v00 = sourceImage.data[idx00 + c];
+    const v10 = sourceImage.data[idx10 + c];
+    const v01 = sourceImage.data[idx01 + c];
+    const v11 = sourceImage.data[idx11 + c];
+
+    const vTop = v00 * (1 - fx) + v10 * fx;
+    const vBottom = v01 * (1 - fx) + v11 * fx;
+    out[c] = Math.round(vTop * (1 - fy) + vBottom * fy);
+  }
+  return out;
+}
+
+// Resampler para gerar imagem de tamanho fixo com escala do símbolo e fundo opcional
+function renderIcon(size, scale = 0.95, backgroundRgba = null) {
+  return encodePngRgba(size, size, (x, y) => {
+    const normX = ((x + 0.5) / size - 0.5) / scale;
+    const normY = ((y + 0.5) / size - 0.5) / scale;
+
+    const [r, g, b, a] = sampleSource(normX, normY);
+
+    if (!backgroundRgba) {
+      return [r, g, b, a];
+    }
+
+    // Composição sobre o fundo fornecido
+    const [br, bg, bb, ba] = backgroundRgba;
+    const alphaNorm = a / 255;
+    const outR = Math.round(r * alphaNorm + br * (1 - alphaNorm));
+    const outG = Math.round(g * alphaNorm + bg * (1 - alphaNorm));
+    const outB = Math.round(b * alphaNorm + bb * (1 - alphaNorm));
+    const outA = Math.max(ba, a);
+
+    return [outR, outG, outB, outA];
+  });
+}
+
+// Fundo Azul Petróleo (#142531) para os ícones com fundo sólido
+const BG_PETROLEUM = [20, 37, 49, 255];
+
+// 1. Assets transparentes da marca (`public/brand/`)
+const brandSizes = [
+  { name: "logo.png", size: 512, scale: 0.96 },
+  { name: "logo-192.png", size: 192, scale: 0.96 },
+  { name: "logo-128.png", size: 128, scale: 0.96 },
+  { name: "logo-64.png", size: 64, scale: 0.96 },
+  { name: "logo-32.png", size: 32, scale: 0.94 },
+  { name: "favicon-32.png", size: 32, scale: 0.94 },
+  { name: "favicon-16.png", size: 16, scale: 0.92 },
 ];
 
-for (const [name, size, scale] of targets) {
-  writeFileSync(join(outDir, name), encodePng(size, (x, y) => brandMark(x, y, size, scale)));
-  console.log(`✓ ${name} (${size}x${size}, conteúdo ${Math.round(scale * 100)}%)`);
+for (const { name, size, scale } of brandSizes) {
+  const buf = renderIcon(size, scale, null);
+  writeFileSync(join(brandDir, name), buf);
+  console.log(`✓ public/brand/${name} (${size}x${size} transparente)`);
 }
 
-console.log("Ícones PWA da marca 'Guia Financeiro' gerados em public/pwa/icons/");
+// 2. Ícones PWA (`public/pwa/icons/`)
+const pwaTargets = [
+  { name: "icon-192.png", size: 192, scale: 0.88, bg: BG_PETROLEUM },
+  { name: "icon-512.png", size: 512, scale: 0.88, bg: BG_PETROLEUM },
+  { name: "maskable-512.png", size: 512, scale: 0.72, bg: BG_PETROLEUM }, // 80% safe zone
+  { name: "apple-touch-icon-180.png", size: 180, scale: 0.86, bg: BG_PETROLEUM },
+];
+
+for (const { name, size, scale, bg } of pwaTargets) {
+  const buf = renderIcon(size, scale, bg);
+  writeFileSync(join(pwaIconsDir, name), buf);
+  console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo petróleo)`);
+}
+
+// 3. Favicons adicionais e favicon.ico na raiz de public
+const fav16 = renderIcon(16, 0.92, null);
+const fav32 = renderIcon(32, 0.94, null);
+const fav48 = renderIcon(48, 0.94, null);
+
+const icoBuf = encodeIco([
+  { width: 16, height: 16, buffer: fav16 },
+  { width: 32, height: 32, buffer: fav32 },
+  { width: 48, height: 48, buffer: fav48 },
+]);
+writeFileSync(join(root, "public", "favicon.ico"), icoBuf);
+console.log(`✓ public/favicon.ico (multi-res 16, 32, 48)`);
+
+// 4. Copiar lockup completo da identidade visual se disponível
+const fullLockupPath = join(root, "identidadeVisual", "Gemini_Generated_Image_ru6ti5ru6ti5ru6t (1).png");
+if (existsSync(fullLockupPath)) {
+  writeFileSync(join(brandDir, "logo-full.png"), readFileSync(fullLockupPath));
+  console.log(`✓ public/brand/logo-full.png (lockup horizontal com tipografia)`);
+}
+
+console.log("Todos os assets da marca foram gerados com sucesso!");
