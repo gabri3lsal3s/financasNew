@@ -4,6 +4,7 @@ import { TransactionListPage } from "./transaction-list-page";
 
 vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }));
 
 vi.mock("@/state", () => ({

@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CategoriesPage } from "./categories-page";
 
+vi.mock("react-router", () => ({
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
+}));
+
 const createCategoryMock = vi.fn();
 const updateCategoryMock = vi.fn();
 const deleteCategoryMock = vi.fn();

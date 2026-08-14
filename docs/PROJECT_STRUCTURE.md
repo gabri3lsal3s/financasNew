@@ -118,6 +118,7 @@
     │
     ├── lib/                       # Constantes e utils genéricos
     │   ├── constants.ts           #   APP_START_DATE, faixas 85/90/95, limites…
+    │   ├── labels.ts              #   Labels pt-BR compartilhados (formas de pagamento, recebimento)
     │   └── utils.ts               #   funções sem domínio financeiro (clamp, soma…)
     │
     ├── types/                     # Contratos de domínio TS (Receita, Despesa, Cartão…)

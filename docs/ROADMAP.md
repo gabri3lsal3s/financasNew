@@ -67,7 +67,7 @@
 - [x] Animações dos primitivos registradas nos tokens (`animate-accordion-up/down`, `animate-toast-in/out`)
 - [x] `Toaster` montado no shell (`app/providers.tsx`) — infra de feedback pronta para as fases de dados
 - [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente
-- [ ] Integrar `Command` (⌘K) global no shell com atalho de teclado (com as rotas reais, F1+)
+- [x] Integrar `Command` (⌘K) global no shell com atalho de teclado (com as rotas reais — entregue na F5.1)
 
 ---
 
@@ -312,12 +312,20 @@
 **Objetivo:** polish, acessibilidade e busca.
 
 **Entregas (na ordem):**
-1. **Busca global** (⌘K): normalização, scoring, recência, limites por tipo, deep-link com destaque.
+1. ✅ **Busca global** (⌘K): normalização, scoring, recência, limites por tipo, deep-link com destaque.
 2. Tema OLED refinado (contraste/estados) + microinterações.
 3. Auditoria de acessibilidade (axe, contraste AA, foco, teclado) em todas as telas.
 4. Empty states completos + onboarding de primeiro uso.
 5. Performance: bundle splitting, virtualização de listas, revisão de queries (N+1).
 6. **PWA polish:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, splash/iOS, auditoria Lighthouse PWA.
+
+**Progresso — Fase 5, entrega 1 (busca global §3.9):**
+- `domain/search` — motor puro com testes (14): `normalizeSearch` (acentos/minúsculas), `matchScore` (igual 100/prefixo 85/contém 60), `numericMatchScore` (valor 30), status de dívida 40, `recencyBonus` logarítmico (0m +25 … 12m+ +0), `monthsBetween`, `scoreSearchEntry` e `searchGlobal` (máx. 5/tipo, 12 total, score desc).
+- **Deep-link com destaque:** `useHighlightTarget` (id derivado do param `?q=`/`?card=`, removido da URL após 2,6s via replace) + módulo `HighlightRow` (anel + scrollIntoView) nas telas-alvo — Transações (`?month=` + `?q=`), Dívidas (`?type=` + `?q=`), Cartões (`?card=` seleciona + `?q=` destaca), Categorias (`?type=` + `?q=`). Estado **derivado da URL** (sem setState em effect/render — compatível com as regras React Compiler do lint).
+- `GlobalSearch` montado no shell: atalho `Ctrl+K`/`⌘K` + botão no header; grupos por tipo (Despesas/Rendas/Dívidas/Cartões/Categorias) com ícones; navega via deep-link e fecha a paleta. Primitivo `Command` evoluído: input controlado + grupos rotulados (sem quebrar o contrato anterior).
+- Dados: `listAllExpenses`/`listAllIncomes` (repositórios) + `useGlobalSearchEntries` (queries habilitadas só com a paleta aberta) — com join de categoria, labels de forma/recebimento, status derivado de dívida e deep-links.
+- DRY: `src/lib/labels.ts` (`PAYMENT_METHOD_LABELS`/`RECEIVE_TYPE_LABELS`) — remove as 3 duplicatas de `PAYMENT_LABELS` (relatórios, wizard, detalhe).
+- **22 testes novos** (14 domínio + 1 repository + 4 paleta + 3 deep-link). Atalho exibido como "Ctrl+K" na UI (a regra `local/no-decorative-unicode` bloqueia o glifo ⌘ em strings).
 
 **✅ DoD**
 - Busca retorna tipos ordenados por score com destaque funcional (scroll + highlight).

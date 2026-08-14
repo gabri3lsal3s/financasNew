@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DebtsPage } from "./debts-page";
 
+vi.mock("react-router", () => ({
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
+}));
+
 const createDebtMock = vi.fn();
 const deleteDebtMock = vi.fn();
 const payDebtMock = vi.fn();

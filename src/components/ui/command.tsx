@@ -11,25 +11,44 @@ export interface CommandItem {
   onSelect: () => void;
 }
 
+export interface CommandGroup {
+  /** Rótulo do grupo (ex.: "Despesas"). */
+  label: string;
+  items: CommandItem[];
+}
+
 export interface CommandProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  items: CommandItem[];
+  /** Itens de um grupo único (compat) ou use `groups`. */
+  items?: CommandItem[];
+  /** Grupos rotulados por tipo (busca global §3.9). */
+  groups?: CommandGroup[];
+  /** Query controlada (opcional — sem controle, o cmdk filtra internamente). */
+  query?: string;
+  onQueryChange?: (query: string) => void;
   placeholder?: string;
   emptyMessage?: string;
 }
 
 /**
- * Command palette (⌘K) — substitui a busca/busca nativa e navegação por atalho
+ * Command palette (⌘K) — substitui a busca nativa e a navegação por atalho
  * (DESIGN_SYSTEM §13). Acessível e com teclado via cmdk.
+ * Com `query`/`onQueryChange` o input é controlado (motor de scoring fora);
+ * `groups` organiza os resultados por tipo com cabeçalho.
  */
 export function Command({
   open,
   onOpenChange,
   items,
+  groups,
+  query,
+  onQueryChange,
   placeholder = "Buscar…",
   emptyMessage = "Nenhum resultado encontrado.",
 }: CommandProps) {
+  const groupList: CommandGroup[] = groups ?? (items ? [{ label: "", items }] : []);
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -39,6 +58,8 @@ export function Command({
             <div className="flex items-center gap-2 border-b border-border px-4">
               <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <CommandPrimitive.Input
+                value={query}
+                onValueChange={onQueryChange}
                 placeholder={placeholder}
                 className="h-12 w-full bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
               />
@@ -47,24 +68,26 @@ export function Command({
               <CommandPrimitive.Empty className="py-6 text-center text-sm text-muted-foreground">
                 {emptyMessage}
               </CommandPrimitive.Empty>
-              <CommandPrimitive.Group>
-                {items.map((item) => (
-                  <CommandPrimitive.Item
-                    key={item.value}
-                    value={item.value}
-                    keywords={item.keywords}
-                    onSelect={item.onSelect}
-                    className="flex cursor-pointer select-none items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none transition-colors data-[selected=true]:bg-primary/10"
-                  >
-                    {item.icon ? (
-                      <span className="flex size-6 shrink-0 items-center justify-center text-muted-foreground">
-                        {item.icon}
-                      </span>
-                    ) : null}
-                    {item.label}
-                  </CommandPrimitive.Item>
-                ))}
-              </CommandPrimitive.Group>
+              {groupList.map((group) => (
+                <CommandPrimitive.Group key={group.label || "default"} heading={group.label || undefined}>
+                  {group.items.map((item) => (
+                    <CommandPrimitive.Item
+                      key={item.value}
+                      value={item.value}
+                      keywords={item.keywords}
+                      onSelect={item.onSelect}
+                      className="flex cursor-pointer select-none items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none transition-colors data-[selected=true]:bg-primary/10"
+                    >
+                      {item.icon ? (
+                        <span className="flex size-6 shrink-0 items-center justify-center text-muted-foreground">
+                          {item.icon}
+                        </span>
+                      ) : null}
+                      {item.label}
+                    </CommandPrimitive.Item>
+                  ))}
+                </CommandPrimitive.Group>
+              ))}
             </CommandPrimitive.List>
           </CommandPrimitive>
         </DialogPrimitive.Content>

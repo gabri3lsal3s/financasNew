@@ -1,4 +1,5 @@
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { buildExpenseInstallments, type LaunchState } from "./wizard-state";
 
 export interface StepReviewProps {
@@ -6,15 +7,6 @@ export interface StepReviewProps {
   categoryName?: string;
   closingDay?: number | null;
 }
-
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: "Dinheiro",
-  debit: "Débito",
-  credit_card: "Cartão de crédito",
-  pix: "Pix",
-  transfer: "Transferência",
-  other: "Outro",
-};
 
 /** Passo 4 — revisão antes de confirmar (parcelas calculadas no cliente, D12). */
 export function StepReview({ state, categoryName, closingDay }: StepReviewProps) {
@@ -38,7 +30,7 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
         <Row label="Data" value={state.date} />
         {isExpense ? (
           <>
-            <Row label="Pagamento" value={PAYMENT_LABELS[state.paymentMethod] ?? state.paymentMethod} />
+            <Row label="Pagamento" value={PAYMENT_METHOD_LABELS[state.paymentMethod] ?? state.paymentMethod} />
             {state.installments > 1 ? (
               <Row label="Parcelas" value={`${state.installments}×`} />
             ) : null}

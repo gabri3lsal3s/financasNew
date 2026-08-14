@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { CheckCircle2, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Skeleton, Tabs } from "@/components/ui";
-import { DebtStatusBadge } from "@/components/modules";
+import { DebtStatusBadge, HighlightRow } from "@/components/modules";
 import { debtStatus } from "@/domain/debts";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
+import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useDebts, useDeleteDebt } from "@/state";
 import { DebtFormDialog } from "@/features/debts/components/debt-form-dialog";
 import { SettleDialog } from "@/features/debts/components/settle-dialog";
@@ -14,8 +16,28 @@ import type { Debt } from "@/types";
 export function DebtsPage() {
   const debtsQuery = useDebts();
   const deleteDebt = useDeleteDebt();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { highlightId } = useHighlightTarget("q");
 
-  const [tab, setTab] = useState<"payable" | "receivable">("payable");
+  // Aba derivada: deep-link ?type= (busca §3.9) prevalece; sem param, usa a
+  // escolha manual (tabs). O pick manual limpa o param (sem setState em effect).
+  const paramType = searchParams.get("type");
+  const [pickedTab, setPickedTab] = useState<"payable" | "receivable">("payable");
+  const tab: "payable" | "receivable" =
+    paramType === "receivable" ? "receivable" : paramType === "payable" ? "payable" : pickedTab;
+
+  const handleTabChange = (next: "payable" | "receivable") => {
+    setPickedTab(next);
+    setSearchParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.delete("type");
+        return updated;
+      },
+      { replace: true },
+    );
+  };
+
   const [formOpen, setFormOpen] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [settling, setSettling] = useState<Debt | null>(null);
@@ -104,7 +126,7 @@ export function DebtsPage() {
       ) : (
         <Tabs
           value={tab}
-          onValueChange={(value) => setTab(value as "payable" | "receivable")}
+          onValueChange={(value) => handleTabChange(value as "payable" | "receivable")}
           items={[
             {
               value: "payable",
@@ -138,7 +160,9 @@ export function DebtsPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map((debt) => (
-            <DebtRow key={debt.id} debt={debt} />
+            <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+              <DebtRow debt={debt} />
+            </HighlightRow>
           ))}
         </div>
       )}

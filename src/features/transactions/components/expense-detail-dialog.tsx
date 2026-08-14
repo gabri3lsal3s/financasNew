@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Alert, ConfirmDialog, Modal, Select } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useDeleteExpense } from "@/state";
+import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import type { Expense, InstallmentDeleteMode } from "@/types";
 import { formatCentsAsBRL } from "@/services/masks/money";
 
@@ -16,15 +17,6 @@ const MODE_OPTIONS = [
   { value: "all", label: "Todas as parcelas" },
   { value: "subsequent", label: "Esta parcela e as seguintes" },
 ];
-
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: "Dinheiro",
-  debit: "Débito",
-  credit_card: "Cartão de crédito",
-  pix: "Pix",
-  transfer: "Transferência",
-  other: "Outro",
-};
 
 /** Detalhe da despesa + exclusão em 3 modos (D1/§3.2.2 — cascata de dívidas). */
 export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDetailDialogProps) {
@@ -72,7 +64,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
               <dt className="text-muted-foreground">Data</dt>
               <dd className="font-medium">{expense.date}</dd>
               <dt className="text-muted-foreground">Pagamento</dt>
-              <dd className="font-medium">{PAYMENT_LABELS[expense.payment_method] ?? expense.payment_method}</dd>
+              <dd className="font-medium">{PAYMENT_METHOD_LABELS[expense.payment_method] ?? expense.payment_method}</dd>
               {isInstallment ? (
                 <>
                   <dt className="text-muted-foreground">Parcela</dt>

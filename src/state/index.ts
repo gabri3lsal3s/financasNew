@@ -62,3 +62,4 @@ export {
   groupTargetsKey,
   sectorCapsKey,
 } from "./queries/use-allocation";
+export { useGlobalSearchEntries, allExpensesKey, allIncomesKey } from "./queries/use-search";

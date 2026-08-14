@@ -54,6 +54,18 @@ export async function listExpensesByRange(start: string, end: string): Promise<E
   return (data ?? []).map(mapExpense);
 }
 
+/** Todas as despesas do usuário (busca global §3.9). */
+export async function listAllExpenses(): Promise<Expense[]> {
+  const { data, error } = await resolveQuery<Expense[]>(
+    getSupabase().from("expenses").select("*").order("date", { ascending: false }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapExpense);
+}
+
 /** Despesas de um cartão (todas as competências — derivação de fatura). */
 export async function listExpensesByCard(cardId: string): Promise<Expense[]> {
   const { data, error } = await resolveQuery<Expense[]>(

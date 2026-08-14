@@ -17,17 +17,9 @@ import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import { useCategories, useDebts, useExpenses, useExpensesByRange, useIncomes, useIncomesByRange } from "@/state";
 import { cn } from "@/lib/utils";
+import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 
 const toCents = (value: number) => Math.round(value * 100);
-
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: "Dinheiro",
-  debit: "Débito",
-  credit_card: "Crédito",
-  pix: "Pix",
-  transfer: "Transferência",
-  other: "Outro",
-};
 
 type PeriodMode = "month" | "custom";
 
@@ -120,7 +112,7 @@ export function ReportsPage() {
   }));
   const methodRows: ReportRow[] = byMethod.map((m) => ({
     key: m.method,
-    label: PAYMENT_LABELS[m.method] ?? m.method,
+    label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
     valueCents: m.totalCents,
     percent: totalSpent > 0 ? (m.totalCents / totalSpent) * 100 : 0,
   }));

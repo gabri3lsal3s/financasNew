@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { Pencil, Plus, Undo2, WalletCards } from "lucide-react";
 import { Alert, Button, EmptyState, Skeleton } from "@/components/ui";
 import { KpiCard, MonthPicker, TransactionRow, InvoiceStatusBadge } from "@/components/modules";
@@ -6,6 +7,7 @@ import { autoSelectBillMonth, buildCompetenceSummaries, invoiceStatus } from "@/
 import { currentMonth, monthLabel } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
+import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useCardExpenses, useCardPayments, useCreditCards } from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
 import { PaymentDialog } from "@/features/cards/components/payment-dialog";
@@ -17,7 +19,14 @@ type PaymentMode = "payment" | "refund" | null;
 /** Fatura de um cartão: previsto/pago/saldo + despesas + pagamentos (§3.3.3). */
 export function CardsPage() {
   const cardsQuery = useCreditCards();
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Destaque do cartão via ?q= (um-shot — limpo pelo hook); seleção via
+  // ?card= (derivada) ou escolha manual (limpa o param). Sem setState em effect.
+  const { isHighlighted } = useHighlightTarget("q");
+  const paramCard = searchParams.get("card");
+  const [pickedCardId, setPickedCardId] = useState<string | null>(null);
+  const selectedCardId = paramCard ?? pickedCardId;
+
   const [month, setMonth] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
@@ -43,8 +52,16 @@ export function CardsPage() {
   const competencePayments = (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth);
 
   const selectCard = (id: string) => {
-    setSelectedCardId(id);
+    setPickedCardId(id);
     setMonth(null); // reaplica a seleção automática do mês para o novo cartão
+    setSearchParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.delete("card");
+        return updated;
+      },
+      { replace: true },
+    );
   };
 
   const openForm = (card: CreditCard | null) => {
@@ -99,6 +116,7 @@ export function CardsPage() {
                   card.id === selectedCard?.id
                     ? "border-primary bg-primary/10 text-primary-strong"
                     : "border-border bg-surface text-muted-foreground hover:bg-surface-hover",
+                  isHighlighted(card.id) && "ring-2 ring-portfolio",
                 )}
               >
                 {card.color ? (

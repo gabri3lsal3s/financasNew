@@ -1,16 +1,15 @@
-import { Link } from "react-router";
-import { ArrowDownLeft, ArrowUpRight, Plus } from "lucide-react";
+import { Link, useSearchParams } from "react-router";
 import { useState } from "react";
+import { ArrowDownLeft, ArrowUpRight, Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { KpiCard } from "@/components/modules/kpi-card";
-import { MonthPicker } from "@/components/modules/month-picker";
-import { TransactionRow } from "@/components/modules/transaction-row";
-import { currentMonth } from "@/lib/date";
+import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
+import { currentMonth, isValidMonth } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
+import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useExpenses, useIncomes } from "@/state";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import type { Expense, Income } from "@/types";
@@ -46,8 +45,29 @@ function IncomeRow({ income }: { income: Income }) {
 }
 
 export function TransactionListPage() {
-  const [month, setMonth] = useState(currentMonth());
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const { highlightId } = useHighlightTarget("q");
+
+  // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
+  // usa a escolha manual (MonthPicker) ou o mês corrente. Sem setState em
+  // effect/render — o param é a fonte e o pick manual limpa o param.
+  const paramMonth = searchParams.get("month");
+  const validParamMonth = paramMonth && isValidMonth(paramMonth) ? paramMonth : null;
+  const [pickedMonth, setPickedMonth] = useState<string | null>(null);
+  const month = validParamMonth ?? pickedMonth ?? currentMonth();
+
+  const handleMonthChange = (next: string) => {
+    setPickedMonth(next);
+    setSearchParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.delete("month");
+        return updated;
+      },
+      { replace: true },
+    );
+  };
 
   const expensesQuery = useExpenses(month);
   const incomesQuery = useIncomes(month);
@@ -75,7 +95,7 @@ export function TransactionListPage() {
     <div className="flex flex-col gap-6">
       {header}
 
-      <MonthPicker value={month} onValueChange={setMonth} />
+      <MonthPicker value={month} onValueChange={handleMonthChange} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <KpiCard label="Receitas" value={formatCentsAsBRL(incomesTotalCents)} tone="positive" />
@@ -119,7 +139,11 @@ export function TransactionListPage() {
                 description="Registre sua primeira renda do mês."
               />
             ) : (
-              (incomesQuery.data ?? []).map((income) => <IncomeRow key={income.id} income={income} />)
+              (incomesQuery.data ?? []).map((income) => (
+                <HighlightRow key={income.id} highlightId={highlightId} id={income.id}>
+                  <IncomeRow income={income} />
+                </HighlightRow>
+              ))
             )}
           </section>
 
@@ -136,7 +160,9 @@ export function TransactionListPage() {
               />
             ) : (
               (expensesQuery.data ?? []).map((expense) => (
-                <ExpenseRow key={expense.id} expense={expense} onClick={() => setSelectedExpense(expense)} />
+                <HighlightRow key={expense.id} highlightId={highlightId} id={expense.id}>
+                  <ExpenseRow expense={expense} onClick={() => setSelectedExpense(expense)} />
+                </HighlightRow>
               ))
             )}
           </section>
