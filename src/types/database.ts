@@ -1,0 +1,147 @@
+import type {
+  AllocationTarget,
+  AssetPrice,
+  AuditEvent,
+  Budget,
+  CardCompetenceOverride,
+  CardPayment,
+  Category,
+  CreditCard,
+  DbInsert,
+  DbUpdate,
+  Debt,
+  Expense,
+  GroupTarget,
+  Income,
+  IncomeGoal,
+  InsightFeedback,
+  PortfolioAsset,
+  PortfolioTransaction,
+  Profile,
+  UserPreferences,
+} from "./schema";
+
+/**
+ * Contrato de banco para `createClient<Database>` (supabase-js).
+ *
+ * `Table<T>` injeta o `Relationships` exigido pelo GenericSchema do
+ * supabase-js (tipos gerados pela CLI fazem o mesmo). Espelha
+ * `supabase/migrations/` — manter em sincronia ao alterar o schema
+ * (regra de atualização contínua da docs/).
+ */
+type Table<T> = { Row: T; Insert: DbInsert<T>; Update: DbUpdate<T>; Relationships: [] };
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: Table<Profile>;
+      user_preferences: Table<UserPreferences>;
+      categories: Table<Category>;
+      incomes: Table<Income>;
+      expenses: Table<Expense>;
+      credit_cards: Table<CreditCard>;
+      card_competence_overrides: Table<CardCompetenceOverride>;
+      card_payments: Table<CardPayment>;
+      debts: Table<Debt>;
+      budgets: Table<Budget>;
+      income_goals: Table<IncomeGoal>;
+      insight_feedback: Table<InsightFeedback>;
+      portfolio_assets: Table<PortfolioAsset>;
+      portfolio_transactions: Table<PortfolioTransaction>;
+      allocation_targets: Table<AllocationTarget>;
+      class_targets: Table<GroupTarget>;
+      sector_targets: Table<GroupTarget>;
+      asset_prices: Table<AssetPrice>;
+      audit_events: Table<AuditEvent>;
+    };
+    Views: Record<string, never>;
+    Functions: {
+      create_expense_with_debt: {
+        Args: {
+          p_value: number;
+          p_date: string;
+          p_category_id: string;
+          p_payment_method: string;
+          p_card_id: string | null;
+          p_description: string | null;
+          p_report_weight: number;
+          /** Parcelas calculadas no cliente (D12): [{ date, value, bill_competence? }]. */
+          p_installments: unknown;
+          p_debt_name: string | null;
+          p_debt_amount: number | null;
+          p_debt_due_date: string | null;
+        };
+        Returns: string;
+      };
+      create_refund: {
+        Args: {
+          p_card_id: string;
+          p_competence_month: string;
+          p_amount: number;
+          p_date: string;
+          p_note: string | null;
+        };
+        Returns: string;
+      };
+      delete_expense_installments: {
+        Args: { p_expense_id: string; p_mode: "single" | "all" | "subsequent" };
+        Returns: number;
+      };
+      pay_debt: {
+        Args: { p_debt_id: string; p_create_expense: boolean; p_expense_category_id: string | null };
+        Returns: string;
+      };
+      receive_debt: {
+        Args: { p_debt_id: string; p_create_income: boolean; p_income_category_id: string | null };
+        Returns: string;
+      };
+      settle_integrated_receivable: {
+        Args: { p_debt_id: string; p_result: number };
+        Returns: void;
+      };
+      delete_category_migrate: {
+        Args: { p_category_id: string; p_migrate_to: string | null };
+        Returns: void;
+      };
+      set_budget_limit: {
+        Args: { p_category_id: string; p_month: string; p_limit: number };
+        Returns: void;
+      };
+      set_income_goal: {
+        Args: { p_category_id: string; p_month: string; p_expected: number };
+        Returns: void;
+      };
+      recalculate_bill_competences: {
+        Args: { p_card_id: string };
+        Returns: number;
+      };
+      create_card_payment: {
+        Args: {
+          p_card_id: string;
+          p_competence_month: string;
+          p_amount: number;
+          p_date: string;
+          p_note: string | null;
+        };
+        Returns: string;
+      };
+      update_credit_card: {
+        Args: {
+          p_card_id: string;
+          p_name: string;
+          p_brand: string | null;
+          p_credit_limit: number | null;
+          p_closing_day: number;
+          p_due_day: number;
+          p_color: string | null;
+          p_is_active: boolean;
+        };
+        Returns: void;
+      };
+      delete_credit_card: {
+        Args: { p_card_id: string };
+        Returns: void;
+      };
+    };
+  };
+}

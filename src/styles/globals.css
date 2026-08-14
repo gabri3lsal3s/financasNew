@@ -1,0 +1,220 @@
+/* ================================================================
+   GLOBALS — Estilos base + mapeamento Tailwind da identidade
+   Requer Tailwind v4. Importa os tokens centralizados.
+   ================================================================ */
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* ----------------------------------------------------------------
+   Mapeamento @theme (Tailwind v4) — cria utilitários:
+   bg-background, text-foreground, bg-primary, border-border,
+   text-positive, text-negative, text-warning, text-critical,
+   bg-cat-1..10, font-sans/display/mono, rounded-xl, shadow-kpi …
+   ---------------------------------------------------------------- */
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-surface: hsl(var(--surface));
+  --color-surface-hover: hsl(var(--surface-hover));
+  --color-surface-active: hsl(var(--surface-active));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-muted: hsl(var(--muted));
+  --color-foreground: hsl(var(--foreground));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-strong: hsl(var(--primary-strong));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-positive: hsl(var(--positive));
+  --color-positive-strong: hsl(var(--positive-strong));
+  --color-negative: hsl(var(--negative));
+  --color-negative-strong: hsl(var(--negative-strong));
+  --color-warning: hsl(var(--warning));
+  --color-warning-strong: hsl(var(--warning-strong));
+  --color-critical: hsl(var(--critical));
+  --color-critical-strong: hsl(var(--critical-strong));
+  --color-portfolio: hsl(var(--portfolio));
+
+  --color-cat-1: hsl(var(--cat-1));
+  --color-cat-2: hsl(var(--cat-2));
+  --color-cat-3: hsl(var(--cat-3));
+  --color-cat-4: hsl(var(--cat-4));
+  --color-cat-5: hsl(var(--cat-5));
+  --color-cat-6: hsl(var(--cat-6));
+  --color-cat-7: hsl(var(--cat-7));
+  --color-cat-8: hsl(var(--cat-8));
+  --color-cat-9: hsl(var(--cat-9));
+  --color-cat-10: hsl(var(--cat-10));
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-kpi: var(--shadow-kpi);
+
+  --color-ring: hsl(var(--ring));
+
+  /* Animações dos primitivos (Radix) */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-toast-in: toast-in 0.15s ease-out;
+  --animate-toast-out: toast-out 0.15s ease-in;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes toast-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes toast-out {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+}
+
+/* ----------------------------------------------------------------
+   Base
+   ---------------------------------------------------------------- */
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Seleção com a cor da marca */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.20);
+  }
+
+  /* Foco visível padronizado (a11y) */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+/* ----------------------------------------------------------------
+   Utilitários de números (identidade "Terminal")
+   ---------------------------------------------------------------- */
+@layer utilities {
+  /* Números tabulares: alinhamento perfeito em tabelas e listas */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Valores monetários: fonte mono + tabular (regra de ouro) */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Títulos grandes com a display font (Sora) */
+  .display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ----------------------------------------------------------------
+   NOTA — Tailwind v3 (alternativa, se a Fase 0 optar por v3):
+   o mesmo mapeamento vai em tailwind.config.ts:
+
+   import type { Config } from "tailwindcss";
+   export default {
+     theme: {
+       extend: {
+         colors: {
+           background: "hsl(var(--background))",
+           surface: "hsl(var(--surface))",
+           border: "hsl(var(--border))",
+           foreground: "hsl(var(--foreground))",
+           muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
+           primary: { DEFAULT: "hsl(var(--primary))", strong: "hsl(var(--primary-strong))", foreground: "hsl(var(--primary-foreground))" },
+           secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
+           accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
+           positive: { DEFAULT: "hsl(var(--positive))", strong: "hsl(var(--positive-strong))" },
+           negative: { DEFAULT: "hsl(var(--negative))", strong: "hsl(var(--negative-strong))" },
+           warning: { DEFAULT: "hsl(var(--warning))", strong: "hsl(var(--warning-strong))" },
+           critical: { DEFAULT: "hsl(var(--critical))", strong: "hsl(var(--critical-strong))" },
+           portfolio: "hsl(var(--portfolio))",
+           cat: {
+             1: "hsl(var(--cat-1))", 2: "hsl(var(--cat-2))", 3: "hsl(var(--cat-3))",
+             4: "hsl(var(--cat-4))", 5: "hsl(var(--cat-5))", 6: "hsl(var(--cat-6))",
+             7: "hsl(var(--cat-7))", 8: "hsl(var(--cat-8))", 9: "hsl(var(--cat-9))",
+             10: "hsl(var(--cat-10))",
+           },
+           ring: "hsl(var(--ring))",
+         },
+         borderRadius: {
+           sm: "var(--radius-sm)", md: "var(--radius-md)", lg: "var(--radius-lg)",
+           xl: "var(--radius-xl)", "2xl": "var(--radius-2xl)", pill: "var(--radius-pill)",
+         },
+         boxShadow: {
+           sm: "var(--shadow-sm)", md: "var(--shadow-md)",
+           lg: "var(--shadow-lg)", kpi: "var(--shadow-kpi)",
+         },
+         fontFamily: {
+           sans: ["var(--font-sans)"],
+           display: ["var(--font-display)"],
+           mono: ["var(--font-mono)"],
+         },
+       },
+     },
+   } satisfies Config;
+   ---------------------------------------------------------------- */

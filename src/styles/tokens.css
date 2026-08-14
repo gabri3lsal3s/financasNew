@@ -1,0 +1,221 @@
+/* ================================================================
+   DESIGN TOKENS — Identidade "Vital · Verde + Terminal"
+   Fonte única da verdade visual do app. Framework-agnostic (CSS puro).
+   Temas: light (padrão) · dark · oled.
+   Aplicado via <html data-theme="light|dark|oled"> (ThemeProvider).
+   Valores em HSL triplets (padrão shadcn/ui) para compatibilidade
+   com modificadores de opacidade do Tailwind (ex.: bg-primary/10).
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   TEMA LIGHT (padrão)
+   ---------------------------------------------------------------- */
+:root,
+html[data-theme="light"] {
+  /* Neutros */
+  --background: 60 9% 98%;          /* #FAFAF9 */
+  --surface: 0 0% 100%;             /* #FFFFFF */
+  --surface-hover: 24 6% 95%;       /* #F5F5F4 */
+  --surface-active: 24 6% 92%;      /* #EBE9E7 */
+  --border: 24 6% 90%;              /* #E7E5E4 */
+  --input: 24 5% 83%;               /* #D6D3D1 */
+  --muted: 24 6% 95%;               /* #F5F5F4 */
+  --foreground: 24 10% 10%;         /* #1C1917 */
+  --muted-foreground: 25 5% 32%;    /* #57534E */
+
+  /* Marca — esmeralda (primária) + teal (secundária) + sky (portfólio) */
+  --primary: 160 84% 39%;           /* #10B981 — acentos, estados, gráficos */
+  --primary-strong: 158 64% 29%;    /* #047857 — botões sólidos e links de texto (AA) */
+  --primary-foreground: 0 0% 100%;  /* texto sobre primary-strong */
+  --secondary: 175 84% 32%;         /* #0D9488 */
+  --secondary-foreground: 0 0% 100%;
+  --accent: 199 89% 48%;            /* #0EA5E9 */
+  --accent-foreground: 0 0% 100%;
+
+  /* Semânticas financeiras (base = visual/gráfico · strong = texto AA) */
+  --positive: 160 84% 39%;          /* receita/renda */
+  --positive-strong: 158 64% 29%;
+  --negative: 347 90% 60%;          /* despesa */
+  --negative-strong: 347 77% 41%;   /* #BE123C */
+  --warning: 38 92% 50%;            /* atenção / alerta */
+  --warning-strong: 32 95% 35%;     /* #B45309 */
+  --critical: 0 84% 60%;            /* crítico / excedido */
+  --critical-strong: 0 72% 42%;     /* #B91C1C */
+  --portfolio: 199 89% 48%;         /* rebalanceamento (alias do accent) */
+
+  /* Categorias — paleta restrita e sóbria (10 cores dessaturadas) */
+  --cat-1: 215 20% 48%;             /* aço */
+  --cat-2: 150 25% 44%;             /* sálvia */
+  --cat-3: 85 22% 44%;              /* oliva */
+  --cat-4: 35 28% 48%;              /* areia */
+  --cat-5: 15 32% 50%;              /* terracota */
+  --cat-6: 320 18% 48%;             /* malva */
+  --cat-7: 215 42% 48%;             /* jeans */
+  --cat-8: 265 22% 50%;             /* ameixa */
+  --cat-9: 190 30% 44%;             /* pinho */
+  --cat-10: 0 0% 40%;               /* grafite */
+
+  /* Tipografia */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Raio */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-pill: 999px;
+
+  /* Sombras (suaves e difusas; KPI com glow discreto) */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.06), 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.10), 0 2px 6px -2px rgb(0 0 0 / 0.05);
+  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.18), 0 4px 16px -4px hsl(var(--accent) / 0.30);
+
+  /* Foco */
+  --ring: 160 84% 39%;
+  --ring-offset: 0 0% 100%;
+}
+
+/* ----------------------------------------------------------------
+   TEMA DARK
+   ---------------------------------------------------------------- */
+html[data-theme="dark"] {
+  /* Neutros */
+  --background: 222 47% 11%;        /* #0F172A */
+  --surface: 217 33% 17%;           /* #1E293B */
+  --surface-hover: 216 30% 21%;     /* #263349 */
+  --surface-active: 216 29% 25%;    /* #2E3B53 */
+  --border: 215 28% 27%;            /* #334155 */
+  --input: 215 24% 32%;             /* #3F4D66 */
+  --muted: 218 34% 15%;             /* #182234 */
+  --foreground: 210 40% 98%;        /* #F8FAFC */
+  --muted-foreground: 215 20% 65%;  /* #94A3B8 */
+
+  /* Marca */
+  --primary: 160 84% 52%;           /* #34D399 */
+  --primary-strong: 160 84% 52%;    /* mesmo tom (fundo claro) */
+  --primary-foreground: 160 84% 9%; /* #022C22 — texto escuro sobre primária (AA 8:1) */
+  --secondary: 172 66% 50%;         /* #2DD4BF */
+  --secondary-foreground: 175 84% 10%;
+  --accent: 199 89% 60%;            /* #38BDF8 */
+  --accent-foreground: 205 80% 16%;
+
+  /* Semânticas financeiras */
+  --positive: 160 84% 52%;          /* #34D399 */
+  --positive-strong: 160 84% 52%;
+  --negative: 347 90% 71%;          /* #FB7185 */
+  --negative-strong: 347 90% 71%;
+  --warning: 45 93% 56%;            /* #FBBF24 */
+  --warning-strong: 45 93% 56%;
+  --critical: 0 72% 71%;            /* #F87171 */
+  --critical-strong: 0 72% 71%;
+  --portfolio: 199 89% 60%;
+
+  /* Categorias (versão clara dos tons) */
+  --cat-1: 215 20% 58%;
+  --cat-2: 150 25% 54%;
+  --cat-3: 85 22% 54%;
+  --cat-4: 35 28% 58%;
+  --cat-5: 15 32% 60%;
+  --cat-6: 320 18% 58%;
+  --cat-7: 215 42% 58%;
+  --cat-8: 265 22% 60%;
+  --cat-9: 190 30% 54%;
+  --cat-10: 0 0% 55%;
+
+  /* Sombras (dark depende mais de bordas; alpha maior p/ profundidade) */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
+  --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.40), 0 1px 2px 0 rgb(0 0 0 / 0.30);
+  --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.50), 0 2px 6px -2px rgb(0 0 0 / 0.40);
+  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.25), 0 4px 20px -4px hsl(var(--accent) / 0.35);
+
+  --ring: 160 84% 52%;
+  --ring-offset: 222 47% 11%;
+}
+
+/* ----------------------------------------------------------------
+   TEMA OLED (true black — economia de bateria em AMOLED)
+   ---------------------------------------------------------------- */
+html[data-theme="oled"] {
+  --background: 0 0% 0%;            /* #000000 */
+  --surface: 0 0% 4%;               /* #0A0A0A */
+  --surface-hover: 0 0% 8%;         /* #141414 */
+  --surface-active: 0 0% 11%;       /* #1C1C1C */
+  --border: 0 0% 12%;               /* #1F1F1F */
+  --input: 0 0% 16%;                /* #292929 */
+  --muted: 0 0% 6%;                 /* #0F0F0F */
+  --foreground: 0 0% 98%;           /* #FAFAFA */
+  --muted-foreground: 0 0% 45%;     /* #737373 */
+
+  --primary: 160 84% 52%;
+  --primary-strong: 160 84% 52%;
+  --primary-foreground: 160 84% 9%;
+  --secondary: 172 66% 50%;
+  --secondary-foreground: 175 84% 10%;
+  --accent: 199 89% 60%;
+  --accent-foreground: 205 80% 16%;
+
+  --positive: 160 84% 52%;
+  --positive-strong: 160 84% 52%;
+  --negative: 347 90% 71%;
+  --negative-strong: 347 90% 71%;
+  --warning: 45 93% 56%;
+  --warning-strong: 45 93% 56%;
+  --critical: 0 72% 71%;
+  --critical-strong: 0 72% 71%;
+  --portfolio: 199 89% 60%;
+
+  --cat-1: 215 20% 58%;
+  --cat-2: 150 25% 54%;
+  --cat-3: 85 22% 54%;
+  --cat-4: 35 28% 58%;
+  --cat-5: 15 32% 60%;
+  --cat-6: 320 18% 58%;
+  --cat-7: 215 42% 58%;
+  --cat-8: 265 22% 60%;
+  --cat-9: 190 30% 54%;
+  --cat-10: 0 0% 55%;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.50);
+  --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.60), 0 1px 2px 0 rgb(0 0 0 / 0.50);
+  --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.70), 0 2px 6px -2px rgb(0 0 0 / 0.60);
+  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.30), 0 4px 20px -4px hsl(var(--accent) / 0.45);
+
+  --ring: 160 84% 52%;
+  --ring-offset: 0 0% 0%;
+}
+
+/* ----------------------------------------------------------------
+   Fallback sem JS: segue a preferência do sistema até o
+   ThemeProvider definir o data-theme (default do app).
+   ---------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --background: 222 47% 11%;
+    --surface: 217 33% 17%;
+    --surface-hover: 216 30% 21%;
+    --surface-active: 216 29% 25%;
+    --border: 215 28% 27%;
+    --input: 215 24% 32%;
+    --muted: 218 34% 15%;
+    --foreground: 210 40% 98%;
+    --muted-foreground: 215 20% 65%;
+    --primary: 160 84% 52%;
+    --primary-strong: 160 84% 52%;
+    --primary-foreground: 160 84% 9%;
+    --secondary: 172 66% 50%;
+    --secondary-foreground: 175 84% 10%;
+    --accent: 199 89% 60%;
+    --accent-foreground: 205 80% 16%;
+    --positive: 160 84% 52%;
+    --negative: 347 90% 71%;
+    --warning: 45 93% 56%;
+    --critical: 0 72% 71%;
+    --portfolio: 199 89% 60%;
+    --ring: 160 84% 52%;
+    --ring-offset: 222 47% 11%;
+  }
+}

@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+
+# Env — nunca commitar
+.env
+.env.*
+!.env.example
+
+# Editor / SO
+.DS_Store
+.idea
+.vscode
+
+# Build / tooling
+*.tsbuildinfo
+node_modules/.tmp

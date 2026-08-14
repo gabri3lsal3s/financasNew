@@ -1,0 +1,4 @@
+docs/
+public/
+*.md
+package-lock.json

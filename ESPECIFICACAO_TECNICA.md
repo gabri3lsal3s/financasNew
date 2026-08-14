@@ -1,0 +1,638 @@
+# 📐 ESPECIFICACAO_TECNICA.md — Especificação Técnica Consolidada
+
+> **Status:** v1.0 — consolida o `RECONSTRUCAO.md` (regras de negócio) + decisões de **Arquitetura & Resiliência (Etapa 1)** + **Diretriz de UI/UX (Etapa 2)**.
+>
+> **Stack definida:** Supabase (BaaS — auth + Postgres + RLS) · React 18+ com **Vite** · TypeScript estrito · Tailwind CSS · shadcn/ui · TanStack Query (estado de servidor) · **Cloudflare R2** (storage de arquivos).
+>
+> **Objetivo:** ser a fonte única e executável de regras de negócio, arquitetura e visão de produto para a reconstrução do zero.
+
+---
+
+## 0. DECISÕES-CHAVE (RESUMO EXECUTIVO)
+
+| # | Tema | Decisão | Motivo |
+|---|---|---|---|
+| D1 | Atomicidade de escritas | **Transações no servidor (RPC Postgres)** para toda operação composta | Operações multi-registro (despesa+cobrança, estorno→renda, exclusão em cascata) nunca podem ficar pela metade; o cliente faz **1 chamada** e recebe sucesso/erro atômico |
+| D2 | Exclusão | **Hard delete + log de eventos imutável** (`audit_events`) | Schema e queries limpos (sem `deleted_at` em tudo); auditoria financeira preservada (quem/quando/valores) |
+| D3 | Competência de fatura | **Snapshot na escrita + recálculo controlado em lote** | Histórico de faturas estável; mudanças de regras do cartão exigem confirmação do usuário antes de reclassificar |
+| D4 | Multiusuário | **Isolado** — RLS por `auth.uid()`; sem compartilhamento nesta fase | Schema simples; modelo permite evoluir para compartilhamento sem ruptura |
+| D5 | Integração de cotações | Cache em servidor + fallback estático + **preço manual** (override do usuário) | Rebalanceamento nunca fica bloqueado por indisponibilidade da API externa |
+| D6 | Frontend | **React (Vite) + Tailwind + shadcn/ui** | Combina com os contratos de estado (hooks/providers) da spec e com Supabase; SPA pura, sem SSR |
+| D7 | Filosofia visual | **Cards amigáveis (fintech)** — estilo Nubank/Organizze | Acolhedor, mobile-first, microinterações; adequado a finanças pessoais |
+| D8 | Navegação | **Sidebar fixa (desktop) + bottom tabs (mobile)** | Escala com 8+ áreas; padrão moderno SaaS/fintech |
+| D9 | Temas | **Light / Dark / OLED** (true black) com toggle e preferência do sistema | Suporte completo; OLED economiza bateria em AMOLED |
+| D10 | Lançamento rápido | **Tela cheia guiada** (wizard 4 passos) + **atalho global** + defaults inteligentes | Respeita a escolha de fluxo guiado mantendo a fricção mínima |
+| D11 | Storage de arquivos | **Cloudflare R2** atrás de abstração própria (`src/services/storage`), upload via presigned URLs | A UI nunca conhece a implementação; anexos (comprovantes, avatar) ficam fora do fluxo financeiro core |
+| D12 | Parcelamento | **Cliente calcula** (`domain/money`, centavos) **+ servidor valida invariantes** (soma = original, 1–60, datas) | Lógica de divisão única em TS; SQL só valida — sem duplicação |
+
+---
+
+## 1. ARQUITETURA DE SOFTWARE
+
+### 1.1 Visão geral e princípios
+
+Aplicação web **100% Online First**: a nuvem (Supabase) é a única fonte da verdade. Sem persistência local de dados de negócio, sem filas de sincronização, sem modo offline. Leitura e escrita sempre via API, com estados de carregamento/erro explícitos na interface.
+
+**Princípios arquiteturais:**
+
+- **Online First**: toda mutação é síncrona com a nuvem; erros têm tratamento explícito e retry manual.
+- **Lógica pura e testável**: todo cálculo (parcelamento, competência de fatura, projeções, insights, rebalanceamento) vive em módulos de domínio **sem dependência de UI**.
+- **Estado centralizado**: hooks/providers expõem `data | loading | error | CRUD | refresh`; a UI apenas consome esses contratos (recomendado: TanStack Query para estado de servidor + hooks de domínio por cima).
+- **Separação domínio × apresentação**: formatação monetária, status derivados e cores são serviços de apresentação; regras de negócio nunca dependem deles.
+- **Integridade no servidor**: operações compostas são **RPCs transacionais** (D1) — o cliente não orquestra multi-escrita.
+
+### 1.2 Camadas
+
+| Camada | Responsabilidade | Onde vive |
+|---|---|---|
+| **Domínio puro** | Cálculos e regras (parcelamento, competência, status derivado, insights, rebalanceamento) | Módulos TS sem imports de UI/Supabase; 100% testáveis |
+| **Dados (Supabase)** | Persistência, RLS, RPCs transacionais | Cliente Supabase + migrations + funções Postgres |
+| **Contratos de estado** | `data \| loading \| error \| CRUD \| refresh` por domínio | Hooks (TanStack Query + hooks de domínio) |
+| **Apresentação** | Formatação, máscaras, cores, status exibidos | Serviços + tokens |
+| **UI** | Telas e componentes (shadcn/ui) | React/Vite |
+
+### 1.3 Atomicidade e integridade (D1 — RPCs transacionais)
+
+Toda operação que altera **mais de um registro** em uma única ação do usuário deve ser executada como **função Postgres (RPC) dentro de uma transação** (`BEGIN/COMMIT`, rollback em qualquer erro). O cliente chama uma vez e recebe `{ ok, data } | { ok: false, error }`.
+
+**Catálogo de RPCs obrigatórios:**
+
+| RPC | Operação composta | Transação garante |
+|---|---|---|
+| `create_expense_with_debt` | Criar despesa (+ parcelas, se aplicável) + cobrança vinculada | Despesa e dívida(s) nascem juntas ou não nascem |
+| `create_refund` | Estorno de fatura → cria renda automática na categoria reservada "Estorno" (`[REFUND]{id}`) | Estorno e renda somente-leitura sempre em par |
+| `delete_expense_installments` | Excluir parcela(s) (`single \| all \| subsequent`) + cascata de dívidas pendentes vinculadas + gravar `audit_events` | Dívidas órfãs pendentes nunca sobram |
+| `pay_debt` / `receive_debt` | Quitar dívida + criar despesa/renda correspondente (quando escolhido) | Quitação e lançamento em par |
+| `settle_integrated_receivable` | Recebimento integrado: reduz o valor da despesa no relatório | Desconto aplicado atomicamente |
+| `recalculate_bill_competences` | Recálculo em lote de competências de um cartão (D3) | Reclassificação consistente + log |
+| `delete_category_migrate` | Excluir categoria movendo lançamentos para outra | Migração sem órfãos |
+| `set_budget_limit` / `set_income_goal` | Upsert de limite/expectativa por `(categoria, mês)` | Upsert atômico |
+
+> **Regra de ouro:** se a ação toca 2+ tabelas, é RPC transacional. O cliente **nunca** faz chamadas sequenciais compensatórias.
+
+### 1.4 Persistência e auditoria (D2 — hard delete + log de eventos)
+
+- **Exclusão física** de registros (despesas, rendas, dívidas, etc.) com gravação **imutável** em `audit_events`:
+  - `audit_events (id, user_id, entity_type, entity_id, action, payload jsonb, created_at)`
+  - `payload` guarda os fatos: valores, datas, vínculos (ex.: grupo de parcelas, competência) e motivo.
+  - RLS: **insert + select do próprio dono; sem update/delete** (imutável por construção).
+- São auditados: exclusões (hard delete), estornos, pagamentos de fatura, alteração de regras de cartão, recálculo de competência em lote, quitação de dívidas.
+- **Não há soft delete** nesta fase; se houver necessidade futura de recuperação, o log permite reconstituir fatos (não o registro vivo).
+
+### 1.5 Competência de fatura (D3 — snapshot + recálculo controlado)
+
+- A competência (`bill_competence`, formato `YYYY-MM`) é **calculada e persistida no momento da escrita** da despesa, usando a regra `resolveBillCompetence(data, closingDayVigente)` (ver §4.5).
+- Overrides mensais vivem em `card_competence_overrides` e **prevalecem** sobre o `closing_day` padrão do cartão.
+- **Mudança de regras do cartão** (closing day/vencimento ou override) **não altera faturas passadas automaticamente**. A UI oferece o RPC `recalculate_bill_competences(card_id, from_month)` que:
+  1. pré-visualiza quantas despesas serão reclassificadas (contagem por competência antiga → nova);
+  2. exige confirmação explícita do usuário;
+  3. executa em transação e grava `audit_events` do recálculo.
+
+### 1.6 Integrações externas (D5 — cotações resilientes)
+
+- **Única integração externa:** cotações (Yahoo Finance via proxy CORS em cascata) para valoração usada no rebalanceamento.
+- **Pipeline de resiliência (em ordem):**
+  1. **Cache em servidor** — tabela `asset_prices` (preço, moeda, fonte, `updated_at`); a UI **nunca** chama a API externa em tempo de request.
+  2. **Atualização assíncrona** — edge function/worker atualiza a tabela em lote (timeouts curtos, tolerante a falhas por ticker).
+  3. **Fallback estático** — preço fixo por classe (ex.: USD 5,25) quando não há dado.
+  4. **Preço manual** — o usuário pode informar/sobrescrever o preço (coluna `manual_price`); o override **prevalece** sobre cache/fallback e é marcado na UI como "preço informado manualmente".
+- **Guardrail de spike:** variação > 50% em 1 dia mantém o último preço válido (proteção contra dado corrompido).
+- **Degradação graciosa:** em indisponibilidade prolongada, a carteira e o rebalanceamento continuam funcionando com aviso visível de imprecisão.
+
+### 1.7 Gateway de erros e contratos de estado
+
+- **Gateway único de erros** (`getErrorMessage`): mensagens pt-BR padronizadas; casos especiais — rate limit (aguarde alguns minutos), e-mail não confirmado, sessão expirada, rede indisponível (Online First → erro explícito com "Tentar novamente").
+- **Contrato de estado** por domínio: `{ data, isLoading, isError, error, mutate (CRUD), refresh }` — consumível por qualquer tela sem acoplamento ao cliente de dados.
+
+### 1.8 Storage de arquivos (Cloudflare R2 — D11)
+
+- R2 é a base de arquivos do app (ex.: comprovantes de despesa, avatar), **atrás de uma abstração própria** (`src/services/storage`): a UI nunca conhece a implementação.
+- Upload por **presigned URLs** emitidos por endpoint próprio (edge function/API); leitura por URLs assinadas com expiração; sem chaves do R2 no cliente.
+- **Fora do fluxo financeiro core**: anexos não participam de cálculos; são metadados de enriquecimento (link/`storage_key` em entidades opcionais).
+
+---
+
+## 2. MODELO DE DADOS (SCHEMA LÓGICO)
+
+> Reconstruído do zero. Todas as tabelas com `user_id` + **RLS `auth.uid() = user_id`** (D4 — multiusuário isolado). Datas em `date`, meses em `YYYY-MM` (text/char(7) ou first day). Valores monetários em **numeric(12,2)** (4 casas apenas para `report_weight`).
+
+| Tabela | Colunas-chave | Constraints / Notas |
+|---|---|---|
+| `profiles` | id (PK = auth.users.id), name, email, created_at | Criada no signup (trigger) |
+| `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled, max_sector_acoes, max_sector_fiis | — |
+| `categories` | id, user_id, type (`expense \| income`), name, icon, color, is_reserved (ex.: "Estorno"), is_active | Nome único por (user, type); reservadas não são editáveis/excluíveis nos fluxos normais |
+| `incomes` | id, user_id, value, date, category_id (FK), receive_type (`cash \| pix \| transfer \| other`), description, report_weight (default 1, 0–1), source_ref (para rendas automáticas `[REFUND]`), created_at | Check: value > 0; date ≥ APP_START_DATE; report_weight 0–1; rendas com `source_ref` = somente-leitura |
+| `expenses` | id, user_id, value, date, category_id, payment_method (`cash \| debit \| credit_card \| pix \| transfer \| other`), card_id (FK nullable), installments_total (1–60), installment_number, installment_group_id (UUID, nullable), bill_competence (`YYYY-MM` snapshot, nullable), report_weight, base_amount (valor original p/ auditoria de pesos), description, created_at | Check: value > 0; date ≥ APP_START_DATE; installments 1–60; **card_id NOT NULL quando payment_method = `credit_card`**; `installment_group_id` presente sse installments_total > 1 |
+| `credit_cards` | id, user_id, name, brand, credit_limit, closing_day (1–31), due_day (1–31), color, is_active | Desativar não apaga histórico |
+| `card_competence_overrides` | id, card_id, month (`YYYY-MM`), closing_day, due_day | Unique (card_id, month); prevalece sobre padrão |
+| `card_payments` | id, user_id, card_id, competence_month, amount, date, note, is_refund | Estorno = amount negativo OU note `[REFUND]...`; estorno → RPC `create_refund` |
+| `debts` | id, user_id, name, type (`payable \| receivable`), amount (≥ 0), due_date, **paid_at (timestamptz NULL — preenchido na quitação; NULL = pendente)**, expense_id (FK nullable), installment_group_id (nullable), created_at | Check: amount ≥ 0; status derivado (overdue/due_today/due_soon/pending) nunca é armazenado |
+| `budgets` | id, user_id, category_id, month, limit | **Unique (category_id, month)**; upsert |
+| `income_goals` | id, user_id, category_id, month, expected | Unique (category_id, month); upsert |
+| `insight_feedback` | id, user_id, occurrence_key (hash estável: tipo + entidade + mês), decision (`ignore \| confirm`), created_at | Registra o aprendizado do usuário sobre insights (§3.7.4); ocorrência ignorada deixa de contar |
+| `portfolio_assets` | id, user_id, ticker, asset_class, currency (BRL/USD) | Ticker único por user |
+| `portfolio_transactions` | id, user_id, asset_id, type (`buy \| sell \| dividend \| jcp \| fii_yield \| split \| reverse_split \| subscription`), date, quantity, price, total | Caixa derivado do ledger (nunca armazenado como saldo) |
+| `allocation_targets` | id, user_id, asset_id, target_percentage (0–100) | Soma por user ≤ 100 — **validada no domínio e no banco (trigger/RPC)**; check não cobre soma entre linhas |
+| `class_targets` / `sector_targets` | id, user_id, group_type (`class \| sector`), name, target_percentage | Metas opcionais por classe/setor |
+| `asset_prices` | id, **user_id (nullable — NULL = cache global da edge function; preenchido = override manual do usuário)**, ticker, price, currency, source (`api \| fallback \| manual`), manual_price (nullable), updated_at | Cache servidor; override manual prevalece; RLS: dono quando `user_id` presente, leitura global quando NULL |
+| `audit_events` | id, user_id, entity_type, entity_id, action, payload jsonb, created_at | **Imutável** (RLS: insert + select; sem update/delete) |
+
+**Índices recomendados:** `expenses (user_id, date DESC)`, `expenses (installment_group_id)`, `incomes (user_id, date DESC)`, `debts (user_id, due_date)`, `card_payments (card_id, competence_month)`, `budgets (user_id, month)`.
+
+**Contratos de domínio TS:** os enums canônicos (`payment_method`, `receive_type`, `debts.type`, `portfolio_transactions.type`, faixas de atenção, `source`) são definidos em `src/types/` com os **mesmos literais** desta tabela; validação nas bordas (zod) e constraints do banco espelham esses valores (DRY de tipos — sem literais soltos).
+
+---
+
+## 3. REGRAS DE NEGÓCIO CONSOLIDADAS
+
+> Regras herdadas do `RECONSTRUCAO.md`, refinadas pelas decisões D1–D12. Onde uma decisão altera o comportamento, a regra está marcada com **(D#)**.
+
+### 3.1 Receitas (Rendas)
+
+- **Entrada:** valor, data, categoria de renda, tipo de recebimento (`cash | pix | transfer | other`), descrição opcional, peso de relatório (0–1, default 1).
+- **Validações:** categoria e valor obrigatórios; data ≥ **APP_START_DATE (2026-01-01)**; valor numérico finito > 0.
+- **Fluxo:** CRUD completo; listagem agrupada por mês; edição preserva todos os campos; exclusão definitiva com `audit_events` (D2).
+- **Rendas automáticas** (estornos, `source_ref` presente) são **somente-leitura**: não editáveis, não excluíveis, não recategorizáveis nos fluxos normais — manutenção exclusiva pela tela de cartões.
+- **Ordenação:** data desc; empate por `created_at` desc.
+
+### 3.2 Despesas
+
+#### 3.2.1 Registro e classificação
+
+- **Entrada:** valor, data, categoria, forma de pagamento (`cash | debit | credit_card | pix | transfer | other`), cartão (obrigatório se `credit_card`), descrição, parcelas (1–60), peso de relatório (0–1, default 1).
+- **Validações:** categoria e valor obrigatórios; data ≥ APP_START_DATE; parcelas 1–60; cartão obrigatório no crédito.
+- **Ordenação:** data desc; empate por `created_at` desc.
+
+#### 3.2.2 Parcelamento (1–60x)
+
+- Gera uma despesa por mês a partir da data inicial; todas compartilham `installment_group_id` (UUID) e recebem `installment_number` (1..N) e `installment_total`.
+- **Divisão exata em centavos:** resto de `valor ÷ N` distribuído nas **primeiras parcelas** (R$ 100 ÷ 3 → 33,34 / 33,33 / 33,33). Soma sempre idêntica ao original.
+- **Competência de fatura** (cartão): calculada por parcela na escrita (snapshot, D3).
+- **Cálculo no cliente, validação no servidor (D12):** as parcelas são calculadas em `domain/money` (TS, testável) e enviadas ao RPC, que **valida invariantes** (soma = valor original, parcelas 1–60, datas ≥ APP_START_DATE) antes de persistir — a lógica de divisão não é duplicada em SQL.
+- **Exclusão em 3 modos** via RPC `delete_expense_installments` (D1):
+  - `single` — exclui apenas a parcela selecionada;
+  - `all` — exclui todo o grupo;
+  - `subsequent` — exclui a parcela-alvo e posteriores (por `installment_number`).
+  - **Cascata:** despesas excluídas removem **dívidas pendentes vinculadas** (`expense_id` + status `pending`); dívidas pagas nunca são tocadas. Tudo em transação + `audit_events` (D1/D2).
+
+#### 3.2.3 Edição com troca de forma de pagamento
+
+- Passa a ser cartão → recalcula/insere a competência (snapshot) usando closing day vigente + overrides.
+- Deixa de ser cartão → limpa vínculo com cartão e competência.
+
+#### 3.2.4 Cobrança vinculada (dívida integrada à despesa)
+
+- Criada **na mesma ação** que a despesa via RPC `create_expense_with_debt` (D1).
+- **Validações:** valor obrigatório, > 0 e **≤ valor da despesa**; padrão sincroniza com o valor da despesa.
+- Herda o grupo de parcelas (uma cobrança por parcela); descrição padrão `Cobrança integrada à despesa: {descrição}`.
+- Quitação com fluxo integrado (ver §3.4).
+
+#### 3.2.5 Despesas fixas e recorrentes
+
+- Não há cadastro formal de recorrência: o motor de insights (§3.8) **aprende do histórico** e detecta repetições mensais.
+
+### 3.3 Cartões de Crédito
+
+#### 3.3.1 CRUD
+
+- **Entrada:** nome, bandeira, limite total, `closing_day` (1–31), `due_day` (1–31), cor, `is_active`.
+- Desativar não apaga histórico; apenas remove de seleção/fluxos ativos.
+
+#### 3.3.2 Competência de fatura
+
+- Regra base `resolveBillCompetence(purchaseDate, closingDay)`: **dia da compra ≥ closing day → fatura do mês seguinte**; senão, mês atual.
+- `clampDay` limita closing day a 1–31 (meses com menos dias usam o último dia).
+- **Overrides mensais** (`card_competence_overrides`) prevalecem sobre o padrão.
+- **Snapshot na escrita** (D3): competência gravada no lançamento; mudanças de regra exigem recálculo controlado (§1.5).
+
+#### 3.3.3 Fatura, pagamentos e estornos
+
+- Fatura consolida: despesas do período (com peso aplicado, `base_amount` preservado para auditoria), pagamentos e estornos.
+- **Estorno** = pagamento com valor negativo OU nota iniciando em `[REFUND]`; sem competência explícita, resolvida pela data do pagamento.
+- **Estorno gera renda automática** (RPC `create_refund`, D1): cria receita na categoria reservada **"Estorno"**, vinculada por nota `[REFUND]{id da renda}` — somente-leitura (§3.1); valor no relatório limitado a 0–valor do estorno.
+- Pagamento de fatura: CRUD com competência; total pago abate o previsto.
+- **Seleção do mês de fatura:** mês atual se tiver pendências; senão varre **para trás** (até APP_START_DATE) pelo mês mais recente com pendências; se nenhum, tenta o mês seguinte; por fim, mês atual. Deep-links (`?card=` / `?month=`) sobrepõem.
+- **Saldo aberto** = `max(0, previsto − pago)` (por competência; pagamento a maior nunca gera saldo negativo).
+- **Lembrete de fatura:** alerta com saldo aberto, `overdue` (vencida) ou `near_due` (janela configurável, default 3 dias antes do vencimento).
+
+### 3.4 Dívidas / Contas a Pagar e Receber
+
+- **Entrada:** nome, tipo (`payable | receivable`), valor **≥ 0**, data de vencimento, status lógico (`pending | paid` — **persistido via `paid_at`**, ver schema §2), vínculo opcional com despesa (herda grupo de parcelas).
+- **Status derivado** (nunca armazenado): `paid` (quitada) · `overdue` (vencida e pendente) · `due_today` · `due_soon` (≤ 3 dias) · `pending`.
+- **Quitação a pagar** (RPC `pay_debt`): opção **"Pagar e Cadastrar Despesa"** (cria a despesa correspondente) ou **"Apenas Pagar"**.
+- **Quitação a receber** (RPC `receive_debt`): **"Receber e Criar Renda"** ou **"Apenas Receber"**.
+- **Recebimento integrado** (RPC `settle_integrated_receivable`): recebível vinculado a despesa reduz **automaticamente o valor da despesa no relatório** (resultado editável pelo usuário).
+- **Ordenação:** `due_date` ascendente.
+- **Efeitos em totais:** dívidas **pagas** entram nos totais do período (recebíveis → rendas; pagáveis → despesas) pelo **mês do vencimento**; **pendentes** alimentam a projeção de pendências (§3.9); totais de Contas consideram apenas pendentes com vencimento no mês selecionado.
+- **Exclusão vinculada:** herda os modos `single | all | subsequent` do grupo de parcelas (via RPC de exclusão, D1).
+- **Lembrete:** janela configurável (dias antes) + `overdue`.
+
+### 3.5 Categorias, Orçamentos e Metas
+
+#### 3.5.1 Categorias
+
+- CRUD de categorias de despesa e renda (nome, ícone, cor).
+- **Sugestão inteligente por nome:** infere ícone/cor e limite sugerido por regra de nome (moradia, alimentação, transporte, saúde, educação, lazer, compras, outros).
+- **Exclusão com migração** (RPC `delete_category_migrate`): mover lançamentos para outra categoria antes de excluir.
+
+#### 3.5.2 Orçamentos (despesas)
+
+- **Limite mensal por categoria:** valor por `(categoria, mês)`, upsert; limpar o campo remove o limite.
+- **Herança de limite:** sem limite no mês atual, herda o do mês anterior (fallback de exibição/alerta).
+- **Faixas de atenção:** ≥ 85% → Atenção; ≥ 90% → Alta; ≥ 95% → Crítica; > 100% → **Excedida** (alerta com valor excedido).
+- **KPIs:** total de limites do mês, % global usado (`min(100, despesas ÷ (totalLimites || rendas))`), cor de progresso (≥85% vermelho, ≥70% amarelo, senão verde).
+- **Sugestão de limite** por % da renda (regra de nome: moradia ≤ 30%, alimentação ≤ 15%, transporte ≤ 10%…).
+- **Realocação automática:** categoria com maior excesso → maior folga; valor = `min(excesso, folga)` arredondado ao múltiplo de 10 (mínimo R$ 10); reduz origem (nunca < 0) e aumenta destino — com confirmação.
+- **Alertas:** categoria estourou → lista de atenção + motor de insights (§3.8).
+
+#### 3.5.3 Metas de renda
+
+- **Expectativa mensal por categoria de renda:** `(categoria, mês) → valor esperado`; compara realizado × esperado em relatórios/insights (déficit de receita).
+
+### 3.6 Visão Consolidada (Dia / Mês / Ano)
+
+- **KPIs fundamentais** (com peso de relatório quando habilitado): `totalRendas`, `totalDespesas`, `totalInvestimentos` (aportes líquidos do mês), `saldo`, `savingsRate = saldo ÷ rendas`.
+- `saldo = rendas − despesas − investimentos`.
+- **Saldo líquido de Contas** = total a receber (pendentes do mês) − total a pagar (pendentes do mês) − total de faturas em aberto.
+- **Fluxo diário:** barras empilhadas por dia (rendas/despesas/investimentos); comparativo com período anterior.
+- **Agrupamentos temporais:** dia/mês/ano; navegação de mês/ano com clamp no APP_START_DATE.
+- **Orçamentos:** progresso vs limite, lista de atenção, recomendação de realocação.
+- **Limite de período customizado:** máximo 366 dias.
+
+### 3.7 Motor de Análise e Diagnóstico (Insights)
+
+**Entrada:** totais, savings rate, resumos por categoria (atual + anteriores), totais por dia da semana, limites estourados, renda por categoria, ritmo e projeção de gastos, saldo, despesas (mês atual + 3 anteriores).
+
+#### 3.7.1 Alertas críticos (prioridade)
+
+1. Saldo negativo;
+2. Ritmo de gastos > 5% acima do esperado;
+3. Limites de orçamento estourados;
+4. Burn rate > 85% da renda;
+5. Déficit projetado para o fim do mês (dia ≥ 10 e fora do trilho);
+6. Elogio automático quando poupança ≥ 20% da renda.
+
+#### 3.7.2 Detecção de assinaturas
+
+- 3 sinais: nome conhecido (lista de serviços), categoria de assinatura, valor exato (tolerância ±5%).
+- Árvore de decisão com **confiança 0.40–0.98**.
+- **Tiers de corte:** `essential` (não sugere corte) · `discretionary` · `can_cut`; cada ocorrência reporta `savingsIfCut`.
+
+#### 3.7.3 Detecção de recorrências (3 níveis)
+
+- `subscription` — mesmo nome + valor/categoria estável;
+- `recurring` — mesma descrição, valor com tolerância ±50%;
+- `similar` — mesma categoria com total ±30%; **categorias agregadoras excluídas** (supermercado, combustível, farmácia…), checagem de dispersão interna, 2+ meses quando há 3+ meses de histórico.
+- Parcelas (`installment_group_id`) são **filtradas** — parcelamento não é recorrência.
+
+#### 3.7.4 Confiança e aprendizado
+
+- **Confiança** = base + bônus não-linear por meses de histórico (2m:+0.05 … 5m:+0.28) − penalidade de variância (0.3× subscription, 0.8× recurring).
+- **Aprendizado:** usuário pode **ignorar / confirmar / restaurar** ocorrências; ignorada deixa de contar.
+
+#### 3.7.5 Desafios e sugestões
+
+- **Desafios de economia:** por categoria de alto gasto (reduzir 10/20/30%) + "30% em não essenciais"; **limite mínimo dinâmico** = `max(R$ 20, 0,5% da renda)`; máx. 4 simultâneos.
+- **Sugestões de limite:** estourou → sugere aumento de `max(excesso, 15% do limite)`; uso < 50% com folga > R$ 50 → sugere redução **mantendo 30% de margem**; máx. 3 sugestões/mês.
+
+#### 3.7.6 Diagnósticos adicionais
+
+- Concentração de renda: alerta quando 1 fonte > 60% da renda.
+- Tendência vs mês anterior: significativa quando > 15%.
+- Gastos de fim de semana: alerta quando ratio fim de semana/dia útil > 1.5.
+- Saúde da poupança: faixas crítico/baixo/moderado/saudável/forte.
+- Compromisso com investimentos: comparação com meta de 15–20% da renda.
+
+### 3.8 Projeção e Prospecção de Gastos
+
+- **Gasto disponível (orçamento diário derivado):**
+  - `mensalDisponível = rendas − investimentos − despesas`.
+  - Mês atual: `diário = max(0, mensalDisponível ÷ diasRestantes)` com `diasRestantes = diasNoMês − diaAtual + 1` (inclui hoje).
+  - Mês futuro: `diário = max(0, (rendas − investimentos) ÷ diasNoMês)`.
+  - Mês encerrado: sem valor diário (resultado real).
+- **Ritmo de gastos (spending pace):** acumulado do mês vs fração esperada; ativa a partir do **8º dia** e quando fração decorrida ≥ 30%.
+- **Projeção de fim de mês:** exige **dia ≥ 3**; `burnRate = despesas ÷ diasDecorridos`; `projeção = burnRate × diasNoMês`; `superávit projetado = rendas − investimentos − projeção`; `noTrilho = superávit ≥ 0`. Passado → valores reais; futuro → não aplicável.
+- **Projeção de pendências:** dívidas pendentes (pagáveis/recebíveis) do período com projeção de saldo.
+- **Corte de gastos:** insights consolidam assinaturas cortáveis, recorrências, desafios e realocação em sugestões priorizadas por impacto financeiro.
+
+### 3.9 Busca Global
+
+- Gatilho: query ≥ 2 caracteres; busca em despesas, rendas, dívidas, cartões e categorias.
+- **Normalização:** remove acentos, minúsculas.
+- **Scoring:** igual 100 / prefixo 85 / contém 60; numérico 30; status de dívida 40.
+- **Bônus de recência logarítmico:** mês atual +25; 1–2m +20; 3–4m +15; 5–6m +10; 7–12m +5; 12m+ +0.
+- **Limites:** máx. 5 por tipo e 12 no total; ordenação por score desc.
+- **Deep-link:** navega ao registro com destaque visual (highlight + scroll) e mês correto.
+
+### 3.10 Lembretes e Central de Notificações
+
+- Consolida alertas de **faturas** (saldo aberto por competência: vencida/em breve) e **dívidas** (pendentes: vence em X dias/vencida).
+- Ações: **marcar como lido** e **snooze** (adiar); snooze **expira automaticamente** ao vencer/atrasar.
+- Ordenação: atrasados primeiro; depois por vencimento.
+- Ativação: somente com preferência habilitada; janelas configuráveis.
+
+### 3.11 Motor de Rebalanceamento de Carteira
+
+> Escopo reduzido: metas, leitura de posição e cálculo de aporte. Sem motor quantamental.
+
+#### 3.11.1 Metas / Alocação Alvo
+
+- **Meta por ativo:** `target_percentage` (0–100) por `(user, ticker)`; **soma ≤ 100%** (domínio + banco).
+- **Meta por classe/setor** (opcional): `(user, group_type, nome) → target_percentage`.
+- Alvo = % do **patrimônio total** (incluindo caixa/reserva).
+- Edição em lote com feedback visual de soma (barra de total ≤ 100%).
+
+#### 3.11.2 Posição Atual (Ledger)
+
+- Tipos: `buy, sell, dividend, jcp, fii_yield, split, reverse_split, subscription`.
+- **Custo médio** = custoTotal ÷ quantidade (atualizado a cada compra; vendas reduzem proporcionalmente).
+- Proventos acumulam separadamente e **não alteram custo nem posição**.
+- Split soma cotas; reverse split subtrai.
+- Tickers de caixa com valor 1:1 (quantidade = valor).
+- **Caixa derivado do ledger** (nunca armazenado): compras/subscrições debitam; vendas e proventos creditam.
+- **Valoração:** ativos de mercado → cotação (cache + fallback + manual, §1.6); renda fixa/Tesouro → valor manual ou aplicado; caixa → valor direto.
+- `pctAtual = valorAtual ÷ patrimônioTotal × 100`; `gapPct = target − pctAtual`; `gapFinanceiro = gapPct% × patrimônioTotal`.
+- USD→BRL pela cotação `USDBRL=X` (fallback 5,25); moeda inferida pelo padrão do ticker (2–5 letras sem números = USD; B3/RF/cripto = BRL).
+
+#### 3.11.3 Algoritmo de Aporte (`simulateSmartAporte` / `simulateRebalanceAporte`)
+
+1. **Defasagem macro por classe:** classe com maior déficit relativo recebe prioridade.
+2. **Elegibilidade:** meta definida, não zerada, folga no limite absoluto.
+3. **Ordenação:** gap financeiro desc (maior déficit primeiro), respeitando prioridade da classe.
+4. **Distribuição:** aloca até cobrir cada gap (respeitando limite absoluto = meta individual ou fração da meta da classe).
+5. **Travas setoriais:** `max_sector_acoes` / `max_sector_fiis` impedem alocação acima do teto.
+6. **Quantidades inteiras:** preço × quantidade ≤ valor alocado; excedente vai para o próximo ativo.
+7. **Sobra:** não alocada (teto/trava/arredondamento) → caixa/reserva.
+8. **Log de roteamento:** por ativo — valor alvo, atual, aporte sugerido, quantidade, preço; sobra final.
+
+**Consistência:** soma dos aportes nunca excede o aporte informado; ativo sem meta não recebe aporte; aporte só para ativos **abaixo** da meta (gap > 0); modos **por meta de ativo** ou **por meta de classe**.
+
+---
+
+## 4. DATAS, MOEDA E VALIDAÇÕES
+
+### 4.1 Datas e calendário
+
+- **APP_START_DATE = 2026-01-01**: lançamentos anteriores bloqueados; navegação clampeada a `2026-01`.
+- Datas em **timezone local** (nunca `toISOString` para ranges de mês); parsing `new Date('YYYY-MM-DDT12:00:00')`/`T00:00:00`.
+- Dia da semana **Monday-first** `(getDay()+6)%7`.
+- Último dia do mês: "+1 dia muda de mês" (robusto a 30/31/fevereiro).
+- Mês seguinte = `+1 mês` (evita salto de fevereiro para abril).
+
+### 4.2 Moeda e arredondamento
+
+- Valores: **2 casas decimais**; `report_weight`: 4 casas (0–1).
+- Parcelas em centavos com resto nas primeiras (soma = original).
+- **Peso derivado:** peso = valorNoRelatório ÷ valorBase, 4 casas.
+- **Peso na fatura:** `amountExibido = base × peso` (2 casas), `base_amount` preservado; pesos desabilitados → amount = base.
+- Parsing monetário tolerante: `R$`, parênteses (negativos), sinais, "1.234,56" vs "1234.56".
+- Máscara com `Intl.NumberFormat` pt-BR + `inputMode=numeric`.
+- Conversão USD com fallback 5,25; guardrail de spike > 50%/dia mantém último preço válido.
+
+### 4.3 Somatórios e derivações
+
+- `saldo = rendas − despesas − investimentos`; `savingsRate = saldo ÷ rendas` (rendas = 0 → sem taxa).
+- Saldo líquido de Contas = a receber − a pagar − faturas em aberto (2 casas); `faturaAberto = max(0, previsto − pago)`; totais de dívidas apenas pendentes com vencimento no mês.
+- Proventos somam como **investimento negativo**; compras/subscrições positivo.
+- Relatórios somam dívidas pagas (recebíveis → rendas; pagáveis → despesas) pelo mês do vencimento.
+- Recebimento integrado reduz a despesa no relatório pelo valor recebido (editável).
+- Percentual de meta: soma ≤ 100%.
+
+### 4.4 Ordenações padrão
+
+- Despesas/rendas: data desc, `created_at` desc.
+- Dívidas: `due_date` asc.
+- Dias da semana: Segunda → Domingo.
+- Meses: mais recente primeiro.
+- Alertas: atrasados primeiro, depois por vencimento.
+
+### 4.5 Validações de formulário (pt-BR)
+
+| Campo | Regra |
+|---|---|
+| Categoria (despesa/renda) | Obrigatória |
+| Valor | Obrigatório, numérico finito > 0 |
+| Data (despesa/renda) | ≥ APP_START_DATE (2026-01-01) |
+| Parcelas | Inteiro 1–60 |
+| Peso de relatório | Decimal 0–1 (default 1) |
+| Cartão | Obrigatório se `credit_card` |
+| Dívida — valor | ≥ 0 |
+| Cobrança vinculada | Obrigatório, > 0 e ≤ valor da despesa |
+| Meta de ativo | 0–100; soma ≤ 100% |
+| Período customizado | Máx. 366 dias |
+| Closing/due day | 1–31 (clamp) |
+
+Erros via gateway único (`getErrorMessage`), §1.7.
+
+---
+
+## 5. DIRETRIZ DE UI/UX
+
+### 5.1 Filosofia — Cards amigáveis (fintech) (D7)
+
+- **Linguagem visual:** cards arredondados (radius generoso), sombras suaves, cor primária **esmeralda `#10B981`** + teal/sky — identidade **"Vital · Verde + Terminal"** já resolvida em `docs/DESIGN_SYSTEM.md` (tokens em `src/styles/tokens.css`); tipografia Inter + Sora + IBM Plex Mono; microinterações sutis (hover, transições 150–200ms), tom acolhedor e mobile-first.
+- **Densidade:** informação clara em primeiro plano; gráficos quando agregam, nunca por decoração.
+- **Copy:** pt-BR, curta e orientada a ação ("Lançar despesa", "Quitar agora").
+
+### 5.2 Navegação e hierarquia (D8)
+
+- **Desktop:** sidebar fixa à esquerda com as áreas: **Início (Visão Geral) · Transações · Cartões · Dívidas · Orçamentos · Relatórios · Carteira · Lembretes (badge de pendências) · Configurações**.
+- **Mobile:** bottom tabs — **Início · Transações · [+]** (FAB central = lançamento guiado) **· Relatórios · Mais** (demais áreas + configurações).
+- **Deep-links:** `?card=`, `?month=`, busca com destaque (§3.9).
+- Áreas secundárias (categorias, perfil) acessíveis via Configurações.
+
+### 5.3 Temas (D9) — Light / Dark / OLED
+
+- Três temas completos via **tokens CSS** (variáveis): `light`, `dark` e `oled` (**true black `#000`** para telas AMOLED, com economia de bateria).
+- Toggle no cabeçalho + **seguir preferência do sistema**; preferência persistida em `user_preferences.theme`.
+- Tokens: cor de fundo, superfície, texto, borda, primária, sucesso/atenção/crítico, radius, sombra, espaçamento.
+
+### 5.4 Design System (D6)
+
+- **Base:** Tailwind CSS + shadcn/ui (Radix, acessível, customizável via tokens).
+- **Componentes core:** Button, Input, Select, Modal/Dialog, Sheet (mobile), Tabs, Card, Sidebar, BottomNav, Badge, Toast, Skeleton, EmptyState, Progress, Stepper (wizard), Command (busca ⌘K), DataList, Chart primitives.
+- **Formatação centralizada** nos serviços de apresentação (moeda, datas, status de dívida, cores de categoria).
+
+### 5.5 Fluxos críticos — Lançamento guiado (D10)
+
+**Tela cheia guiada (wizard de 4 passos), aberta por atalho global (tecla `N`) ou FAB `[+]`:**
+1. **Valor** — campo grande com máscara pt-BR e teclado numérico.
+2. **Tipo + Categoria** — toggle despesa/receita; grid de categorias com ícone/cor e sugestão inteligente por nome; opção "nova categoria".
+3. **Forma de pagamento** — cartão → parcelas (1–60) e competência calculada na hora (snapshot); senão cash/pix/transfer; opção "criar cobrança vinculada" (dívida integrada).
+4. **Detalhes** — data (default hoje), descrição, peso de relatório; **resumo** com valor/categoria/parcelamento/competência; botão salvar (RPC transacional).
+
+**Anti-fricção:** defaults inteligentes (última categoria e forma usadas), estado do wizard preservado ao navegar, validação inline com mensagens do gateway, sucesso com toast + retorno à lista do mês. Fluxo alternativo futuro (modal rápido) pode ser adicionado sem quebrar o fluxo guiado.
+
+### 5.6 Inventário de telas (prioridade)
+
+| Tela | Prioridade | Notas |
+|---|---|---|
+| Auth (login/registro/recuperação) | P0 | Supabase auth + gateway de erros |
+| Início / Visão Geral | P0 | KPIs, fluxo diário, orçamentos, alertas |
+| Lançamento guiado (wizard) | P0 | §5.5 |
+| Transações (lista por mês) | P0 | filtros, busca, deep-link |
+| Cartões (lista + fatura) | P0 | seleção automática de mês |
+| Dívidas | P0 | status derivado, quitação integrada |
+| Orçamentos | P0 | progresso, atenção, realocação |
+| Detalhe de lançamento | P1 | edição, exclusão (3 modos em parcelas) |
+| Pagamento / estorno de fatura | P1 | estorno → renda automática |
+| Quitação de dívida | P1 | pagar/receber + criar lançamento |
+| Categorias | P1 | sugestão inteligente, migração |
+| Relatórios | P1 | dia/mês/ano, custom 366d, comparativos |
+| Insights | P1 | alertas, assinaturas, recorrências |
+| Projeção e corte de gastos | P1 | gasto disponível, ritmo, sugestões |
+| Busca global (⌘K) | P1 | scoring + destaque |
+| Lembretes | P1 | consolidado, snooze |
+| Carteira | P2 | posição, custo médio, valoração |
+| Metas e calculadora de aporte | P2 | soma ≤ 100%, simulação |
+| Configurações | P2 | preferências, temas, lembretes |
+| Perfil | P2 | nome, e-mail, sessão |
+
+### 5.7 Estados vazios / carregamento / erro
+
+- **Empty states dedicados:** sem lançamentos no mês, sem categorias, sem metas de carteira, sem insights.
+- **Loading:** skeletons por card/lista (nunca spinner genérico em tela inteira, exceto rotas).
+- **Erro:** banner com mensagem do gateway + ação "Tentar novamente"; estados parciais quando aplicável (ex.: cotação desatualizada).
+- **Acessibilidade:** contraste AA nos 3 temas, foco visível, labels e aria nos componentes shadcn, navegação por teclado (⌘K, `N`, Esc).
+
+---
+
+## 6. ROADMAP DEFINITIVO DE DESENVOLVIMENTO
+
+> **Nota de governança (auditoria v1):** o plano de execução canônico — entregas em ordem, ordem da biblioteca de UI e DoD completo — vive em **`docs/ROADMAP.md`**. Esta seção é o **resumo executivo** e deve permanecer em sincronia com ele.
+>
+> Princípio: **fundação → dados → domínio financeiro → análise → carteira → experiência transversal → hardening**. Cada fase entrega valor testável e tem **Definition of Done (DoD)** objetivo.
+
+### Fase 0 — Fundação do Repositório & Design System
+
+**Objetivo:** base técnica e visual sólida antes de qualquer regra de negócio.
+
+1. Repo novo: Vite + React + TypeScript **estrito**, ESLint + Prettier, Vitest + Testing Library.
+2. CI: typecheck + lint + testes em todo PR.
+3. Tailwind config + **tokens** dos 3 temas (light/dark/oled) + toggle + persistência.
+4. shadcn/ui setup + **primitivos** (Button, Input, **MoneyInput**, Select, Card, Badge, Skeleton, EmptyState, Modal/Dialog, Tabs, DataList, Progress, Stepper, Command, Toast — ordem completa em `docs/ROADMAP.md` §4.1).
+5. Shell de navegação responsivo (sidebar desktop / bottom tabs mobile) + roteamento (react-router) + deep-link params.
+6. Adotar os tokens de `src/styles/tokens.css` + `globals.css` e carregar as Google Fonts (Inter, Sora, IBM Plex Mono) — identidade resolvida em `docs/DESIGN_SYSTEM.md`.
+7. **PWA base:** `vite-plugin-pwa` + manifest + ícones + service worker de assets (App Shell) — `docs/PWA_GUIDELINES.md`.
+
+**✅ DoD:** CI verde; 3 temas funcionando com toggle e preferência do sistema; componentes base revisados visualmente no browser (desktop + mobile); shell responsivo com navegação entre telas placeholder.
+
+---
+
+### Fase 1 — Infraestrutura de Dados & Autenticação
+
+**Objetivo:** dados seguros, atômicos e auditáveis — o alicerce Online First.
+
+1. Projeto Supabase + cliente único + módulo de env; estado de conexão/erro explícito.
+2. Auth: login, registro, recuperação de senha, sessão, perfil (`profiles` via trigger).
+3. **Schema completo** (§2) com migrations versionadas: constraints (parcelas 1–60, card no crédito, pesos 0–1, soma de metas ≤ 100% via trigger/RPC) e índices.
+4. **RLS** por `auth.uid()` em todas as tabelas (incl. `audit_events` imutável).
+5. **RPCs transacionais** (D1): catálogo inicial — `create_expense_with_debt`, `create_refund`, `delete_expense_installments`, `pay_debt`, `receive_debt`, `settle_integrated_receivable`, `delete_category_migrate`, `set_budget_limit`, `set_income_goal`, `recalculate_bill_competences`. **Recebem parcelas calculadas no cliente (`domain/money`) e validam invariantes no servidor** (D12).
+6. Gateway de erros (`getErrorMessage`) + contratos de estado (TanStack Query + hooks) para os domínios-base.
+7. Tabela `asset_prices` + edge function de atualização de cotações (cache em servidor).
+8. Serviço de storage (Cloudflare R2): abstração `src/services/storage` + endpoint de presigned URLs — fora do fluxo financeiro core.
+
+**✅ DoD:** teste de isolamento RLS (usuário A não lê dados de B); **cada RPC com teste de transação** (falha no meio → rollback total); contrato `data | loading | error | CRUD | refresh` disponível para os domínios-base; todas as mensagens de erro do gateway cobertas por teste.
+
+---
+
+### Fase 2 — Core de Finanças Pessoais
+
+**Objetivo:** CRUD completo e fiel às regras do §3.1–3.5.
+
+1. **Domínio puro:** parcelamento em centavos, `resolveBillCompetence` + `clampDay`, status derivado de dívidas, saldo de fatura, peso de relatório — com testes.
+2. Receitas e despesas: CRUD, listagem por mês, ordenação, validações.
+3. Parcelamento (1–60x) + exclusão 3 modos via RPC com cascata de dívidas.
+4. Cartões: CRUD, faturas, pagamentos, **estornos → renda automática** (somente-leitura), seleção automática de mês, saldo aberto.
+5. Dívidas: CRUD, cobrança vinculada, quitação com criação de lançamento, recebimento integrado.
+6. Categorias (sugestão por nome, migração na exclusão), orçamentos (herança, faixas 85/90/95%, realocação), metas de renda.
+7. **Telas correspondentes** (P0/P1 do §5.6) usando o design system e o wizard de lançamento.
+
+**✅ DoD:** suíte de testes espelhando as regras de centavos, competência snapshot e status derivado; cascata de exclusão verificada com rollback (falha → nada excluído); estorno gera renda `[REFUND]` somente-leitura; parcelas calculadas no cliente e validadas no servidor (soma = original, 1–60); CRUDs com estados vazios/erro/loading funcionando.
+
+---
+
+### Fase 3 — Análise, Projeção & Corte de Gastos
+
+**Objetivo:** inteligência sobre os dados (módulos puros + telas).
+
+1. **Motor de insights** puro: alertas críticos priorizados, assinaturas (3 sinais + tiers), recorrências (3 níveis), confiança + aprendizado (ignorar/confirmar/restaurar).
+2. Desafios de economia (10/20/30%, limite dinâmico, máx. 4) e sugestões de limite (máx. 3/mês).
+3. Projeção: gasto disponível diário, ritmo de gastos (8º dia / ≥30%), projeção de fim de mês (dia ≥ 3), projeção de pendências.
+4. Relatórios: dia/mês/ano, períodos customizados (≤ 366 dias), agregação por categoria/forma/dia da semana, comparativo, merge de dívidas pagas.
+5. Central de lembretes: consolidação de faturas/dívidas, marcar lido, snooze com expiração. **Decisão aberta:** push ou in-app.
+6. Telas: Insights, Projeção, Relatórios, Lembretes.
+
+**✅ DoD:** testes dos alertas priorizados (ordem correta) e da fórmula de confiança; projeções conferidas contra cálculo manual de referência; relatórios com peso de relatório e merge de dívidas pagas validados por testes; central de lembretes com snooze expirando ao vencer.
+
+---
+
+### Fase 4 — Carteira & Rebalanceamento
+
+**Objetivo:** posição confiável + calculadora de aporte.
+
+1. Ledger: custo médio, caixa derivado, splits/proventos — módulo puro + testes de reconciliação.
+2. Valoração: cache + fallback + **preço manual** (override marcado na UI) + guardrail de spike.
+3. Metas por ativo/classe/setor com validação soma ≤ 100% (UI + banco) e travas setoriais.
+4. **Calculadora de aporte**: `simulateSmartAporte` / `simulateRebalanceAporte` (2 modos) com log de roteamento.
+5. Telas: Carteira, Metas (edição em lote com barra de soma), Calculadora de aporte.
+
+**✅ DoD:** ledger reconciliado com exemplos manuais (compras/vendas/custo médio/splits); soma de metas > 100% bloqueada na UI e no banco; simulação nunca aloca além do aporte informado; preço manual prevalece sobre API/fallback e é exibido como "informado manualmente".
+
+---
+
+### Fase 5 — Experiência Transversal
+
+**Objetivo:** polish, acessibilidade e busca.
+
+1. **Busca global** (⌘K): normalização, scoring, recência, limites por tipo, deep-link com destaque.
+2. Tema OLED refinado (contraste e estados) + microinterações.
+3. Auditoria de acessibilidade (axe, contraste AA, foco, teclado) em todas as telas.
+4. Empty states completos + onboarding de primeiro uso (criar primeiras categorias/cartões).
+5. Performance: bundle splitting, virtualização de listas longas, revisão de queries (N+1).
+6. **PWA polish:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, splash/iOS, auditoria Lighthouse PWA.
+
+**✅ DoD:** busca retorna tipos ordenados por score com destaque funcional; auditoria a11y sem erros críticos; Lighthouse ≥ 90 (mobile); navegação 100% por teclado nas telas P0.
+
+---
+
+### Fase 6 — Hardening & Lançamento
+
+**Objetivo:** confiança, segurança e produção.
+
+1. **Prova de fidelidade:** suíte completa espelhando **cada regra** desta especificação (regressão contra o comportamento do app anterior).
+2. Segurança: revisão final de RLS, rate limit, secrets/ambiente.
+3. Observabilidade: logging de erros (ex.: Sentry — **decisão de serviço a confirmar**), métricas básicas.
+4. Deploy: **hosting do frontend a definir** (sugestão: Vercel — a confirmar) + CI/CD de produção; env seguros (Supabase, proxy de cotações).
+5. QA final multi-dispositivo + documento de release.
+
+**✅ DoD:** suíte de fidelidade 100% verde; revisão RLS auditada (nenhuma leitura cross-user); deploy de produção funcional com variáveis protegidas; checklist de QA aprovado em desktop + mobile (3 temas).
+
+---
+
+## ANEXO A — GLOSSÁRIO
+
+| Termo | Definição |
+|---|---|
+| `installment_group_id` | Identificador do grupo de parcelas de uma despesa |
+| `bill_competence` | Mês da fatura de cartão da despesa (**snapshot na escrita**, D3) |
+| `closing_day` / `due_day` | Dia de fechamento / vencimento da fatura |
+| `report_weight` | Peso (0–1) da despesa/receita nos relatórios |
+| `APP_START_DATE` | Data mínima aceita para lançamentos (2026-01-01) |
+| `cobrança vinculada` | Dívida criada junto da despesa (herda parcelas) |
+| `target_percentage` | Percentual-alvo de ativo/classe no patrimônio total |
+| `gap_financeiro` | Valor em R$ para alinhar posição à meta |
+| `burn rate` | Gasto médio diário usado na projeção de fim de mês |
+| `gasto disponível` | Orçamento diário derivado = mensalDisponível ÷ dias restantes |
+| `savingsRate` | Taxa de poupança = saldo ÷ rendas do período |
+| `audit_events` | Log imutável de eventos (exclusões, estornos, recálculos) — D2 |
+| `RPC transacional` | Função Postgres com BEGIN/COMMIT para operações compostas — D1 |
+
+---
+
+## DECISÕES EM ABERTO (para resolver nas fases indicadas)
+
+1. ~~Cor primária e identidade da marca~~ — **RESOLVIDA**: identidade **"Vital · Verde + Terminal"** (esmeralda/teal/sky, Inter + Sora + IBM Plex Mono, 3 temas, densidade equilibrada) — ver `docs/DESIGN_SYSTEM.md` e `src/styles/`.
+2. **Hosting do frontend** — Fase 6 (sugestão: Vercel; a confirmar).
+3. **Serviço de observabilidade/erros** — Fase 6 (sugestão: Sentry; a confirmar).
+4. **Notificações** — in-app apenas ou push (edge function) — decisão da Fase 3 (a spec atual assume in-app; push é opcional).
