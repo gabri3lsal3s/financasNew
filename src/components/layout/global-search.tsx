@@ -98,16 +98,13 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
           "min-w-0", // permite encolher o texto quando a barra é flexível
           // Barra de busca responsiva (pós-F10): ocupa a largura excedente
           // entre a marca/bordas e os botões do header — no mobile e no desktop
-          // (flex-1 via PageShell). O chip Ctrl+K aparece apenas no desktop.
+          // (flex-1 via PageShell).
           "size-auto h-10 w-full justify-start gap-2 rounded-lg border border-input bg-surface px-3 text-sm text-muted-foreground shadow-sm hover:bg-surface-hover",
           className,
         )}
       >
         <Search className="size-4 shrink-0" aria-hidden="true" />
         <span className="truncate">Buscar…</span>
-        <span className="ml-auto hidden shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground lg:inline">
-          Ctrl+K
-        </span>
       </Button>
       <Command
         open={open}
