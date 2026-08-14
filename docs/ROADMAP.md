@@ -171,7 +171,7 @@
 2. ✅ Desafios de economia (10/20/30%, limite dinâmico, máx. 4) e sugestões de limite (máx. 3/mês).
 3. ✅ Projeção (`domain/projection`): gasto disponível diário, ritmo de gastos (8º dia / ≥30%), fim de mês (dia ≥ 3), projeção de pendências.
 4. ✅ Relatórios: dia/mês/ano, custom (≤ 366 dias), agregação por categoria/forma/dia da semana, comparativo, merge de dívidas pagas.
-5. Central de lembretes: consolidação faturas/dívidas, marcar lido, snooze com expiração. **Decisão aberta:** push ou in-app.
+5. ✅ Central de lembretes: consolidação faturas/dívidas, marcar lido, snooze com expiração. **Decisão:** **in-app** (spec §2.10 — push fica opcional/futuro).
 6. **Telas:** Insights, Projeção e Corte, Relatórios, Lembretes (novos módulos de domínio quando necessário — ex.: `AlertCard`, `ProjectionLine`).
 
 **✅ DoD**
@@ -216,6 +216,16 @@
   - `validateCustomPeriod` — datas válidas, início ≤ fim e máximo de 366 dias;
   - `percentChange` reexportado do overview (comparativo — DRY, sem duplicação).
 - **17 testes verdes** (agregações, merge, validação de período, comparativo).
+
+**Progresso da entrega 5:**
+- `domain/reminders` — motores puros de §3.10 (in-app; push fica fora do escopo atual):
+  - `billReminder` / `debtReminder` — alertas de fatura (overdue/near_due com saldo aberto, reutiliza `invoiceStatus`) e dívida (vencida/hoje/em breve dentro da janela configurável, reutiliza `debtStatus`);
+  - `applyReminderState` + `isSnoozeExpired` — lido sai da lista; snooze oculta até a data e **expira ao vencer/atrasar** (o alerta volta);
+  - `sortReminders` — atrasados primeiro, depois por vencimento;
+  - `buildReminders` — consolidação completa (faturas + dívidas), com preferência desabilitada → lista vazia;
+  - `invoiceDueDate` extraído em `domain/cards` (DRY — reutilizado por `invoiceStatus` e lembretes).
+- Persistência: migration `0006_reminder_states.sql` (tabela com unique user+occurrence_key, RLS) + `src/data/repositories/reminder-states.ts` + `useReminderStates`/`useSetReminderState`.
+- **18 testes verdes** (14 domínio + 4 repository).
 
 
 ### Fase 4 — Carteira & Rebalanceamento

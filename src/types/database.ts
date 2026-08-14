@@ -16,6 +16,7 @@ import type {
   IncomeGoal,
   InsightFeedback,
   PortfolioAsset,
+  ReminderState,
   PortfolioTransaction,
   Profile,
   UserPreferences,
@@ -46,6 +47,7 @@ export interface Database {
       budgets: Table<Budget>;
       income_goals: Table<IncomeGoal>;
       insight_feedback: Table<InsightFeedback>;
+      reminder_states: Table<ReminderState>;
       portfolio_assets: Table<PortfolioAsset>;
       portfolio_transactions: Table<PortfolioTransaction>;
       allocation_targets: Table<AllocationTarget>;

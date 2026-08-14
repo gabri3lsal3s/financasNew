@@ -28,6 +28,17 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 };
 
 /**
+ * Data de vencimento de uma competência (YYYY-MM-DD), com dia clampado
+ * ao mês (dia 31 em fevereiro → último dia). Usada pelo status e lembretes.
+ */
+export function invoiceDueDate(competenceMonth: string, dueDay: number): string {
+  const [year, month] = competenceMonth.split("-").map(Number);
+  const y = year ?? 0;
+  const m = (month ?? 1) - 1;
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(clampDay(dueDay, y, m)).padStart(2, "0")}`;
+}
+
+/**
  * Status da fatura de uma competência.
  * @param competenceMonth YYYY-MM da fatura
  * @param dueDay dia do vencimento (1–31, clampado ao mês)
@@ -44,10 +55,7 @@ export function invoiceStatus(
 ): InvoiceStatus {
   if (balanceCents <= 0) return "closed";
 
-  const [year, month] = competenceMonth.split("-").map(Number);
-  const y = year ?? 0;
-  const m = (month ?? 1) - 1;
-  const dueDate = `${y}-${String(m + 1).padStart(2, "0")}-${String(clampDay(dueDay, y, m)).padStart(2, "0")}`;
+  const dueDate = invoiceDueDate(competenceMonth, dueDay);
 
   if (dueDate < today) return "overdue";
   if (dueDate <= addDaysISO(today, nearDueDays)) return "near_due";

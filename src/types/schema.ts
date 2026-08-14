@@ -199,6 +199,20 @@ export type InsightFeedback = {
   created_at: string;
 };
 
+export type ReminderStateKind = "read" | "snoozed";
+
+export type ReminderState = {
+  id: string;
+  user_id: string;
+  /** Chave estável: `bill:{card_id}:{YYYY-MM}` ou `debt:{debt_id}`. */
+  occurrence_key: string;
+  kind: ReminderStateKind;
+  /** Snooze até esta data (YYYY-MM-DD) — expira ao vencer/atrasar. */
+  snooze_until: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PortfolioAsset = {
   id: string;
   user_id: string;
