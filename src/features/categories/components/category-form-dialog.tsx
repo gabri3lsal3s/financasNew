@@ -1,10 +1,18 @@
 import { useState } from "react";
-import { Alert, Button, Input, Modal, RadioGroup, Select } from "@/components/ui";
-import { CATEGORY_ICON_OPTIONS } from "@/components/modules/category-icons";
+import { Alert, Button, ColorPicker, IconPicker, Input, Modal, RadioGroup } from "@/components/ui";
+import type { IconPickerOption } from "@/components/ui";
+import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
 import { suggestCategory } from "@/domain/budgets";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCategory, useUpdateCategory } from "@/state";
 import type { Category, CategoryType } from "@/types";
+
+/** Opções de ícone (lucide-react, sem emojis) montadas uma única vez. */
+const ICON_OPTIONS: IconPickerOption[] = Object.entries(CATEGORY_ICON_MAP).map(([name, icon]) => ({
+  value: name,
+  label: name,
+  icon,
+}));
 
 export interface CategoryFormDialogProps {
   /** Categoria em edição; `null` = criação. */
@@ -122,19 +130,21 @@ export function CategoryFormDialog({ category, defaultType, open, onOpenChange }
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Ícone</span>
-            <Select
+            <IconPicker
               value={icon}
               onValueChange={setIcon}
-              options={CATEGORY_ICON_OPTIONS.map((option) => ({ value: option, label: option }))}
+              options={ICON_OPTIONS}
               placeholder="Selecione"
               ariaLabel="Ícone da categoria"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="category-color" className="text-sm font-medium">
-              Cor
-            </label>
-            <Input id="category-color" value={color} onChange={(event) => setColor(event.target.value)} placeholder="#8B5CF6" />
+            <span className="text-sm font-medium">Cor</span>
+            <ColorPicker
+              value={color}
+              onValueChange={setColor}
+              ariaLabel="Cor da categoria"
+            />
           </div>
         </div>
 

@@ -30,6 +30,7 @@
 | **F8** | Refinamento Premium & Dashboard Insights | Micro-interações, superfícies suaves, Cards inteligentes no Início (ritmo, faturas, alertas) | Dashboard & Design |
 | **F9** | Utilitários Nativos & Gestos | Calculadora flutuante arrastável (FAB + injeção de valor) e Scroll-to-Top inteligente | Utilitários & Gestos |
 | **F10** | Identidade Visual Oficial "Guia Financeiro" | Reestilização dos 3 temas (Petróleo + Teal + Ouro + Coral), BrandLogo, assets PWA e contraste AA | Brand & Identidade |
+| **F11** | Centro de Personalização, Experiência Tátil & Micro-Interações Vivas | Acentos de cor, estilos de card, botões com ripple/spring, abas com sliding pill, hub /configuracoes e dashboard modular | Personalização & Micro-Interações |
 
 ---
 
@@ -614,6 +615,46 @@
 
 **✅ Fase 10 concluída:** identidade visual oficial "Guia Financeiro" aplicada nos 3 temas, com BrandLogo integrado (Sidebar/Header/Auth/PWA) e contraste AA certificado por teste.
 
+**Correções & UX pós-F10 (2026-08-14):**
+- [x] **Correção do erro "Dados inválidos" em TODAS as escritas (F11 hotfix):** causa raiz = conta órfã sem linha em `public.profiles` (trigger de signup criado depois da conta). Toda escrita (categorias, cartões, lançamentos, RPCs) falhava na FK `user_id → profiles(id)` (23503 → rótulo "Dados inválidos" do gateway).
+  - Migração `20260101000009_backfill_profiles.sql`: backfill idempotente de `profiles` + `user_preferences` para todas as contas órfãs (`on conflict do nothing`).
+  - Auto-cura em runtime: `ensureOwnProfile()` (`src/data/repositories/profiles.ts`) disparado 1x por sessão no `useAuth` — cobre bancos ainda não migrados (insere com `ignoreDuplicates`, RLS `profiles_insert_own`).
+- [x] **ColorPicker** (`components/ui/color-picker.tsx`): popover com paleta de marca harmonizada (18 swatches Teal/Ouro/Coral/Sky/neutros), hex custom validado (`#RGB`/`#RRGGBB`, normalizado) e limpar — substitui o input hex cru nos formulários de categoria e cartão.
+- [x] **IconPicker** (`components/ui/icon-picker.tsx`): grade de ícones `lucide-react` com busca e estado vazio, agnóstico de domínio (opções com ícones injetadas pelas telas a partir de `CATEGORY_ICON_MAP`) — substitui o select textual de ícone no formulário de categoria.
+- [x] Typecheck, lint (0 erros), build e suíte completa verdes (94 arquivos / 667 testes)
+
+---
+
+### Fase 11 — Centro de Personalização Avançada, Experiência Tátil & Micro-Interações Vivas
+
+**Objetivo:** transformar a experiência visual e sensorial do app em nível fintech ultra-premium, com hub completo de configurações, temas com múltiplos acentos de cor, estilos de superfície, botões com efeito ripple e física elástica, transições de abas fluidas e dashboard modular.
+
+**Entregas (na ordem):**
+1. **Motor de Acentos & Estilos de Superfície:**
+   - Variáveis de acento dinâmicas (`--accent-theme`: teal, emerald, gold, sapphire, violet, rose) e estilos de superfície (`glass`, `flat`, `elevated`) persistidos em preferências e aplicados instantaneamente via tokens CSS.
+2. **Biblioteca de Micro-Interações & Botões Vivos:**
+   - Primitivo `Button` com efeito ripple radial dinâmico, física elástica spring press e loading morfológico sem layout-shift.
+   - Componente `Tabs` e `SegmentedControl` com indicador deslizante fluido (*sliding active pill*).
+   - Badges com ponto de pulso vivo (`LivePulseBeacon`) para status urgentes.
+   - Síntese de áudio ultraleve opcional via Web Audio API (`services/audio-fx.ts`) para feedback tátil/auditivo de alta precisão.
+3. **Hub Completo de Configurações (`/configuracoes`):**
+   - Abas temáticas: **Perfil**, **Aparência & Temas**, **Movimento & Animações**, **Experiência Sensorial**, **Dashboard Modular** e **Lembretes & Dados**.
+   - Interface com seletores visuais de temas, acentos com swatches interativos, prévias em tempo real e toggles de widgets do Início.
+4. **Visão Geral Modular & Personalizável:**
+   - Adaptação do `OverviewPage` para respeitar as preferências de visibilidade de cards e widgets selecionados pelo usuário.
+5. **Auditoria de Acessibilidade, Contraste WCAG AA e Testes:**
+   - Validação de contraste AA para todas as 6 novas variações de cor de acento nos 3 temas.
+   - Suíte de testes unitários e de integração cobrindo o novo motor de preferências visuais e a página de configurações.
+
+**✅ DoD**
+- 6 paletas de acento funcionando com contraste WCAG AA testado nos 3 temas.
+- 3 estilos de superfície (glass, flat, elevated) aplicados dinamicamente.
+- Botões com física spring press, ripple pontual e loading morfológico.
+- Indicador deslizante funcional em `Tabs`.
+- Tela de configurações completa com abas funcionais e persistência.
+- Visão Geral renderizando os widgets conforme seleção do usuário.
+- Suíte de testes 100% verde (incluindo testes de configurações e áudio).
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
@@ -622,7 +663,7 @@
 
 ### 4.1 Primitivos (Fase 0 e extensões) — `components/ui`
 `Button → Input → MoneyInput → Select → Card → Badge → Skeleton → EmptyState → Progress → Modal/Dialog → ConfirmDialog → Tabs → DataList → Stepper → Command → Toast → Checkbox → RadioGroup → DatePicker → Slider → Accordion → Textarea → Dropzone`
-(+ `VirtualList`, `ScrollToTopButton`, `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer. **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
+(+ `VirtualList`, `ScrollToTopButton`, `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
 
 ### 4.2 Módulos de domínio (por fase) — `components/modules`
 - **F0/F2:** `MoneyInput` é primitivo de UI (Fase 0); `CategoryIcon`, `MonthPicker`, `TransactionRow`, `KpiCard`, `BudgetProgressBar`, `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge`, `WizardShell`.

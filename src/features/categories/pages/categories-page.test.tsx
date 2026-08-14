@@ -60,8 +60,8 @@ describe("CategoriesPage — CRUD e migração (§3.5.1)", () => {
     const name = screen.getByLabelText("Nome");
     await user.type(name, "Transporte");
 
-    // Sugestão por nome: ícone "transporte" pré-selecionado no Select
-    const iconTrigger = screen.getByRole("combobox", { name: "Ícone da categoria" });
+    // Sugestão por nome: ícone "transporte" pré-selecionado no IconPicker
+    const iconTrigger = screen.getByRole("button", { name: "Ícone da categoria" });
     expect(iconTrigger).toHaveTextContent("transporte");
 
     await user.click(screen.getByRole("button", { name: "Criar categoria" }));

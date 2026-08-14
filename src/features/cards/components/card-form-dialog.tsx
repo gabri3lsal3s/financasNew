@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Checkbox, Input, Modal, MoneyInput, NumberStepper } from "@/components/ui";
+import { Alert, Button, Checkbox, ColorPicker, Input, Modal, MoneyInput, NumberStepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCard, useUpdateCard } from "@/state";
 import type { CreditCard } from "@/types";
@@ -101,10 +101,8 @@ export function CardFormDialog({ card, open, onOpenChange }: CardFormDialogProps
             <Input id="card-brand" value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="Visa" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="card-color" className="text-sm font-medium">
-              Cor
-            </label>
-            <Input id="card-color" value={color} onChange={(event) => setColor(event.target.value)} placeholder="#8B5CF6" />
+            <span className="text-sm font-medium">Cor</span>
+            <ColorPicker value={color} onValueChange={setColor} ariaLabel="Cor do cartão" />
           </div>
         </div>
 

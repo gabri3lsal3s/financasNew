@@ -51,8 +51,9 @@
 │       └── offline.html           # Fallback offline (App Shell mínimo)
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
-│   └── migrations/                # 0001_schema.sql · 0002_rls.sql · 0003_functions.sql
-│                                  # (schema, RLS por auth.uid(), triggers + RPCs transacionais)
+│   └── migrations/                # 0001_schema.sql · 0002_rls.sql · 0003_functions.sql …
+│                                  # 0009_backfill_profiles.sql (schema, RLS por auth.uid(),
+│                                  # triggers + RPCs transacionais + backfill de perfis)
 │
 └── src/
     ├── main.tsx                   # Entry point: ReactDOM + registerPWA()
@@ -67,7 +68,8 @@
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
     │   │   │                      #   virtual-list (F5.5), toast, scroll-to-top-button (F9),
-    │   │   │                      #   number-ticker, sparkline (F8)…
+    │   │   │                      #   number-ticker, sparkline (F8), color-picker,
+    │   │   │                      #   icon-picker (pós-F10)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, transaction-row,
@@ -113,7 +115,8 @@
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
-    │   │                          #   onboarding.ts (contagens do primeiro uso)
+    │   │                          #   onboarding.ts (contagens do primeiro uso),
+    │   │                          #   profiles.ts (auto-cura de perfis órfãos)
     │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
     │
     ├── state/                     # CONTRATOS DE ESTADO para a UI

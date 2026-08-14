@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/data/client";
+import { ensureOwnProfile } from "@/data/repositories/profiles";
 import { getErrorMessage } from "@/services/errors";
-import { setObservabilityUser } from "@/services/observability";
+import { reportError, setObservabilityUser } from "@/services/observability";
 import type { Session, User } from "@supabase/supabase-js";
+
+/**
+ * Contas cujo perfil já foi garantido nesta sessão (F11) — a auto-cura é
+ * best-effort e roda UMA vez por usuário, nunca a cada render.
+ */
+const ensuredProfiles = new Set<string>();
 
 export interface AuthState {
   session: Session | null;
@@ -38,6 +45,18 @@ export function useAuth(): AuthState {
   // Correlaciona erros ao usuário no Sentry (no-op sem DSN) — F6.3.
   useEffect(() => {
     void setObservabilityUser(state.user ? { id: state.user.id, email: state.user.email } : null);
+  }, [state.user]);
+
+  // Auto-cura do perfil (F11): conta órfã sem linha em `profiles` faz TODAS
+  // as escritas falharem na FK user_id → profiles ("Dados inválidos").
+  // Disparo único por usuário, assíncrono e sem estado de UI.
+  useEffect(() => {
+    const user = state.user;
+    if (!user || ensuredProfiles.has(user.id)) return;
+    ensuredProfiles.add(user.id);
+    void ensureOwnProfile(user.id, user.email, user.user_metadata?.name).catch((err) => {
+      void reportError(err, { source: "ensureOwnProfile" });
+    });
   }, [state.user]);
 
   useEffect(() => {

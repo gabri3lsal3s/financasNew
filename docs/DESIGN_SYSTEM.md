@@ -229,6 +229,8 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 | `<input type="date">` | `DatePicker` (pt-BR, com tokens) |
 | `<input type="file">` | `Dropzone` (upload via `services/storage` — R2) |
 | `<input type="range">` | `Slider` |
+| `<input type="color">` | `ColorPicker` (paleta de marca + hex custom validado) |
+| `<select>` de ícones (emojis/texto) | `IconPicker` (grade de `lucide-react` com busca) |
 | `alert()` / `confirm()` / `prompt()` | `ConfirmDialog` / `Modal` + `Toast` |
 | `<dialog>` | `Modal` (componente do app) |
 | `<details>/<summary>` | `Accordion` |
