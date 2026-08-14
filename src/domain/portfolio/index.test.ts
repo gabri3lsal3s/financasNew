@@ -1,0 +1,151 @@
+import { describe, expect, it } from "vitest";
+import {
+  allocationGap,
+  applyOperation,
+  computeLedger,
+  convertToBRL,
+  valuePosition,
+  type LedgerTransaction,
+} from "./index";
+
+const tx = (overrides: Partial<LedgerTransaction> & Pick<LedgerTransaction, "type" | "date">): LedgerTransaction => ({
+  id: "t",
+  quantity: 0,
+  price: 0,
+  total: 0,
+  ...overrides,
+});
+
+describe("computeLedger (§3.11.2 — reconciliação)", () => {
+  it("compra simples: quantidade, custo total e custo médio", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 }),
+    ]);
+    expect(result.quantity).toBe(10);
+    expect(result.totalCost).toBe(1000);
+    expect(result.averageCost).toBe(100);
+    expect(result.cash).toBe(-1000); // compra debita do caixa derivado
+  });
+
+  it("duas compras → custo médio ponderado", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 }),
+      tx({ type: "buy", date: "2026-02-10", quantity: 10, price: 120, total: 1200 }),
+    ]);
+    expect(result.quantity).toBe(20);
+    expect(result.totalCost).toBe(2200);
+    expect(result.averageCost).toBe(110);
+    expect(result.cash).toBe(-2200);
+  });
+
+  it("venda reduz proporcionalmente o custo (custo médio preservado)", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 }),
+      tx({ type: "buy", date: "2026-02-10", quantity: 10, price: 120, total: 1200 }),
+      tx({ type: "sell", date: "2026-03-10", quantity: 5, price: 130, total: 650 }),
+    ]);
+    // Vendeu 5 × custo médio 110 = 550 de custo; restam 15 × 110 = 1650.
+    expect(result.quantity).toBe(15);
+    expect(result.totalCost).toBe(1650);
+    expect(result.averageCost).toBe(110);
+    expect(result.cash).toBe(-2200 + 650); // venda credita
+  });
+
+  it("proventos não alteram custo nem posição", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 }),
+      tx({ type: "dividend", date: "2026-04-10", quantity: 0, price: 0, total: 150 }),
+      tx({ type: "jcp", date: "2026-05-10", quantity: 0, price: 0, total: 20 }),
+    ]);
+    expect(result.quantity).toBe(10);
+    expect(result.totalCost).toBe(1000);
+    expect(result.averageCost).toBe(100);
+    expect(result.dividends).toBe(170); // acumula separadamente
+    expect(result.cash).toBe(-1000 + 170); // proventos creditam no caixa
+  });
+
+  it("split soma cotas preservando custo total", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 }),
+      tx({ type: "split", date: "2026-06-01", quantity: 2, price: 50, total: 0 }),
+    ]);
+    expect(result.quantity).toBe(20); // 10 × 2
+    expect(result.totalCost).toBe(1000);
+    expect(result.averageCost).toBe(50);
+    expect(result.cash).toBe(-1000); // split não movimenta caixa
+  });
+
+  it("reverse split subtrai cotas preservando custo total", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 20, price: 50, total: 1000 }),
+      tx({ type: "reverse_split", date: "2026-06-01", quantity: 2, price: 100, total: 0 }),
+    ]);
+    expect(result.quantity).toBe(10); // 20 ÷ 2
+    expect(result.totalCost).toBe(1000);
+    expect(result.averageCost).toBe(100);
+  });
+
+  it("subscrição debita do caixa e soma à posição", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 5, price: 100, total: 500 }),
+      tx({ type: "subscription", date: "2026-07-01", quantity: 3, price: 90, total: 270 }),
+    ]);
+    expect(result.quantity).toBe(8);
+    expect(result.totalCost).toBe(770);
+    expect(result.cash).toBe(-770);
+  });
+
+  it("ordena por data mesmo com entrada fora de ordem", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-02-10", quantity: 10, price: 120, total: 1200 }),
+      tx({ type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 }),
+    ]);
+    expect(result.averageCost).toBe(110); // compras fora de ordem → mesmo resultado
+    expect(result.quantity).toBe(20);
+  });
+
+  it("venda maior que a posição não gera quantidade negativa", () => {
+    const result = computeLedger([
+      tx({ type: "buy", date: "2026-01-10", quantity: 5, price: 100, total: 500 }),
+      tx({ type: "sell", date: "2026-03-10", quantity: 10, price: 110, total: 1100 }),
+    ]);
+    expect(result.quantity).toBe(0);
+    expect(result.totalCost).toBe(0);
+    expect(result.averageCost).toBe(0);
+  });
+
+  it("ledger vazio → posição zerada", () => {
+    expect(computeLedger([])).toEqual({ quantity: 0, averageCost: 0, totalCost: 0, dividends: 0, cash: 0 });
+  });
+});
+
+describe("valor e gap de alocação (§3.11.2)", () => {
+  it("valuePosition = quantidade × preço", () => {
+    expect(valuePosition({ quantity: 10 }, 120.5)).toBe(1205);
+  });
+
+  it("allocationGap calcula pctAtual, gapPct e gap financeiro", () => {
+    const gap = allocationGap(20_000, 30, 100_000);
+    expect(gap.pctAtual).toBe(20);
+    expect(gap.gapPct).toBe(10);
+    expect(gap.gapFinanceiroCents).toBe(10_000);
+  });
+
+  it("allocationGap com patrimônio zero → pctAtual 0", () => {
+    expect(allocationGap(0, 30, 0)).toEqual({ pctAtual: 0, gapPct: 30, gapFinanceiroCents: 0 });
+  });
+
+  it("convertToBRL: USD usa a cotação com fallback 5,25; BRL passa direto", () => {
+    expect(convertToBRL(100, "BRL")).toBe(100);
+    expect(convertToBRL(100, "USD")).toBe(525);
+    expect(convertToBRL(100, "USD", 5.5)).toBe(550);
+  });
+});
+
+describe("applyOperation (unitário)", () => {
+  it("dividend/jcp/fii_yield somam proventos e preservam posição", () => {
+    const base = { quantity: 10, averageCost: 100, totalCost: 1000, dividends: 0 };
+    const result = applyOperation(base, { type: "fii_yield", quantity: 0, price: 0, total: 42 });
+    expect(result).toEqual({ quantity: 10, averageCost: 100, totalCost: 1000, dividends: 42 });
+  });
+});

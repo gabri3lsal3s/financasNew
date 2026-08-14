@@ -236,13 +236,22 @@
 - Correção no motor: nível `similar` de recorrência usa rótulo de categoria (evita nome duplicado da primeira despesa).
 - **8 testes de página novos** (insights/reports/reminders).
 
+**Progresso da entrega 1 (Fase 4):**
+- `domain/portfolio` — motor puro do ledger (§3.11.2):
+  - `computeLedger` — posição derivada em ordem cronológica (custo médio, custo total, proventos separados, **caixa derivado nunca armazenado**); compras/subscrições debitam, vendas/proventos creditam, splits/reverse splits não movimentam caixa;
+  - `applyOperation` — unitário por tipo (venda reduz proporcionalmente pelo custo médio; proventos não alteram custo/posição; split soma cotas preservando custo total);
+  - `valuePosition` / `allocationGap` (pctAtual, gapPct, gapFinanceiro) / `convertToBRL` (USD→BRL com fallback 5,25).
+- **15 testes de reconciliação** com exemplos manuais (DoD) + 5 do repository.
+- Infra: `src/data/repositories/portfolio.ts` (assets + transações, conversão de borda numeric→number) + `usePortfolioAssets`/`useAssetPosition` (ledger derivado no hook)/`useCreatePortfolioAsset`/`useCreatePortfolioTransaction`.
+- Schema já existia (migrations 0001): `portfolio_assets`, `portfolio_transactions`, metas e `asset_prices` — sem migration nova.
+
 
 ### Fase 4 — Carteira & Rebalanceamento
 
 **Objetivo:** posição confiável + calculadora de aporte.
 
 **Entregas (na ordem):**
-1. **Ledger** (`domain/portfolio`): custo médio, caixa derivado, splits/proventos — testes de reconciliação.
+1. ✅ **Ledger** (`domain/portfolio`): custo médio, caixa derivado, splits/proventos — testes de reconciliação.
 2. Valoração: cache + fallback + **preço manual** (override marcado na UI) + guardrail de spike.
 3. Metas por ativo/classe/setor com soma ≤ 100% (UI + banco) e travas setoriais.
 4. **Calculadora de aporte**: `simulateSmartAporte` / `simulateRebalanceAporte` (2 modos) com log de roteamento.
