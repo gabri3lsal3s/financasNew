@@ -243,7 +243,7 @@ export function OverviewPage() {
               <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <span className="flex size-8 shrink-0 items-center justify-center text-primary">
                       <Wallet className="size-4" aria-hidden="true" />
                     </span>
                     <h2 className="text-sm font-semibold text-foreground">Saldo líquido de contas</h2>
@@ -278,7 +278,7 @@ export function OverviewPage() {
               <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-positive/10 text-positive-strong">
+                    <span className="flex size-8 shrink-0 items-center justify-center text-positive-strong">
                       <PiggyBank className="size-4" aria-hidden="true" />
                     </span>
                     <h2 className="text-sm font-semibold text-foreground">Taxa de poupança</h2>
@@ -309,7 +309,7 @@ export function OverviewPage() {
                 <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
                         <Activity className="size-3.5" aria-hidden="true" />
                       </span>
                       <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
@@ -330,7 +330,7 @@ export function OverviewPage() {
                 <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
                         <PieChart className="size-3.5" aria-hidden="true" />
                       </span>
                       <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
@@ -348,7 +348,7 @@ export function OverviewPage() {
             <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
                     <Target className="size-3.5" aria-hidden="true" />
                   </span>
                   <h2 className="text-sm font-semibold text-foreground">Orçamentos do mês</h2>

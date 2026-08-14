@@ -57,7 +57,7 @@ export function StepCategory({ categories, isLoading, isError, error, selectedId
               : "border-border bg-surface hover:bg-surface-hover",
           )}
         >
-          <span className="flex size-10 items-center justify-center rounded-full bg-muted">
+          <span className="flex size-10 items-center justify-center">
             <CategoryIcon icon={category.icon} color={category.color} className="size-5" />
           </span>
           <span className="text-center text-xs font-medium text-foreground">{category.name}</span>

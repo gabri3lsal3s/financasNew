@@ -18,7 +18,7 @@ export function SmartSpendingPaceCard({ pace, dailyCents }: SmartSpendingPaceCar
   return (
     <article className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
       <div className="flex items-center gap-2">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <span className="flex size-8 shrink-0 items-center justify-center">
           <Gauge className="size-4 text-foreground" aria-hidden="true" />
         </span>
         <h2 className="text-sm font-semibold text-foreground">Ritmo de gastos</h2>

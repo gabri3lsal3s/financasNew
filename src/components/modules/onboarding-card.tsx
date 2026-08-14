@@ -79,8 +79,8 @@ export function OnboardingCard({ counts }: OnboardingCardProps) {
             >
               <span
                 className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-full",
-                  step.done ? "bg-positive/15 text-positive-strong" : "bg-muted text-muted-foreground",
+                  "flex size-8 shrink-0 items-center justify-center",
+                  step.done ? "text-positive-strong" : "text-muted-foreground",
                 )}
                 aria-hidden="true"
               >

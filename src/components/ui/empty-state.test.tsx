@@ -17,24 +17,26 @@ describe("EmptyState (F12 — polimento)", () => {
     expect(screen.getByRole("button", { name: "Criar" })).toBeInTheDocument();
   });
 
-  it("aplica o tom da marca (primary) por padrão no círculo do ícone", () => {
+  it("aplica o tom da marca (primary) por padrão no ícone — sem fundo", () => {
     const { container } = render(<EmptyState {...base} />);
-    const circle = container.querySelector("div.rounded-full");
-    expect(circle).toHaveClass("bg-primary/10", "text-primary-strong", "ring-primary/20");
+    const icon = container.querySelector("div.size-12");
+    expect(icon).toHaveClass("text-primary-strong");
+    expect(icon).not.toHaveClass("bg-primary/10", "bg-muted");
   });
 
   it("aplica o tom semântico informado (negative) e o neutro (default)", () => {
     const { container, rerender } = render(<EmptyState {...base} tone="negative" />);
-    let circle = container.querySelector("div.rounded-full");
-    expect(circle).toHaveClass("bg-negative/10", "text-negative-strong");
+    let icon = container.querySelector("div.size-12");
+    expect(icon).toHaveClass("text-negative-strong");
 
     rerender(<EmptyState {...base} tone="default" />);
-    circle = container.querySelector("div.rounded-full");
-    expect(circle).toHaveClass("bg-muted", "text-muted-foreground");
+    icon = container.querySelector("div.size-12");
+    expect(icon).toHaveClass("text-muted-foreground");
+    expect(icon).not.toHaveClass("bg-muted");
   });
 
-  it("não renderiza círculo sem ícone", () => {
+  it("não renderiza o contêiner do ícone sem ícone", () => {
     const { container } = render(<EmptyState title="Vazio" />);
-    expect(container.querySelector("div.rounded-full")).toBeNull();
+    expect(container.querySelector("div.size-12")).toBeNull();
   });
 });

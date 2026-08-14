@@ -39,7 +39,7 @@ export function AlertCard({ priority, title, description, icon, actions }: Alert
     <article className={cn("flex flex-col gap-2 rounded-xl border p-4", PRIORITY_TONES[priority])}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background/60">
+          <span className="flex size-8 shrink-0 items-center justify-center">
             {icon ?? <Icon className="size-4" aria-hidden="true" />}
           </span>
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>

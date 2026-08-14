@@ -66,7 +66,8 @@ export function TransactionRow({
         className,
       )}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
+      {/* F12 — ícone sem fundo (chip transparente): só o ícone da categoria. */}
+      <span className="flex size-9 shrink-0 items-center justify-center">
         <CategoryIcon icon={icon} color={iconColor} />
       </span>
       <div className="min-w-0 flex-1">

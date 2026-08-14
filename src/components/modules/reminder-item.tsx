@@ -36,8 +36,8 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, stateKind 
       <div className="flex items-start gap-3">
         <span
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-lg",
-            item.kind === "bill" ? "bg-portfolio/12 text-portfolio" : "bg-primary/12 text-primary-strong",
+            "flex size-9 shrink-0 items-center justify-center",
+            item.kind === "bill" ? "text-portfolio" : "text-primary-strong",
           )}
         >
           <Icon className="size-4" aria-hidden="true" />

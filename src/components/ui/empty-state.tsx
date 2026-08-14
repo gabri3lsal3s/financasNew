@@ -8,19 +8,20 @@ export interface EmptyStateProps {
   action?: ReactNode;
   className?: string;
   /**
-   * Tonalidade do círculo do ícone (F12 — polimento): padrão é a marca
-   * (primary); use "default" para neutro discreto ou a semântica do contexto
+   * Tonalidade do ícone (F12 — polimento): padrão é a marca (primary); use
+   * "default" para neutro discreto ou a semântica do contexto
    * (positive/negative/warning) quando o estado vazio carregar esse sentido.
+   * O ícone é exibido SEM fundo — apenas a cor tonal.
    */
   tone?: "default" | "primary" | "positive" | "negative" | "warning";
 }
 
-const toneCircle: Record<NonNullable<EmptyStateProps["tone"]>, string> = {
-  default: "bg-muted text-muted-foreground",
-  primary: "bg-primary/10 text-primary-strong ring-1 ring-primary/20",
-  positive: "bg-positive/10 text-positive-strong ring-1 ring-positive/20",
-  negative: "bg-negative/10 text-negative-strong ring-1 ring-negative/20",
-  warning: "bg-warning/12 text-warning-strong ring-1 ring-warning/25",
+const toneIcon: Record<NonNullable<EmptyStateProps["tone"]>, string> = {
+  default: "text-muted-foreground",
+  primary: "text-primary-strong",
+  positive: "text-positive-strong",
+  negative: "text-negative-strong",
+  warning: "text-warning-strong",
 };
 
 export function EmptyState({ icon, title, description, action, className, tone = "primary" }: EmptyStateProps) {
@@ -32,7 +33,7 @@ export function EmptyState({ icon, title, description, action, className, tone =
       )}
     >
       {icon ? (
-        <div className={cn("flex size-12 items-center justify-center rounded-full", toneCircle[tone])}>
+        <div className={cn("flex size-12 items-center justify-center", toneIcon[tone])}>
           {icon}
         </div>
       ) : null}
