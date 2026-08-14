@@ -583,7 +583,7 @@ export function SettingsPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+    <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-foreground">Configurações & Personalização</h1>
         <p className="text-sm text-muted-foreground">
