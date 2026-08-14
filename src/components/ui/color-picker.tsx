@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Check, Droplet, X } from "lucide-react";

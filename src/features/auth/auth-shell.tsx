@@ -11,7 +11,7 @@ export interface AuthShellProps {
 /** Casca das telas de auth — Card centralizado com a marca oficial (F10), DRY entre login/cadastro/recuperação. */
 export function AuthShell({ title, subtitle, children }: AuthShellProps) {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background p-4">
+    <div className="flex min-h-dvh items-center justify-center p-4">
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="flex-col items-center gap-3 text-center">
           <BrandLogo />

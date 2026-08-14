@@ -1,16 +1,12 @@
 import { useState } from "react";
-import { ArrowRight, Inbox, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, Progress, Skeleton } from "@/components/ui";
+import { Inbox, PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Alert, EmptyState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   DailyFlowChart,
   KpiCard,
   MonthPicker,
   OnboardingCard,
-  SavingsHealthCard,
-  SmartAnomaliesCard,
-  SmartInvoiceProjectionCard,
-  SmartSpendingPaceCard,
 } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import { isOnboardingComplete } from "@/domain/onboarding";
@@ -20,12 +16,9 @@ import {
   globalUsedPercent,
   isInheritedLimit,
   progressTone,
-  reallocationSuggestion,
   resolveEffectiveLimit,
 } from "@/domain/budgets";
-import { autoSelectBillMonth, buildCompetenceSummaries, invoiceDueDate } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
-import { criticalAlerts } from "@/domain/insights/alerts";
 import {
   accountsNet,
   buildDailyFlow,
@@ -34,8 +27,6 @@ import {
   openInvoicesTotal,
   percentChange,
 } from "@/domain/overview";
-import { dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projection";
-import type { MonthPhase } from "@/domain/projection";
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
@@ -51,7 +42,6 @@ import {
   useIncomes,
   useIncomesByRange,
   useOnboardingCounts,
-  useReallocateBudget,
 } from "@/state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { cn } from "@/lib/utils";
@@ -63,12 +53,6 @@ const weightedSum = (items: readonly { value: number; report_weight: number }[])
 
 const formatPercent = (value: number) =>
   value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-
-/** Último dia do mês YYYY-MM. */
-function daysInMonthOf(month: string): number {
-  const [year, monthNum] = month.split("-").map(Number);
-  return new Date(year ?? 0, monthNum ?? 1, 0).getDate();
-}
 
 function DeltaHint({ currentCents, previousCents, invert }: { currentCents: number; previousCents: number; invert?: boolean }) {
   const delta = percentChange(currentCents, previousCents);
@@ -88,13 +72,11 @@ function DeltaHint({ currentCents, previousCents, invert }: { currentCents: numb
 /** Janela dos últimos N meses (antigo → atual) para os sparklines dos KPIs. */
 const SPARK_MONTHS = 6;
 
-/** Visão Consolidada (§3.6) + Dashboard de Insights (F8). */
+/** Visão Consolidada (§3.6) — Dashboard limpo e objetivo de finanças pessoais. */
 export function OverviewPage() {
   const [month, setMonth] = useState(currentMonth());
   const previousMonth = shiftMonth(month, -1);
   const today = todayISO();
-  const currentMonthKey = today.slice(0, 7);
-  const phase: MonthPhase = month === currentMonthKey ? "current" : month < currentMonthKey ? "past" : "future";
 
   const incomesQuery = useIncomes(month);
   const expensesQuery = useExpenses(month);
@@ -103,25 +85,21 @@ export function OverviewPage() {
   const budgetsQuery = useBudgets();
   const expenseCategories = useCategories("expense");
   const debtsQuery = useDebts();
-  const cardsQuery = useCreditCards();
+  useCreditCards();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
 
-  // Série dos últimos meses para os micro-sparklines dos KPIs (F8).
+  // Série dos últimos meses para os micro-sparklines dos KPIs.
   const sparkStart = shiftMonth(month, -(SPARK_MONTHS - 1));
   const sparkRange = { start: `${sparkStart}-01`, end: `${shiftMonth(month, 1)}-01` };
   const sparkExpensesQuery = useExpensesByRange(sparkRange.start, sparkRange.end);
   const sparkIncomesQuery = useIncomesByRange(sparkRange.start, sparkRange.end);
 
-  const [reallocateOpen, setReallocateOpen] = useState(false);
-  const [reallocateError, setReallocateError] = useState<string | null>(null);
-  const reallocate = useReallocateBudget();
   const onboardingQuery = useOnboardingCounts();
   const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
   const visual = useVisualCustomization();
 
   const loading =
-
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
     prevIncomesQuery.isLoading ||
@@ -147,8 +125,7 @@ export function OverviewPage() {
   const totals = computeOverview(incomeCents, expenseCents, investmentCents);
   const prevTotals = computeOverview(prevIncomeCents, prevExpenseCents, investmentCents);
 
-  // Sparklines: totais mensais ponderados dos últimos 6 meses (derivação
-  // pura por render — mesmo padrão do restante da página).
+  // Sparklines: totais mensais ponderados dos últimos 6 meses.
   const sparkSeries = monthlySeries(
     [
       ...(sparkIncomesQuery.data ?? []).map((item) => ({
@@ -180,56 +157,14 @@ export function OverviewPage() {
   const openInvoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
   const accountsBalance = accountsNet(receivablePending, payablePending, openInvoices);
 
-  // Faturas em aberto por cartão (card inteligente F8): competência
-  // auto-selecionada + vencimento (mesmo critério da Central de Lembretes).
-  const openInvoiceRows = (cardsQuery.data ?? [])
-    .filter((card) => card.is_active)
-    .flatMap((card) => {
-      const expenses = (cardExpensesQuery.data ?? []).filter((e) => e.card_id === card.id);
-      const payments = (cardPaymentsQuery.data ?? []).filter((p) => p.card_id === card.id);
-      const summaries = buildCompetenceSummaries(expenses, payments);
-      const billMonth = autoSelectBillMonth(summaries, today);
-      const summary = summaries.find((s) => s.month === billMonth);
-      return summary && summary.saldoCents > 0
-        ? [{ saldoCents: summary.saldoCents, dueDate: invoiceDueDate(billMonth, card.due_day) }]
-        : [];
-    })
-    .sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1));
-
-  // Fluxo diário (barras empilhadas) + curva de saldo acumulado (F8).
+  // Fluxo diário (barras empilhadas) + curva de saldo acumulado.
   const dailyItems = [
     ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: toCents(i.value * i.report_weight) })),
     ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: toCents(e.value * e.report_weight) })),
   ];
   const dailyFlow = buildDailyFlow(month, dailyItems);
 
-  // Ritmo, gasto diário e projeção de fim de mês (domain/projection — F8).
-  const dayOfMonth = Number(today.slice(8, 10));
-  const daysInMonth = daysInMonthOf(month);
-  const pace = spendingPace({
-    spentCents: expenseCents,
-    monthlyBudgetCents: Math.max(1, incomeCents - investmentCents),
-    dayOfMonth,
-    daysInMonth,
-  });
-  const budget = dailyBudget({
-    phase,
-    incomesCents: incomeCents,
-    investmentsCents: investmentCents,
-    expensesCents: expenseCents,
-    dayOfMonth,
-    daysInMonth,
-  });
-  const endMonth = endOfMonthProjection({
-    phase,
-    incomesCents: incomeCents,
-    investmentsCents: investmentCents,
-    expensesCents: expenseCents,
-    dayOfMonth,
-    daysInMonth,
-  });
-
-  // Orçamentos compactos (§3.6): progresso, lista de atenção e realocação.
+  // Orçamentos compactos (§3.6): progresso e lista de atenção.
   const budgets = budgetsQuery.data ?? [];
   const limitsByCategory = new Map<string, { month: string; limitCents: number }[]>();
   for (const budgetRow of budgets) {
@@ -256,57 +191,12 @@ export function OverviewPage() {
     .filter((row) => row.status !== "ok")
     .sort((a, b) => b.spentCents / b.limitCents - a.spentCents / a.limitCents);
 
-  const storedLimitsByCategory = new Map<string, number>();
-  for (const budgetRow of budgets) {
-    if (budgetRow.month === month) storedLimitsByCategory.set(budgetRow.category_id, toCents(budgetRow.limit));
-  }
-  const suggestion = reallocationSuggestion(
-    budgetRows.map((row) => ({
-      categoryId: row.category.id,
-      limitCents: storedLimitsByCategory.get(row.category.id) ?? 0,
-      spentCents: row.spentCents,
-    })),
-  );
-  const suggestionFrom = suggestion ? (expenseCategories.data ?? []).find((c) => c.id === suggestion.fromCategoryId) : undefined;
-  const suggestionTo = suggestion ? (expenseCategories.data ?? []).find((c) => c.id === suggestion.toCategoryId) : undefined;
-
-  // Alertas críticos priorizados (domain/insights — F8): mesmos insumos da InsightsPage.
-  const overspentBudgets = attentionRows.filter((row) => row.status === "exceeded").length;
-  const burnRatePercent = incomeCents > 0 ? (expenseCents / incomeCents) * 100 : 0;
-  const paceRatio = pace.active ? 1 + pace.gapPoints / 100 : 1;
-  const projectedDeficit = dayOfMonth >= 10 && endMonth.onTrack === false;
-  const alerts = criticalAlerts({
-    balanceCents: totals.balanceCents,
-    incomeCents,
-    paceRatio,
-    overspentBudgets,
-    burnRatePercent,
-    projectedDeficit,
-    savingsRatePercent: totals.savingsRatePercent,
-  });
-
-  // Donut de categorias (F8): principais despesas do mês.
+  // Donut de categorias: principais despesas do mês.
   const donutSlices = (expenseCategories.data ?? [])
     .map((category) => ({ label: category.name, valueCents: spentByCategory.get(category.id) ?? 0 }))
     .filter((slice) => slice.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents)
     .slice(0, 5);
-
-  const applyReallocation = async () => {
-    if (!suggestion) return;
-    setReallocateError(null);
-    try {
-      await reallocate.mutateAsync({
-        fromCategoryId: suggestion.fromCategoryId,
-        toCategoryId: suggestion.toCategoryId,
-        month,
-        amount: suggestion.amountCents / 100,
-      });
-      setReallocateOpen(false);
-    } catch (err) {
-      setReallocateError(getErrorMessage(err));
-    }
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -323,13 +213,18 @@ export function OverviewPage() {
       ) : null}
 
       {loading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+        <div className="flex flex-col gap-3" aria-hidden="true">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <SkeletonKpi />
+            <SkeletonKpi />
+            <SkeletonKpi />
+            <SkeletonKpi />
+          </div>
+          <SkeletonChart />
         </div>
       ) : (
         <>
-          {/* KPIs fundamentais (§3.6) com NumberTicker + sparkline (F8) */}
+          {/* KPIs fundamentais (§3.6) com sparkline */}
           {visual.dashboardWidgets.kpis && (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <KpiCard
@@ -358,9 +253,9 @@ export function OverviewPage() {
             </div>
           )}
 
-          {/* Resumo financeiro (§3.6): posição de caixa, poupança e saúde — logo após os KPIs */}
-          {visual.dashboardWidgets.savingsHealth && (
-            <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {/* Resumo financeiro (§3.6): saldo líquido de contas e taxa de poupança */}
+          {visual.dashboardWidgets.summary && (
+            <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2">
               <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
                 <div className="flex items-center gap-2">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -368,9 +263,13 @@ export function OverviewPage() {
                   </span>
                   <h2 className="text-sm font-semibold text-foreground">Saldo líquido de contas</h2>
                 </div>
-                <p className={cn("num text-3xl font-semibold", accountsBalance >= 0 ? "text-positive-strong" : "text-critical")}>
-                  {formatCentsAsBRL(accountsBalance)}
-                </p>
+                <MoneyText
+                  cents={accountsBalance}
+                  variant="hero"
+                  tone="auto"
+                  sign="auto"
+                  className="text-3xl"
+                />
                 <p className="text-xs text-muted-foreground">
                   A receber <span className="privacy-mask">{formatCentsAsBRL(receivablePending)}</span> · A pagar{" "}
                   <span className="privacy-mask">{formatCentsAsBRL(payablePending)}</span> · Faturas em aberto{" "}
@@ -392,32 +291,10 @@ export function OverviewPage() {
                   {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
                 </p>
               </article>
-
-              <div className="md:col-span-2 xl:col-span-1">
-                <SavingsHealthCard savingsRatePercent={totals.savingsRatePercent} incomeCents={incomeCents} expenseCents={expenseCents} />
-              </div>
             </section>
           )}
 
-          {/* Cards inteligentes (F8): ritmo, faturas e anomalias — atenção do período */}
-          {(visual.dashboardWidgets.pace || visual.dashboardWidgets.invoices || visual.dashboardWidgets.anomalies) &&
-          (phase === "current" || openInvoiceRows.length > 0 || alerts.length > 0) ? (
-            <section aria-label="Insights do período" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {visual.dashboardWidgets.pace && (
-                <SmartSpendingPaceCard pace={phase === "current" ? pace : null} dailyCents={phase === "current" ? budget.dailyCents : null} />
-              )}
-              {visual.dashboardWidgets.invoices && (
-                <SmartInvoiceProjectionCard
-                  openInvoicesCents={openInvoiceRows.reduce((acc, row) => acc + row.saldoCents, 0)}
-                  openCount={openInvoiceRows.length}
-                  nearestDueDate={openInvoiceRows[0]?.dueDate ?? null}
-                />
-              )}
-              {visual.dashboardWidgets.anomalies && <SmartAnomaliesCard alerts={alerts} />}
-            </section>
-          ) : null}
-
-          {/* Análises do período (F8): fluxo diário + distribuição por categoria lado a lado */}
+          {/* Análises do período: fluxo diário + distribuição por categoria */}
           {(visual.dashboardWidgets.flow || (visual.dashboardWidgets.donut && donutSlices.length > 0)) && (
             <section
               aria-label="Análises do período"
@@ -449,7 +326,7 @@ export function OverviewPage() {
             </section>
           )}
 
-          {/* Orçamentos (§3.6): progresso + atenção + realocação */}
+          {/* Orçamentos (§3.6): progresso e lista de atenção */}
           {visual.dashboardWidgets.budgets && (
             <section aria-label="Orçamentos" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
               <div className="flex items-center justify-between">
@@ -478,23 +355,6 @@ export function OverviewPage() {
                   ) : null}
                 </div>
               )}
-
-              {suggestion && suggestionFrom && suggestionTo ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-attention/40 bg-attention/5 p-3">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Sparkles className="size-4 shrink-0 text-attention" aria-hidden="true" />
-                    <span className="text-muted-foreground">
-                      Transfira <span className="num font-semibold text-foreground">{formatCentsAsBRL(suggestion.amountCents)}</span> de{" "}
-                      <span className="font-medium text-critical">{suggestionFrom.name}</span> para{" "}
-                      <span className="font-medium text-positive-strong">{suggestionTo.name}</span>.
-                    </span>
-                  </div>
-                  <Button type="button" size="sm" variant="outline" onClick={() => setReallocateOpen(true)}>
-                    <ArrowRight aria-hidden="true" />
-                    Aplicar
-                  </Button>
-                </div>
-              ) : null}
             </section>
           )}
 
@@ -507,26 +367,7 @@ export function OverviewPage() {
           ) : null}
         </>
       )}
-
-      <ConfirmDialog
-        open={reallocateOpen}
-        onOpenChange={setReallocateOpen}
-        title="Aplicar realocação?"
-        description={
-          suggestion && suggestionFrom && suggestionTo
-            ? `Transferir ${formatCentsAsBRL(suggestion.amountCents)} do limite de ${suggestionFrom.name} para ${suggestionTo.name} (mês ${month}).`
-            : undefined
-        }
-        confirmLabel={reallocate.isPending ? "Aplicando…" : "Aplicar realocação"}
-        confirmPending={reallocate.isPending}
-        onConfirm={() => void applyReallocation()}
-      >
-        {reallocateError ? (
-          <div className="mt-4">
-            <Alert variant="error">{reallocateError}</Alert>
-          </div>
-        ) : null}
-      </ConfirmDialog>
     </div>
   );
 }
+

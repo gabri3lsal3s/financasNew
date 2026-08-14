@@ -244,6 +244,7 @@ export function InsightsPage() {
                     icon={<Lightbulb className="size-6" aria-hidden="true" />}
                     title="Nada crítico"
                     description="Nenhum alerta ativo no momento."
+                    tone="positive"
                   />
                 ) : (
                   <div className="flex flex-col gap-2">

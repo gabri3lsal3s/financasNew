@@ -98,7 +98,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
     await user.click(screen.getByRole("tab", { name: /Dashboard/i }));
     expect(screen.getByText(/Resumo de Saldo & KPIs/i)).toBeInTheDocument();
-    expect(screen.getByText(/Ritmo de Gastos Diário/i)).toBeInTheDocument();
+    expect(screen.getByText(/Saldo Líquido de Contas & Poupança/i)).toBeInTheDocument();
   });
 
   it("navega até a aba Perfil e exibe dados da conta", async () => {

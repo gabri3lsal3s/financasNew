@@ -141,3 +141,83 @@ describe("contraste AA dos tokens (DESIGN_SYSTEM §2)", () => {
     });
   }
 });
+
+/**
+ * F11 DoD (fechado na F12) — contraste AA das 6 paletas de acento nos 3 temas.
+ * Valores hex espelhando `tokens.css` (blocos `data-accent`). Regras:
+ * 1. `primary-strong` sobre o fundo ≥ 4.5:1 — texto de botões/links (os botões
+ *    pós-F10 são borda + texto colorido, sem fundo sólido);
+ * 2. `primary-foreground` sobre `primary-strong` ≥ 4.5:1 — texto dos controles
+ *    sólidos (Stepper/DatePicker selecionados);
+ * 3. `primary` sobre o fundo ≥ 3:1 — não-texto (ring de foco, progresso,
+ *    seleção, checkmark).
+ * Ajustes da F12: emerald light primary 160 84 33 (#0D9B6C), gold light
+ * primary 42 73 40 (#B0841C) + strong 38 92 30 (#935F06), violet dark/oled
+ * 258 92 72 (#9D76F9). O ouro decorativo (--accent #DDA726) é exceção
+ * documentada (glow/órbitas) — não é requisito de texto (teste acima).
+ */
+const ACCENTS = {
+  teal: {
+    light: { primary: "#2A9D90", strong: "#176E64" },
+    dark: { primary: "#2BD4C0", strong: "#2BD4C0" },
+    oled: { primary: "#2BD4C0", strong: "#2BD4C0" },
+  },
+  emerald: {
+    light: { primary: "#0D9B6C", strong: "#047752" },
+    dark: { primary: "#36D399", strong: "#36D399" },
+    oled: { primary: "#36D399", strong: "#36D399" },
+  },
+  gold: {
+    light: { primary: "#B0841C", strong: "#935F06" },
+    dark: { primary: "#F3C353", strong: "#F3C353" },
+    oled: { primary: "#F3C353", strong: "#F3C353" },
+  },
+  sapphire: {
+    light: { primary: "#0369A0", strong: "#075783" },
+    dark: { primary: "#0DA2E7", strong: "#0DA2E7" },
+    oled: { primary: "#0DA2E7", strong: "#0DA2E7" },
+  },
+  violet: {
+    light: { primary: "#7C3BED", strong: "#6B26D9" },
+    dark: { primary: "#9D76F9", strong: "#9D76F9" },
+    oled: { primary: "#9D76F9", strong: "#9D76F9" },
+  },
+  rose: {
+    light: { primary: "#E21D48", strong: "#B51739" },
+    dark: { primary: "#FB6F84", strong: "#FB6F84" },
+    oled: { primary: "#FB6F84", strong: "#FB6F84" },
+  },
+} as const;
+
+/** Fundos e foregrounds dos 3 temas (mesmos dos PALETTES acima). */
+const ACCENT_CONTEXT = {
+  light: { background: "#F4F7F9", foreground: "#FFFFFF" },
+  dark: { background: "#0C1923", foreground: "#022C22" },
+  oled: { background: "#000000", foreground: "#022C22" },
+} as const;
+
+describe("contraste AA das 6 paletas de acento × 3 temas (F11 DoD — F12)", () => {
+  for (const [accent, themes] of Object.entries(ACCENTS)) {
+    describe(`acento ${accent}`, () => {
+      for (const [theme, colors] of Object.entries(themes)) {
+        const ctx = ACCENT_CONTEXT[theme as keyof typeof ACCENT_CONTEXT];
+        const label = `no tema ${theme}`;
+
+        it(`primary-strong é texto legível ${label} (≥ 4.5:1)`, () => {
+          const ratio = contrastRatio(colors.strong, ctx.background);
+          expect(ratio).toBeGreaterThanOrEqual(4.5);
+        });
+
+        it(`primary-foreground sobre primary-strong ${label} (≥ 4.5:1)`, () => {
+          const ratio = contrastRatio(ctx.foreground, colors.strong);
+          expect(ratio).toBeGreaterThanOrEqual(4.5);
+        });
+
+        it(`primary é não-texto perceptível ${label} (≥ 3:1)`, () => {
+          const ratio = contrastRatio(colors.primary, ctx.background);
+          expect(ratio).toBeGreaterThanOrEqual(3);
+        });
+      }
+    });
+  }
+});

@@ -679,7 +679,7 @@
 - [x] **Centro de Configurações** (`/configuracoes` → `settings-page.tsx`): abas Perfil/Aparência & Temas/Movimento & Sensorial/Dashboard/Conta/Backup com seletores de tema e acento, toggles de som/densidade e modulação do dashboard
 - [x] **Visão Geral modular**: widgets da overview (KPIs, cards inteligentes, donut, fluxo, orçamentos, saúde) gated por `dashboardWidgets`
 - [x] Testes da página de configurações e do motor (`settings-page.test.tsx`, `use-visual-customization.test.ts`, `audio-fx.test.ts`) + suíte completa verde
-- [ ] **Pendente (DoD):** auditoria de contraste AA das 6 paletas de acento nos 3 temas (`domain/accessibility`) e validação final desktop/mobile
+- [x] **DoD fechado (F12):** auditoria de contraste AA das 6 paletas de acento nos 3 temas (`domain/accessibility`, 18 combinações) + validação final desktop/mobile — ver Fase 12
 
 ---
 
@@ -713,6 +713,16 @@
 - Hover/focus/active unificados em botões, abas e cards clicáveis, com acessibilidade preservada.
 - Contraste AA auditado (3 temas × 6 acentos) e validação final desktop/mobile documentada.
 - Suíte de testes 100% verde (incluindo testes dos novos primitivos `MoneyText` e variantes de EmptyState/Skeleton).
+
+**Progresso — Fase 12, ciclo de implementação 1 (2026-08-14):**
+- [x] **EmptyState com variantes por contexto (entrega 1):** prop `tone` (`default`/`primary`/`positive`/`negative`/`warning`) — círculo do ícone na marca (`bg-primary/10` + `ring-primary/20`) ou na semântica do estado (vazio positivo em receitas/lembretes, negativo em despesas); padrão `primary`. Aplicado nas telas já auditadas (transações, insights, lembretes) + 4 testes.
+- [x] **Skeleton loaders por contexto (entrega 1):** `SkeletonList` (linhas ícone+texto+valor), `SkeletonKpi` (card de KPI), `SkeletonChart` (bloco de gráfico) e `SkeletonTable` (cabeçalho+linhas) — todos herdam o shimmer base; substituem os blocos genéricos `h-24 w-full`. Aplicados na Visão Geral (grade de KPIs + chart) e na listagem de transações + 4 testes.
+- [x] **`MoneyText` (entrega 2 — hierarquia tipográfica):** primitivo de valor monetário em `components/ui` com variantes `hero` (KPI) / `value` (lista) / `caption` (resumo), `.num` (mono + tabular — coberto pela máscara de privacidade global), cor semântica `auto` (positivo → positive, negativo → negative, zero → default) ou forçada (`positive`/`negative`/`default`/`portfolio` — ex.: despesa sempre negative) e sinal `explicit` (+/−) / `auto` (só −) / `none`. Substitui a formatação ad-hoc (`formatCentsAsBRL` + classes soltas). **Aplicado** em `TransactionRow` (receita + verde, despesa − vermelho) e no card "Saldo líquido de contas" da Visão Geral — que **corrige um bug**: saldo negativo era exibido como "R$ 0,00" (a máscara `formatCentsAsBRL` zerava negativos) e agora aparece "−R$ …" em vermelho. + 7 testes.
+- [x] **DoD pendente da F11 fechado (entrega 4):** auditoria de contraste AA das **6 paletas de acento × 3 temas** em `domain/accessibility` (18 combinações × 3 regras): `primary-strong` sobre o fundo ≥ 4.5:1 (texto de botões/links pós-F10, que são borda + texto colorido), `primary-foreground` sobre `primary-strong` ≥ 4.5:1 (Stepper/DatePicker selecionados) e `primary` sobre o fundo ≥ 3:1 (não-texto: ring de foco/progresso/checkmark). **Ajustes finos de tokens** apontados pela auditoria: emerald light `primary` 160 84 39 → **33%** (#0D9B6C, 3.32:1), gold light `primary` 42 73 51 → **40%** (#B0841C, 3.19:1) + `primary-strong` 38 92 38 → **30%** (#935F06, 5.07:1 no fundo / 5.41:1 com foreground branco; o brilho dourado decorativo permanece via `--accent` #DDA726) e violet dark/oled 258 90 66 → **258 92 72** (#9D76F9, 5.47:1 / 4.61:1). + 18 testes.
+- [x] **Blindagem do teste de segurança (F6.2):** `security-audit.test.ts` lia arquivos rastreados pelo `git ls-files` (índice) sem checar existência em disco — a renomeação `routes.tsx` → `routes.ts` (não staged) quebrava a suíte com ENOENT; agora arquivos ausentes no working tree são ignorados (o teste valida apenas o que existe).
+- [x] **Visão Geral "dashboard limpo e objetivo" (consolidação de widgets):** a modulação do Início foi simplificada — os widgets `pace`/`invoices`/`anomalies`/`savingsHealth` (cards inteligentes F8) deram lugar a um único widget `summary` (Saldo Líquido de Contas & Poupança); os cards inteligentes e a realocação de orçamento saem do dashboard (continuam completos em Insights/Orçamentos — DRY, sem duplicação); o gradiente glass saiu do `main` e passou ao `body` com `background-attachment: fixed` (cor de acento ancorada à janela, não à coluna de conteúdo). Config `DashboardWidgetsConfig` e página de Configurações atualizadas em conjunto.
+- [x] Typecheck, lint (0 erros), build e suíte completa verdes (102 arquivos / **759 testes**).
+- [ ] Revisão visual no browser (desktop/mobile/3 temas × 6 acentos) — pendente (manual)
 
 ---
 

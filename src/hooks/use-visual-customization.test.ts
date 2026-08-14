@@ -65,8 +65,9 @@ describe("useVisualCustomization (F11)", () => {
 
   it("permite ligar e desligar widgets do dashboard", () => {
     updateVisualCustomization({
-      dashboardWidgets: { ...getVisualCustomization().dashboardWidgets, kpis: false },
+      dashboardWidgets: { ...getVisualCustomization().dashboardWidgets, kpis: false, summary: false },
     });
     expect(getVisualCustomization().dashboardWidgets.kpis).toBe(false);
+    expect(getVisualCustomization().dashboardWidgets.summary).toBe(false);
   });
 });

@@ -1,9 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { OverviewPage } from "./overview-page";
-
-const reallocateMock = vi.fn();
 
 const expenseCategories = [
   { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense" },
@@ -36,7 +33,7 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
-  // Sparklines dos KPIs (F8): mesmo dataset do mês — caem no último ponto.
+  // Sparklines dos KPIs: mesmo dataset do mês — caem no último ponto.
   useIncomesByRange: () => ({
     data: [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05" }],
     isLoading: false,
@@ -93,7 +90,6 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
-  useReallocateBudget: () => ({ mutateAsync: reallocateMock, isPending: false }),
   useOnboardingCounts: () => ({
     data: { expenseCategories: 2, incomeCategories: 1, cards: 1, transactions: 3 },
     isLoading: false,
@@ -140,44 +136,18 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(container.querySelectorAll("svg polyline").length).toBeGreaterThan(0);
   });
 
-  it("dashboard F8: cards inteligentes de ritmo, faturas e anomalias", () => {
-    render(<OverviewPage />);
-    expect(screen.getByText("Ritmo de gastos")).toBeInTheDocument();
-    expect(screen.getByText("Faturas em aberto")).toBeInTheDocument();
-    // 1 cartão com saldo 60 → próximo vencimento 10/08/2026 (valor também
-    // aparece no resumo "A pagar" — daí o getAllByText).
-    expect(screen.getAllByText("R$ 60,00").length).toBeGreaterThan(0);
-    // Alertas priorizados (orçamento estourado: Moradia 3.000/2.000).
-    expect(screen.getByText("Orçamentos estourados")).toBeInTheDocument();
-  });
-
-  it("dashboard F8: donut de categorias e saúde da poupança", () => {
+  it("exibe o donut de distribuição por categorias", () => {
     render(<OverviewPage />);
     expect(screen.getByText("Distribuição por categoria")).toBeInTheDocument();
-    expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     // Moradia 3.000 de 3.100 = 97% · Lazer 100 = 3%
     expect(screen.getByText("97%")).toBeInTheDocument();
     expect(screen.getByText("3%")).toBeInTheDocument();
   });
 
-  it("lista categorias em atenção e sugere realocação", async () => {
-    reallocateMock.mockResolvedValue(undefined);
-    const user = userEvent.setup();
+  it("lista categorias em atenção nos orçamentos", () => {
     render(<OverviewPage />);
-
-    // Moradia R$ 3.000/2.000 → Excedida; excesso R$ 1.000 → realoca para Lazer
+    // Moradia R$ 3.000/2.000 → Excedida (aparece no donut e nos orçamentos)
     expect(screen.getByText("Excedida")).toBeInTheDocument();
-    // Texto quebrado entre spans — valida a presença da sugestão por partes
-    expect(screen.getByText(/Transfira/)).toBeInTheDocument();
-    expect(screen.getAllByText("R$ 1.000,00").length).toBeGreaterThan(0);
-
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar realocação" }));
-
-    expect(reallocateMock).toHaveBeenCalledTimes(1);
-    const params = reallocateMock.mock.calls[0]?.[0];
-    expect(params.fromCategoryId).toBe("c1");
-    expect(params.toCategoryId).toBe("c2");
-    expect(params.amount).toBe(1000);
+    expect(screen.getAllByText("Moradia").length).toBeGreaterThan(0);
   });
 });

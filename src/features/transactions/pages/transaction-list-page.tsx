@@ -4,7 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonList } from "@/components/ui/skeleton";
 import { VirtualList } from "@/components/ui/virtual-list";
 import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
 import { currentMonth, isValidMonth } from "@/lib/date";
@@ -141,9 +141,7 @@ export function TransactionListPage() {
         </div>
       ) : loading ? (
         <div className="flex flex-col gap-2">
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
+          <SkeletonList rows={4} />
         </div>
       ) : (
         <div className="flex flex-col gap-6">
@@ -157,6 +155,7 @@ export function TransactionListPage() {
                 icon={<ArrowDownLeft className="size-6" aria-hidden="true" />}
                 title="Nenhuma receita"
                 description="Registre sua primeira renda do mês."
+                tone="positive"
               />
             ) : (
               <VirtualList
@@ -186,6 +185,7 @@ export function TransactionListPage() {
                 icon={<ArrowUpRight className="size-6" aria-hidden="true" />}
                 title="Nenhuma despesa"
                 description="Registre seu primeiro gasto do mês."
+                tone="negative"
               />
             ) : (
               <VirtualList

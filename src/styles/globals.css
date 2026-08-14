@@ -303,13 +303,15 @@
     }
   }
 
-  /* Profundidade do glass: leve gradiente radial na área de conteúdo, tintado
+  /* Profundidade do glass: leve gradiente radial no fundo do app, tintado
      pelo acento (--primary) e pelo ouro (--accent) — a cor personalizada
-     aparece sutilmente no fundo do app (só no estilo glass). */
-  html:not([data-surface-style]) main {
+     aparece sutilmente nos limites da janela do app (só no estilo glass). */
+  html:not([data-surface-style]) body {
     background-image:
       radial-gradient(70rem 34rem at 88% -12%, hsl(var(--primary) / 0.07), transparent 62%),
       radial-gradient(54rem 30rem at -14% 108%, hsl(var(--accent) / 0.06), transparent 58%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
 
   /* Glow suave na cor de acento */

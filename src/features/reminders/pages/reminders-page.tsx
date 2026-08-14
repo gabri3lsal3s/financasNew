@@ -106,6 +106,7 @@ export function RemindersPage() {
           icon={<Bell className="size-6" aria-hidden="true" />}
           title="Tudo em dia"
           description="Nenhuma fatura ou dívida vencendo nos próximos dias."
+          tone="positive"
         />
       ) : (
         <div className="flex flex-col gap-2">

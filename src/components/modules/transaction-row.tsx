@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/modules/category-icon";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
 import { triggerHaptic } from "@/services/haptics";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
 import { useDensity } from "@/hooks/use-density";
@@ -23,16 +23,16 @@ export interface TransactionRowProps {
   swipeActions?: ReactNode;
 }
 
-const kindValue: Record<TransactionRowProps["kind"], string> = {
-  income: "text-positive-strong",
-  expense: "text-negative-strong",
-  neutral: "text-foreground",
+const kindTone: Record<TransactionRowProps["kind"], MoneyTextProps["tone"]> = {
+  income: "positive",
+  expense: "negative",
+  neutral: "default",
 };
 
-const kindSign: Record<TransactionRowProps["kind"], string> = {
-  income: "+",
-  expense: "−",
-  neutral: "",
+const kindSign: Record<TransactionRowProps["kind"], MoneyTextProps["sign"]> = {
+  income: "explicit",
+  expense: "explicit",
+  neutral: "none",
 };
 
 /** Linha de lançamento (receita/despesa) — módulo de domínio reutilizável. */
@@ -75,12 +75,14 @@ export function TransactionRow({
       </div>
       {badges ? <div className="flex shrink-0 items-center gap-1.5">{badges}</div> : null}
       {/* Máscara global via .num (globals.css) — aria-hidden preserva a privacidade p/ leitores de tela. */}
-      <span
-        className={cn("num shrink-0 text-sm font-semibold", kindValue[kind])}
+      <MoneyText
+        cents={kind === "expense" ? -Math.abs(amountCents) : amountCents}
+        variant="value"
+        tone={kindTone[kind]}
+        sign={kindSign[kind]}
+        className="shrink-0"
         aria-hidden={masked || undefined}
-      >
-        {`${kindSign[kind]}${formatCentsAsBRL(amountCents)}`}
-      </span>
+      />
     </div>
   );
 

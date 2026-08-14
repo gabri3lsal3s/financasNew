@@ -26,7 +26,7 @@ export function PageShell() {
   const location = useLocation();
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="min-h-dvh text-foreground">
       {/* Estado da sidebar vive aqui (fonte única) e a margem acompanha em tempo real. */}
       <Sidebar isCollapsed={isCollapsed} onToggle={toggle} />
       {/* Margem acompanha o estado da sidebar (F7.2): lg:pl-64 expandida ↔ lg:pl-20 compacta. */}

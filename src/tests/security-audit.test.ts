@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -116,7 +116,10 @@ describe("F6.2 — segredos e ambiente", () => {
       /(sk_live_[A-Za-z0-9]+|pk_live_[A-Za-z0-9]+|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|service_role[=: ]+eyJ[A-Za-z0-9_-]+|AIza[0-9A-Za-z_-]{30,}|AKIA[0-9A-Z]{16})/;
     const hits = tracked.filter((f) => {
       if (!/\.(ts|tsx|js|json|toml|sql|md|yaml|yml|example)$/.test(f)) return false;
-      return secretPattern.test(readFileSync(resolve(root, f), "utf8"));
+      // Arquivo removido/renomeado no working tree (ainda no índice) não é lido.
+      const abs = resolve(root, f);
+      if (!existsSync(abs)) return false;
+      return secretPattern.test(readFileSync(abs, "utf8"));
     });
     expect(hits).toEqual([]);
   });

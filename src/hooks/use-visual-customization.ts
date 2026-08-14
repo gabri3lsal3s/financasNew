@@ -6,12 +6,9 @@ export type MotionLevel = "fluid" | "eco" | "reduced";
 
 export interface DashboardWidgetsConfig {
   kpis: boolean;
-  pace: boolean;
-  invoices: boolean;
-  anomalies: boolean;
+  summary: boolean;
   flow: boolean;
   donut: boolean;
-  savingsHealth: boolean;
   budgets: boolean;
 }
 
@@ -35,12 +32,9 @@ const STORAGE_KEYS = {
 
 const DEFAULT_WIDGETS: DashboardWidgetsConfig = {
   kpis: true,
-  pace: true,
-  invoices: true,
-  anomalies: true,
+  summary: true,
   flow: true,
   donut: true,
-  savingsHealth: true,
   budgets: true,
 };
 

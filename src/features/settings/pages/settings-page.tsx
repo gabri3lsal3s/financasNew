@@ -458,12 +458,9 @@ export function SettingsPage() {
             <CardContent className="space-y-3">
               {[
                 { key: "kpis" as const, label: "Resumo de Saldo & KPIs (com Sparklines)", desc: "Entradas, Saídas, Investimentos e Saldo Geral" },
-                { key: "pace" as const, label: "Ritmo de Gastos Diário", desc: "Acompanhamento inteligente de média diária e projeção de fim de mês" },
-                { key: "invoices" as const, label: "Projeção de Faturas de Cartão", desc: "Estimativa da próxima fatura com base nas compras parceladas" },
-                { key: "anomalies" as const, label: "Alertas & Anomalias de Consumo", desc: "Destaque de gastos fora da curva e despesas críticas" },
+                { key: "summary" as const, label: "Saldo Líquido de Contas & Poupança", desc: "A receber, a pagar, faturas abertas e taxa de poupança" },
                 { key: "flow" as const, label: "Gráfico de Fluxo Diário", desc: "Curva acumulada de receitas versus despesas no mês" },
                 { key: "donut" as const, label: "Distribuição por Categorias", desc: "Gráfico donut com os maiores destinos do seu dinheiro" },
-                { key: "savingsHealth" as const, label: "Saúde da Poupança & Reserva", desc: "Taxa de poupança mensal e cobertura da reserva de emergência" },
                 { key: "budgets" as const, label: "Acompanhamento de Orçamentos", desc: "Barras de consumo e limites por categoria" },
               ].map((w) => (
                 <label
