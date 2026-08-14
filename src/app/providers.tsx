@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "@/app/theme-provider";
 import { Toaster } from "@/components/ui/toast";
+import { PWAUpdateToast } from "@/components/modules/pwa-update-toast";
 
 /**
  * Providers globais. A política de retry materializa a regra Online First
@@ -23,7 +24,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <Toaster>{children}</Toaster>
+        <Toaster>
+          {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}
+          <PWAUpdateToast />
+          {children}
+        </Toaster>
       </ThemeProvider>
     </QueryClientProvider>
   );

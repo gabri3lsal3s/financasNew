@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { navItems } from "@/components/layout/nav-items";
+import { InstallAppButton } from "@/components/modules/install-app-button";
 
 export function MoreMenu() {
   return (
@@ -17,6 +18,8 @@ export function MoreMenu() {
           </Link>
         ))}
       </nav>
+      {/* PWA: instalação no menu (nunca popup intrusivo) — PWA_GUIDELINES §6 */}
+      <InstallAppButton />
     </div>
   );
 }

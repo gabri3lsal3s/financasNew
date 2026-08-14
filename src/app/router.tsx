@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation } from "react-router";
 import { appRoutes } from "@/app/routes";
 import { Skeleton } from "@/components/ui";
@@ -7,17 +6,6 @@ import { MoreMenu } from "@/components/layout/more-menu";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
 import { LaunchWizard } from "@/features/transactions";
 import { useAuth } from "@/hooks/use-auth";
-
-/** Fallback de carregamento das rotas lazy (bundle splitting F5.5) — Skeleton, sem spinner. */
-function RouteFallback() {
-  return (
-    <div className="flex flex-col gap-6">
-      <Skeleton className="h-9 w-48" />
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-24 w-full" />
-    </div>
-  );
-}
 
 /** Guard de autenticação: sem sessão → tela de login preservando a rota de origem. */
 function RequireAuth() {
@@ -63,11 +51,9 @@ export function AppRouter() {
           {/* Tela cheia guiada (D10) — fora do shell de navegação */}
           <Route path="/transacoes/novo" element={<LaunchWizard />} />
           <Route element={<PageShell />}>
-            <Suspense fallback={<RouteFallback />}>
-              {appRoutes.map((route) => (
-                <Route key={route.path} path={route.path} element={<route.Component />} />
-              ))}
-            </Suspense>
+            {appRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={<route.Component />} />
+            ))}
             <Route path="/mais" element={<MoreMenu />} />
             <Route path="*" element={<MoreMenu />} />
           </Route>
@@ -76,3 +62,4 @@ export function AppRouter() {
     </BrowserRouter>
   );
 }
+

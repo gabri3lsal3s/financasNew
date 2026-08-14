@@ -96,7 +96,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── providers.tsx          # AuthProvider, QueryClientProvider, ThemeProvider
     │   ├── router.tsx
     │   ├── routes.ts              # Mapa de rotas + deep-links (?card=, ?month=, ?q=)
-    │   └── pwa.ts                 # Registro do SW + prompt de instalação (PWA)
+    │   └── pwa.ts                 # Registro SW (autoUpdate) + stores de instalação/atualização (F5.6)
     │
     ├── components/
     │   ├── ui/                    # ⭐ PRIMITIVOS GENÉRICOS (sem domínio)

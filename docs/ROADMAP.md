@@ -317,7 +317,7 @@
 3. ✅ **Auditoria de acessibilidade** (axe, contraste AA, foco, teclado) em todas as telas.
 4. ✅ **Empty states completos** + onboarding de primeiro uso.
 5. ✅ **Performance**: bundle splitting, virtualização de listas, revisão de queries (N+1).
-6. **PWA polish:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, splash/iOS, auditoria Lighthouse PWA.
+6. ✅ **PWA polish:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, splash/iOS, auditoria PWA (instalabilidade).
 
 **Progresso — Fase 5, entrega 1 (busca global §3.9):**
 - `domain/search` — motor puro com testes (14): `normalizeSearch` (acentos/minúsculas), `matchScore` (igual 100/prefixo 85/contém 60), `numericMatchScore` (valor 30), status de dívida 40, `recencyBonus` logarítmico (0m +25 … 12m+ +0), `monthsBetween`, `scoreSearchEntry` e `searchGlobal` (máx. 5/tipo, 12 total, score desc).
@@ -341,6 +341,14 @@
 - **Auditoria de empty states:** todas as telas com EmptyState dedicado (DESIGN_SYSTEM §11) — transações (receitas/despesas), cartões (sem cartão/fatura/pagamento), dívidas, orçamentos, categorias, relatórios, insights, lembretes, carteira (posição/metas/aporte) e wizard — tom "Nenhum/Nenhuma/Sem + substantivo" com descrição imperativa e ícone lucide contextual.
 - **Onboarding de primeiro uso (§5.7):** `domain/onboarding` (puro, 9 testes) — checklist de 4 passos (categorias de despesa/renda, cartão, primeiro lançamento) com progresso e conclusão derivados das contagens; `getOnboardingCounts` (repositório, 3 testes) com contagens leves em paralelo (head: true, is_reserved = false) + `useOnboardingCounts`.
 - **OnboardingCard** na Visão Geral (módulo + 5 testes, axe incluso): progresso `n/4`, passos done com check, CTAs "Configurar" com deep-link (`/categorias?type=`, `/cartoes`, `/transacoes/novo`); some automaticamente quando o setup completa (Online First — derivação por dados, sem persistência local).
+
+**Progresso — Fase 5, entrega 6 (PWA polish):**
+- **Instalação (`beforeinstallprompt`):** `pwa.ts` guarda o evento (preventDefault) e expõe store externa (`subscribePWAInstall`/`getCanInstallPWA`/`promptPWAInstall`); hook `usePWAInstall` (useSyncExternalStore — sem setState em effect/render) + módulo `InstallAppButton` no menu "Mais" (nunca popup intrusivo — §6); some ao instalar (`appinstalled`) ou quando o app roda em standalone (`display-mode`/`navigator.standalone`).
+- **Atualização automática com toast:** com `registerType: autoUpdate`, o `onNeedReload` intercepta o reload automático e notifica a store (`notifyPWAUpdate`/`consumePWAUpdate`) — o `PWAUpdateToast` global (montado no `Toaster` em `providers.tsx`) anuncia "Nova versão disponível" com ação "Atualizar" (reload explícito, sem perda de estado) e fecha consumindo o anúncio (re-anuncia em nova versão). `Toast` ganhou prop `action` (Radix Action) e o primitivo `Toaster` foi corrigido (os children — os toasts — agora são renderizados dentro do Provider; antes eram descartados pelo spread `{...props}`).
+- **Splash/iOS:** meta tags completas no `index.html` (theme-color light/dark, apple-mobile-web-app-*, apple-touch-icon, viewport-fit=cover) + manifest com `theme_color` por media — já vigentes, agora auditados.
+- **Auditoria PWA automatizada:** `tests/pwa-audit.test.ts` (4 testes) — manifest válido (campos obrigatórios + ícones 192/512/maskable), ícones em disco, meta tags PWA/iOS e fluxo do SW (autoUpdate + onNeedReload + beforeinstallprompt). Proxy dos checks de instalabilidade do Lighthouse; a auditoria completa (≥ 90) exige app servido em HTTPS — ver `PWA_GUIDELINES.md` §7.
+- **Testes de fluxo** (`tests/pwa.test.tsx`): botão de instalação (oculto → beforeinstallprompt → visível → clique consome o evento) e toast de atualização (anuncia → fechar consome → nova versão re-anuncia → "Atualizar" recarrega).
+- **F5.6 concluída ✅** — Fase 5 completa.
 
 **Progresso — Fase 5, entrega 3 (auditoria a11y):**
 - **Axe automatizado:** `vitest-axe` + `axe-core` (devDeps) com matcher `toHaveNoViolations` no setup; auditoria de **10 telas P0** (auth ×3, overview, transações, cartões, dívidas, orçamentos, wizard + fluxo de diálogo) — todas sem violações; teste de sanidade garante que o matcher detecta violações reais.

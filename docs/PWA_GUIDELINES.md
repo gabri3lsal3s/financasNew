@@ -1,6 +1,7 @@
 # 📱 PWA_GUIDELINES.md — Requisitos de Progressive Web App
 
-> **Status:** v1.0 — O app é um **PWA moderno** (instalável em mobile/desktop).
+> **Status:** v1.1 — O app é um **PWA moderno** (instalável em mobile/desktop).
+> **F5.6 implementado:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast e auditoria automatizada de instalabilidade — ver §6.
 > **Regra-mestra:** o app é **100% Online First** nos dados — o Service Worker **jamais cacheia dados de negócio ou respostas de API**. O PWA garante apenas o **carregamento instantâneo do App Shell** (casca visual) e de assets estáticos.
 > Implementação recomendada: **vite-plugin-pwa** (gera manifest + service worker a partir de config, com Workbox).
 
@@ -138,31 +139,39 @@ Referência completa (ajustar nomes à marca final):
 
 ---
 
-## 6. INSTALAÇÃO E CICLO DE VIDA
+## 6. INSTALAÇÃO E CICLO DE VIDA (IMPLEMENTADO — F5.6)
 
 **Critérios de instalação (Chrome):** HTTPS (localhost ok) · manifest com `name`/`short_name`/ícones 192+512 · SW com `fetch` handler · app aberto 2+ vezes com intervalo.
 
-**Fluxo (`src/app/pwa.ts`):**
-1. Registrar o SW no load (`registerType: 'autoUpdate'` → `skipWaiting` + `clientsClaim`).
-2. Ouvir `beforeinstallprompt` → guardar o evento e **mostrar botão "Instalar app"** (em menu/rodapé, nunca popup intrusivo).
-3. Ao clicar → `prompt()` → `appinstalled` → ocultar o botão.
-4. **Atualização:** quando um novo SW é detectado, exibir **toast "Nova versão disponível — atualizar"** (o autoUpdate aplica na próxima abertura ou no clique).
+**Fluxo implementado:**
+
+1. **Registro do SW (`src/app/pwa.ts`):** `registerSW({ immediate: true, onNeedReload, onRegisterError })` — `registerType: 'autoUpdate'` (o SW gerado no build tem `skipWaiting` + `clientsClaim`).
+2. **Atualização automática com toast:** com `autoUpdate`, quando um SW novo ativa, o plugin chamaria `onNeedReload` e recarregaria a página; **interceptamos** com o callback e notificamos a store externa (`notifyPWAUpdate`/`consumePWAUpdate`). O `PWAUpdateToast` (global, montado no `Toaster` em `app/providers.tsx`) anuncia "Nova versão disponível" com a ação **"Atualizar"** (reload explícito — o usuário decide, sem perda de estado) ou pode fechar (o anúncio é consumido; uma nova versão re-anuncia). O toast usa `duration: Infinity` (não some sozinho até o usuário agir).
+3. **Instalação (`beforeinstallprompt`):** o `pwa.ts` escuta o evento (com `preventDefault()`, exigência do Chromium), guarda o prompt e notifica a store (`subscribePWAInstall`/`getCanInstallPWA`). O hook `usePWAInstall` (useSyncExternalStore) alimenta o **`InstallAppButton`** no menu "Mais" — **nunca popup intrusivo** (regra: após interação, em menu/rodapé).
+4. Ao clicar → `prompt()` → `userChoice` → o evento é de uso único (o botão some). O listener de `appinstalled` também oculta o botão, e `isStandalone()` (`display-mode: standalone` / `navigator.standalone` do iOS) impede o botão quando o app já roda instalado.
+5. **Splash/iOS:** meta tags no `index.html` (theme-color por tema, `apple-mobile-web-app-*`, apple-touch-icon, `viewport-fit=cover` para safe areas) + manifest com `theme_color` por `media` — auditados por teste (`tests/pwa-audit.test.ts`).
 
 **Do & Don't:**
-- ✅ Prompt de instalação após interação do usuário (nunca no primeiro acesso).
-- ✅ Toast de atualização não-blocking.
+- ✅ Prompt de instalação após interação do usuário (nunca no primeiro acesso; botão no menu).
+- ✅ Toast de atualização não-blocking e sem reload automático (o usuário decide).
 - ❌ Nunca interceptar navegação para cachear telas com dados (viola Online First).
 - ❌ Nunca `cache-first` para endpoints dinâmicos.
+
+**Arquivos:** `src/app/pwa.ts` (registro + stores) · `src/hooks/use-pwa-install.ts` · `src/components/modules/pwa-update-toast.tsx` · `src/components/modules/install-app-button.tsx` · `src/components/ui/toast.tsx` (prop `action` + Toaster corrigido) · testes em `src/tests/pwa.test.tsx` e `src/tests/pwa-audit.test.ts`.
 
 ---
 
 ## 7. CHECKLIST DE ACEITE (PWA)
 
-- [ ] Lighthouse PWA ≥ 90 (instalável, offline no shell, HTTPS).
+**Auditoria automatizada (CI — `src/tests/pwa-audit.test.ts`):** manifest válido (campos + ícones 192/512/maskable) · ícones em disco · meta tags PWA/iOS + safe areas · fluxo do SW (autoUpdate + onNeedReload + beforeinstallprompt).
+
+**Auditoria manual (Lighthouse — exige app servido em HTTPS):** rodar `npm run build` + servir `dist/` (ex.: `npx serve dist`) e executar o Lighthouse (Chrome DevTools → Lighthouse → category PWA/Progressive Web App). Com o Lighthouse v10+ a categoria PWA foi absorvida; validar os checks de **instalabilidade** (manifest, SW, HTTPS) e **PWA otimizado** (offline no shell, redirects de HTTP→HTTPS).
+
+- [ ] Lighthouse instalável: manifest válido + SW com fetch + HTTPS.
 - [ ] Manifest válido (ícones 192/512/maskable; `display: standalone`).
-- [ ] Instalação funciona em Android (Chrome) e desktop (Chrome/Edge); iOS via "Adicionar à tela de início".
+- [ ] Instalação funciona em Android (Chrome) e desktop (Chrome/Edge); iOS via "Adicionar à tela de início" (botão "Instalar app" no menu "Mais").
 - [ ] Abertura com rede lenta: shell instantâneo + skeletons nos dados.
 - [ ] Abertura offline: shell carrega do cache e a UI exibe estado offline com retry; sem dados falsos.
-- [ ] Atualização de versão: toast + recarga limpa sem perda de estado.
+- [ ] Atualização de versão: toast "Nova versão disponível" + "Atualizar" recarrega sem perda de estado.
 - [ ] Safe areas (notch) respeitadas no modo standalone (`viewport-fit=cover`).
 - [ ] Tema do status bar coerente com light/dark/oled.

@@ -60,17 +60,21 @@
     │   ├── providers.tsx          # AuthProvider, QueryClientProvider, ThemeProvider
     │   ├── router.tsx             # <Routes> a partir de routes.ts
     │   ├── routes.ts              # Mapa de rotas + deep-links (?card=, ?month=, ?q=)
-    │   └── pwa.ts                 # Registro do SW + prompt de instalação (PWA)
+    │   └── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
+    │                              #   instalação/atualização (PWA_GUIDELINES §6)
     │
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
-    │   │   │                      #   virtual-list (janela + overscan, F5.5)…
+    │   │   │                      #   virtual-list (janela + overscan, F5.5), toast
+    │   │   │                      #   (com action p/ toast de atualização PWA, F5.6)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
-    │   │   │                      #   invoice-status-badge, installment-badge…
+    │   │   │                      #   invoice-status-badge, installment-badge,
+    │   │   │                      #   onboarding-card, pwa-update-toast,
+    │   │   │                      #   install-app-button (F5.6)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar, bottom-nav,
     │       │                      #   app-header, page-shell
@@ -112,7 +116,8 @@
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId)…
     │   └── mutations.ts           #   useCreateExpense(), useDeleteInstallment()…
     │
-    ├── hooks/                     # Hooks de UI reaproveitáveis (useDebounce, useMedia…)
+    ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
+    │                              #   use-highlight-target, use-pwa-install…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de input

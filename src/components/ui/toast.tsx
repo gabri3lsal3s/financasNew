@@ -5,6 +5,11 @@ import { cn } from "@/lib/utils";
 
 export type ToastVariant = "default" | "success" | "info" | "warning" | "destructive";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -12,6 +17,8 @@ export interface ToastProps {
   description?: string;
   variant?: ToastVariant;
   duration?: number;
+  /** Ação primária (Radix Action) — ex.: "Atualizar" no toast de nova versão PWA. */
+  action?: ToastAction;
 }
 
 const variantIcon: Record<ToastVariant, typeof Info> = {
@@ -46,6 +53,7 @@ export function Toast({
   description,
   variant = "default",
   duration = 4000,
+  action,
 }: ToastProps) {
   const Icon = variantIcon[variant];
   return (
@@ -65,6 +73,15 @@ export function Toast({
           <ToastPrimitive.Description className="mt-0.5 text-sm text-muted-foreground">{description}</ToastPrimitive.Description>
         ) : null}
       </div>
+      {action ? (
+        <ToastPrimitive.Action
+          altText={action.label}
+          onClick={action.onClick}
+          className="shrink-0 rounded-md bg-surface-hover px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {action.label}
+        </ToastPrimitive.Action>
+      ) : null}
       <ToastPrimitive.Close
         aria-label="Fechar"
         className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -75,10 +92,15 @@ export function Toast({
   );
 }
 
-/** Provedor + viewport de toasts do app — montar uma vez no shell. */
-export function Toaster(props: ComponentProps<typeof ToastPrimitive.Provider>) {
+/**
+ * Provedor + viewport de toasts do app — montar uma vez no shell.
+ * Os children (os toasts) são renderizados DENTRO do Provider (o Radix exige);
+ * o Viewport fica como irmão — o conteúdo dos toasts entra nele via portal.
+ */
+export function Toaster({ children, ...props }: ComponentProps<typeof ToastPrimitive.Provider>) {
   return (
-    <ToastPrimitive.Provider swipeDirection="right" {...props}>
+    <ToastPrimitive.Provider {...props}>
+      {children}
       <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-[60] flex w-full max-w-sm flex-col gap-2 p-4 outline-none" />
     </ToastPrimitive.Provider>
   );
