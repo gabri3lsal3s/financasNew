@@ -564,6 +564,18 @@
 - Injeção contextual transfere valores calculados com precisão para o `MoneyInput` sem corromper o estado do formulário.
 - Botão Scroll-to-Top funcional em todas as telas com rolagem longa, respeitando `prefers-reduced-motion`.
 
+**Progresso — Fase 9 (2026-08-14):**
+- [x] Motor puro `domain/calculator` (operações +, −, ×, ÷, vírgula, backspace, limpar, igual, histórico e divisão exata em parcelas 1–60 com resto na 1ª) + 15 testes
+- [x] `useDraggable` (pointer events nativos com `setPointerCapture`, FAB arrastável com snap à borda mais próxima) + teste
+- [x] `services/calculator-bridge.ts` (registro do campo em foco + `injectCalculatedValue` em centavos) + teste
+- [x] `CalculatorKeypad` (layout clássico, '=' único com `row-span-2`, labels acessíveis sem conflito com o botão de parcelas) + `FloatingCalculator` (FAB + painel com display, histórico, parcelas e "Usar valor") + testes
+- [x] `MoneyInput` se registra no bridge ao focar (injeção contextual por 1 toque)
+- [x] `useScrollPosition` (rAF, visível após 300px) + `ScrollToTopButton` (rolagem suave, respeita `prefers-reduced-motion`) + testes
+- [x] `FloatingCalculator` e `ScrollToTopButton` montados no nível autenticado do roteador (cobrem o wizard de lançamento)
+- [x] Typecheck, lint (0 erros), build e suíte completa verdes (90 arquivos / 640 testes)
+
+**✅ Fase 9 concluída:** calculadora flutuante arrastável com injeção contextual e scroll-to-top inteligente em todas as telas autenticadas.
+
 ---
 
 ### Fase 10 — Identidade Visual Oficial "Guia Financeiro" & Reestilização de Temas

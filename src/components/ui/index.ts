@@ -48,5 +48,7 @@ export { NumberTicker } from "./number-ticker";
 export type { NumberTickerProps } from "./number-ticker";
 export { Sparkline } from "./sparkline";
 export type { SparklineProps } from "./sparkline";
+export { ScrollToTopButton } from "./scroll-to-top-button";
+export type { ScrollToTopButtonProps } from "./scroll-to-top-button";
 export { Alert } from "./alert";
 export type { AlertProps, AlertVariant } from "./alert";

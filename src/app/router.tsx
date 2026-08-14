@@ -3,6 +3,8 @@ import { appRoutes } from "@/app/routes";
 import { Skeleton } from "@/components/ui";
 import { PageShell } from "@/components/layout/page-shell";
 import { MoreMenu } from "@/components/layout/more-menu";
+import { FloatingCalculator } from "@/components/modules/floating-calculator";
+import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
 import { LaunchWizard } from "@/features/transactions";
 import { useAuth } from "@/hooks/use-auth";
@@ -34,7 +36,15 @@ function RequireAuth() {
     return <Navigate to="/entrar" replace state={{ from: location }} />;
   }
 
-  return <Outlet />;
+  return (
+    <>
+      {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas,
+          incluindo o wizard de tela cheia (fora do PageShell). */}
+      <FloatingCalculator />
+      <ScrollToTopButton />
+      <Outlet />
+    </>
+  );
 }
 
 export function AppRouter() {

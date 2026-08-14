@@ -3,6 +3,7 @@ import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { useCurrencyInput } from "@/hooks/use-currency-input";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
+import { registerCalculatorTarget } from "@/services/calculator-bridge";
 
 /**
  * MoneyInput — entrada monetária progressiva (padrão Nubank).
@@ -84,6 +85,14 @@ export function MoneyInput({
         onCentsChange?.(next);
       }}
       onKeyDown={currency.handleKeyDown}
+      onFocus={(event) => {
+        // Calculadora flutuante (F9): campo ativo recebe o valor "Usar valor".
+        registerCalculatorTarget((cents) => {
+          currency.setCents(cents);
+          onCentsChange?.(cents);
+        });
+        rest.onFocus?.(event);
+      }}
     />
   );
 }

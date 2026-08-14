@@ -50,3 +50,6 @@ export { SmartInvoiceProjectionCard } from "./smart-invoice-projection-card";
 export type { SmartInvoiceProjectionCardProps } from "./smart-invoice-projection-card";
 export { SmartAnomaliesCard } from "./smart-anomalies-card";
 export type { SmartAnomaliesCardProps } from "./smart-anomalies-card";
+export { FloatingCalculator } from "./floating-calculator";
+export { CalculatorKeypad } from "./calculator-keypad";
+export type { CalculatorKeypadProps } from "./calculator-keypad";
