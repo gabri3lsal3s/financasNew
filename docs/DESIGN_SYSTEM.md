@@ -40,7 +40,7 @@
 | Token | Light | Dark | OLED | Uso |
 |---|---|---|---|---|
 | `--primary` | `173 58% 39%` `#2A9D8F` | `173 66% 50%` `#2DD4BF` | igual dark | Acentos, ícones, estados ativos, gráficos, fills `primary/10` (Teal Petróleo / Teal vivo) |
-| `--primary-strong` | `173 66% 26%` `#1B6B62` | `173 66% 50%` | igual dark | **Botões sólidos e links de texto** (contraste AA) |
+| `--primary-strong` | `173 66% 26%` `#1B6B62` | `173 66% 50%` | igual dark | **Botões discretos (borda + texto) e links** (contraste AA) |
 | `--primary-foreground` | `0 0% 100%` | `166 92% 9%` `#022C22` | igual dark | Texto sobre `primary-strong` |
 | `--secondary` | `174 65% 37%` `#219E92` | `174 65% 43%` `#26B5A7` | igual dark | Elementos secundários (chips, realce) |
 | `--secondary-foreground` | `172 80% 8%` | `172 80% 8%` | igual dark | Texto sobre `secondary` (AA) |
@@ -163,6 +163,8 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 | **Selecionado** | Fill `primary/12` + borda `primary/40` (ex.: categoria ativa, aba) |
 | **Loading** | **Skeleton** (`muted` com shimmer) — proibido spinner genérico em tela cheia |
 | **Microinterações** | Transições 150ms em `transition-colors`/`transition-transform`; botões com **press `scale(0.98)`** (`active:scale-[0.98]`); `prefers-reduced-motion: reduce` desativa animações (F5.2) |
+
+**Botões — estilo discreto (pós-F10):** sem fundo sólido. As variantes com cor (`default`/`destructive`/`positive`) usam **borda de cor + texto colorido** (`border-primary-strong/40 text-primary-strong`, `border-critical/50 text-critical-strong`, etc.) com hover de tinta suave (`bg-primary/10`, `bg-critical/10`) e **sem sombra**; `secondary` usa tinta 15% (`bg-secondary/15`); `ghost`/`outline` permanecem neutros. FABs (BottomNav, calculadora flutuante) seguem o mesmo princípio: círculo `background/95` + borda teal + ícone teal. Texto/borda sempre com contraste AA nos 3 temas.
 
 ---
 
