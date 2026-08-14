@@ -16,24 +16,55 @@ export interface DailyFlowChartProps {
 const LINE_WIDTH = 320;
 const LINE_HEIGHT = 48;
 
-/** Converte a série em pontos SVG (escala entre min/max com folga). */
-function toLinePoints(values: readonly number[], width: number, height: number): string {
+interface LinePoint {
+  x: number;
+  y: number;
+}
+
+/** Converte a série em pontos (escala entre min/max com folga, 0 incluso). */
+function toLinePointList(values: readonly number[], width: number, height: number): LinePoint[] {
   const min = Math.min(0, ...values);
   const max = Math.max(...values);
   const range = max - min || 1;
-  return values
-    .map((value, index) => {
-      const x = values.length > 1 ? (index / (values.length - 1)) * width : width;
-      const y = height - 4 - ((value - min) / range) * (height - 8);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
+  return values.map((value, index) => {
+    const x = values.length > 1 ? (index / (values.length - 1)) * width : width;
+    const y = height - 4 - ((value - min) / range) * (height - 8);
+    return { x, y };
+  });
+}
+
+function toLinePoints(values: readonly number[], width: number, height: number): string {
+  return toLinePointList(values, width, height)
+    .map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
     .join(" ");
+}
+
+/** Y (0–height) do valor zero na mesma escala da série. */
+function zeroY(values: readonly number[], height: number): number {
+  const min = Math.min(0, ...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  return height - 4 - ((0 - min) / range) * (height - 8);
+}
+
+/** Área sob a curva de saldo até a linha do zero (preenchimento suave). */
+function areaPath(points: readonly LinePoint[], baseY: number): string {
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (!first || !last) return "";
+  return [
+    `M ${first.x.toFixed(1)},${baseY.toFixed(1)}`,
+    ...points.map((point) => `L ${point.x.toFixed(1)},${point.y.toFixed(1)}`),
+    `L ${last.x.toFixed(1)},${baseY.toFixed(1)}`,
+    "Z",
+  ].join(" ");
 }
 
 /**
  * DailyFlowChart — fluxo diário avançado (F8): barras empilhadas (rendas ×
- * despesas), curva de saldo acumulado e linha guia da meta diária, com
- * scrubbing tátil (pointer) e tooltip flutuante. Os valores vêm de
+ * despesas) com trilha de fundo, curva de saldo acumulado com área suave e
+ * linha guia da meta diária, scrubbing tátil (pointer) com coluna ativa,
+ * linha guia vertical e tooltip flutuante. Os valores vêm de
  * `domain/overview` (buildDailyFlow + cumulativeBalance) — sem cálculo de
  * negócio aqui.
  */
@@ -42,10 +73,15 @@ export function DailyFlowChart({ days, dailyGoalCents = null, className }: Daily
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
 
   const curve = useMemo(() => cumulativeBalance(days), [days]);
+  const curveValues = useMemo(() => curve.map((point) => point.balanceCents), [curve]);
 
-  const linePoints = useMemo(
-    () => toLinePoints(curve.map((point) => point.balanceCents), LINE_WIDTH, LINE_HEIGHT),
-    [curve],
+  const linePoints = useMemo(() => toLinePoints(curveValues, LINE_WIDTH, LINE_HEIGHT), [curveValues]);
+  const curvePoints = useMemo(() => toLinePointList(curveValues, LINE_WIDTH, LINE_HEIGHT), [curveValues]);
+  const balanceMin = useMemo(() => Math.min(0, ...curveValues), [curveValues]);
+  const baselineY = useMemo(() => zeroY(curveValues, LINE_HEIGHT), [curveValues]);
+  const fillPath = useMemo(
+    () => (curveValues.length > 0 ? areaPath(curvePoints, baselineY) : null),
+    [curvePoints, baselineY, curveValues.length],
   );
 
   const goalPoints = useMemo(() => {
@@ -56,6 +92,9 @@ export function DailyFlowChart({ days, dailyGoalCents = null, className }: Daily
       LINE_HEIGHT,
     );
   }, [curve, dailyGoalCents]);
+
+  // Escala global das barras: todas relativas ao maior dia do mês (maxCents do domínio).
+  const monthMax = useMemo(() => Math.max(1, ...days.map((day) => day.maxCents)), [days]);
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const el = containerRef.current;
@@ -68,8 +107,8 @@ export function DailyFlowChart({ days, dailyGoalCents = null, className }: Daily
 
   const scrubDay = scrubIndex !== null ? days[scrubIndex] : undefined;
   const scrubCurve = scrubIndex !== null ? curve[scrubIndex] : undefined;
-
   const scrubLeft = scrubIndex !== null ? `${(scrubIndex / Math.max(1, days.length - 1)) * 100}%` : undefined;
+  const lastPoint = curvePoints.length > 0 ? curvePoints[curvePoints.length - 1] : undefined;
 
   return (
     <div
@@ -78,26 +117,31 @@ export function DailyFlowChart({ days, dailyGoalCents = null, className }: Daily
       onPointerMove={handlePointerMove}
       onPointerLeave={() => setScrubIndex(null)}
     >
-      {/* Barras empilhadas por dia */}
-      <div className="flex h-24 items-end gap-px" aria-hidden="true">
+      {/* Barras empilhadas por dia com trilha de fundo (dias vazios visíveis) */}
+      <div className="flex h-24 items-end gap-0.5" aria-hidden="true">
         {days.map((day, index) => {
-          const scale = day.maxCents > 0 ? day.maxCents : 1;
+          const active = index === scrubIndex;
           return (
-            <div key={day.day} className="flex h-full flex-1 flex-col justify-end gap-px">
+            <div
+              key={day.day}
+              className={cn(
+                "flex h-full flex-1 flex-col justify-end gap-px overflow-hidden rounded-[3px] bg-muted/25 transition-colors duration-150",
+                active && "bg-muted/60",
+              )}
+            >
               {day.expenseCents > 0 ? (
-                <div className="w-full rounded-t-sm bg-negative-strong/80" style={{ height: `${Math.max(8, (day.expenseCents / scale) * 100)}%` }} />
+                <div className="w-full bg-negative-strong/85" style={{ height: `${Math.max(6, (day.expenseCents / monthMax) * 100)}%` }} />
               ) : null}
               {day.incomeCents > 0 ? (
-                <div className="w-full rounded-t-sm bg-positive-strong/80" style={{ height: `${Math.max(8, (day.incomeCents / scale) * 100)}%` }} />
+                <div className="w-full bg-positive-strong/85" style={{ height: `${Math.max(6, (day.incomeCents / monthMax) * 100)}%` }} />
               ) : null}
-              {index === scrubIndex ? <div className="h-px w-full bg-foreground/40" /> : null}
             </div>
           );
         })}
       </div>
 
       {/* Curva de saldo acumulado + linha guia de meta diária */}
-      <div className="mt-2 h-12 w-full" aria-hidden="true">
+      <div className="relative mt-3 h-14 w-full" aria-hidden="true">
         <svg viewBox={`0 0 ${LINE_WIDTH} ${LINE_HEIGHT}`} preserveAspectRatio="none" className="h-full w-full overflow-visible">
           {goalPoints ? (
             <polyline
@@ -107,6 +151,19 @@ export function DailyFlowChart({ days, dailyGoalCents = null, className }: Daily
               strokeDasharray="4 4"
               strokeWidth={1.5}
               className="stroke-warning"
+            />
+          ) : null}
+          {fillPath ? <path d={fillPath} className="fill-portfolio/10" /> : null}
+          {balanceMin < 0 ? (
+            <line
+              x1={0}
+              x2={LINE_WIDTH}
+              y1={baselineY}
+              y2={baselineY}
+              vectorEffect="non-scaling-stroke"
+              strokeWidth={1}
+              strokeDasharray="2 4"
+              className="stroke-foreground/15"
             />
           ) : null}
           <polyline
@@ -119,7 +176,22 @@ export function DailyFlowChart({ days, dailyGoalCents = null, className }: Daily
             className="stroke-portfolio"
           />
         </svg>
+        {/* Ponto final da curva (saldo acumulado de hoje) */}
+        {lastPoint ? (
+          <span
+            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-portfolio ring-2 ring-surface"
+            style={{
+              left: `${(lastPoint.x / LINE_WIDTH) * 100}%`,
+              top: `${(lastPoint.y / LINE_HEIGHT) * 100}%`,
+            }}
+          />
+        ) : null}
       </div>
+
+      {/* Linha guia vertical do dia sob scrubbing */}
+      {scrubLeft ? (
+        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-px bg-foreground/15" style={{ left: scrubLeft }} />
+      ) : null}
 
       {/* Tooltip flutuante do dia sob scrubbing */}
       {scrubDay && scrubCurve ? (
