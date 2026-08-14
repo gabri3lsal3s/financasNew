@@ -25,13 +25,15 @@
 |---|---|---|---|---|
 | `--background` | `60 9% 98%` `#FAFAF9` | `222 47% 11%` `#0F172A` | `0 0% 0%` `#000` | Fundo de tela |
 | `--surface` | `0 0% 100%` `#FFF` | `217 33% 17%` `#1E293B` | `0 0% 4%` `#0A0A0A` | Cards, modais, tabelas |
-| `--surface-hover` | `24 6% 95%` | `216 30% 21%` | `0 0% 8%` | Hover de linhas/cards |
-| `--surface-active` | `24 6% 92%` | `216 29% 25%` | `0 0% 11%` | Estado pressionado |
-| `--border` | `24 6% 90%` `#E7E5E4` | `215 28% 27%` `#334155` | `0 0% 12%` | Bordas e divisores |
-| `--input` | `24 5% 83%` | `215 24% 32%` | `0 0% 16%` | Bordas de campos |
-| `--muted` | `24 6% 95%` | `218 34% 15%` | `0 0% 6%` | Skeletons, backgrounds suaves |
+| `--surface-hover` | `24 6% 95%` | `216 30% 21%` | `0 0% 9%` | Hover de linhas/cards |
+| `--surface-active` | `24 6% 92%` | `216 29% 25%` | `0 0% 13%` | Estado pressionado |
+| `--border` | `24 6% 90%` `#E7E5E4` | `215 28% 27%` `#334155` | `0 0% 14%` | Bordas e divisores |
+| `--input` | `24 5% 83%` | `215 24% 32%` | `0 0% 18%` | Bordas de campos |
+| `--muted` | `24 6% 95%` | `218 34% 15%` | `0 0% 7%` | Skeletons, backgrounds suaves |
 | `--foreground` | `24 10% 10%` `#1C1917` | `210 40% 98%` `#F8FAFC` | `0 0% 98%` | Texto principal |
-| `--muted-foreground` | `25 5% 32%` `#57534E` | `215 20% 65%` `#94A3B8` | `0 0% 45%` | Texto secundário, rótulos |
+| `--muted-foreground` | `25 5% 32%` `#57534E` | `215 20% 65%` `#94A3B8` | `0 0% 50%` | Texto secundário, rótulos |
+| `--overlay` | `0 0% 0% / 40%` | `0 0% 0% / 60%` | `0 0% 0% / 70%` | Escurecimento de modais/palette (glass §8) |
+| `--scrollbar-thumb` / `--scrollbar-track` | `24 6% 78%` / `60 9% 95%` | `215 24% 35%` / `222 47% 13%` | `0 0% 24%` / `0 0% 4%` | Scrollbars via tokens (§13) |
 
 ### 2.2 Marca — primárias e accent
 
@@ -141,6 +143,8 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 
 **Regras:** elevação por sombra, nunca por cor escura; dark/oled dependem mais de bordas do que de sombras (alpha maior); o **glow de KPI** é reservado a um único número-chave por tela (ex.: saldo do mês) — nunca vários.
 
+**OLED refinado (F5.2):** sobre o true black `#000`, bordas são a principal pista de elevação — `--border` 14% e `--input` 18% garantem definição sem acender pixels; hover/pressed mais perceptíveis (`9%`/`13%`); `--muted-foreground` 50% assegura AA (5.3:1) para texto secundário; `--overlay` 70% escurece o conteúdo atrás de modais sem perder o preto puro; scrollbar com polegar `24%` discreto.
+
 ---
 
 ## 7. ESTADOS DE COMPONENTES
@@ -156,6 +160,7 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 | **Sucesso** | Texto/ícone `positive-strong`; toast de confirmação |
 | **Selecionado** | Fill `primary/12` + borda `primary/40` (ex.: categoria ativa, aba) |
 | **Loading** | **Skeleton** (`muted` com shimmer) — proibido spinner genérico em tela cheia |
+| **Microinterações** | Transições 150ms em `transition-colors`/`transition-transform`; botões com **press `scale(0.98)`** (`active:scale-[0.98]`); `prefers-reduced-motion: reduce` desativa animações (F5.2) |
 
 ---
 

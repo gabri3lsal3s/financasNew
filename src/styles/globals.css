@@ -68,6 +68,9 @@
   --shadow-kpi: var(--shadow-kpi);
 
   --color-ring: hsl(var(--ring));
+  --color-overlay: hsl(var(--overlay));
+  --color-scrollbar-thumb: hsl(var(--scrollbar-thumb));
+  --color-scrollbar-track: hsl(var(--scrollbar-track));
 
   /* Animações dos primitivos (Radix) */
   --animate-accordion-down: accordion-down 0.2s ease-out;
@@ -146,6 +149,35 @@
   :focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
+  }
+
+  /* Scrollbars via tokens (DESIGN_SYSTEM §13) — Firefox + WebKit */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--scrollbar-track));
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--scrollbar-thumb));
+    border-radius: 999px;
+  }
+
+  /* Microinterações respeitam usuários com movimento reduzido (a11y) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

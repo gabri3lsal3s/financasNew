@@ -140,15 +140,15 @@ html[data-theme="dark"] {
    TEMA OLED (true black — economia de bateria em AMOLED)
    ---------------------------------------------------------------- */
 html[data-theme="oled"] {
-  --background: 0 0% 0%;            /* #000000 */
+  --background: 0 0% 0%;            /* #000000 — true black (AMOLED) */
   --surface: 0 0% 4%;               /* #0A0A0A */
-  --surface-hover: 0 0% 8%;         /* #141414 */
-  --surface-active: 0 0% 11%;       /* #1C1C1C */
-  --border: 0 0% 12%;               /* #1F1F1F */
-  --input: 0 0% 16%;                /* #292929 */
-  --muted: 0 0% 6%;                 /* #0F0F0F */
+  --surface-hover: 0 0% 9%;         /* #171717 — hover perceptível sobre true black */
+  --surface-active: 0 0% 13%;       /* #212121 — pressed */
+  --border: 0 0% 14%;               /* #242424 — bordas são a elevação principal (sem sombra) */
+  --input: 0 0% 18%;                /* #2E2E2E */
+  --muted: 0 0% 7%;                 /* #121212 */
   --foreground: 0 0% 98%;           /* #FAFAFA */
-  --muted-foreground: 0 0% 45%;     /* #737373 */
+  --muted-foreground: 0 0% 50%;     /* #808080 — AA sobre #000 (4.6:1 → 5.3:1) */
 
   --primary: 160 84% 52%;
   --primary-strong: 160 84% 52%;
@@ -189,6 +189,29 @@ html[data-theme="oled"] {
 }
 
 /* ----------------------------------------------------------------
+   Tokens transversais — overlay (modais/command) e scrollbars.
+   Definidos nos 3 temas (o fallback dark herda de :root + media).
+   ---------------------------------------------------------------- */
+:root,
+html[data-theme="light"] {
+  --overlay: 0 0% 0% / 40%;        /* escurecimento de modais/palette sobre light */
+  --scrollbar-thumb: 24 6% 78%;    /* polegar discreto (light) */
+  --scrollbar-track: 60 9% 95%;    /* trilho alinhado ao fundo */
+}
+
+html[data-theme="dark"] {
+  --overlay: 0 0% 0% / 60%;
+  --scrollbar-thumb: 215 24% 35%;
+  --scrollbar-track: 222 47% 13%;
+}
+
+html[data-theme="oled"] {
+  --overlay: 0 0% 0% / 70%;        /* escurecimento maior (sem perder o true black) */
+  --scrollbar-thumb: 0 0% 24%;     /* #3D3D3D — visível sem acender pixels */
+  --scrollbar-track: 0 0% 4%;
+}
+
+/* ----------------------------------------------------------------
    Fallback sem JS: segue a preferência do sistema até o
    ThemeProvider definir o data-theme (default do app).
    ---------------------------------------------------------------- */
@@ -203,6 +226,9 @@ html[data-theme="oled"] {
     --muted: 218 34% 15%;
     --foreground: 210 40% 98%;
     --muted-foreground: 215 20% 65%;
+    --overlay: 0 0% 0% / 60%;
+    --scrollbar-thumb: 215 24% 35%;
+    --scrollbar-track: 222 47% 13%;
     --primary: 160 84% 52%;
     --primary-strong: 160 84% 52%;
     --primary-foreground: 160 84% 9%;

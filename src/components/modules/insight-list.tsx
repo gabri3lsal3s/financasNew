@@ -97,7 +97,7 @@ export function InsightList({
                 <button
                   type="button"
                   onClick={() => onRestore?.(item.key)}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   aria-label={`Restaurar ${item.title}`}
                 >
                   <RotateCcw className="size-3.5" aria-hidden="true" />
@@ -108,7 +108,7 @@ export function InsightList({
                   <button
                     type="button"
                     onClick={() => onIgnore?.(item.key)}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     aria-label={`Ignorar ${item.title}`}
                   >
                     <X className="size-3.5" aria-hidden="true" />
@@ -117,7 +117,7 @@ export function InsightList({
                   <button
                     type="button"
                     onClick={() => onConfirm?.(item.key)}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
                     aria-label={`Confirmar ${item.title}`}
                   >
                     <Check className="size-3.5" aria-hidden="true" />

@@ -313,7 +313,7 @@
 
 **Entregas (na ordem):**
 1. ✅ **Busca global** (⌘K): normalização, scoring, recência, limites por tipo, deep-link com destaque.
-2. Tema OLED refinado (contraste/estados) + microinterações.
+2. ✅ **Tema OLED refinado** (contraste/estados) + microinterações.
 3. Auditoria de acessibilidade (axe, contraste AA, foco, teclado) em todas as telas.
 4. Empty states completos + onboarding de primeiro uso.
 5. Performance: bundle splitting, virtualização de listas, revisão de queries (N+1).
@@ -327,8 +327,15 @@
 - DRY: `src/lib/labels.ts` (`PAYMENT_METHOD_LABELS`/`RECEIVE_TYPE_LABELS`) — remove as 3 duplicatas de `PAYMENT_LABELS` (relatórios, wizard, detalhe).
 - **22 testes novos** (14 domínio + 1 repository + 4 paleta + 3 deep-link). Atalho exibido como "Ctrl+K" na UI (a regra `local/no-decorative-unicode` bloqueia o glifo ⌘ em strings).
 
+**Progresso — Fase 5, entrega 2 (OLED refinado + microinterações):**
+- **Tokens OLED refinados** (`tokens.css`): sobre true black, hover `9%`/pressed `13%` (estados perceptíveis), borda `14%` + input `18%` (elevação por borda, sem sombra), `--muted-foreground` `50%` (AA 5.3:1) — §6 do DESIGN_SYSTEM.
+- **Tokens novos nos 3 temas:** `--overlay` (40/60/70%) para modais/command palette — substitui o `bg-black/50` hard-coded no `Modal` e `Command`; `--scrollbar-thumb`/`--scrollbar-track` com scrollbars estilizadas em `globals.css` (WebKit + Firefox) — §13.
+- **Microinterações:** `Button` ganha press `active:scale-[0.98]` + `transition` 150ms (DESIGN_SYSTEM §7); transições de hover padronizadas nos botões de ação de insights/lembretes; `prefers-reduced-motion: reduce` desativa animações (a11y).
+
 **✅ DoD**
 - Busca retorna tipos ordenados por score com destaque funcional (scroll + highlight).
+- OLED com estados perceptíveis e contraste AA no texto secundário; modais/scrollbars com tokens próprios.
+- Microinterações com press nos botões e suporte a `prefers-reduced-motion`.
 - Auditoria a11y sem erros críticos; Lighthouse ≥ 90 (mobile).
 - Navegação 100% por teclado nas telas P0.
 

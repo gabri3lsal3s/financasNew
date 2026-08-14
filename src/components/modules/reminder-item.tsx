@@ -65,7 +65,7 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, stateKind 
           <button
             type="button"
             onClick={() => onRestore?.(item.key)}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label={`Restaurar lembrete ${item.title}`}
           >
             <Bell className="size-3.5" aria-hidden="true" />
@@ -76,7 +76,7 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, stateKind 
             <button
               type="button"
               onClick={() => onSnooze?.(item.key)}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label={`Adiar lembrete ${item.title}`}
             >
               <AlarmClock className="size-3.5" aria-hidden="true" />
@@ -85,7 +85,7 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, stateKind 
             <button
               type="button"
               onClick={() => onMarkRead?.(item.key)}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
               aria-label={`Marcar como lido ${item.title}`}
             >
               <Check className="size-3.5" aria-hidden="true" />
