@@ -170,7 +170,7 @@
 1. ✅ **Motor de insights** (`domain/insights`): alertas críticos priorizados, assinaturas (3 sinais + tiers), recorrências (3 níveis), confiança + aprendizado (ignorar/confirmar/restaurar).
 2. ✅ Desafios de economia (10/20/30%, limite dinâmico, máx. 4) e sugestões de limite (máx. 3/mês).
 3. ✅ Projeção (`domain/projection`): gasto disponível diário, ritmo de gastos (8º dia / ≥30%), fim de mês (dia ≥ 3), projeção de pendências.
-4. Relatórios: dia/mês/ano, custom (≤ 366 dias), agregação por categoria/forma/dia da semana, comparativo, merge de dívidas pagas.
+4. ✅ Relatórios: dia/mês/ano, custom (≤ 366 dias), agregação por categoria/forma/dia da semana, comparativo, merge de dívidas pagas.
 5. Central de lembretes: consolidação faturas/dívidas, marcar lido, snooze com expiração. **Decisão aberta:** push ou in-app.
 6. **Telas:** Insights, Projeção e Corte, Relatórios, Lembretes (novos módulos de domínio quando necessário — ex.: `AlertCard`, `ProjectionLine`).
 
@@ -207,6 +207,15 @@
   - `endOfMonthProjection` — exige dia ≥ 3; `burnRate = despesas ÷ diasDecorridos`, `projeção = burnRate × diasNoMês`, `superávit = rendas − invest − projeção`, `noTrilho = superávit ≥ 0`; passado → reais, futuro → não aplicável.
   - `pendingProjection` — saldo projetado de pendências = recebíveis − pagáveis.
 - **16 testes verdes** conferidos contra cálculo manual de referência (DoD).
+
+**Progresso da entrega 4:**
+- `domain/reports` estendido (mantém `weightedCents`/`weightedSum` do peso de relatório):
+  - `aggregateByCategory` / `aggregateByPaymentMethod` — agregações ponderadas ordenadas por total desc (§3.6);
+  - `aggregateByWeekday` — 7 dias sempre presentes, Monday-first `(getDay()+6)%7` (§4.1), totais ponderados;
+  - `mergePaidDebts` — recebíveis → rendas, pagáveis → despesas (pelo mês do vencimento), saldo recalculado (§4.3);
+  - `validateCustomPeriod` — datas válidas, início ≤ fim e máximo de 366 dias;
+  - `percentChange` reexportado do overview (comparativo — DRY, sem duplicação).
+- **17 testes verdes** (agregações, merge, validação de período, comparativo).
 
 
 ### Fase 4 — Carteira & Rebalanceamento
