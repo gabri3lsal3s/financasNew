@@ -227,7 +227,7 @@ export function OverviewPage() {
                 hint={<DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />}
                 spark={expenseSpark}
               />
-              <KpiCard label="Investimentos" value={formatCentsAsBRL(totals.investmentCents)} tone="portfolio" hint="Carteira na Fase 4" />
+              <KpiCard label="Investimentos" cents={totals.investmentCents} tone="portfolio" hint="Carteira na Fase 4" />
               <KpiCard
                 label="Saldo do mês"
                 value={formatCentsAsBRL(totals.balanceCents)}

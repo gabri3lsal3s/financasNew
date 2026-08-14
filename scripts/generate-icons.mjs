@@ -1,6 +1,6 @@
 // Gera e processa os assets oficiais da marca "Guia Financeiro" a partir
-// de identidadeVisual/foto-sem-fundo.png e identidadeVisual/Gemini_Generated_Image_ru6ti5ru6ti5ru6t (1).png
-// Suporta fundos transparentes e fundos sólidos da marca (#142531 Azul Petróleo).
+// de identidadeVisual/foto-sem-fundo.png sobre fundo branco puro (#FFFFFF).
+// Elimina qualquer diferença de branco ou textura, garantindo uniformidade perfeita.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -176,26 +176,35 @@ function encodeIco(pngBuffers) {
   return Buffer.concat([header, ...dirEntries, ...pngBuffers.map((p) => p.buffer)]);
 }
 
-// Carrega imagem base
-const baseImagePath = join(root, "identidadeVisual", "foto-sem-fundo.png");
-if (!existsSync(baseImagePath)) {
-  throw new Error(`Imagem base não encontrada em: ${baseImagePath}`);
+// Imagem base transparente oficial
+const transparentImagePath = join(root, "identidadeVisual", "foto-sem-fundo.png");
+const sourceTransparent = decodePng(readFileSync(transparentImagePath));
+
+console.log(`Carregada imagem transparente: ${sourceTransparent.width}x${sourceTransparent.height}`);
+
+// Limpeza de qualquer halo residual (fringe) nas bordas transparentes
+for (let y = 0; y < sourceTransparent.height; y++) {
+  for (let x = 0; x < sourceTransparent.width; x++) {
+    const idx = (y * sourceTransparent.width + x) * 4;
+    const a = sourceTransparent.data[idx + 3];
+    const r = sourceTransparent.data[idx];
+    const g = sourceTransparent.data[idx + 1];
+    const b = sourceTransparent.data[idx + 2];
+
+    // Se for pixel semi-transparente muito claro na borda, ajusta o alpha para transição limpa
+    if (a < 50 && (r > 220 || g > 220 || b > 220)) {
+      sourceTransparent.data[idx + 3] = 0;
+    }
+  }
 }
 
-const sourceImage = decodePng(readFileSync(baseImagePath));
-console.log(`Carregada imagem base: ${sourceImage.width}x${sourceImage.height} RGBA`);
-
-// Encontra a bounding box do conteúdo real (ignora margem vazia)
-let minX = sourceImage.width;
-let maxX = 0;
-let minY = sourceImage.height;
-let maxY = 0;
-
-for (let y = 0; y < sourceImage.height; y++) {
-  for (let x = 0; x < sourceImage.width; x++) {
-    const idx = (y * sourceImage.width + x) * 4;
-    const a = sourceImage.data[idx + 3];
-    if (a > 10) {
+// Bounding box exata do conteúdo
+let minX = sourceTransparent.width, maxX = 0, minY = sourceTransparent.height, maxY = 0;
+for (let y = 0; y < sourceTransparent.height; y++) {
+  for (let x = 0; x < sourceTransparent.width; x++) {
+    const idx = (y * sourceTransparent.width + x) * 4;
+    const a = sourceTransparent.data[idx + 3];
+    if (a > 15) {
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;
@@ -203,22 +212,18 @@ for (let y = 0; y < sourceImage.height; y++) {
     }
   }
 }
+const w = maxX - minX + 1;
+const h = maxY - minY + 1;
+const bbox = { minX, maxX, minY, maxY, w, h, cx: minX + w / 2, cy: minY + h / 2, maxDim: Math.max(w, h) };
 
-const bboxW = maxX - minX + 1;
-const bboxH = maxY - minY + 1;
-const maxDim = Math.max(bboxW, bboxH);
-const bboxCx = minX + bboxW / 2;
-const bboxCy = minY + bboxH / 2;
+console.log(`Bounding box: ${w}x${h} centralizada em (${bbox.cx.toFixed(1)}, ${bbox.cy.toFixed(1)})`);
 
-console.log(`Bounding box: ${bboxW}x${bboxH} centralizada em (${bboxCx.toFixed(1)}, ${bboxCy.toFixed(1)})`);
+// Amostragem bilinear de alta precisão
+function sampleImage(normX, normY) {
+  const srcX = bbox.cx + normX * bbox.maxDim;
+  const srcY = bbox.cy + normY * bbox.maxDim;
 
-// Amostragem bilinear com antialiasing de alta qualidade
-function sampleSource(normX, normY) {
-  // normX, normY no intervalo [-0.5, 0.5] relativo ao centro
-  const srcX = bboxCx + normX * maxDim;
-  const srcY = bboxCy + normY * maxDim;
-
-  if (srcX < 0 || srcX >= sourceImage.width - 1 || srcY < 0 || srcY >= sourceImage.height - 1) {
+  if (srcX < 0 || srcX >= sourceTransparent.width - 1 || srcY < 0 || srcY >= sourceTransparent.height - 1) {
     return [0, 0, 0, 0];
   }
 
@@ -229,17 +234,17 @@ function sampleSource(normX, normY) {
   const fx = srcX - x0;
   const fy = srcY - y0;
 
-  const idx00 = (y0 * sourceImage.width + x0) * 4;
-  const idx10 = (y0 * sourceImage.width + x1) * 4;
-  const idx01 = (y1 * sourceImage.width + x0) * 4;
-  const idx11 = (y1 * sourceImage.width + x1) * 4;
+  const idx00 = (y0 * sourceTransparent.width + x0) * 4;
+  const idx10 = (y0 * sourceTransparent.width + x1) * 4;
+  const idx01 = (y1 * sourceTransparent.width + x0) * 4;
+  const idx11 = (y1 * sourceTransparent.width + x1) * 4;
 
   const out = [0, 0, 0, 0];
   for (let c = 0; c < 4; c++) {
-    const v00 = sourceImage.data[idx00 + c];
-    const v10 = sourceImage.data[idx10 + c];
-    const v01 = sourceImage.data[idx01 + c];
-    const v11 = sourceImage.data[idx11 + c];
+    const v00 = sourceTransparent.data[idx00 + c];
+    const v10 = sourceTransparent.data[idx10 + c];
+    const v01 = sourceTransparent.data[idx01 + c];
+    const v11 = sourceTransparent.data[idx11 + c];
 
     const vTop = v00 * (1 - fx) + v10 * fx;
     const vBottom = v01 * (1 - fx) + v11 * fx;
@@ -248,34 +253,49 @@ function sampleSource(normX, normY) {
   return out;
 }
 
-// Resampler para gerar imagem de tamanho fixo com escala do símbolo e fundo opcional
-function renderIcon(size, scale = 0.95, backgroundRgba = null) {
+// 1. Renderiza ícones PWA com composição direta sobre fundo 100% branco (#FFFFFF puro e uniforme)
+function renderPwaWhiteIcon(size, scale = 0.90) {
   return encodePngRgba(size, size, (x, y) => {
     const normX = ((x + 0.5) / size - 0.5) / scale;
     const normY = ((y + 0.5) / size - 0.5) / scale;
 
-    const [r, g, b, a] = sampleSource(normX, normY);
+    const [r, g, b, a] = sampleImage(normX, normY);
+    if (a <= 0) return [255, 255, 255, 255]; // Branco puro
 
-    if (!backgroundRgba) {
-      return [r, g, b, a];
-    }
-
-    // Composição sobre o fundo fornecido
-    const [br, bg, bb, ba] = backgroundRgba;
     const alphaNorm = a / 255;
-    const outR = Math.round(r * alphaNorm + br * (1 - alphaNorm));
-    const outG = Math.round(g * alphaNorm + bg * (1 - alphaNorm));
-    const outB = Math.round(b * alphaNorm + bb * (1 - alphaNorm));
-    const outA = Math.max(ba, a);
+    const outR = Math.round(r * alphaNorm + 255 * (1 - alphaNorm));
+    const outG = Math.round(g * alphaNorm + 255 * (1 - alphaNorm));
+    const outB = Math.round(b * alphaNorm + 255 * (1 - alphaNorm));
 
-    return [outR, outG, outB, outA];
+    return [outR, outG, outB, 255];
   });
 }
 
-// Fundo Azul Petróleo (#142531) para os ícones com fundo sólido
-const BG_PETROLEUM = [20, 37, 49, 255];
+// 2. Renderiza assets transparentes (brand logos)
+function renderTransparentIcon(size, scale = 0.96) {
+  return encodePngRgba(size, size, (x, y) => {
+    const normX = ((x + 0.5) / size - 0.5) / scale;
+    const normY = ((y + 0.5) / size - 0.5) / scale;
 
-// 1. Assets transparentes da marca (`public/brand/`)
+    return sampleImage(normX, normY);
+  });
+}
+
+// Gera Ícones PWA (composição em fundo 100% branco #FFFFFF uniforme, sem qualquer textura ou diferença de tom)
+const pwaTargets = [
+  { name: "icon-192.png", size: 192, scale: 0.90 },
+  { name: "icon-512.png", size: 512, scale: 0.90 },
+  { name: "maskable-512.png", size: 512, scale: 0.72 }, // 80% safe zone
+  { name: "apple-touch-icon-180.png", size: 180, scale: 0.88 },
+];
+
+for (const { name, size, scale } of pwaTargets) {
+  const buf = renderPwaWhiteIcon(size, scale);
+  writeFileSync(join(pwaIconsDir, name), buf);
+  console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo 100% branco uniforme #FFFFFF)`);
+}
+
+// Gera Assets transparentes da marca (`public/brand/`)
 const brandSizes = [
   { name: "logo.png", size: 512, scale: 0.96 },
   { name: "logo-192.png", size: 192, scale: 0.96 },
@@ -287,29 +307,15 @@ const brandSizes = [
 ];
 
 for (const { name, size, scale } of brandSizes) {
-  const buf = renderIcon(size, scale, null);
+  const buf = renderTransparentIcon(size, scale);
   writeFileSync(join(brandDir, name), buf);
   console.log(`✓ public/brand/${name} (${size}x${size} transparente)`);
 }
 
-// 2. Ícones PWA (`public/pwa/icons/`)
-const pwaTargets = [
-  { name: "icon-192.png", size: 192, scale: 0.88, bg: BG_PETROLEUM },
-  { name: "icon-512.png", size: 512, scale: 0.88, bg: BG_PETROLEUM },
-  { name: "maskable-512.png", size: 512, scale: 0.72, bg: BG_PETROLEUM }, // 80% safe zone
-  { name: "apple-touch-icon-180.png", size: 180, scale: 0.86, bg: BG_PETROLEUM },
-];
-
-for (const { name, size, scale, bg } of pwaTargets) {
-  const buf = renderIcon(size, scale, bg);
-  writeFileSync(join(pwaIconsDir, name), buf);
-  console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo petróleo)`);
-}
-
-// 3. Favicons adicionais e favicon.ico na raiz de public
-const fav16 = renderIcon(16, 0.92, null);
-const fav32 = renderIcon(32, 0.94, null);
-const fav48 = renderIcon(48, 0.94, null);
+// Favicons ICO
+const fav16 = renderTransparentIcon(16, 0.92);
+const fav32 = renderTransparentIcon(32, 0.94);
+const fav48 = renderTransparentIcon(48, 0.94);
 
 const icoBuf = encodeIco([
   { width: 16, height: 16, buffer: fav16 },
@@ -319,7 +325,7 @@ const icoBuf = encodeIco([
 writeFileSync(join(root, "public", "favicon.ico"), icoBuf);
 console.log(`✓ public/favicon.ico (multi-res 16, 32, 48)`);
 
-// 4. Copiar lockup completo da identidade visual se disponível
+// Lockup horizontal completo
 const fullLockupPath = join(root, "identidadeVisual", "Gemini_Generated_Image_ru6ti5ru6ti5ru6t (1).png");
 if (existsSync(fullLockupPath)) {
   writeFileSync(join(brandDir, "logo-full.png"), readFileSync(fullLockupPath));

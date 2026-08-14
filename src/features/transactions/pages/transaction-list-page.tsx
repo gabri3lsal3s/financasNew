@@ -8,7 +8,6 @@ import { SkeletonList } from "@/components/ui/skeleton";
 import { VirtualList } from "@/components/ui/virtual-list";
 import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
 import { currentMonth, isValidMonth } from "@/lib/date";
-import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useExpenses, useIncomes } from "@/state";
@@ -117,11 +116,11 @@ export function TransactionListPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
-        <KpiCard label="Receitas" value={formatCentsAsBRL(incomesTotalCents)} tone="positive" />
-        <KpiCard label="Despesas" value={formatCentsAsBRL(expensesTotalCents)} tone="negative" />
+        <KpiCard label="Receitas" cents={incomesTotalCents} tone="positive" />
+        <KpiCard label="Despesas" cents={expensesTotalCents} tone="negative" />
         <KpiCard
           label="Saldo do mês"
-          value={formatCentsAsBRL(balanceCents)}
+          cents={balanceCents}
           tone={balanceCents >= 0 ? "positive" : "negative"}
         />
       </div>

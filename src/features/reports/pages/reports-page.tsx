@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChartPie, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
+import { MoneyText } from "@/components/ui/money-text";
 import { MonthPicker, ReportTable, type ReportRow } from "@/components/modules";
 import {
   aggregateByCategory,
@@ -13,7 +14,6 @@ import {
   type ReportEntry,
 } from "@/domain/reports";
 import { currentMonth, monthLabel, monthRange, shiftMonth } from "@/lib/date";
-import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import { useCategories, useDebts, useExpenses, useExpensesByRange, useIncomes, useIncomesByRange } from "@/state";
 import { cn } from "@/lib/utils";
@@ -181,14 +181,14 @@ export function ReportsPage() {
         <>
           {/* Resumo com merge de dívidas (§4.3) e comparativo */}
           <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <SummaryCard label="Rendas" value={formatCentsAsBRL(merged.incomeCents)} delta={incomeDelta} positiveIsGood />
-            <SummaryCard label="Despesas" value={formatCentsAsBRL(merged.expenseCents)} delta={expenseDelta} positiveIsGood={false} />
+            <SummaryCard label="Rendas" cents={merged.incomeCents} tone="positive" delta={incomeDelta} positiveIsGood />
+            <SummaryCard label="Despesas" cents={merged.expenseCents} tone="negative" delta={expenseDelta} positiveIsGood={false} />
             <SummaryCard
               label="Saldo"
-              value={formatCentsAsBRL(merged.balanceCents)}
+              cents={merged.balanceCents}
               tone={merged.balanceCents >= 0 ? "positive" : "negative"}
             />
-            <SummaryCard label="Dívidas pagas" value={formatCentsAsBRL(paidDebts.reduce((a, d) => a + d.valueCents, 0))} />
+            <SummaryCard label="Dívidas pagas" cents={paidDebts.reduce((a, d) => a + d.valueCents, 0)} />
           </section>
 
           {paidDebts.length > 0 ? (
@@ -227,13 +227,14 @@ export function ReportsPage() {
 
 function SummaryCard({
   label,
-  value,
+  cents,
   delta,
   positiveIsGood = true,
   tone,
 }: {
   label: string;
-  value: string;
+  /** Valor em centavos — renderiza MoneyText hero (padrão F12). */
+  cents: number;
   delta?: number | null;
   positiveIsGood?: boolean;
   tone?: "positive" | "negative";
@@ -247,15 +248,12 @@ function SummaryCard({
   return (
     <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface p-3.5 sm:p-4">
       <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
-      <span
-        className={cn(
-          "num truncate text-lg font-semibold tracking-tight sm:text-xl",
-          tone === "positive" && "text-positive-strong",
-          tone === "negative" && "text-critical",
-        )}
-      >
-        {value}
-      </span>
+      <MoneyText
+        cents={cents}
+        variant="hero"
+        tone={tone ?? "default"}
+        className="truncate"
+      />
       {delta !== null && delta !== undefined ? (
         <span className={cn("num inline-flex items-center gap-0.5 truncate text-[11px]", good ? "text-positive-strong" : "text-critical")}>
           {delta >= 0 ? <TrendingUp className="size-3" aria-hidden="true" /> : <TrendingDown className="size-3" aria-hidden="true" />}

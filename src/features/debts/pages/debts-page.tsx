@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { CheckCircle2, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Skeleton, Tabs } from "@/components/ui";
+import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
 import { debtStatus } from "@/domain/debts";
-import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
@@ -79,9 +79,11 @@ export function DebtsPage() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className={`num text-sm font-semibold ${debt.type === "receivable" ? "text-positive-strong" : "text-negative-strong"}`}>
-            {formatCentsAsBRL(Math.round(debt.amount * 100))}
-          </span>
+          <MoneyText
+            cents={Math.round(debt.amount * 100)}
+            variant="value"
+            tone={debt.type === "receivable" ? "positive" : "negative"}
+          />
           {isPaid ? (
             <CheckCircle2 className="size-5 text-positive-strong" aria-label="Quitada" />
           ) : (

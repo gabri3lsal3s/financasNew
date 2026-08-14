@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { DataList, type DataListColumn } from "@/components/ui";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText } from "@/components/ui/money-text";
 
 export interface ReportRow {
   /** Chave única da linha. */
@@ -41,7 +41,7 @@ export function ReportTable({ title, rows, totalCents, emptyLabel = "Sem dados n
       key: "value",
       header: "Total",
       align: "right",
-      cell: (row) => <span className="num text-sm font-semibold text-foreground">{formatCentsAsBRL(row.valueCents)}</span>,
+      cell: (row) => <MoneyText cents={row.valueCents} tone="default" />,
     },
   ];
 
@@ -55,7 +55,7 @@ export function ReportTable({ title, rows, totalCents, emptyLabel = "Sem dados n
       />
       <div className="flex items-center justify-between border-t border-border pt-2">
         <span className="text-xs font-medium text-muted-foreground">Total</span>
-        <span className="num text-sm font-semibold text-foreground">{formatCentsAsBRL(totalCents)}</span>
+        <MoneyText cents={totalCents} tone="default" />
       </div>
     </section>
   );

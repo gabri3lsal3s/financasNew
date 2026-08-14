@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { MoneyText } from "@/components/ui/money-text";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Sparkline } from "@/components/ui/sparkline";
 import { formatCentsAsBRL } from "@/services/masks/money";
 
 export interface KpiCardProps {
   label: string;
-  /** Valor já formatado — usado quando `valueCents` não é informado. */
-  value: string;
+  /** Valor já formatado — usado quando `cents`/`valueCents` não são informados. */
+  value?: string;
+  /** Valor em centavos — renderiza MoneyText hero (padrão F12 de hierarquia tipográfica). */
+  cents?: number;
   /** Valor em centavos — quando presente, renderiza NumberTicker animado (F8). */
   valueCents?: number;
   tone?: "default" | "positive" | "negative" | "portfolio";
@@ -21,8 +24,8 @@ export interface KpiCardProps {
 
 const toneValue: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   default: "text-foreground",
-  positive: "text-positive",
-  negative: "text-negative",
+  positive: "text-positive-strong",
+  negative: "text-negative-strong",
   portfolio: "text-portfolio",
 };
 
@@ -33,7 +36,7 @@ const sparkTone: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   portfolio: "stroke-portfolio",
 };
 
-export function KpiCard({ label, value, valueCents, tone = "default", hint, icon, spark }: KpiCardProps) {
+export function KpiCard({ label, value, cents, valueCents, tone = "default", hint, icon, spark }: KpiCardProps) {
   return (
     <Card className="flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 lg:p-5">
       <div>
@@ -43,7 +46,13 @@ export function KpiCard({ label, value, valueCents, tone = "default", hint, icon
         </div>
         {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
         <p className={cn("num mt-1.5 sm:mt-2 truncate text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl", toneValue[tone])}>
-          {valueCents !== undefined ? <NumberTicker value={valueCents} format={formatCentsAsBRL} /> : value}
+          {cents !== undefined ? (
+            <MoneyText cents={cents} variant="hero" tone={tone} className="truncate" />
+          ) : valueCents !== undefined ? (
+            <NumberTicker value={valueCents} format={formatCentsAsBRL} />
+          ) : (
+            value
+          )}
         </p>
       </div>
       <div>

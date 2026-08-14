@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Plus, Wallet } from "lucide-react";
 import { Alert, Button, EmptyState, Skeleton } from "@/components/ui";
 import { KpiCard, PositionTable } from "@/components/modules";
-import { formatCentsAsBRL } from "@/services/masks/money";
 import { usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { AssetFormDialog } from "@/features/portfolio/components/asset-form-dialog";
 import { TransactionFormDialog } from "@/features/portfolio/components/transaction-form-dialog";
@@ -69,10 +68,10 @@ export function PositionTab() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <KpiCard label="Patrimônio total" value={formatCentsAsBRL(toCents(position.totalBRL))} tone="portfolio" />
+            <KpiCard label="Patrimônio total" cents={toCents(position.totalBRL)} tone="portfolio" />
             <KpiCard
               label="Caixa derivado"
-              value={`${position.cashBRL < 0 ? "-" : ""}${formatCentsAsBRL(toCents(Math.abs(position.cashBRL)))}`}
+              cents={toCents(position.cashBRL)}
               tone={position.cashBRL < 0 ? "negative" : position.cashBRL > 0 ? "positive" : "default"}
               hint="Fluxo líquido do ledger (compras debitam; vendas e proventos creditam)"
             />

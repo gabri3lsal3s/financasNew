@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, Pencil, PiggyBank, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
+import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import {
@@ -147,7 +148,7 @@ export function BudgetsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Total de limites do mês</p>
-                <p className="num mt-1 text-2xl font-semibold">{formatCentsAsBRL(totalLimitsCents)}</p>
+                <MoneyText cents={totalLimitsCents} variant="hero" className="mt-1" />
               </div>
               <p className="num text-sm font-medium text-muted-foreground">{Math.round(globalPercent)}% usado</p>
             </div>
@@ -210,7 +211,7 @@ export function BudgetsPage() {
                   <p className="font-medium text-foreground">Realocação sugerida</p>
                   <p className="mt-0.5 text-muted-foreground">
                     <span className="font-medium text-critical">{fromCategory.name}</span> excedeu o limite. Transfira{" "}
-                    <span className="num font-medium text-foreground">{formatCentsAsBRL(suggestion.amountCents)}</span> de limite para{" "}
+                    <MoneyText cents={suggestion.amountCents} tone="default" /> de limite para{" "}
                     <span className="font-medium text-positive-strong">{toCategory.name}</span>, que tem folga.
                   </p>
                 </div>
@@ -326,10 +327,10 @@ function IncomeGoalRow({
       </div>
       <div className="flex items-end gap-2">
         <p className="num flex-1 text-sm text-muted-foreground">
-          Realizado: <span className="font-semibold text-foreground">{formatCentsAsBRL(realizedCents)}</span>
+          Realizado: <MoneyText cents={realizedCents} tone="default" />
           {expectedCents > 0 ? (
             <>
-              {" "}· Meta: <span className="font-semibold text-foreground">{formatCentsAsBRL(expectedCents)}</span>
+              {" "}· Meta: <MoneyText cents={expectedCents} tone="default" />
             </>
           ) : null}
         </p>

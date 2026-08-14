@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText } from "@/components/ui/money-text";
 import type { PriceSource } from "@/domain/portfolio";
 import type { AssetCurrency } from "@/types";
 import type { ReactNode } from "react";
@@ -33,7 +33,7 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
   fallback: { label: "referência", title: "Preço de referência estático (sem cotação atualizada)" },
 };
 
-const toBRL = (value: number): string => formatCentsAsBRL(Math.round((Number.isFinite(value) ? value : 0) * 100));
+const toCents = (value: number): number => Math.round((Number.isFinite(value) ? value : 0) * 100);
 
 /**
  * Posição da carteira — módulo de domínio reutilizável (F4).
@@ -73,7 +73,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
       align: "right",
       cell: (row) => (
         <div className="flex flex-col items-end gap-0.5">
-          <span className="num text-sm text-foreground">{row.isCash ? "1:1" : toBRL(row.priceBRL)}</span>
+          {row.isCash ? <span className="num text-sm text-foreground">1:1</span> : <MoneyText cents={toCents(row.priceBRL)} tone="default" />}
           {row.isCash ? (
             <Badge variant="muted" title="Ativo de caixa/reserva valorado 1:1">
               caixa
@@ -90,15 +90,18 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
       key: "averageCost",
       header: "Custo médio",
       align: "right",
-      cell: (row) => (
-        <span className="num text-sm text-muted-foreground">{row.isCash ? "—" : toBRL(row.averageCost)}</span>
-      ),
+      cell: (row) =>
+        row.isCash ? (
+          <span className="num text-sm text-muted-foreground">—</span>
+        ) : (
+          <MoneyText cents={toCents(row.averageCost)} tone="default" className="text-muted-foreground" />
+        ),
     },
     {
       key: "value",
       header: "Valor",
       align: "right",
-      cell: (row) => <span className="num text-sm font-medium text-foreground">{toBRL(row.valueBRL)}</span>,
+      cell: (row) => <MoneyText cents={toCents(row.valueBRL)} tone="default" />,
     },
     {
       key: "pct",

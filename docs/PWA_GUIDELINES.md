@@ -12,9 +12,14 @@
 ```
 public/
 ├── favicon.ico
+├── brand/                            # Assets oficiais da marca (ver §3)
+│   ├── logo.png (512x512)
+│   ├── logo-192.png / logo-128.png / logo-64.png / logo-32.png
+│   ├── favicon-32.png / favicon-16.png
+│   └── logo-full.png
 └── pwa/
     ├── manifest.webmanifest          # Manifest (ver §2)
-    ├── icons/                        # Ícones (ver §3)
+    ├── icons/                        # Ícones PWA com fundo Azul Petróleo #142531 (ver §3)
     │   ├── icon-192.png
     │   ├── icon-512.png
     │   ├── maskable-512.png
@@ -22,7 +27,7 @@ public/
     ├── screenshots/                  # UI de instalação enriquecida (Chrome)
     │   ├── desktop-1280x800.png
     │   └── mobile-720x1280.png
-    └── offline.html                  # Fallback offline (App Shell mínimo)
+    └── offline.html                  # Fallback offline (App Shell mínimo com logo)
 
 src/
 └── app/

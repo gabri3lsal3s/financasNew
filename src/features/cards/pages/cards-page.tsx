@@ -5,7 +5,6 @@ import { Alert, Button, EmptyState, Skeleton } from "@/components/ui";
 import { KpiCard, MonthPicker, TransactionRow, InvoiceStatusBadge } from "@/components/modules";
 import { autoSelectBillMonth, buildCompetenceSummaries, invoiceStatus } from "@/domain/cards";
 import { currentMonth, monthLabel } from "@/lib/date";
-import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
@@ -139,9 +138,9 @@ export function CardsPage() {
 
           {/* KPIs da fatura */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <KpiCard label="Previsto" value={formatCentsAsBRL(summary?.previstoCents ?? 0)} />
-            <KpiCard label="Pago" value={formatCentsAsBRL(summary?.pagoCents ?? 0)} />
-            <KpiCard label="Saldo aberto" value={formatCentsAsBRL(summary?.saldoCents ?? 0)} tone={summary && summary.saldoCents > 0 ? "negative" : "positive"} />
+            <KpiCard label="Previsto" cents={summary?.previstoCents ?? 0} />
+            <KpiCard label="Pago" cents={summary?.pagoCents ?? 0} />
+            <KpiCard label="Saldo aberto" cents={summary?.saldoCents ?? 0} tone={summary && summary.saldoCents > 0 ? "negative" : "positive"} />
           </div>
 
           {selectedCard ? (

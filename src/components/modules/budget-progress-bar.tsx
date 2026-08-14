@@ -1,5 +1,5 @@
 import { Progress } from "@/components/ui/progress";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText } from "@/components/ui/money-text";
 
 export interface BudgetProgressBarProps {
   spentCents: number;
@@ -22,9 +22,10 @@ export function BudgetProgressBar({ spentCents, limitCents, label }: BudgetProgr
     <div className="flex flex-col gap-1.5">
       {label ? <p className="text-xs font-medium text-muted-foreground">{label}</p> : null}
       <div className="flex items-center justify-between gap-2">
-        <span className="num text-sm font-medium text-foreground">
-          {formatCentsAsBRL(spentCents)}
-          <span className="text-muted-foreground"> de {formatCentsAsBRL(limitCents)}</span>
+        <span className="flex items-center gap-1">
+          <MoneyText cents={spentCents} tone="default" />
+          <span className="text-muted-foreground">de</span>
+          <MoneyText cents={limitCents} tone="default" className="text-muted-foreground" />
         </span>
         <span className={over ? "num text-xs font-semibold text-critical" : "num text-xs text-muted-foreground"}>
           {over ? "Excedido" : `${Math.round(percent)}%`}
