@@ -11,17 +11,29 @@ export interface ModalProps {
   description?: string;
   children?: ReactNode;
   className?: string;
+  /** Sobe o z-index acima de outros modais (ex.: calculadora sobre formulários). */
+  elevated?: boolean;
 }
 
 /** Modal próprio do app (Radix Dialog) — substitui `<dialog>`, alert/confirm/prompt (DESIGN_SYSTEM §13). */
-export function Modal({ open, onOpenChange, title, description, children, className }: ModalProps) {
+export function Modal({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  className,
+  elevated = false,
+}: ModalProps) {
+  const z = elevated ? "z-[70]" : "z-50";
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay backdrop-blur-sm" />
+        <DialogPrimitive.Overlay className={cn("fixed inset-0 bg-overlay backdrop-blur-sm", z)} />
         <DialogPrimitive.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-6 shadow-lg focus:outline-none",
+            "fixed left-1/2 top-1/2 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-6 shadow-lg focus:outline-none",
+            z,
             className,
           )}
         >

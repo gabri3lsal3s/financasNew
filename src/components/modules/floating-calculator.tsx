@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { Calculator as CalculatorIcon, Check, History } from "lucide-react";
 import { Button, Modal, NumberStepper } from "@/components/ui";
 import { CalculatorKeypad } from "@/components/modules/calculator-keypad";
 import { useDraggable } from "@/hooks/use-draggable";
 import { injectCalculatedValue } from "@/services/calculator-bridge";
+import { isCalculatorOpen, setCalculatorOpen, subscribeCalculatorOpen } from "@/services/calculator-open";
 import { triggerHaptic } from "@/services/haptics";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import {
@@ -22,9 +23,13 @@ import type { CalculatorState, HistoryEntry } from "@/domain/calculator";
 const FAB_SIZE = 56;
 
 /** Calculadora flutuante (F9): FAB arrastável com snap às bordas + painel
- * retrátil. "Usar valor" injeta o resultado em centavos no MoneyInput ativo. */
+ * retrátil. "Usar valor" injeta o resultado em centavos no MoneyInput ativo.
+ * O estado de abertura é compartilhado (calculator-open): o botão do header
+ * (CalculatorButton) e o FAB abrem o mesmo painel. O FAB usa z-[60] para
+ * ficar visível acima de modais de formulário (z-50). */
 export function FloatingCalculator() {
-  const [open, setOpen] = useState(false);
+  // Store externo — abrir via header OU FAB abre o mesmo painel.
+  const open = useSyncExternalStore(subscribeCalculatorOpen, isCalculatorOpen);
   const [state, setState] = useState<CalculatorState>(INITIAL_STATE);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [installments, setInstallments] = useState(1);
@@ -73,7 +78,7 @@ export function FloatingCalculator() {
   const handleInject = () => {
     const ok = injectCalculatedValue(decimalToCents(state.display));
     triggerHaptic(ok ? "success" : "warning");
-    if (ok) setOpen(false);
+    if (ok) setCalculatorOpen(false);
   };
 
   const displayCents = decimalToCents(state.display);
@@ -85,7 +90,7 @@ export function FloatingCalculator() {
         type="button"
         aria-label="Abrir calculadora"
         title="Calculadora"
-        className="fixed z-40 flex items-center justify-center rounded-full border border-primary-strong/40 bg-background/95 text-primary-strong shadow-sm transition-transform active:scale-95"
+        className="fixed z-[60] flex items-center justify-center rounded-full border border-primary-strong/40 bg-background/95 text-primary-strong shadow-sm transition-transform active:scale-95"
         style={{ left: draggable.position.x, top: draggable.position.y, width: FAB_SIZE, height: FAB_SIZE }}
         {...draggable.pointerHandlers}
         onClick={() => {
@@ -93,7 +98,7 @@ export function FloatingCalculator() {
             dragMovedRef.current = false;
             return;
           }
-          setOpen(true);
+          setCalculatorOpen(true);
           triggerHaptic("light");
         }}
       >
@@ -102,9 +107,10 @@ export function FloatingCalculator() {
 
       <Modal
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={setCalculatorOpen}
         title="Calculadora"
         description="Use o resultado no campo em foco do formulário."
+        elevated
       >
         <div className="mt-4 flex flex-col gap-4">
           {/* Display */}

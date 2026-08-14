@@ -1,10 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FloatingCalculator } from "./floating-calculator";
 import { registerCalculatorTarget, unregisterCalculatorTarget, getCalculatorTarget } from "@/services/calculator-bridge";
+import { setCalculatorOpen } from "@/services/calculator-open";
+
+beforeEach(() => {
+  setCalculatorOpen(false);
+});
 
 afterEach(() => {
+  setCalculatorOpen(false);
   const target = getCalculatorTarget();
   if (target) unregisterCalculatorTarget(target);
 });

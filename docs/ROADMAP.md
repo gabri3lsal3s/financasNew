@@ -622,6 +622,7 @@
 - [x] **ColorPicker** (`components/ui/color-picker.tsx`): popover com paleta de marca harmonizada (18 swatches Teal/Ouro/Coral/Sky/neutros), hex custom validado (`#RGB`/`#RRGGBB`, normalizado) e limpar — substitui o input hex cru nos formulários de categoria e cartão.
 - [x] **IconPicker** (`components/ui/icon-picker.tsx`): grade de ícones `lucide-react` com busca e estado vazio, agnóstico de domínio (opções com ícones injetadas pelas telas a partir de `CATEGORY_ICON_MAP`) — substitui o select textual de ícone no formulário de categoria.
 - [x] **Botões discretos (sem fundo sólido):** variantes `default`/`destructive`/`positive` do `Button` reestilizadas para **borda de cor + texto colorido** com hover de tinta suave e sem sombra; `secondary` em tinta 15%; FABs (BottomNav e calculadora flutuante) em círculo `background/95` + borda teal. Botões "Nova transação/categoria/cartão", CTAs de auth e confirmações herdam automaticamente.
+- [x] **Calculadora no header + acessível em modais:** novo `CalculatorButton` (mesmo visual ghost/ícone dos botões do header, substitui o `DensityToggle` — densidade segue em Configurações) abrindo o painel via store compartilhado `calculator-open` (botão e FAB abrem o mesmo painel); `Modal` ganha variante `elevated` (z-70) e o FAB da calculadora sobe para z-60, ficando **visível acima de modais de formulário** para cálculo e injeção via bridge.
 - [x] Typecheck, lint (0 erros), build e suíte completa verdes (94 arquivos / 667 testes)
 
 ---

@@ -3,7 +3,7 @@ import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { DensityToggle } from "@/components/layout/density-toggle";
+import { CalculatorButton } from "@/components/layout/calculator-button";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -43,7 +43,7 @@ export function PageShell() {
           <BrandLogo showWordmark={false} markClassName="size-7" className="mr-auto lg:hidden" />
           <GlobalSearch />
           <PrivacyToggle />
-          <DensityToggle />
+          <CalculatorButton />
           <ThemeToggle />
         </header>
         <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 lg:px-8">
