@@ -168,7 +168,7 @@
 
 **Entregas (na ordem):**
 1. ✅ **Motor de insights** (`domain/insights`): alertas críticos priorizados, assinaturas (3 sinais + tiers), recorrências (3 níveis), confiança + aprendizado (ignorar/confirmar/restaurar).
-2. Desafios de economia (10/20/30%, limite dinâmico, máx. 4) e sugestões de limite (máx. 3/mês).
+2. ✅ Desafios de economia (10/20/30%, limite dinâmico, máx. 4) e sugestões de limite (máx. 3/mês).
 3. Projeção (`domain/projection`): gasto disponível diário, ritmo de gastos (8º dia / ≥30%), fim de mês (dia ≥ 3), projeção de pendências.
 4. Relatórios: dia/mês/ano, custom (≤ 366 dias), agregação por categoria/forma/dia da semana, comparativo, merge de dívidas pagas.
 5. Central de lembretes: consolidação faturas/dívidas, marcar lido, snooze com expiração. **Decisão aberta:** push ou in-app.
@@ -191,6 +191,14 @@
 - `domain/insights/diagnostics.ts` — concentração de renda (>60% alerta), gastos de fim de semana (ratio > 1.5), tendência significativa (>15%), saúde da poupança (§3.7.6).
 - Persistência: `src/data/repositories/insight-feedback.ts` (list/upsert/delete-restaurar) + `useFeedback`/`useSetFeedback` (TanStack Query).
 - **29 testes verdes** (25 domínio + 4 repository).
+
+**Progresso da entrega 2:**
+- `domain/savings` — motores puros de §3.7.5, sem persistência própria (aplicar = `set_budget_limit` existente):
+  - `dynamicMinLimitCents` — limite mínimo dinâmico `max(R$ 20, 0,5% da renda)`.
+  - `buildChallengeOptions` + `pickTopChallenges` — desafios por categoria de alto gasto não essencial (≥ 10% da renda), 3 intensidades (10/20/30%), meta respeitando o piso dinâmico, máx. 4 simultâneos com priorização por impacto.
+  - `discretionaryChallenge` — desafio "30% em não essenciais" (soma de categorias discricionárias de alto gasto).
+  - `buildLimitSuggestions` — estouro → aumento `max(excesso, 15% do limite)`; uso < 50% com folga > R$ 50 → redução mantendo 30% de margem (arredondada a R$ 10, respeitando o piso); máx. 3/mês priorizadas por impacto.
+- **17 testes verdes** (domínio puro).
 
 
 ### Fase 4 — Carteira & Rebalanceamento
