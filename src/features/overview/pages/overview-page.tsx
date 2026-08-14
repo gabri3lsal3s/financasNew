@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Inbox, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, Inbox, PiggyBank, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Progress, Skeleton } from "@/components/ui";
 import {
   CategoryDonut,
@@ -376,68 +376,81 @@ export function OverviewPage() {
             </section>
           ) : null}
 
-          {/* Taxa de poupança + saúde (runway) — F8 */}
+          {/* Resumo financeiro (§3.6 + F8): poupança, saldo de contas e saúde em uma linha */}
           {visual.dashboardWidgets.savingsHealth && (
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Taxa de poupança</p>
-                  <p className={cn("num mt-1 text-2xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
-                    {formatPercent(totals.savingsRatePercent)}%
-                  </p>
+            <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <PiggyBank className="size-4 text-foreground" aria-hidden="true" />
+                  </span>
+                  <h2 className="text-sm font-semibold text-foreground">Taxa de poupança</h2>
                 </div>
-                <p className="max-w-[12rem] text-right text-xs text-muted-foreground">
+                <p className={cn("num text-3xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
+                  {formatPercent(totals.savingsRatePercent)}%
+                </p>
+                <p className="text-xs text-muted-foreground">
                   {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
                 </p>
-              </div>
-              <SavingsHealthCard savingsRatePercent={totals.savingsRatePercent} incomeCents={incomeCents} expenseCents={expenseCents} />
-            </div>
-          )}
+              </article>
 
-          {/* Saldo líquido de Contas (§3.6) */}
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground">Saldo líquido de contas</p>
-              <p className={cn("num text-xl font-semibold", accountsBalance >= 0 ? "text-positive-strong" : "text-critical")}>
-                {formatCentsAsBRL(accountsBalance)}
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              A receber <span className="privacy-mask">{formatCentsAsBRL(receivablePending)}</span> · A pagar{" "}
-              <span className="privacy-mask">{formatCentsAsBRL(payablePending)}</span> · Faturas em aberto{" "}
-              <span className="privacy-mask">{formatCentsAsBRL(openInvoices)}</span>
-            </p>
-          </div>
+              <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <Wallet className="size-4 text-foreground" aria-hidden="true" />
+                  </span>
+                  <h2 className="text-sm font-semibold text-foreground">Saldo líquido de contas</h2>
+                </div>
+                <p className={cn("num text-3xl font-semibold", accountsBalance >= 0 ? "text-positive-strong" : "text-critical")}>
+                  {formatCentsAsBRL(accountsBalance)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  A receber <span className="privacy-mask">{formatCentsAsBRL(receivablePending)}</span> · A pagar{" "}
+                  <span className="privacy-mask">{formatCentsAsBRL(payablePending)}</span> · Faturas em aberto{" "}
+                  <span className="privacy-mask">{formatCentsAsBRL(openInvoices)}</span>
+                </p>
+              </article>
 
-          {/* Fluxo diário avançado (§3.6 + F8): barras + saldo acumulado + meta */}
-          {visual.dashboardWidgets.flow && (
-            <section aria-label="Fluxo diário" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
-                <span className="text-xs text-muted-foreground">{monthLabel(month)}</span>
-              </div>
-              <DailyFlowChart days={dailyFlow} dailyGoalCents={phase === "current" ? budget.dailyCents : null} />
-              <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <span className="size-2 rounded-sm bg-positive-strong/80" /> Receitas
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="size-2 rounded-sm bg-negative-strong/80" /> Despesas
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-0.5 w-4 rounded bg-portfolio" /> Saldo acumulado
-                </span>
+              <div className="md:col-span-2 xl:col-span-1">
+                <SavingsHealthCard savingsRatePercent={totals.savingsRatePercent} incomeCents={incomeCents} expenseCents={expenseCents} />
               </div>
             </section>
           )}
 
-          {/* Distribuição por categoria (F8 — donut) */}
-          {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
-            <section aria-label="Distribuição por categoria" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-              <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
-              <CategoryDonut slices={donutSlices} />
+          {/* Análises do período (F8): fluxo diário + distribuição por categoria lado a lado */}
+          {(visual.dashboardWidgets.flow || (visual.dashboardWidgets.donut && donutSlices.length > 0)) && (
+            <section
+              aria-label="Análises do período"
+              className={cn("grid gap-3", visual.dashboardWidgets.flow && visual.dashboardWidgets.donut && donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
+            >
+              {visual.dashboardWidgets.flow && (
+                <section aria-label="Fluxo diário" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
+                    <span className="text-xs text-muted-foreground">{monthLabel(month)}</span>
+                  </div>
+                  <DailyFlowChart days={dailyFlow} dailyGoalCents={phase === "current" ? budget.dailyCents : null} />
+                  <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="size-2 rounded-sm bg-positive-strong/80" /> Receitas
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="size-2 rounded-sm bg-negative-strong/80" /> Despesas
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-0.5 w-4 rounded bg-portfolio" /> Saldo acumulado
+                    </span>
+                  </div>
+                </section>
+              )}
+              {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
+                <section aria-label="Distribuição por categoria" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+                  <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
+                  <CategoryDonut slices={donutSlices} />
+                </section>
+              ) : null}
             </section>
-          ) : null}
+          )}
 
           {/* Orçamentos (§3.6): progresso + atenção + realocação */}
           {visual.dashboardWidgets.budgets && (
