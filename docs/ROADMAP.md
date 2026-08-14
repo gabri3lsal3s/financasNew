@@ -172,7 +172,7 @@
 3. ✅ Projeção (`domain/projection`): gasto disponível diário, ritmo de gastos (8º dia / ≥30%), fim de mês (dia ≥ 3), projeção de pendências.
 4. ✅ Relatórios: dia/mês/ano, custom (≤ 366 dias), agregação por categoria/forma/dia da semana, comparativo, merge de dívidas pagas.
 5. ✅ Central de lembretes: consolidação faturas/dívidas, marcar lido, snooze com expiração. **Decisão:** **in-app** (spec §2.10 — push fica opcional/futuro).
-6. **Telas:** Insights, Projeção e Corte, Relatórios, Lembretes (novos módulos de domínio quando necessário — ex.: `AlertCard`, `ProjectionLine`).
+6. ✅ **Telas:** Insights, Projeção e Corte, Relatórios, Lembretes (novos módulos: `AlertCard`, `InsightList`, `ProjectionLine`, `ReminderItem`, `ReportTable`).
 
 **✅ DoD**
 - Testes dos alertas priorizados (ordem correta) e da fórmula de confiança.
@@ -226,6 +226,15 @@
   - `invoiceDueDate` extraído em `domain/cards` (DRY — reutilizado por `invoiceStatus` e lembretes).
 - Persistência: migration `0006_reminder_states.sql` (tabela com unique user+occurrence_key, RLS) + `src/data/repositories/reminder-states.ts` + `useReminderStates`/`useSetReminderState`.
 - **18 testes verdes** (14 domínio + 4 repository).
+
+**Progresso da entrega 6 (Fase 3 completa ✅):**
+- Queries de range: `listExpensesByRange`/`listIncomesByRange` + `useExpensesByRange`/`useIncomesByRange` (período custom ≤ 366 dias).
+- Módulos F3: `AlertCard` (prioridade 1–6 com tons), `InsightList` (assinaturas/recorrências com confiança + ignorar/confirmar/restaurar), `ProjectionLine` (diário/projeção/superávit/trilha + ritmo), `ReminderItem` (status + lido/snooze/restaurar), `ReportTable` (agregações com participação e total).
+- **InsightsPage** (`/insights`): abas Alertas (§3.7.1), Assinaturas & recorrências (§3.7.2/.3 com aprendizado persistido), Projeção & corte (§3.8 + pendências + desafios/sugestões de limite §3.7.5) e Diagnósticos (§3.7.6).
+- **ReportsPage** (`/relatorios`): período por mês ou custom (máx. 366 dias), resumo com merge de dívidas pagas (§4.3) + comparativo, agregações por categoria/forma/dia da semana.
+- **RemindersPage** (`/lembretes`): consolida faturas (competência auto-selecionada por cartão) e dívidas pendentes com ações lido/snooze(7d)/restaurar persistidas.
+- Correção no motor: nível `similar` de recorrência usa rótulo de categoria (evita nome duplicado da primeira despesa).
+- **8 testes de página novos** (insights/reports/reminders).
 
 
 ### Fase 4 — Carteira & Rebalanceamento

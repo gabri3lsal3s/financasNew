@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getExpense, listExpensesByMonth } from "@/data/repositories/expenses";
+import { getExpense, listExpensesByMonth, listExpensesByRange } from "@/data/repositories/expenses";
 
 export const expensesKey = ["expenses"] as const;
 
@@ -8,6 +8,15 @@ export function useExpenses(month: string) {
   return useQuery({
     queryKey: [...expensesKey, month],
     queryFn: () => listExpensesByMonth(month),
+    staleTime: 30_000,
+  });
+}
+
+/** Despesas num período custom [start, end) — relatórios custom (≤ 366 dias). */
+export function useExpensesByRange(start: string, end: string) {
+  return useQuery({
+    queryKey: [...expensesKey, "range", start, end],
+    queryFn: () => listExpensesByRange(start, end),
     staleTime: 30_000,
   });
 }

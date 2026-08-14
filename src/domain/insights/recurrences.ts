@@ -177,7 +177,7 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
     const confidence = confidenceScore({ base: 0.6, monthsHistory: distinctMonths, kind: "similar", variance });
     occurrences.push({
       key: `similar:${categoryId}`,
-      name: group[0]?.description ?? "Categoria recorrente",
+      name: "Gastos similares na categoria",
       level: "similar",
       months,
       averageCents: Math.round(totals.reduce((acc, v) => acc + v, 0) / totals.length),

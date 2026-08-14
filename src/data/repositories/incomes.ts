@@ -33,6 +33,23 @@ export async function listIncomesByMonth(month: string): Promise<Income[]> {
   return (data ?? []).map(mapIncome);
 }
 
+/** Rendas num período custom [start, end) — relatórios custom (≤ 366 dias). */
+export async function listIncomesByRange(start: string, end: string): Promise<Income[]> {
+  const { data, error } = await resolveQuery<Income[]>(
+    getSupabase()
+      .from("incomes")
+      .select("*")
+      .gte("date", start)
+      .lt("date", end)
+      .order("date", { ascending: true }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapIncome);
+}
+
 /** Rendas automáticas ([REFUND], etc.) são somente-leitura — excluídas do CRUD. */
 export async function createIncome(input: Omit<DbInsert<Income>, "user_id">): Promise<Income> {
   const user_id = await currentUserId();
