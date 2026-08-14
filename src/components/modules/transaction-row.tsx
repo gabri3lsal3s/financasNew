@@ -58,7 +58,9 @@ export function TransactionRow({
   const content = (
     <div
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-2 transition-colors",
+        // Superfície consistente (F12): toda linha é um card de superfície
+        // (receitas/despesas iguais — antes só as com swipe tinham bg-surface).
+        "flex w-full items-center gap-3 rounded-xl bg-surface px-2 transition-colors",
         compact ? "py-1.5" : "py-2.5",
         onClick && "cursor-pointer hover:bg-surface-hover",
         className,

@@ -33,4 +33,15 @@ describe("TransactionRow", () => {
     await user.click(screen.getByRole("button", { name: /aluguel/i }));
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it("todas as linhas usam a mesma superfície (bg-surface) — receitas e despesas iguais", () => {
+    const { container } = render(
+      <>
+        <TransactionRow title="Salário" amountCents={1000} kind="income" />
+        <TransactionRow title="Aluguel" amountCents={1000} kind="expense" />
+      </>,
+    );
+    const rows = Array.from(container.querySelectorAll(".rounded-xl.bg-surface"));
+    expect(rows).toHaveLength(2);
+  });
 });

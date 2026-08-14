@@ -41,6 +41,41 @@ describe("VirtualList — virtualização de listas (F5.5)", () => {
     expect(screen.getByRole("list", { name: "Lista grande" })).toBeInTheDocument();
   });
 
+  it("gap separa as linhas no modo plano (style.gap no contêiner)", () => {
+    const { container } = render(
+      <VirtualList
+        rows={rows.slice(0, 3)}
+        rowKey={(row) => row.id}
+        itemHeight={64}
+        gap={8}
+        renderRow={(row) => <Row label={row.label} />}
+        aria-label="Lista com gap"
+      />,
+    );
+    const list = screen.getByLabelText("Lista com gap");
+    expect((list as HTMLElement).style.gap).toBe("8px");
+    expect(container.querySelectorAll("[style*='padding-bottom']")).toHaveLength(0);
+  });
+
+  it("gap entra no passo da janela (altura da linha = itemHeight + gap)", () => {
+    render(
+      <VirtualList
+        rows={rows}
+        rowKey={(row) => row.id}
+        itemHeight={64}
+        gap={8}
+        renderRow={(row) => <Row label={row.label} />}
+        maxHeight={320}
+        aria-label="Lista rolável com gap"
+      />,
+    );
+    const list = screen.getByRole("list", { name: "Lista rolável com gap" });
+    const firstRow = list.querySelector("[style*='padding-bottom']");
+    expect(firstRow).toBeTruthy();
+    expect(firstRow?.getAttribute("style")).toContain("height: 72px");
+    expect(firstRow?.getAttribute("style")).toContain("padding-bottom: 8px");
+  });
+
   it("rolagem desloca a janela renderizada", () => {
     const { container } = render(
       <VirtualList

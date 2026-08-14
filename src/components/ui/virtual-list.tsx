@@ -29,6 +29,8 @@ export interface VirtualListProps<T> {
    */
   className?: string;
   "aria-label"?: string;
+  /** Espaço vertical entre linhas (px) — aplicado nos dois modos (plano e janela). */
+  gap?: number;
 }
 
 /**
@@ -51,6 +53,7 @@ export function VirtualList<T>({
   plainThreshold = 60,
   maxHeight = 480,
   fallbackViewportHeight = 320,
+  gap = 0,
   className,
   ...rest
 }: VirtualListProps<T>) {
@@ -69,7 +72,7 @@ export function VirtualList<T>({
 
   if (plain) {
     return (
-      <div className={cn("flex flex-col", className)} aria-label={rest["aria-label"]}>
+      <div className={cn("flex flex-col", className)} style={{ gap }} aria-label={rest["aria-label"]}>
         {rows.map((row, index) => (
           <div key={rowKey(row, index)}>{renderRow(row, index)}</div>
         ))}
@@ -77,11 +80,15 @@ export function VirtualList<T>({
     );
   }
 
+  // A janela usa o PASSO (linha + gap) para o posicionamento; cada linha
+  // ocupa `itemHeight` e o gap fica no rodapé (border-box) — espaçamento
+  // idêntico ao modo plano, sem sobrepor as linhas virtualizadas.
+  const pitch = itemHeight + gap;
   const window = computeVirtualWindow({
     total: rows.length,
     scrollTop,
     viewportHeight,
-    itemHeight,
+    itemHeight: pitch,
     overscan,
   });
 
@@ -109,7 +116,7 @@ export function VirtualList<T>({
       <div style={innerStyle}>
         <div style={blockStyle}>
           {visibleRows.map((row, index) => (
-            <div key={rowKey(row, window.start + index)} style={{ height: itemHeight }}>
+            <div key={rowKey(row, window.start + index)} style={{ height: pitch, paddingBottom: gap }}>
               {renderRow(row, window.start + index)}
             </div>
           ))}

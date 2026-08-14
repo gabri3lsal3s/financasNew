@@ -164,6 +164,7 @@ export function TransactionListPage() {
                 itemHeight={ROW_HEIGHT}
                 plainThreshold={PLAIN_THRESHOLD}
                 maxHeight={560}
+                gap={8}
                 aria-label="Receitas do mês"
                 renderRow={(income) => (
                   <HighlightRow highlightId={highlightId} id={income.id}>
@@ -194,6 +195,7 @@ export function TransactionListPage() {
                 itemHeight={ROW_HEIGHT}
                 plainThreshold={PLAIN_THRESHOLD}
                 maxHeight={560}
+                gap={8}
                 aria-label="Despesas do mês"
                 renderRow={(expense) => (
                   <HighlightRow highlightId={highlightId} id={expense.id}>
