@@ -1,9 +1,20 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FloatingCalculator } from "./floating-calculator";
-import { registerCalculatorTarget, unregisterCalculatorTarget, getCalculatorTarget } from "@/services/calculator-bridge";
+import {
+  getCalculatorTarget,
+  registerCalculatorTarget,
+  unregisterCalculatorTarget,
+} from "@/services/calculator-bridge";
 import { setCalculatorOpen } from "@/services/calculator-open";
+
+/** Registra um campo falso — condição para o FAB aparecer (pós-F10). */
+function registerFakeTarget(): () => void {
+  const setter = vi.fn();
+  registerCalculatorTarget(setter);
+  return () => unregisterCalculatorTarget(setter);
+}
 
 beforeEach(() => {
   setCalculatorOpen(false);
@@ -21,7 +32,24 @@ async function openCalculator(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("FloatingCalculator (F9)", () => {
+  it("o FAB só aparece com campo de valor ativo (MoneyInput focado)", () => {
+    const { unmount } = render(<FloatingCalculator />);
+    // Sem campo registrado: FAB oculto (calculadora acessível pelo header).
+    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+
+    let unregister: () => void = () => undefined;
+    act(() => {
+      unregister = registerFakeTarget();
+    });
+    expect(screen.getByRole("button", { name: "Abrir calculadora" })).toBeInTheDocument();
+
+    act(() => unregister());
+    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+    unmount();
+  });
+
   it("o FAB abre o painel da calculadora", async () => {
+    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
 
@@ -30,6 +58,7 @@ describe("FloatingCalculator (F9)", () => {
   });
 
   it("resolve operações no display (2 + 3 = 5)", async () => {
+    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
     await openCalculator(user);
@@ -60,9 +89,14 @@ describe("FloatingCalculator (F9)", () => {
   });
 
   it("sem campo registrado, 'Usar valor' mantém o painel aberto", async () => {
+    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
     await openCalculator(user);
+
+    // Remove o campo ativo enquanto o painel está aberto.
+    const target = getCalculatorTarget();
+    if (target) unregisterCalculatorTarget(target);
 
     await user.click(screen.getByRole("button", { name: "Dígito 5" }));
     await user.click(screen.getByRole("button", { name: "Usar valor" }));
@@ -71,6 +105,7 @@ describe("FloatingCalculator (F9)", () => {
   });
 
   it("divide em parcelas exatas (100 ÷ 3 → 33,34 com resto na 1ª)", async () => {
+    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
     await openCalculator(user);

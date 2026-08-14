@@ -10,20 +10,37 @@
 type CalculatorTarget = (cents: number) => void;
 
 let activeTarget: CalculatorTarget | null = null;
+const listeners = new Set<() => void>();
+
+function notify(): void {
+  for (const listener of listeners) listener();
+}
 
 /** Registra o campo ativo (chamado no focus do MoneyInput). */
 export function registerCalculatorTarget(target: CalculatorTarget): void {
   activeTarget = target;
+  notify();
 }
 
 /** Remove o registro quando o campo desmonta (apenas se ainda é o ativo). */
 export function unregisterCalculatorTarget(target: CalculatorTarget): void {
-  if (activeTarget === target) activeTarget = null;
+  if (activeTarget === target) {
+    activeTarget = null;
+    notify();
+  }
 }
 
 /** Campo atualmente ativo (para testes/inspeção). */
 export function getCalculatorTarget(): CalculatorTarget | null {
   return activeTarget;
+}
+
+/** Assinatura para a UI reagir ao campo ativo (ex.: FAB só quando houver alvo). */
+export function subscribeCalculatorTarget(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 /**
