@@ -13,10 +13,11 @@ export function useExpenses(month: string) {
 }
 
 /** Despesas num período custom [start, end) — relatórios custom (≤ 366 dias). */
-export function useExpensesByRange(start: string, end: string) {
+export function useExpensesByRange(start: string, end: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...expensesKey, "range", start, end],
     queryFn: () => listExpensesByRange(start, end),
+    enabled: options?.enabled ?? true,
     staleTime: 30_000,
   });
 }

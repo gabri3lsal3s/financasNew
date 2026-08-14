@@ -316,7 +316,7 @@
 2. ✅ **Tema OLED refinado** (contraste/estados) + microinterações.
 3. ✅ **Auditoria de acessibilidade** (axe, contraste AA, foco, teclado) em todas as telas.
 4. ✅ **Empty states completos** + onboarding de primeiro uso.
-5. Performance: bundle splitting, virtualização de listas, revisão de queries (N+1).
+5. ✅ **Performance**: bundle splitting, virtualização de listas, revisão de queries (N+1).
 6. **PWA polish:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, splash/iOS, auditoria Lighthouse PWA.
 
 **Progresso — Fase 5, entrega 1 (busca global §3.9):**
@@ -331,6 +331,11 @@
 - **Tokens OLED refinados** (`tokens.css`): sobre true black, hover `9%`/pressed `13%` (estados perceptíveis), borda `14%` + input `18%` (elevação por borda, sem sombra), `--muted-foreground` `50%` (AA 5.3:1) — §6 do DESIGN_SYSTEM.
 - **Tokens novos nos 3 temas:** `--overlay` (40/60/70%) para modais/command palette — substitui o `bg-black/50` hard-coded no `Modal` e `Command`; `--scrollbar-thumb`/`--scrollbar-track` com scrollbars estilizadas em `globals.css` (WebKit + Firefox) — §13.
 - **Microinterações:** `Button` ganha press `active:scale-[0.98]` + `transition` 150ms (DESIGN_SYSTEM §7); transições de hover padronizadas nos botões de ação de insights/lembretes; `prefers-reduced-motion: reduce` desativa animações (a11y).
+
+**Progresso — Fase 5, entrega 5 (performance):**
+- **Bundle splitting:** rotas lazy por página (`routes.tsx` com `React.lazy` + `Suspense`/Skeleton no router) — cada feature vira chunk próprio carregado no primeiro acesso; shell principal em ~223 kB (gzip 69 kB) e páginas 5–24 kB cada.
+- **Virtualização de listas:** `domain/virtualization` (puro, 5 testes — `computeVirtualWindow` com overscan e espaçadores) + primitivo `VirtualList` (3 testes) com fallback plano para listas pequenas (≤ 60) e medição por evento de scroll (sem acesso a ref durante render — compatível com as regras React Compiler do lint); aplicado na lista de transações (receitas/despesas, itemHeight fixo 64px, `key={month}` zera rolagem sem efeitos).
+- **Revisão de queries (N+1):** em relatórios, as queries de período custom (`useExpensesByRange`/`useIncomesByRange`) agora rodam **apenas no modo custom** (`enabled`) — antes duplicavam o fetch do mês no modo mês; mensais permanecem com `staleTime` para troca instantânea de aba.
 
 **Progresso — Fase 5, entrega 4 (empty states + onboarding):**
 - **Auditoria de empty states:** todas as telas com EmptyState dedicado (DESIGN_SYSTEM §11) — transações (receitas/despesas), cartões (sem cartão/fatura/pagamento), dívidas, orçamentos, categorias, relatórios, insights, lembretes, carteira (posição/metas/aporte) e wizard — tom "Nenhum/Nenhuma/Sem + substantivo" com descrição imperativa e ícone lucide contextual.

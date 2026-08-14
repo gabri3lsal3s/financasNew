@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VirtualList } from "@/components/ui/virtual-list";
 import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
 import { currentMonth, isValidMonth } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -32,6 +33,11 @@ function ExpenseRow({ expense, onClick }: { expense: Expense; onClick?: () => vo
     />
   );
 }
+
+// Altura fixa das linhas (py-2.5 + ícone 36px ≈ 56px; folga p/ badges).
+const ROW_HEIGHT = 64;
+// Acima deste total renderiza tudo direto (sem janela) — meses comuns.
+const PLAIN_THRESHOLD = 60;
 
 function IncomeRow({ income }: { income: Income }) {
   return (
@@ -139,11 +145,20 @@ export function TransactionListPage() {
                 description="Registre sua primeira renda do mês."
               />
             ) : (
-              (incomesQuery.data ?? []).map((income) => (
-                <HighlightRow key={income.id} highlightId={highlightId} id={income.id}>
-                  <IncomeRow income={income} />
-                </HighlightRow>
-              ))
+              <VirtualList
+                key={month}
+                rows={incomesQuery.data ?? []}
+                rowKey={(income) => income.id}
+                itemHeight={ROW_HEIGHT}
+                plainThreshold={PLAIN_THRESHOLD}
+                maxHeight={560}
+                aria-label="Receitas do mês"
+                renderRow={(income) => (
+                  <HighlightRow highlightId={highlightId} id={income.id}>
+                    <IncomeRow income={income} />
+                  </HighlightRow>
+                )}
+              />
             )}
           </section>
 
@@ -159,11 +174,20 @@ export function TransactionListPage() {
                 description="Registre seu primeiro gasto do mês."
               />
             ) : (
-              (expensesQuery.data ?? []).map((expense) => (
-                <HighlightRow key={expense.id} highlightId={highlightId} id={expense.id}>
-                  <ExpenseRow expense={expense} onClick={() => setSelectedExpense(expense)} />
-                </HighlightRow>
-              ))
+              <VirtualList
+                key={month}
+                rows={expensesQuery.data ?? []}
+                rowKey={(expense) => expense.id}
+                itemHeight={ROW_HEIGHT}
+                plainThreshold={PLAIN_THRESHOLD}
+                maxHeight={560}
+                aria-label="Despesas do mês"
+                renderRow={(expense) => (
+                  <HighlightRow highlightId={highlightId} id={expense.id}>
+                    <ExpenseRow expense={expense} onClick={() => setSelectedExpense(expense)} />
+                  </HighlightRow>
+                )}
+              />
             )}
           </section>
         </div>

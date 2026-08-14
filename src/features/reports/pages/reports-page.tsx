@@ -35,12 +35,15 @@ export function ReportsPage() {
     mode !== "custom" ||
     (customStart !== "" && customEnd !== "" && validateCustomPeriod(customStart, customEnd).ok);
 
+  // F5.5 (revisão de queries): em modo mês só as queries mensais rodam;
+  // em modo custom só as de range — evita fetch duplicado do mesmo período.
+  const isCustom = mode === "custom";
   const monthlyExpenses = useExpenses(month);
   const monthlyIncomes = useIncomes(month);
   const prevExpenses = useExpenses(shiftMonth(month, -1));
   const prevIncomes = useIncomes(shiftMonth(month, -1));
-  const rangeExpenses = useExpensesByRange(range.start, range.end);
-  const rangeIncomes = useIncomesByRange(range.start, range.end);
+  const rangeExpenses = useExpensesByRange(range.start, range.end, { enabled: isCustom && customValid });
+  const rangeIncomes = useIncomesByRange(range.start, range.end, { enabled: isCustom && customValid });
   const debtsQuery = useDebts();
   const categoriesQuery = useCategories();
 

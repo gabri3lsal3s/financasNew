@@ -10,6 +10,8 @@ export type { BadgeProps } from "./badge";
 export { Skeleton } from "./skeleton";
 export { EmptyState } from "./empty-state";
 export type { EmptyStateProps } from "./empty-state";
+export { VirtualList } from "./virtual-list";
+export type { VirtualListProps } from "./virtual-list";
 export { Progress } from "./progress";
 export type { ProgressProps } from "./progress";
 export { Select } from "./select";

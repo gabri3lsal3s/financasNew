@@ -64,7 +64,8 @@
     │
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
-    │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state…
+    │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
+    │   │   │                      #   virtual-list (janela + overscan, F5.5)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, transaction-row,
@@ -97,6 +98,7 @@
     │   ├── insights/              #   alertas, assinaturas, recorrências, confiança
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
+    │   ├── virtualization/        #   janela de renderização de listas (F5.5)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
