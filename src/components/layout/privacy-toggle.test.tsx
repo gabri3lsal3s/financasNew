@@ -31,13 +31,14 @@ describe("PrivacyToggle (F8 — Decisão 5)", () => {
     const user = userEvent.setup();
     render(<PrivacyToggle />);
 
-    expect(document.documentElement.dataset.privacy).toBe("");
+    // O atributo é aplicado pelo store (use-privacy-mask) apenas ao alternar.
+    expect(document.documentElement.hasAttribute("data-privacy")).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "Ocultar valores (P)" }));
     expect(document.documentElement.dataset.privacy).toBe("masked");
 
     await user.click(screen.getByRole("button", { name: "Mostrar valores (P)" }));
-    expect(document.documentElement.dataset.privacy).toBe("");
+    expect(document.documentElement.hasAttribute("data-privacy")).toBe(false);
   });
 
   it("o atalho de teclado P alterna a máscara (fora de campos de texto)", async () => {

@@ -80,7 +80,7 @@ export function IconPicker({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          className="z-50 w-72 rounded-xl border border-border bg-surface p-3 shadow-lg focus:outline-none"
+          className="z-modal w-72 rounded-xl border border-border bg-surface p-3 shadow-lg focus:outline-none"
         >
           <div className="flex flex-col gap-3">
             <Input

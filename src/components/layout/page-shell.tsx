@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { BrandLogo } from "@/components/layout/brand-logo";
 import { CalculatorButton } from "@/components/layout/calculator-button";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
@@ -38,13 +37,11 @@ export function PageShell() {
         )}
       >
         {/* Header fluido (F7.3): sticky com backdrop-blur (DESIGN_SYSTEM §6).
-            Conteúdo centralizado nos MESMOS limites da página (max-w-5xl): no
-            desktop a barra de busca (flex-1) toma a largura excedente entre o
-            limite esquerdo e os botões, alinhados ao limite direito da página.
-            Marca no mobile (lg a sidebar já exibe o logo — F10). */}
-        <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border bg-surface/80 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-5xl items-center gap-1 px-4 lg:px-8">
-            <BrandLogo showWordmark={false} markClassName="size-7" className="mr-auto lg:hidden" />
+            Conteúdo centralizado nos limites da página (max-w-5xl):
+            a barra de busca (flex-1) toma a largura flexível e os botões
+            de utilidade ficam alinhados à direita. */}
+        <header className="sticky top-0 z-sticky flex h-16 items-center border-b border-border bg-surface/80 backdrop-blur">
+          <div className="mx-auto flex w-full max-w-5xl items-center gap-1.5 px-4 lg:px-8">
             <GlobalSearch className="flex-1" />
             <PrivacyToggle />
             <CalculatorButton />

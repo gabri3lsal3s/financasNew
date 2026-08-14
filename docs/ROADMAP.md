@@ -662,6 +662,17 @@
 - Visão Geral renderizando os widgets conforme seleção do usuário.
 - Suíte de testes 100% verde (incluindo testes de configurações e áudio).
 
+**Progresso — Fase 11 (2026-08-14, parcial — falta fechar o DoD):**
+- [x] **Motor de personalização visual** (`src/hooks/use-visual-customization.ts`): acento, estilo de superfície, nível de movimento e som persistidos em `localStorage` (`financas_*`) e aplicados no root via `data-accent`, `data-surface-style` e `data-motion`
+- [x] **6 paletas de acento** em `tokens.css` (`data-accent`): teal (padrão), emerald, gold, rose, sapphire, violet — aplicadas nas variantes `--primary`/`--ring` dos 3 temas
+- [x] **Estilos de superfície**: `glass` (padrão, `.glass-panel`), `flat` e `elevated` via `data-surface-style`
+- [x] **Micro-interações**: `Button` com ripple radial (`animate-ripple`, respeita `prefers-reduced-motion`/`data-motion`), loading morfológico e feedback háptico/auditivo (`services/audio-fx.ts`, Web Audio opcional); `LivePulseBeacon` (ponto de pulso vivo) e `Tabs` refinadas
+- [x] **Z-index tokenizado**: `--z-sticky: 20`, `--z-floating-tools: 60` (FAB da calculadora acima de modais z-50) etc.
+- [x] **Centro de Configurações** (`/configuracoes` → `settings-page.tsx`): abas Perfil/Aparência & Temas/Movimento & Sensorial/Dashboard/Conta/Backup com seletores de tema e acento, toggles de som/densidade e modulação do dashboard
+- [x] **Visão Geral modular**: widgets da overview (KPIs, cards inteligentes, donut, fluxo, orçamentos, saúde) gated por `dashboardWidgets`
+- [x] Testes da página de configurações e do motor (`settings-page.test.tsx`, `use-visual-customization.test.ts`, `audio-fx.test.ts`) + suíte completa verde
+- [ ] **Pendente (DoD):** auditoria de contraste AA das 6 paletas de acento nos 3 temas (`domain/accessibility`) e validação final desktop/mobile
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
@@ -670,7 +681,7 @@
 
 ### 4.1 Primitivos (Fase 0 e extensões) — `components/ui`
 `Button → Input → MoneyInput → Select → Card → Badge → Skeleton → EmptyState → Progress → Modal/Dialog → ConfirmDialog → Tabs → DataList → Stepper → Command → Toast → Checkbox → RadioGroup → DatePicker → Slider → Accordion → Textarea → Dropzone`
-(+ `VirtualList`, `ScrollToTopButton`, `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
+(+ `VirtualList`, `ScrollToTopButton`, `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10), `LivePulseBeacon` (F11). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
 
 ### 4.2 Módulos de domínio (por fase) — `components/modules`
 - **F0/F2:** `MoneyInput` é primitivo de UI (Fase 0); `CategoryIcon`, `MonthPicker`, `TransactionRow`, `KpiCard`, `BudgetProgressBar`, `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge`, `WizardShell`.

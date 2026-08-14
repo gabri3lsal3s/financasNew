@@ -42,7 +42,7 @@ export function Select({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content className="z-50 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-lg">
+        <SelectPrimitive.Content className="z-modal overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-lg">
           <SelectPrimitive.Viewport>
             {options.map((option) => (
               <SelectPrimitive.Item

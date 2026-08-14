@@ -125,7 +125,7 @@ export function BudgetsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex items-center justify-between gap-2">
-        <h1 className="font-display text-2xl font-bold">Orçamentos</h1>
+        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Orçamentos</h1>
       </header>
 
       <Tabs

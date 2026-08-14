@@ -131,7 +131,7 @@ export function ReportsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="font-display text-2xl font-bold">Relatórios</h1>
+        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Relatórios</h1>
         <p className="text-sm text-muted-foreground">Agregações do período com comparativo.</p>
       </header>
 
@@ -247,11 +247,11 @@ function SummaryCard({
         ? (delta >= 0) === positiveIsGood
         : null;
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-4">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface p-3.5 sm:p-4">
+      <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
       <span
         className={cn(
-          "num text-xl font-semibold",
+          "num truncate text-lg font-semibold tracking-tight sm:text-xl",
           tone === "positive" && "text-positive-strong",
           tone === "negative" && "text-critical",
         )}
@@ -259,7 +259,7 @@ function SummaryCard({
         {value}
       </span>
       {delta !== null && delta !== undefined ? (
-        <span className={cn("num inline-flex items-center gap-0.5 text-[11px]", good ? "text-positive-strong" : "text-critical")}>
+        <span className={cn("num inline-flex items-center gap-0.5 truncate text-[11px]", good ? "text-positive-strong" : "text-critical")}>
           {delta >= 0 ? <TrendingUp className="size-3" aria-hidden="true" /> : <TrendingDown className="size-3" aria-hidden="true" />}
           {Math.abs(delta).toFixed(1)}% vs anterior
         </span>

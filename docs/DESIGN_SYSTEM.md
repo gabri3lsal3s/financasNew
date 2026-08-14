@@ -50,6 +50,8 @@
 
 > **Regra de contraste (AA):** em Light, texto pequeno **não** usa `--primary` (3.0:1 — gráficos/fills) — usa `--primary-strong` (5.7:1). `--accent` (ouro) é decorativo/grande (glow, órbita); texto sobre ouro usa `--accent-foreground` (AA). Em Dark, `--primary` já é claro e o foreground escuro garante 8:1.
 
+> **Acentos personalizáveis (F11):** o root aceita `data-accent="emerald|gold|rose|sapphire|violet"` (teal é o padrão, sem atributo) — sobrescreve `--primary`/`--primary-strong`/`--ring` nos 3 temas, aplicado via `use-visual-customization` (persistido em `localStorage`). Regra de contraste: o mesmo princípio acima vale por paleta (texto pequeno usa a variante *strong*).
+
 ### 2.3 Semânticas financeiras
 
 | Token | Light | Dark | Uso |

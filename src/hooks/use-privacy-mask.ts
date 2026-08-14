@@ -12,6 +12,15 @@ import { useSyncExternalStore } from "react";
 const listeners = new Set<() => void>();
 let masked = false;
 
+function applyPrivacyToDom(isMasked: boolean): void {
+  if (typeof document === "undefined") return;
+  if (isMasked) {
+    document.documentElement.dataset.privacy = "masked";
+  } else {
+    delete document.documentElement.dataset.privacy;
+  }
+}
+
 export function subscribePrivacyMask(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
@@ -26,6 +35,7 @@ export function getPrivacyMasked(): boolean {
 export function setPrivacyMasked(next: boolean): void {
   if (masked === next) return;
   masked = next;
+  applyPrivacyToDom(next);
   listeners.forEach((listener) => listener());
 }
 

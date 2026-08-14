@@ -1,0 +1,61 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  getVisualCustomization,
+  updateVisualCustomization,
+} from "./use-visual-customization";
+
+describe("useVisualCustomization (F11)", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    document.documentElement.removeAttribute("data-accent");
+    document.documentElement.removeAttribute("data-surface-style");
+    document.documentElement.removeAttribute("data-motion");
+  });
+
+  it("retorna as configurações padrão", () => {
+    const config = getVisualCustomization();
+    expect(config.accent).toBe("teal");
+    expect(config.surfaceStyle).toBe("glass");
+    expect(config.motionLevel).toBe("fluid");
+    expect(config.soundEnabled).toBe(false);
+    expect(config.numberTickerEnabled).toBe(true);
+    expect(config.dashboardWidgets.kpis).toBe(true);
+  });
+
+  it("atualiza a cor de destaque (accent) e reflete no DOM", () => {
+    updateVisualCustomization({ accent: "emerald" });
+    const config = getVisualCustomization();
+    expect(config.accent).toBe("emerald");
+    expect(document.documentElement.getAttribute("data-accent")).toBe("emerald");
+
+    updateVisualCustomization({ accent: "teal" });
+    expect(document.documentElement.getAttribute("data-accent")).toBeNull();
+  });
+
+  it("atualiza o estilo de superfície (surfaceStyle) e reflete no DOM", () => {
+    updateVisualCustomization({ surfaceStyle: "flat" });
+    const config = getVisualCustomization();
+    expect(config.surfaceStyle).toBe("flat");
+    expect(document.documentElement.getAttribute("data-surface-style")).toBe("flat");
+
+    updateVisualCustomization({ surfaceStyle: "glass" });
+    expect(document.documentElement.getAttribute("data-surface-style")).toBeNull();
+  });
+
+  it("atualiza o nível de movimento (motionLevel)", () => {
+    updateVisualCustomization({ motionLevel: "reduced" });
+    const config = getVisualCustomization();
+    expect(config.motionLevel).toBe("reduced");
+    expect(document.documentElement.getAttribute("data-motion")).toBe("reduced");
+
+    updateVisualCustomization({ motionLevel: "fluid" });
+    expect(document.documentElement.getAttribute("data-motion")).toBeNull();
+  });
+
+  it("permite ligar e desligar widgets do dashboard", () => {
+    updateVisualCustomization({
+      dashboardWidgets: { ...getVisualCustomization().dashboardWidgets, kpis: false },
+    });
+    expect(getVisualCustomization().dashboardWidgets.kpis).toBe(false);
+  });
+});

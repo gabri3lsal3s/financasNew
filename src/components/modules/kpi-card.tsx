@@ -35,21 +35,25 @@ const sparkTone: Record<NonNullable<KpiCardProps["tone"]>, string> = {
 
 export function KpiCard({ label, value, valueCents, tone = "default", hint, icon, spark }: KpiCardProps) {
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        {icon}
-      </div>
-      {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
-      <p className={cn("num mt-2 text-2xl font-semibold", toneValue[tone])}>
-        {valueCents !== undefined ? <NumberTicker value={valueCents} format={formatCentsAsBRL} /> : value}
-      </p>
-      {spark && spark.length > 1 ? (
-        <div className="mt-2" aria-hidden="true">
-          <Sparkline data={spark} height={36} strokeClassName={sparkTone[tone]} />
+    <Card className="flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 lg:p-5">
+      <div>
+        <div className="flex items-center justify-between gap-1.5">
+          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+          {icon ? <span className="shrink-0 text-muted-foreground">{icon}</span> : null}
         </div>
-      ) : null}
-      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+        {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
+        <p className={cn("num mt-1.5 sm:mt-2 truncate text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl", toneValue[tone])}>
+          {valueCents !== undefined ? <NumberTicker value={valueCents} format={formatCentsAsBRL} /> : value}
+        </p>
+      </div>
+      <div>
+        {spark && spark.length > 1 ? (
+          <div className="mt-2" aria-hidden="true">
+            <Sparkline data={spark} height={28} strokeClassName={sparkTone[tone]} />
+          </div>
+        ) : null}
+        {hint ? <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p> : null}
+      </div>
     </Card>
   );
 }

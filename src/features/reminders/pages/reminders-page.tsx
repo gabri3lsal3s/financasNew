@@ -89,7 +89,7 @@ export function RemindersPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="font-display text-2xl font-bold">Lembretes</h1>
+          <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Lembretes</h1>
           <p className="text-sm text-muted-foreground">Faturas e dívidas que precisam de atenção.</p>
         </div>
       </header>

@@ -25,7 +25,7 @@ export function Modal({
   className,
   elevated = false,
 }: ModalProps) {
-  const z = elevated ? "z-[70]" : "z-50";
+  const z = elevated ? "z-floating-tools" : "z-modal";
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>

@@ -219,7 +219,7 @@ export function InsightsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="font-display text-2xl font-bold">Insights</h1>
+        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Insights</h1>
         <p className="text-sm text-muted-foreground">Análise do seu consumo, projeção e corte de gastos.</p>
       </header>
 

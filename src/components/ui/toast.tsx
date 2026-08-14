@@ -101,7 +101,7 @@ export function Toaster({ children, ...props }: ComponentProps<typeof ToastPrimi
   return (
     <ToastPrimitive.Provider {...props}>
       {children}
-      <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-[60] flex w-full max-w-sm flex-col gap-2 p-4 outline-none" />
+      <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-toast flex w-full max-w-sm flex-col gap-2 p-4 outline-none" />
     </ToastPrimitive.Provider>
   );
 }

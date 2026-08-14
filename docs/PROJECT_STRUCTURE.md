@@ -69,7 +69,7 @@
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
     │   │   │                      #   virtual-list (F5.5), toast, scroll-to-top-button (F9),
     │   │   │                      #   number-ticker, sparkline (F8), color-picker,
-    │   │   │                      #   icon-picker (pós-F10)…
+    │   │   │                      #   icon-picker (pós-F10), live-pulse-beacon (F11)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, transaction-row,
@@ -127,13 +127,14 @@
     │                              #   use-highlight-target, use-pwa-install,
     │                              #   use-sidebar-state, use-draggable,
     │                              #   use-scroll-position, use-swipe-action,
-    │                              #   use-privacy-mask…)
+    │                              #   use-privacy-mask, use-visual-customization (F11)…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de input
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
+    │   ├── audio-fx.ts            #   Feedback sonoro sintetizado via Web Audio (F11)
     │   ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
     │   ├── storage/               #   Abstração Cloudflare R2 (presigned URLs)

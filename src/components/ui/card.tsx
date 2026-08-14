@@ -1,10 +1,33 @@
 import type { HTMLAttributes } from "react";
+import { cva } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn("rounded-xl border border-border bg-surface shadow-sm transition-shadow duration-200 hover:shadow-md", className)} {...props} />
-  );
+const cardVariants = cva(
+  "rounded-xl transition-[box-shadow,transform,border-color,background-color] duration-200",
+  {
+    variants: {
+      variant: {
+        default: "border border-border bg-surface shadow-sm hover:shadow-md hover:border-border/80",
+        glass: "glass-panel shadow-sm hover:shadow-md hover:border-primary/30",
+        flat: "border border-border bg-surface shadow-none",
+        elevated: "border border-border/80 bg-surface shadow-md hover:shadow-lg hover:-translate-y-0.5",
+        interactive:
+          "border border-border bg-surface shadow-sm hover:shadow-md hover:border-primary/40 hover:-translate-y-0.5 cursor-pointer active:scale-[0.99]",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
+
+export interface CardProps
+  extends HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardVariants> {}
+
+export function Card({ className, variant, ...props }: CardProps) {
+  return <div className={cn(cardVariants({ variant }), className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

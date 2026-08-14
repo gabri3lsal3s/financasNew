@@ -124,7 +124,7 @@ export function DailyFlowChart({ days, dailyGoalCents = null, className }: Daily
       {/* Tooltip flutuante do dia sob scrubbing */}
       {scrubDay && scrubCurve ? (
         <div
-          className="pointer-events-none absolute top-1 z-10 -translate-x-1/2 rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-lg"
+          className="pointer-events-none absolute top-1 z-tooltip -translate-x-1/2 rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-lg"
           style={{ left: scrubLeft }}
           role="tooltip"
         >

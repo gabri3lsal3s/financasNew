@@ -57,3 +57,6 @@ export { ScrollToTopButton } from "./scroll-to-top-button";
 export type { ScrollToTopButtonProps } from "./scroll-to-top-button";
 export { Alert } from "./alert";
 export type { AlertProps, AlertVariant } from "./alert";
+export { LivePulseBeacon } from "./live-pulse-beacon";
+export type { LivePulseBeaconProps } from "./live-pulse-beacon";
+

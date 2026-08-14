@@ -20,7 +20,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
+        "fixed inset-y-0 left-0 z-sidebar hidden flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
         isCollapsed ? "w-20" : "w-64",
       )}
     >
@@ -33,7 +33,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         <BrandLogo showWordmark={!isCollapsed} markClassName={isCollapsed ? "size-7" : "size-8"} />
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2" aria-label="Navegação principal">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-2.5" aria-label="Navegação principal">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -43,36 +43,36 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             title={isCollapsed ? item.label : undefined}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors",
                 isCollapsed && "justify-center px-2",
                 isActive
-                  ? "bg-primary/12 text-primary-strong"
+                  ? "bg-primary/12 text-primary-strong font-semibold"
                   : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
               )
             }
           >
-            <item.icon className="size-4 shrink-0" aria-hidden="true" />
-            {!isCollapsed && item.label}
+            <item.icon className="size-5 shrink-0" aria-hidden="true" />
+            {!isCollapsed && <span>{item.label}</span>}
           </NavLink>
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-border p-2">
+      <div className="shrink-0 border-t border-border p-2.5">
         <button
           type="button"
           onClick={onToggle}
           aria-label={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
+            "flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
             isCollapsed && "justify-center px-2",
           )}
         >
           {isCollapsed ? (
-            <ChevronRight className="size-4" aria-hidden="true" />
+            <ChevronRight className="size-5" aria-hidden="true" />
           ) : (
             <>
-              <ChevronLeft className="size-4" aria-hidden="true" />
-              Recolher
+              <ChevronLeft className="size-5" aria-hidden="true" />
+              <span>Recolher</span>
             </>
           )}
         </button>

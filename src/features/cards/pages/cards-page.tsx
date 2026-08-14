@@ -136,7 +136,7 @@ export function CardsPage() {
           <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
 
           {/* KPIs da fatura */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <KpiCard label="Previsto" value={formatCentsAsBRL(summary?.previstoCents ?? 0)} />
             <KpiCard label="Pago" value={formatCentsAsBRL(summary?.pagoCents ?? 0)} />
             <KpiCard label="Saldo aberto" value={formatCentsAsBRL(summary?.saldoCents ?? 0)} tone={summary && summary.saldoCents > 0 ? "negative" : "positive"} />

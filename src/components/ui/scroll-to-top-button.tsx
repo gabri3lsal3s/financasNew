@@ -29,7 +29,7 @@ export function ScrollToTopButton({ threshold = 300, className }: ScrollToTopBut
       title="Voltar ao topo"
       onClick={() => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" })}
       className={cn(
-        "fixed bottom-20 right-4 z-40 flex size-10 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-lg transition-colors hover:bg-surface-hover lg:bottom-6 lg:right-6",
+        "fixed bottom-20 right-4 z-sticky flex size-10 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-lg transition-colors hover:bg-surface-hover lg:bottom-6 lg:right-6",
         className,
       )}
     >

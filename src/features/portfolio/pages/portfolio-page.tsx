@@ -13,7 +13,7 @@ export function PortfolioPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="font-display text-2xl font-bold">Carteira</h1>
+        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Carteira</h1>
         <p className="text-sm text-muted-foreground">
           Posição derivada do ledger, metas de alocação e calculadora de aporte.
         </p>

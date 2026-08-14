@@ -132,7 +132,7 @@ export function ColorPicker({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          className="z-50 w-64 rounded-xl border border-border bg-surface p-3 shadow-lg focus:outline-none"
+          className="z-modal w-64 rounded-xl border border-border bg-surface p-3 shadow-lg focus:outline-none"
         >
           <div className="flex flex-col gap-3">
             <p className="text-xs font-medium text-muted-foreground">Paleta</p>

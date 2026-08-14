@@ -81,6 +81,16 @@ html[data-theme="light"] {
   /* Foco */
   --ring: 173 58% 39%;
   --ring-offset: 204 29% 97%;
+
+  /* Escala centralizada de Z-Index */
+  --z-base: 10;
+  --z-sticky: 20;
+  --z-bottom-nav: 30;
+  --z-sidebar: 40;
+  --z-modal: 50;
+  --z-floating-tools: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
 }
 
 /* ----------------------------------------------------------------
@@ -252,4 +262,96 @@ html[data-theme="oled"] {
     --ring: 173 66% 50%;
     --ring-offset: 206 49% 9%;
   }
+}
+
+/* ================================================================
+   FASE 11 — ACENTOS DE COR PERSONALIZÁVEIS (data-accent)
+   Permite trocar a cor primária mantendo harmonia dos 3 temas.
+   ================================================================ */
+
+/* --- Emerald (Esmeralda Fintech) --- */
+:root[data-accent="emerald"],
+html[data-theme="light"][data-accent="emerald"] {
+  --primary: 160 84% 39%;
+  --primary-strong: 161 94% 24%;
+  --ring: 160 84% 39%;
+}
+html[data-theme="dark"][data-accent="emerald"],
+html[data-theme="oled"][data-accent="emerald"] {
+  --primary: 158 64% 52%;
+  --primary-strong: 158 64% 52%;
+  --ring: 158 64% 52%;
+}
+
+/* --- Gold (Ouro Âmbar) --- */
+:root[data-accent="gold"],
+html[data-theme="light"][data-accent="gold"] {
+  --primary: 42 73% 51%;
+  --primary-strong: 38 92% 38%;
+  --ring: 42 73% 51%;
+}
+html[data-theme="dark"][data-accent="gold"],
+html[data-theme="oled"][data-accent="gold"] {
+  --primary: 42 87% 64%;
+  --primary-strong: 42 87% 64%;
+  --ring: 42 87% 64%;
+}
+
+/* --- Sapphire (Safira Petróleo) --- */
+:root[data-accent="sapphire"],
+html[data-theme="light"][data-accent="sapphire"] {
+  --primary: 201 96% 32%;
+  --primary-strong: 201 90% 27%;
+  --ring: 201 96% 32%;
+}
+html[data-theme="dark"][data-accent="sapphire"],
+html[data-theme="oled"][data-accent="sapphire"] {
+  --primary: 199 89% 48%;
+  --primary-strong: 199 89% 48%;
+  --ring: 199 89% 48%;
+}
+
+/* --- Violet (Violeta Íris) --- */
+:root[data-accent="violet"],
+html[data-theme="light"][data-accent="violet"] {
+  --primary: 262 83% 58%;
+  --primary-strong: 263 70% 50%;
+  --ring: 262 83% 58%;
+}
+html[data-theme="dark"][data-accent="violet"],
+html[data-theme="oled"][data-accent="violet"] {
+  --primary: 258 90% 66%;
+  --primary-strong: 258 90% 66%;
+  --ring: 258 90% 66%;
+}
+
+/* --- Rose (Coral Rosé) --- */
+:root[data-accent="rose"],
+html[data-theme="light"][data-accent="rose"] {
+  --primary: 347 77% 50%;
+  --primary-strong: 347 77% 40%;
+  --ring: 347 77% 50%;
+}
+html[data-theme="dark"][data-accent="rose"],
+html[data-theme="oled"][data-accent="rose"] {
+  --primary: 351 95% 71%;
+  --primary-strong: 351 95% 71%;
+  --ring: 351 95% 71%;
+}
+
+/* ================================================================
+   FASE 11 — ESTILOS DE SUPERFÍCIE (data-surface-style)
+   glass (translúcido blur) · flat (minimalista) · elevated (3D)
+   ================================================================ */
+html[data-surface-style="flat"] {
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-kpi: none;
+}
+
+html[data-surface-style="elevated"] {
+  --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 0.10);
+  --shadow-md: 0 6px 16px -2px rgb(0 0 0 / 0.16), 0 2px 6px -1px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 16px 36px -8px rgb(0 0 0 / 0.24), 0 4px 12px -2px rgb(0 0 0 / 0.12);
 }

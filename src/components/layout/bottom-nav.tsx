@@ -44,7 +44,7 @@ function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
 export function BottomNav() {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/90 backdrop-blur lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur lg:hidden"
       aria-label="Navegação principal"
     >
       <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">

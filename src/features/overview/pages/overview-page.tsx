@@ -53,6 +53,7 @@ import {
   useOnboardingCounts,
   useReallocateBudget,
 } from "@/state";
+import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { cn } from "@/lib/utils";
 
 const toCents = (value: number) => Math.round(value * 100);
@@ -117,8 +118,10 @@ export function OverviewPage() {
   const reallocate = useReallocateBudget();
   const onboardingQuery = useOnboardingCounts();
   const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
+  const visual = useVisualCustomization();
 
   const loading =
+
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
     prevIncomesQuery.isLoading ||
@@ -308,7 +311,7 @@ export function OverviewPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex items-center justify-between gap-2">
-        <h1 className="font-display text-2xl font-bold">Visão Geral</h1>
+        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Visão Geral</h1>
       </header>
 
       <MonthPicker value={month} onValueChange={setMonth} />
@@ -327,60 +330,69 @@ export function OverviewPage() {
       ) : (
         <>
           {/* KPIs fundamentais (§3.6) com NumberTicker + sparkline (F8) */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <KpiCard
-              label="Receitas"
-              value={formatCentsAsBRL(totals.incomeCents)}
-              valueCents={totals.incomeCents}
-              tone="positive"
-              hint={<DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />}
-              spark={incomeSpark}
-            />
-            <KpiCard
-              label="Despesas"
-              value={formatCentsAsBRL(totals.expenseCents)}
-              valueCents={totals.expenseCents}
-              tone="negative"
-              hint={<DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />}
-              spark={expenseSpark}
-            />
-            <KpiCard label="Investimentos" value={formatCentsAsBRL(totals.investmentCents)} tone="portfolio" hint="Carteira na Fase 4" />
-            <KpiCard
-              label="Saldo do mês"
-              value={formatCentsAsBRL(totals.balanceCents)}
-              valueCents={totals.balanceCents}
-              tone={totals.balanceCents >= 0 ? "positive" : "negative"}
-            />
-          </div>
+          {visual.dashboardWidgets.kpis && (
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <KpiCard
+                label="Receitas"
+                value={formatCentsAsBRL(totals.incomeCents)}
+                valueCents={totals.incomeCents}
+                tone="positive"
+                hint={<DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />}
+                spark={incomeSpark}
+              />
+              <KpiCard
+                label="Despesas"
+                value={formatCentsAsBRL(totals.expenseCents)}
+                valueCents={totals.expenseCents}
+                tone="negative"
+                hint={<DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />}
+                spark={expenseSpark}
+              />
+              <KpiCard label="Investimentos" value={formatCentsAsBRL(totals.investmentCents)} tone="portfolio" hint="Carteira na Fase 4" />
+              <KpiCard
+                label="Saldo do mês"
+                value={formatCentsAsBRL(totals.balanceCents)}
+                valueCents={totals.balanceCents}
+                tone={totals.balanceCents >= 0 ? "positive" : "negative"}
+              />
+            </div>
+          )}
 
           {/* Cards inteligentes (F8): ritmo, faturas e anomalias */}
-          {phase === "current" || openInvoiceRows.length > 0 || alerts.length > 0 ? (
+          {(visual.dashboardWidgets.pace || visual.dashboardWidgets.invoices || visual.dashboardWidgets.anomalies) &&
+          (phase === "current" || openInvoiceRows.length > 0 || alerts.length > 0) ? (
             <section aria-label="Insights do período" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <SmartSpendingPaceCard pace={phase === "current" ? pace : null} dailyCents={phase === "current" ? budget.dailyCents : null} />
-              <SmartInvoiceProjectionCard
-                openInvoicesCents={openInvoiceRows.reduce((acc, row) => acc + row.saldoCents, 0)}
-                openCount={openInvoiceRows.length}
-                nearestDueDate={openInvoiceRows[0]?.dueDate ?? null}
-              />
-              <SmartAnomaliesCard alerts={alerts} />
+              {visual.dashboardWidgets.pace && (
+                <SmartSpendingPaceCard pace={phase === "current" ? pace : null} dailyCents={phase === "current" ? budget.dailyCents : null} />
+              )}
+              {visual.dashboardWidgets.invoices && (
+                <SmartInvoiceProjectionCard
+                  openInvoicesCents={openInvoiceRows.reduce((acc, row) => acc + row.saldoCents, 0)}
+                  openCount={openInvoiceRows.length}
+                  nearestDueDate={openInvoiceRows[0]?.dueDate ?? null}
+                />
+              )}
+              {visual.dashboardWidgets.anomalies && <SmartAnomaliesCard alerts={alerts} />}
             </section>
           ) : null}
 
           {/* Taxa de poupança + saúde (runway) — F8 */}
-          <div className="grid gap-3 lg:grid-cols-2">
-            <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Taxa de poupança</p>
-                <p className={cn("num mt-1 text-2xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
-                  {formatPercent(totals.savingsRatePercent)}%
+          {visual.dashboardWidgets.savingsHealth && (
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Taxa de poupança</p>
+                  <p className={cn("num mt-1 text-2xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
+                    {formatPercent(totals.savingsRatePercent)}%
+                  </p>
+                </div>
+                <p className="max-w-[12rem] text-right text-xs text-muted-foreground">
+                  {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
                 </p>
               </div>
-              <p className="max-w-[12rem] text-right text-xs text-muted-foreground">
-                {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
-              </p>
+              <SavingsHealthCard savingsRatePercent={totals.savingsRatePercent} incomeCents={incomeCents} expenseCents={expenseCents} />
             </div>
-            <SavingsHealthCard savingsRatePercent={totals.savingsRatePercent} incomeCents={incomeCents} expenseCents={expenseCents} />
-          </div>
+          )}
 
           {/* Saldo líquido de Contas (§3.6) */}
           <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
@@ -391,33 +403,36 @@ export function OverviewPage() {
               </p>
             </div>
             <p className="text-xs text-muted-foreground">
-              A receber {formatCentsAsBRL(receivablePending)} · A pagar {formatCentsAsBRL(payablePending)} · Faturas em aberto{" "}
-              {formatCentsAsBRL(openInvoices)}
+              A receber <span className="privacy-mask">{formatCentsAsBRL(receivablePending)}</span> · A pagar{" "}
+              <span className="privacy-mask">{formatCentsAsBRL(payablePending)}</span> · Faturas em aberto{" "}
+              <span className="privacy-mask">{formatCentsAsBRL(openInvoices)}</span>
             </p>
           </div>
 
           {/* Fluxo diário avançado (§3.6 + F8): barras + saldo acumulado + meta */}
-          <section aria-label="Fluxo diário" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
-              <span className="text-xs text-muted-foreground">{monthLabel(month)}</span>
-            </div>
-            <DailyFlowChart days={dailyFlow} dailyGoalCents={phase === "current" ? budget.dailyCents : null} />
-            <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-sm bg-positive-strong/80" /> Receitas
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-sm bg-negative-strong/80" /> Despesas
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-0.5 w-4 rounded bg-portfolio" /> Saldo acumulado
-              </span>
-            </div>
-          </section>
+          {visual.dashboardWidgets.flow && (
+            <section aria-label="Fluxo diário" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
+                <span className="text-xs text-muted-foreground">{monthLabel(month)}</span>
+              </div>
+              <DailyFlowChart days={dailyFlow} dailyGoalCents={phase === "current" ? budget.dailyCents : null} />
+              <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="size-2 rounded-sm bg-positive-strong/80" /> Receitas
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="size-2 rounded-sm bg-negative-strong/80" /> Despesas
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-0.5 w-4 rounded bg-portfolio" /> Saldo acumulado
+                </span>
+              </div>
+            </section>
+          )}
 
           {/* Distribuição por categoria (F8 — donut) */}
-          {donutSlices.length > 0 ? (
+          {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
             <section aria-label="Distribuição por categoria" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
               <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
               <CategoryDonut slices={donutSlices} />
@@ -425,51 +440,53 @@ export function OverviewPage() {
           ) : null}
 
           {/* Orçamentos (§3.6): progresso + atenção + realocação */}
-          <section aria-label="Orçamentos" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Orçamentos</h2>
-              <p className="num text-xs text-muted-foreground">
-                {Math.round(globalPercent)}% de {formatCentsAsBRL(totalLimitsCents)}
-              </p>
-            </div>
-            <Progress value={globalPercent} tone={progressTone(globalPercent)} aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`} />
+          {visual.dashboardWidgets.budgets && (
+            <section aria-label="Orçamentos" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-foreground">Orçamentos</h2>
+                <p className="num text-xs text-muted-foreground">
+                  {Math.round(globalPercent)}% de {formatCentsAsBRL(totalLimitsCents)}
+                </p>
+              </div>
+              <Progress value={globalPercent} tone={progressTone(globalPercent)} aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`} />
 
-            {attentionRows.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhuma categoria excedeu o limite.</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {attentionRows.slice(0, 3).map((row) => (
-                  <div key={row.category.id} className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-foreground">{row.category.name}</span>
-                      <span className="text-critical">{BUDGET_STATUS_LABELS[row.status]}</span>
+              {attentionRows.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma categoria excedeu o limite.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {attentionRows.slice(0, 3).map((row) => (
+                    <div key={row.category.id} className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-foreground">{row.category.name}</span>
+                        <span className="text-critical">{BUDGET_STATUS_LABELS[row.status]}</span>
+                      </div>
+                      <BudgetProgressBar spentCents={row.spentCents} limitCents={row.limitCents} />
                     </div>
-                    <BudgetProgressBar spentCents={row.spentCents} limitCents={row.limitCents} />
-                  </div>
-                ))}
-                {attentionRows.length > 3 ? (
-                  <p className="text-xs text-muted-foreground">+{attentionRows.length - 3} outra(s) na atenção.</p>
-                ) : null}
-              </div>
-            )}
-
-            {suggestion && suggestionFrom && suggestionTo ? (
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-attention/40 bg-attention/5 p-3">
-                <div className="flex items-center gap-2 text-xs">
-                  <Sparkles className="size-4 shrink-0 text-attention" aria-hidden="true" />
-                  <span className="text-muted-foreground">
-                    Transfira <span className="num font-semibold text-foreground">{formatCentsAsBRL(suggestion.amountCents)}</span> de{" "}
-                    <span className="font-medium text-critical">{suggestionFrom.name}</span> para{" "}
-                    <span className="font-medium text-positive-strong">{suggestionTo.name}</span>.
-                  </span>
+                  ))}
+                  {attentionRows.length > 3 ? (
+                    <p className="text-xs text-muted-foreground">+{attentionRows.length - 3} outra(s) na atenção.</p>
+                  ) : null}
                 </div>
-                <Button type="button" size="sm" variant="outline" onClick={() => setReallocateOpen(true)}>
-                  <ArrowRight aria-hidden="true" />
-                  Aplicar
-                </Button>
-              </div>
-            ) : null}
-          </section>
+              )}
+
+              {suggestion && suggestionFrom && suggestionTo ? (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-attention/40 bg-attention/5 p-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Sparkles className="size-4 shrink-0 text-attention" aria-hidden="true" />
+                    <span className="text-muted-foreground">
+                      Transfira <span className="num font-semibold text-foreground">{formatCentsAsBRL(suggestion.amountCents)}</span> de{" "}
+                      <span className="font-medium text-critical">{suggestionFrom.name}</span> para{" "}
+                      <span className="font-medium text-positive-strong">{suggestionTo.name}</span>.
+                    </span>
+                  </div>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setReallocateOpen(true)}>
+                    <ArrowRight aria-hidden="true" />
+                    Aplicar
+                  </Button>
+                </div>
+              ) : null}
+            </section>
+          )}
 
           {(incomesQuery.data ?? []).length === 0 && (expensesQuery.data ?? []).length === 0 ? (
             <EmptyState

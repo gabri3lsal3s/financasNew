@@ -101,7 +101,7 @@ export function TransactionListPage() {
 
   const header = (
     <div className="flex items-center justify-between gap-2">
-      <h1 className="font-display text-2xl font-bold">Transações</h1>
+      <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Transações</h1>
       <Link to="/transacoes/novo">
         <Button>
           <Plus aria-hidden="true" />
@@ -117,7 +117,7 @@ export function TransactionListPage() {
 
       <MonthPicker value={month} onValueChange={handleMonthChange} />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <KpiCard label="Receitas" value={formatCentsAsBRL(incomesTotalCents)} tone="positive" />
         <KpiCard label="Despesas" value={formatCentsAsBRL(expensesTotalCents)} tone="negative" />
         <KpiCard

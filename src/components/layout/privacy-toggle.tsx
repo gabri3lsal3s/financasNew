@@ -10,12 +10,8 @@ import { togglePrivacyMask, usePrivacyMask } from "@/hooks/use-privacy-mask";
 export function PrivacyToggle() {
   const masked = usePrivacyMask();
 
-  // Aplica a máscara GLOBAL no app inteiro: o CSS ofusca todos os `.num` e
-  // `.privacy-mask` quando html[data-privacy="masked"] (globals.css) — não só
-  // os KPIs (pós-F10).
-  useEffect(() => {
-    document.documentElement.dataset.privacy = masked ? "masked" : "";
-  }, [masked]);
+  // A máscara GLOBAL (html[data-privacy="masked"] → ofusca `.num`/`.privacy-mask`
+  // em globals.css) é aplicada pelo PRÓPRIO store (use-privacy-mask), não aqui.
 
   // Atalho global: P alterna a máscara (DESIGN_SYSTEM §8 — modo privacidade).
   useEffect(() => {

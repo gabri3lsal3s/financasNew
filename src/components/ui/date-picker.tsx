@@ -98,7 +98,7 @@ export function DatePicker({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          className="z-50 rounded-xl border border-border bg-surface p-2 shadow-lg focus:outline-none"
+          className="z-modal rounded-xl border border-border bg-surface p-2 shadow-lg focus:outline-none"
         >
           <DayPicker
             mode="single"
