@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
 
 export interface NumberTickerProps {
   /** Valor numérico alvo (centavos, percentuais, …). */
@@ -30,7 +31,10 @@ export function NumberTicker({
 }: NumberTickerProps) {
   const [display, setDisplay] = useState(value);
   const displayRef = useRef(value);
-  const reduceMotion = prefersReducedMotion();
+  // F11: o toggle "Contagem Numérica Animada" (numberTickerEnabled) desliga a
+  // interpolação — o valor é renderizado direto, como no prefers-reduced-motion.
+  const tickerEnabled = getVisualCustomization().numberTickerEnabled;
+  const reduceMotion = prefersReducedMotion() || !tickerEnabled;
 
   useEffect(() => {
     const from = displayRef.current;

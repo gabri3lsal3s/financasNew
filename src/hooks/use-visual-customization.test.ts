@@ -48,8 +48,19 @@ describe("useVisualCustomization (F11)", () => {
     expect(config.motionLevel).toBe("reduced");
     expect(document.documentElement.getAttribute("data-motion")).toBe("reduced");
 
+    // Eco também aplica data-motion (CSS desliga shimmer/pulso/spring).
+    updateVisualCustomization({ motionLevel: "eco" });
+    expect(document.documentElement.getAttribute("data-motion")).toBe("eco");
+
     updateVisualCustomization({ motionLevel: "fluid" });
     expect(document.documentElement.getAttribute("data-motion")).toBeNull();
+  });
+
+  it("permite desligar a contagem animada (numberTickerEnabled)", () => {
+    updateVisualCustomization({ numberTickerEnabled: false });
+    expect(getVisualCustomization().numberTickerEnabled).toBe(false);
+    updateVisualCustomization({ numberTickerEnabled: true });
+    expect(getVisualCustomization().numberTickerEnabled).toBe(true);
   });
 
   it("permite ligar e desligar widgets do dashboard", () => {

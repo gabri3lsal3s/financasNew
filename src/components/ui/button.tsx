@@ -64,8 +64,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     const visual = getVisualCustomization();
     playSound("click", visual.soundEnabled);
 
-    // Efeito ripple dinâmico no ponto do clique
-    if (!disableRipple && visual.motionLevel !== "reduced") {
+    // Efeito ripple dinâmico no ponto do clique (F11: só no nível "fluid";
+    // eco/reduzido desligam a física elástica).
+    if (!disableRipple && visual.motionLevel === "fluid") {
       const rect = e.currentTarget.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;

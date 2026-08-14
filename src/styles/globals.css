@@ -290,6 +290,28 @@
     border: 1px solid hsl(var(--border) / 0.7);
   }
 
+  /* F11 — Estilo de superfície "Glass" (padrão): glassmorphism no CHROME —
+     modais (z-modal), painéis flutuantes (z-floating-tools) e paleta de busca
+     ficam translúcidos com blur (permitido pelo DESIGN_SYSTEM §8). Cards de
+     dados permanecem OPACOS (regra §8: glass em cards prejudica legibilidade).
+     flat/elevated (data-surface-style) mantêm o chrome opaco. */
+  @supports (backdrop-filter: blur(1px)) {
+    html:not([data-surface-style]) :where(.rounded-xl, .rounded-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
+      background-color: hsl(var(--surface) / 0.82);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+  }
+
+  /* Profundidade do glass: leve gradiente radial na área de conteúdo, tintado
+     pelo acento (--primary) e pelo ouro (--accent) — a cor personalizada
+     aparece sutilmente no fundo do app (só no estilo glass). */
+  html:not([data-surface-style]) main {
+    background-image:
+      radial-gradient(70rem 34rem at 88% -12%, hsl(var(--primary) / 0.07), transparent 62%),
+      radial-gradient(54rem 30rem at -14% 108%, hsl(var(--accent) / 0.06), transparent 58%);
+  }
+
   /* Glow suave na cor de acento */
   .glow-primary {
     box-shadow: 0 0 20px -3px hsl(var(--primary) / 0.35);
@@ -301,6 +323,35 @@
   }
   .spring-press:active {
     transform: scale(0.97);
+  }
+
+  /* F11 — Nível de movimento "Econômica" (data-motion="eco"): mantém os fades
+     (route-in, toasts) e desliga os efeitos de maior consumo — shimmer dos
+     skeletons, pulso vivo (beacon), ping e spring-pop. O ripple é desligado
+     via JS (Button só cria ripple em motionLevel === "fluid"). */
+  html[data-motion="eco"] .animate-shimmer,
+  html[data-motion="eco"] .animate-live-pulse,
+  html[data-motion="eco"] .animate-ping,
+  html[data-motion="eco"] .animate-spring-pop {
+    animation: none !important;
+  }
+  html[data-motion="eco"] .spring-press {
+    transition: none !important;
+  }
+  html[data-motion="eco"] .spring-press:active {
+    transform: none !important;
+  }
+
+  /* F11 — Nível "Reduzida / A11y" (data-motion="reduced"): mesmo tratamento
+     do prefers-reduced-motion do sistema — todas as animações e transições
+     praticamente zeradas no app inteiro (rota, shimmer, ripple, pulso, fades). */
+  html[data-motion="reduced"] *,
+  html[data-motion="reduced"] *::before,
+  html[data-motion="reduced"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 
   /* Utilitários de camada Z-Index */

@@ -75,6 +75,8 @@ function applyDomAttributes(config: VisualCustomization): void {
 
   if (config.motionLevel === "reduced") {
     root.setAttribute("data-motion", "reduced");
+  } else if (config.motionLevel === "eco") {
+    root.setAttribute("data-motion", "eco");
   } else {
     root.removeAttribute("data-motion");
   }
