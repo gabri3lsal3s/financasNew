@@ -7,7 +7,8 @@ export interface KpiCardProps {
   /** Valor já formatado — exibido com a classe .num (mono + tabular). */
   value: string;
   tone?: "default" | "positive" | "negative" | "portfolio";
-  hint?: string;
+  /** Dica ou comparativo (ex.: variação vs mês anterior). */
+  hint?: ReactNode;
   icon?: ReactNode;
 }
 

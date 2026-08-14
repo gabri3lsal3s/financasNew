@@ -146,7 +146,12 @@
   - Repositories: `categories.ts` (CRUD + `getCategoryUsage`), `budgets.ts` (list/remove; upsert via RPC), `income-goals.ts` (list/remove; upsert via RPC) + queries (`useBudgets`, `useIncomeGoals`, `useAllCategories`, `useCategoryUsage`) e mutations (limites, metas, categorias com migração, realocação)
   - **BudgetsPage**: abas Limites/Metas, KPIs (total de limites, % global usado com `Progress`), progresso por categoria com herança e faixa, diálogo de limite com sugestão por % da renda, card de realocação com confirmação, metas de renda com realizado × esperado
   - **CategoriesPage** (`/categorias`, novo item de nav): CRUD com sugestão inteligente por nome (ícone/cor), exclusão com **migração obrigatória** quando há lançamentos (RPC `delete_category_migrate`) e categorias reservadas protegidas
-- [ ] Entrega 8: Telas (`features/`) com Skeleton/EmptyState/erro via gateway
+- [x] **Entrega 8 — Visão Consolidada (Overview)**:
+  - Domínio puro `domain/overview` (12 testes): `computeOverview` (KPIs com peso de relatório: rendas, despesas, investimentos, saldo = rendas−despesas−investimentos, savingsRate = saldo÷rendas), `percentChange` (comparativo), `accountsNet` (receber − pagar − faturas em aberto), `openInvoicesTotal` (saldo da competência auto-selecionada por cartão — §3.3.3) e `buildDailyFlow` (barras empilhadas por dia)
+  - Repositories/queries: `listAllCardExpenses`/`listAllCardPayments` + `useAllCardExpenses`/`useAllCardPayments` (faturas em aberto sem hook em loop — agregação pura por cartão)
+  - **OverviewPage**: MonthPicker, 4 KPIs com comparativo vs mês anterior (cores por sinal), taxa de poupança com feedback, **saldo líquido de contas** (pendentes do mês + faturas em aberto), **fluxo diário** com barras empilhadas (rendas/despesas), orçamentos compactos (progresso global, lista de atenção, **realocação com confirmação** via RPC) e EmptyState sem lançamentos
+  - `KpiCard.hint` agora aceita ReactNode (comparativos formatados pt-BR com vírgula decimal)
+- [x] **Fase 2 — Core de Finanças Pessoais concluída**: entregas 1–8 verdes (domínio puro, módulos, CRUDs, wizard, cartões, dívidas, orçamentos/metas, visão consolidada)
 
 **✅ DoD**
 - Suíte de testes espelhando centavos, competência snapshot e status derivado.

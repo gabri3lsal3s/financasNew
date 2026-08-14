@@ -53,6 +53,18 @@ export async function listExpensesByCard(cardId: string): Promise<Expense[]> {
   return (data ?? []).map(mapExpense);
 }
 
+/** Todas as despesas de cartão (faturas em aberto na visão consolidada). */
+export async function listAllCardExpenses(): Promise<Expense[]> {
+  const { data, error } = await resolveQuery<Expense[]>(
+    getSupabase().from("expenses").select("*").not("card_id", "is", null).order("date", { ascending: false }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapExpense);
+}
+
 /** Despesa por id (usado no detalhe). */
 export async function getExpense(id: string): Promise<Expense | null> {
   const { data, error } = await resolveQuery<Expense | null>(getSupabase().from("expenses").select("*").eq("id", id).maybeSingle());

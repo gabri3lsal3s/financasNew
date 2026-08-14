@@ -26,6 +26,18 @@ export async function listCardPayments(cardId: string): Promise<CardPayment[]> {
   return (data ?? []).map(mapPayment);
 }
 
+/** Todos os pagamentos/estornos de cartão do usuário (faturas em aberto). */
+export async function listAllCardPayments(): Promise<CardPayment[]> {
+  const { data, error } = await resolveQuery<CardPayment[]>(
+    getSupabase().from("card_payments").select("*").order("date", { ascending: false }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapPayment);
+}
+
 /** Pagamento de fatura — RPC auditado (D2). Retorna o id do pagamento. */
 export async function createPayment(input: {
   cardId: string;
