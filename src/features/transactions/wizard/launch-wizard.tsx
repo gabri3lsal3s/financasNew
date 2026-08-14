@@ -83,15 +83,18 @@ export function LaunchWizard() {
   const isLastStep = state.step === WIZARD_STEPS.length;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col gap-6 p-4">
-      <header className="flex items-center justify-between">
-        <h1 className="font-display text-xl font-bold">Novo lançamento</h1>
-        <Button type="button" variant="ghost" size="icon" aria-label="Fechar" onClick={() => navigate("/transacoes")}>
-          <X aria-hidden="true" />
-        </Button>
-      </header>
+    // Mobile (D10): fluxo em tela cheia, alinhado ao topo, sem bordas.
+    // Desktop: painel centralizado (vertical e horizontal) com tratamento de modal.
+    <div className="flex min-h-dvh w-full items-start justify-center p-4 md:items-center md:bg-muted/30 md:p-6">
+      <div className="flex w-full max-w-lg flex-col gap-6 md:max-h-[calc(100dvh-3rem)] md:overflow-y-auto md:rounded-2xl md:border md:border-border md:bg-surface md:p-6 md:shadow-lg">
+        <header className="flex items-center justify-between">
+          <h1 className="font-display text-xl font-bold">Novo lançamento</h1>
+          <Button type="button" variant="ghost" size="icon" aria-label="Fechar" onClick={() => navigate("/transacoes")}>
+            <X aria-hidden="true" />
+          </Button>
+        </header>
 
-      <Stepper steps={[...WIZARD_STEPS]} current={state.step} />
+        <Stepper steps={[...WIZARD_STEPS]} current={state.step} />
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
@@ -163,6 +166,7 @@ export function LaunchWizard() {
           </Button>
         )}
       </footer>
+      </div>
     </div>
   );
 }
