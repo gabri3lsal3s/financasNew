@@ -429,16 +429,13 @@ export function OverviewPage() {
                     <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
                     <span className="text-xs text-muted-foreground">{monthLabel(month)}</span>
                   </div>
-                  <DailyFlowChart days={dailyFlow} dailyGoalCents={phase === "current" ? budget.dailyCents : null} />
+                  <DailyFlowChart days={dailyFlow} />
                   <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <span className="size-2 rounded-sm bg-positive-strong/80" /> Receitas
+                      <span className="h-0.5 w-4 rounded bg-positive-strong" /> Receitas
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="size-2 rounded-sm bg-negative-strong/80" /> Despesas
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="h-0.5 w-4 rounded bg-portfolio" /> Saldo acumulado
+                      <span className="h-0.5 w-4 rounded bg-negative-strong" /> Despesas
                     </span>
                   </div>
                 </section>

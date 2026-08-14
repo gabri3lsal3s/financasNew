@@ -11,22 +11,14 @@ const days = buildDailyFlow("2026-08", [
 ]);
 
 describe("DailyFlowChart (F8)", () => {
-  it("renderiza as barras e a curva de saldo acumulado", () => {
+  it("renderiza as linhas de receitas e despesas (um ponto por dia do mês)", () => {
     const { container } = render(<DailyFlowChart days={days} />);
 
-    // Barras empilhadas (por dia do mês).
-    expect(container.querySelectorAll("div > div > div").length).toBeGreaterThan(30);
-    // Curva de saldo (polyline do SVG).
-    const polylines = container.querySelectorAll("polyline");
-    expect(polylines).toHaveLength(1);
-    expect(polylines[0]?.getAttribute("points")?.split(" ").length).toBe(31);
-  });
-
-  it("adiciona a linha guia da meta diária quando informada", () => {
-    const { container } = render(<DailyFlowChart days={days} dailyGoalCents={5000} />);
     const polylines = container.querySelectorAll("polyline");
     expect(polylines).toHaveLength(2);
-    expect(polylines[0]?.getAttribute("stroke-dasharray")).toBe("4 4");
+    for (const line of polylines) {
+      expect(line.getAttribute("points")?.split(" ").length).toBe(31);
+    }
   });
 
   it("scrubbing revela o tooltip do dia", () => {
