@@ -5,7 +5,7 @@ import {
   updateCreditCard,
   type CreditCardForm,
 } from "@/data/repositories/credit-cards";
-import { createPayment, createRefundPayment } from "@/data/repositories/card-payments";
+import { createPayment, createRefundPayment, deleteCardPayment } from "@/data/repositories/card-payments";
 import { creditCardsKey } from "@/state/queries/use-credit-cards";
 import { cardPaymentsKey, cardExpensesKey } from "@/state/queries/use-card-payments";
 import { incomesKey } from "@/state/queries/use-incomes";
@@ -65,6 +65,20 @@ export function useCreateRefund() {
       void queryClient.invalidateQueries({ queryKey: incomesKey });
       void queryClient.invalidateQueries({ queryKey: expensesKey });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
+    },
+  });
+}
+
+export function useDeleteCardPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (paymentId: string) => deleteCardPayment(paymentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      void queryClient.invalidateQueries({ queryKey: incomesKey });
+      void queryClient.invalidateQueries({ queryKey: expensesKey });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }

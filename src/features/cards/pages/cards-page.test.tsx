@@ -13,6 +13,8 @@ const paymentMock = vi.fn();
 const refundMock = vi.fn();
 const createCardMock = vi.fn();
 const updateCardMock = vi.fn();
+const deleteCardMock = vi.fn();
+const deleteCardPaymentMock = vi.fn();
 
 vi.mock("@/state", () => ({
   useCreditCards: () => ({
@@ -20,6 +22,8 @@ vi.mock("@/state", () => ({
       {
         id: "c1",
         name: "Nubank",
+        brand: "Mastercard",
+        credit_limit: 5000,
         color: "#8B5CF6",
         closing_day: 10,
         due_day: 15,
@@ -58,24 +62,78 @@ vi.mock("@/state", () => ({
   useCreateRefund: () => ({ mutateAsync: refundMock, isPending: false }),
   useCreateCard: () => ({ mutateAsync: createCardMock, isPending: false }),
   useUpdateCard: () => ({ mutateAsync: updateCardMock, isPending: false }),
+  useDeleteCard: () => ({ mutateAsync: deleteCardMock, isPending: false }),
+  useDeleteCardPayment: () => ({ mutateAsync: deleteCardPaymentMock, isPending: false }),
 }));
 
-describe("CardsPage — faturas, pagamentos e estornos (§3.3.3)", () => {
+describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => {
+  it("exibe a carteira de cartões com todas as métricas embutidas no cartão 3D", () => {
+    render(<CardsPage />);
+    expect(screen.getByText("Sua Carteira")).toBeInTheDocument();
+    expect(screen.getAllByText("Nubank").length).toBeGreaterThan(0);
+    expect(screen.getByText("Fatura Atual")).toBeInTheDocument();
+    expect(screen.getByText(/Melhor dia:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fechamento:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Vencimento:/i)).toBeInTheDocument();
+  });
+
   it("exibe KPIs da fatura (previsto, pago, saldo aberto)", () => {
     render(<CardsPage />);
     expect(screen.getByText("Previsto")).toBeInTheDocument();
     expect(screen.getByText("Pago")).toBeInTheDocument();
     expect(screen.getByText("Saldo aberto")).toBeInTheDocument();
     // Previsto R$ 150,00 · Pago R$ 100,00 · Saldo R$ 50,00
-    expect(screen.getByText("R$ 150,00")).toBeInTheDocument();
-    expect(screen.getByText("R$ 100,00")).toBeInTheDocument();
-    expect(screen.getByText("R$ 50,00")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 150,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 100,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 50,00").length).toBeGreaterThan(0);
   });
 
-  it("lista despesas da competência e pagamentos", () => {
+  it("lista despesas da competência e pagamentos com botão de exclusão", () => {
     render(<CardsPage />);
     expect(screen.getByText("Supermercado")).toBeInTheDocument();
     expect(screen.getByText("Pagamento de fatura")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /excluir pagamento/i })).toBeInTheDocument();
+  });
+
+  it("permite excluir pagamento com diálogo de confirmação", async () => {
+    deleteCardPaymentMock.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<CardsPage />);
+
+    const deletePayBtn = screen.getByRole("button", { name: /excluir pagamento/i });
+    await user.click(deletePayBtn);
+
+    expect(screen.getByRole("heading", { name: "Excluir pagamento de fatura" })).toBeInTheDocument();
+    const confirmBtn = screen.getByRole("button", { name: "Excluir" });
+    await user.click(confirmBtn);
+
+    expect(deleteCardPaymentMock).toHaveBeenCalledWith("p1");
+  });
+
+  it("permite abrir diálogo de edição do cartão", async () => {
+    const user = userEvent.setup();
+    render(<CardsPage />);
+
+    const editBtn = screen.getByRole("button", { name: /editar cartão nubank/i });
+    await user.click(editBtn);
+
+    expect(screen.getByRole("heading", { name: "Editar cartão" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toHaveValue("Nubank");
+  });
+
+  it("permite excluir o cartão com diálogo de confirmação", async () => {
+    deleteCardMock.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<CardsPage />);
+
+    const deleteBtn = screen.getByRole("button", { name: /excluir cartão nubank/i });
+    await user.click(deleteBtn);
+
+    expect(screen.getByRole("heading", { name: "Excluir cartão" })).toBeInTheDocument();
+    const confirmBtn = screen.getByRole("button", { name: "Excluir cartão" });
+    await user.click(confirmBtn);
+
+    expect(deleteCardMock).toHaveBeenCalledWith("c1");
   });
 
   it("registra pagamento via diálogo", async () => {
@@ -112,7 +170,7 @@ describe("CardsPage — faturas, pagamentos e estornos (§3.3.3)", () => {
   it("abre o formulário de novo cartão", async () => {
     const user = userEvent.setup();
     render(<CardsPage />);
-    await user.click(screen.getByRole("button", { name: "Novo cartão" }));
+    await user.click(screen.getByRole("button", { name: /adicionar novo cartão/i }));
     expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
   });

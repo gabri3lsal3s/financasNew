@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { autoSelectBillMonth, buildCompetenceSummaries, invoiceBalance, invoiceStatus } from "./index";
+import {
+  autoSelectBillMonth,
+  bestPurchaseDay,
+  buildCompetenceSummaries,
+  cardLimitUsage,
+  daysUntilDue,
+  invoiceBalance,
+  invoiceStatus,
+} from "./index";
 import { APP_START_DATE } from "@/types";
 
 const TODAY = "2026-08-13";
@@ -133,3 +141,57 @@ describe("autoSelectBillMonth (§3.3.3)", () => {
     expect(APP_START_DATE).toBe("2026-01-01");
   });
 });
+
+describe("cardLimitUsage", () => {
+  it("calcula limite total, utilizado e disponível corretamente", () => {
+    const result = cardLimitUsage(5000, 150000); // R$ 5.000 de limite, R$ 1.500 utilizados
+    expect(result.totalLimitCents).toBe(500000);
+    expect(result.usedLimitCents).toBe(150000);
+    expect(result.availableLimitCents).toBe(350000);
+    expect(result.usagePercentage).toBe(30);
+  });
+
+  it("retorna null para limite disponível se não houver limite configurado", () => {
+    const result = cardLimitUsage(null, 25000);
+    expect(result.totalLimitCents).toBeNull();
+    expect(result.usedLimitCents).toBe(25000);
+    expect(result.availableLimitCents).toBeNull();
+    expect(result.usagePercentage).toBe(0);
+  });
+
+  it("disponível nunca fica negativo quando o uso excede o limite", () => {
+    const result = cardLimitUsage(1000, 120000); // R$ 1.000 de limite, R$ 1.200 utilizados
+    expect(result.totalLimitCents).toBe(100000);
+    expect(result.availableLimitCents).toBe(0);
+    expect(result.usagePercentage).toBe(100);
+  });
+});
+
+describe("bestPurchaseDay", () => {
+  it("retorna o dia seguinte ao fechamento", () => {
+    expect(bestPurchaseDay(10)).toBe(11);
+    expect(bestPurchaseDay(15)).toBe(16);
+    expect(bestPurchaseDay(1)).toBe(2);
+  });
+
+  it("retorna dia 1 se fechamento for 31", () => {
+    expect(bestPurchaseDay(31)).toBe(1);
+  });
+});
+
+describe("daysUntilDue", () => {
+  it("retorna dias restantes até o vencimento", () => {
+    // Fatura 2026-08, vencimento dia 20, hoje 2026-08-13 -> 7 dias
+    expect(daysUntilDue("2026-08", 20, "2026-08-13")).toBe(7);
+  });
+
+  it("retorna 0 quando vence hoje", () => {
+    expect(daysUntilDue("2026-08", 13, "2026-08-13")).toBe(0);
+  });
+
+  it("retorna negativo quando a fatura está vencida", () => {
+    // Vencimento dia 10, hoje dia 13 -> -3 dias
+    expect(daysUntilDue("2026-08", 10, "2026-08-13")).toBe(-3);
+  });
+});
+

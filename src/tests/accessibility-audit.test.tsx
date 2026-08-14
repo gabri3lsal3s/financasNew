@@ -141,6 +141,8 @@ vi.mock("@/state", () => ({
   useCreateRefund: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateCard: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateCard: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteCard: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteCardPayment: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -207,7 +209,8 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
   it("telas interativas mantêm nomes acessíveis após interação (Cartões)", async () => {
     const user = userEvent.setup();
     const { container } = render(<CardsPage />);
-    await user.click(screen.getByRole("button", { name: "Novo cartão" }));
+    await user.click(screen.getByRole("button", { name: /adicionar novo cartão/i }));
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+

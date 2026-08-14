@@ -33,6 +33,12 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
     expect(classifyError({ code: "23505" }).kind).toBe("duplicate");
   });
 
+  it("classifica violação de chave estrangeira com histórico vinculado (23503)", () => {
+    const err = classifyError({ code: "23503", message: "update or delete on table violates foreign key constraint" });
+    expect(err.kind).toBe("foreign-key");
+    expect(err.message).toContain("Não é possível excluir este registro pois existem lançamentos vinculados");
+  });
+
   it("repassa mensagens de negócio dos RPCs (raise exception em pt-BR)", () => {
     const err = classifyError({ message: "Valor da despesa deve ser maior que zero" });
     expect(err.kind).toBe("unknown");

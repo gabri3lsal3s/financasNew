@@ -1,25 +1,53 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Pencil, Plus, Undo2, WalletCards } from "lucide-react";
-import { Alert, Button, EmptyState, Skeleton } from "@/components/ui";
-import { KpiCard, MonthPicker, TransactionRow, InvoiceStatusBadge } from "@/components/modules";
-import { autoSelectBillMonth, buildCompetenceSummaries, invoiceStatus } from "@/domain/cards";
+import { Plus, Trash2, Undo2, WalletCards } from "lucide-react";
+import { Alert, Button, ConfirmDialog, EmptyState, Skeleton } from "@/components/ui";
+import {
+  CreditCardWallet,
+  InvoiceStatusBadge,
+  KpiCard,
+  MonthPicker,
+  TransactionRow,
+} from "@/components/modules";
+import {
+  autoSelectBillMonth,
+  buildCompetenceSummaries,
+  invoiceStatus,
+} from "@/domain/cards";
 import { currentMonth, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useCardExpenses, useCardPayments, useCreditCards } from "@/state";
+import {
+  useCardExpenses,
+  useCardPayments,
+  useCreditCards,
+  useDeleteCard,
+  useDeleteCardPayment,
+  useUpdateCard,
+} from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
 import { PaymentDialog } from "@/features/cards/components/payment-dialog";
-import type { CreditCard } from "@/types";
+import type { CardPayment, CreditCard } from "@/types";
 import { cn } from "@/lib/utils";
 
 type PaymentMode = "payment" | "refund" | null;
 
-/** Fatura de um cartão: previsto/pago/saldo + despesas + pagamentos (§3.3.3). */
+/**
+ * Página de Gestão Completa de Cartões de Crédito:
+ * - Carteira / Carrossel 3D com modelo de cartão que agrega todas as informações
+ *   (limite total/disponível, fatura atual, melhor dia de compra, fechamento e vencimento)
+ * - Edição, Desativação/Arquivamento e Exclusão segura de cartões
+ * - Fatura por competência (previsto, pago, saldo aberto, estornos)
+ * - Extrato discriminado de despesas e pagamentos/estornos (com opção de exclusão)
+ */
 export function CardsPage() {
   const cardsQuery = useCreditCards();
+  const deleteCardMutation = useDeleteCard();
+  const updateCardMutation = useUpdateCard();
+  const deleteCardPaymentMutation = useDeleteCardPayment();
   const [searchParams, setSearchParams] = useSearchParams();
+
   // Destaque do cartão via ?q= (um-shot — limpo pelo hook); seleção via
   // ?card= (derivada) ou escolha manual (limpa o param). Sem setState em effect.
   const { isHighlighted } = useHighlightTarget("q");
@@ -31,6 +59,9 @@ export function CardsPage() {
   // FAB contextual (F12): ?novo=cartao abre o formulário de criação.
   const { open: formOpen, setOpen: setFormOpen, fromUrl } = useCreateDeepLink("cartao");
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
+  const [deletingCard, setDeletingCard] = useState<CreditCard | null>(null);
+  const [deletingPayment, setDeletingPayment] = useState<CardPayment | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(null);
 
   const cards = cardsQuery.data ?? [];
@@ -42,7 +73,7 @@ export function CardsPage() {
   const paymentsQuery = useCardPayments(cardId);
 
   const loading = cardsQuery.isLoading || (cardId !== null && (expensesQuery.isLoading || paymentsQuery.isLoading));
-  const error = cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error;
+  const error = cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? (actionError ? new Error(actionError) : null);
 
   // Derivação pura (domain/cards): resumos por competência + seleção automática de mês.
   const summaries = buildCompetenceSummaries(expensesQuery.data ?? [], paymentsQuery.data ?? []);
@@ -52,7 +83,12 @@ export function CardsPage() {
   const competenceExpenses = (expensesQuery.data ?? []).filter((e) => e.bill_competence === effectiveMonth);
   const competencePayments = (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth);
 
+  const invStatus = selectedCard
+    ? invoiceStatus(effectiveMonth, selectedCard.due_day, summary?.saldoCents ?? 0)
+    : "closed";
+
   const selectCard = (id: string) => {
+    setActionError(null);
     setPickedCardId(id);
     setMonth(null); // reaplica a seleção automática do mês para o novo cartão
     setSearchParams(
@@ -66,110 +102,228 @@ export function CardsPage() {
   };
 
   const openForm = (card: CreditCard | null) => {
+    setActionError(null);
     setEditingCard(card);
     setFormOpen(true);
   };
 
+  const handleRequestDelete = (card: CreditCard) => {
+    setActionError(null);
+    setDeletingCard(card);
+  };
+
+  const handleDeactivateCard = async (card: CreditCard) => {
+    setActionError(null);
+    try {
+      await updateCardMutation.mutateAsync({
+        id: card.id,
+        input: {
+          name: card.name,
+          brand: card.brand,
+          credit_limit: card.credit_limit,
+          closing_day: card.closing_day,
+          due_day: card.due_day,
+          color: card.color,
+          is_active: false,
+        },
+      });
+      setDeletingCard(null);
+    } catch (err) {
+      setActionError(getErrorMessage(err));
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCard) return;
+    setActionError(null);
+    try {
+      await deleteCardMutation.mutateAsync(deletingCard.id);
+      const remainingCards = cards.filter((c) => c.id !== deletingCard.id);
+      setDeletingCard(null);
+      if (selectedCard?.id === deletingCard.id) {
+        if (remainingCards.length > 0 && remainingCards[0]) {
+          selectCard(remainingCards[0].id);
+        } else {
+          setPickedCardId(null);
+        }
+      }
+    } catch (err) {
+      setDeletingCard(null);
+      const msg = getErrorMessage(err);
+      if (
+        msg.toLowerCase().includes("foreign key") ||
+        msg.toLowerCase().includes("histórico") ||
+        msg.toLowerCase().includes("vinculad") ||
+        msg.toLowerCase().includes("desativá-lo")
+      ) {
+        setActionError(
+          "Não é possível excluir um cartão que possui despesas ou pagamentos registrados. Você pode desativá-lo para mantê-lo no histórico.",
+        );
+      } else {
+        setActionError(msg);
+      }
+    }
+  };
+
+  const handleConfirmDeletePayment = async () => {
+    if (!deletingPayment) return;
+    setActionError(null);
+    try {
+      await deleteCardPaymentMutation.mutateAsync(deletingPayment.id);
+      setDeletingPayment(null);
+    } catch (err) {
+      setDeletingPayment(null);
+      setActionError(getErrorMessage(err));
+    }
+  };
+
+  const usedLimitMap: Record<string, number> = {};
+  if (selectedCard) {
+    usedLimitMap[selectedCard.id] = summary?.saldoCents ?? 0;
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {/* F12 — sem header visual: seletor de mês direto; título apenas p/ leitores de tela. */}
-      <h1 className="sr-only">Cartões</h1>
+      {/* Título de acessibilidade */}
+      <h1 className="sr-only">Cartões de Crédito</h1>
 
       {error ? (
         <div className="flex flex-col gap-3">
           <Alert variant="error">{getErrorMessage(error)}</Alert>
-          <div>
-            <Button variant="outline" onClick={() => void Promise.all([expensesQuery.refetch(), paymentsQuery.refetch()])}>
+          <div className="flex items-center gap-2">
+            {actionError &&
+            (actionError.includes("desativá-lo") || actionError.includes("histórico")) &&
+            selectedCard &&
+            selectedCard.is_active ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleDeactivateCard(selectedCard)}
+              >
+                Desativar cartão {selectedCard.name}
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setActionError(null);
+                void Promise.all([cardsQuery.refetch(), expensesQuery.refetch(), paymentsQuery.refetch()]);
+              }}
+            >
               Tentar novamente
             </Button>
           </div>
         </div>
-      ) : loading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-14 w-full" />
+      ) : null}
+
+      {loading ? (
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-64 w-full rounded-2xl max-w-[440px] mx-auto" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+          </div>
         </div>
       ) : cards.length === 0 ? (
         <EmptyState
-          icon={<WalletCards className="size-6" aria-hidden="true" />}
-          title="Nenhum cartão"
-          description="Adicione seu primeiro cartão de crédito para acompanhar faturas, pagamentos e estornos."
-          action={<Button onClick={() => openForm(null)}>Adicionar cartão</Button>}
+          icon={<WalletCards className="size-8 text-primary" aria-hidden="true" />}
+          title="Nenhum cartão cadastrado"
+          description="Adicione seus cartões de crédito para acompanhar faturas, limites disponíveis, melhor data de compra e extrato."
+          action={
+            <Button onClick={() => openForm(null)} className="gap-2">
+              <Plus className="size-4" aria-hidden="true" />
+              Adicionar primeiro cartão
+            </Button>
+          }
         />
       ) : (
         <>
-          {/* Seletor de cartão */}
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Selecionar cartão">
-            {cards.map((card) => (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => selectCard(card.id)}
-                aria-pressed={card.id === selectedCard?.id}
-                className={cn(
-                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  card.id === selectedCard?.id
-                    ? "border-primary bg-primary/10 text-primary-strong"
-                    : "border-border bg-surface text-muted-foreground hover:bg-surface-hover",
-                  isHighlighted(card.id) && "ring-2 ring-portfolio",
-                )}
-              >
-                {card.color ? (
-                  <span className="size-2.5 rounded-full" style={{ backgroundColor: card.color }} aria-hidden="true" />
-                ) : (
-                  <WalletCards className="size-4" aria-hidden="true" />
-                )}
-                {card.name}
-                {!card.is_active ? <span className="text-xs text-muted-foreground">(inativo)</span> : null}
-              </button>
-            ))}
-            <Button type="button" variant="ghost" size="icon" aria-label="Editar cartão" onClick={() => openForm(selectedCard)}>
-              <Pencil className="size-4" aria-hidden="true" />
-            </Button>
-            {/* Novo cartão só no desktop — no mobile o FAB da BottomNav assume (F12). */}
-            <Button type="button" className="hidden sm:inline-flex" onClick={() => openForm(null)}>
-              <Plus aria-hidden="true" />
-              Novo cartão
-            </Button>
-          </div>
+          {/* =========================================================================
+              SEÇÃO 1: CARTEIRA 3D (WALLET) COM MODELO INTERATIVO E INFORMAÇÕES EMBUTIDAS
+             ========================================================================= */}
+          <section
+            aria-label="Carteira de Cartões"
+            className={cn(
+              "flex flex-col items-center justify-center p-3 sm:p-5 rounded-2xl bg-surface/50 border border-border/70 backdrop-blur-sm shadow-xs transition-all",
+              selectedCard && isHighlighted(selectedCard.id) && "ring-2 ring-primary",
+            )}
+          >
+            <CreditCardWallet
+              cards={cards}
+              selectedCardId={selectedCard?.id ?? null}
+              onSelectCard={selectCard}
+              onEditCard={openForm}
+              onDeleteCard={handleRequestDelete}
+              onNewCard={() => openForm(null)}
+              usedLimitMap={usedLimitMap}
+              competenceMonth={effectiveMonth}
+              status={invStatus}
+            />
+          </section>
 
-          <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
+          {/* =========================================================================
+              SEÇÃO 2: SELETOR DE MÊS, STATUS DA FATURA E KPIS
+             ========================================================================= */}
+          <div className="flex flex-col gap-4">
+            <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
 
-          {/* KPIs da fatura */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <KpiCard label="Previsto" cents={summary?.previstoCents ?? 0} />
-            <KpiCard label="Pago" cents={summary?.pagoCents ?? 0} />
-            <KpiCard label="Saldo aberto" cents={summary?.saldoCents ?? 0} tone={summary && summary.saldoCents > 0 ? "negative" : "positive"} />
-          </div>
-
-          {selectedCard ? (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <InvoiceStatusBadge
-                status={invoiceStatus(effectiveMonth, selectedCard.due_day, summary?.saldoCents ?? 0)}
+            {/* KPIs da fatura */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <KpiCard label="Previsto" cents={summary?.previstoCents ?? 0} />
+              <KpiCard label="Pago" cents={summary?.pagoCents ?? 0} />
+              <KpiCard
+                label="Saldo aberto"
+                cents={summary?.saldoCents ?? 0}
+                tone={summary && summary.saldoCents > 0 ? "negative" : "positive"}
               />
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setPaymentMode("refund")}>
-                  <Undo2 aria-hidden="true" />
-                  Estorno
-                </Button>
-                <Button onClick={() => setPaymentMode("payment")} disabled={(summary?.saldoCents ?? 0) <= 0}>
-                  Registrar pagamento
-                </Button>
-              </div>
             </div>
-          ) : null}
 
-          {/* Despesas da competência */}
+            {selectedCard ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-surface border border-border">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground font-medium">Status da fatura:</span>
+                  <InvoiceStatusBadge status={invStatus} />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPaymentMode("refund")} className="gap-1.5">
+                    <Undo2 className="size-3.5" aria-hidden="true" />
+                    Estorno
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setPaymentMode("payment")}
+                    disabled={(summary?.saldoCents ?? 0) <= 0}
+                    className="gap-1.5"
+                  >
+                    Registrar pagamento
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* =========================================================================
+              SEÇÃO 3: EXTRATO DISCRIMINADO (DESPESAS E PAGAMENTOS)
+             ========================================================================= */}
           <section aria-label={`Despesas da fatura de ${monthLabel(effectiveMonth)}`} className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Despesas · {monthLabel(effectiveMonth)}
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Despesas · {monthLabel(effectiveMonth)}
+              </h2>
+              <span className="text-xs text-muted-foreground font-mono">
+                {competenceExpenses.length} {competenceExpenses.length === 1 ? "item" : "itens"}
+              </span>
+            </div>
+
             {competenceExpenses.length === 0 ? (
               <EmptyState
-                icon={<WalletCards className="size-6" aria-hidden="true" />}
+                icon={<WalletCards className="size-6 text-muted-foreground" aria-hidden="true" />}
                 title="Sem despesas nesta fatura"
-                description="As compras no crédito aparecem aqui pela competência."
+                description="As compras no cartão aparecem aqui de acordo com o fechamento da fatura."
               />
             ) : (
               competenceExpenses.map((expense) => (
@@ -177,7 +331,11 @@ export function CardsPage() {
                   key={expense.id}
                   title={expense.description || "Despesa sem descrição"}
                   date={expense.date}
-                  subtitle={expense.report_weight < 1 ? `${Math.round(expense.report_weight * 100)}% no relatório` : undefined}
+                  subtitle={
+                    expense.report_weight < 1
+                      ? `${Math.round(expense.report_weight * 100)}% no relatório`
+                      : undefined
+                  }
                   amountCents={Math.round(expense.value * expense.report_weight * 100)}
                   kind="expense"
                 />
@@ -187,12 +345,20 @@ export function CardsPage() {
 
           {/* Pagamentos e estornos */}
           <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Pagamentos e estornos</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Pagamentos e estornos
+              </h2>
+              <span className="text-xs text-muted-foreground font-mono">
+                {competencePayments.length} {competencePayments.length === 1 ? "registro" : "registros"}
+              </span>
+            </div>
+
             {competencePayments.length === 0 ? (
               <EmptyState
-                icon={<WalletCards className="size-6" aria-hidden="true" />}
+                icon={<WalletCards className="size-6 text-muted-foreground" aria-hidden="true" />}
                 title="Nenhum pagamento"
-                description="Registre o pagamento da fatura quando efetuar."
+                description="Registre o pagamento ou estorno desta fatura quando for efetuado."
               />
             ) : (
               competencePayments.map((payment) =>
@@ -203,6 +369,18 @@ export function CardsPage() {
                     date={payment.date}
                     amountCents={Math.round(-payment.amount * 100)}
                     kind="income"
+                    badges={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeletingPayment(payment)}
+                        aria-label={`Excluir estorno ${payment.note || ""}`}
+                        className="size-7 p-0 text-muted-foreground hover:text-critical"
+                      >
+                        <Trash2 className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    }
                   />
                 ) : (
                   <TransactionRow
@@ -211,6 +389,18 @@ export function CardsPage() {
                     date={payment.date}
                     amountCents={Math.round(payment.amount * 100)}
                     kind="expense"
+                    badges={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeletingPayment(payment)}
+                        aria-label={`Excluir pagamento ${payment.note || ""}`}
+                        className="size-7 p-0 text-muted-foreground hover:text-critical"
+                      >
+                        <Trash2 className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    }
                   />
                 ),
               )
@@ -220,7 +410,55 @@ export function CardsPage() {
       )}
 
       {/* Deep-link do FAB sempre abre em modo criação (ignora edição pendente). */}
-      <CardFormDialog card={fromUrl ? null : editingCard} open={formOpen} onOpenChange={setFormOpen} />
+      <CardFormDialog
+        card={fromUrl ? null : editingCard}
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onDeleted={(deletedId) => {
+          const remaining = cards.filter((c) => c.id !== deletedId);
+          if (selectedCard?.id === deletedId) {
+            if (remaining.length > 0 && remaining[0]) {
+              selectCard(remaining[0].id);
+            } else {
+              setPickedCardId(null);
+            }
+          }
+        }}
+      />
+
+      {/* Diálogo de confirmação para exclusão direta do cartão */}
+      {deletingCard && (
+        <ConfirmDialog
+          open={deletingCard !== null}
+          onOpenChange={(next) => {
+            if (!next) setDeletingCard(null);
+          }}
+          title="Excluir cartão"
+          description={`Tem certeza que deseja excluir o cartão "${deletingCard.name}"? Se houver histórico de compras ou pagamentos, você deve desativá-lo em vez de excluí-lo.`}
+          confirmLabel="Excluir cartão"
+          variant="destructive"
+          onConfirm={() => void handleConfirmDelete()}
+        />
+      )}
+
+      {/* Diálogo de confirmação para exclusão de pagamento ou estorno */}
+      {deletingPayment && (
+        <ConfirmDialog
+          open={deletingPayment !== null}
+          onOpenChange={(next) => {
+            if (!next) setDeletingPayment(null);
+          }}
+          title={deletingPayment.amount < 0 ? "Excluir estorno" : "Excluir pagamento de fatura"}
+          description={
+            deletingPayment.amount < 0
+              ? "Tem certeza que deseja excluir este estorno? A receita automática correspondente no extrato também será removida."
+              : "Tem certeza que deseja excluir este pagamento de fatura? O saldo da fatura será recalculado automaticamente."
+          }
+          confirmLabel="Excluir"
+          variant="destructive"
+          onConfirm={() => void handleConfirmDeletePayment()}
+        />
+      )}
 
       {cardId && paymentMode ? (
         <PaymentDialog

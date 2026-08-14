@@ -13,6 +13,7 @@ export type ErrorKind =
   | "invalid-credentials"
   | "session-expired"
   | "duplicate"
+  | "foreign-key"
   | "network"
   | "validation"
   | "unknown";
@@ -43,6 +44,7 @@ const MESSAGES: Record<ErrorKind, string> = {
   "invalid-credentials": "E-mail ou senha incorretos.",
   "session-expired": "Sua sessão expirou. Entre novamente para continuar.",
   duplicate: "Já existe um registro com esses dados.",
+  "foreign-key": "Não é possível excluir este registro pois existem lançamentos vinculados a ele. Você pode desativá-lo para manter o histórico.",
   network: "Sem conexão com o servidor. Verifique sua internet e tente novamente.",
   validation: "Dados inválidos. Revise as informações e tente novamente.",
   unknown: "Algo deu errado. Tente novamente em instantes.",
@@ -88,10 +90,13 @@ export function classifyError(error: unknown): ClassifiedError {
   if (status === 401 || code === "pgrst301" || code.includes("jwt") || code.includes("session_expired") || /session expired/i.test(message)) {
     return { kind: "session-expired", message: MESSAGES["session-expired"], raw: error };
   }
-  if (code === "23505" || code.includes("duplicate")) {
+  if (code === "23505" || code.includes("duplicate") || /duplicate key|unique constraint/i.test(message)) {
     return { kind: "duplicate", message: MESSAGES.duplicate, raw: error };
   }
-  if (code === "23514" || code.includes("check_violation") || /constraint|check constraint/i.test(message)) {
+  if (code === "23503" || code.includes("foreign_key") || /foreign key|foreign_key|violates foreign key/i.test(message)) {
+    return { kind: "foreign-key", message: MESSAGES["foreign-key"], raw: error };
+  }
+  if (code === "23514" || code.includes("check_violation") || /check constraint|check_violation/i.test(message)) {
     return { kind: "validation", message: MESSAGES.validation, raw: error };
   }
 

@@ -68,7 +68,8 @@ describe("FloatingCalculator (F9)", () => {
     await user.click(screen.getByRole("button", { name: "Dígito 3" }));
     await user.click(screen.getByRole("button", { name: "Igual" }));
 
-    expect(screen.getByText("R$ 5,00")).toBeInTheDocument();
+    // Display resolve (o histórico também registra o mesmo resultado).
+    expect(screen.getAllByText("R$ 5,00").length).toBeGreaterThan(0);
   });
 
   it("'Usar valor' injeta o resultado em centavos no campo registrado e fecha", async () => {

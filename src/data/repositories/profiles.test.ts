@@ -68,13 +68,13 @@ describe("ensureOwnProfile — auto-cura de contas órfãs (F11)", () => {
     expect(calls.every((call) => call.options.ignoreDuplicates)).toBe(true);
   });
 
-  it("propaga violação de FK como AppError de validação (Dados inválidos) preservando o raw", async () => {
+  it("propaga violação de FK como AppError de chave estrangeira preservando o raw", async () => {
     errorQueue = [{ message: "insert or update on table \"profiles\" violates foreign key constraint" }];
     const promise = ensureOwnProfile("u1");
     await expect(promise).rejects.toBeInstanceOf(AppError);
-    await expect(promise).rejects.toThrow(/Dados inválidos/);
+    await expect(promise).rejects.toThrow(/Não é possível excluir este registro pois existem lançamentos vinculados/);
     const error = await promise.catch((err: unknown) => err);
-    expect((error as AppError).kind).toBe("validation");
+    expect((error as AppError).kind).toBe("foreign-key");
     expect((error as AppError).raw).toEqual({
       message: "insert or update on table \"profiles\" violates foreign key constraint",
     });

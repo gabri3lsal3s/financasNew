@@ -53,3 +53,8 @@ export type { SmartAnomaliesCardProps } from "./smart-anomalies-card";
 export { FloatingCalculator } from "./floating-calculator";
 export { CalculatorKeypad } from "./calculator-keypad";
 export type { CalculatorKeypadProps } from "./calculator-keypad";
+export { CreditCard3D } from "./credit-card-3d";
+export type { CreditCard3DProps } from "./credit-card-3d";
+export { CreditCardWallet } from "./credit-card-wallet";
+export type { CreditCardWalletProps } from "./credit-card-wallet";
+

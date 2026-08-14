@@ -152,3 +152,65 @@ export function autoSelectBillMonth(
   if (hasBalance(shiftMonth(current, 1))) return shiftMonth(current, 1);
   return current;
 }
+
+export interface CardLimitUsage {
+  /** Limite total configurado no cartão em centavos, ou null se não informado. */
+  totalLimitCents: number | null;
+  /** Limite comprometido em centavos (soma de despesas abertas/previstas). */
+  usedLimitCents: number;
+  /** Limite disponível em centavos (max(0, total − used)), ou null se sem limite total. */
+  availableLimitCents: number | null;
+  /** Percentual de comprometimento do limite (0 a 100). */
+  usagePercentage: number;
+}
+
+/**
+ * Calcula o uso de limite de um cartão de crédito.
+ * @param creditLimit Limite total cadastrado em reais (ex: 5000) ou null/undefined.
+ * @param usedCents Total comprometido em centavos.
+ */
+export function cardLimitUsage(creditLimit: number | null | undefined, usedCents: number): CardLimitUsage {
+  const safeUsed = Math.max(0, usedCents);
+  if (creditLimit === null || creditLimit === undefined || creditLimit <= 0) {
+    return {
+      totalLimitCents: null,
+      usedLimitCents: safeUsed,
+      availableLimitCents: null,
+      usagePercentage: 0,
+    };
+  }
+
+  const totalLimitCents = Math.round(creditLimit * 100);
+  const availableLimitCents = Math.max(0, totalLimitCents - safeUsed);
+  const usagePercentage = totalLimitCents > 0 ? Math.min(100, Math.round((safeUsed / totalLimitCents) * 100)) : 0;
+
+  return {
+    totalLimitCents,
+    usedLimitCents: safeUsed,
+    availableLimitCents,
+    usagePercentage,
+  };
+}
+
+/**
+ * Determina o melhor dia de compra para o cartão (dia subsequente ao fechamento).
+ * Exemplo: fechamento dia 10 → melhor dia 11.
+ * Exemplo: fechamento dia 31 → melhor dia 1.
+ */
+export function bestPurchaseDay(closingDay: number): number {
+  if (closingDay >= 31 || closingDay < 1) return 1;
+  return closingDay + 1;
+}
+
+/**
+ * Calcula a quantidade de dias restantes até o vencimento da fatura.
+ * Retorna valor positivo (dias restantes), 0 (vence hoje) ou negativo (dias de atraso).
+ */
+export function daysUntilDue(competenceMonth: string, dueDay: number, today: string = todayISO()): number {
+  const dueDate = invoiceDueDate(competenceMonth, dueDay);
+  const dueTime = new Date(`${dueDate}T00:00:00Z`).getTime();
+  const todayTime = new Date(`${today}T00:00:00Z`).getTime();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.round((dueTime - todayTime) / msPerDay);
+}
+

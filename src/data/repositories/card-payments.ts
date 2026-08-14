@@ -71,3 +71,26 @@ export async function createRefundPayment(input: {
     note: input.note,
   });
 }
+
+/** Exclui um pagamento de fatura ou estorno (e sua renda automática associada quando estorno). */
+export async function deleteCardPayment(paymentId: string): Promise<void> {
+  const supabase = getSupabase();
+  // Se for estorno, remove a renda automática correspondente
+  const { error: incomeErr } = await supabase
+    .from("incomes")
+    .delete()
+    .eq("source_ref", `[REFUND]${paymentId}`);
+  if (incomeErr) {
+    const classified = classifyError(incomeErr);
+    throw new AppError(classified.kind, classified.message, incomeErr);
+  }
+
+  const { error } = await supabase
+    .from("card_payments")
+    .delete()
+    .eq("id", paymentId);
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
