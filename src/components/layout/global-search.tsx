@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { ArrowDownLeft, ArrowUpRight, HandCoins, Search, Tags, WalletCards } from "lucide-react";
 import { Button, Command } from "@/components/ui";
 import type { CommandGroup, CommandItem } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { searchGlobal, type SearchEntryType, type SearchResult } from "@/domain/search";
 import { todayISO } from "@/domain/debts";
 import { useGlobalSearchEntries } from "@/state";
@@ -23,8 +24,15 @@ const TYPE_GROUP_LABEL: Record<SearchEntryType, string> = {
   category: "Categorias",
 };
 
-/** Busca global (⌘K) — paleta montada no shell, atalho ⌘K/Ctrl+K (§3.9). */
-export function GlobalSearch() {
+export interface GlobalSearchProps {
+  /** Classes de layout do wrapper (ex.: `lg:flex-1` no header). */
+  className?: string;
+}
+
+/** Busca global (⌘K) — paleta montada no shell, atalho ⌘K/Ctrl+K (§3.9).
+ * No desktop vira uma barra de busca inline (mesmo elemento, responsivo) que
+ * toma a largura excedente do header; no mobile permanece como botão-ícone. */
+export function GlobalSearch({ className }: GlobalSearchProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -86,8 +94,19 @@ export function GlobalSearch() {
         aria-label="Buscar (Ctrl+K)"
         title="Buscar (Ctrl+K)"
         onClick={() => setOpen(true)}
+        className={cn(
+          "min-w-0", // permite encolher o texto quando a barra é flexível
+          // Barra de busca no desktop (pós-F10): ocupa a largura excedente
+          // entre os limites da página e os botões do header (flex-1 via PageShell).
+          "lg:size-auto lg:h-10 lg:w-full lg:justify-start lg:gap-2 lg:rounded-lg lg:border lg:border-input lg:bg-surface lg:px-3 lg:text-sm lg:text-muted-foreground lg:shadow-sm lg:hover:bg-surface-hover",
+          className,
+        )}
       >
-        <Search aria-hidden="true" />
+        <Search className="size-4" aria-hidden="true" />
+        <span className="hidden truncate lg:inline">Buscar…</span>
+        <span className="ml-auto hidden shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground lg:inline">
+          Ctrl+K
+        </span>
       </Button>
       <Command
         open={open}

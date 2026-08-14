@@ -37,14 +37,19 @@ export function PageShell() {
           isCollapsed ? "lg:pl-20" : "lg:pl-64",
         )}
       >
-        {/* Header fluido (F7.3): padding adaptável, sticky com backdrop-blur (DESIGN_SYSTEM §6).
+        {/* Header fluido (F7.3): sticky com backdrop-blur (DESIGN_SYSTEM §6).
+            Conteúdo centralizado nos MESMOS limites da página (max-w-5xl): no
+            desktop a barra de busca (flex-1) toma a largura excedente entre o
+            limite esquerdo e os botões, alinhados ao limite direito da página.
             Marca no mobile (lg a sidebar já exibe o logo — F10). */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-1 border-b border-border bg-surface/80 px-4 backdrop-blur lg:px-8">
-          <BrandLogo showWordmark={false} markClassName="size-7" className="mr-auto lg:hidden" />
-          <GlobalSearch />
-          <PrivacyToggle />
-          <CalculatorButton />
-          <ThemeToggle />
+        <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border bg-surface/80 backdrop-blur">
+          <div className="mx-auto flex w-full max-w-5xl items-center gap-1 px-4 lg:px-8">
+            <BrandLogo showWordmark={false} markClassName="size-7" className="mr-auto lg:hidden" />
+            <GlobalSearch className="lg:flex-1" />
+            <PrivacyToggle />
+            <CalculatorButton />
+            <ThemeToggle />
+          </div>
         </header>
         <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 lg:px-8">
           {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
