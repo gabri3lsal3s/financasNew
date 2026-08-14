@@ -358,42 +358,9 @@ export function OverviewPage() {
             </div>
           )}
 
-          {/* Cards inteligentes (F8): ritmo, faturas e anomalias */}
-          {(visual.dashboardWidgets.pace || visual.dashboardWidgets.invoices || visual.dashboardWidgets.anomalies) &&
-          (phase === "current" || openInvoiceRows.length > 0 || alerts.length > 0) ? (
-            <section aria-label="Insights do período" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {visual.dashboardWidgets.pace && (
-                <SmartSpendingPaceCard pace={phase === "current" ? pace : null} dailyCents={phase === "current" ? budget.dailyCents : null} />
-              )}
-              {visual.dashboardWidgets.invoices && (
-                <SmartInvoiceProjectionCard
-                  openInvoicesCents={openInvoiceRows.reduce((acc, row) => acc + row.saldoCents, 0)}
-                  openCount={openInvoiceRows.length}
-                  nearestDueDate={openInvoiceRows[0]?.dueDate ?? null}
-                />
-              )}
-              {visual.dashboardWidgets.anomalies && <SmartAnomaliesCard alerts={alerts} />}
-            </section>
-          ) : null}
-
-          {/* Resumo financeiro (§3.6 + F8): poupança, saldo de contas e saúde em uma linha */}
+          {/* Resumo financeiro (§3.6): posição de caixa, poupança e saúde — logo após os KPIs */}
           {visual.dashboardWidgets.savingsHealth && (
             <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-                <div className="flex items-center gap-2">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <PiggyBank className="size-4 text-foreground" aria-hidden="true" />
-                  </span>
-                  <h2 className="text-sm font-semibold text-foreground">Taxa de poupança</h2>
-                </div>
-                <p className={cn("num text-3xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
-                  {formatPercent(totals.savingsRatePercent)}%
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
-                </p>
-              </article>
-
               <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
                 <div className="flex items-center gap-2">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -411,11 +378,44 @@ export function OverviewPage() {
                 </p>
               </article>
 
+              <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <PiggyBank className="size-4 text-foreground" aria-hidden="true" />
+                  </span>
+                  <h2 className="text-sm font-semibold text-foreground">Taxa de poupança</h2>
+                </div>
+                <p className={cn("num text-3xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
+                  {formatPercent(totals.savingsRatePercent)}%
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
+                </p>
+              </article>
+
               <div className="md:col-span-2 xl:col-span-1">
                 <SavingsHealthCard savingsRatePercent={totals.savingsRatePercent} incomeCents={incomeCents} expenseCents={expenseCents} />
               </div>
             </section>
           )}
+
+          {/* Cards inteligentes (F8): ritmo, faturas e anomalias — atenção do período */}
+          {(visual.dashboardWidgets.pace || visual.dashboardWidgets.invoices || visual.dashboardWidgets.anomalies) &&
+          (phase === "current" || openInvoiceRows.length > 0 || alerts.length > 0) ? (
+            <section aria-label="Insights do período" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {visual.dashboardWidgets.pace && (
+                <SmartSpendingPaceCard pace={phase === "current" ? pace : null} dailyCents={phase === "current" ? budget.dailyCents : null} />
+              )}
+              {visual.dashboardWidgets.invoices && (
+                <SmartInvoiceProjectionCard
+                  openInvoicesCents={openInvoiceRows.reduce((acc, row) => acc + row.saldoCents, 0)}
+                  openCount={openInvoiceRows.length}
+                  nearestDueDate={openInvoiceRows[0]?.dueDate ?? null}
+                />
+              )}
+              {visual.dashboardWidgets.anomalies && <SmartAnomaliesCard alerts={alerts} />}
+            </section>
+          ) : null}
 
           {/* Análises do período (F8): fluxo diário + distribuição por categoria lado a lado */}
           {(visual.dashboardWidgets.flow || (visual.dashboardWidgets.donut && donutSlices.length > 0)) && (
