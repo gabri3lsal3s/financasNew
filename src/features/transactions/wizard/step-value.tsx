@@ -54,7 +54,7 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
           />
           {state.installments > 1 && state.valueCents > 0 ? (
             <p className="text-xs text-muted-foreground">
-              {state.installments}× de {formatCentsAsBRL(Math.ceil(state.valueCents / state.installments))}
+              {state.installments}× de <span className="privacy-mask">{formatCentsAsBRL(Math.ceil(state.valueCents / state.installments))}</span>
             </p>
           ) : null}
         </div>

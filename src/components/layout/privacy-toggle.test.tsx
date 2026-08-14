@@ -27,6 +27,19 @@ describe("PrivacyToggle (F8 — Decisão 5)", () => {
     );
   });
 
+  it("aplica a máscara GLOBAL no <html> (data-privacy=masked) — não só nos KPIs", async () => {
+    const user = userEvent.setup();
+    render(<PrivacyToggle />);
+
+    expect(document.documentElement.dataset.privacy).toBe("");
+
+    await user.click(screen.getByRole("button", { name: "Ocultar valores (P)" }));
+    expect(document.documentElement.dataset.privacy).toBe("masked");
+
+    await user.click(screen.getByRole("button", { name: "Mostrar valores (P)" }));
+    expect(document.documentElement.dataset.privacy).toBe("");
+  });
+
   it("o atalho de teclado P alterna a máscara (fora de campos de texto)", async () => {
     const user = userEvent.setup();
     render(<PrivacyToggle />);

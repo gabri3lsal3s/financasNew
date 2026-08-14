@@ -74,8 +74,9 @@ export function TransactionRow({
         )}
       </div>
       {badges ? <div className="flex shrink-0 items-center gap-1.5">{badges}</div> : null}
+      {/* Máscara global via .num (globals.css) — aria-hidden preserva a privacidade p/ leitores de tela. */}
       <span
-        className={cn("num shrink-0 text-sm font-semibold", masked && "blur-sm select-none", kindValue[kind])}
+        className={cn("num shrink-0 text-sm font-semibold", kindValue[kind])}
         aria-hidden={masked || undefined}
       >
         {`${kindSign[kind]}${formatCentsAsBRL(amountCents)}`}

@@ -91,7 +91,7 @@ export function LimitDialog({
             <div>
               <p className="font-medium text-foreground">Sugestão ({rule.limitPercent}% da renda)</p>
               <p className="text-xs text-muted-foreground">
-                Com base na renda de {formatCentsAsBRL(monthlyIncomeCents)} deste mês.
+                Com base na renda de <span className="privacy-mask">{formatCentsAsBRL(monthlyIncomeCents)}</span> deste mês.
               </p>
             </div>
             <Button
@@ -100,7 +100,7 @@ export function LimitDialog({
               size="sm"
               onClick={() => setCents(suggestionCents)}
             >
-              Aplicar {formatCentsAsBRL(suggestionCents)}
+              Aplicar <span className="privacy-mask">{formatCentsAsBRL(suggestionCents)}</span>
             </Button>
           </div>
         ) : null}

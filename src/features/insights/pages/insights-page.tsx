@@ -333,7 +333,8 @@ export function InsightsPage() {
                         {challenges.map((challenge) => (
                           <div key={`${challenge.categoryId}-${challenge.percent}`} className="flex items-center justify-between rounded-lg border border-border/60 p-3 text-xs">
                             <span className="font-medium text-foreground">
-                              {challenge.name} — cortar {challenge.percent}% (meta {formatCentsAsBRL(challenge.targetCents)})
+                              {challenge.name} — cortar {challenge.percent}% (meta{" "}
+                              <span className="privacy-mask">{formatCentsAsBRL(challenge.targetCents)}</span>)
                             </span>
                             <span className="num font-semibold text-positive-strong">−{formatCentsAsBRL(challenge.savingsCents)}/mês</span>
                           </div>

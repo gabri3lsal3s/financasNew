@@ -131,8 +131,8 @@ export function DailyFlowChart({ days, dailyGoalCents = null, className }: Daily
           <p className="font-semibold text-foreground">
             {String(scrubDay.dayOfMonth).padStart(2, "0")}/{String(new Date(scrubDay.day).getMonth() + 1).padStart(2, "0")}
           </p>
-          <p className="text-positive-strong">+ {formatCentsAsBRL(scrubDay.incomeCents)}</p>
-          <p className="text-negative-strong">− {formatCentsAsBRL(scrubDay.expenseCents)}</p>
+          <p className="privacy-mask text-positive-strong">+ {formatCentsAsBRL(scrubDay.incomeCents)}</p>
+          <p className="privacy-mask text-negative-strong">− {formatCentsAsBRL(scrubDay.expenseCents)}</p>
           <p className="num mt-0.5 border-t border-border/60 pt-0.5 text-muted-foreground">
             Saldo {formatCentsAsBRL(scrubCurve.balanceCents)}
           </p>

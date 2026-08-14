@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Sparkline } from "@/components/ui/sparkline";
 import { formatCentsAsBRL } from "@/services/masks/money";
-import { usePrivacyMask } from "@/hooks/use-privacy-mask";
 
 export interface KpiCardProps {
   label: string;
@@ -35,15 +34,14 @@ const sparkTone: Record<NonNullable<KpiCardProps["tone"]>, string> = {
 };
 
 export function KpiCard({ label, value, valueCents, tone = "default", hint, icon, spark }: KpiCardProps) {
-  const masked = usePrivacyMask();
-
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
         {icon}
       </div>
-      <p className={cn("num mt-2 text-2xl font-semibold", masked && "blur-sm select-none", toneValue[tone])}>
+      {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
+      <p className={cn("num mt-2 text-2xl font-semibold", toneValue[tone])}>
         {valueCents !== undefined ? <NumberTicker value={valueCents} format={formatCentsAsBRL} /> : value}
       </p>
       {spark && spark.length > 1 ? (

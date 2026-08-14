@@ -45,7 +45,7 @@ export function PageShell() {
         <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border bg-surface/80 backdrop-blur">
           <div className="mx-auto flex w-full max-w-5xl items-center gap-1 px-4 lg:px-8">
             <BrandLogo showWordmark={false} markClassName="size-7" className="mr-auto lg:hidden" />
-            <GlobalSearch className="lg:flex-1" />
+            <GlobalSearch className="flex-1" />
             <PrivacyToggle />
             <CalculatorButton />
             <ThemeToggle />

@@ -30,8 +30,8 @@ export interface GlobalSearchProps {
 }
 
 /** Busca global (⌘K) — paleta montada no shell, atalho ⌘K/Ctrl+K (§3.9).
- * No desktop vira uma barra de busca inline (mesmo elemento, responsivo) que
- * toma a largura excedente do header; no mobile permanece como botão-ícone. */
+ * Barra de busca inline responsiva (um único elemento) que toma a largura
+ * excedente do header no mobile e no desktop. */
 export function GlobalSearch({ className }: GlobalSearchProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -96,14 +96,15 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
         onClick={() => setOpen(true)}
         className={cn(
           "min-w-0", // permite encolher o texto quando a barra é flexível
-          // Barra de busca no desktop (pós-F10): ocupa a largura excedente
-          // entre os limites da página e os botões do header (flex-1 via PageShell).
-          "lg:size-auto lg:h-10 lg:w-full lg:justify-start lg:gap-2 lg:rounded-lg lg:border lg:border-input lg:bg-surface lg:px-3 lg:text-sm lg:text-muted-foreground lg:shadow-sm lg:hover:bg-surface-hover",
+          // Barra de busca responsiva (pós-F10): ocupa a largura excedente
+          // entre a marca/bordas e os botões do header — no mobile e no desktop
+          // (flex-1 via PageShell). O chip Ctrl+K aparece apenas no desktop.
+          "size-auto h-10 w-full justify-start gap-2 rounded-lg border border-input bg-surface px-3 text-sm text-muted-foreground shadow-sm hover:bg-surface-hover",
           className,
         )}
       >
-        <Search className="size-4" aria-hidden="true" />
-        <span className="hidden truncate lg:inline">Buscar…</span>
+        <Search className="size-4 shrink-0" aria-hidden="true" />
+        <span className="truncate">Buscar…</span>
         <span className="ml-auto hidden shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground lg:inline">
           Ctrl+K
         </span>

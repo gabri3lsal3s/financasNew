@@ -144,8 +144,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     render(<OverviewPage />);
     expect(screen.getByText("Ritmo de gastos")).toBeInTheDocument();
     expect(screen.getByText("Faturas em aberto")).toBeInTheDocument();
-    // 1 cartão com saldo 60 → próximo vencimento 10/08/2026.
-    expect(screen.getByText("R$ 60,00")).toBeInTheDocument();
+    // 1 cartão com saldo 60 → próximo vencimento 10/08/2026 (valor também
+    // aparece no resumo "A pagar" — daí o getAllByText).
+    expect(screen.getAllByText("R$ 60,00").length).toBeGreaterThan(0);
     // Alertas priorizados (orçamento estourado: Moradia 3.000/2.000).
     expect(screen.getByText("Orçamentos estourados")).toBeInTheDocument();
   });
