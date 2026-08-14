@@ -26,6 +26,9 @@
 | **F4** | Carteira & Rebalanceamento | Ledger, valoração, metas, calculadora de aporte | Telas de carteira |
 | **F5** | Experiência Transversal | Busca global, acessibilidade, temas, performance | Busca, polish |
 | **F6** | Hardening & Lançamento | Prova de fidelidade, segurança, deploy | — |
+| **F9** | Ergonomia de Navegação & Header | BottomNav 5 slots (com Cartões), Sidebar colapsável, Top Header & Search responsivo | Shell & Navegação |
+| **F10** | Refinamento Premium & Dashboard Insights | Micro-interações, superfícies suaves, Cards inteligentes no Início (ritmo, faturas, alertas) | Dashboard & Design |
+| **F11** | Utilitários Nativos & Gestos | Calculadora flutuante arrastável (FAB + injeção de valor) e Scroll-to-Top inteligente | Utilitários & Gestos |
 
 ---
 
@@ -370,10 +373,21 @@
 
 **Entregas (na ordem):**
 1. ✅ **Prova de fidelidade:** suíte espelhando cada regra do ESPECIFICAÇÃO (regressão contra o app anterior).
-2. Segurança: revisão final de RLS, rate limit, secrets/ambiente.
+2. ✅ Segurança: revisão final de RLS, rate limit, secrets/ambiente.
 3. Observabilidade: logging de erros (**decisão aberta** — sugestão: Sentry) + métricas básicas.
 4. Deploy: **hosting do frontend = Vercel** (`vercel.json` com SPA rewrites, headers de segurança e cache PWA) + backend/banco = **Supabase** (Postgres + RLS + Auth + migrations em `supabase/`); pendente CI/CD de produção e env seguros (Supabase, proxy de cotações, R2).
 5. QA final multi-dispositivo + documento de release.
+
+**Progresso — Fase 6, entrega 2 (segurança — auditoria RLS, rate limit, secrets):**
+- **Auditoria RLS automatizada** (`src/tests/security-audit.test.ts`, 9 testes — roda no CI, impede regressão):
+  - **Cobertura total:** toda tabela criada nas migrations (20) tem `enable row level security`;
+  - **Zero leitura cross-user:** toda policy referencia `auth.uid()` no using/with check (D4); nenhuma policy aberta com `true`/`1=1`/`to public`;
+  - **`audit_events` imutável (D2):** nenhuma policy de update/delete;
+  - **RPCs endurecidos (D1):** toda function `security definer` fixa `search_path = public, pg_temp` (sem risco de hijack); toda escrita composta valida `auth.uid()` no corpo (exceção documentada: triggers `returns trigger` — o dono é definido pelo evento);
+  - **Segredos:** nenhum `.env` rastreado além do `.env.example` (placeholders); nenhum padrão de chave real (sk_live_, ghp_, service_role eyJ…) nos arquivos rastreados.
+- **Revisão manual concluída:** 20 tabelas (0001 + reminder_states em 0006) todas com RLS; `asset_prices` com leitura global (cache NULL) + escrita só do dono; `card_competence_overrides` via ownership do cartão (exists); `handle_new_user` cria perfil + preferências no signup; RPCs transacionais com validação de invariantes no servidor (D12).
+- **Rate limit:** Supabase Auth aplica rate limiting nativo (email/senha: 30 req/h por IP + limites de SMTP/OAuth) — sem camada extra no cliente; o gateway de erros já classifica `429`/`rate_limit` com mensagem pt-BR (`services/errors`, testado).
+- **F6.2 concluída ✅.**
 
 **Progresso — Fase 6, entrega 1 (prova de fidelidade):**
 - **`src/tests/fidelity.test.ts`** — **63 testes** espelhando as regras do ESPECIFICAÇÃO §1.3–§4.5: um teste por regra com exemplo representativo, organizado por seção da spec, verificando a **invariante central** (soma de parcelas = original, saldo = rendas − despesas − investimentos, competência ≥ closing → mês seguinte, prioridade dos alertas 1–6, tetos setoriais, guardrail de spike, limites da busca, etc.). Complementa (não duplica) a cobertura profunda dos testes colocalizados de cada motor.
@@ -410,19 +424,92 @@
 
 ---
 
+### Fase 9 — Ergonomia de Navegação, Responsividade & Header Adaptativo
+
+**Objetivo:** aperfeiçoar a experiência de uso contínuo no mobile e desktop com navegação refinada, acesso rápido a cartões e header responsivo inteligente.
+
+**Entregas (na ordem):**
+1. **Mobile Bottom Navigation (5 slots com FAB central):**
+   - Novo grid de 5 posições: `[ Início ] | [ Transações ] | [ + Novo (Central Elevado) ] | [ Cartões ] | [ Mais ]`.
+   - Migração definitiva de **Relatórios** para o menu/drawer "Mais", liberando slot nobre para **Cartões**.
+   - Alinhamento ergonômico e áreas de toque mínimas de 44×44px.
+2. **Desktop Collapsible Sidebar:**
+   - Sidebar retrátil (toggle modo expandido com labels vs. modo compacto apenas com ícones + tooltips).
+   - Persistência da preferência em `localStorage` (`financas_sidebar_collapsed`) e transições suaves de largura (`w-64` ↔ `w-20`).
+   - Ajuste fluido do container principal (`PageShell`) respeitando a largura ativa da sidebar.
+3. **Top Header & Search Responsivo:**
+   - Header fluido adaptável a breakpoints mobile, tablet e desktop (`lg:px-8`, safe-areas no mobile).
+   - Busca retrátil no mobile: ícone que expande em input fluido ou paleta compacta sem quebras de layout.
+
+**✅ DoD**
+- BottomNav mobile com 5 slots (`/`, `/transacoes`, `?novo=despesa`, `/cartoes`, `/mais`) navegando perfeitamente.
+- Sidebar desktop colapsa/expande com persistência no `localStorage` e atalho visual de alternância.
+- Header e busca adaptam fluidamente entre telas pequenas (<640px) e grandes (≥1024px) sem overflow horizontal.
+- Testes automatizados de interação e snapshot/render do layout 100% verdes.
+
+---
+
+### Fase 10 — Refinamento Visual Premium & Dashboard de Insights
+
+**Objetivo:** elevar o padrão estético para nível premium com micro-interações táteis e transformar o Início em um centro dinâmico de inteligência financeira.
+
+**Entregas (na ordem):**
+1. **Evolução do Design System & Micro-interações:**
+   - Tipografia hierárquica aprimorada e superfícies suaves (cards elevados, borders sutis, blur/glassmorphism sutil em overlays/header).
+   - Feedback tátil refinado nos controles interativos e Skeleton loaders polidos com shimmer harmônico.
+   - Transições de rota e feedback de mutações suaves (respeitando `prefers-reduced-motion`).
+2. **Dashboard com Insights Financeiros:**
+   - Card de **Ritmo de Gastos vs. Teto Orçamentário**: indicador visual de velocidade de consumo do orçamento vs. dia do mês.
+   - Card de **Projeção de Fechamento de Faturas**: consolidação inteligente do previsto de cartões abertos para a data de corte.
+   - Card de **Alertas Contextuais e Anomalias**: despesas fora da média histórica e resumos contextuais do mês diretamente na Visão Geral.
+   - Orquestração limpa com fallbacks graciosos para novos usuários / sem lançamentos.
+
+**✅ DoD**
+- Visão Geral exibe cards inteligentes alimentados pelos motores puros de `domain/insights` e `domain/projection`.
+- Visual nos 3 temas (light/dark/oled) consistente com a identidade "Vital · Verde + Terminal".
+- Zero quebras de a11y (axe audit verde, contraste AA preservado).
+- Testes unitários para cálculos de agregação dos novos cards e testes de renderização da página.
+
+---
+
+### Fase 11 — Utilitários Nativos (Calculadora Flutuante & Gestos de Navegação/Scroll)
+
+**Objetivo:** oferecer utilitários práticos integrados ao fluxo operacional de lançamentos e navegação gestual rápida.
+
+**Entregas (na ordem):**
+1. **Calculadora Flutuante (Floating Calculator Widget):**
+   - Widget flutuante arrastável (Draggable FAB) com posicionamento livre ou ancoragem inteligente nas bordas.
+   - Painel retrátil (popover/modal compacto) com teclado de cálculo rápido, histórico de operações e divisão de parcelas.
+   - **Injeção Contextual ("Usar Valor"):** transferência em 1 clique do resultado calculado para o campo numérico (`MoneyInput`/`Input`) em foco ou ativo na tela.
+2. **Utilitário de Retorno Rápido ao Topo (Scroll UX):**
+   - Detecção de scroll / fim de página com botão flutuante inteligente (aparece suavemente após scroll > 300px).
+   - Comportamento de rolagem suave (`smooth scroll`) de volta ao topo da visualização com 1 clique/gesto.
+   - Safe-area e posicionamento coordenado com a BottomNav e FABs sem sobreposição.
+
+**✅ DoD**
+- Calculadora flutuante opera com precisão decimal/centavos, histórico e arrasto fluido em desktop (mouse) e mobile (touch).
+- Injeção de valor atualiza o estado de formulários ativos (`MoneyInput`) de forma transparente e acessível.
+- Botão/gesto de retorno ao topo funciona em todas as telas com rolagem longa sem conflitar com os outros elementos fixos.
+- Suíte de testes para a máquina de cálculo da calculadora e testes de interação dos componentes.
+
+---
+
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
 
 **Regra absoluta:** primitivo antes do módulo, módulo antes da tela. Se uma tela precisar de algo que não existe, **pare e extraia** — não duplique.
 
-### 4.1 Primitivos (Fase 0) — `components/ui`
+### 4.1 Primitivos (Fase 0 e extensões) — `components/ui`
 `Button → Input → MoneyInput → Select → Card → Badge → Skeleton → EmptyState → Progress → Modal/Dialog → ConfirmDialog → Tabs → DataList → Stepper → Command → Toast → Checkbox → RadioGroup → DatePicker → Slider → Accordion → Textarea → Dropzone`
-(+ Sheet para mobile. **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
+(+ `VirtualList`, `ScrollToTopButton`, `DraggableFab`, `Sheet`/Drawer. **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
 
 ### 4.2 Módulos de domínio (por fase) — `components/modules`
 - **F0/F2:** `MoneyInput` é primitivo de UI (Fase 0); `CategoryIcon`, `MonthPicker`, `TransactionRow`, `KpiCard`, `BudgetProgressBar`, `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge`, `WizardShell`.
 - **F3:** `AlertCard`, `InsightList`, `ProjectionLine`, `ReminderItem`, `ReportTable`.
 - **F4:** `PositionTable`, `TargetEditor` (barra de soma), `AporteResult`.
-- **F5:** `GlobalSearch` (⌘K), `HighlightRow`, `OnboardingCard`, `VirtualList` (primitivo, `components/ui`).
+- **F5:** `GlobalSearch` (⌘K), `HighlightRow`, `OnboardingCard`.
+- **F9:** `CollapsibleSidebar`, `AdaptiveHeader`, `MobileBottomNav5Slot`.
+- **F10:** `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`.
+- **F11:** `FloatingCalculator`, `CalculatorKeypad`, `ScrollToTop`.
 
 ### 4.3 Telas (por fase) — `features/`
 Sempre composição fina: layout (`components/layout`) + módulos (`components/modules`) + contratos (`state/`). Sem JSX duplicado entre telas — qualquer repetição vira módulo novo.
