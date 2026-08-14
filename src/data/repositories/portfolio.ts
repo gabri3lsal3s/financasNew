@@ -46,6 +46,21 @@ export async function listPortfolioTransactions(assetId: string): Promise<Portfo
   return (data ?? []).map(mapTransaction);
 }
 
+/**
+ * Todas as transações da carteira (RLS por usuário) — usada pela posição
+ * consolidada e pela calculadora de aporte (evita N+1 por ativo).
+ */
+export async function listAllPortfolioTransactions(): Promise<PortfolioTransaction[]> {
+  const { data, error } = await resolveQuery<PortfolioTransaction[]>(
+    getSupabase().from("portfolio_transactions").select("*").order("date"),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapTransaction);
+}
+
 export async function createPortfolioAsset(input: Omit<DbInsert<PortfolioAsset>, "user_id">): Promise<PortfolioAsset> {
   const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioAsset>(

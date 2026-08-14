@@ -180,7 +180,10 @@ export {
   applySpikeGuardrail,
   fallbackPriceFor,
   inferCurrencyFromTicker,
+  isCashAssetClass,
+  normalizeClassName,
   resolvePrice,
+  usdRateFromPrices,
   valueAssetPosition,
 } from "./valuation";
 export type { AssetValuation, PriceCandidate, PriceSource, ResolvedPrice } from "./valuation";
@@ -193,3 +196,16 @@ export {
   validateTargetsSum,
 } from "./allocation";
 export type { SectorExposure, TargetDraft, TargetValidation } from "./allocation";
+export {
+  classCapsFromSectorCaps,
+  simulateRebalanceAporte,
+  simulateSmartAporte,
+} from "./aporte";
+export type {
+  AporteAssetInput,
+  AporteMode,
+  AporteResult,
+  AporteRoute,
+  ClassCapInput,
+  ClassTargetInput,
+} from "./aporte";

@@ -264,6 +264,27 @@
 - State: `useAllocationTargets`/`useSaveAllocationTargets`/`useGroupTargets`/`useSaveGroupTarget`/`useRemoveGroupTarget`/`useSectorCaps`/`useUpdateSectorCaps`.
 - **19 testes verdes** (13 domínio + 6 repository).
 
+**Progresso da entrega 4 (Fase 4):**
+- `domain/portfolio/aporte.ts` — motor puro da calculadora (§3.11.3):
+  - `simulateSmartAporte` (por meta individual de ativo) / `simulateRebalanceAporte` (por meta de classe — déficit da classe distribuído proporcionalmente ao valor atual dos membros);
+  - Defasagem macro por classe (déficit relativo = (alvo − atual) ÷ alvo), elegibilidade (meta > 0, gap > 0, preço > 0), ordenação gap desc respeitando a classe;
+  - Distribuição com **quantidades inteiras** (preço × quantidade ≤ alocado; excedente vai ao próximo ativo);
+  - **Travas setoriais** (`classCapsFromSectorCaps` — mapeia `max_sector_acoes`/`max_sector_fiis` para as classes Ações/FIIs, insensível a caixa/acento) impedem alocação acima do teto;
+  - **Sobra** (teto/trava/arredondamento) → caixa/reserva; log de roteamento por ativo (alvo, atual, aporte, quantidade, preço);
+  - Invariantes (DoD): soma dos aportes nunca excede o aporte informado; ativo sem meta não recebe; aporte só com gap > 0.
+- `domain/portfolio/valuation.ts` estendido: `usdRateFromPrices` (USDBRL=X com fallback 5,25), `isCashAssetClass` (caixa/reserva 1:1) e `normalizeClassName` (DRY com as travas).
+- **16 testes novos** de domínio (exemplos manuais — DoD) + 6 de valoração. **Total: 65 testes no domínio portfolio.**
+
+**Progresso da entrega 5 (Fase 4 — Fase 4 completa ✅):**
+- Repository: `listAllPortfolioTransactions` (posição consolidada sem N+1) + teste.
+- State: `useAllPortfolioTransactions` + **`usePortfolioPosition`** (posição valorada: ledger por ativo + pipeline de preço manual → cache → fallback, caixa 1:1, pct do patrimônio) + exports no barrel.
+- Módulos F4 (§4.2): **`PositionTable`** (preço com fonte marcada — "manual" destacado, DoD), **`TargetEditor`** (barra de soma ≤ 100% com erro/bloqueio), **`AporteResult`** (resumo + log de roteamento).
+- **PortfolioPage** (`/carteira`) com 3 abas:
+  - **Posição**: KPIs (patrimônio total, caixa derivado do ledger, ativos), PositionTable, cadastro de ativo (ticker/classe/moeda) e registro de transações (8 tipos, data, quantidade/preço ou provento/fator);
+  - **Metas**: edição em lote por ativo com barra de soma (valida ≤ 100% na UI e no banco via RPC `set_allocation_targets`), metas por classe (upsert/remove) e **travas setoriais** (max_sector_acoes/fiis);
+  - **Aporte**: MoneyInput de valor + modo (meta de ativo/classe via RadioGroup) + simulação local pura com `simulateSmartAporte`/`simulateRebalanceAporte` e log de roteamento (sobra para caixa);
+  - Estados loading (Skeleton) / vazio (EmptyState) / erro (gateway + "Tentar novamente").
+- **3 testes de página novos** (posição com preço manual marcado, metas com barra de soma, calculadora com sobra).
 
 ### Fase 4 — Carteira & Rebalanceamento
 
@@ -271,16 +292,18 @@
 
 **Entregas (na ordem):**
 1. ✅ **Ledger** (`domain/portfolio`): custo médio, caixa derivado, splits/proventos — testes de reconciliação.
-2. Valoração: cache + fallback + **preço manual** (override marcado na UI) + guardrail de spike.
-3. Metas por ativo/classe/setor com soma ≤ 100% (UI + banco) e travas setoriais.
-4. **Calculadora de aporte**: `simulateSmartAporte` / `simulateRebalanceAporte` (2 modos) com log de roteamento.
-5. **Telas:** Carteira (posição), Metas (edição em lote com barra de soma), Calculadora de aporte.
+2. ✅ Valoração: cache + fallback + **preço manual** (override marcado na UI) + guardrail de spike.
+3. ✅ Metas por ativo/classe/setor com soma ≤ 100% (UI + banco) e travas setoriais.
+4. ✅ **Calculadora de aporte**: `simulateSmartAporte` / `simulateRebalanceAporte` (2 modos) com log de roteamento.
+5. ✅ **Telas:** Carteira (posição), Metas (edição em lote com barra de soma), Calculadora de aporte.
 
 **✅ DoD**
 - Ledger reconciliado com exemplos manuais (compras/vendas/custo médio/splits).
 - Soma de metas > 100% bloqueada na UI e no banco.
 - Simulação nunca aloca além do aporte informado; sobra vai para caixa.
 - Preço manual prevalece sobre API/fallback e é exibido como "informado manualmente".
+
+**✅ Fase 4 concluída** (entregas 1–5 verdes): ledger, valoração com override manual, metas com barra de soma + travas setoriais, calculadora de aporte em 2 modos com log de roteamento e telas completas.
 
 ---
 

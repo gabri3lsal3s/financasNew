@@ -35,11 +35,15 @@ export { useReminderStates, useSetReminderState, reminderStatesKey } from "./que
 export {
   usePortfolioAssets,
   useAssetPosition,
+  useAllPortfolioTransactions,
   useCreatePortfolioAsset,
   useCreatePortfolioTransaction,
   portfolioAssetsKey,
   portfolioTransactionsKey,
+  allPortfolioTransactionsKey,
 } from "./queries/use-portfolio";
+export { usePortfolioPosition } from "./queries/use-portfolio-position";
+export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";
 export {
   useAssetPrices,
   useSetManualPrice,

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   createPortfolioAsset,
   createPortfolioTransaction,
+  listAllPortfolioTransactions,
   listPortfolioAssets,
   listPortfolioTransactions,
 } from "./portfolio";
@@ -64,6 +65,19 @@ describe("portfolio repository (Fase 4 — ledger §3.11.2)", () => {
     });
     const rows = await listPortfolioTransactions("a1");
     expect(rows[0]).toMatchObject({ quantity: 10, price: 100, total: 1000 });
+  });
+
+  it("listAllPortfolioTransactions busca todas as transações do usuário", async () => {
+    builder = makeBuilder({
+      data: [
+        { id: "t1", asset_id: "a1", type: "buy", date: "2026-01-10", quantity: "10", price: "100", total: "1000" },
+        { id: "t2", asset_id: "a2", type: "dividend", date: "2026-02-01", quantity: "0", price: "0", total: "150" },
+      ],
+    });
+    const rows = await listAllPortfolioTransactions();
+    expect(builder.order).toHaveBeenCalledWith("date");
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toMatchObject({ asset_id: "a2", quantity: 0, total: 150 });
   });
 
   it("createPortfolioAsset insere com user_id", async () => {

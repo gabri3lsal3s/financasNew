@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   createPortfolioAsset,
   createPortfolioTransaction,
+  listAllPortfolioTransactions,
   listPortfolioAssets,
   listPortfolioTransactions,
 } from "@/data/repositories/portfolio";
@@ -10,12 +11,22 @@ import type { DbInsert, PortfolioAsset, PortfolioTransaction } from "@/types";
 
 export const portfolioAssetsKey = ["portfolio_assets"] as const;
 export const portfolioTransactionsKey = ["portfolio_transactions"] as const;
+export const allPortfolioTransactionsKey = [...portfolioTransactionsKey, "all"] as const;
 
 /** Ativos da carteira. */
 export function usePortfolioAssets() {
   return useQuery({
     queryKey: portfolioAssetsKey,
     queryFn: () => listPortfolioAssets(),
+    staleTime: 60_000,
+  });
+}
+
+/** Todas as transações da carteira (posição consolidada + calculadora). */
+export function useAllPortfolioTransactions() {
+  return useQuery({
+    queryKey: allPortfolioTransactionsKey,
+    queryFn: () => listAllPortfolioTransactions(),
     staleTime: 60_000,
   });
 }
@@ -59,6 +70,7 @@ export function useCreatePortfolioTransaction() {
     mutationFn: (input: Omit<DbInsert<PortfolioTransaction>, "user_id">) => createPortfolioTransaction(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: portfolioTransactionsKey });
+      void queryClient.invalidateQueries({ queryKey: allPortfolioTransactionsKey });
     },
   });
 }

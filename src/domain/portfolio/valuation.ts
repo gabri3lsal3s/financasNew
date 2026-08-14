@@ -46,6 +46,43 @@ export interface AssetValuation {
 /** Fallback estático de conversão USD→BRL (§1.6 / §4.2). */
 export const FALLBACK_USD_RATE = 5.25;
 
+/**
+ * Normaliza o nome de uma classe para comparação (caixa, acentos):
+ * "Ações" → "acoes", "FIIs" → "fiis". Usada pelas travas setoriais
+ * e pelo reconhecimento de caixa (DRY).
+ */
+export function normalizeClassName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * Taxa USD→BRL a partir do cache de cotações (ticker `USDBRL=X`).
+ * Sem cotação disponível → fallback estático (5,25).
+ */
+export function usdRateFromPrices(
+  prices: readonly { ticker: string; price: number }[],
+  fallback: number = FALLBACK_USD_RATE,
+): number {
+  const row = prices.find((p) => p.ticker.toUpperCase() === "USDBRL=X");
+  const rate = row?.price;
+  return rate !== undefined && rate !== null && rate > 0 ? rate : fallback;
+}
+
+const CASH_CLASS_ALIASES = new Set(["caixa", "reserva"]);
+
+/**
+ * Ativo de caixa/reserva (§3.11.2): valor 1:1 (quantidade = valor).
+ * Reconhecido pela classe (normalizada, sem acento): "caixa"/"reserva".
+ */
+export function isCashAssetClass(assetClass: string | null): boolean {
+  if (!assetClass) return false;
+  return CASH_CLASS_ALIASES.has(normalizeClassName(assetClass));
+}
+
 /** Preço de fallback por moeda (sem dado de cache nem manual). */
 export function fallbackPriceFor(currency: AssetCurrency): number {
   return currency === "USD" ? FALLBACK_USD_RATE : 0;

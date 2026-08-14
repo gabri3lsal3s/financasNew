@@ -4,7 +4,10 @@ import {
   FALLBACK_USD_RATE,
   fallbackPriceFor,
   inferCurrencyFromTicker,
+  isCashAssetClass,
+  normalizeClassName,
   resolvePrice,
+  usdRateFromPrices,
   valueAssetPosition,
   type ResolvedPrice,
 } from "./valuation";
@@ -80,6 +83,41 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(inferCurrencyFromTicker("PETR4")).toBe("BRL");
       expect(inferCurrencyFromTicker("BOVA11")).toBe("BRL");
       expect(inferCurrencyFromTicker("IVVB11")).toBe("BRL");
+    });
+  });
+
+  describe("usdRateFromPrices — taxa a partir do cache (USDBRL=X)", () => {
+    it("usa a cotação quando disponível", () => {
+      const rate = usdRateFromPrices([
+        { ticker: "PETR4", price: 40 },
+        { ticker: "USDBRL=X", price: 5.4 },
+      ]);
+      expect(rate).toBe(5.4);
+    });
+
+    it("sem cotação → fallback fixo (5,25)", () => {
+      expect(usdRateFromPrices([{ ticker: "PETR4", price: 40 }])).toBe(FALLBACK_USD_RATE);
+      expect(usdRateFromPrices([])).toBe(FALLBACK_USD_RATE);
+    });
+
+    it("cotação inválida → fallback", () => {
+      expect(usdRateFromPrices([{ ticker: "USDBRL=X", price: 0 }])).toBe(FALLBACK_USD_RATE);
+    });
+  });
+
+  describe("isCashAssetClass / normalizeClassName — caixa 1:1 (§3.11.2)", () => {
+    it("reconhece caixa/reserva insensível a caixa e acento", () => {
+      expect(isCashAssetClass("caixa")).toBe(true);
+      expect(isCashAssetClass("CAIXA")).toBe(true);
+      expect(isCashAssetClass("Reserva")).toBe(true);
+      expect(isCashAssetClass("Ações")).toBe(false);
+      expect(isCashAssetClass(null)).toBe(false);
+    });
+
+    it("normaliza acentos e caixa para comparação", () => {
+      expect(normalizeClassName("Ações")).toBe("acoes");
+      expect(normalizeClassName("  FIIs ")).toBe("fiis");
+      expect(normalizeClassName("Fundos Imobiliários")).toBe("fundos imobiliarios");
     });
   });
 
