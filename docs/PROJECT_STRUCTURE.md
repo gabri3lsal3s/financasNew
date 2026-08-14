@@ -225,6 +225,7 @@ src/features/transactions/
 | Cor, fonte, raio, sombra | `src/styles/tokens.css` — **nunca** em componente |
 | Manifest, ícone, splash, offline | `public/pwa/` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
+| Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |
 
 ---
 
