@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { ArrowRight, Inbox, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Progress, Skeleton } from "@/components/ui";
-import { KpiCard, MonthPicker, OnboardingCard } from "@/components/modules";
+import {
+  CategoryDonut,
+  DailyFlowChart,
+  KpiCard,
+  MonthPicker,
+  OnboardingCard,
+  SavingsHealthCard,
+  SmartAnomaliesCard,
+  SmartInvoiceProjectionCard,
+  SmartSpendingPaceCard,
+} from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import { isOnboardingComplete } from "@/domain/onboarding";
 import {
@@ -13,7 +23,19 @@ import {
   reallocationSuggestion,
   resolveEffectiveLimit,
 } from "@/domain/budgets";
-import { accountsNet, buildDailyFlow, computeOverview, openInvoicesTotal, percentChange } from "@/domain/overview";
+import { autoSelectBillMonth, buildCompetenceSummaries, invoiceDueDate } from "@/domain/cards";
+import { todayISO } from "@/domain/debts";
+import { criticalAlerts } from "@/domain/insights/alerts";
+import {
+  accountsNet,
+  buildDailyFlow,
+  computeOverview,
+  monthlySeries,
+  openInvoicesTotal,
+  percentChange,
+} from "@/domain/overview";
+import { dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projection";
+import type { MonthPhase } from "@/domain/projection";
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
@@ -22,9 +44,12 @@ import {
   useAllCardPayments,
   useBudgets,
   useCategories,
+  useCreditCards,
   useDebts,
   useExpenses,
+  useExpensesByRange,
   useIncomes,
+  useIncomesByRange,
   useOnboardingCounts,
   useReallocateBudget,
 } from "@/state";
@@ -37,6 +62,12 @@ const weightedSum = (items: readonly { value: number; report_weight: number }[])
 
 const formatPercent = (value: number) =>
   value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** Último dia do mês YYYY-MM. */
+function daysInMonthOf(month: string): number {
+  const [year, monthNum] = month.split("-").map(Number);
+  return new Date(year ?? 0, monthNum ?? 1, 0).getDate();
+}
 
 function DeltaHint({ currentCents, previousCents, invert }: { currentCents: number; previousCents: number; invert?: boolean }) {
   const delta = percentChange(currentCents, previousCents);
@@ -53,10 +84,16 @@ function DeltaHint({ currentCents, previousCents, invert }: { currentCents: numb
   );
 }
 
-/** Visão Consolidada (§3.6) — KPIs, saldo líquido de contas, fluxo diário, orçamentos. */
+/** Janela dos últimos N meses (antigo → atual) para os sparklines dos KPIs. */
+const SPARK_MONTHS = 6;
+
+/** Visão Consolidada (§3.6) + Dashboard de Insights (F8). */
 export function OverviewPage() {
   const [month, setMonth] = useState(currentMonth());
   const previousMonth = shiftMonth(month, -1);
+  const today = todayISO();
+  const currentMonthKey = today.slice(0, 7);
+  const phase: MonthPhase = month === currentMonthKey ? "current" : month < currentMonthKey ? "past" : "future";
 
   const incomesQuery = useIncomes(month);
   const expensesQuery = useExpenses(month);
@@ -65,8 +102,15 @@ export function OverviewPage() {
   const budgetsQuery = useBudgets();
   const expenseCategories = useCategories("expense");
   const debtsQuery = useDebts();
+  const cardsQuery = useCreditCards();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
+
+  // Série dos últimos meses para os micro-sparklines dos KPIs (F8).
+  const sparkStart = shiftMonth(month, -(SPARK_MONTHS - 1));
+  const sparkRange = { start: `${sparkStart}-01`, end: `${shiftMonth(month, 1)}-01` };
+  const sparkExpensesQuery = useExpensesByRange(sparkRange.start, sparkRange.end);
+  const sparkIncomesQuery = useIncomesByRange(sparkRange.start, sparkRange.end);
 
   const [reallocateOpen, setReallocateOpen] = useState(false);
   const [reallocateError, setReallocateError] = useState<string | null>(null);
@@ -100,6 +144,27 @@ export function OverviewPage() {
   const totals = computeOverview(incomeCents, expenseCents, investmentCents);
   const prevTotals = computeOverview(prevIncomeCents, prevExpenseCents, investmentCents);
 
+  // Sparklines: totais mensais ponderados dos últimos 6 meses (derivação
+  // pura por render — mesmo padrão do restante da página).
+  const sparkSeries = monthlySeries(
+    [
+      ...(sparkIncomesQuery.data ?? []).map((item) => ({
+        date: item.date,
+        kind: "income" as const,
+        amountCents: toCents(item.value * item.report_weight),
+      })),
+      ...(sparkExpensesQuery.data ?? []).map((item) => ({
+        date: item.date,
+        kind: "expense" as const,
+        amountCents: toCents(item.value * item.report_weight),
+      })),
+    ],
+    sparkStart,
+    SPARK_MONTHS,
+  );
+  const incomeSpark = sparkSeries.map((point) => point.incomeCents);
+  const expenseSpark = sparkSeries.map((point) => point.expenseCents);
+
   // Saldo líquido de Contas (§3.6): pendentes do mês − faturas em aberto.
   const range = { start: `${month}-01`, end: `${shiftMonth(month, 1)}-01` };
   const debts = debtsQuery.data ?? [];
@@ -109,23 +174,65 @@ export function OverviewPage() {
   const payablePending = debts
     .filter((d) => d.type === "payable" && d.paid_at === null && d.due_date >= range.start && d.due_date < range.end)
     .reduce((acc, d) => acc + toCents(d.amount), 0);
-  const openInvoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? []);
+  const openInvoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
   const accountsBalance = accountsNet(receivablePending, payablePending, openInvoices);
 
-  // Fluxo diário (barras empilhadas).
+  // Faturas em aberto por cartão (card inteligente F8): competência
+  // auto-selecionada + vencimento (mesmo critério da Central de Lembretes).
+  const openInvoiceRows = (cardsQuery.data ?? [])
+    .filter((card) => card.is_active)
+    .flatMap((card) => {
+      const expenses = (cardExpensesQuery.data ?? []).filter((e) => e.card_id === card.id);
+      const payments = (cardPaymentsQuery.data ?? []).filter((p) => p.card_id === card.id);
+      const summaries = buildCompetenceSummaries(expenses, payments);
+      const billMonth = autoSelectBillMonth(summaries, today);
+      const summary = summaries.find((s) => s.month === billMonth);
+      return summary && summary.saldoCents > 0
+        ? [{ saldoCents: summary.saldoCents, dueDate: invoiceDueDate(billMonth, card.due_day) }]
+        : [];
+    })
+    .sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1));
+
+  // Fluxo diário (barras empilhadas) + curva de saldo acumulado (F8).
   const dailyItems = [
     ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: toCents(i.value * i.report_weight) })),
     ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: toCents(e.value * e.report_weight) })),
   ];
   const dailyFlow = buildDailyFlow(month, dailyItems);
 
+  // Ritmo, gasto diário e projeção de fim de mês (domain/projection — F8).
+  const dayOfMonth = Number(today.slice(8, 10));
+  const daysInMonth = daysInMonthOf(month);
+  const pace = spendingPace({
+    spentCents: expenseCents,
+    monthlyBudgetCents: Math.max(1, incomeCents - investmentCents),
+    dayOfMonth,
+    daysInMonth,
+  });
+  const budget = dailyBudget({
+    phase,
+    incomesCents: incomeCents,
+    investmentsCents: investmentCents,
+    expensesCents: expenseCents,
+    dayOfMonth,
+    daysInMonth,
+  });
+  const endMonth = endOfMonthProjection({
+    phase,
+    incomesCents: incomeCents,
+    investmentsCents: investmentCents,
+    expensesCents: expenseCents,
+    dayOfMonth,
+    daysInMonth,
+  });
+
   // Orçamentos compactos (§3.6): progresso, lista de atenção e realocação.
   const budgets = budgetsQuery.data ?? [];
   const limitsByCategory = new Map<string, { month: string; limitCents: number }[]>();
-  for (const budget of budgets) {
-    const list = limitsByCategory.get(budget.category_id) ?? [];
-    list.push({ month: budget.month, limitCents: toCents(budget.limit) });
-    limitsByCategory.set(budget.category_id, list);
+  for (const budgetRow of budgets) {
+    const list = limitsByCategory.get(budgetRow.category_id) ?? [];
+    list.push({ month: budgetRow.month, limitCents: toCents(budgetRow.limit) });
+    limitsByCategory.set(budgetRow.category_id, list);
   }
   const spentByCategory = new Map<string, number>();
   for (const expense of expensesQuery.data ?? []) {
@@ -147,8 +254,8 @@ export function OverviewPage() {
     .sort((a, b) => b.spentCents / b.limitCents - a.spentCents / a.limitCents);
 
   const storedLimitsByCategory = new Map<string, number>();
-  for (const budget of budgets) {
-    if (budget.month === month) storedLimitsByCategory.set(budget.category_id, toCents(budget.limit));
+  for (const budgetRow of budgets) {
+    if (budgetRow.month === month) storedLimitsByCategory.set(budgetRow.category_id, toCents(budgetRow.limit));
   }
   const suggestion = reallocationSuggestion(
     budgetRows.map((row) => ({
@@ -159,6 +266,28 @@ export function OverviewPage() {
   );
   const suggestionFrom = suggestion ? (expenseCategories.data ?? []).find((c) => c.id === suggestion.fromCategoryId) : undefined;
   const suggestionTo = suggestion ? (expenseCategories.data ?? []).find((c) => c.id === suggestion.toCategoryId) : undefined;
+
+  // Alertas críticos priorizados (domain/insights — F8): mesmos insumos da InsightsPage.
+  const overspentBudgets = attentionRows.filter((row) => row.status === "exceeded").length;
+  const burnRatePercent = incomeCents > 0 ? (expenseCents / incomeCents) * 100 : 0;
+  const paceRatio = pace.active ? 1 + pace.gapPoints / 100 : 1;
+  const projectedDeficit = dayOfMonth >= 10 && endMonth.onTrack === false;
+  const alerts = criticalAlerts({
+    balanceCents: totals.balanceCents,
+    incomeCents,
+    paceRatio,
+    overspentBudgets,
+    burnRatePercent,
+    projectedDeficit,
+    savingsRatePercent: totals.savingsRatePercent,
+  });
+
+  // Donut de categorias (F8): principais despesas do mês.
+  const donutSlices = (expenseCategories.data ?? [])
+    .map((category) => ({ label: category.name, valueCents: spentByCategory.get(category.id) ?? 0 }))
+    .filter((slice) => slice.valueCents > 0)
+    .sort((a, b) => b.valueCents - a.valueCents)
+    .slice(0, 5);
 
   const applyReallocation = async () => {
     if (!suggestion) return;
@@ -197,39 +326,60 @@ export function OverviewPage() {
         </div>
       ) : (
         <>
-          {/* KPIs fundamentais (§3.6) */}
+          {/* KPIs fundamentais (§3.6) com NumberTicker + sparkline (F8) */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <KpiCard
               label="Receitas"
               value={formatCentsAsBRL(totals.incomeCents)}
+              valueCents={totals.incomeCents}
               tone="positive"
               hint={<DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />}
+              spark={incomeSpark}
             />
             <KpiCard
               label="Despesas"
               value={formatCentsAsBRL(totals.expenseCents)}
+              valueCents={totals.expenseCents}
               tone="negative"
               hint={<DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />}
+              spark={expenseSpark}
             />
             <KpiCard label="Investimentos" value={formatCentsAsBRL(totals.investmentCents)} tone="portfolio" hint="Carteira na Fase 4" />
             <KpiCard
               label="Saldo do mês"
               value={formatCentsAsBRL(totals.balanceCents)}
+              valueCents={totals.balanceCents}
               tone={totals.balanceCents >= 0 ? "positive" : "negative"}
             />
           </div>
 
-          {/* Taxa de poupança */}
-          <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Taxa de poupança</p>
-              <p className={cn("num mt-1 text-2xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
-                {formatPercent(totals.savingsRatePercent)}%
+          {/* Cards inteligentes (F8): ritmo, faturas e anomalias */}
+          {phase === "current" || openInvoiceRows.length > 0 || alerts.length > 0 ? (
+            <section aria-label="Insights do período" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <SmartSpendingPaceCard pace={phase === "current" ? pace : null} dailyCents={phase === "current" ? budget.dailyCents : null} />
+              <SmartInvoiceProjectionCard
+                openInvoicesCents={openInvoiceRows.reduce((acc, row) => acc + row.saldoCents, 0)}
+                openCount={openInvoiceRows.length}
+                nearestDueDate={openInvoiceRows[0]?.dueDate ?? null}
+              />
+              <SmartAnomaliesCard alerts={alerts} />
+            </section>
+          ) : null}
+
+          {/* Taxa de poupança + saúde (runway) — F8 */}
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Taxa de poupança</p>
+                <p className={cn("num mt-1 text-2xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
+                  {formatPercent(totals.savingsRatePercent)}%
+                </p>
+              </div>
+              <p className="max-w-[12rem] text-right text-xs text-muted-foreground">
+                {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
               </p>
             </div>
-            <p className="max-w-[12rem] text-right text-xs text-muted-foreground">
-              {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
-            </p>
+            <SavingsHealthCard savingsRatePercent={totals.savingsRatePercent} incomeCents={incomeCents} expenseCents={expenseCents} />
           </div>
 
           {/* Saldo líquido de Contas (§3.6) */}
@@ -246,36 +396,13 @@ export function OverviewPage() {
             </p>
           </div>
 
-          {/* Fluxo diário (§3.6) — barras empilhadas */}
-          <section aria-label="Fluxo diário" className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
+          {/* Fluxo diário avançado (§3.6 + F8): barras + saldo acumulado + meta */}
+          <section aria-label="Fluxo diário" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
               <span className="text-xs text-muted-foreground">{monthLabel(month)}</span>
             </div>
-            <div className="flex h-24 items-end gap-px overflow-x-auto">
-              {dailyFlow.map((day) => {
-                const dayTotal = day.incomeCents + day.expenseCents + day.investmentCents;
-                if (dayTotal === 0) {
-                  return <div key={day.day} className="h-full flex-1 rounded-t bg-muted/40" title={day.day} />;
-                }
-                const scale = day.maxCents > 0 ? day.maxCents : 1;
-                return (
-                  <div key={day.day} className="flex h-full flex-1 flex-col justify-end gap-px" title={`${day.day} — ${formatCentsAsBRL(dayTotal)}`}>
-                    {day.expenseCents > 0 ? (
-                      <div className="w-full rounded-t-sm bg-negative-strong/80" style={{ height: `${Math.max(8, (day.expenseCents / scale) * 100)}%` }} />
-                    ) : null}
-                    {day.incomeCents > 0 ? (
-                      <div className="w-full rounded-t-sm bg-positive-strong/80" style={{ height: `${Math.max(8, (day.incomeCents / scale) * 100)}%` }} />
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-              <span>1</span>
-              <span>{Math.floor((dailyFlow.length + 1) / 2)}</span>
-              <span>{dailyFlow.length}</span>
-            </div>
+            <DailyFlowChart days={dailyFlow} dailyGoalCents={phase === "current" ? budget.dailyCents : null} />
             <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1">
                 <span className="size-2 rounded-sm bg-positive-strong/80" /> Receitas
@@ -283,8 +410,19 @@ export function OverviewPage() {
               <span className="flex items-center gap-1">
                 <span className="size-2 rounded-sm bg-negative-strong/80" /> Despesas
               </span>
+              <span className="flex items-center gap-1">
+                <span className="h-0.5 w-4 rounded bg-portfolio" /> Saldo acumulado
+              </span>
             </div>
           </section>
+
+          {/* Distribuição por categoria (F8 — donut) */}
+          {donutSlices.length > 0 ? (
+            <section aria-label="Distribuição por categoria" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+              <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
+              <CategoryDonut slices={donutSlices} />
+            </section>
+          ) : null}
 
           {/* Orçamentos (§3.6): progresso + atenção + realocação */}
           <section aria-label="Orçamentos" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">

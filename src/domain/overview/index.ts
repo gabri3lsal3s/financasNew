@@ -10,7 +10,7 @@
 
 import { autoSelectBillMonth, buildCompetenceSummaries } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
-import { monthRange } from "@/lib/date";
+import { monthRange, shiftMonth } from "@/lib/date";
 
 // ---------------------------------------------------------------------------
 // KPIs fundamentais (§3.6) — valores com peso de relatório aplicado na borda
@@ -154,4 +154,78 @@ export function buildDailyFlow(
   }
   for (const flow of flows) flow.maxCents = maxCents;
   return flows;
+}
+
+// ---------------------------------------------------------------------------
+// Série mensal (micro-sparklines dos KPIs — F8) e curva de saldo acumulado
+// ---------------------------------------------------------------------------
+
+export interface MonthlySeriesPoint {
+  month: string;
+  incomeCents: number;
+  expenseCents: number;
+  /** saldo = rendas − despesas − investimentos. */
+  balanceCents: number;
+}
+
+/**
+ * Agrega lançamentos em totais mensais (do mês mais antigo para o mais
+ * recente) — alimenta os micro-sparklines dos KPIs da Visão Geral (F8).
+ */
+export function monthlySeries(
+  items: readonly { date: string; kind: DailyFlowKind; amountCents: number }[],
+  startMonth: string,
+  monthCount: number,
+): MonthlySeriesPoint[] {
+  const points: MonthlySeriesPoint[] = [];
+  let month = startMonth;
+  for (let index = 0; index < monthCount; index += 1) {
+    points.push({ month, incomeCents: 0, expenseCents: 0, balanceCents: 0 });
+    month = shiftMonth(month, 1);
+  }
+
+  for (const item of items) {
+    const key = item.date.slice(0, 7);
+    const point = points.find((candidate) => candidate.month === key);
+    if (!point) continue;
+    if (item.kind === "income") point.incomeCents += item.amountCents;
+    else if (item.kind === "expense") point.expenseCents += item.amountCents;
+    else point.balanceCents -= item.amountCents; // investimento reduz o saldo
+  }
+
+  for (const point of points) point.balanceCents += point.incomeCents - point.expenseCents;
+  return points;
+}
+
+export interface CumulativePoint {
+  /** YYYY-MM-DD */
+  day: string;
+  dayOfMonth: number;
+  /** Saldo acumulado até o dia (rendas − despesas − investimentos). */
+  balanceCents: number;
+}
+
+/**
+ * Curva de saldo acumulado a partir do fluxo diário (F8) — ponto por dia,
+ * saldo cumulativo (pode ficar negativo em dias de pico de despesa).
+ */
+export function cumulativeBalance(dailyFlow: readonly DailyFlowItem[]): CumulativePoint[] {
+  let running = 0;
+  return dailyFlow.map((flow) => {
+    running += flow.incomeCents - flow.expenseCents - flow.investmentCents;
+    return { day: flow.day, dayOfMonth: flow.dayOfMonth, balanceCents: running };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Saúde da poupança — meses de reserva (F8)
+// ---------------------------------------------------------------------------
+
+/**
+ * Meses de reserva que a renda mensal cobre de despesas (income ÷ expense).
+ * `null` sem despesas (não faz sentido dividir por zero).
+ */
+export function runwayMonths(incomeCents: number, expenseCents: number): number | null {
+  if (expenseCents <= 0) return null;
+  return incomeCents / expenseCents;
 }

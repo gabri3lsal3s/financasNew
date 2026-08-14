@@ -525,7 +525,15 @@
 - **Testes:** 23 novos (haptics, ticker, sparkline, privacidade, densidade, swipe, privacy-toggle) — suíte **581 testes** verde.
 - [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente (manual)
 
-**Progresso — Fase 8, entrega 2 (Dashboard com insights):** (em andamento — cards inteligentes + donut + fluxo avançado)
+**Progresso — Fase 8, entrega 2 (Dashboard com insights financeiros):**
+- **Domínio puro** (`domain/overview` + 10 testes): `monthlySeries` (totais mensais dos últimos meses p/ sparklines), `cumulativeBalance` (curva de saldo acumulado dia a dia) e `runwayMonths` (meses de reserva = renda ÷ despesas; null sem despesas).
+- **Módulos novos** (`components/modules`, 12 testes no total): `CategoryDonut` (anel SVG com paleta de 10 cores `stroke-cat-*` + legenda com participação/valor + empty state + axe), `DailyFlowChart` (barras empilhadas + curva de saldo acumulado + linha guia da meta diária tracejada + **scrubbing tátil** com tooltip flutuante + axe), `SavingsHealthCard` (runway + feedback via `savingsHealth`), `SmartSpendingPaceCard` (ritmo ativo a partir do 8º dia + disponível hoje), `SmartInvoiceProjectionCard` (saldo/quantidade/próximo vencimento — mesmo critério da Central de Lembretes), `SmartAnomaliesCard` (reusa **AlertCard** — DRY com a tela de Insights).
+- **Integração na Visão Geral:** KPIs com **NumberTicker** (valueCents) + **micro-sparklines** (6 meses via `useExpensesByRange`/`useIncomesByRange`); seção de **cards inteligentes** (ritmo/faturas/anomalias) no topo; donut de categorias (top 5 do mês); fluxo diário substituído pelo `DailyFlowChart`; alertas críticos (mesmos insumos da InsightsPage: paceRatio, orçamentos estourados, burn rate, déficit projetado).
+- **Títulos dos cards em `<h2>`** (heading-order axe: h1 → h2 no topo da página) — sem violações na auditoria P0 (10/10).
+- **Testes:** 23 novos (10 domínio + 12 módulos + 2 página) — suíte **605 testes** verde; lint 0 erros; build OK.
+- [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente (manual)
+
+**✅ Fase 8 concluída** (entregas 1 e 2 verdes): design system premium, haptics, privacidade, densidade, swipe-to-action, ticker/sparklines, donut, fluxo avançado e cards inteligentes na Visão Geral.
 
 ---
 

@@ -109,6 +109,9 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useActiveCreditCards: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  // Sparklines dos KPIs (F8) — OverviewPage.
+  useExpensesByRange: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useIncomesByRange: () => ({ data: [], isLoading: false, isError: false, error: null }),
   useCardExpenses: () => ({
     data: [{ id: "ce1", description: "Mercado", date: "2026-08-05", value: 100, report_weight: 1, bill_competence: "2026-08" }],
     isLoading: false,

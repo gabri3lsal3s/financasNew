@@ -10,6 +10,14 @@ const expenseCategories = [
   { id: "c2", name: "Lazer", icon: "lazer", color: null, type: "expense" },
 ];
 
+const monthData = (month: string) =>
+  month === "2026-08"
+    ? [
+        { id: "e1", value: 3000, report_weight: 1, date: "2026-08-10", category_id: "c1" },
+        { id: "e2", value: 100, report_weight: 1, date: "2026-08-12", category_id: "c2" },
+      ]
+    : [{ id: "e0", value: 2000, report_weight: 1, date: "2026-07-10", category_id: "c1" }];
+
 vi.mock("@/state", () => ({
   useIncomes: (month: string) => ({
     data:
@@ -22,17 +30,30 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useExpenses: (month: string) => ({
-    data:
-      month === "2026-08"
-        ? [
-            { id: "e1", value: 3000, report_weight: 1, date: "2026-08-10", category_id: "c1" },
-            { id: "e2", value: 100, report_weight: 1, date: "2026-08-12", category_id: "c2" },
-          ]
-        : [{ id: "e0", value: 2000, report_weight: 1, date: "2026-07-10", category_id: "c1" }],
+    data: monthData(month),
     isLoading: false,
     isError: false,
     error: null,
     refetch: vi.fn(),
+  }),
+  // Sparklines dos KPIs (F8): mesmo dataset do mês — caem no último ponto.
+  useIncomesByRange: () => ({
+    data: [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05" }],
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useExpensesByRange: () => ({
+    data: monthData("2026-08"),
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCreditCards: () => ({
+    data: [{ id: "card1", name: "Nubank", is_active: true, due_day: 10 }],
+    isLoading: false,
+    isError: false,
+    error: null,
   }),
   useBudgets: () => ({
     data: [
@@ -88,9 +109,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getAllByText("Receitas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Despesas").length).toBeGreaterThan(0);
     expect(screen.getByText("Saldo do mês")).toBeInTheDocument();
-    // Receitas 5.000 · Despesas 3.100 · Saldo 1.900
+    // Receitas 5.000 · Despesas 3.100 · Saldo 1.900 (3.100 também no centro do donut).
     expect(screen.getByText("R$ 5.000,00")).toBeInTheDocument();
-    expect(screen.getByText("R$ 3.100,00")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 3.100,00").length).toBeGreaterThan(0);
     expect(screen.getByText("R$ 1.900,00")).toBeInTheDocument();
   });
 
@@ -111,10 +132,31 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getByText("R$ 440,00")).toBeInTheDocument();
   });
 
-  it("exibe o fluxo diário com barras empilhadas", () => {
-    render(<OverviewPage />);
+  it("exibe o fluxo diário com barras empilhadas e a curva de saldo acumulado", () => {
+    const { container } = render(<OverviewPage />);
     expect(screen.getByText("Fluxo diário")).toBeInTheDocument();
     expect(screen.getAllByText("Receitas").length).toBeGreaterThan(0);
+    // Curva de saldo acumulado (polyline do DailyFlowChart).
+    expect(container.querySelectorAll("svg polyline").length).toBeGreaterThan(0);
+  });
+
+  it("dashboard F8: cards inteligentes de ritmo, faturas e anomalias", () => {
+    render(<OverviewPage />);
+    expect(screen.getByText("Ritmo de gastos")).toBeInTheDocument();
+    expect(screen.getByText("Faturas em aberto")).toBeInTheDocument();
+    // 1 cartão com saldo 60 → próximo vencimento 10/08/2026.
+    expect(screen.getByText("R$ 60,00")).toBeInTheDocument();
+    // Alertas priorizados (orçamento estourado: Moradia 3.000/2.000).
+    expect(screen.getByText("Orçamentos estourados")).toBeInTheDocument();
+  });
+
+  it("dashboard F8: donut de categorias e saúde da poupança", () => {
+    render(<OverviewPage />);
+    expect(screen.getByText("Distribuição por categoria")).toBeInTheDocument();
+    expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
+    // Moradia 3.000 de 3.100 = 97% · Lazer 100 = 3%
+    expect(screen.getByText("97%")).toBeInTheDocument();
+    expect(screen.getByText("3%")).toBeInTheDocument();
   });
 
   it("lista categorias em atenção e sugere realocação", async () => {
