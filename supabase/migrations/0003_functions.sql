@@ -55,7 +55,7 @@ begin
    where user_id = v_user;
 
   if v_total > 100 then
-    raise exception 'Soma das metas de alocação excede 100%% (atual: %%)', v_total;
+    raise exception 'Soma das metas de alocação excede 100%% (atual: %)', v_total;
   end if;
 
   return coalesce(new, old);
@@ -627,10 +627,10 @@ begin
     raise exception 'Limite deve ser maior que zero';
   end if;
 
-  insert into public.budgets (user_id, category_id, month, limit)
+  insert into public.budgets (user_id, category_id, month, "limit")
   values (v_user_id, p_category_id, p_month, p_limit)
   on conflict (category_id, month)
-  do update set limit = excluded.limit;
+  do update set "limit" = excluded."limit";
 
   insert into public.audit_events (user_id, entity_type, entity_id, action, payload)
   values (

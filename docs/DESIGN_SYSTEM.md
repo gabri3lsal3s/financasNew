@@ -292,3 +292,50 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - `type="text"` + `inputMode="numeric"` → teclado numérico no mobile, sem spinners de `type=number`.
 - Estados seguem §7: foco com ring `--ring`, disabled 50%, erro → borda `critical-strong` + mensagem via gateway (`getErrorMessage`).
 - `label`/`aria-label` obrigatória; erro associado via `aria-describedby`.
+
+---
+
+## 14. RECURSOS VISUAIS PREMIUM & MICRO-INTERAÇÕES
+
+### 14.1 Number Ticker (Transição Numérica Animada)
+- **Componente:** `src/components/ui/number-ticker.tsx` (primitivo).
+- **Comportamento:** Ao alternar de mês ou atualizar valores de KPIs, os dígitos realizam interpolação suave em ~300ms via `requestAnimationFrame` em vez de um salto brusco.
+- **Acessibilidade:** Mantém fonte mono (`IBM Plex Mono`) e `tabular-nums` com largura fixa; respeita estritamente `prefers-reduced-motion: reduce` (exibição imediata sem transição).
+
+### 14.2 Feedback Háptico Tátil (Haptic Touch)
+- **Serviço:** `src/services/haptics.ts`.
+- **Intensidades padronizadas:**
+  - `light` (8ms) → toques em botões de filtro, tabs e teclas da calculadora.
+  - `medium` (14ms) → abertura do FAB central (`+ Novo`) e injeção de valor da calculadora.
+  - `success` (dois pulsos: 10ms + 40ms pausa + 12ms) → conclusão de lançamentos e pagamentos.
+  - `warning` / `error` (dois pulsos de 20ms) → exclusões e alertas críticos.
+- **Compatibilidade:** Degradação graciosa (ignora silenciosamente se o navegador/hardware não suportar `navigator.vibrate`).
+
+### 14.3 Gestos Mobile (Swipe-to-Action)
+- **Hook & Integração:** `src/hooks/use-swipe-action.ts` integrado em `TransactionRow`.
+- **Mecânica:** Deslizar linha para a esquerda revela atalhos rápidos com feedback visual suave e disparo háptico leve ao atingir o limiar de ativação (threshold de 72px).
+
+### 14.4 Controle de Densidade (Compacto vs. Confortável)
+- **Confortável (Padrão):** Linhas com altura de 48px a 52px (py 12px), ideal para uso tátil mobile.
+- **Compacto:** Linhas com altura de 38px a 40px (py 8px), ideal para visualização densa de múltiplas linhas no desktop.
+- **Persistência:** Gravado na preferência do usuário (`user_preferences` / `localStorage`).
+
+### 14.5 Modo Privacidade / Ocultar Valores ("Privacy Masking")
+- **Componente:** `src/components/layout/privacy-toggle.tsx` + hook `usePrivacyMask`.
+- **Efeito:** Ofusca valores monetários no app inteiro substituindo o conteúdo por máscara de pontos (`••••••`) ou aplicando classe `.privacy-masked` (`filter: blur(6px)` + `user-select: none`).
+- **Ativação:** Toggle no Header (ícone `Eye`/`EyeOff`) ou atalho de teclado `P`.
+
+### 14.6 Micro-Sparklines de Tendência
+- **Componente:** `src/components/ui/sparkline.tsx`.
+- **Estilo:** Curva SVG vetorial minimalista (1px stroke com gradiente sutil de preenchimento opacidade 15%) exibida discretamente no canto de `KpiCard` para demonstrar a trajetória dos últimos 3 a 6 meses.
+
+### 14.7 Gráfico de Fluxo Diário com Scrubbing & Saldo Acumulado
+- **Módulo:** `src/components/modules/daily-flow-chart.tsx`.
+- **Interatividade:** Linha guia de saldo acumulado sobreposta às barras de receitas/despesas; suporte a arraste tátil (scrubbing) com tooltip flutuante exibindo os dados consolidados do dia.
+
+### 14.8 Gráfico Donut de Categorias
+- **Módulo:** `src/components/modules/category-donut.tsx`.
+- **Estilo:** Rosca fina (espessura 8–10px) utilizando as cores `cat-1..10` com legenda de percentual e esmaecimento suave das outras fatias ao focar em uma categoria.
+
+### 14.9 Transições de Rota no PageShell ("App-like Transitions")
+- **Estilo:** Fade + micro-slide suave de 150ms na entrada de novas páginas no `<Outlet />` (`opacity: 0 → 1`, `translateY: 4px → 0px`), automaticamente desativado se `prefers-reduced-motion: reduce`.

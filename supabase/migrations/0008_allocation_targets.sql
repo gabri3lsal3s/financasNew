@@ -64,7 +64,7 @@ begin
    where user_id = v_user;
 
   if v_total > 100 then
-    raise exception 'Soma das metas de alocação excede 100%% (atual: %%)', v_total;
+    raise exception 'Soma das metas de alocação excede 100%% (atual: %)', v_total;
   end if;
 end;
 $$;

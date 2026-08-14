@@ -26,9 +26,10 @@
 | **F4** | Carteira & Rebalanceamento | Ledger, valoração, metas, calculadora de aporte | Telas de carteira |
 | **F5** | Experiência Transversal | Busca global, acessibilidade, temas, performance | Busca, polish |
 | **F6** | Hardening & Lançamento | Prova de fidelidade, segurança, deploy | — |
-| **F9** | Ergonomia de Navegação & Header | BottomNav 5 slots (com Cartões), Sidebar colapsável, Top Header & Search responsivo | Shell & Navegação |
-| **F10** | Refinamento Premium & Dashboard Insights | Micro-interações, superfícies suaves, Cards inteligentes no Início (ritmo, faturas, alertas) | Dashboard & Design |
-| **F11** | Utilitários Nativos & Gestos | Calculadora flutuante arrastável (FAB + injeção de valor) e Scroll-to-Top inteligente | Utilitários & Gestos |
+| **F7** | Ergonomia de Navegação & Header | BottomNav 5 slots (com Cartões), Sidebar colapsável, Top Header & Search responsivo | Shell & Navegação |
+| **F8** | Refinamento Premium & Dashboard Insights | Micro-interações, superfícies suaves, Cards inteligentes no Início (ritmo, faturas, alertas) | Dashboard & Design |
+| **F9** | Utilitários Nativos & Gestos | Calculadora flutuante arrastável (FAB + injeção de valor) e Scroll-to-Top inteligente | Utilitários & Gestos |
+| **F10** | Identidade Visual Oficial "Guia Financeiro" | Reestilização dos 3 temas (Petróleo + Teal + Ouro + Coral), BrandLogo, assets PWA e contraste AA | Brand & Identidade |
 
 ---
 
@@ -434,7 +435,7 @@
 
 ---
 
-### Fase 9 — Ergonomia de Navegação, Responsividade & Header Adaptativo
+### Fase 7 — Ergonomia de Navegação, Responsividade & Header Adaptativo
 
 **Objetivo:** aperfeiçoar a experiência de uso contínuo no mobile e desktop com navegação refinada, acesso rápido a cartões e header responsivo inteligente, mantendo **zero dependências extras de animação** (transições nativas CSS/Tailwind v4 com suporte a `prefers-reduced-motion`).
 
@@ -466,39 +467,47 @@
 
 ---
 
-### Fase 10 — Refinamento Visual Premium & Dashboard de Insights
+### Fase 8 — Refinamento Visual Premium & Dashboard de Insights
 
-**Objetivo:** elevar o padrão estético para nível fintech premium com micro-interações táteis, animação fluida de dados, controle de densidade e transformar a Visão Geral em um centro dinâmico de inteligência financeira contextual.
+**Objetivo:** elevar o padrão estético para nível fintech premium com micro-interações táteis, animação fluida de dados, gráficos avançados, privacidade e transformar a Visão Geral em um centro dinâmico de inteligência financeira contextual.
 
 **Decisões e Recursos Premium Alinhados:**
 - **Number Ticker (Decisão 1):** Primitivo `NumberTicker` em `src/components/ui/number-ticker.tsx` para transição animada de valores monetários e percentuais nos KPIs ao trocar mês/filtro (interpolação suave em ~300ms via `requestAnimationFrame` mantendo tabulação fixa e fonte mono, desativável com `prefers-reduced-motion`).
-- **Swipe-to-Action Mobile (Decisão 2):** Hook `useSwipeAction` em `src/hooks/use-swipe-action.ts` integrado ao `TransactionRow` no mobile, permitindo deslizar a linha para revelar ações rápidas (Editar / Excluir com confirmação).
+- **Swipe-to-Action Mobile (Decisão 2):** Hook `useSwipeAction` em `src/hooks/use-swipe-action.ts` integrado ao `TransactionRow` no mobile, permitindo deslizar a linha para revelar ações rápidas (Editar / Excluir com confirmação e haptics).
 - **Feedback Háptico Tátil (Decisão 3):** Serviço leve `src/services/haptics.ts` com `triggerHaptic('light' | 'medium' | 'success' | 'warning')` via `navigator.vibrate` em ações-chave (FAB, calculadora, confirmações de mutação).
 - **Toggle de Densidade (Decisão 4):** Alternância entre densidade **Confortável** (padrão, 48px) e **Compacta** (38px) persistida em preferências/storage e aplicada globalmente em tabelas, DataList e listas de transações.
+- **Modo Privacidade / Ocultar Valores (Decisão 5):** Toggle de visibilidade no Header (`PrivacyToggle`) e atalho de teclado que ofusca instantaneamente todos os valores monetários (`blur-sm` ou máscara `••••••`) para uso seguro em locais públicos.
 
 **Entregas (na ordem):**
-1. **Evolução do Design System, Micro-interações & Haptics:**
-   - Arquivos: `src/styles/tokens.css`, `src/styles/globals.css`, `src/services/haptics.ts`, `src/components/ui/number-ticker.tsx`, `src/hooks/use-swipe-action.ts`, `src/components/ui/skeleton.tsx`, `src/components/ui/card.tsx`.
+1. **Evolução do Design System, Micro-interações, Haptics & Privacidade:**
+   - Arquivos: `src/styles/tokens.css`, `src/styles/globals.css`, `src/services/haptics.ts`, `src/components/ui/number-ticker.tsx`, `src/components/ui/sparkline.tsx`, `src/components/layout/privacy-toggle.tsx`, `src/hooks/use-swipe-action.ts`, `src/hooks/use-privacy-mask.ts`, `src/components/ui/skeleton.tsx`, `src/components/ui/card.tsx`.
    - Tipografia e hierarquia refinadas (Sora para títulos, Inter para interface, IBM Plex Mono com `.num` e transição `NumberTicker`).
+   - Modo de privacidade com ofuscação reativa em todos os componentes de valor (`MoneyInput`, `KpiCard`, `TransactionRow`).
    - Superfícies em camadas com elevação suave (`--shadow-sm`/`--shadow-md`), bordas translúcidas sutis e shimmer aprimorado nos Skeleton loaders.
-   - Micro-interações táteis calibradas (`active:scale-[0.98]` com curva `cubic-bezier(0.2, 0.8, 0.2, 1)`) e feedback háptico sutil.
+   - Micro-interações táteis calibradas (`active:scale-[0.98]` com curva `cubic-bezier(0.2, 0.8, 0.2, 1)`), transições suaves de rota no `PageShell` e feedback háptico sutil.
    - Suporte a swipe-to-action em `TransactionRow` no mobile e toggle de densidade em listas/tabelas.
-2. **Dashboard com Insights Financeiros:**
-   - Arquivos: `src/components/modules/smart-spending-pace-card.tsx`, `src/components/modules/smart-invoice-projection-card.tsx`, `src/components/modules/smart-anomalies-card.tsx` + integração em `src/features/overview/pages/overview-page.tsx`.
-   - **Card Ritmo de Gastos vs. Teto Orçamentário:** Usa `domain/projection/spendingPace` para comparar a velocidade real de consumo contra a fração esperada do mês e emitir indicador de status (no ritmo, acelerado, crítico).
-   - **Card Projeção de Fechamento de Faturas:** Consolida todas as faturas abertas dos cartões ativos na competência atual, calculando o previsto para a data de fechamento e comparando com o limite total disponível.
-   - **Card Alertas Contextuais & Anomalias:** Conecta a `domain/insights` para destacar despesas fora da média histórica, assinaturas detectadas ou alertas prioritários diretamente no topo da Visão Geral.
+2. **Dashboard com Insights Financeiros & Visualizações Avançadas:**
+   - Arquivos: `src/components/modules/smart-spending-pace-card.tsx`, `src/components/modules/smart-invoice-projection-card.tsx`, `src/components/modules/smart-anomalies-card.tsx`, `src/components/modules/category-donut.tsx`, `src/components/modules/savings-health-card.tsx`, `src/components/modules/daily-flow-chart.tsx` + integração em `src/features/overview/pages/overview-page.tsx`.
+   - **KpiCards com Micro-Sparklines:** Linhas de tendência dos últimos meses nos 4 KPIs centrais.
+   - **Gráfico de Fluxo Diário Avançado:** Curva de saldo acumulado, linha guia de meta diária e scrubbing tátil com tooltip flutuante.
+   - **Card Donut de Categorias:** Distribuição visual com foco e percentual das principais categorias de despesa.
+   - **Card Hero de Runway & Saúde:** Meses de reserva disponíveis e feedback contextual de poupança.
+   - **Cards Inteligentes de Ritmo, Faturas e Anomalias:** Motores puros de `domain/projection` e `domain/insights` conectados diretamente ao topo da Visão Geral.
    - Fallback gracioso com EmptyStates e OnboardingCard para novos usuários.
 
 **✅ DoD**
-- Novos cards inteligentes renderizados na Visão Geral com dados reais fornecidos pelos motores puros de `domain/projection` e `domain/insights`.
-- Visual nos 3 temas (light/dark/oled) consistente, com contraste AA validado em todas as combinações.
-- Zero quebras de a11y (auditoria axe 100% sem violações).
-- Testes unitários para os componentes e testes de integração da página Overview com os novos cards.
+- Todos os KPIs utilizam `NumberTicker` e micro-sparklines de tendência.
+- Toggle de privacidade ofusca e desofusca valores monetários no app inteiro sem quebras de layout.
+- Linhas de transação no mobile suportam swipe-to-action com feedback tátil em dispositivos compatíveis.
+- Gráfico de fluxo diário suporta scrubbing fluido e curva de saldo acumulado.
+- Módulo `CategoryDonut` renderiza com a paleta de 10 cores e legenda acessível.
+- Transições de rota operam com fluidez (150ms) e respeitam `prefers-reduced-motion`.
+- Visual nos 3 temas (light/dark/oled) consistente, com contraste AA validado em todas as combinações e zero quebras de a11y (auditoria axe 100% sem violações).
+- Suíte de testes unitários para todos os componentes novos e testes de integração da página Overview.
 
 ---
 
-### Fase 11 — Utilitários Nativos (Calculadora Flutuante & Gestos de Navegação/Scroll)
+### Fase 9 — Utilitários Nativos (Calculadora Flutuante & Gestos de Navegação/Scroll)
 
 **Objetivo:** oferecer utilitários operacionais integrados para agilidade em lançamentos e navegação rápida por gestos/scroll.
 
@@ -527,22 +536,50 @@
 
 ---
 
+### Fase 10 — Identidade Visual Oficial "Guia Financeiro" & Reestilização de Temas
+
+**Objetivo:** aplicar a identidade visual oficial da marca ("Guia Financeiro — Azul Petróleo, Teal Vital, Ouro Âmbar e Coral Suave"), modernizar os 3 temas visuais e atualizar os assets de marca/PWA com contraste WCAG AA certificado.
+
+**Entregas (na ordem):**
+1. **Reestruturação dos Tokens Globais:**
+   - Atualização de `src/styles/tokens.css` para os 3 temas:
+     - **Light ("Vital Petróleo & Ouro"):** Fundo ardósia off-white (`#F4F7F9`), superfícies brancas com bordas ardósia-teal, primária Teal Petróleo (`#2A9D8F`), acentos em Ouro Âmbar (`#DDA726`) e texto em Azul Petróleo Profundo (`#142531`).
+     - **Dark ("Abissal Teal"):** Fundo Abissal (`#0C1923`), superfícies em ardósia escuro (`#162836`), primária em Teal vivo (`#2DD4BF`) e acentos dourados (`#F3C352`).
+     - **OLED ("True Black + Órbitas Douradas"):** Fundo `#000000` com relevo em bordas ardósia (`#1C2E3D`) e acentos luminosos.
+   - Harmonização das semânticas financeiras (Receita: Teal `#2A9D8F` / `#2DD4BF`, Despesa: Coral Suave `#E76F51` / `#FB7185`, Atenção/Metas: Ouro Âmbar `#E9C46A` / `#F59E0B`, Investimentos: Sky Petróleo `#1B3A4B` / `#38BDF8`).
+2. **Brand Assets & Componente de Logo Oficial:**
+   - Criação do componente vetorial `BrandLogo` em `src/components/layout/brand-logo.tsx` (ícone da carteira orbital + tipografia "Guia Financeiro").
+   - Atualização de Favicon, ícones PWA (`public/pwa/icons/`), splash screens e metadados no `index.html`.
+3. **Harmonização dos Módulos de Domínio & Categorias:**
+   - Alinhamento dos ícones de categorias (`CategoryIcon`), badges de status (`DebtStatusBadge`, `InvoiceStatusBadge`) e gráficos de progresso com a nova paleta.
+4. **Auditoria de Acessibilidade & Contraste:**
+   - Validação da suíte de contraste matemático (`domain/accessibility`) e testes de renderização visual em desktop e mobile.
+
+**✅ DoD**
+- 3 temas funcionando com a nova identidade nos padrões WCAG AA verificados por teste automatizado.
+- Logo oficial integrado na Sidebar, Header, PWA e tela de Login/Auth.
+- Zero classes com cores soltas ou contrastes fora da escala.
+- Suíte de testes 100% verde.
+
+---
+
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
 
 **Regra absoluta:** primitivo antes do módulo, módulo antes da tela. Se uma tela precisar de algo que não existe, **pare e extraia** — não duplique.
 
 ### 4.1 Primitivos (Fase 0 e extensões) — `components/ui`
 `Button → Input → MoneyInput → Select → Card → Badge → Skeleton → EmptyState → Progress → Modal/Dialog → ConfirmDialog → Tabs → DataList → Stepper → Command → Toast → Checkbox → RadioGroup → DatePicker → Slider → Accordion → Textarea → Dropzone`
-(+ `VirtualList`, `ScrollToTopButton`, `DraggableFab`, `Sheet`/Drawer. **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
+(+ `VirtualList`, `ScrollToTopButton`, `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer. **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
 
 ### 4.2 Módulos de domínio (por fase) — `components/modules`
 - **F0/F2:** `MoneyInput` é primitivo de UI (Fase 0); `CategoryIcon`, `MonthPicker`, `TransactionRow`, `KpiCard`, `BudgetProgressBar`, `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge`, `WizardShell`.
 - **F3:** `AlertCard`, `InsightList`, `ProjectionLine`, `ReminderItem`, `ReportTable`.
 - **F4:** `PositionTable`, `TargetEditor` (barra de soma), `AporteResult`.
 - **F5:** `GlobalSearch` (⌘K), `HighlightRow`, `OnboardingCard`.
-- **F9:** `CollapsibleSidebar`, `AdaptiveHeader`, `MobileBottomNav5Slot`.
-- **F10:** `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`.
-- **F11:** `FloatingCalculator`, `CalculatorKeypad`, `ScrollToTop`.
+- **F7:** `CollapsibleSidebar`, `AdaptiveHeader`, `MobileBottomNav5Slot`.
+- **F8:** `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`, `CategoryDonut`, `SavingsHealthCard`, `DailyFlowChart`, `PrivacyToggle`.
+- **F9:** `FloatingCalculator`, `CalculatorKeypad`, `ScrollToTop`.
+- **F10:** `BrandLogo`, `BrandIcon`.
 
 ### 4.3 Telas (por fase) — `features/`
 Sempre composição fina: layout (`components/layout`) + módulos (`components/modules`) + contratos (`state/`). Sem JSX duplicado entre telas — qualquer repetição vira módulo novo.

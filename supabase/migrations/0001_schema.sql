@@ -149,7 +149,7 @@ create table public.budgets (
   user_id uuid not null references public.profiles (id) on delete cascade,
   category_id uuid not null references public.categories (id),
   month char(7) not null check (month ~ '^\d{4}-\d{2}$'),
-  limit numeric(12, 2) not null check (limit > 0),
+  "limit" numeric(12, 2) not null check ("limit" > 0),
   unique (category_id, month)
 );
 

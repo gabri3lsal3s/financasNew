@@ -66,7 +66,8 @@
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
-    │   │   │                      #   virtual-list (F5.5), toast, scroll-to-top-button (F11)…
+    │   │   │                      #   virtual-list (F5.5), toast, scroll-to-top-button (F9),
+    │   │   │                      #   number-ticker, sparkline (F8)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, transaction-row,
@@ -74,23 +75,24 @@
     │   │   │                      #   invoice-status-badge, installment-badge,
     │   │   │                      #   onboarding-card, pwa-update-toast,
     │   │   │                      #   install-app-button (F5.6), smart-spending-pace-card,
-    │   │   │                      #   smart-invoice-projection-card, smart-anomalies-card (F10),
-    │   │   │                      #   floating-calculator, calculator-keypad (F11)…
+    │   │   │                      #   smart-invoice-projection-card, smart-anomalies-card,
+    │   │   │                      #   category-donut, savings-health-card, daily-flow-chart (F8),
+    │   │   │                      #   floating-calculator, calculator-keypad (F9)…
     │   │   └── index.ts
-    │   └── layout/                # Estrutura de página: sidebar (collapsible F9), bottom-nav (5 slots F9),
-    │       │                      #   app-header, page-shell
+    │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
+    │       │                      #   app-header, privacy-toggle (F8), brand-logo (F10), page-shell
     │       └── index.ts
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
-    │   ├── overview/              #   Visão Geral (KPIs, fluxo diário, smart cards F10)
-    │   ├── transactions/          #   Transações + wizard de lançamento
+    │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8)
+    │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos)
     │   ├── debts/                 #   Dívidas (status, quitação integrada)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
     │   ├── reports/               #   Relatórios
     │   ├── insights/              #   Insights, projeção e corte
     │   ├── reminders/             #   Lembretes (central de notificações)
-    │   ├── settings/              #   Configurações (preferências, perfil)
+    │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)
     │   └── portfolio/             #   Carteira, metas, calculadora de aporte
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
@@ -104,7 +106,7 @@
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── virtualization/        #   janela de renderização de listas (F5.5)
-    │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F11)
+    │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F9)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
@@ -120,16 +122,18 @@
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
-    │                              #   use-draggable, use-scroll-position…)
+    │                              #   use-draggable, use-scroll-position,
+    │                              #   use-swipe-action, use-privacy-mask…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de input
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
+    │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
     │   ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
     │   ├── storage/               #   Abstração Cloudflare R2 (presigned URLs)
-    │   └── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F11)
+    │   └── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F9)
     │
     ├── lib/                       # Constantes e utils genéricos
     │   ├── constants.ts           #   APP_START_DATE, faixas 85/90/95, limites…

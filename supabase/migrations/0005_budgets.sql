@@ -50,7 +50,7 @@ begin
     raise exception 'Categoria de destino inválida';
   end if;
 
-  select coalesce(limit, 0) into v_from_limit
+  select coalesce("limit", 0) into v_from_limit
     from public.budgets
    where category_id = p_from_category_id and month = p_month;
 
@@ -58,20 +58,20 @@ begin
     raise exception 'Origem não pode ficar com limite negativo';
   end if;
 
-  select coalesce(limit, 0) into v_to_limit
+  select coalesce("limit", 0) into v_to_limit
     from public.budgets
    where category_id = p_to_category_id and month = p_month;
 
   -- Reduz origem (nunca < 0) e aumenta destino — atômico.
-  insert into public.budgets (user_id, category_id, month, limit)
+  insert into public.budgets (user_id, category_id, month, "limit")
   values (v_user_id, p_from_category_id, p_month, v_from_limit - p_amount)
   on conflict (category_id, month)
-  do update set limit = excluded.limit;
+  do update set "limit" = excluded."limit";
 
-  insert into public.budgets (user_id, category_id, month, limit)
+  insert into public.budgets (user_id, category_id, month, "limit")
   values (v_user_id, p_to_category_id, p_month, v_to_limit + p_amount)
   on conflict (category_id, month)
-  do update set limit = excluded.limit;
+  do update set "limit" = excluded."limit";
 
   insert into public.audit_events (user_id, entity_type, entity_id, action, payload)
   values (
