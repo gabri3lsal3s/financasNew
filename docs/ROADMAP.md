@@ -31,6 +31,7 @@
 | **F9** | Utilitários Nativos & Gestos | Calculadora flutuante arrastável (FAB + injeção de valor) e Scroll-to-Top inteligente | Utilitários & Gestos |
 | **F10** | Identidade Visual Oficial "Guia Financeiro" | Reestilização dos 3 temas (Petróleo + Teal + Ouro + Coral), BrandLogo, assets PWA e contraste AA | Brand & Identidade |
 | **F11** | Centro de Personalização, Experiência Tátil & Micro-Interações Vivas | Acentos de cor, estilos de card, botões com ripple/spring, abas com sliding pill, hub /configuracoes e dashboard modular | Personalização & Micro-Interações |
+| **F12** | Polimento de UI/UX, Design System & Experiência Visual | Superfícies/profundidade consistentes, hierarquia tipográfica de dados financeiros, empty states e skeletons por contexto, micro-interações de entrada/saída e feedback de escrita, harmonização claro/escuro/OLED | Polimento & Design System |
 
 ---
 
@@ -679,6 +680,39 @@
 - [x] **Visão Geral modular**: widgets da overview (KPIs, cards inteligentes, donut, fluxo, orçamentos, saúde) gated por `dashboardWidgets`
 - [x] Testes da página de configurações e do motor (`settings-page.test.tsx`, `use-visual-customization.test.ts`, `audio-fx.test.ts`) + suíte completa verde
 - [ ] **Pendente (DoD):** auditoria de contraste AA das 6 paletas de acento nos 3 temas (`domain/accessibility`) e validação final desktop/mobile
+
+---
+
+### Fase 12 — Polimento de UI/UX, Design System & Experiência Visual
+
+**Objetivo:** elevar a sensação de acabamento do app — eliminando a percepção de interface "genérica" — com consistência de superfícies e profundidade, hierarquia tipográfica voltada ao escaneamento de dados financeiros, micro-interações de entrada/saída e feedback tátil/visual refinados, e harmonização fina dos 3 temas. **Mantém rigorosamente a identidade visual oficial (F10):** Teal Petróleo + Ouro Âmbar + Coral Suave, tokens em `tokens.css`, contraste AA e regras do `DESIGN_SYSTEM.md`.
+
+**Entregas (na ordem):**
+1. **Consistência de Superfícies & Profundidade:**
+   - Auditoria e padronização de raios (`--radius-*`), sombras sutis (`--shadow-sm/md/lg`) e bordas suaves nos ~51 painéis `rounded-xl bg-surface` espalhados — centralizar o padrão em variantes do `Card`/utilitário de superfície, eliminando classes soltas duplicadas (DRY — regra de ouro §4).
+   - **Empty States** com variantes por contexto: ícone temático da marca em círculo tintado (`bg-primary/8` + `text-primary-strong`), micro-texto acolhedor e CTA opcional — evoluir o `EmptyState` genérico atual (borda tracejada + ícone cinza).
+   - **Skeleton Loaders adaptados** ao formato real dos componentes: variantes `list` (linhas), `kpi` (cards), `chart` (bloco de gráfico) e `table` (linhas de tabela) — substituir os blocos genéricos `h-24 w-full` usados hoje.
+2. **Hierarquia Tipográfica & Leitura de Dados:**
+   - Primitivo de valor monetário (`MoneyText` em `components/ui`): variantes `hero` (KPI), `value` (lista) e `caption` (resumo) com `.num` + cor semântica automática (receita `positive`, despesa `negative`, saldo condicional) e sinal `+`/`−` explícito — substitui a formatação ad-hoc (`formatCentsAsBRL` + classes soltas) e padroniza o escaneamento rápido.
+   - **Badges de status** com ícone/ponto de estado (dot colorido) e **tags de categoria** consistentes (`CategoryIcon` + cor da categoria com contraste AA no texto da tag).
+   - Contraste calibrado entre rótulos secundários (`text-xs muted-foreground`), valores principais e destaque de saldos/limites de cartão.
+3. **Micro-interações & Feedback Tátil/Visual:**
+   - Animações de **entrada/saída padronizadas**: `data-state` (enter/exit) do Radix para modais, dropdowns, tooltips e toasts; transição de rota já existente (150ms) mantida; nova entrada de item na lista (fade + slide sutil) ao criar lançamento.
+   - **Feedback de escrita**: check animado em ações de conclusão (marcar dívida/cartão como pago, concluir lançamento), mantendo haptics/áudio existentes (`services/haptics.ts`, `services/audio-fx.ts`).
+   - **Hover/focus/active unificados**: press `scale(0.98)` em todos os clicáveis, hover de cards clicáveis com elevação sutil + borda `primary/40` (padrão `Card interactive`), focus-visible 2px `ring` já existente — tudo respeitando `data-motion`/`prefers-reduced-motion` (F11).
+4. **Harmonização Claro / Escuro / OLED:**
+   - Ajuste fino do **OLED** (evitar preto puro duro): bordas ardósia como principal elevação, redução de glow/sombras fortes e verificação de `muted-foreground` (5.3:1 mínimo).
+   - Revisão de contraste em **light** (inputs, `muted-foreground`, estados de feedback) e **dark** (superfícies `#162836`, sem cinzas apagados).
+   - Fechar o **pendente do DoD da F11**: auditoria de contraste AA das 6 paletas de acento nos 3 temas (`domain/accessibility`) + validação visual final desktop/mobile.
+
+**✅ DoD**
+- Raios/sombras/bordas auditados e centralizados — zero valores soltos de superfície em telas.
+- `EmptyState` e `Skeleton` com variantes por contexto usadas em todas as telas (3+ estados: loading/vazio/erro padronizados).
+- `MoneyText` + badges/tags com hierarquia consistente em todas as telas financeiras (receitas, despesas, saldos, limites).
+- Animações de entrada/saída padronizadas (Radix `data-state`) + feedback de escrita (check animado) em todas as ações de conclusão.
+- Hover/focus/active unificados em botões, abas e cards clicáveis, com acessibilidade preservada.
+- Contraste AA auditado (3 temas × 6 acentos) e validação final desktop/mobile documentada.
+- Suíte de testes 100% verde (incluindo testes dos novos primitivos `MoneyText` e variantes de EmptyState/Skeleton).
 
 ---
 

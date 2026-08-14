@@ -21,6 +21,15 @@ if (!legacyUrl || !legacyKey || !newUrl || !newKey) {
   process.exit(1)
 }
 
+if (legacyKey.includes('COLE_AQUI') || legacyKey.includes('eyJhbGciOi...') || legacyUrl.includes('seu-projeto')) {
+  console.error('\n[ATENCAO] A chave LEGACY_SUPABASE_SERVICE_ROLE_KEY no arquivo .env.migration ainda contem o texto de exemplo.')
+  console.error('Por favor, acesse o painel do Supabase do projeto legado:')
+  console.error('  1. Acesse https://supabase.com/dashboard/project/roynkajkdheoharcpiyj/settings/api')
+  console.error('  2. Em "Project API Keys", copie a chave "service_role" (secret)')
+  console.error('  3. Cole essa chave no .env.migration na linha: LEGACY_SUPABASE_SERVICE_ROLE_KEY="..."')
+  process.exit(1)
+}
+
 const legacyClient = createClient(legacyUrl, legacyKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 })
@@ -317,6 +326,11 @@ async function runMigration() {
 }
 
 runMigration().catch((err) => {
-  console.error('\n[X] FALHA CRITICA NA EXECUCAO DA MIGRACAO:', err)
+  console.error('\n[X] FALHA CRITICA NA EXECUCAO DA MIGRACAO:', err.message || err)
+  if (String(err).includes('fetch failed')) {
+    console.error('\nPossiveis causas para "fetch failed":')
+    console.error('1. O projeto Supabase antigo pode estar pausado (Paused) no plano gratuito. Acesse https://supabase.com/dashboard/project/roynkajkdheoharcpiyj e clique em "Restore Project" se estiver pausado.')
+    console.error('2. A URL ou a chave de API (service_role) podem conter espacos extras ou caracteres incorretos.')
+  }
   process.exit(1)
 })
