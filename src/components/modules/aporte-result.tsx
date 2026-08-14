@@ -1,6 +1,6 @@
 import { ArrowDownToLine, PiggyBank, Wallet } from "lucide-react";
 import { DataList } from "@/components/ui/data-list";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -28,7 +28,7 @@ const MODE_LABEL: Record<AporteResultProps["mode"], string> = {
   class: "por meta de classe",
 };
 
-const toBRL = (value: number): string => formatCentsAsBRL(Math.round((Number.isFinite(value) ? value : 0) * 100));
+const toCents = (value: number): number => Math.round((Number.isFinite(value) ? value : 0) * 100);
 
 /**
  * Resultado da calculadora de aporte (§3.11.3) — módulo de domínio F4.
@@ -56,21 +56,19 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
       key: "target",
       header: "Valor alvo",
       align: "right",
-      cell: (row) => <span className="num text-sm text-foreground">{toBRL(row.targetValueBRL)}</span>,
+      cell: (row) => <MoneyText cents={toCents(row.targetValueBRL)} tone="default" />,
     },
     {
       key: "current",
       header: "Atual",
       align: "right",
-      cell: (row) => <span className="num text-sm text-muted-foreground">{toBRL(row.currentValueBRL)}</span>,
+      cell: (row) => <MoneyText cents={toCents(row.currentValueBRL)} tone="default" className="text-muted-foreground" />,
     },
     {
       key: "allocated",
       header: "Aporte sugerido",
       align: "right",
-      cell: (row) => (
-        <span className="num text-sm font-semibold text-portfolio">{toBRL(row.allocatedBRL)}</span>
-      ),
+      cell: (row) => <MoneyText cents={toCents(row.allocatedBRL)} tone="portfolio" />,
     },
     {
       key: "quantity",
@@ -82,24 +80,24 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
       key: "price",
       header: "Preço",
       align: "right",
-      cell: (row) => <span className="num text-sm text-muted-foreground">{toBRL(row.priceBRL)}</span>,
+      cell: (row) => <MoneyText cents={toCents(row.priceBRL)} tone="default" className="text-muted-foreground" />,
     },
   ];
 
   return (
     <section aria-label="Resultado da simulação de aporte" className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-3">
-        <ResultStat icon={<PiggyBank className="size-4" aria-hidden="true" />} label="Aporte informado" value={toBRL(aporte)} />
+        <ResultStat icon={<PiggyBank className="size-4" aria-hidden="true" />} label="Aporte informado" cents={toCents(aporte)} />
         <ResultStat
           icon={<ArrowDownToLine className="size-4" aria-hidden="true" />}
           label="Alocado em ativos"
-          value={toBRL(totalAllocated)}
+          cents={toCents(totalAllocated)}
           accent
         />
         <ResultStat
           icon={<Wallet className="size-4" aria-hidden="true" />}
           label="Sobra para caixa"
-          value={toBRL(leftover)}
+          cents={toCents(leftover)}
           tone={leftover > 0 ? "attention" : "neutral"}
         />
       </div>
@@ -129,13 +127,13 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
 function ResultStat({
   icon,
   label,
-  value,
+  cents,
   accent = false,
   tone = "neutral",
 }: {
   icon: ReactNode;
   label: string;
-  value: string;
+  cents: number;
   accent?: boolean;
   tone?: "neutral" | "attention";
 }) {
@@ -145,15 +143,12 @@ function ResultStat({
         {icon}
         {label}
       </span>
-      <span
-        className={cn(
-          "num text-xl font-semibold",
-          accent && "text-portfolio",
-          tone === "attention" && "text-attention",
-        )}
-      >
-        {value}
-      </span>
+      <MoneyText
+        cents={cents}
+        variant="value"
+        tone="default"
+        className={cn("text-xl font-semibold", accent && "text-portfolio", tone === "attention" && "text-attention")}
+      />
     </div>
   );
 }

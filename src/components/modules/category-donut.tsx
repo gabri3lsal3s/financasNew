@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { cn } from "@/lib/utils";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText } from "@/components/ui/money-text";
 
 export interface DonutSlice {
   label: string;
@@ -88,7 +88,7 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
             r={RADIUS}
             fill="none"
             strokeWidth={STROKE_WIDTH}
-            className="stroke-border/70 dark:stroke-border/80"
+            className="stroke-border/40 dark:stroke-border/60"
           />
           {arcs.map((arc) => (
             <circle
@@ -106,14 +106,14 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
           <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">Total</span>
-          <p className="privacy-mask num text-xs sm:text-sm font-bold text-foreground tracking-tight">
-            {centerValue ?? formatCentsAsBRL(total)}
+          <p className="privacy-mask text-xs sm:text-sm font-bold text-foreground tracking-tight">
+            {centerValue ?? <MoneyText cents={total} tone="default" className="text-xs sm:text-sm font-bold tracking-tight" />}
           </p>
         </div>
       </div>
 
       {/* Lista de fatias com alto contraste */}
-      <ul className="w-full min-w-0 space-y-2">
+      <ul className="w-full min-w-0 space-y-2.5">
         {slices.map((slice, index) => {
           const percent = total > 0 ? (slice.valueCents / total) * 100 : 0;
           const bgClass =
@@ -123,22 +123,20 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
           return (
             <li
               key={slice.label}
-              className="group flex flex-col gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-surface-hover/50"
+              className="group flex flex-col gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface-hover/60"
             >
               <div className="flex items-center gap-2 text-xs">
                 <span
                   aria-hidden="true"
-                  className={cn("size-2.5 shrink-0 rounded-full ring-2 ring-surface", bgClass)}
+                  className={cn("size-2.5 shrink-0 rounded-full ring-2 ring-surface shadow-xs", bgClass)}
                 />
                 <span className="truncate font-semibold text-foreground">{slice.label}</span>
-                <span className="num ml-auto font-bold text-muted-foreground text-xs">
+                <span className="num ml-auto font-bold text-foreground text-xs">
                   {percent.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%
                 </span>
-                <span className="privacy-mask num w-22 text-right font-semibold text-foreground text-xs">
-                  {formatCentsAsBRL(slice.valueCents)}
-                </span>
+                <MoneyText cents={slice.valueCents} tone="default" className="privacy-mask w-22 text-right text-xs font-semibold" />
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 dark:bg-border/60" aria-hidden="true">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/50 dark:bg-border/60" aria-hidden="true">
                 <div
                   className={cn("h-full rounded-full transition-all duration-500", bgClass)}
                   style={{ width: `${Math.min(100, Math.max(2, percent))}%` }}

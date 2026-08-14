@@ -1,7 +1,7 @@
 import { AlarmClock, Bell, Check, CreditCard, HandCoins } from "lucide-react";
 import { Badge } from "@/components/ui";
+import { MoneyText } from "@/components/ui/money-text";
 import type { ReminderItem as ReminderItemData, ReminderStatus } from "@/domain/reminders";
-import { formatCentsAsBRL } from "@/services/masks/money";
 import { cn } from "@/lib/utils";
 
 const STATUS_VARIANTS: Record<ReminderStatus, "critical" | "warning" | "muted"> = {
@@ -53,7 +53,7 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, stateKind 
             Vence em <span className="num font-medium text-foreground">{item.dueDate}</span>
             {item.amountCents > 0 ? (
               <>
-                {" "}· <span className="num font-medium text-foreground">{formatCentsAsBRL(item.amountCents)}</span>
+                {" "}· <MoneyText cents={item.amountCents} tone="default" className="text-xs" />
               </>
             ) : null}
           </p>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Modal, MoneyInput } from "@/components/ui";
+import { MoneyText } from "@/components/ui/money-text";
 import { suggestCategory, suggestLimitCents } from "@/domain/budgets";
-import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import { useRemoveBudgetLimit, useSetBudgetLimit } from "@/state";
 import type { Category } from "@/types";
@@ -91,7 +91,7 @@ export function LimitDialog({
             <div>
               <p className="font-medium text-foreground">Sugestão ({rule.limitPercent}% da renda)</p>
               <p className="text-xs text-muted-foreground">
-                Com base na renda de <span className="privacy-mask">{formatCentsAsBRL(monthlyIncomeCents)}</span> deste mês.
+                Com base na renda de <MoneyText cents={monthlyIncomeCents} tone="default" className="privacy-mask text-xs" /> deste mês.
               </p>
             </div>
             <Button
@@ -100,7 +100,7 @@ export function LimitDialog({
               size="sm"
               onClick={() => setCents(suggestionCents)}
             >
-              Aplicar <span className="privacy-mask">{formatCentsAsBRL(suggestionCents)}</span>
+              Aplicar <MoneyText cents={suggestionCents} tone="default" className="privacy-mask" />
             </Button>
           </div>
         ) : null}

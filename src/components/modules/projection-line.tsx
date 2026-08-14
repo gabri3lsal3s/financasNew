@@ -1,6 +1,6 @@
 import { CheckCircle2, TrendingDown, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
 
 export interface ProjectionLineProps {
@@ -54,24 +54,19 @@ export function ProjectionLine({
         <div className="flex flex-col gap-0.5">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Diário disponível</span>
           <span className="num text-lg font-semibold text-foreground">
-            {dailyCents === null ? "—" : formatCentsAsBRL(dailyCents)}
+            {dailyCents === null ? "—" : <MoneyText cents={dailyCents} tone="default" className="text-lg" />}
           </span>
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Projeção do mês</span>
           <span className="num text-lg font-semibold text-foreground">
-            {projectedExpensesCents === null ? "—" : formatCentsAsBRL(projectedExpensesCents)}
+            {projectedExpensesCents === null ? "—" : <MoneyText cents={projectedExpensesCents} tone="default" className="text-lg" />}
           </span>
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Superávit projetado</span>
-          <span
-            className={cn(
-              "num text-lg font-semibold",
-              surplusCents === null ? "text-foreground" : surplusCents >= 0 ? "text-positive-strong" : "text-critical",
-            )}
-          >
-            {surplusCents === null ? "—" : formatCentsAsBRL(surplusCents)}
+          <span className="num text-lg font-semibold">
+            {surplusCents === null ? "—" : <MoneyText cents={surplusCents} tone={surplusCents >= 0 ? "positive" : "negative"} className="text-lg" />}
           </span>
         </div>
       </div>

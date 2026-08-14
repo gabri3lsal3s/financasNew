@@ -1,5 +1,5 @@
 import { MoneyInput, NumberStepper, Tabs } from "@/components/ui";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText } from "@/components/ui/money-text";
 import type { LaunchState, EntryType } from "./wizard-state";
 
 export interface StepValueProps {
@@ -54,7 +54,7 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
           />
           {state.installments > 1 && state.valueCents > 0 ? (
             <p className="text-xs text-muted-foreground">
-              {state.installments}× de <span className="privacy-mask">{formatCentsAsBRL(Math.ceil(state.valueCents / state.installments))}</span>
+              {state.installments}× de <MoneyText cents={Math.ceil(state.valueCents / state.installments)} tone="default" className="privacy-mask text-xs" />
             </p>
           ) : null}
         </div>

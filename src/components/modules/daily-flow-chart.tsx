@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { cn } from "@/lib/utils";
+import { MoneyText } from "@/components/ui/money-text";
 import type { DailyFlowItem } from "@/domain/overview";
-import { formatCentsAsBRL } from "@/services/masks/money";
 
 export interface DailyFlowChartProps {
   /** Fluxo diário do mês (buildDailyFlow — domain/overview). */
@@ -58,17 +58,9 @@ function toSmoothPath(points: readonly LinePoint[]): string {
   return path;
 }
 
-function toSmoothAreaPath(points: readonly LinePoint[], height: number): string {
-  if (points.length === 0) return "";
-  const linePath = toSmoothPath(points);
-  const firstX = points[0]!.x.toFixed(1);
-  const lastX = points[points.length - 1]!.x.toFixed(1);
-  return `${linePath} L ${lastX} ${height} L ${firstX} ${height} Z`;
-}
-
 /**
  * DailyFlowChart — fluxo diário com curvas suaves e arredondadas (Bézier cúbicas),
- * sem sombras ou cantos pontiagudos, com linhas guias sutis e scrubbing interativo.
+ * sem sombras ou áreas sombreadas sob as linhas, com linhas guias sutis e scrubbing interativo.
  */
 export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,8 +74,6 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
 
   const incomePath = useMemo(() => toSmoothPath(incomePointList), [incomePointList]);
   const expensePath = useMemo(() => toSmoothPath(expensePointList), [expensePointList]);
-  const incomeArea = useMemo(() => toSmoothAreaPath(incomePointList, LINE_HEIGHT), [incomePointList]);
-  const expenseArea = useMemo(() => toSmoothAreaPath(expensePointList, LINE_HEIGHT), [expensePointList]);
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const el = containerRef.current;
@@ -111,27 +101,12 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
     >
       <div className="relative h-44 w-full" aria-hidden="true">
         <svg viewBox={`0 0 ${LINE_WIDTH} ${LINE_HEIGHT}`} preserveAspectRatio="none" className="h-full w-full overflow-visible">
-          <defs>
-            <linearGradient id="flow-income-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--positive, #10b981)" stopOpacity="0.14" />
-              <stop offset="100%" stopColor="var(--positive, #10b981)" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="flow-expense-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--critical, #f43f5e)" stopOpacity="0.12" />
-              <stop offset="100%" stopColor="var(--critical, #f43f5e)" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
-
           {/* Linhas guias horizontais limpas e sutis */}
           <line x1="0" y1={PAD} x2={LINE_WIDTH} y2={PAD} stroke="currentColor" strokeDasharray="2 4" className="text-border/30" strokeWidth={1} />
           <line x1="0" y1={LINE_HEIGHT / 2} x2={LINE_WIDTH} y2={LINE_HEIGHT / 2} stroke="currentColor" strokeDasharray="2 4" className="text-border/25" strokeWidth={1} />
           <line x1="0" y1={LINE_HEIGHT - PAD} x2={LINE_WIDTH} y2={LINE_HEIGHT - PAD} stroke="currentColor" strokeDasharray="2 4" className="text-border/30" strokeWidth={1} />
 
-          {/* Áreas preenchidas com gradiente sem sombras */}
-          {incomeArea ? <path d={incomeArea} fill="url(#flow-income-grad)" /> : null}
-          {expenseArea ? <path d={expenseArea} fill="url(#flow-expense-grad)" /> : null}
-
-          {/* Curvas suaves e arredondadas */}
+          {/* Curvas suaves e arredondadas sem sombras */}
           <path
             d={incomePath}
             fill="none"
@@ -197,22 +172,24 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
             <span className="font-semibold text-foreground">
               {String(scrubDay.dayOfMonth).padStart(2, "0")}/{String(new Date(scrubDay.day).getMonth() + 1).padStart(2, "0")}
             </span>
-            <span className={cn("num font-medium text-[11px]", scrubDay.incomeCents - scrubDay.expenseCents >= 0 ? "text-positive-strong" : "text-critical")}>
-              {formatCentsAsBRL(scrubDay.incomeCents - scrubDay.expenseCents)}
-            </span>
+            <MoneyText
+              cents={scrubDay.incomeCents - scrubDay.expenseCents}
+              tone={scrubDay.incomeCents - scrubDay.expenseCents >= 0 ? "positive" : "negative"}
+              className="text-[11px]"
+            />
           </div>
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-3 text-[11px]">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <span className="size-1.5 rounded-full bg-positive-strong" /> Entradas
               </span>
-              <span className="privacy-mask num font-medium text-positive-strong">+{formatCentsAsBRL(scrubDay.incomeCents)}</span>
+              <MoneyText cents={scrubDay.incomeCents} tone="positive" sign="explicit" className="privacy-mask text-[11px]" />
             </div>
             <div className="flex items-center justify-between gap-3 text-[11px]">
               <span className="flex items-center gap-1 text-muted-foreground">
                 <span className="size-1.5 rounded-full bg-negative-strong" /> Saídas
               </span>
-              <span className="privacy-mask num font-medium text-negative-strong">−{formatCentsAsBRL(scrubDay.expenseCents)}</span>
+              <MoneyText cents={scrubDay.expenseCents} tone="negative" sign="explicit" className="privacy-mask text-[11px]" />
             </div>
           </div>
         </div>

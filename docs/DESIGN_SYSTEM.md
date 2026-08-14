@@ -67,17 +67,17 @@
 - Verde/vermelho **nunca** são usados para aprovação/erro genérico de formulário — isso é papel de `--primary`/`--critical`; as semânticas financeiras são exclusivas de dinheiro.
 - Badge de status de dívida: `overdue` → critical · `due_today` → warning · `due_soon` → warning claro · `paid` → positive · `pending` → muted.
 
-### 2.4 Categorias — paleta restrita e sóbria (10 cores)
+### 2.4 Categorias — paleta de alto contraste e distinção (10 cores)
 
 | Token | Light | Dark/OLED | Token | Light | Dark/OLED |
 |---|---|---|---|---|---|
-| `--cat-1` aço | `215 20% 48%` | `215 20% 58%` | `--cat-6` malva | `320 18% 48%` | `320 18% 58%` |
-| `--cat-2` sálvia | `150 25% 44%` | `150 25% 54%` | `--cat-7` jeans | `215 42% 48%` | `215 42% 58%` |
-| `--cat-3` oliva | `85 22% 44%` | `85 22% 54%` | `--cat-8` ameixa | `265 22% 50%` | `265 22% 60%` |
-| `--cat-4` areia | `35 28% 48%` | `35 28% 58%` | `--cat-9` pinho | `190 30% 44%` | `190 30% 54%` |
-| `--cat-5` terracota | `15 32% 50%` | `15 32% 60%` | `--cat-10` grafite | `0 0% 40%` | `0 0% 55%` |
+| `--cat-1` safira oceano | `199 90% 40%` | `199 95% 58%` | `--cat-6` rubi rose | `338 75% 50%` | `340 88% 66%` |
+| `--cat-2` esmeralda teal | `162 76% 36%` | `160 80% 50%` | `--cat-7` turquesa ciano | `185 85% 36%` | `185 90% 50%` |
+| `--cat-3` âmbar ouro | `36 95% 44%` | `38 96% 60%` | `--cat-8` oliva lima | `88 68% 36%` | `88 75% 52%` |
+| `--cat-4` coral intenso | `12 85% 52%` | `12 92% 66%` | `--cat-9` orquídea magenta | `286 65% 48%` | `286 80% 68%` |
+| `--cat-5` violeta íris | `262 70% 54%` | `265 85% 70%` | `--cat-10` ardósia aço | `215 40% 46%` | `215 35% 65%` |
 
-**Regras:** cores dessaturadas (saturação ≤ 42%) para não competir com os dados; cada categoria recebe uma cor da escala (associação por nome na sugestão inteligente); em gráficos de pizza, usar a mesma cor do ícone/badge da categoria.
+**Regras:** paleta harmônica com alta distinção cromática e contraste aprimorado (legibilidade máxima no anel donut e nas barras de distribuição); cada categoria recebe uma cor da escala (associação por nome na sugestão inteligente); em gráficos e badges, usar a mesma cor correspondente da categoria.
 
 ---
 

@@ -1,5 +1,5 @@
 import { CreditCard } from "lucide-react";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { MoneyText } from "@/components/ui/money-text";
 
 export interface SmartInvoiceProjectionCardProps {
   /** Total de faturas em aberto (competência auto-selecionada por cartão). */
@@ -35,9 +35,7 @@ export function SmartInvoiceProjectionCard({
         <p className="text-xs text-muted-foreground">Nenhuma fatura em aberto neste momento.</p>
       ) : (
         <div className="flex flex-col gap-1">
-          <p className="num text-2xl font-semibold text-foreground">
-            {formatCentsAsBRL(openInvoicesCents)}
-          </p>
+          <MoneyText cents={openInvoicesCents} variant="value" tone="default" className="text-2xl" />
           <p className="text-xs text-muted-foreground">
             {openCount} {openCount === 1 ? "cartão" : "cartões"} com saldo
             {nearestDueDate ? (

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Alert, ConfirmDialog, Modal, Select } from "@/components/ui";
+import { MoneyText } from "@/components/ui/money-text";
 import { getErrorMessage } from "@/services/errors";
 import { useDeleteExpense } from "@/state";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import type { Expense, InstallmentDeleteMode } from "@/types";
-import { formatCentsAsBRL } from "@/services/masks/money";
 
 export interface ExpenseDetailDialogProps {
   expense: Expense | null;
@@ -54,9 +54,12 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
             {error ? <Alert variant="error">{error}</Alert> : null}
 
             <div className="flex flex-col gap-2">
-              <p className="num text-3xl font-bold text-negative-strong">
-                {formatCentsAsBRL(Math.round(expense.value * 100))}
-              </p>
+              <MoneyText
+                cents={Math.round(expense.value * 100)}
+                tone="negative"
+                variant="value"
+                className="text-3xl font-bold"
+              />
               <p className="text-sm text-muted-foreground">{expense.description || "Sem descrição"}</p>
             </div>
 

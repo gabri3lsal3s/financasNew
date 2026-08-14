@@ -1,6 +1,7 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import { Calculator as CalculatorIcon, Check, History } from "lucide-react";
 import { Button, Modal, NumberStepper } from "@/components/ui";
+import { MoneyText } from "@/components/ui/money-text";
 import { CalculatorKeypad } from "@/components/modules/calculator-keypad";
 import { useDraggable } from "@/hooks/use-draggable";
 import {
@@ -129,7 +130,7 @@ export function FloatingCalculator() {
           {/* Display */}
           <div className="flex flex-col gap-1 rounded-xl border border-border bg-muted p-4">
             <p className="num text-right text-3xl font-semibold text-foreground" aria-live="polite">
-              {state.error ? "Erro" : formatCentsAsBRL(displayCents)}
+              {state.error ? "Erro" : <MoneyText cents={displayCents} variant="value" tone="default" className="text-right text-3xl" />}
             </p>
             {state.operator && !state.error ? (
               <p className="text-right text-xs text-muted-foreground">{state.operator}</p>
@@ -189,7 +190,7 @@ export function FloatingCalculator() {
                     }}
                     className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
                   >
-                    {entry.expression} {formatCentsAsBRL(entry.resultCents)}
+                    {entry.expression} <MoneyText cents={entry.resultCents} variant="value" tone="default" className="text-xs text-muted-foreground" />
                   </button>
                 ))}
               </div>

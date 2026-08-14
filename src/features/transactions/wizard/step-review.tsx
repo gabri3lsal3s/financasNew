@@ -1,4 +1,5 @@
-import { formatCentsAsBRL } from "@/services/masks/money";
+import type { ReactNode } from "react";
+import { MoneyText } from "@/components/ui/money-text";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { buildExpenseInstallments, effectiveReportWeight, reportWeightLabel } from "./wizard-state";
 import type { LaunchState } from "./wizard-state";
@@ -26,7 +27,7 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
         <Row label="Tipo" value={isExpense ? "Despesa" : "Renda"} />
-        <Row label="Valor" value={formatCentsAsBRL(state.valueCents)} mono />
+        <Row label="Valor" value={<MoneyText cents={state.valueCents} tone="default" />} />
         <Row label="Peso no relatório" value={reportWeightLabel(effectiveReportWeight(state))} />
         <Row label="Categoria" value={categoryName ?? "—"} />
         <Row label="Data" value={state.date} />
@@ -37,7 +38,7 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
               <Row label="Parcelas" value={`${state.installments}×`} />
             ) : null}
             {state.debtEnabled ? (
-              <Row label="Cobrança vinculada" value={formatCentsAsBRL(state.debtAmountCents)} mono />
+              <Row label="Cobrança vinculada" value={<MoneyText cents={state.debtAmountCents} tone="default" />} />
             ) : null}
           </>
         ) : null}
@@ -53,7 +54,7 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
                   {index + 1}/{installments.length} · {installment.date}
                   {installment.billCompetence ? ` · fatura ${installment.billCompetence}` : ""}
                 </span>
-                <span className="num font-medium">{formatCentsAsBRL(Math.round(installment.value * 100))}</span>
+                <MoneyText cents={Math.round(installment.value * 100)} tone="default" />
               </li>
             ))}
           </ul>
@@ -63,11 +64,11 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
   );
 }
 
-function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className={mono ? "num font-medium text-foreground" : "font-medium text-foreground"}>{value}</span>
+      <span className="font-medium text-foreground">{value}</span>
     </div>
   );
 }

@@ -47,17 +47,17 @@ html[data-theme="light"] {
   --critical-strong: 0 74% 42%;     /* #B91C1C (AA 6.5:1) */
   --portfolio: 201 47% 20%;         /* investimentos — Sky Petróleo #1B3A4B */
 
-  /* Categorias — paleta restrita e sóbria (10 cores dessaturadas) */
-  --cat-1: 215 20% 48%;             /* aço */
-  --cat-2: 150 25% 44%;             /* sálvia */
-  --cat-3: 85 22% 44%;              /* oliva */
-  --cat-4: 35 28% 48%;              /* areia */
-  --cat-5: 15 32% 50%;              /* terracota */
-  --cat-6: 320 18% 48%;             /* malva */
-  --cat-7: 215 42% 48%;             /* jeans */
-  --cat-8: 265 22% 50%;             /* ameixa */
-  --cat-9: 190 30% 44%;             /* pinho */
-  --cat-10: 0 0% 40%;               /* grafite */
+  /* Categorias — paleta de alto contraste e distinção (10 cores harmônicas) */
+  --cat-1: 199 90% 40%;             /* safira / oceano */
+  --cat-2: 162 76% 36%;             /* esmeralda / teal */
+  --cat-3: 36 95% 44%;              /* âmbar ouro */
+  --cat-4: 12 85% 52%;              /* coral intenso */
+  --cat-5: 262 70% 54%;             /* violeta íris */
+  --cat-6: 338 75% 50%;             /* rubi / rose */
+  --cat-7: 185 85% 36%;             /* turquesa ciano */
+  --cat-8: 88 68% 36%;              /* oliva / lima */
+  --cat-9: 286 65% 48%;             /* orquídea / magenta */
+  --cat-10: 215 40% 46%;            /* ardósia aço */
 
   /* Tipografia */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -130,17 +130,17 @@ html[data-theme="dark"] {
   --critical-strong: 0 91% 71%;
   --portfolio: 198 93% 60%;         /* #38BDF8 — sky petrolizado */
 
-  /* Categorias (versão clara dos tons) */
-  --cat-1: 215 20% 58%;
-  --cat-2: 150 25% 54%;
-  --cat-3: 85 22% 54%;
-  --cat-4: 35 28% 58%;
-  --cat-5: 15 32% 60%;
-  --cat-6: 320 18% 58%;
-  --cat-7: 215 42% 58%;
-  --cat-8: 265 22% 60%;
-  --cat-9: 190 30% 54%;
-  --cat-10: 0 0% 55%;
+  /* Categorias (versão luminosa de alto contraste) */
+  --cat-1: 199 95% 58%;             /* safira céu */
+  --cat-2: 160 80% 50%;             /* esmeralda viva */
+  --cat-3: 38 96% 60%;              /* ouro âmbar */
+  --cat-4: 12 92% 66%;              /* coral vivo */
+  --cat-5: 265 85% 70%;             /* violeta elétrico */
+  --cat-6: 340 88% 66%;             /* rubi rose */
+  --cat-7: 185 90% 50%;             /* ciano oceânico */
+  --cat-8: 88 75% 52%;              /* lima viva */
+  --cat-9: 286 80% 68%;             /* orquídea */
+  --cat-10: 215 35% 65%;            /* ardósia claro */
 
   /* Sombras (dark depende mais de bordas; alpha maior p/ profundidade) */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
@@ -186,16 +186,16 @@ html[data-theme="oled"] {
   --critical-strong: 0 91% 71%;
   --portfolio: 198 93% 60%;
 
-  --cat-1: 215 20% 58%;
-  --cat-2: 150 25% 54%;
-  --cat-3: 85 22% 54%;
-  --cat-4: 35 28% 58%;
-  --cat-5: 15 32% 60%;
-  --cat-6: 320 18% 58%;
-  --cat-7: 215 42% 58%;
-  --cat-8: 265 22% 60%;
-  --cat-9: 190 30% 54%;
-  --cat-10: 0 0% 55%;
+  --cat-1: 199 95% 58%;             /* safira céu */
+  --cat-2: 160 80% 50%;             /* esmeralda viva */
+  --cat-3: 38 96% 60%;              /* ouro âmbar */
+  --cat-4: 12 92% 66%;              /* coral vivo */
+  --cat-5: 265 85% 70%;             /* violeta elétrico */
+  --cat-6: 340 88% 66%;             /* rubi rose */
+  --cat-7: 185 90% 50%;             /* ciano oceânico */
+  --cat-8: 88 75% 52%;              /* lima viva */
+  --cat-9: 286 80% 68%;             /* orquídea */
+  --cat-10: 215 35% 65%;            /* ardósia claro */
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.50);
   --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.60), 0 1px 2px 0 rgb(0 0 0 / 0.50);

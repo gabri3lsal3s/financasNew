@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Lightbulb, Repeat, Sparkles } from "lucide-react";
 import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
+import { MoneyText } from "@/components/ui/money-text";
 import { AlertCard, InsightList, ProjectionLine } from "@/components/modules";
 import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
@@ -23,7 +24,6 @@ import {
 import { dailyBudget, endOfMonthProjection, pendingProjection, spendingPace } from "@/domain/projection";
 import { budgetStatus, resolveEffectiveLimit } from "@/domain/budgets";
 import { currentMonth, shiftMonth } from "@/lib/date";
-import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import {
   useBudgets,
@@ -306,17 +306,15 @@ export function InsightsPage() {
                     <div className="grid grid-cols-3 gap-3 text-xs">
                       <div>
                         <p className="text-muted-foreground">A receber</p>
-                        <p className="num font-semibold text-positive-strong">{formatCentsAsBRL(pendingSummary.receivablesCents)}</p>
+                        <MoneyText cents={pendingSummary.receivablesCents} tone="positive" className="text-xs" />
                       </div>
                       <div>
                         <p className="text-muted-foreground">A pagar</p>
-                        <p className="num font-semibold text-critical">{formatCentsAsBRL(pendingSummary.payablesCents)}</p>
+                        <MoneyText cents={pendingSummary.payablesCents} tone="negative" className="text-xs" />
                       </div>
                       <div>
                         <p className="text-muted-foreground">Saldo projetado</p>
-                        <p className={`num font-semibold ${pendingSummary.balanceCents >= 0 ? "text-positive-strong" : "text-critical"}`}>
-                          {formatCentsAsBRL(pendingSummary.balanceCents)}
-                        </p>
+                        <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-xs" />
                       </div>
                     </div>
                   </section>
@@ -335,15 +333,19 @@ export function InsightsPage() {
                           <div key={`${challenge.categoryId}-${challenge.percent}`} className="flex items-center justify-between rounded-lg border border-border/60 p-3 text-xs">
                             <span className="font-medium text-foreground">
                               {challenge.name} — cortar {challenge.percent}% (meta{" "}
-                              <span className="privacy-mask">{formatCentsAsBRL(challenge.targetCents)}</span>)
+                              <MoneyText cents={challenge.targetCents} tone="default" className="privacy-mask text-xs" />)
                             </span>
-                            <span className="num font-semibold text-positive-strong">−{formatCentsAsBRL(challenge.savingsCents)}/mês</span>
+                            <span className="num font-semibold text-positive-strong">
+                              <MoneyText cents={-challenge.savingsCents} tone="positive" sign="explicit" />/mês
+                            </span>
                           </div>
                         ))}
                         {discretionary ? (
                           <div className="flex items-center justify-between rounded-lg border border-positive/40 bg-positive/5 p-3 text-xs">
                             <span className="font-medium text-foreground">30% em não essenciais</span>
-                            <span className="num font-semibold text-positive-strong">−{formatCentsAsBRL(discretionary.savingsCents)}/mês</span>
+                            <span className="num font-semibold text-positive-strong">
+                              <MoneyText cents={-discretionary.savingsCents} tone="positive" sign="explicit" />/mês
+                            </span>
                           </div>
                         ) : null}
                       </div>
@@ -363,8 +365,8 @@ export function InsightsPage() {
                               <span className="font-medium text-foreground">{s.name}</span>
                               <span className="text-muted-foreground">{s.reason}</span>
                             </div>
-                            <span className="num shrink-0 font-semibold text-foreground">
-                              {formatCentsAsBRL(s.currentLimitCents)} → {formatCentsAsBRL(s.suggestedLimitCents)}
+                            <span className="shrink-0 font-semibold text-foreground">
+                              <MoneyText cents={s.currentLimitCents} tone="default" /> → <MoneyText cents={s.suggestedLimitCents} tone="default" />
                             </span>
                           </div>
                         ))}

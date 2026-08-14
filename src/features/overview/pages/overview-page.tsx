@@ -262,15 +262,15 @@ export function OverviewPage() {
                 <div className="grid grid-cols-3 gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
                   <div className="truncate">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">A receber</p>
-                    <p className="privacy-mask num font-medium text-positive-strong">{formatCentsAsBRL(receivablePending)}</p>
+                    <MoneyText cents={receivablePending} tone="positive" className="privacy-mask text-[11px]" />
                   </div>
                   <div className="truncate">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">A pagar</p>
-                    <p className="privacy-mask num font-medium text-negative-strong">{formatCentsAsBRL(payablePending)}</p>
+                    <MoneyText cents={payablePending} tone="negative" className="privacy-mask text-[11px]" />
                   </div>
                   <div className="truncate">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Faturas</p>
-                    <p className="privacy-mask num font-medium text-foreground">{formatCentsAsBRL(openInvoices)}</p>
+                    <MoneyText cents={openInvoices} tone="default" className="privacy-mask text-[11px]" />
                   </div>
                 </div>
               </article>
@@ -354,8 +354,10 @@ export function OverviewPage() {
                   <h2 className="text-sm font-semibold text-foreground">Orçamentos do mês</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="num text-xs text-muted-foreground">
-                    {formatCentsAsBRL(expenseCents)} de {formatCentsAsBRL(totalLimitsCents)}
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <MoneyText cents={expenseCents} tone="default" className="text-xs" />
+                    <span>de</span>
+                    <MoneyText cents={totalLimitsCents} tone="default" className="text-xs text-muted-foreground" />
                   </span>
                   <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[11px]">
                     {Math.round(globalPercent)}% utilizado
@@ -394,10 +396,11 @@ export function OverviewPage() {
                             </Badge>
                           </div>
                           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span className="privacy-mask num font-medium text-foreground">
-                              {formatCentsAsBRL(row.spentCents)}
+                            <MoneyText cents={row.spentCents} tone="default" className="privacy-mask text-[11px]" />
+                            <span className="flex items-center gap-1">
+                              <span>de</span>
+                              <MoneyText cents={row.limitCents} tone="default" className="text-[11px] text-muted-foreground" />
                             </span>
-                            <span className="num">de {formatCentsAsBRL(row.limitCents)}</span>
                           </div>
                           <Progress
                             value={percent}

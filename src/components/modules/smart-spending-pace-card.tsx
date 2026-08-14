@@ -1,7 +1,7 @@
 import { Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MoneyText } from "@/components/ui/money-text";
 import type { SpendingPace } from "@/domain/projection";
-import { formatCentsAsBRL } from "@/services/masks/money";
 
 export interface SmartSpendingPaceCardProps {
   /** Ritmo calculado (domain/projection) — null quando indisponível. */
@@ -47,7 +47,7 @@ export function SmartSpendingPaceCard({ pace, dailyCents }: SmartSpendingPaceCar
 
       {dailyCents !== null ? (
         <p className="text-xs text-muted-foreground">
-          Disponível hoje: <span className="num font-medium text-foreground">{formatCentsAsBRL(dailyCents)}</span>
+          Disponível hoje: <MoneyText cents={dailyCents} tone="default" className="text-xs" />
         </p>
       ) : null}
     </article>
