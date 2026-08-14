@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { useCurrencyInput } from "@/hooks/use-currency-input";
+import { usePrivacyMask } from "@/hooks/use-privacy-mask";
 
 /**
  * MoneyInput — entrada monetária progressiva (padrão Nubank).
@@ -41,6 +42,7 @@ export function MoneyInput({
 }: MoneyInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const currency = useCurrencyInput({ initialCents: cents });
+  const masked = usePrivacyMask();
 
   // Sincroniza APENAS quando o valor controlado muda de fato (ex.: reset do
   // formulário). Nunca sobrescreve o que o usuário digitou: um re-render do
@@ -71,6 +73,7 @@ export function MoneyInput({
       spellCheck={false}
       className={cn(
         "w-full rounded-md border border-input bg-surface font-mono tabular-nums text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        masked && "blur-[3px] select-none",
         sizeClasses[size],
         className,
       )}

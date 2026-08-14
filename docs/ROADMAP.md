@@ -514,6 +514,19 @@
 - Visual nos 3 temas (light/dark/oled) consistente, com contraste AA validado em todas as combinações e zero quebras de a11y (auditoria axe 100% sem violações).
 - Suíte de testes unitários para todos os componentes novos e testes de integração da página Overview.
 
+**Progresso — Fase 8, entrega 1 (Design System, micro-interações, haptics & privacidade):**
+- **Haptics (Decisão 3):** `services/haptics.ts` — `triggerHaptic('light|medium|success|warning')` com padrões calibrados via `navigator.vibrate`, no-op sem suporte (nunca lança) + 3 testes.
+- **NumberTicker (Decisão 1):** primitivo `ui/number-ticker.tsx` — interpolação rAF ~300ms (ease-out cúbico), `.num` (mono + tabular), **sem setState síncrono em effect** (lint React Compiler) e `prefers-reduced-motion` renderiza o valor direto + 3 testes.
+- **Sparkline:** primitivo `ui/sparkline.tsx` — SVG viewBox com escala automática, `vectorEffect="non-scaling-stroke"`, preenchimento translúcido por classe + 5 testes.
+- **Modo Privacidade (Decisão 5):** store externa `hooks/use-privacy-mask.ts` (useSyncExternalStore, padrão pwa.ts — sessão, não persistido) + `layout/privacy-toggle.tsx` no header com **atalho de teclado P** (ignora inputs) e `aria-pressed` + 5 testes; máscara `blur-sm select-none` aplicada em **KpiCard**, **TransactionRow** e **MoneyInput** (aria-hidden no valor mascarado).
+- **Swipe-to-Action (Decisão 2):** `hooks/use-swipe-action.ts` — pointer events nativos com `setPointerCapture`, gesto vertical ignorado (scroll nativo), snap por limiar, estado `dragging` (transição só no settle) + **`TransactionRow`** ganha `swipeActions` (camada `inert` quando fechada — sem violação aria-hidden; haptic "light" ao abrir); listagem de transações expõe **Excluir** (reusa o diálogo de detalhe com cascata/modos) + 4 testes.
+- **Densidade (Decisão 4):** store `hooks/use-density.ts` persistida (`financas_density`) + `layout/density-toggle.tsx` no header (`aria-pressed`) aplicada em **TransactionRow** (padding) e **DataList** (prop `density` já existente).
+- **Polish:** `Skeleton` com **shimmer** (`--animate-shimmer`, gradiente com tokens); transição de rota no `PageShell` (`--animate-route-in` 150ms, `prefers-reduced-motion` global desativa); `Card` com `transition-shadow hover:shadow-md`; haptic "success" no **ConfirmDialog** e "light" no **FAB** da BottomNav.
+- **Testes:** 23 novos (haptics, ticker, sparkline, privacidade, densidade, swipe, privacy-toggle) — suíte **581 testes** verde.
+- [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente (manual)
+
+**Progresso — Fase 8, entrega 2 (Dashboard com insights):** (em andamento — cards inteligentes + donut + fluxo avançado)
+
 ---
 
 ### Fase 9 — Utilitários Nativos (Calculadora Flutuante & Gestos de Navegação/Scroll)

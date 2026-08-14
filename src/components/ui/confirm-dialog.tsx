@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { triggerHaptic } from "@/services/haptics";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -40,7 +41,11 @@ export function ConfirmDialog({
           type="button"
           variant={variant === "destructive" ? "destructive" : "default"}
           disabled={confirmPending}
-          onClick={onConfirm}
+          onClick={() => {
+            // Confirmações de mutação com feedback tátil (F8 — Decisão 3).
+            triggerHaptic("success");
+            onConfirm();
+          }}
         >
           {confirmLabel}
         </Button>

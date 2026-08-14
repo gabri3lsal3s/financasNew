@@ -3,6 +3,7 @@ import { Ellipsis, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
+import { triggerHaptic } from "@/services/haptics";
 
 /** Resolve um slot obrigatório da BottomNav a partir da fonte única de navegação. */
 function requiredSlot(path: string): NavItem {
@@ -50,11 +51,13 @@ export function BottomNav() {
         <SlotLink item={inicio} end />
         <SlotLink item={transacoes} />
 
-        {/* FAB central elevado: lançamento rápido (D10 — wizard abre via ?novo=despesa em F2). */}
+        {/* FAB central elevado: lançamento rápido (D10 — wizard abre via ?novo=despesa em F2).
+            Haptic leve na ação-chave (F8 — Decisão 3). */}
         <NavLink
           to={quickEntry}
           aria-label="Lançar despesa ou receita"
           className="flex min-h-11 items-center justify-center"
+          onClick={() => triggerHaptic("light")}
         >
           <span className="-mt-6 flex size-12 items-center justify-center rounded-full bg-primary-strong text-primary-foreground shadow-lg ring-4 ring-background transition-transform active:scale-95">
             <Plus className="size-6" aria-hidden="true" />

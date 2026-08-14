@@ -1,8 +1,10 @@
 import { Suspense } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { DensityToggle } from "@/components/layout/density-toggle";
 import { GlobalSearch } from "@/components/layout/global-search";
+import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Skeleton } from "@/components/ui";
@@ -21,6 +23,7 @@ function RouteFallback() {
 
 export function PageShell() {
   const { isCollapsed, toggle } = useSidebarState();
+  const location = useLocation();
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -36,12 +39,17 @@ export function PageShell() {
         {/* Header fluido (F7.3): padding adaptável, sticky com backdrop-blur (DESIGN_SYSTEM §6). */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-1 border-b border-border bg-surface/80 px-4 backdrop-blur lg:px-8">
           <GlobalSearch />
+          <PrivacyToggle />
+          <DensityToggle />
           <ThemeToggle />
         </header>
         <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 lg:px-8">
-          <Suspense fallback={<RouteFallback />}>
-            <Outlet />
-          </Suspense>
+          {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
+          <div key={location.pathname} className="animate-route-in">
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
+          </div>
         </main>
       </div>
       <BottomNav />

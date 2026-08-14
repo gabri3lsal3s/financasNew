@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router";
 import { useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -30,6 +30,20 @@ function ExpenseRow({ expense, onClick }: { expense: Expense; onClick?: () => vo
       amountCents={Math.round(expense.value * 100)}
       kind="expense"
       onClick={onClick}
+      // Swipe-to-action (F8 — Decisão 2): excluir abre o diálogo de detalhe
+      // existente (exclusão com cascata e modos).
+      swipeActions={
+        <Button
+          type="button"
+          variant="destructive"
+          aria-label={`Excluir ${title}`}
+          onClick={onClick}
+          className="h-full w-24 rounded-none"
+        >
+          <Trash2 aria-hidden="true" />
+          Excluir
+        </Button>
+      }
     />
   );
 }

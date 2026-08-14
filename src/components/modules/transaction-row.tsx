@@ -2,6 +2,10 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { triggerHaptic } from "@/services/haptics";
+import { usePrivacyMask } from "@/hooks/use-privacy-mask";
+import { useDensity } from "@/hooks/use-density";
+import { useSwipeAction } from "@/hooks/use-swipe-action";
 
 export interface TransactionRowProps {
   title: string;
@@ -15,6 +19,8 @@ export interface TransactionRowProps {
   badges?: ReactNode;
   onClick?: () => void;
   className?: string;
+  /** Ações rápidas reveladas por swipe (F8 — Decisão 2). */
+  swipeActions?: ReactNode;
 }
 
 const kindValue: Record<TransactionRowProps["kind"], string> = {
@@ -41,11 +47,19 @@ export function TransactionRow({
   badges,
   onClick,
   className,
+  swipeActions,
 }: TransactionRowProps) {
+  const masked = usePrivacyMask();
+  const density = useDensity();
+  const compact = density === "compact";
+  const swipe = useSwipeAction({ onOpen: () => triggerHaptic("light") });
+  const hasSwipe = swipeActions !== undefined;
+
   const content = (
     <div
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-2 py-2.5 transition-colors",
+        "flex w-full items-center gap-3 rounded-xl px-2 transition-colors",
+        compact ? "py-1.5" : "py-2.5",
         onClick && "cursor-pointer hover:bg-surface-hover",
         className,
       )}
@@ -60,18 +74,39 @@ export function TransactionRow({
         )}
       </div>
       {badges ? <div className="flex shrink-0 items-center gap-1.5">{badges}</div> : null}
-      <span className={cn("num shrink-0 text-sm font-semibold", kindValue[kind])}>
+      <span
+        className={cn("num shrink-0 text-sm font-semibold", masked && "blur-sm select-none", kindValue[kind])}
+        aria-hidden={masked || undefined}
+      >
         {`${kindSign[kind]}${formatCentsAsBRL(amountCents)}`}
       </span>
     </div>
   );
 
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className="w-full text-left focus-visible:outline-none">
-        {content}
-      </button>
-    );
-  }
-  return content;
+  const row = onClick ? (
+    <button type="button" onClick={onClick} className="w-full text-left focus-visible:outline-none">
+      {content}
+    </button>
+  ) : (
+    content
+  );
+
+  if (!hasSwipe) return row;
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Camada de ações revelada atrás da linha (à direita). Fechada: inert
+          (não-focável e fora da árvore acessível) — sem violação aria-hidden. */}
+      <div className="absolute inset-y-0 right-0 flex w-24 items-stretch" inert={!swipe.open || undefined}>
+        {swipeActions}
+      </div>
+      <div
+        {...swipe.pointerHandlers}
+        style={{ transform: `translateX(${swipe.offset}px)`, transition: swipe.dragging ? "none" : "transform 0.2s ease-out" }}
+        className={cn("relative touch-pan-y rounded-xl bg-surface", !swipe.open && "shadow-none")}
+      >
+        {row}
+      </div>
+    </div>
+  );
 }
