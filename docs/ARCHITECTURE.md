@@ -272,4 +272,4 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - ~~Hosting do frontend~~ — **RESOLVIDA**: **Vercel** (`vercel.json` configurado com SPA rewrites, headers de segurança e cache PWA).
 - ~~Backend e banco de dados~~ — **RESOLVIDA**: **Supabase** (Postgres 17 + RLS + Auth + Migrations versionadas em `supabase/migrations/`).
 - ~~Notificações~~ — **RESOLVIDA**: in-app centralizado (`/lembretes`).
-- Observabilidade/erros (Fase 6 — sugestão: Sentry).
+- ~~Observabilidade/erros~~ — **RESOLVIDA**: **Sentry** (F6.3) — SDK `@sentry/react` com **dynamic import** env-gated por `VITE_SENTRY_DSN` (no-op sem DSN; Web Vitals LCP/INP/CLS via `browserTracingIntegration`; `reportError`/`setObservabilityUser` em `services/observability`).

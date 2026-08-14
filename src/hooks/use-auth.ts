@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/data/client";
 import { getErrorMessage } from "@/services/errors";
+import { setObservabilityUser } from "@/services/observability";
 import type { Session, User } from "@supabase/supabase-js";
 
 export interface AuthState {
@@ -33,6 +34,11 @@ export function useAuth(): AuthState {
       ? { session: null, user: null, loading: true, configError: null }
       : { session: null, user: null, loading: false, configError: init.configError },
   );
+
+  // Correlaciona erros ao usuário no Sentry (no-op sem DSN) — F6.3.
+  useEffect(() => {
+    void setObservabilityUser(state.user ? { id: state.user.id, email: state.user.email } : null);
+  }, [state.user]);
 
   useEffect(() => {
     if (!("supabase" in init)) return;

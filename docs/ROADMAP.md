@@ -374,7 +374,7 @@
 **Entregas (na ordem):**
 1. ✅ **Prova de fidelidade:** suíte espelhando cada regra do ESPECIFICAÇÃO (regressão contra o app anterior).
 2. ✅ Segurança: revisão final de RLS, rate limit, secrets/ambiente.
-3. Observabilidade: logging de erros (**decisão aberta** — sugestão: Sentry) + métricas básicas.
+3. ✅ Observabilidade: logging de erros (**decisão: Sentry**) + métricas básicas (Web Vitals).
 4. Deploy: **hosting do frontend = Vercel** (`vercel.json` com SPA rewrites, headers de segurança e cache PWA) + backend/banco = **Supabase** (Postgres + RLS + Auth + migrations em `supabase/`); pendente CI/CD de produção e env seguros (Supabase, proxy de cotações, R2).
 5. QA final multi-dispositivo + documento de release.
 
@@ -388,6 +388,16 @@
 - **Revisão manual concluída:** 20 tabelas (0001 + reminder_states em 0006) todas com RLS; `asset_prices` com leitura global (cache NULL) + escrita só do dono; `card_competence_overrides` via ownership do cartão (exists); `handle_new_user` cria perfil + preferências no signup; RPCs transacionais com validação de invariantes no servidor (D12).
 - **Rate limit:** Supabase Auth aplica rate limiting nativo (email/senha: 30 req/h por IP + limites de SMTP/OAuth) — sem camada extra no cliente; o gateway de erros já classifica `429`/`rate_limit` com mensagem pt-BR (`services/errors`, testado).
 - **F6.2 concluída ✅.**
+
+**Progresso — Fase 6, entrega 3 (observabilidade — decisão: Sentry):**
+- **`src/services/observability.ts`** — serviço env-gated por `VITE_SENTRY_DSN` (definido só em produção):
+  - **Zero bundle impact sem DSN:** o SDK `@sentry/react` é carregado com **dynamic import** — sem DSN (dev/testes) todas as funções são no-op e o Sentry vira chunk lazy separado (verificado no build: shell principal permanece ~223 kB/gzip 69 kB; SDK ~475 kB isolado em `esm-*.js`, carregado apenas quando o DSN existe);
+  - **Erros (crash/unexpected):** `reportError(error, context?)` → `captureException` com `extra`; handlers globais de `error`/`unhandledrejection` instalados pelo próprio SDK após o init — o gateway `services/errors` continua sendo a fonte das mensagens pt-BR (erros esperados — validação/rede/401 — não poluem o plano gratuito);
+  - **Métricas básicas (Web Vitals):** `browserTracingIntegration` captura **LCP/INP/CLS** + spans de navegação, com `tracesSampleRate: 0.1` (amostragem para o free tier);
+  - **Correlação de usuário:** `setObservabilityUser` chamado pelo `useAuth` (id + e-mail) — no-op sem DSN.
+- **5 testes** (`services/observability.test.ts`): sem DSN → no-op total; com DSN → init com DSN + tracing; init idempotente; `reportError` com contexto; `setObservabilityUser`/null.
+- **Deploy:** `VITE_SENTRY_DSN` documentado no `.env.example` + `docs/DEPLOYMENT.md` (§3.2 opcional e §4).
+- **F6.3 concluída ✅** — decisão registrada em `ARCHITECTURE.md` §11 e `ESPECIFICACAO_TECNICA.md` (DECISÕES EM ABERTO nº 3 → RESOLVIDA).
 
 **Progresso — Fase 6, entrega 1 (prova de fidelidade):**
 - **`src/tests/fidelity.test.ts`** — **63 testes** espelhando as regras do ESPECIFICAÇÃO §1.3–§4.5: um teste por regra com exemplo representativo, organizado por seção da spec, verificando a **invariante central** (soma de parcelas = original, saldo = rendas − despesas − investimentos, competência ≥ closing → mês seguinte, prioridade dos alertas 1–6, tetos setoriais, guardrail de spike, limites da busca, etc.). Complementa (não duplica) a cobertura profunda dos testes colocalizados de cada motor.
@@ -426,71 +436,94 @@
 
 ### Fase 9 — Ergonomia de Navegação, Responsividade & Header Adaptativo
 
-**Objetivo:** aperfeiçoar a experiência de uso contínuo no mobile e desktop com navegação refinada, acesso rápido a cartões e header responsivo inteligente.
+**Objetivo:** aperfeiçoar a experiência de uso contínuo no mobile e desktop com navegação refinada, acesso rápido a cartões e header responsivo inteligente, mantendo **zero dependências extras de animação** (transições nativas CSS/Tailwind v4 com suporte a `prefers-reduced-motion`).
+
+**Decisões Técnicas Alinhadas:**
+- **Zero libs extras de animação (Decisão A):** Transições de largura (`w-64` ↔ `w-20`), colapso/expansão e expansão de busca via classes utilitárias CSS (`transition-all duration-200 ease-out`) e variáveis de estado locais, sem sobrecarga no bundle.
 
 **Entregas (na ordem):**
 1. **Mobile Bottom Navigation (5 slots com FAB central):**
-   - Novo grid de 5 posições: `[ Início ] | [ Transações ] | [ + Novo (Central Elevado) ] | [ Cartões ] | [ Mais ]`.
-   - Migração definitiva de **Relatórios** para o menu/drawer "Mais", liberando slot nobre para **Cartões**.
-   - Alinhamento ergonômico e áreas de toque mínimas de 44×44px.
+   - Arquivo: `src/components/layout/bottom-nav.tsx`.
+   - Grid de 5 posições simétrico: `[ Início (/) ] | [ Transações (/transacoes) ] | [ + Novo (Central Elevado - /transacoes?novo=despesa) ] | [ Cartões (/cartoes) ] | [ Mais (/mais) ]`.
+   - Migração de **Relatórios** para o menu/drawer "Mais", liberando slot nobre para **Cartões**.
+   - Garantia de área de toque mínima acessível de 44×44px por slot e classe `.active` com destaque semântico.
 2. **Desktop Collapsible Sidebar:**
-   - Sidebar retrátil (toggle modo expandido com labels vs. modo compacto apenas com ícones + tooltips).
-   - Persistência da preferência em `localStorage` (`financas_sidebar_collapsed`) e transições suaves de largura (`w-64` ↔ `w-20`).
-   - Ajuste fluido do container principal (`PageShell`) respeitando a largura ativa da sidebar.
+   - Arquivos: `src/components/layout/sidebar.tsx` + `src/hooks/use-sidebar-state.ts` (ou store leve de estado).
+   - Menu lateral retrátil com alternância entre **Modo Expandido** (logo, texto e ícones, `w-64`) e **Modo Compacto** (apenas ícones centralizados com tooltips/labels acessíveis, `w-20`).
+   - Persistência imediata no `localStorage` (`financas_sidebar_collapsed`) e transições suaves de layout.
+   - Ajuste sincronizado do espaçamento à esquerda no container `PageShell` (`lg:pl-64` ↔ `lg:pl-20`).
 3. **Top Header & Search Responsivo:**
-   - Header fluido adaptável a breakpoints mobile, tablet e desktop (`lg:px-8`, safe-areas no mobile).
-   - Busca retrátil no mobile: ícone que expande em input fluido ou paleta compacta sem quebras de layout.
+   - Arquivos: `src/components/layout/page-shell.tsx` + `src/components/layout/global-search.tsx`.
+   - Header fluido com padding adaptável (`px-4 lg:px-8`), sticky com `backdrop-blur` refinado.
+   - Busca responsiva no mobile: ícone trigger que abre input fluido ou modal compacto ocupando a largura disponível sem quebras de layout ou overflow horizontal.
 
 **✅ DoD**
-- BottomNav mobile com 5 slots (`/`, `/transacoes`, `?novo=despesa`, `/cartoes`, `/mais`) navegando perfeitamente.
-- Sidebar desktop colapsa/expande com persistência no `localStorage` e atalho visual de alternância.
-- Header e busca adaptam fluidamente entre telas pequenas (<640px) e grandes (≥1024px) sem overflow horizontal.
-- Testes automatizados de interação e snapshot/render do layout 100% verdes.
+- BottomNav mobile navegando entre Início, Transações, FAB Novo, Cartões e Mais sem erros.
+- Sidebar desktop com toggle funcional, persistência no `localStorage` e transição visual suave.
+- `PageShell` ajusta dinamicamente a margem de conteúdo conforme o estado expandido/compactado da sidebar.
+- Header e busca funcionais e acessíveis em breakpoints `<640px` (mobile), `768px` (tablet) e `≥1024px` (desktop).
+- Suíte de testes unitários e de integração de layout 100% verde.
 
 ---
 
 ### Fase 10 — Refinamento Visual Premium & Dashboard de Insights
 
-**Objetivo:** elevar o padrão estético para nível premium com micro-interações táteis e transformar o Início em um centro dinâmico de inteligência financeira.
+**Objetivo:** elevar o padrão estético para nível fintech premium com micro-interações táteis, animação fluida de dados, controle de densidade e transformar a Visão Geral em um centro dinâmico de inteligência financeira contextual.
+
+**Decisões e Recursos Premium Alinhados:**
+- **Number Ticker (Decisão 1):** Primitivo `NumberTicker` em `src/components/ui/number-ticker.tsx` para transição animada de valores monetários e percentuais nos KPIs ao trocar mês/filtro (interpolação suave em ~300ms via `requestAnimationFrame` mantendo tabulação fixa e fonte mono, desativável com `prefers-reduced-motion`).
+- **Swipe-to-Action Mobile (Decisão 2):** Hook `useSwipeAction` em `src/hooks/use-swipe-action.ts` integrado ao `TransactionRow` no mobile, permitindo deslizar a linha para revelar ações rápidas (Editar / Excluir com confirmação).
+- **Feedback Háptico Tátil (Decisão 3):** Serviço leve `src/services/haptics.ts` com `triggerHaptic('light' | 'medium' | 'success' | 'warning')` via `navigator.vibrate` em ações-chave (FAB, calculadora, confirmações de mutação).
+- **Toggle de Densidade (Decisão 4):** Alternância entre densidade **Confortável** (padrão, 48px) e **Compacta** (38px) persistida em preferências/storage e aplicada globalmente em tabelas, DataList e listas de transações.
 
 **Entregas (na ordem):**
-1. **Evolução do Design System & Micro-interações:**
-   - Tipografia hierárquica aprimorada e superfícies suaves (cards elevados, borders sutis, blur/glassmorphism sutil em overlays/header).
-   - Feedback tátil refinado nos controles interativos e Skeleton loaders polidos com shimmer harmônico.
-   - Transições de rota e feedback de mutações suaves (respeitando `prefers-reduced-motion`).
+1. **Evolução do Design System, Micro-interações & Haptics:**
+   - Arquivos: `src/styles/tokens.css`, `src/styles/globals.css`, `src/services/haptics.ts`, `src/components/ui/number-ticker.tsx`, `src/hooks/use-swipe-action.ts`, `src/components/ui/skeleton.tsx`, `src/components/ui/card.tsx`.
+   - Tipografia e hierarquia refinadas (Sora para títulos, Inter para interface, IBM Plex Mono com `.num` e transição `NumberTicker`).
+   - Superfícies em camadas com elevação suave (`--shadow-sm`/`--shadow-md`), bordas translúcidas sutis e shimmer aprimorado nos Skeleton loaders.
+   - Micro-interações táteis calibradas (`active:scale-[0.98]` com curva `cubic-bezier(0.2, 0.8, 0.2, 1)`) e feedback háptico sutil.
+   - Suporte a swipe-to-action em `TransactionRow` no mobile e toggle de densidade em listas/tabelas.
 2. **Dashboard com Insights Financeiros:**
-   - Card de **Ritmo de Gastos vs. Teto Orçamentário**: indicador visual de velocidade de consumo do orçamento vs. dia do mês.
-   - Card de **Projeção de Fechamento de Faturas**: consolidação inteligente do previsto de cartões abertos para a data de corte.
-   - Card de **Alertas Contextuais e Anomalias**: despesas fora da média histórica e resumos contextuais do mês diretamente na Visão Geral.
-   - Orquestração limpa com fallbacks graciosos para novos usuários / sem lançamentos.
+   - Arquivos: `src/components/modules/smart-spending-pace-card.tsx`, `src/components/modules/smart-invoice-projection-card.tsx`, `src/components/modules/smart-anomalies-card.tsx` + integração em `src/features/overview/pages/overview-page.tsx`.
+   - **Card Ritmo de Gastos vs. Teto Orçamentário:** Usa `domain/projection/spendingPace` para comparar a velocidade real de consumo contra a fração esperada do mês e emitir indicador de status (no ritmo, acelerado, crítico).
+   - **Card Projeção de Fechamento de Faturas:** Consolida todas as faturas abertas dos cartões ativos na competência atual, calculando o previsto para a data de fechamento e comparando com o limite total disponível.
+   - **Card Alertas Contextuais & Anomalias:** Conecta a `domain/insights` para destacar despesas fora da média histórica, assinaturas detectadas ou alertas prioritários diretamente no topo da Visão Geral.
+   - Fallback gracioso com EmptyStates e OnboardingCard para novos usuários.
 
 **✅ DoD**
-- Visão Geral exibe cards inteligentes alimentados pelos motores puros de `domain/insights` e `domain/projection`.
-- Visual nos 3 temas (light/dark/oled) consistente com a identidade "Vital · Verde + Terminal".
-- Zero quebras de a11y (axe audit verde, contraste AA preservado).
-- Testes unitários para cálculos de agregação dos novos cards e testes de renderização da página.
+- Novos cards inteligentes renderizados na Visão Geral com dados reais fornecidos pelos motores puros de `domain/projection` e `domain/insights`.
+- Visual nos 3 temas (light/dark/oled) consistente, com contraste AA validado em todas as combinações.
+- Zero quebras de a11y (auditoria axe 100% sem violações).
+- Testes unitários para os componentes e testes de integração da página Overview com os novos cards.
 
 ---
 
 ### Fase 11 — Utilitários Nativos (Calculadora Flutuante & Gestos de Navegação/Scroll)
 
-**Objetivo:** oferecer utilitários práticos integrados ao fluxo operacional de lançamentos e navegação gestual rápida.
+**Objetivo:** oferecer utilitários operacionais integrados para agilidade em lançamentos e navegação rápida por gestos/scroll.
+
+**Decisões Técnicas Alinhadas:**
+- **Vanilla Pointer Events (Decisão B - Opção 1):** Hook `useDraggable` em `src/hooks/use-draggable.ts` usando eventos nativos (`pointerdown`, `pointermove`, `pointerup` com `setPointerCapture`), garantindo arrasto fluido em mouse/touch com zero dependências externas e snap às bordas da tela.
+- **Injeção Contextual ("Usar Valor") (Decisão C):** Store/emissor leve `src/services/calculator-bridge.ts` com `injectCalculatedValue(cents)`. O `MoneyInput` / `useCurrencyInput` se subscreve para receber o valor calculado e atualizar o campo ativo com 1 toque.
+- **Scroll-to-Top Inteligente (Decisão D):** Hook `useScrollPosition` com `requestAnimationFrame` + primitivo `ScrollToTopButton` com rolagem suave (`window.scrollTo({ top: 0, behavior: 'smooth' })`) e posicionamento seguro acima da BottomNav.
 
 **Entregas (na ordem):**
 1. **Calculadora Flutuante (Floating Calculator Widget):**
-   - Widget flutuante arrastável (Draggable FAB) com posicionamento livre ou ancoragem inteligente nas bordas.
-   - Painel retrátil (popover/modal compacto) com teclado de cálculo rápido, histórico de operações e divisão de parcelas.
-   - **Injeção Contextual ("Usar Valor"):** transferência em 1 clique do resultado calculado para o campo numérico (`MoneyInput`/`Input`) em foco ou ativo na tela.
-2. **Utilitário de Retorno Rápido ao Topo (Scroll UX):**
-   - Detecção de scroll / fim de página com botão flutuante inteligente (aparece suavemente após scroll > 300px).
-   - Comportamento de rolagem suave (`smooth scroll`) de volta ao topo da visualização com 1 clique/gesto.
-   - Safe-area e posicionamento coordenado com a BottomNav e FABs sem sobreposição.
+   - Arquivos: `src/domain/calculator/` (motor puro de cálculo e divisão de parcelas), `src/hooks/use-draggable.ts`, `src/services/calculator-bridge.ts`, `src/components/modules/floating-calculator.tsx`, `src/components/modules/calculator-keypad.tsx`.
+   - Botão flutuante arrastável (FAB) com suporte a arrastar e soltar (drag & drop), mantendo a posição preferida na tela.
+   - Painel retrátil compacto com display numérico, operações básicas (+, −, ×, ÷), histórico de operações recentes e botão dedicado de divisão de parcelas (ex: valor ÷ N parcelas em centavos exatos).
+   - Botão de ação rápida **"Usar Valor"**: despacha o valor calculado em centavos diretamente para o campo numérico em foco ou formulário ativo (`MoneyInput`).
+2. **Utilitário de Retorno Rápido ao Topo (Scroll/Gesture UX):**
+   - Arquivos: `src/hooks/use-scroll-position.ts` + `src/components/ui/scroll-to-top-button.tsx`.
+   - Detecção de rolagem inteligente (visível suavemente quando `scrollY > 300px`).
+   - Clique/toque executa rolagem suave de volta ao topo da página.
+   - Posicionamento adaptativo com safe-area no mobile (acima da BottomNav) e no desktop (canto inferior direito).
 
 **✅ DoD**
-- Calculadora flutuante opera com precisão decimal/centavos, histórico e arrasto fluido em desktop (mouse) e mobile (touch).
-- Injeção de valor atualiza o estado de formulários ativos (`MoneyInput`) de forma transparente e acessível.
-- Botão/gesto de retorno ao topo funciona em todas as telas com rolagem longa sem conflitar com os outros elementos fixos.
-- Suíte de testes para a máquina de cálculo da calculadora e testes de interação dos componentes.
+- Motor da calculadora (`domain/calculator`) coberto por testes unitários (operações aritméticas, divisão exata em centavos, histórico).
+- Widget flutuante arrastável com funcionamento verificado em mouse (desktop) e touch (mobile).
+- Injeção contextual transfere valores calculados com precisão para o `MoneyInput` sem corromper o estado do formulário.
+- Botão Scroll-to-Top funcional em todas as telas com rolagem longa, respeitando `prefers-reduced-motion`.
 
 ---
 

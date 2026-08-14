@@ -71,6 +71,7 @@
 
    > ⚠️ Use a **anon key** (pública). A `service_role` NUNCA vai para o cliente (RLS depende disso).
    > Outras variáveis do `.env.example` (`SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `R2_*`, `SUPABASE_FUNCTION_URL`, `QUOTES_CRON_SCHEDULE`) são **só de servidor/CLI/edge functions** — não necessárias para o frontend funcionar hoje.
+   > **Opcional — Sentry (F6.3):** crie um projeto em [sentry.io](https://sentry.io), copie o DSN (Settings → Projects → Client Keys) e adicione `VITE_SENTRY_DSN`. Sem essa variável o app funciona normalmente (o SDK nem entra no bundle); com ela, erros de produção + Web Vitals (LCP/INP/CLS) são reportados e correlacionados ao usuário logado.
 
 4. Clique em **Deploy**. O build roda `tsc -b && vite build` (typecheck + bundle com code-splitting + geração do Service Worker PWA).
 
@@ -89,6 +90,7 @@
 |---|---|---|
 | `VITE_SUPABASE_URL` | Cliente (bundle) — `src/lib/env.ts` | ✅ **Sim** |
 | `VITE_SUPABASE_ANON_KEY` | Cliente (bundle) — `src/lib/env.ts` | ✅ **Sim** |
+| `VITE_SENTRY_DSN` | Observabilidade (F6.3) — `src/services/observability.ts` | ❌ opcional (sem DSN = sem Sentry) |
 | `SUPABASE_DB_URL` | CLI/CI/edge functions (fora do bundle) | ❌ só p/ CLI/migrações |
 | `SUPABASE_SERVICE_ROLE_KEY` | Servidor/edge functions (fora do bundle) | ❌ só p/ edge functions |
 | `SUPABASE_FUNCTION_URL` | Edge functions de cotações (futuro) | ❌ pendente (§7) |
@@ -139,7 +141,7 @@ npx supabase db reset  # aplica migrations + seed
 | 2 | **Storage R2** (`src/services/storage/`) | Nenhuma tela usa upload hoje — apenas documentado no env. | `src/services/storage/` + edge function de presigned URLs |
 | 3 | **F5.6 — PWA polish** | PWA instalável, mas sem prompt `beforeinstallprompt` customizado e sem toast de atualização automática. | `src/app/pwa.ts` + UI (ROADMAP F5.6) |
 | 4 | **CI/CD de produção** | Deploy manual via Vercel (git push já dispara; sem gates de testes no CI). | GitHub Actions: `npm ci && typecheck && lint && test` antes do deploy |
-| 5 | **Observabilidade (Sentry)** | Sem logging de erros em produção. | decisão aberta no ROADMAP F6.3 |
+| 5 | ~~Observabilidade (Sentry)~~ | **✅ Feito (F6.3)** — SDK env-gated por `VITE_SENTRY_DSN` (bundle separado, Web Vitals + erros + usuário). | basta configurar o DSN na Vercel |
 | 6 | **Testes contra banco real** | RPCs testados via mocks; sem prova de RLS/rollback em Postgres real. | vitest + Supabase local (ROADMAP F6.1) |
 
 ---
@@ -158,7 +160,7 @@ npx supabase db reset  # aplica migrations + seed
 [ ] Onboarding guiado (criar categorias/cartão/lançamento) funcional
 [ ] PWA instalável + App Shell offline
 [ ] Lighthouse mobile ≥ 90 (baseline)
-[ ] (Futuro) Edge function de cotações + R2 storage + CI/CD + Sentry
+[ ] (Futuro) Edge function de cotações + R2 storage + CI/CD · [ ] Sentry: adicionar `VITE_SENTRY_DSN` na Vercel quando quiser ativar
 ```
 
 ---

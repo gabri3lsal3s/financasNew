@@ -33,6 +33,7 @@
     "@radix-ui/react-slider": "^1.4.7",
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-toast": "^1.2.23",
+    "@sentry/react": "^10.70.0",
     "@supabase/supabase-js": "^2.112.3",
     "@tanstack/react-query": "^5.101.4",
     "class-variance-authority": "^0.7.1",

@@ -66,22 +66,23 @@
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
-    │   │   │                      #   virtual-list (janela + overscan, F5.5), toast
-    │   │   │                      #   (com action p/ toast de atualização PWA, F5.6)…
+    │   │   │                      #   virtual-list (F5.5), toast, scroll-to-top-button (F11)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, installment-badge,
     │   │   │                      #   onboarding-card, pwa-update-toast,
-    │   │   │                      #   install-app-button (F5.6)…
+    │   │   │                      #   install-app-button (F5.6), smart-spending-pace-card,
+    │   │   │                      #   smart-invoice-projection-card, smart-anomalies-card (F10),
+    │   │   │                      #   floating-calculator, calculator-keypad (F11)…
     │   │   └── index.ts
-    │   └── layout/                # Estrutura de página: sidebar, bottom-nav,
+    │   └── layout/                # Estrutura de página: sidebar (collapsible F9), bottom-nav (5 slots F9),
     │       │                      #   app-header, page-shell
     │       └── index.ts
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
-    │   ├── overview/              #   Visão Geral (KPIs, fluxo diário)
+    │   ├── overview/              #   Visão Geral (KPIs, fluxo diário, smart cards F10)
     │   ├── transactions/          #   Transações + wizard de lançamento
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos)
     │   ├── debts/                 #   Dívidas (status, quitação integrada)
@@ -103,6 +104,7 @@
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── virtualization/        #   janela de renderização de listas (F5.5)
+    │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F11)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
@@ -117,13 +119,17 @@
     │   └── mutations.ts           #   useCreateExpense(), useDeleteInstallment()…
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
-    │                              #   use-highlight-target, use-pwa-install…)
+    │                              #   use-highlight-target, use-pwa-install,
+    │                              #   use-draggable, use-scroll-position…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de input
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
-    │   └── storage/               #   Abstração Cloudflare R2 (presigned URLs)
+    │   ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
+    │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
+    │   ├── storage/               #   Abstração Cloudflare R2 (presigned URLs)
+    │   └── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F11)
     │
     ├── lib/                       # Constantes e utils genéricos
     │   ├── constants.ts           #   APP_START_DATE, faixas 85/90/95, limites…
