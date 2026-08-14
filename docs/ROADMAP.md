@@ -167,7 +167,7 @@
 **Objetivo:** inteligência sobre os dados, sempre como motores puros testáveis.
 
 **Entregas (na ordem):**
-1. **Motor de insights** (`domain/insights`): alertas críticos priorizados, assinaturas (3 sinais + tiers), recorrências (3 níveis), confiança + aprendizado (ignorar/confirmar/restaurar).
+1. ✅ **Motor de insights** (`domain/insights`): alertas críticos priorizados, assinaturas (3 sinais + tiers), recorrências (3 níveis), confiança + aprendizado (ignorar/confirmar/restaurar).
 2. Desafios de economia (10/20/30%, limite dinâmico, máx. 4) e sugestões de limite (máx. 3/mês).
 3. Projeção (`domain/projection`): gasto disponível diário, ritmo de gastos (8º dia / ≥30%), fim de mês (dia ≥ 3), projeção de pendências.
 4. Relatórios: dia/mês/ano, custom (≤ 366 dias), agregação por categoria/forma/dia da semana, comparativo, merge de dívidas pagas.
@@ -181,6 +181,17 @@
 - Snooze expira ao vencer; ordenação atrasados primeiro.
 
 ---
+
+**Progresso da entrega 1:**
+- `domain/insights/alerts.ts` — alertas críticos priorizados (§3.7.1): ritmo > 5% acima, limites estourados, burn rate > 85%, déficit projetado, elogio por poupança ≥ 20%; ordenação por prioridade, emissão apenas dos verdadeiros.
+- `domain/insights/subscriptions.ts` — catálogo `KNOWN_SERVICES` (~38 serviços com tiers) + 3 sinais (nome, categoria, valor ±5%) + árvore de decisão 0.40–0.98 (§3.7.2); essenciais nunca cortáveis.
+- `domain/insights/recurrences.ts` — recorrências em 3 níveis (§3.7.3): `subscription` (valor estável ±5%), `recurring` (mesma descrição), `estimated` (mesma categoria); filtros mínimos e janela de meses.
+- `domain/insights/confidence.ts` — `confidenceScore` com bônus não-linear por histórico (2m:+0.05, 5m:+0.28) e penalidade de variância (0.3× subscription, 0.8× recurring) (§3.7.4).
+- `domain/insights/feedback.ts` — `applyFeedback`: ignoradas saem da lista, confirmadas ganham flag; `occurrence_key` estável persistida em `insight_feedback`.
+- `domain/insights/diagnostics.ts` — concentração de renda (>60% alerta), gastos de fim de semana (ratio > 1.5), tendência significativa (>15%), saúde da poupança (§3.7.6).
+- Persistência: `src/data/repositories/insight-feedback.ts` (list/upsert/delete-restaurar) + `useFeedback`/`useSetFeedback` (TanStack Query).
+- **29 testes verdes** (25 domínio + 4 repository).
+
 
 ### Fase 4 — Carteira & Rebalanceamento
 

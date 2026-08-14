@@ -30,3 +30,4 @@ export {
   useUpdateCategory,
   useDeleteCategory,
 } from "./mutations/use-category-mutations";
+export { useFeedback, useSetFeedback, feedbackKey } from "./queries/use-insight-feedback";
