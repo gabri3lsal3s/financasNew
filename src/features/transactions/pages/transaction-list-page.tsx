@@ -99,23 +99,22 @@ export function TransactionListPage() {
   const expensesTotalCents = sumCents(expensesQuery.data ?? []);
   const balanceCents = incomesTotalCents - expensesTotalCents;
 
-  const header = (
-    <div className="flex items-center justify-between gap-2">
-      <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Transações</h1>
-      <Link to="/transacoes/novo">
-        <Button>
-          <Plus aria-hidden="true" />
-          Nova transação
-        </Button>
-      </Link>
-    </div>
-  );
-
   return (
     <div className="flex flex-col gap-6">
-      {header}
+      {/* F12 — sem header visual: seletor de mês direto; o botão de novo
+          lançamento fica ao lado (só desktop — no mobile o FAB da BottomNav
+          assume) e o título permanece apenas para leitores de tela. */}
+      <h1 className="sr-only">Transações</h1>
 
-      <MonthPicker value={month} onValueChange={handleMonthChange} />
+      <div className="flex items-center justify-between gap-3">
+        <MonthPicker value={month} onValueChange={handleMonthChange} className="flex-1" />
+        <Link to="/transacoes/novo" className="hidden sm:inline-flex">
+          <Button>
+            <Plus aria-hidden="true" />
+            Nova transação
+          </Button>
+        </Link>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <KpiCard label="Receitas" value={formatCentsAsBRL(incomesTotalCents)} tone="positive" />

@@ -132,8 +132,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     const { container } = render(<OverviewPage />);
     expect(screen.getByText("Fluxo diário")).toBeInTheDocument();
     expect(screen.getAllByText("Receitas").length).toBeGreaterThan(0);
-    // Curva de saldo acumulado (polyline do DailyFlowChart).
-    expect(container.querySelectorAll("svg polyline").length).toBeGreaterThan(0);
+    // Curva de fluxo diário (path SVG do DailyFlowChart).
+    expect(container.querySelectorAll("svg path").length).toBeGreaterThan(0);
   });
 
   it("exibe o donut de distribuição por categorias", () => {

@@ -12,7 +12,7 @@ export interface DailyFlowChartProps {
 
 const LINE_WIDTH = 320;
 const LINE_HEIGHT = 160;
-const PAD = 8;
+const PAD = 12;
 
 interface LinePoint {
   x: number;
@@ -31,18 +31,44 @@ function toLinePointList(values: readonly number[], width: number, height: numbe
   });
 }
 
-function toLinePoints(values: readonly number[], width: number, height: number): string {
-  return toLinePointList(values, width, height)
-    .map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
-    .join(" ");
+/**
+ * Gera um comando SVG path com curvas suaves (Catmull-Rom / Bézier cúbicas),
+ * eliminando cantos pontiagudos e produzindo linhas orgânicas e fluidas.
+ */
+function toSmoothPath(points: readonly LinePoint[]): string {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0]!.x.toFixed(1)} ${points[0]!.y.toFixed(1)}`;
+
+  let path = `M ${points[0]!.x.toFixed(1)} ${points[0]!.y.toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)]!;
+    const p1 = points[i]!;
+    const p2 = points[i + 1]!;
+    const p3 = points[Math.min(points.length - 1, i + 2)]!;
+
+    // Fator de suavização 0.2 para evitar overshoot em variações bruscas
+    const k = 0.2;
+    const cp1x = p1.x + (p2.x - p0.x) * k;
+    const cp1y = p1.y + (p2.y - p0.y) * k;
+    const cp2x = p2.x - (p3.x - p1.x) * k;
+    const cp2y = p2.y - (p3.y - p1.y) * k;
+
+    path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return path;
+}
+
+function toSmoothAreaPath(points: readonly LinePoint[], height: number): string {
+  if (points.length === 0) return "";
+  const linePath = toSmoothPath(points);
+  const firstX = points[0]!.x.toFixed(1);
+  const lastX = points[points.length - 1]!.x.toFixed(1);
+  return `${linePath} L ${lastX} ${height} L ${firstX} ${height} Z`;
 }
 
 /**
- * DailyFlowChart — fluxo diário em gráfico de linhas: receitas (verde) ×
- * despesas (vermelho) por dia do mês na mesma escala, com scrubbing tátil
- * (pointer), linha guia vertical, pontos do dia e tooltip flutuante. Os
- * valores vêm de `domain/overview` (buildDailyFlow) — sem cálculo de
- * negócio aqui.
+ * DailyFlowChart — fluxo diário com curvas suaves e arredondadas (Bézier cúbicas),
+ * sem sombras ou cantos pontiagudos, com linhas guias sutis e scrubbing interativo.
  */
 export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,10 +77,13 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   const incomeValues = useMemo(() => days.map((day) => day.incomeCents), [days]);
   const expenseValues = useMemo(() => days.map((day) => day.expenseCents), [days]);
 
-  const incomePoints = useMemo(() => toLinePoints(incomeValues, LINE_WIDTH, LINE_HEIGHT), [incomeValues]);
-  const expensePoints = useMemo(() => toLinePoints(expenseValues, LINE_WIDTH, LINE_HEIGHT), [expenseValues]);
   const incomePointList = useMemo(() => toLinePointList(incomeValues, LINE_WIDTH, LINE_HEIGHT), [incomeValues]);
   const expensePointList = useMemo(() => toLinePointList(expenseValues, LINE_WIDTH, LINE_HEIGHT), [expenseValues]);
+
+  const incomePath = useMemo(() => toSmoothPath(incomePointList), [incomePointList]);
+  const expensePath = useMemo(() => toSmoothPath(expensePointList), [expensePointList]);
+  const incomeArea = useMemo(() => toSmoothAreaPath(incomePointList, LINE_HEIGHT), [incomePointList]);
+  const expenseArea = useMemo(() => toSmoothAreaPath(expensePointList, LINE_HEIGHT), [expensePointList]);
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const el = containerRef.current;
@@ -80,30 +109,50 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
       onPointerMove={handlePointerMove}
       onPointerLeave={() => setScrubIndex(null)}
     >
-      {/* Linhas de receitas × despesas na mesma escala */}
-      <div className="relative h-40 w-full" aria-hidden="true">
+      <div className="relative h-44 w-full" aria-hidden="true">
         <svg viewBox={`0 0 ${LINE_WIDTH} ${LINE_HEIGHT}`} preserveAspectRatio="none" className="h-full w-full overflow-visible">
-          <polyline
-            points={incomePoints}
+          <defs>
+            <linearGradient id="flow-income-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--positive, #10b981)" stopOpacity="0.14" />
+              <stop offset="100%" stopColor="var(--positive, #10b981)" stopOpacity="0.0" />
+            </linearGradient>
+            <linearGradient id="flow-expense-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--critical, #f43f5e)" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="var(--critical, #f43f5e)" stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
+
+          {/* Linhas guias horizontais limpas e sutis */}
+          <line x1="0" y1={PAD} x2={LINE_WIDTH} y2={PAD} stroke="currentColor" strokeDasharray="2 4" className="text-border/30" strokeWidth={1} />
+          <line x1="0" y1={LINE_HEIGHT / 2} x2={LINE_WIDTH} y2={LINE_HEIGHT / 2} stroke="currentColor" strokeDasharray="2 4" className="text-border/25" strokeWidth={1} />
+          <line x1="0" y1={LINE_HEIGHT - PAD} x2={LINE_WIDTH} y2={LINE_HEIGHT - PAD} stroke="currentColor" strokeDasharray="2 4" className="text-border/30" strokeWidth={1} />
+
+          {/* Áreas preenchidas com gradiente sem sombras */}
+          {incomeArea ? <path d={incomeArea} fill="url(#flow-income-grad)" /> : null}
+          {expenseArea ? <path d={expenseArea} fill="url(#flow-expense-grad)" /> : null}
+
+          {/* Curvas suaves e arredondadas */}
+          <path
+            d={incomePath}
             fill="none"
             vectorEffect="non-scaling-stroke"
-            strokeWidth={2}
+            strokeWidth={2.4}
             strokeLinecap="round"
             strokeLinejoin="round"
             className="stroke-positive-strong"
           />
-          <polyline
-            points={expensePoints}
+          <path
+            d={expensePath}
             fill="none"
             vectorEffect="non-scaling-stroke"
-            strokeWidth={2}
+            strokeWidth={2.4}
             strokeLinecap="round"
             strokeLinejoin="round"
             className="stroke-negative-strong"
           />
         </svg>
 
-        {/* Ponto final das linhas (último dia com dados no mês) */}
+        {/* Ponto final das linhas (sem sombras) */}
         {lastIncome ? (
           <span
             className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface"
@@ -117,7 +166,7 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
           />
         ) : null}
 
-        {/* Pontos do dia sob scrubbing nas duas linhas */}
+        {/* Pontos do dia sob scrubbing (sem sombras) */}
         {scrubIncome ? (
           <span
             className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface"
@@ -134,24 +183,38 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
 
       {/* Linha guia vertical do dia sob scrubbing */}
       {scrubLeft ? (
-        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-px bg-foreground/15" style={{ left: scrubLeft }} />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-px bg-foreground/20" style={{ left: scrubLeft }} />
       ) : null}
 
-      {/* Tooltip flutuante do dia sob scrubbing */}
+      {/* Tooltip flutuante limpo (sem sombras pesadas) */}
       {scrubDay ? (
         <div
-          className="pointer-events-none absolute top-1 z-tooltip -translate-x-1/2 rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-lg"
+          className="pointer-events-none absolute top-0 z-tooltip -translate-x-1/2 rounded-xl border border-border/80 bg-surface/95 backdrop-blur-md p-2.5 text-xs min-w-36 animate-in fade-in zoom-in-95 duration-100"
           style={{ left: scrubLeft }}
           role="tooltip"
         >
-          <p className="font-semibold text-foreground">
-            {String(scrubDay.dayOfMonth).padStart(2, "0")}/{String(new Date(scrubDay.day).getMonth() + 1).padStart(2, "0")}
-          </p>
-          <p className="privacy-mask text-positive-strong">+ {formatCentsAsBRL(scrubDay.incomeCents)}</p>
-          <p className="privacy-mask text-negative-strong">− {formatCentsAsBRL(scrubDay.expenseCents)}</p>
-          <p className="num mt-0.5 border-t border-border/60 pt-0.5 text-muted-foreground">
-            Saldo do dia {formatCentsAsBRL(scrubDay.incomeCents - scrubDay.expenseCents)}
-          </p>
+          <div className="flex items-center justify-between border-b border-border/50 pb-1 mb-1.5">
+            <span className="font-semibold text-foreground">
+              {String(scrubDay.dayOfMonth).padStart(2, "0")}/{String(new Date(scrubDay.day).getMonth() + 1).padStart(2, "0")}
+            </span>
+            <span className={cn("num font-medium text-[11px]", scrubDay.incomeCents - scrubDay.expenseCents >= 0 ? "text-positive-strong" : "text-critical")}>
+              {formatCentsAsBRL(scrubDay.incomeCents - scrubDay.expenseCents)}
+            </span>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-3 text-[11px]">
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <span className="size-1.5 rounded-full bg-positive-strong" /> Entradas
+              </span>
+              <span className="privacy-mask num font-medium text-positive-strong">+{formatCentsAsBRL(scrubDay.incomeCents)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-[11px]">
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <span className="size-1.5 rounded-full bg-negative-strong" /> Saídas
+              </span>
+              <span className="privacy-mask num font-medium text-negative-strong">−{formatCentsAsBRL(scrubDay.expenseCents)}</span>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

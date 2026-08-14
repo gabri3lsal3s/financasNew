@@ -3,8 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CardsPage } from "./cards-page";
 
+const searchParamsMock = vi.fn(() => [new URLSearchParams(), vi.fn()]);
+
 vi.mock("react-router", () => ({
-  useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  useSearchParams: () => searchParamsMock(),
 }));
 
 const paymentMock = vi.fn();
@@ -113,5 +115,13 @@ describe("CardsPage — faturas, pagamentos e estornos (§3.3.3)", () => {
     await user.click(screen.getByRole("button", { name: "Novo cartão" }));
     expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
+  });
+
+  it("abre o formulário de criação via FAB contextual (?novo=cartao)", () => {
+    searchParamsMock.mockReturnValue([new URLSearchParams("novo=cartao"), vi.fn()]);
+    render(<CardsPage />);
+    expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toBeInTheDocument();
+    searchParamsMock.mockReturnValue([new URLSearchParams(), vi.fn()]);
   });
 });

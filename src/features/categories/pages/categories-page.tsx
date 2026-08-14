@@ -4,6 +4,7 @@ import { Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { Alert, Button, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { CategoryIcon, HighlightRow } from "@/components/modules";
 import { getErrorMessage } from "@/services/errors";
+import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useAllCategories, useCategoryUsage } from "@/state";
 import { CategoryFormDialog } from "@/features/categories/components/category-form-dialog";
@@ -33,7 +34,8 @@ export function CategoriesPage() {
     );
   };
 
-  const [formOpen, setFormOpen] = useState(false);
+  // FAB contextual (F12): ?novo=categoria abre o formulário de criação.
+  const { open: formOpen, setOpen: setFormOpen } = useCreateDeepLink("categoria");
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<Category | null>(null);
 
@@ -55,7 +57,8 @@ export function CategoriesPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-center justify-between gap-2">
         <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Categorias</h1>
-        <Button onClick={openCreate}>
+        {/* Nova categoria só no desktop — no mobile o FAB da BottomNav assume (F12). */}
+        <Button className="hidden sm:inline-flex" onClick={openCreate}>
           <Plus aria-hidden="true" />
           Nova categoria
         </Button>

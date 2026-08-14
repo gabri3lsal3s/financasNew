@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Inbox, PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Alert, EmptyState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
+import { Activity, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Alert, Badge, EmptyState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   DailyFlowChart,
@@ -8,7 +8,6 @@ import {
   MonthPicker,
   OnboardingCard,
 } from "@/components/modules";
-import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import { isOnboardingComplete } from "@/domain/onboarding";
 import {
   BUDGET_STATUS_LABELS,
@@ -23,7 +22,6 @@ import {
   accountsNet,
   buildDailyFlow,
   computeOverview,
-  monthlySeries,
   openInvoicesTotal,
   percentChange,
 } from "@/domain/overview";
@@ -58,101 +56,87 @@ function DeltaHint({ currentCents, previousCents, invert }: { currentCents: numb
   const delta = percentChange(currentCents, previousCents);
   if (delta === null) return null;
   const up = delta >= 0;
-  // Para despesas, subir é ruim (invert as cores).
-  const good = invert ? !up : up;
+  const positive = invert ? !up : up;
   const Icon = up ? TrendingUp : TrendingDown;
   return (
-    <span className={cn("inline-flex items-center gap-0.5", good ? "text-positive-strong" : "text-critical")}>
+    <span className={cn("inline-flex items-center gap-0.5", positive ? "text-positive-strong" : "text-negative-strong")}>
       <Icon className="size-3" aria-hidden="true" />
-      {formatPercent(Math.abs(delta))}%
+      <span>{formatPercent(Math.abs(delta))}%</span>
     </span>
   );
 }
 
-/** Janela dos últimos N meses (antigo → atual) para os sparklines dos KPIs. */
-const SPARK_MONTHS = 6;
-
-/** Visão Consolidada (§3.6) — Dashboard limpo e objetivo de finanças pessoais. */
 export function OverviewPage() {
-  const [month, setMonth] = useState(currentMonth());
-  const previousMonth = shiftMonth(month, -1);
+  const [month, setMonth] = useState(currentMonth);
+  const visual = useVisualCustomization();
+
+  const prevMonth = shiftMonth(month, -1);
+  const startRange = shiftMonth(month, -5);
+  const rangeMonths = Array.from({ length: 6 }, (_, i) => shiftMonth(startRange, i));
+  const rangeStart = `${startRange}-01`;
+  const rangeEnd = `${shiftMonth(month, 1)}-01`;
   const today = todayISO();
 
+  // Queries TanStack (state).
   const incomesQuery = useIncomes(month);
   const expensesQuery = useExpenses(month);
-  const prevIncomesQuery = useIncomes(previousMonth);
-  const prevExpensesQuery = useExpenses(previousMonth);
+  const prevIncomesQuery = useIncomes(prevMonth);
+  const prevExpensesQuery = useExpenses(prevMonth);
+
+  const incomesRangeQuery = useIncomesByRange(rangeStart, rangeEnd);
+  const expensesRangeQuery = useExpensesByRange(rangeStart, rangeEnd);
+
+  const cardsQuery = useCreditCards();
   const budgetsQuery = useBudgets();
   const expenseCategories = useCategories("expense");
   const debtsQuery = useDebts();
-  useCreditCards();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
-
-  // Série dos últimos meses para os micro-sparklines dos KPIs.
-  const sparkStart = shiftMonth(month, -(SPARK_MONTHS - 1));
-  const sparkRange = { start: `${sparkStart}-01`, end: `${shiftMonth(month, 1)}-01` };
-  const sparkExpensesQuery = useExpensesByRange(sparkRange.start, sparkRange.end);
-  const sparkIncomesQuery = useIncomesByRange(sparkRange.start, sparkRange.end);
-
   const onboardingQuery = useOnboardingCounts();
-  const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
-  const visual = useVisualCustomization();
 
   const loading =
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
     prevIncomesQuery.isLoading ||
     prevExpensesQuery.isLoading ||
-    budgetsQuery.isLoading ||
-    debtsQuery.isLoading;
+    debtsQuery.isLoading ||
+    cardsQuery.isLoading;
+
   const error =
     incomesQuery.error ??
     expensesQuery.error ??
     prevIncomesQuery.error ??
     prevExpensesQuery.error ??
-    budgetsQuery.error ??
     debtsQuery.error ??
-    cardExpensesQuery.error ??
-    cardPaymentsQuery.error;
+    cardsQuery.error ??
+    budgetsQuery.error;
 
+  const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
+
+  // Computação pura dos totais do mês (§3.6).
   const incomeCents = weightedSum(incomesQuery.data ?? []);
   const expenseCents = weightedSum(expensesQuery.data ?? []);
   const prevIncomeCents = weightedSum(prevIncomesQuery.data ?? []);
   const prevExpenseCents = weightedSum(prevExpensesQuery.data ?? []);
-  const investmentCents = 0; // Carteira na Fase 4.
 
-  const totals = computeOverview(incomeCents, expenseCents, investmentCents);
-  const prevTotals = computeOverview(prevIncomeCents, prevExpenseCents, investmentCents);
+  const totals = computeOverview(incomeCents, expenseCents, 0);
+  const prevTotals = computeOverview(prevIncomeCents, prevExpenseCents, 0);
 
-  // Sparklines: totais mensais ponderados dos últimos 6 meses.
-  const sparkSeries = monthlySeries(
-    [
-      ...(sparkIncomesQuery.data ?? []).map((item) => ({
-        date: item.date,
-        kind: "income" as const,
-        amountCents: toCents(item.value * item.report_weight),
-      })),
-      ...(sparkExpensesQuery.data ?? []).map((item) => ({
-        date: item.date,
-        kind: "expense" as const,
-        amountCents: toCents(item.value * item.report_weight),
-      })),
-    ],
-    sparkStart,
-    SPARK_MONTHS,
+  // Sparklines com a série dos últimos 6 meses.
+  const incomeSpark = rangeMonths.map((m) =>
+    weightedSum((incomesRangeQuery.data ?? []).filter((i) => i.date.startsWith(m))),
   );
-  const incomeSpark = sparkSeries.map((point) => point.incomeCents);
-  const expenseSpark = sparkSeries.map((point) => point.expenseCents);
+  const expenseSpark = rangeMonths.map((m) =>
+    weightedSum((expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m))),
+  );
 
-  // Saldo líquido de Contas (§3.6): pendentes do mês − faturas em aberto.
-  const range = { start: `${month}-01`, end: `${shiftMonth(month, 1)}-01` };
+  // Resumo de contas e faturas.
   const debts = debtsQuery.data ?? [];
   const receivablePending = debts
-    .filter((d) => d.type === "receivable" && d.paid_at === null && d.due_date >= range.start && d.due_date < range.end)
+    .filter((d) => d.type === "receivable" && d.paid_at === null && d.due_date >= rangeStart && d.due_date < rangeEnd)
     .reduce((acc, d) => acc + toCents(d.amount), 0);
   const payablePending = debts
-    .filter((d) => d.type === "payable" && d.paid_at === null && d.due_date >= range.start && d.due_date < range.end)
+    .filter((d) => d.type === "payable" && d.paid_at === null && d.due_date >= rangeStart && d.due_date < rangeEnd)
     .reduce((acc, d) => acc + toCents(d.amount), 0);
   const openInvoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
   const accountsBalance = accountsNet(receivablePending, payablePending, openInvoices);
@@ -200,9 +184,9 @@ export function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-center justify-between gap-2">
-        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Visão Geral</h1>
-      </header>
+      {/* F12 — sem header visual: o app mostra direto o seletor de mês.
+          Título mantido apenas para leitores de tela (ordem de heading). */}
+      <h1 className="sr-only">Visão Geral</h1>
 
       <MonthPicker value={month} onValueChange={setMonth} />
 
@@ -256,40 +240,61 @@ export function OverviewPage() {
           {/* Resumo financeiro (§3.6): saldo líquido de contas e taxa de poupança */}
           {visual.dashboardWidgets.summary && (
             <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2">
-              <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-                <div className="flex items-center gap-2">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <Wallet className="size-4 text-foreground" aria-hidden="true" />
-                  </span>
-                  <h2 className="text-sm font-semibold text-foreground">Saldo líquido de contas</h2>
+              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Wallet className="size-4" aria-hidden="true" />
+                    </span>
+                    <h2 className="text-sm font-semibold text-foreground">Saldo líquido de contas</h2>
+                  </div>
+                  <Badge variant="muted" className="text-[11px]">Projeção</Badge>
                 </div>
-                <MoneyText
-                  cents={accountsBalance}
-                  variant="hero"
-                  tone="auto"
-                  sign="auto"
-                  className="text-3xl"
-                />
-                <p className="text-xs text-muted-foreground">
-                  A receber <span className="privacy-mask">{formatCentsAsBRL(receivablePending)}</span> · A pagar{" "}
-                  <span className="privacy-mask">{formatCentsAsBRL(payablePending)}</span> · Faturas em aberto{" "}
-                  <span className="privacy-mask">{formatCentsAsBRL(openInvoices)}</span>
-                </p>
+                <div>
+                  <MoneyText
+                    cents={accountsBalance}
+                    variant="hero"
+                    tone="auto"
+                    sign="auto"
+                    className="text-3xl tracking-tight"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
+                  <div className="truncate">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">A receber</p>
+                    <p className="privacy-mask num font-medium text-positive-strong">{formatCentsAsBRL(receivablePending)}</p>
+                  </div>
+                  <div className="truncate">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">A pagar</p>
+                    <p className="privacy-mask num font-medium text-negative-strong">{formatCentsAsBRL(payablePending)}</p>
+                  </div>
+                  <div className="truncate">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Faturas</p>
+                    <p className="privacy-mask num font-medium text-foreground">{formatCentsAsBRL(openInvoices)}</p>
+                  </div>
+                </div>
               </article>
 
-              <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-                <div className="flex items-center gap-2">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <PiggyBank className="size-4 text-foreground" aria-hidden="true" />
-                  </span>
-                  <h2 className="text-sm font-semibold text-foreground">Taxa de poupança</h2>
+              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-positive/10 text-positive-strong">
+                      <PiggyBank className="size-4" aria-hidden="true" />
+                    </span>
+                    <h2 className="text-sm font-semibold text-foreground">Taxa de poupança</h2>
+                  </div>
+                  <Badge variant={totals.savingsRatePercent >= 20 ? "positive" : totals.savingsRatePercent >= 0 ? "muted" : "critical"}>
+                    {totals.savingsRatePercent >= 20 ? "Meta atingida" : totals.savingsRatePercent >= 0 ? "Regular" : "Abaixo"}
+                  </Badge>
                 </div>
-                <p className={cn("num text-3xl font-semibold", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
-                  {formatPercent(totals.savingsRatePercent)}%
-                </p>
-                <p className="text-xs text-muted-foreground">
+                <div>
+                  <p className={cn("num text-3xl font-bold tracking-tight", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
+                    {formatPercent(totals.savingsRatePercent)}%
+                  </p>
+                </div>
+                <div className="border-t border-border/50 pt-3 text-xs text-muted-foreground">
                   {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
-                </p>
+                </div>
               </article>
             </section>
           )}
@@ -301,25 +306,37 @@ export function OverviewPage() {
               className={cn("grid gap-3", visual.dashboardWidgets.flow && visual.dashboardWidgets.donut && donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
             >
               {visual.dashboardWidgets.flow && (
-                <section aria-label="Fluxo diário" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+                <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
-                    <span className="text-xs text-muted-foreground">{monthLabel(month)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <Activity className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                        <span className="size-2 rounded-full bg-positive-strong" /> Receitas
+                      </span>
+                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                        <span className="size-2 rounded-full bg-negative-strong" /> Despesas
+                      </span>
+                    </div>
                   </div>
                   <DailyFlowChart days={dailyFlow} />
-                  <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className="h-0.5 w-4 rounded bg-positive-strong" /> Receitas
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="h-0.5 w-4 rounded bg-negative-strong" /> Despesas
-                    </span>
-                  </div>
                 </section>
               )}
               {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
-                <section aria-label="Distribuição por categoria" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-                  <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
+                <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <PieChart className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
+                    </div>
+                    <Badge variant="muted" className="text-[11px]">{donutSlices.length} categorias</Badge>
+                  </div>
                   <CategoryDonut slices={donutSlices} />
                 </section>
               ) : null}
@@ -328,30 +345,72 @@ export function OverviewPage() {
 
           {/* Orçamentos (§3.6): progresso e lista de atenção */}
           {visual.dashboardWidgets.budgets && (
-            <section aria-label="Orçamentos" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+            <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Orçamentos</h2>
-                <p className="num text-xs text-muted-foreground">
-                  {Math.round(globalPercent)}% de {formatCentsAsBRL(totalLimitsCents)}
-                </p>
+                <div className="flex items-center gap-2">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <Target className="size-3.5" aria-hidden="true" />
+                  </span>
+                  <h2 className="text-sm font-semibold text-foreground">Orçamentos do mês</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="num text-xs text-muted-foreground">
+                    {formatCentsAsBRL(expenseCents)} de {formatCentsAsBRL(totalLimitsCents)}
+                  </span>
+                  <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[11px]">
+                    {Math.round(globalPercent)}% utilizado
+                  </Badge>
+                </div>
               </div>
-              <Progress value={globalPercent} tone={progressTone(globalPercent)} aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`} />
+
+              <Progress
+                value={globalPercent}
+                tone={progressTone(globalPercent)}
+                className="h-2"
+                aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`}
+              />
 
               {attentionRows.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma categoria excedeu o limite.</p>
+                <div className="flex items-center gap-2.5 rounded-xl border border-positive/20 bg-positive/5 px-3.5 py-3 text-xs text-positive-strong">
+                  <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
+                  <span>Todos os orçamentos sob controle neste mês.</span>
+                </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {attentionRows.slice(0, 3).map((row) => (
-                    <div key={row.category.id} className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-foreground">{row.category.name}</span>
-                        <span className="text-critical">{BUDGET_STATUS_LABELS[row.status]}</span>
-                      </div>
-                      <BudgetProgressBar spentCents={row.spentCents} limitCents={row.limitCents} />
-                    </div>
-                  ))}
-                  {attentionRows.length > 3 ? (
-                    <p className="text-xs text-muted-foreground">+{attentionRows.length - 3} outra(s) na atenção.</p>
+                <div className="flex flex-col gap-2.5">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Categorias em atenção</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {attentionRows.slice(0, 4).map((row) => {
+                      const percent = row.limitCents > 0 ? (row.spentCents / row.limitCents) * 100 : 0;
+                      const isOver = row.spentCents > row.limitCents;
+                      return (
+                        <div
+                          key={row.category.id}
+                          className="flex flex-col gap-2 rounded-xl border border-border/60 bg-surface-hover/30 p-3"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-foreground truncate">{row.category.name}</span>
+                            <Badge variant={isOver ? "critical" : "warning"} className="text-[10px] px-1.5 py-0">
+                              {BUDGET_STATUS_LABELS[row.status]}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span className="privacy-mask num font-medium text-foreground">
+                              {formatCentsAsBRL(row.spentCents)}
+                            </span>
+                            <span className="num">de {formatCentsAsBRL(row.limitCents)}</span>
+                          </div>
+                          <Progress
+                            value={percent}
+                            tone={isOver ? "critical" : "warning"}
+                            className="h-1.5"
+                            aria-label={`Uso da categoria ${row.category.name}: ${Math.round(percent)}%`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {attentionRows.length > 4 ? (
+                    <p className="text-xs text-muted-foreground text-center">+{attentionRows.length - 4} outra(s) categoria(s) em atenção.</p>
                   ) : null}
                 </div>
               )}
@@ -370,4 +429,3 @@ export function OverviewPage() {
     </div>
   );
 }
-

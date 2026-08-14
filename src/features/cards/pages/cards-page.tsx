@@ -7,6 +7,7 @@ import { autoSelectBillMonth, buildCompetenceSummaries, invoiceStatus } from "@/
 import { currentMonth, monthLabel } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
+import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useCardExpenses, useCardPayments, useCreditCards } from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
@@ -28,7 +29,8 @@ export function CardsPage() {
   const selectedCardId = paramCard ?? pickedCardId;
 
   const [month, setMonth] = useState<string | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
+  // FAB contextual (F12): ?novo=cartao abre o formulário de criação.
+  const { open: formOpen, setOpen: setFormOpen, fromUrl } = useCreateDeepLink("cartao");
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(null);
 
@@ -71,13 +73,8 @@ export function CardsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-center justify-between gap-2">
-        <h1 className="font-display text-2xl font-bold">Cartões</h1>
-        <Button onClick={() => openForm(null)}>
-          <Plus aria-hidden="true" />
-          Novo cartão
-        </Button>
-      </header>
+      {/* F12 — sem header visual: seletor de mês direto; título apenas p/ leitores de tela. */}
+      <h1 className="sr-only">Cartões</h1>
 
       {error ? (
         <div className="flex flex-col gap-3">
@@ -130,6 +127,11 @@ export function CardsPage() {
             ))}
             <Button type="button" variant="ghost" size="icon" aria-label="Editar cartão" onClick={() => openForm(selectedCard)}>
               <Pencil className="size-4" aria-hidden="true" />
+            </Button>
+            {/* Novo cartão só no desktop — no mobile o FAB da BottomNav assume (F12). */}
+            <Button type="button" className="hidden sm:inline-flex" onClick={() => openForm(null)}>
+              <Plus aria-hidden="true" />
+              Novo cartão
             </Button>
           </div>
 
@@ -218,7 +220,8 @@ export function CardsPage() {
         </>
       )}
 
-      <CardFormDialog card={editingCard} open={formOpen} onOpenChange={setFormOpen} />
+      {/* Deep-link do FAB sempre abre em modo criação (ignora edição pendente). */}
+      <CardFormDialog card={fromUrl ? null : editingCard} open={formOpen} onOpenChange={setFormOpen} />
 
       {cardId && paymentMode ? (
         <PaymentDialog

@@ -130,10 +130,8 @@ export function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Relatórios</h1>
-        <p className="text-sm text-muted-foreground">Agregações do período com comparativo.</p>
-      </header>
+      {/* F12 — sem header visual: abas + seletor de período direto; título apenas p/ leitores de tela. */}
+      <h1 className="sr-only">Relatórios</h1>
 
       <Tabs
         value={mode}

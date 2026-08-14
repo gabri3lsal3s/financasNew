@@ -11,14 +11,15 @@ const days = buildDailyFlow("2026-08", [
 ]);
 
 describe("DailyFlowChart (F8)", () => {
-  it("renderiza as linhas de receitas e despesas (um ponto por dia do mês)", () => {
+  it("renderiza as curvas de receitas e despesas com caminhos suaves", () => {
     const { container } = render(<DailyFlowChart days={days} />);
 
-    const polylines = container.querySelectorAll("polyline");
-    expect(polylines).toHaveLength(2);
-    for (const line of polylines) {
-      expect(line.getAttribute("points")?.split(" ").length).toBe(31);
-    }
+    const incomeCurve = container.querySelector("path.stroke-positive-strong");
+    const expenseCurve = container.querySelector("path.stroke-negative-strong");
+    expect(incomeCurve).toBeInTheDocument();
+    expect(expenseCurve).toBeInTheDocument();
+    expect(incomeCurve?.getAttribute("d")).toContain("C");
+    expect(expenseCurve?.getAttribute("d")).toContain("C");
   });
 
   it("scrubbing revela o tooltip do dia", () => {

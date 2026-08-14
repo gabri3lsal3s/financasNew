@@ -6,6 +6,7 @@ import { DebtStatusBadge, HighlightRow } from "@/components/modules";
 import { debtStatus } from "@/domain/debts";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
+import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useDebts, useDeleteDebt } from "@/state";
 import { DebtFormDialog } from "@/features/debts/components/debt-form-dialog";
@@ -38,7 +39,8 @@ export function DebtsPage() {
     );
   };
 
-  const [formOpen, setFormOpen] = useState(false);
+  // FAB contextual (F12): ?novo=divida abre o formulário de criação.
+  const { open: formOpen, setOpen: setFormOpen } = useCreateDeepLink("divida");
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [settling, setSettling] = useState<Debt | null>(null);
   const [deleting, setDeleting] = useState<Debt | null>(null);
@@ -110,7 +112,9 @@ export function DebtsPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-center justify-between gap-2">
         <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Dívidas</h1>
+        {/* Novo registro só no desktop — no mobile o FAB da BottomNav assume (F12). */}
         <Button
+          className="hidden sm:inline-flex"
           onClick={() => {
             setEditingDebt(null);
             setFormOpen(true);

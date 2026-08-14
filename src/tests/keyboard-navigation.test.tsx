@@ -108,13 +108,18 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     expect(screen.getByRole("button", { name: "Entrar" })).toHaveFocus();
   });
 
-  it("TransactionListPage: Tab percorre link de novo lançamento e controles de mês", async () => {
+  it("TransactionListPage: Tab percorre seletor de mês (sem header) e link de novo lançamento", async () => {
     const user = userEvent.setup();
     render(<TransactionListPage />);
 
-    // Primeiro foco: link "Nova transação" (header)
+    // Sem header visual (F12): o primeiro foco é o controle de mês anterior
     await user.tab();
-    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Mês anterior" })).toHaveFocus();
+
+    // Link de novo lançamento permanece alcançável (desktop)
+    const novo = screen.getByRole("link", { name: "Nova transação" });
+    novo.focus();
+    expect(novo).toHaveFocus();
 
     // Controles de mês são alcançáveis por teclado
     for (const label of ["Mês anterior", "Próximo mês"]) {

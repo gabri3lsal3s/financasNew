@@ -20,18 +20,35 @@ describe("BottomNav 5 slots (F7.1)", () => {
     expect(names).toEqual([
       "Início",
       "Transações",
-      "Lançar despesa ou receita",
+      "Nova transação",
       "Cartões",
       "Mais",
     ]);
   });
 
-  it("FAB central aponta para o wizard de lançamento (?novo=despesa)", () => {
-    renderNav();
-    expect(screen.getByRole("link", { name: "Lançar despesa ou receita" })).toHaveAttribute(
-      "href",
-      "/transacoes?novo=despesa",
-    );
+  it("FAB central é contextual: na Início/Transações abre o wizard de lançamento", () => {
+    renderNav("/");
+    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/transacoes/novo");
+  });
+
+  it("FAB central é contextual: em Cartões abre o formulário de cartão (?novo=cartao)", () => {
+    renderNav("/cartoes");
+    const fab = screen.getByRole("link", { name: "Novo cartão" });
+    expect(fab).toHaveAttribute("href", "/cartoes?novo=cartao");
+  });
+
+  it("FAB central é contextual: em Dívidas/Categorias abre o formulário correspondente", () => {
+    const { unmount } = renderNav("/dividas");
+    expect(screen.getByRole("link", { name: "Nova dívida" })).toHaveAttribute("href", "/dividas?novo=divida");
+    unmount();
+
+    renderNav("/categorias");
+    expect(screen.getByRole("link", { name: "Nova categoria" })).toHaveAttribute("href", "/categorias?novo=categoria");
+  });
+
+  it("FAB central cai no wizard de lançamento em páginas sem criação própria", () => {
+    renderNav("/orcamentos");
+    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/transacoes/novo");
   });
 
   it("Relatórios não ocupa slot da BottomNav (migrou para o menu Mais)", () => {

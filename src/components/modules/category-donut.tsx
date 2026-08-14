@@ -33,32 +33,30 @@ export const CAT_DONUT_PALETTE = [
   "stroke-cat-10",
 ];
 
-const SIZE = 128;
-const STROKE_WIDTH = 20;
+const SIZE = 136;
+const STROKE_WIDTH = 18;
 const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const CENTER = SIZE / 2;
 
 /**
- * CategoryDonut — distribuição visual das principais categorias de despesa
- * (F8). Anel SVG com paleta de 10 cores + legenda com participação e valor.
- * `aria-hidden` no anel (decorativo); a legenda é o conteúdo acessível.
+ * CategoryDonut — distribuição visual das principais categorias de despesa (F8).
+ * Anel SVG refinado com centro estruturado e lista com mini-barras de progresso relativas.
  */
 export function CategoryDonut({ slices, totalCents, centerValue, className }: CategoryDonutProps) {
   const total = totalCents ?? slices.reduce((acc, slice) => acc + slice.valueCents, 0);
 
   if (total <= 0 || slices.length === 0) {
     return (
-      <div className={cn("flex flex-col items-center gap-3", className)}>
-        <div className="flex size-32 items-center justify-center rounded-full border-4 border-muted">
-          <p className="text-xs text-muted-foreground">Sem despesas</p>
+      <div className={cn("flex flex-col items-center justify-center py-6 text-center", className)}>
+        <div className="flex size-28 items-center justify-center rounded-full border-2 border-dashed border-border/60 bg-surface/40">
+          <p className="text-xs font-medium text-muted-foreground">Sem despesas</p>
         </div>
       </div>
     );
   }
 
   // Acumula o dashoffset de cada arco sem mutação no escopo do render
-  // (compatível com o React Compiler — sem reassign de variável externa).
   const arcs = slices.reduce<{ key: string; dash: number; offset: number; className: string }[]>(
     (acc, slice, index) => {
       const dash = (slice.valueCents / total) * CIRCUMFERENCE;
@@ -76,11 +74,12 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
   );
 
   return (
-    <div className={cn("flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6", className)}>
-      <div className="relative shrink-0">
+    <div className={cn("flex flex-col items-center gap-6 sm:flex-row sm:items-center", className)}>
+      {/* Anel SVG */}
+      <div className="relative shrink-0 flex items-center justify-center">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="size-32 -rotate-90"
+          className="size-34 -rotate-90 drop-shadow-xs"
           aria-hidden="true"
         >
           <circle
@@ -89,7 +88,7 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
             r={RADIUS}
             fill="none"
             strokeWidth={STROKE_WIDTH}
-            className="stroke-muted"
+            className="stroke-muted/30"
           />
           {arcs.map((arc) => (
             <circle
@@ -101,37 +100,50 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
               strokeWidth={STROKE_WIDTH}
               strokeDasharray={`${arc.dash} ${CIRCUMFERENCE - arc.dash}`}
               strokeDashoffset={-arc.offset}
-              className={arc.className}
+              className={cn("transition-all duration-300", arc.className)}
             />
           ))}
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="num text-center text-xs font-semibold text-foreground">
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
+          <span className="text-[10px] font-medium tracking-wider uppercase text-muted-foreground">Total</span>
+          <p className="privacy-mask num text-xs sm:text-sm font-bold text-foreground tracking-tight">
             {centerValue ?? formatCentsAsBRL(total)}
           </p>
         </div>
       </div>
 
-      <ul className="w-full min-w-0 space-y-1.5">
+      {/* Lista de fatias */}
+      <ul className="w-full min-w-0 space-y-2">
         {slices.map((slice, index) => {
           const percent = total > 0 ? (slice.valueCents / total) * 100 : 0;
+          const bgClass =
+            slice.colorClassName?.replace("stroke-", "bg-") ??
+            (CAT_DONUT_PALETTE[index % CAT_DONUT_PALETTE.length] ?? "stroke-cat-1").replace("stroke-", "bg-");
+
           return (
-            <li key={slice.label} className="flex items-center gap-2 text-xs">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "size-2.5 shrink-0 rounded-full",
-                  slice.colorClassName?.replace("stroke-", "bg-") ??
-                    (CAT_DONUT_PALETTE[index % CAT_DONUT_PALETTE.length] ?? "stroke-cat-1").replace("stroke-", "bg-"),
-                )}
-              />
-              <span className="truncate font-medium text-foreground">{slice.label}</span>
-              <span className="num ml-auto pl-2 text-muted-foreground">
-                {percent.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%
-              </span>
-              <span className="num w-20 text-right text-muted-foreground">
-                {formatCentsAsBRL(slice.valueCents)}
-              </span>
+            <li
+              key={slice.label}
+              className="group flex flex-col gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-surface-hover/50"
+            >
+              <div className="flex items-center gap-2 text-xs">
+                <span
+                  aria-hidden="true"
+                  className={cn("size-2 shrink-0 rounded-full ring-2 ring-surface", bgClass)}
+                />
+                <span className="truncate font-medium text-foreground">{slice.label}</span>
+                <span className="num ml-auto font-semibold text-muted-foreground text-[11px]">
+                  {percent.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%
+                </span>
+                <span className="privacy-mask num w-22 text-right font-medium text-foreground text-xs">
+                  {formatCentsAsBRL(slice.valueCents)}
+                </span>
+              </div>
+              <div className="h-1 w-full overflow-hidden rounded-full bg-muted/25" aria-hidden="true">
+                <div
+                  className={cn("h-full rounded-full transition-all duration-500", bgClass)}
+                  style={{ width: `${Math.min(100, Math.max(2, percent))}%` }}
+                />
+              </div>
             </li>
           );
         })}
@@ -139,3 +151,4 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
     </div>
   );
 }
+

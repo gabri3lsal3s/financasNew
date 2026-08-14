@@ -1,4 +1,4 @@
-import { NavLink } from "react-router";
+import { NavLink, useLocation } from "react-router";
 import { Ellipsis, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/components/layout/nav-items";
@@ -19,7 +19,20 @@ const inicio = requiredSlot("/");
 const transacoes = requiredSlot("/transacoes");
 const cartoes = requiredSlot("/cartoes");
 
-const quickEntry = "/transacoes?novo=despesa";
+/**
+ * Ação do FAB por página (F12): o + abre a criação do contexto atual.
+ * Páginas sem fluxo de criação próprio caem no wizard de lançamento
+ * (o deep-link `?novo=<tipo>` abre o diálogo de criação na página-alvo).
+ */
+const createActions: Record<string, { to: string; label: string }> = {
+  "/": { to: "/transacoes/novo", label: "Nova transação" },
+  "/transacoes": { to: "/transacoes/novo", label: "Nova transação" },
+  "/cartoes": { to: "/cartoes?novo=cartao", label: "Novo cartão" },
+  "/dividas": { to: "/dividas?novo=divida", label: "Nova dívida" },
+  "/categorias": { to: "/categorias?novo=categoria", label: "Nova categoria" },
+};
+
+const defaultCreate = { to: "/transacoes/novo", label: "Nova transação" };
 
 function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
   return (
@@ -42,6 +55,9 @@ function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
 }
 
 export function BottomNav() {
+  const location = useLocation();
+  const create = createActions[location.pathname] ?? defaultCreate;
+
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur lg:hidden"
@@ -51,11 +67,11 @@ export function BottomNav() {
         <SlotLink item={inicio} end />
         <SlotLink item={transacoes} />
 
-        {/* FAB central elevado: lançamento rápido (D10 — wizard abre via ?novo=despesa em F2).
-            Haptic leve na ação-chave (F8 — Decisão 3). */}
+        {/* FAB central elevado: criação do contexto da página atual (F12 —
+            sem botões "Novo X" duplicados no mobile). Haptic leve (F8 — Decisão 3). */}
         <NavLink
-          to={quickEntry}
-          aria-label="Lançar despesa ou receita"
+          to={create.to}
+          aria-label={create.label}
           className="flex min-h-11 items-center justify-center"
           onClick={() => triggerHaptic("light")}
         >

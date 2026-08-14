@@ -724,6 +724,12 @@
 - [x] Typecheck, lint (0 erros), build e suíte completa verdes (102 arquivos / **759 testes**).
 - [ ] Revisão visual no browser (desktop/mobile/3 temas × 6 acentos) — pendente (manual)
 
+**Progresso — Fase 12, ciclo de implementação 2 (2026-08-14) — ergonomia de navegação:**
+- [x] **Sem headers nas páginas com seletor de mês:** Visão Geral, Transações, Cartões, Orçamentos e Relatórios não exibem mais o cabeçalho de título (h1 visual + botões) — o app mostra **direto o seletor de mês/período** no topo. O título permanece apenas como `h1 sr-only` (leitores de tela + ordem de heading preservada na auditoria axe). Em Transações, o botão "Nova transação" fica ao lado do seletor **só no desktop** (`hidden sm:inline-flex`).
+- [x] **FAB da BottomNav contextual por página:** o `+` agora abre a criação do contexto atual — Início/Transações → wizard de lançamento (`/transacoes/novo`); Cartões → formulário de cartão (`/cartoes?novo=cartao`); Dívidas → formulário de dívida (`?novo=divida`); Categorias → formulário de categoria (`?novo=categoria`); demais páginas caem no wizard de lançamento (fallback). Implementado com o hook reutilizável `useCreateDeepLink` (`?novo=<key>` — estado derivado da URL, sem setState em effect; fechar limpa o parâmetro com replace) + aria-label dinâmico do FAB. + 5 testes do hook + 3 de alvo por rota.
+- [x] **Botões de criação removidos no mobile:** "Nova transação", "Novo cartão", "Nova dívida" e "Nova categoria" ficam ocultos no mobile (`hidden sm:inline-flex`) — no celular quem cria é o FAB da navegação, sem duplicação de ações.
+- [x] Testes atualizados (BottomNav FAB contextual, keyboard-nav sem header em Transações, deep-link de cartão) — suíte completa **103 arquivos / 767 testes** verde + typecheck/lint/build sem erros.
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
