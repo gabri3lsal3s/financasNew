@@ -8,6 +8,7 @@ import {
   Lightbulb,
   PiggyBank,
   Settings,
+  Tags,
   Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -25,6 +26,7 @@ export const navItems: NavItem[] = [
   { label: "Cartões", path: "/cartoes", icon: CreditCard },
   { label: "Dívidas", path: "/dividas", icon: HandCoins },
   { label: "Orçamentos", path: "/orcamentos", icon: PiggyBank },
+  { label: "Categorias", path: "/categorias", icon: Tags },
   { label: "Relatórios", path: "/relatorios", icon: ChartPie },
   { label: "Insights", path: "/insights", icon: Lightbulb },
   { label: "Carteira", path: "/carteira", icon: Wallet },

@@ -142,6 +142,15 @@ export interface Database {
         Args: { p_card_id: string };
         Returns: void;
       };
+      reallocate_budget: {
+        Args: {
+          p_from_category_id: string;
+          p_to_category_id: string;
+          p_month: string;
+          p_amount: number;
+        };
+        Returns: void;
+      };
     };
   };
 }

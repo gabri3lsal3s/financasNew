@@ -4,6 +4,7 @@ import { TransactionListPage } from "@/features/transactions";
 import { CardsPage } from "@/features/cards";
 import { DebtsPage } from "@/features/debts";
 import { BudgetsPage } from "@/features/budgets";
+import { CategoriesPage } from "@/features/categories";
 import { ReportsPage } from "@/features/reports";
 import { InsightsPage } from "@/features/insights";
 import { PortfolioPage } from "@/features/portfolio";
@@ -22,6 +23,7 @@ export const appRoutes: AppRoute[] = [
   { path: "/cartoes", element: <CardsPage /> },
   { path: "/dividas", element: <DebtsPage /> },
   { path: "/orcamentos", element: <BudgetsPage /> },
+  { path: "/categorias", element: <CategoriesPage /> },
   { path: "/relatorios", element: <ReportsPage /> },
   { path: "/insights", element: <InsightsPage /> },
   { path: "/carteira", element: <PortfolioPage /> },

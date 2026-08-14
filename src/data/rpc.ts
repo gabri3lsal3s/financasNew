@@ -260,3 +260,21 @@ export async function deleteCreditCardRpc(cardId: string): Promise<void> {
     true,
   );
 }
+
+/** Realocação atômica de limite entre categorias (D1/§3.5.2). */
+export async function reallocateBudget(params: {
+  fromCategoryId: string;
+  toCategoryId: string;
+  month: string;
+  amount: number;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("reallocate_budget", {
+      p_from_category_id: params.fromCategoryId,
+      p_to_category_id: params.toCategoryId,
+      p_month: params.month,
+      p_amount: params.amount,
+    }),
+    true,
+  );
+}
