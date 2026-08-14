@@ -153,6 +153,18 @@ export interface Database {
         };
         Returns: void;
       };
+      set_allocation_targets: {
+        Args: { p_targets: unknown };
+        Returns: void;
+      };
+      set_group_target: {
+        Args: { p_group_type: "class" | "sector"; p_name: string; p_target: number };
+        Returns: void;
+      };
+      remove_group_target: {
+        Args: { p_group_type: "class" | "sector"; p_name: string };
+        Returns: void;
+      };
     };
   };
 }

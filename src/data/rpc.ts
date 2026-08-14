@@ -278,3 +278,49 @@ export async function reallocateBudget(params: {
     true,
   );
 }
+
+export interface AllocationTargetItem {
+  assetId: string;
+  /** 0–100. */
+  target: number;
+}
+
+/**
+ * Substitui o conjunto de metas por ativo em UMA transação (D1/§3.11.1).
+ * Valida a soma final ≤ 100% após o lote — excedeu, nada é salvo.
+ */
+export async function setAllocationTargets(targets: AllocationTargetItem[]): Promise<void> {
+  await unwrapRpc(
+    callRpc("set_allocation_targets", {
+      p_targets: targets.map((t) => ({ asset_id: t.assetId, target_percentage: t.target })),
+    }),
+    true,
+  );
+}
+
+/** Upsert de meta de grupo (classe ou setor) — §3.11.1. */
+export async function setGroupTarget(
+  groupType: "class" | "sector",
+  name: string,
+  target: number,
+): Promise<void> {
+  await unwrapRpc(
+    callRpc("set_group_target", {
+      p_group_type: groupType,
+      p_name: name,
+      p_target: target,
+    }),
+    true,
+  );
+}
+
+/** Remove uma meta de grupo (classe ou setor). */
+export async function removeGroupTarget(groupType: "class" | "sector", name: string): Promise<void> {
+  await unwrapRpc(
+    callRpc("remove_group_target", {
+      p_group_type: groupType,
+      p_name: name,
+    }),
+    true,
+  );
+}

@@ -184,3 +184,12 @@ export {
   valueAssetPosition,
 } from "./valuation";
 export type { AssetValuation, PriceCandidate, PriceSource, ResolvedPrice } from "./valuation";
+export {
+  clampTargetPercentage,
+  parseTargetInput,
+  sectorExposure,
+  targetsSum,
+  validateSectorCaps,
+  validateTargetsSum,
+} from "./allocation";
+export type { SectorExposure, TargetDraft, TargetValidation } from "./allocation";

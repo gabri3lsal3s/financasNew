@@ -46,3 +46,15 @@ export {
   useRemoveManualPrice,
   assetPricesKey,
 } from "./queries/use-asset-prices";
+export {
+  useAllocationTargets,
+  useSaveAllocationTargets,
+  useGroupTargets,
+  useSaveGroupTarget,
+  useRemoveGroupTarget,
+  useSectorCaps,
+  useUpdateSectorCaps,
+  allocationTargetsKey,
+  groupTargetsKey,
+  sectorCapsKey,
+} from "./queries/use-allocation";

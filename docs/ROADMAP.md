@@ -254,6 +254,16 @@
 - Persistência: migration `0007_asset_price_override.sql` (unique parcial `(ticker, user_id)` para overrides) + `src/data/repositories/asset-prices.ts` (list: cache global + override do usuário; set/remove manual com moeda inferida) + `useAssetPrices`/`useSetManualPrice`/`useRemoveManualPrice`.
 - **21 testes verdes** (16 domínio + 5 repository).
 
+**Progresso da entrega 3 (Fase 4):**
+- `domain/portfolio/allocation.ts` — motor puro de metas (§3.11.1):
+  - `targetsSum` / `validateTargetsSum` — soma ≤ 100% (UI: barra de soma; servidor: RPC valida após o lote);
+  - `clampTargetPercentage` / `parseTargetInput` — clamp 0–100 e parsing de entrada com vírgula pt-BR;
+  - `sectorExposure` / `validateSectorCaps` — exposição por setor vs travas `max_sector_acoes`/`max_sector_fiis` (§3.11.3.5).
+- Migration `0008_allocation_targets.sql` — RPCs transacionais (D1): `set_allocation_targets` (substitui o conjunto em lote e **valida a soma FINAL ≤ 100% após o lote** — o trigger por linha não cobre lote: 3×40 passariam individualmente), `set_group_target` / `remove_group_target` (classe/setor).
+- Repositories: `allocation-targets.ts` (list, save lote, group targets) + `user-preferences.ts` (travas setoriais) + wrappers tipados em `data/rpc.ts`.
+- State: `useAllocationTargets`/`useSaveAllocationTargets`/`useGroupTargets`/`useSaveGroupTarget`/`useRemoveGroupTarget`/`useSectorCaps`/`useUpdateSectorCaps`.
+- **19 testes verdes** (13 domínio + 6 repository).
+
 
 ### Fase 4 — Carteira & Rebalanceamento
 
