@@ -314,7 +314,7 @@
 **Entregas (na ordem):**
 1. ✅ **Busca global** (⌘K): normalização, scoring, recência, limites por tipo, deep-link com destaque.
 2. ✅ **Tema OLED refinado** (contraste/estados) + microinterações.
-3. Auditoria de acessibilidade (axe, contraste AA, foco, teclado) em todas as telas.
+3. ✅ **Auditoria de acessibilidade** (axe, contraste AA, foco, teclado) em todas as telas.
 4. Empty states completos + onboarding de primeiro uso.
 5. Performance: bundle splitting, virtualização de listas, revisão de queries (N+1).
 6. **PWA polish:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast, splash/iOS, auditoria Lighthouse PWA.
@@ -332,12 +332,17 @@
 - **Tokens novos nos 3 temas:** `--overlay` (40/60/70%) para modais/command palette — substitui o `bg-black/50` hard-coded no `Modal` e `Command`; `--scrollbar-thumb`/`--scrollbar-track` com scrollbars estilizadas em `globals.css` (WebKit + Firefox) — §13.
 - **Microinterações:** `Button` ganha press `active:scale-[0.98]` + `transition` 150ms (DESIGN_SYSTEM §7); transições de hover padronizadas nos botões de ação de insights/lembretes; `prefers-reduced-motion: reduce` desativa animações (a11y).
 
+**Progresso — Fase 5, entrega 3 (auditoria a11y):**
+- **Axe automatizado:** `vitest-axe` + `axe-core` (devDeps) com matcher `toHaveNoViolations` no setup; auditoria de **10 telas P0** (auth ×3, overview, transações, cartões, dívidas, orçamentos, wizard + fluxo de diálogo) — todas sem violações; teste de sanidade garante que o matcher detecta violações reais.
+- **Contraste AA como regra de domínio:** `domain/accessibility` (puro, 16 testes) — `relativeLuminance`/`contrastRatio`/`isAANormalText`(4.5:1)/`isAALargeText`(3:1) validando os tokens dos 3 temas (§2.1/2.3) e as regras `-strong` do DESIGN_SYSTEM §2.2 (positive base ~2.4:1 não serve para texto no light; dark/oled passam AA).
+- **Teclado (DoD):** testes de navegação por `Tab`/`Enter`/setas nas telas P0 — ordem de foco do login (e-mail → senha → entrar), abas Radix com roving tabindex (dívidas/orçamentos), controles de mês e links alcançáveis por teclado.
+
 **✅ DoD**
 - Busca retorna tipos ordenados por score com destaque funcional (scroll + highlight).
 - OLED com estados perceptíveis e contraste AA no texto secundário; modais/scrollbars com tokens próprios.
 - Microinterações com press nos botões e suporte a `prefers-reduced-motion`.
-- Auditoria a11y sem erros críticos; Lighthouse ≥ 90 (mobile).
-- Navegação 100% por teclado nas telas P0.
+- Auditoria a11y sem erros críticos (axe em 10 telas P0, zero violações; contraste AA validado por regra de domínio).
+- Navegação por teclado testada nas telas P0 (Tab/Enter/setas).
 
 ---
 

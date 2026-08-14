@@ -1,6 +1,11 @@
 import "@testing-library/jest-dom/vitest";
+import "vitest-axe/extend-expect";
+import * as axeMatchers from "vitest-axe/matchers";
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, expect } from "vitest";
+
+// Matcher toHaveNoViolations (axe-core) — auditoria a11y (F5.3).
+expect.extend(axeMatchers);
 
 // Limpa o DOM entre testes (vitest sem globals não faz cleanup automático).
 afterEach(() => {
