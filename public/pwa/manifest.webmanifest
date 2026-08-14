@@ -1,17 +1,17 @@
 {
   "id": "/",
-  "name": "Finanças — Gestão Financeira Pessoal",
-  "short_name": "Finanças",
+  "name": "Guia Financeiro — Gestão Financeira Pessoal",
+  "short_name": "Guia Financeiro",
   "description": "Gestão de gastos, orçamentos, relatórios, insights e rebalanceamento de carteira.",
   "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#FAFAF9",
+  "background_color": "#142531",
   "theme_color": [
-    { "color": "#FAFAF9", "media": "(prefers-color-scheme: light)" },
-    { "color": "#0F172A", "media": "(prefers-color-scheme: dark)" }
+    { "color": "#F4F7F9", "media": "(prefers-color-scheme: light)" },
+    { "color": "#0C1923", "media": "(prefers-color-scheme: dark)" }
   ],
   "categories": ["finance", "productivity"],
   "icons": [

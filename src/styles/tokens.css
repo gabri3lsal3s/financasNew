@@ -1,5 +1,6 @@
 /* ================================================================
-   DESIGN TOKENS — Identidade "Vital · Verde + Terminal"
+   DESIGN TOKENS — Identidade oficial "Guia Financeiro"
+   "Azul Petróleo · Teal Vital · Ouro Âmbar · Coral Suave" (F10)
    Fonte única da verdade visual do app. Framework-agnostic (CSS puro).
    Temas: light (padrão) · dark · oled.
    Aplicado via <html data-theme="light|dark|oled"> (ThemeProvider).
@@ -8,40 +9,43 @@
    ================================================================ */
 
 /* ----------------------------------------------------------------
-   TEMA LIGHT (padrão)
+   TEMA LIGHT — "Vital Petróleo & Ouro"
+   Fundo ardósia off-white (#F4F7F9), superfícies brancas com bordas
+   ardósia-teal, primária Teal Petróleo (#2A9D8F), acentos em Ouro
+   Âmbar (#DDA726) e texto em Azul Petróleo Profundo (#142531).
    ---------------------------------------------------------------- */
 :root,
 html[data-theme="light"] {
-  /* Neutros */
-  --background: 60 9% 98%;          /* #FAFAF9 */
+  /* Neutros (família ardósia-teal) */
+  --background: 204 29% 97%;        /* #F4F7F9 */
   --surface: 0 0% 100%;             /* #FFFFFF */
-  --surface-hover: 24 6% 95%;       /* #F5F5F4 */
-  --surface-active: 24 6% 92%;      /* #EBE9E7 */
-  --border: 24 6% 90%;              /* #E7E5E4 */
-  --input: 24 5% 83%;               /* #D6D3D1 */
-  --muted: 24 6% 95%;               /* #F5F5F4 */
-  --foreground: 24 10% 10%;         /* #1C1917 */
-  --muted-foreground: 25 5% 32%;    /* #57534E */
+  --surface-hover: 200 22% 94%;     /* #EDF2F4 */
+  --surface-active: 200 20% 90%;    /* #E0E8EC */
+  --border: 200 18% 87%;            /* #D7E1E6 */
+  --input: 200 16% 79%;             /* #C2D0D7 */
+  --muted: 200 20% 95%;             /* #F0F4F6 */
+  --foreground: 205 42% 14%;        /* #142531 — Azul Petróleo Profundo */
+  --muted-foreground: 215 26% 35%;  /* #475569 — AA 6.9:1 sobre fundo */
 
-  /* Marca — esmeralda (primária) + teal (secundária) + sky (portfólio) */
-  --primary: 160 84% 39%;           /* #10B981 — acentos, estados, gráficos */
-  --primary-strong: 158 64% 29%;    /* #047857 — botões sólidos e links de texto (AA) */
+  /* Marca — Teal Petróleo (primária) + Ouro Âmbar (acento) */
+  --primary: 173 58% 39%;           /* #2A9D8F — acentos, estados, gráficos */
+  --primary-strong: 173 66% 26%;    /* #1B6B62 — botões sólidos e links (AA 6.3:1) */
   --primary-foreground: 0 0% 100%;  /* texto sobre primary-strong */
-  --secondary: 175 84% 32%;         /* #0D9488 */
-  --secondary-foreground: 0 0% 100%;
-  --accent: 199 89% 48%;            /* #0EA5E9 */
-  --accent-foreground: 0 0% 100%;
+  --secondary: 174 65% 37%;         /* #219E92 */
+  --secondary-foreground: 172 80% 8%; /* #04231F — texto sobre secondary (AA) */
+  --accent: 42 73% 51%;             /* #DDA726 — Ouro Âmbar (órbitas, glow KPI) */
+  --accent-foreground: 205 42% 14%; /* #142531 — texto sobre ouro (AA 7.2:1) */
 
   /* Semânticas financeiras (base = visual/gráfico · strong = texto AA) */
-  --positive: 160 84% 39%;          /* receita/renda */
-  --positive-strong: 158 64% 29%;
-  --negative: 347 90% 60%;          /* despesa */
-  --negative-strong: 347 77% 41%;   /* #BE123C */
-  --warning: 38 92% 50%;            /* atenção / alerta */
-  --warning-strong: 32 95% 35%;     /* #B45309 */
-  --critical: 0 84% 60%;            /* crítico / excedido */
-  --critical-strong: 0 72% 42%;     /* #B91C1C */
-  --portfolio: 199 89% 48%;         /* rebalanceamento (alias do accent) */
+  --positive: 173 58% 39%;          /* receita — Teal #2A9D8F */
+  --positive-strong: 173 66% 26%;   /* #1B6B62 */
+  --negative: 12 76% 61%;           /* despesa — Coral Suave #E76F51 */
+  --negative-strong: 7 62% 43%;     /* #B23A2A (AA) */
+  --warning: 43 74% 66%;            /* atenção/metas — Ouro Âmbar #E9C46A */
+  --warning-strong: 23 82% 31%;     /* #92400E (AA 6.5:1) */
+  --critical: 0 84% 60%;            /* crítico / excedido — #EF4444 */
+  --critical-strong: 0 74% 42%;     /* #B91C1C (AA 6.5:1) */
+  --portfolio: 201 47% 20%;         /* investimentos — Sky Petróleo #1B3A4B */
 
   /* Categorias — paleta restrita e sóbria (10 cores dessaturadas) */
   --cat-1: 215 20% 48%;             /* aço */
@@ -68,51 +72,53 @@ html[data-theme="light"] {
   --radius-2xl: 20px;
   --radius-pill: 999px;
 
-  /* Sombras (suaves e difusas; KPI com glow discreto) */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.06), 0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.10), 0 2px 6px -2px rgb(0 0 0 / 0.05);
-  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.18), 0 4px 16px -4px hsl(var(--accent) / 0.30);
+  /* Sombras (suaves e difusas; KPI com glow dourado discreto) */
+  --shadow-sm: 0 1px 2px 0 rgb(20 37 49 / 0.05);
+  --shadow-md: 0 2px 8px -1px rgb(20 37 49 / 0.07), 0 1px 2px 0 rgb(20 37 49 / 0.04);
+  --shadow-lg: 0 8px 24px -6px rgb(20 37 49 / 0.12), 0 2px 6px -2px rgb(20 37 49 / 0.06);
+  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.20), 0 4px 16px -4px hsl(var(--accent) / 0.32);
 
   /* Foco */
-  --ring: 160 84% 39%;
-  --ring-offset: 0 0% 100%;
+  --ring: 173 58% 39%;
+  --ring-offset: 204 29% 97%;
 }
 
 /* ----------------------------------------------------------------
-   TEMA DARK
+   TEMA DARK — "Abissal Teal"
+   Fundo Abissal (#0C1923), superfícies em ardósia escuro (#162836),
+   primária em Teal vivo (#2DD4BF) e acentos dourados (#F3C352).
    ---------------------------------------------------------------- */
 html[data-theme="dark"] {
   /* Neutros */
-  --background: 222 47% 11%;        /* #0F172A */
-  --surface: 217 33% 17%;           /* #1E293B */
-  --surface-hover: 216 30% 21%;     /* #263349 */
-  --surface-active: 216 29% 25%;    /* #2E3B53 */
-  --border: 215 28% 27%;            /* #334155 */
-  --input: 215 24% 32%;             /* #3F4D66 */
-  --muted: 218 34% 15%;             /* #182234 */
-  --foreground: 210 40% 98%;        /* #F8FAFC */
-  --muted-foreground: 215 20% 65%;  /* #94A3B8 */
+  --background: 206 49% 9%;         /* #0C1923 — Abissal */
+  --surface: 206 42% 15%;           /* #162836 — ardósia escuro */
+  --surface-hover: 206 41% 19%;     /* #1D3445 */
+  --surface-active: 204 39% 23%;    /* #244053 */
+  --border: 208 36% 21%;            /* #23384A — ardósia-teal */
+  --input: 208 34% 26%;             /* #2C4459 */
+  --muted: 206 42% 12%;             /* #111F2A */
+  --foreground: 199 39% 94%;        /* #E8F1F5 */
+  --muted-foreground: 204 22% 68%;  /* #9DB2C0 — AA 8.1:1 */
 
   /* Marca */
-  --primary: 160 84% 52%;           /* #34D399 */
-  --primary-strong: 160 84% 52%;    /* mesmo tom (fundo claro) */
-  --primary-foreground: 160 84% 9%; /* #022C22 — texto escuro sobre primária (AA 8:1) */
-  --secondary: 172 66% 50%;         /* #2DD4BF */
-  --secondary-foreground: 175 84% 10%;
-  --accent: 199 89% 60%;            /* #38BDF8 */
-  --accent-foreground: 205 80% 16%;
+  --primary: 173 66% 50%;           /* #2DD4BF — Teal vivo */
+  --primary-strong: 173 66% 50%;    /* mesmo tom (fundo claro) */
+  --primary-foreground: 166 92% 9%; /* #022C22 — texto escuro sobre teal (AA 8.1:1) */
+  --secondary: 174 65% 43%;         /* #26B5A7 */
+  --secondary-foreground: 172 80% 8%; /* #04231F (AA 6.5:1) */
+  --accent: 42 87% 64%;             /* #F3C352 — dourado */
+  --accent-foreground: 43 87% 15%;  /* #4A3605 — texto sobre ouro (AA 7:1) */
 
   /* Semânticas financeiras */
-  --positive: 160 84% 52%;          /* #34D399 */
-  --positive-strong: 160 84% 52%;
-  --negative: 347 90% 71%;          /* #FB7185 */
-  --negative-strong: 347 90% 71%;
-  --warning: 45 93% 56%;            /* #FBBF24 */
-  --warning-strong: 45 93% 56%;
-  --critical: 0 72% 71%;            /* #F87171 */
-  --critical-strong: 0 72% 71%;
-  --portfolio: 199 89% 60%;
+  --positive: 173 66% 50%;          /* #2DD4BF */
+  --positive-strong: 173 66% 50%;
+  --negative: 351 95% 71%;          /* #FB7185 — coral vivo */
+  --negative-strong: 351 95% 71%;
+  --warning: 38 92% 50%;            /* #F59E0B — ouro âmbar vivo */
+  --warning-strong: 38 92% 50%;
+  --critical: 0 91% 71%;            /* #F87171 */
+  --critical-strong: 0 91% 71%;
+  --portfolio: 198 93% 60%;         /* #38BDF8 — sky petrolizado */
 
   /* Categorias (versão clara dos tons) */
   --cat-1: 215 20% 58%;
@@ -130,43 +136,45 @@ html[data-theme="dark"] {
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
   --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.40), 0 1px 2px 0 rgb(0 0 0 / 0.30);
   --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.50), 0 2px 6px -2px rgb(0 0 0 / 0.40);
-  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.25), 0 4px 20px -4px hsl(var(--accent) / 0.35);
+  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.28), 0 4px 20px -4px hsl(var(--accent) / 0.38);
 
-  --ring: 160 84% 52%;
-  --ring-offset: 222 47% 11%;
+  --ring: 173 66% 50%;
+  --ring-offset: 206 49% 9%;
 }
 
 /* ----------------------------------------------------------------
-   TEMA OLED (true black — economia de bateria em AMOLED)
+   TEMA OLED — "True Black + Órbitas Douradas"
+   Fundo #000000 (economia de bateria em AMOLED) com relevo em bordas
+   ardósia (#1C2E3D) e acentos luminosos (teal/ouro).
    ---------------------------------------------------------------- */
 html[data-theme="oled"] {
   --background: 0 0% 0%;            /* #000000 — true black (AMOLED) */
   --surface: 0 0% 4%;               /* #0A0A0A */
-  --surface-hover: 0 0% 9%;         /* #171717 — hover perceptível sobre true black */
-  --surface-active: 0 0% 13%;       /* #212121 — pressed */
-  --border: 0 0% 14%;               /* #242424 — bordas são a elevação principal (sem sombra) */
-  --input: 0 0% 18%;                /* #2E2E2E */
-  --muted: 0 0% 7%;                 /* #121212 */
+  --surface-hover: 0 0% 8%;         /* #141414 — hover perceptível sobre true black */
+  --surface-active: 0 0% 12%;       /* #1F1F1F — pressed */
+  --border: 207 37% 17%;            /* #1C2E3D — bordas ardósia (elevação principal) */
+  --input: 207 30% 22%;             /* #27394A */
+  --muted: 0 0% 6%;                 /* #0F0F0F */
   --foreground: 0 0% 98%;           /* #FAFAFA */
-  --muted-foreground: 0 0% 50%;     /* #808080 — AA sobre #000 (4.6:1 → 5.3:1) */
+  --muted-foreground: 0 0% 50%;     /* #808080 — AA sobre #000 (5.3:1) */
 
-  --primary: 160 84% 52%;
-  --primary-strong: 160 84% 52%;
-  --primary-foreground: 160 84% 9%;
-  --secondary: 172 66% 50%;
-  --secondary-foreground: 175 84% 10%;
-  --accent: 199 89% 60%;
-  --accent-foreground: 205 80% 16%;
+  --primary: 173 66% 50%;
+  --primary-strong: 173 66% 50%;
+  --primary-foreground: 166 92% 9%;
+  --secondary: 174 65% 43%;
+  --secondary-foreground: 172 80% 8%;
+  --accent: 42 87% 64%;
+  --accent-foreground: 43 87% 15%;
 
-  --positive: 160 84% 52%;
-  --positive-strong: 160 84% 52%;
-  --negative: 347 90% 71%;
-  --negative-strong: 347 90% 71%;
-  --warning: 45 93% 56%;
-  --warning-strong: 45 93% 56%;
-  --critical: 0 72% 71%;
-  --critical-strong: 0 72% 71%;
-  --portfolio: 199 89% 60%;
+  --positive: 173 66% 50%;
+  --positive-strong: 173 66% 50%;
+  --negative: 351 95% 71%;
+  --negative-strong: 351 95% 71%;
+  --warning: 38 92% 50%;
+  --warning-strong: 38 92% 50%;
+  --critical: 0 91% 71%;
+  --critical-strong: 0 91% 71%;
+  --portfolio: 198 93% 60%;
 
   --cat-1: 215 20% 58%;
   --cat-2: 150 25% 54%;
@@ -182,9 +190,9 @@ html[data-theme="oled"] {
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.50);
   --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.60), 0 1px 2px 0 rgb(0 0 0 / 0.50);
   --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.70), 0 2px 6px -2px rgb(0 0 0 / 0.60);
-  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.30), 0 4px 20px -4px hsl(var(--accent) / 0.45);
+  --shadow-kpi: 0 0 0 1px hsl(var(--accent) / 0.32), 0 4px 20px -4px hsl(var(--accent) / 0.45);
 
-  --ring: 160 84% 52%;
+  --ring: 173 66% 50%;
   --ring-offset: 0 0% 0%;
 }
 
@@ -194,20 +202,20 @@ html[data-theme="oled"] {
    ---------------------------------------------------------------- */
 :root,
 html[data-theme="light"] {
-  --overlay: 0 0% 0% / 40%;        /* escurecimento de modais/palette sobre light */
-  --scrollbar-thumb: 24 6% 78%;    /* polegar discreto (light) */
-  --scrollbar-track: 60 9% 95%;    /* trilho alinhado ao fundo */
+  --overlay: 12 40% 10% / 40%;     /* escurecimento de modais/palette sobre light */
+  --scrollbar-thumb: 200 16% 74%;  /* polegar discreto (light) */
+  --scrollbar-track: 204 29% 95%;  /* trilho alinhado ao fundo */
 }
 
 html[data-theme="dark"] {
   --overlay: 0 0% 0% / 60%;
-  --scrollbar-thumb: 215 24% 35%;
-  --scrollbar-track: 222 47% 13%;
+  --scrollbar-thumb: 208 30% 32%;
+  --scrollbar-track: 206 49% 11%;
 }
 
 html[data-theme="oled"] {
   --overlay: 0 0% 0% / 70%;        /* escurecimento maior (sem perder o true black) */
-  --scrollbar-thumb: 0 0% 24%;     /* #3D3D3D — visível sem acender pixels */
+  --scrollbar-thumb: 207 20% 22%;  /* ardósia discreto (sem acender pixels) */
   --scrollbar-track: 0 0% 4%;
 }
 
@@ -217,31 +225,31 @@ html[data-theme="oled"] {
    ---------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
-    --background: 222 47% 11%;
-    --surface: 217 33% 17%;
-    --surface-hover: 216 30% 21%;
-    --surface-active: 216 29% 25%;
-    --border: 215 28% 27%;
-    --input: 215 24% 32%;
-    --muted: 218 34% 15%;
-    --foreground: 210 40% 98%;
-    --muted-foreground: 215 20% 65%;
+    --background: 206 49% 9%;
+    --surface: 206 42% 15%;
+    --surface-hover: 206 41% 19%;
+    --surface-active: 204 39% 23%;
+    --border: 208 36% 21%;
+    --input: 208 34% 26%;
+    --muted: 206 42% 12%;
+    --foreground: 199 39% 94%;
+    --muted-foreground: 204 22% 68%;
     --overlay: 0 0% 0% / 60%;
-    --scrollbar-thumb: 215 24% 35%;
-    --scrollbar-track: 222 47% 13%;
-    --primary: 160 84% 52%;
-    --primary-strong: 160 84% 52%;
-    --primary-foreground: 160 84% 9%;
-    --secondary: 172 66% 50%;
-    --secondary-foreground: 175 84% 10%;
-    --accent: 199 89% 60%;
-    --accent-foreground: 205 80% 16%;
-    --positive: 160 84% 52%;
-    --negative: 347 90% 71%;
-    --warning: 45 93% 56%;
-    --critical: 0 72% 71%;
-    --portfolio: 199 89% 60%;
-    --ring: 160 84% 52%;
-    --ring-offset: 222 47% 11%;
+    --scrollbar-thumb: 208 30% 32%;
+    --scrollbar-track: 206 49% 11%;
+    --primary: 173 66% 50%;
+    --primary-strong: 173 66% 50%;
+    --primary-foreground: 166 92% 9%;
+    --secondary: 174 65% 43%;
+    --secondary-foreground: 172 80% 8%;
+    --accent: 42 87% 64%;
+    --accent-foreground: 43 87% 15%;
+    --positive: 173 66% 50%;
+    --negative: 351 95% 71%;
+    --warning: 38 92% 50%;
+    --critical: 0 91% 71%;
+    --portfolio: 198 93% 60%;
+    --ring: 173 66% 50%;
+    --ring-offset: 206 49% 9%;
   }
 }

@@ -20,14 +20,14 @@ beforeEach(() => {
 describe("Sidebar colapsável (F7.2)", () => {
   it("renderiza expandida com logo e labels visíveis", () => {
     renderSidebar();
-    expect(screen.getByText("Finanças")).toBeInTheDocument();
+    expect(screen.getByText("Guia Financeiro")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Transações" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recolher menu lateral" })).toBeInTheDocument();
   });
 
   it("modo compacto esconde labels e expõe os nomes via aria-label", () => {
     renderSidebar(true);
-    expect(screen.queryByText("Finanças")).not.toBeInTheDocument();
+    expect(screen.queryByText("Guia Financeiro")).not.toBeInTheDocument();
     // Link ainda nomeado para leitores de tela e tooltips (title).
     expect(screen.getByRole("link", { name: "Transações" })).toHaveAttribute(
       "title",

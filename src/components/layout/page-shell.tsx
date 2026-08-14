@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { DensityToggle } from "@/components/layout/density-toggle";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
@@ -36,8 +37,10 @@ export function PageShell() {
           isCollapsed ? "lg:pl-20" : "lg:pl-64",
         )}
       >
-        {/* Header fluido (F7.3): padding adaptável, sticky com backdrop-blur (DESIGN_SYSTEM §6). */}
+        {/* Header fluido (F7.3): padding adaptável, sticky com backdrop-blur (DESIGN_SYSTEM §6).
+            Marca no mobile (lg a sidebar já exibe o logo — F10). */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-1 border-b border-border bg-surface/80 px-4 backdrop-blur lg:px-8">
+          <BrandLogo showWordmark={false} markClassName="size-7" className="mr-auto lg:hidden" />
           <GlobalSearch />
           <PrivacyToggle />
           <DensityToggle />

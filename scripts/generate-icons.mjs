@@ -1,6 +1,6 @@
-// Gera ícones PWA placeholder (moeda: esmeralda + círculo branco).
-// Substituir por assets reais da identidade "Vital" antes do lançamento
-// (docs/PWA_GUIDELINES.md §3). Sem dependências — PNG codificado à mão.
+// Gera ícones PWA da marca "Guia Financeiro" (F10): fundo Azul Petróleo,
+// moeda Teal Petróleo com vazado claro e órbita em Ouro Âmbar (carteira
+// orbital). Sem dependências — PNG codificado à mão.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,31 +60,59 @@ function encodePng(size, rgbFn) {
   ]);
 }
 
-// --- Desenho: fundo esmeralda + círculo branco central ("moeda") ---
-const EMERALD = [16, 185, 129]; // #10B981
-const WHITE = [255, 255, 255];
+// --- Paleta da marca (identidade "Guia Financeiro" — F10) ---
+const PETROLEUM = [20, 37, 49]; // #142531 — fundo
+const TEAL = [42, 157, 143]; // #2A9D8F — moeda
+const OFF_WHITE = [244, 247, 249]; // #F4F7F9 — vazado central
+const GOLD = [221, 167, 38]; // #DDA726 — órbita
 
-function coin(size, radiusRatio) {
-  return (x, y, s) => {
-    const cx = s / 2;
-    const cy = s / 2;
-    const dx = x + 0.5 - cx;
-    const dy = y + 0.5 - cy;
-    const r = s * radiusRatio;
-    return dx * dx + dy * dy <= r * r ? WHITE : EMERALD;
-  };
+const ROT = (24 * Math.PI) / 180;
+const COS = Math.cos(ROT);
+const SIN = Math.sin(ROT);
+
+/**
+ * Carteira orbital: moeda teal com vazado claro + órbita dourada inclinada.
+ * `scale` dimensiona o conteúdo (maskable usa a zona segura de 80%).
+ */
+function brandMark(x, y, s, scale) {
+  const cx = s / 2;
+  const cy = s / 2;
+  const dx = x + 0.5 - cx;
+  const dy = y + 0.5 - cy;
+
+  // Satélite dourado no topo da órbita (checagem antes do anel p/ prioridade).
+  const satX = 0;
+  const satY = -0.21 * s * scale;
+  const satR = 0.065 * s * scale;
+
+  // Moeda (no espaço da tela, sem rotação).
+  const coinR = 0.26 * s * scale;
+  const holeR = 0.10 * s * scale;
+
+  // Órbita: transforma o pixel para o referencial da elipse (rotação +24°).
+  const ex = dx * COS - dy * SIN;
+  const ey = dx * SIN + dy * COS;
+  const rx = 0.42 * s * scale;
+  const ry = 0.21 * s * scale;
+  const t = (ex / rx) ** 2 + (ey / ry) ** 2;
+
+  if ((ex - satX) ** 2 + (ey - satY) ** 2 <= satR * satR) return GOLD;
+  if (t >= 0.78 && t <= 1.14) return GOLD;
+  if (dx * dx + dy * dy <= holeR * holeR) return OFF_WHITE;
+  if (dx * dx + dy * dy <= coinR * coinR) return TEAL;
+  return PETROLEUM;
 }
 
 const targets = [
-  ["icon-192.png", 192, 0.3],
-  ["icon-512.png", 512, 0.3],
-  ["maskable-512.png", 512, 0.22], // zona segura: 80% central
-  ["apple-touch-icon-180.png", 180, 0.3],
+  ["icon-192.png", 192, 1.0],
+  ["icon-512.png", 512, 1.0],
+  ["maskable-512.png", 512, 0.72], // zona segura: 80% central
+  ["apple-touch-icon-180.png", 180, 1.0],
 ];
 
-for (const [name, size, ratio] of targets) {
-  writeFileSync(join(outDir, name), encodePng(size, coin(size, ratio)));
-  console.log(`✓ ${name} (${size}x${size})`);
+for (const [name, size, scale] of targets) {
+  writeFileSync(join(outDir, name), encodePng(size, (x, y) => brandMark(x, y, size, scale)));
+  console.log(`✓ ${name} (${size}x${size}, conteúdo ${Math.round(scale * 100)}%)`);
 }
 
-console.log(`Ícones PWA placeholder gerados em public/pwa/icons/`);
+console.log("Ícones PWA da marca 'Guia Financeiro' gerados em public/pwa/icons/");

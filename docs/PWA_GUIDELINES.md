@@ -41,16 +41,19 @@ Referência completa (ajustar nomes à marca final):
 ```json
 {
   "id": "/",
-  "name": "Finanças — Gestão Financeira Pessoal",
-  "short_name": "Finanças",
+  "name": "Guia Financeiro — Gestão Financeira Pessoal",
+  "short_name": "Guia Financeiro",
   "description": "Gestão de gastos, orçamentos, relatórios, insights e rebalanceamento de carteira.",
   "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#FAFAF9",
-  "theme_color": "#10B981",
+  "background_color": "#142531",
+  "theme_color": [
+    { "color": "#F4F7F9", "media": "(prefers-color-scheme: light)" },
+    { "color": "#0C1923", "media": "(prefers-color-scheme: dark)" }
+  ],
   "categories": ["finance", "productivity"],
   "icons": [
     { "src": "/pwa/icons/icon-192.png",  "sizes": "192x192", "type": "image/png" },
@@ -68,13 +71,13 @@ Referência completa (ajustar nomes à marca final):
 
 **Campos recomendados:** `id`, `scope`, `orientation: any` (o app funciona em retrato e paisagem), `lang: pt-BR`, `categories`, `shortcuts` (atalhos de ações frequentes — lançamento rápido, D10).
 
-**Cores do manifesto (alinhadas ao DESIGN_SYSTEM):**
-- `background_color`: `#FAFAF9` (light) — define o splash em Android.
+**Cores do manifesto (alinhadas ao DESIGN_SYSTEM — identidade "Guia Financeiro", F10):**
+- `background_color`: `#142531` (Azul Petróleo — fundo do ícone) — splash Android contínuo com o ícone.
 - `theme_color`: suporta `media` para light/dark:
   ```json
   "theme_color": [
-    { "color": "#FAFAF9", "media": "(prefers-color-scheme: light)" },
-    { "color": "#0F172A", "media": "(prefers-color-scheme: dark)" }
+    { "color": "#F4F7F9", "media": "(prefers-color-scheme: light)" },
+    { "color": "#0C1923", "media": "(prefers-color-scheme: dark)" }
   ]
   ```
 
@@ -93,7 +96,7 @@ Referência completa (ajustar nomes à marca final):
 **Requisitos dos ícones:**
 - PNG, com fundo **não transparente** (192/512 e apple-touch).
 - **Maskable:** o conteúdo essencial dentro dos **80% centrais** (zona segura de recorte); fundo preenchido com a cor da marca.
-- Gerados a partir do logo da marca (identidade "Vital" — esmeralda sobre neutro), nas resoluções acima.
+- Gerados pelo script `scripts/generate-icons.mjs` (`npm run icons`) a partir da marca "Guia Financeiro" (F10) — carteira orbital: fundo Azul Petróleo `#142531`, moeda Teal Petróleo `#2A9D8F` com vazado claro e órbita em Ouro Âmbar `#DDA726` — nas resoluções acima. O `maskable` usa conteúdo em 72% (zona segura de 80%).
 
 ---
 
@@ -104,14 +107,14 @@ Referência completa (ajustar nomes à marca final):
 ```html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="description" content="Gestão financeira pessoal e rebalanceamento de carteira." />
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#FAFAF9" />
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F172A" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F7F9" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1923" />
 <link rel="manifest" href="/pwa/manifest.webmanifest" />
 <link rel="icon" href="/pwa/icons/icon-192.png" sizes="192x192" />
 <link rel="apple-touch-icon" href="/pwa/icons/apple-touch-icon-180.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Finanças" />
+<meta name="apple-mobile-web-app-title" content="Guia Financeiro" />
 ```
 
 **Splash screens:**

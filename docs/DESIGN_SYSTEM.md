@@ -1,7 +1,7 @@
 # 🎨 DESIGN_SYSTEM.md — Identidade Visual & Design Tokens
 
-> **Status:** v1.0 — Identidade aprovada: **"Vital · Verde + Terminal"** (combinação das propostas A+B).
-> Base acolhedora de bem-estar financeiro (esmeralda) + precisão técnica de leitura de números (mono/tabular).
+> **Status:** v1.1 — Identidade oficial: **"Guia Financeiro — Azul Petróleo, Teal Vital, Ouro Âmbar e Coral Suave"** (F10).
+> Base acolhedora de bem-estar financeiro (teal petróleo) + precisão técnica de leitura de números (mono/tabular).
 > Tema padrão: **segue o sistema** · Densidade: **equilibrada** · Cores de categoria: **paleta restrita e sóbria**.
 > **Tokens implementados em:** `src/styles/tokens.css` (fonte única) + `src/styles/globals.css` (mapeamento Tailwind v4).
 
@@ -9,7 +9,7 @@
 
 ## 1. PRINCÍPIOS DA IDENTIDADE
 
-1. **Calma e controle** — o app transmite "seu dinheiro sob controle", nunca "mercado de risco". Verde esmeralda como âncora emocional.
+1. **Calma e controle** — o app transmite "seu dinheiro sob controle", nunca "mercado de risco". Teal Petróleo como âncora emocional (F10).
 2. **Números são protagonistas** — valores, taxas e percentuais usam **IBM Plex Mono com tabular-nums**: alinhamento perfeito em tabelas, leitura rápida em dashboards.
 3. **Semântica financeira imediata** — verde = entra dinheiro, vermelho = sai dinheiro, âmbar = atenção, vermelho forte = crítico, azul = investimentos/rebalanceamento. Nunca variar esses significados.
 4. **Sobriedade nas categorias** — paleta restrita e dessaturada: cor ajuda a reconhecer, não compete com os dados.
@@ -23,40 +23,42 @@
 
 | Token | Light | Dark | OLED | Uso |
 |---|---|---|---|---|
-| `--background` | `60 9% 98%` `#FAFAF9` | `222 47% 11%` `#0F172A` | `0 0% 0%` `#000` | Fundo de tela |
-| `--surface` | `0 0% 100%` `#FFF` | `217 33% 17%` `#1E293B` | `0 0% 4%` `#0A0A0A` | Cards, modais, tabelas |
-| `--surface-hover` | `24 6% 95%` | `216 30% 21%` | `0 0% 9%` | Hover de linhas/cards |
-| `--surface-active` | `24 6% 92%` | `216 29% 25%` | `0 0% 13%` | Estado pressionado |
-| `--border` | `24 6% 90%` `#E7E5E4` | `215 28% 27%` `#334155` | `0 0% 14%` | Bordas e divisores |
-| `--input` | `24 5% 83%` | `215 24% 32%` | `0 0% 18%` | Bordas de campos |
-| `--muted` | `24 6% 95%` | `218 34% 15%` | `0 0% 7%` | Skeletons, backgrounds suaves |
-| `--foreground` | `24 10% 10%` `#1C1917` | `210 40% 98%` `#F8FAFC` | `0 0% 98%` | Texto principal |
-| `--muted-foreground` | `25 5% 32%` `#57534E` | `215 20% 65%` `#94A3B8` | `0 0% 50%` | Texto secundário, rótulos |
-| `--overlay` | `0 0% 0% / 40%` | `0 0% 0% / 60%` | `0 0% 0% / 70%` | Escurecimento de modais/palette (glass §8) |
-| `--scrollbar-thumb` / `--scrollbar-track` | `24 6% 78%` / `60 9% 95%` | `215 24% 35%` / `222 47% 13%` | `0 0% 24%` / `0 0% 4%` | Scrollbars via tokens (§13) |
+| `--background` | `204 29% 97%` `#F4F7F9` | `206 49% 9%` `#0C1923` | `0 0% 0%` `#000` | Fundo de tela |
+| `--surface` | `0 0% 100%` `#FFF` | `206 42% 15%` `#162836` | `0 0% 4%` `#0A0A0A` | Cards, modais, tabelas |
+| `--surface-hover` | `200 22% 94%` | `206 41% 19%` | `0 0% 8%` | Hover de linhas/cards |
+| `--surface-active` | `200 20% 90%` | `204 39% 23%` | `0 0% 12%` | Estado pressionado |
+| `--border` | `200 18% 87%` `#D7E1E6` | `208 36% 21%` `#23384A` | `207 37% 17%` `#1C2E3D` | Bordas e divisores (ardósia-teal) |
+| `--input` | `200 16% 79%` | `208 34% 26%` | `207 30% 22%` | Bordas de campos |
+| `--muted` | `200 20% 95%` | `206 42% 12%` | `0 0% 6%` | Skeletons, backgrounds suaves |
+| `--foreground` | `205 42% 14%` `#142531` | `199 39% 94%` `#E8F1F5` | `0 0% 98%` | Texto principal (Azul Petróleo Profundo) |
+| `--muted-foreground` | `215 26% 35%` `#475569` | `204 22% 68%` `#9DB2C0` | `0 0% 50%` | Texto secundário, rótulos |
+| `--overlay` | `12 40% 10% / 40%` | `0 0% 0% / 60%` | `0 0% 0% / 70%` | Escurecimento de modais/palette (glass §8) |
+| `--scrollbar-thumb` / `--scrollbar-track` | `200 16% 74%` / `204 29% 95%` | `208 30% 32%` / `206 49% 11%` | `207 20% 22%` / `0 0% 4%` | Scrollbars via tokens (§13) |
 
 ### 2.2 Marca — primárias e accent
 
 | Token | Light | Dark | OLED | Uso |
 |---|---|---|---|---|
-| `--primary` | `160 84% 39%` `#10B981` | `160 84% 52%` `#34D399` | igual dark | Acentos, ícones, estados ativos, gráficos, fills `primary/10` |
-| `--primary-strong` | `158 64% 29%` `#047857` | `160 84% 52%` | igual dark | **Botões sólidos e links de texto** (contraste AA) |
-| `--primary-foreground` | `0 0% 100%` | `160 84% 9%` `#022C22` | igual dark | Texto sobre `primary-strong` |
-| `--secondary` | `175 84% 32%` `#0D9488` | `172 66% 50%` `#2DD4BF` | igual dark | Elementos secundários (chips, realce) |
-| `--accent` / `--portfolio` | `199 89% 48%` `#0EA5E9` | `199 89% 60%` `#38BDF8` | igual dark | **Investimentos / rebalanceamento**, foco de KPIs |
-| `--ring` | `160 84% 39%` | `160 84% 52%` | igual dark | Anel de foco (`:focus-visible`) |
+| `--primary` | `173 58% 39%` `#2A9D8F` | `173 66% 50%` `#2DD4BF` | igual dark | Acentos, ícones, estados ativos, gráficos, fills `primary/10` (Teal Petróleo / Teal vivo) |
+| `--primary-strong` | `173 66% 26%` `#1B6B62` | `173 66% 50%` | igual dark | **Botões sólidos e links de texto** (contraste AA) |
+| `--primary-foreground` | `0 0% 100%` | `166 92% 9%` `#022C22` | igual dark | Texto sobre `primary-strong` |
+| `--secondary` | `174 65% 37%` `#219E92` | `174 65% 43%` `#26B5A7` | igual dark | Elementos secundários (chips, realce) |
+| `--secondary-foreground` | `172 80% 8%` | `172 80% 8%` | igual dark | Texto sobre `secondary` (AA) |
+| `--accent` | `42 73% 51%` `#DDA726` | `42 87% 64%` `#F3C352` | igual dark | **Ouro Âmbar**: órbita da marca, glow de KPI (`shadow-kpi`) |
+| `--accent-foreground` | `205 42% 14%` | `43 87% 15%` `#4A3605` | igual dark | Texto sobre o ouro (AA) |
+| `--ring` | `173 58% 39%` | `173 66% 50%` | igual dark | Anel de foco (`:focus-visible`) |
 
-> **Regra de contraste (AA):** em Light, texto pequeno **não** usa `--primary` (2.5:1) — usa `--primary-strong` (6:1). `--primary` fica para elementos gráficos grandes e estados. Em Dark, `--primary` já é claro e o foreground escuro garante 8:1.
+> **Regra de contraste (AA):** em Light, texto pequeno **não** usa `--primary` (3.0:1 — gráficos/fills) — usa `--primary-strong` (5.7:1). `--accent` (ouro) é decorativo/grande (glow, órbita); texto sobre ouro usa `--accent-foreground` (AA). Em Dark, `--primary` já é claro e o foreground escuro garante 8:1.
 
 ### 2.3 Semânticas financeiras
 
 | Token | Light | Dark | Uso |
 |---|---|---|---|
-| `--positive` / `--positive-strong` | `#10B981` / `#047857` | `#34D399` | **Receitas, rendas, saldo positivo, poupança** |
-| `--negative` / `--negative-strong` | `#F43F5E` / `#BE123C` | `#FB7185` | **Despesas, saídas, saldo negativo** |
-| `--warning` / `--warning-strong` | `#F59E0B` / `#B45309` | `#FBBF24` | Atenção (≥85% do limite), alertas leves |
+| `--positive` / `--positive-strong` | `#2A9D8F` / `#1B6B62` | `#2DD4BF` | **Receitas, rendas, saldo positivo, poupança** (Teal) |
+| `--negative` / `--negative-strong` | `#E76F51` / `#B23A2A` | `#FB7185` | **Despesas, saídas, saldo negativo** (Coral Suave) |
+| `--warning` / `--warning-strong` | `#E9C46A` / `#92400E` | `#F59E0B` | Atenção (≥85% do limite), alertas leves (Ouro Âmbar) |
 | `--critical` / `--critical-strong` | `#EF4444` / `#B91C1C` | `#F87171` | Orçamento excedido, atraso, erro destrutivo |
-| `--portfolio` | `#0EA5E9` | `#38BDF8` | Rebalanceamento, gap de meta, aportes |
+| `--portfolio` | `#1B3A4B` | `#38BDF8` | Rebalanceamento, gap de meta, aportes (Sky Petróleo) |
 
 **Regras de uso:**
 - **Texto pequeno** → variante `-strong` (Light). **Gráficos, ícones, badges, fills** → variante base.
@@ -143,7 +145,7 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 
 **Regras:** elevação por sombra, nunca por cor escura; dark/oled dependem mais de bordas do que de sombras (alpha maior); o **glow de KPI** é reservado a um único número-chave por tela (ex.: saldo do mês) — nunca vários.
 
-**OLED refinado (F5.2):** sobre o true black `#000`, bordas são a principal pista de elevação — `--border` 14% e `--input` 18% garantem definição sem acender pixels; hover/pressed mais perceptíveis (`9%`/`13%`); `--muted-foreground` 50% assegura AA (5.3:1) para texto secundário; `--overlay` 70% escurece o conteúdo atrás de modais sem perder o preto puro; scrollbar com polegar `24%` discreto.
+**OLED refinado (F5.2 + F10):** sobre o true black `#000`, bordas são a principal pista de elevação — `--border` ardósia `#1C2E3D` e `--input` 22% garantem definição sem acender pixels; hover/pressed mais perceptíveis (`8%`/`12%`); `--muted-foreground` 50% assegura AA (5.3:1) para texto secundário; `--overlay` 70% escurece o conteúdo atrás de modais sem perder o preto puro; scrollbar com polegar ardósia `22%` discreto. Acentos luminosos (teal vivo/ouro) dão o caráter "Órbitas Douradas".
 
 ---
 

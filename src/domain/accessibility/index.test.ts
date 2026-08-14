@@ -1,15 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { contrastRatio, hexToRgb, isAALargeText, isAANormalText, relativeLuminance } from "./index";
 
-/** Cores documentadas no DESIGN_SYSTEM §2.3 (light). */
-const LIGHT = { background: "#FAFAF9", positive: "#10B981", positiveStrong: "#047857", negative: "#F43F5E" };
-const DARK = { background: "#0F172A", positive: "#34D399", negative: "#FB7185" };
+/** Cores documentadas no DESIGN_SYSTEM §2.3 (identidade "Guia Financeiro" — F10). */
+const LIGHT = {
+  background: "#F4F7F9",
+  positive: "#2A9D8F",
+  positiveStrong: "#1B6B62",
+  negative: "#E76F51",
+  accent: "#DDA726",
+  accentForeground: "#142531",
+  portfolio: "#1B3A4B",
+};
+const DARK = {
+  background: "#0C1923",
+  positive: "#2DD4BF",
+  negative: "#FB7185",
+  accent: "#F3C352",
+  accentForeground: "#4A3605",
+  portfolio: "#38BDF8",
+};
 
 describe("hexToRgb / relativeLuminance", () => {
   it("converte #RGB e #RRGGBB", () => {
     expect(hexToRgb("#fff")).toEqual({ r: 255, g: 255, b: 255 });
     expect(hexToRgb("#000000")).toEqual({ r: 0, g: 0, b: 0 });
-    expect(hexToRgb("#10B981")).toEqual({ r: 16, g: 185, b: 129 });
+    expect(hexToRgb("#2A9D8F")).toEqual({ r: 42, g: 157, b: 143 });
   });
 
   it("rejeita formatos inválidos", () => {
@@ -31,19 +46,24 @@ describe("contrastRatio", () => {
   });
 
   it("é simétrico", () => {
-    const a = contrastRatio("#10B981", "#0F172A");
-    const b = contrastRatio("#0F172A", "#10B981");
+    const a = contrastRatio("#2A9D8F", "#0C1923");
+    const b = contrastRatio("#0C1923", "#2A9D8F");
     expect(a).toBeCloseTo(b, 10);
   });
 });
 
 describe("isAALargeText (3:1) — gráficos/badges/fills", () => {
-  it("positive base no light não serve para texto, mas serve para UI grande", () => {
-    // #10B981 sobre #FAFAF9 ≈ 2.4:1 — abaixo de 4.5:1 (por isso existe -strong)
+  it("positive base no light serve para UI grande, mas não para texto normal", () => {
+    // #2A9D8F sobre #F4F7F9 ≈ 3.0:1 — passa UI grande (3:1), falha texto (4.5:1)
     expect(isAANormalText(LIGHT.positive, LIGHT.background)).toBe(false);
-    expect(isAALargeText(LIGHT.positive, LIGHT.background)).toBe(false);
+    expect(isAALargeText(LIGHT.positive, LIGHT.background)).toBe(true);
     // -strong é a variante de texto (AA)
     expect(isAANormalText(LIGHT.positiveStrong, LIGHT.background)).toBe(true);
+  });
+
+  it("negative base no light é gráfico (coral suave); -strong cobre texto", () => {
+    expect(isAANormalText(LIGHT.negative, LIGHT.background)).toBe(false);
+    expect(isAANormalText("#B23A2A", LIGHT.background)).toBe(true);
   });
 
   it("dark/oled: positive claro passa AA para texto", () => {
@@ -52,29 +72,53 @@ describe("isAALargeText (3:1) — gráficos/badges/fills", () => {
   });
 });
 
+describe("ouro âmbar (accent) — F10", () => {
+  it("light: ouro é acento gráfico (glow/órbitas); foreground sobre ouro passa AA", () => {
+    // Ouro #DDA726 sobre o fundo claro é decorativo (não requisito de texto).
+    expect(isAALargeText(LIGHT.accent, LIGHT.background)).toBe(false);
+    // Texto do accent-foreground (#142531) sobre o ouro: AA normal.
+    expect(isAANormalText(LIGHT.accentForeground, LIGHT.accent)).toBe(true);
+  });
+
+  it("dark: foreground escuro sobre dourado #F3C352 passa AA", () => {
+    expect(isAANormalText(DARK.accentForeground, DARK.accent)).toBe(true);
+  });
+});
+
+describe("investimentos (portfolio) — F10", () => {
+  it("light: Sky Petróleo #1B3A4B tem contraste alto sobre o fundo", () => {
+    expect(isAANormalText(LIGHT.portfolio, LIGHT.background)).toBe(true);
+  });
+
+  it("dark: #38BDF8 passa AA sobre o fundo Abissal", () => {
+    expect(isAANormalText(DARK.portfolio, DARK.background)).toBe(true);
+  });
+});
+
 /**
  * Contraste dos tokens dos 3 temas (DESIGN_SYSTEM §2.1/2.3).
  * Texto secundário (muted-foreground) sobre o fundo: AA 4.5:1.
  * Texto primário (foreground) sobre o fundo: AA 4.5:1.
+ * Variantes -strong sobre o fundo: AA 4.5:1 (links/texto).
  */
 const PALETTES = {
   light: {
-    background: "#FAFAF9",
-    foreground: "#1C1917",
-    mutedForeground: "#57534E",
-    primaryStrong: "#047857",
+    background: "#F4F7F9",
+    foreground: "#142531",
+    mutedForeground: "#475569",
+    primaryStrong: "#1B6B62",
   },
   dark: {
-    background: "#0F172A",
-    foreground: "#F8FAFC",
-    mutedForeground: "#94A3B8",
-    primaryStrong: "#34D399",
+    background: "#0C1923",
+    foreground: "#E8F1F5",
+    mutedForeground: "#9DB2C0",
+    primaryStrong: "#2DD4BF",
   },
   oled: {
     background: "#000000",
     foreground: "#FAFAFA",
     mutedForeground: "#808080",
-    primaryStrong: "#34D399",
+    primaryStrong: "#2DD4BF",
   },
 } as const;
 

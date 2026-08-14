@@ -1,6 +1,7 @@
 import { NavLink } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { navItems } from "@/components/layout/nav-items";
 
 export interface SidebarProps {
@@ -29,10 +30,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           isCollapsed ? "justify-center px-2" : "px-6",
         )}
       >
-        <span className="size-3 shrink-0 rounded-full bg-primary" aria-hidden="true" />
-        {!isCollapsed && (
-          <span className="truncate font-display text-lg font-bold">Finanças</span>
-        )}
+        <BrandLogo showWordmark={!isCollapsed} markClassName={isCollapsed ? "size-7" : "size-8"} />
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2" aria-label="Navegação principal">

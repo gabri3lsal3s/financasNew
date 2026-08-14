@@ -603,6 +603,17 @@
 - Zero classes com cores soltas ou contrastes fora da escala.
 - Suíte de testes 100% verde.
 
+**Progresso — Fase 10 (2026-08-14):**
+- [x] **Tokens reestruturados** (`src/styles/tokens.css`): Light "Vital Petróleo & Ouro" (fundo `#F4F7F9`, primária Teal `#2A9D8F`, ouro `#DDA726`, texto `#142531`), Dark "Abissal Teal" (fundo `#0C1923`, superfícies `#162836`, teal vivo `#2DD4BF`, dourado `#F3C352`) e OLED "True Black + Órbitas Douradas" (fundo `#000`, bordas ardósia `#1C2E3D`, acentos luminosos)
+- [x] **Semânticas financeiras harmonizadas:** receita Teal `#2A9D8F`/`#2DD4BF` · despesa Coral Suave `#E76F51`/`#FB7185` · atenção Ouro Âmbar `#E9C46A`/`#F59E0B` · investimentos Sky Petróleo `#1B3A4B`/`#38BDF8` (accent agora é o ouro; portfolio segue sky, desacoplados)
+- [x] **BrandLogo** (`src/components/layout/brand-logo.tsx`): carteira orbital vetorial (moeda teal + órbita ouro, 100% tokens) + tipografia "Guia Financeiro"; integrado na Sidebar, Header (mobile) e AuthShell
+- [x] **Assets PWA:** `scripts/generate-icons.mjs` reescrito com a marca (fundo petróleo, moeda teal, órbita ouro; maskable em 72% da zona segura), ícones regenerados, manifest e `index.html` com a marca + theme-colors novos, `offline.html` rebranded
+- [x] **Harmonização de categorias:** sugestões de cor de `domain/budgets` alinhadas (educação → Teal `#2A9D8F`; alimentação → Ouro `#DDA726`); badges e gráficos seguem os tokens (positivo/negativo/atenção/portfolio)
+- [x] **Auditoria de contraste:** `domain/accessibility` validado para os 3 temas + novos checks (texto sobre ouro, portfolio light/dark) — 21 testes verdes
+- [x] Typecheck, lint (0 erros), build e suíte completa verdes (91 arquivos / 648 testes)
+
+**✅ Fase 10 concluída:** identidade visual oficial "Guia Financeiro" aplicada nos 3 temas, com BrandLogo integrado (Sidebar/Header/Auth/PWA) e contraste AA certificado por teste.
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
