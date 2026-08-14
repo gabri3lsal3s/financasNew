@@ -96,7 +96,7 @@ Referência completa (ajustar nomes à marca final):
 **Requisitos dos ícones:**
 - PNG, com fundo **não transparente** (192/512 e apple-touch).
 - **Maskable:** o conteúdo essencial dentro dos **80% centrais** (zona segura de recorte); fundo preenchido com a cor da marca.
-- Gerados pelo script `scripts/generate-icons.mjs` (`npm run icons`) a partir da marca "Guia Financeiro" (F10) — carteira orbital: fundo Azul Petróleo `#142531`, moeda Teal Petróleo `#2A9D8F` com vazado claro e órbita em Ouro Âmbar `#DDA726` — nas resoluções acima. O `maskable` usa conteúdo em 72% (zona segura de 80%).
+- Gerados pelo script `scripts/generate-icons.mjs` (`npm run icons`) a partir da marca "Guia Financeiro" (F10, design de referência `identidadeVisual/`) — carteira orbital: fundo Azul Petróleo `#142531`, esfera Teal Petróleo com gradiente vertical e núcleo petróleo, faixas orbitais em Ouro Âmbar `#DDA726` e satélite dourado no topo — nas resoluções acima. O `maskable` usa conteúdo em 72% (zona segura de 80%).
 
 ---
 

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 export interface BrandLogoProps {
@@ -10,10 +11,11 @@ export interface BrandLogoProps {
 }
 
 /**
- * Logo oficial da marca "Guia Financeiro" (F10) — ícone da carteira orbital:
- * moeda central em Teal Petróleo com órbita em Ouro Âmbar, tudo via tokens
- * (fill-primary / stroke-accent). Vetorial, `aria-hidden` e sem textos
- * decorativos — a identidade propaga por `tokens.css`.
+ * Logo oficial da marca "Guia Financeiro" (F10) — "carteira orbital" refinada
+ * com o design de referência (`identidadeVisual/`): esfera teal com gradiente
+ * vertical, faixas orbitais em Ouro Âmbar, núcleo Azul Petróleo e satélite
+ * dourado no topo. 100% via tokens (fill-primary/portfolio/accent) — a
+ * identidade propaga por `tokens.css`. Vetorial e `aria-hidden`.
  */
 export function BrandLogo({
   className,
@@ -21,17 +23,33 @@ export function BrandLogo({
   markClassName,
   wordmarkClassName,
 }: BrandLogoProps) {
+  const gradientId = useId();
+  const clipId = useId();
+
   return (
     <span className={cn("flex items-center gap-2.5", className)}>
       <svg viewBox="0 0 32 32" aria-hidden="true" className={cn("size-8 shrink-0", markClassName)}>
-        {/* Órbita dourada inclinada + satélite */}
-        <g transform="rotate(-24 16 16)">
-          <ellipse cx="16" cy="16" rx="13" ry="6.5" fill="none" strokeWidth="2.5" className="stroke-accent" />
-          <circle cx="16" cy="9.5" r="2" className="fill-accent" />
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--primary-strong))" />
+            <stop offset="100%" stopColor="hsl(var(--primary))" />
+          </linearGradient>
+          <clipPath id={clipId}>
+            <circle cx="16" cy="16" r="14" />
+          </clipPath>
+        </defs>
+
+        {/* Esfera (carteira orbital): teal com profundidade vertical */}
+        <circle cx="16" cy="16" r="14" fill={`url(#${gradientId})`} />
+        <g clipPath={`url(#${clipId})`}>
+          {/* Núcleo Azul Petróleo (referência) */}
+          <circle cx="16" cy="16" r="3.6" className="fill-portfolio" />
+          {/* Faixas orbitais douradas: superior (~38%) e inferior (~79%) */}
+          <rect x="1" y="11.7" width="30" height="1.9" rx="0.95" className="fill-accent" />
+          <rect x="1" y="23.2" width="30" height="1.9" rx="0.95" className="fill-accent" />
         </g>
-        {/* Moeda/carteira: disco teal com vazado central */}
-        <circle cx="16" cy="16" r="8" className="fill-primary" />
-        <circle cx="16" cy="16" r="3.2" className="fill-surface" />
+        {/* Satélite dourado no topo */}
+        <circle cx="16" cy="3.6" r="1.6" className="fill-accent" />
       </svg>
       {showWordmark ? (
         <span

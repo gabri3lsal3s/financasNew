@@ -62,17 +62,18 @@ function encodePng(size, rgbFn) {
 
 // --- Paleta da marca (identidade "Guia Financeiro" — F10) ---
 const PETROLEUM = [20, 37, 49]; // #142531 — fundo
-const TEAL = [42, 157, 143]; // #2A9D8F — moeda
-const OFF_WHITE = [244, 247, 249]; // #F4F7F9 — vazado central
-const GOLD = [221, 167, 38]; // #DDA726 — órbita
+const TEAL_TOP = [27, 107, 98]; // #1B6B62 — topo da esfera (primary-strong)
+const TEAL_BOTTOM = [42, 157, 143]; // #2A9D8F — base da esfera (primary)
+const CORE = [7, 58, 79]; // #073A4F — núcleo Azul Petróleo (referência)
+const GOLD = [221, 167, 38]; // #DDA726 — faixas orbitais e satélite
 
-const ROT = (24 * Math.PI) / 180;
-const COS = Math.cos(ROT);
-const SIN = Math.sin(ROT);
+const lerp = (a, b, t) => a + (b - a) * t;
 
 /**
- * Carteira orbital: moeda teal com vazado claro + órbita dourada inclinada.
- * `scale` dimensiona o conteúdo (maskable usa a zona segura de 80%).
+ * Carteira orbital (design de referência `identidadeVisual/`): esfera teal
+ * com gradiente vertical, faixas orbitais douradas (~38% e ~79% da altura),
+ * núcleo Azul Petróleo e satélite dourado no topo. `scale` dimensiona o
+ * conteúdo (maskable usa a zona segura de 80%).
  */
 function brandMark(x, y, s, scale) {
   const cx = s / 2;
@@ -80,26 +81,25 @@ function brandMark(x, y, s, scale) {
   const dx = x + 0.5 - cx;
   const dy = y + 0.5 - cy;
 
-  // Satélite dourado no topo da órbita (checagem antes do anel p/ prioridade).
-  const satX = 0;
-  const satY = -0.21 * s * scale;
-  const satR = 0.065 * s * scale;
+  const R = 0.30 * s * scale; // raio da esfera
+  const bandHalf = 0.014 * s * scale; // meia espessura das faixas
+  const coreR = 0.07 * s * scale; // raio do núcleo
+  const satR = 0.045 * s * scale; // raio do satélite
 
-  // Moeda (no espaço da tela, sem rotação).
-  const coinR = 0.26 * s * scale;
-  const holeR = 0.10 * s * scale;
+  // Satélite dourado no topo (checagem antes das faixas p/ prioridade).
+  const satDy = -0.88 * R;
+  if ((dx * dx + (dy - satDy) * (dy - satDy)) <= satR * satR) return GOLD;
 
-  // Órbita: transforma o pixel para o referencial da elipse (rotação +24°).
-  const ex = dx * COS - dy * SIN;
-  const ey = dx * SIN + dy * COS;
-  const rx = 0.42 * s * scale;
-  const ry = 0.21 * s * scale;
-  const t = (ex / rx) ** 2 + (ey / ry) ** 2;
-
-  if ((ex - satX) ** 2 + (ey - satY) ** 2 <= satR * satR) return GOLD;
-  if (t >= 0.78 && t <= 1.14) return GOLD;
-  if (dx * dx + dy * dy <= holeR * holeR) return OFF_WHITE;
-  if (dx * dx + dy * dy <= coinR * coinR) return TEAL;
+  if (dx * dx + dy * dy <= R * R) {
+    // Faixas orbitais douradas: superior (dy = -0.24R) e inferior (dy = +0.58R).
+    if (Math.abs(dy + 0.24 * R) <= bandHalf) return GOLD;
+    if (Math.abs(dy - 0.58 * R) <= bandHalf) return GOLD;
+    // Núcleo Azul Petróleo.
+    if (dx * dx + dy * dy <= coreR * coreR) return CORE;
+    // Esfera teal com gradiente vertical (escuro no topo, claro na base).
+    const t = Math.max(0, Math.min(1, (dy + R) / (2 * R)));
+    return [lerp(TEAL_TOP[0], TEAL_BOTTOM[0], t), lerp(TEAL_TOP[1], TEAL_BOTTOM[1], t), lerp(TEAL_TOP[2], TEAL_BOTTOM[2], t)];
+  }
   return PETROLEUM;
 }
 
