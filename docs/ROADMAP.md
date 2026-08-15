@@ -899,6 +899,14 @@
 - Estados loading/vazio/erro completos; axe sem violações; 3 temas × acentos consistentes.
 - Suíte 100% verde (incl. testes dos motores de agregado).
 
+**Progresso — F17 concluída (2026-08-15):**
+- [x] **Motores puros (entregas 2–4)** — `src/domain/portfolio/summary.ts` (novo, 7 testes): `portfolioReturnPct` (rentabilidade ponderada pelo valor, Σ pct×valor ÷ Σ valor — ignora caixa/sem custo), `dividendsInMonth` (proventos recebidos no mês — dividend/jcp/fii_yield) e `allocationByTicker` (mesmo padrão de `allocationByClass`).
+- [x] **Rota `/investments` (entrega 1)** — página em `appRoutes` (lazy) + item de navegação `ChartLine` na fonte única `nav-items` (sidebar + menu Mais automático; BottomNav preserva slots fixos).
+- [x] **Página `InvestmentsPage`** (`src/features/investments/`, barrel + página + 3 testes): KPIs executivos (Patrimônio total com Δ vs mês anterior, Rentabilidade ponderada com tom semântico, Proventos do mês, Ativos), donuts **por classe** (`AllocationDonut`, F16) e **por ativo** (`CategoryDonut`), tabela de posições com ordenação e acessos rápidos para `/carteira`.
+- [x] **Ordenação acessível (entrega 4)** — `PositionTable` ganha prop `sortable` (uma implementação, DRY): cabeçalhos clicáveis com `aria-sort` e ícone de direção (3 testes dedicados); a Posição existente permanece sem ordenação (padrão).
+- [x] **Estados completos (entrega 5)** — loading (SkeletonKpi ×4 + SkeletonChart ×2 + SkeletonTable), vazio (EmptyState "Sem investimentos" com CTA `/carteira`), erro (gateway + retry via `position.refetch`) — Online First; axe sem violações (auditoria P0 inclui a tela).
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`); deep-link da Home segue apontando para `/carteira` (decisão F16 do produto — F17 mantém).
+
 ---
 
 ### Fase 18 — Proventos: Extrato & Calendário (Trilha B)
@@ -1170,7 +1178,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 | ✅ Concluída (2026-08-15) |
 | 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | ✅ Concluída (2026-08-15) |
 | 5 | **F16** — Carteira na Home (KPI real + donut de alocação) | B | F14 | ✅ Concluída (2026-08-15) — KPI de aportes com deep-link; `AllocationDonut` na Posição (decisão: sem widget na Home) |
-| 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | 📋 Não iniciada |
+| 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | ✅ Concluída (2026-08-15) |
 | 7 | **F18** — Proventos (extrato & calendário) | B | F17 | 📋 Não iniciada |
 | 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | 📋 Planejada |
 | 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | 📋 Planejada |

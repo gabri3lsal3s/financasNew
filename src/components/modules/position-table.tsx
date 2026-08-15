@@ -1,3 +1,6 @@
+import { useState } from "react";
+import type { ReactNode } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
@@ -7,7 +10,6 @@ import type { PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
 import type { AssetCurrency } from "@/types";
-import type { ReactNode } from "react";
 
 export interface PositionRow {
   assetId: string;
@@ -32,7 +34,31 @@ export interface PositionTableProps {
   /** Ação por linha (ex.: registrar transação) — omita para ocultar a coluna. */
   onRegisterTransaction?: (assetId: string, ticker: string) => void;
   emptyMessage?: string;
+  /**
+   * F17 — ordenação por coluna clicável (aria-sort + ícone de direção).
+   * Desabilitada por padrão (a Posição atual mantém a ordem do ledger).
+   */
+  sortable?: boolean;
 }
+
+type SortKey =
+  | "ticker"
+  | "quantity"
+  | "price"
+  | "averageCost"
+  | "value"
+  | "unrealizedPct"
+  | "pct";
+
+const SORT_ACCESSOR: Record<SortKey, (row: PositionRow) => number | string> = {
+  ticker: (row) => row.ticker,
+  quantity: (row) => row.quantity,
+  price: (row) => row.priceBRL,
+  averageCost: (row) => row.averageCost,
+  value: (row) => row.valueBRL,
+  unrealizedPct: (row) => row.unrealizedPct ?? Number.NEGATIVE_INFINITY,
+  pct: (row) => row.pct,
+};
 
 const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> = {
   manual: { label: "manual", title: "Preço informado manualmente (prevalece sobre API/fallback)" },
@@ -43,15 +69,67 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
 const formatPct = (value: number): string =>
   `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 
+/** Cabeçalho clicável com direção (F17 — ordenação acessível). */
+function SortableHeader({ label, active, direction, onClick }: { label: string; active: boolean; direction: "asc" | "desc"; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
+      className="inline-flex items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
+    >
+      {label}
+      {active ? (
+        direction === "asc" ? (
+          <ArrowUp className="size-3" aria-hidden="true" />
+        ) : (
+          <ArrowDown className="size-3" aria-hidden="true" />
+        )
+      ) : (
+        <ArrowUpDown className="size-3 opacity-50" aria-hidden="true" />
+      )}
+    </button>
+  );
+}
+
 /**
  * Posição da carteira — módulo de domínio reutilizável (F4 + F14).
  * Recebe linhas prontas (posição derivada no state); marca a fonte do preço,
  * destacando o override manual ("informado manualmente" — DoD F4), e exibe a
  * rentabilidade não realizada com tom semântico (F14 — valores calculados no
  * domínio, a UI só formata). Respeita o toggle global de densidade (F8).
+ * `sortable` (F17) habilita ordenação por coluna clicável (aria-sort).
  */
-export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: PositionTableProps) {
+export function PositionTable({ rows, onRegisterTransaction, emptyMessage, sortable = false }: PositionTableProps) {
   const density = useDensity();
+  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" } | null>(null);
+
+  const toggleSort = (key: SortKey) => {
+    setSort((current) => {
+      if (current === null || current.key !== key) return { key, direction: "asc" };
+      if (current.direction === "asc") return { key, direction: "desc" };
+      return null;
+    });
+  };
+
+  const sortedRows = sortable && sort ? [...rows].sort((a, b) => {
+    const av = SORT_ACCESSOR[sort.key](a);
+    const bv = SORT_ACCESSOR[sort.key](b);
+    const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
+    return sort.direction === "asc" ? cmp : -cmp;
+  }) : rows;
+
+  const headerFor = (key: SortKey, label: string): ReactNode =>
+    sortable ? (
+      <SortableHeader
+        label={label}
+        active={sort?.key === key}
+        direction={sort?.direction ?? "asc"}
+        onClick={() => toggleSort(key)}
+      />
+    ) : (
+      label
+    );
 
   const columns: {
     key: string;
@@ -61,7 +139,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
   }[] = [
     {
       key: "ticker",
-      header: "Ativo",
+      header: headerFor("ticker", "Ativo"),
       cell: (row) => (
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
@@ -71,7 +149,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
     },
     {
       key: "quantity",
-      header: "Quantidade",
+      header: headerFor("quantity", "Quantidade"),
       align: "right",
       cell: (row) => (
         <span className="num text-sm text-muted-foreground">
@@ -81,7 +159,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
     },
     {
       key: "price",
-      header: "Preço",
+      header: headerFor("price", "Preço"),
       align: "right",
       cell: (row) => (
         <div className="flex flex-col items-end gap-0.5">
@@ -100,7 +178,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
     },
     {
       key: "averageCost",
-      header: "Custo médio",
+      header: headerFor("averageCost", "Custo médio"),
       align: "right",
       cell: (row) =>
         row.isCash ? (
@@ -111,7 +189,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
     },
     {
       key: "value",
-      header: "Valor",
+      header: headerFor("value", "Valor"),
       align: "right",
       cell: (row) => <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />,
     },
@@ -128,7 +206,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
     },
     {
       key: "unrealizedPct",
-      header: "Rentab.",
+      header: headerFor("unrealizedPct", "Rentab."),
       align: "right",
       cell: (row) => {
         if (row.isCash || row.unrealizedPct === null) {
@@ -143,7 +221,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
     },
     {
       key: "pct",
-      header: "% patrimônio",
+      header: headerFor("pct", "% patrimônio"),
       align: "right",
       cell: (row) => <span className="num text-sm text-muted-foreground">{row.pct.toFixed(1)}%</span>,
     },
@@ -172,7 +250,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
   return (
     <DataList
       columns={columns}
-      rows={rows}
+      rows={sortedRows}
       rowKey={(row) => row.assetId}
       density={density === "compact" ? "compact" : "comfortable"}
       emptyMessage={emptyMessage ?? "Nenhum ativo na carteira."}

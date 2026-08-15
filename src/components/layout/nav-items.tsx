@@ -1,6 +1,7 @@
 import {
   ArrowLeftRight,
   Bell,
+  ChartLine,
   ChartPie,
   CreditCard,
   HandCoins,
@@ -30,6 +31,7 @@ export const navItems: NavItem[] = [
   { label: "Relatórios", path: "/relatorios", icon: ChartPie },
   { label: "Insights", path: "/insights", icon: Lightbulb },
   { label: "Carteira", path: "/carteira", icon: Wallet },
+  { label: "Investimentos", path: "/investments", icon: ChartLine },
   { label: "Lembretes", path: "/lembretes", icon: Bell },
   { label: "Configurações", path: "/configuracoes", icon: Settings },
 ];

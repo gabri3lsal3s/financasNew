@@ -14,6 +14,9 @@ const CategoriesPage = lazy(() =>
 const ReportsPage = lazy(() => import("@/features/reports/pages/reports-page").then((m) => ({ default: m.ReportsPage })));
 const InsightsPage = lazy(() => import("@/features/insights/pages/insights-page").then((m) => ({ default: m.InsightsPage })));
 const PortfolioPage = lazy(() => import("@/features/portfolio/pages/portfolio-page").then((m) => ({ default: m.PortfolioPage })));
+const InvestmentsPage = lazy(() =>
+  import("@/features/investments/pages/investments-page").then((m) => ({ default: m.InvestmentsPage })),
+);
 const RemindersPage = lazy(() => import("@/features/reminders/pages/reminders-page").then((m) => ({ default: m.RemindersPage })));
 const SettingsPage = lazy(() => import("@/features/settings/pages/settings-page").then((m) => ({ default: m.SettingsPage })));
 
@@ -34,6 +37,7 @@ export const appRoutes: AppRoute[] = [
   { path: "/relatorios", Component: ReportsPage },
   { path: "/insights", Component: InsightsPage },
   { path: "/carteira", Component: PortfolioPage },
+  { path: "/investments", Component: InvestmentsPage },
   { path: "/lembretes", Component: RemindersPage },
   { path: "/configuracoes", Component: SettingsPage },
 ];

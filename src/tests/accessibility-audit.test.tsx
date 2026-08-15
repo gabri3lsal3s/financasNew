@@ -9,6 +9,7 @@ import { BudgetsPage } from "@/features/budgets/pages/budgets-page";
 import { CardsPage } from "@/features/cards/pages/cards-page";
 import { DebtsPage } from "@/features/debts/pages/debts-page";
 import { OverviewPage } from "@/features/overview/pages/overview-page";
+import { InvestmentsPage } from "@/features/investments/pages/investments-page";
 import { TransactionListPage } from "@/features/transactions/pages/transaction-list-page";
 import { LaunchWizard } from "@/features/transactions/wizard/launch-wizard";
 
@@ -173,6 +174,8 @@ vi.mock("@/state", () => ({
   useExpense: () => ({ data: { id: "e1", base_amount: 1000 }, isLoading: false, isError: false, error: null }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
 }));
 
 /**
@@ -223,6 +226,11 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
 
   it("LaunchWizard sem violações", async () => {
     const { container } = render(<LaunchWizard />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("InvestmentsPage sem violações", async () => {
+    const { container } = render(<InvestmentsPage />);
     expect(await axe(container)).toHaveNoViolations();
   });
 

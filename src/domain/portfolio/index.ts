@@ -281,6 +281,8 @@ export {
   usdRateFromPrices,
   valueAssetPosition,
 } from "./valuation";
+export { allocationByTicker, dividendsInMonth, portfolioReturnPct } from "./summary";
+export type { AllocationTickerSlice } from "./summary";
 export type { AssetValuation, PriceCandidate, PriceSource, ResolvedPrice } from "./valuation";
 export {
   clampTargetPercentage,
