@@ -109,7 +109,7 @@
 - [x] Primitivo novo `Alert` (erro/sucesso/info/warning) — exigido pelo DRY das telas de formulário
 - [x] **Cotações (F1.7)**: edge function `supabase/functions/quotes/` (Deno) — motor puro testável em `_shared/quotes-core.ts` (15 testes: normalização de ticker B3/cripto/internacional, parse da Yahoo Chart API v8, guardrail de spike, montagem do upsert) + handler com fetch em cascata (query1→query2, timeout 4s, tolerante a falha por ticker), auth por service role, upsert do cache global (`user_id NULL`, `source 'api'`, delete+insert por ticker) e `verify_jwt = false` no `config.toml`. **Deploy/config pendente** (exige credenciais e cron — ver DEPLOYMENT §7.1 e RELEASE.md)
 - [ ] **Testes contra banco real (Supabase local)** — pgTAP/vitest + Postgres: isolamento RLS e rollback de RPCs (DoD; exige ambiente local com Docker — não disponível neste ambiente)
-- [ ] Configurar `.env.local` com credenciais reais do projeto Supabase para validar o fluxo de auth de ponta a ponta
+- [x] **Credenciais reais do Supabase** presentes no `.env` local (gitignored — VITE_SUPABASE_URL `https://lnsfcajcfofgvpvabwbi.supabase.co` + ANON_KEY; o Vite carrega `.env` da mesma forma que `.env.local`) e conectividade validada (auth/rest respondem 401 sem JWT = projeto ativo). Fluxo de auth de ponta a ponta (login/cadastro no browser) segue como validação manual — ver `RELEASE.md` §2
 
 ---
 

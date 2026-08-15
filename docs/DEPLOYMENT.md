@@ -19,7 +19,7 @@
 ```
 
 - **Frontend:** Vercel — `vercel.json` já configurado (SPA rewrites, headers de segurança, cache PWA).
-- **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0008: schema, RLS, RPCs, overrides, metas).
+- **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0009: schema, RLS, RPCs, overrides, metas, metas de alocação, backfill de perfis).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
 - **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito pela **edge function `quotes`** (implementada em `supabase/functions/quotes/` — F1.7; falta deploy + cron — ver §7.1).
 
@@ -41,7 +41,7 @@
 ### 3.1 Supabase: criar o projeto e aplicar o schema
 
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
-2. Aplique as migrations **na ordem** (0001 → 0008). Duas opções:
+2. Aplique as migrations **na ordem** (0001 → 0009). Duas opções:
    - **Dashboard (SQL Editor):** cole o conteúdo de cada `supabase/migrations/*.sql` em ordem.
    - **CLI (recomendado):**
      ```bash
@@ -107,7 +107,7 @@ cp .env.example .env.local   # preencha VITE_SUPABASE_URL + VITE_SUPABASE_ANON_K
 npm run dev          # dev server (Vite)
 npm run typecheck    # tsc -b (valida TODO o projeto, inclusive testes)
 npm run lint         # eslint (0 erros esperado)
-npm run test         # vitest — 810 testes (105 arquivos)
+npm run test         # vitest — 825 testes (106 arquivos)
 npm run build        # tsc -b && vite build (gera dist/ + Service Worker)
 npm run preview      # serve dist/ localmente (testa o build de produção)
 
@@ -120,7 +120,7 @@ npx supabase db reset  # aplica migrations + seed
 
 ## 6. O QUE JÁ ESTÁ PRONTO (auditado)
 
-- ✅ **Migrations completas:** 0001 schema (19 tabelas), 0002 RLS (policies por usuário), 0003 RPCs transacionais (parcelamento, dívidas, cartões, orçamentos, categorias), 0004–0008 (cartões/dívidas, budgets, lembretes, override de preço, metas de alocação).
+- ✅ **Migrations completas:** 0001 schema (19 tabelas), 0002 RLS (policies por usuário), 0003 RPCs transacionais (parcelamento, dívidas, cartões, orçamentos, categorias), 0004–0008 (cartões/dívidas, budgets, lembretes, override de preço, metas de alocação), 0009 (backfill idempotente de `profiles` + `user_preferences`).
 - ✅ **Auth funcional:** login/cadastro/recuperação + trigger `handle_new_user` (profiles + preferências) + RLS.
 - ✅ **Build de produção:** `tsc -b` limpo, `vite build` ok, code-splitting por página, SW gerado (43 entradas precached).
 - ✅ **PWA:** manifest (`/pwa/manifest.webmanifest`), ícones (192/512/maskable/apple-touch), `offline.html`, registro `autoUpdate`, **prompt de instalação** (`beforeinstallprompt` via `InstallAppButton` no menu "Mais") e **toast de atualização automática** (F5.6) — auditoria PWA automatizada em `tests/pwa-audit.test.ts`.
@@ -172,7 +172,7 @@ curl -X POST 'https://<REF>.supabase.co/functions/v1/quotes' \
 ## 8. CHECKLIST RÁPIDO DE PRONTIDÃO
 
 ```markdown
-[ ] Projeto Supabase criado e migrations 0001–0008 aplicadas (19 tabelas + RPCs)
+[ ] Projeto Supabase criado e migrations 0001–0009 aplicadas (19 tabelas + RPCs)
 [ ] RLS ativo com policies por usuário (Settings → Database → RLS)
 [ ] Auth: Site URL e Redirect URLs apontando para o domínio Vercel
 [ ] Auth: SMTP configurado (confirmação de e-mail no cadastro)
