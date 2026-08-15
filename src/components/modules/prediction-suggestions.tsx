@@ -1,5 +1,5 @@
 import { Sparkles } from "lucide-react";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import type { PredictionSuggestion } from "@/domain/predictions";
 
 export interface PredictionSuggestionsProps {

@@ -42,7 +42,7 @@ import { ExpenseDetailDialog } from "@/features/transactions";
 import { ReportDetailDialog } from "../components/report-detail-dialog";
 import type { Expense } from "@/types";
 
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 
 type PeriodMode = "month" | "year" | "custom";
 type AggregationTab = "category" | "method" | "weekday";

@@ -3,7 +3,7 @@ import { Copy, Pencil, Share2, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
 import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";

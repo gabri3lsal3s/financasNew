@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/modal";
 import { MoneyText } from "@/components/ui/money-text";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TransactionRow } from "@/components/modules/transaction-row";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
 import { triggerHaptic } from "@/services/haptics";
 import type { Category, Expense } from "@/types";

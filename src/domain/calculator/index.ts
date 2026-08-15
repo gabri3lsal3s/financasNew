@@ -7,7 +7,7 @@
  * histórico limitado. Nenhum import de UI/Supabase.
  */
 
-import { splitCents } from "@/domain/money/parcelar";
+import { splitCents } from "@/domain/money";
 
 export type CalcOperator = "+" | "−" | "×" | "÷";
 

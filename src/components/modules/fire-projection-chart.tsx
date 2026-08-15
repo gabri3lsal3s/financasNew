@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { cn } from "@/lib/utils";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import type { FireProjectionPoint } from "@/domain/fire";
 
 const WIDTH = 320;

@@ -3,7 +3,7 @@
  * Derivados calculados aqui (D12): parcelas em centavos + competência
  * snapshot quando cartão. O servidor valida invariantes (soma = total, 1–60).
  */
-import { parcelar } from "@/domain/money/parcelar";
+import { parcelar, toISODate } from "@/domain/money";
 import { resolveBillCompetence } from "@/domain/competence";
 import type { InstallmentInput } from "@/data/rpc";
 import type { PaymentMethod, ReceiveType } from "@/types";
@@ -33,12 +33,6 @@ export interface LaunchState {
 }
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
-
-const toISODate = (date: Date): string => {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-};
 
 export function defaultLaunchState(): LaunchState {
   return {

@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PredictionSuggestions } from "@/components/modules";
 import { getErrorMessage } from "@/services/errors";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import type { PaymentMethod, ReceiveType } from "@/types";
 import { REPORT_WEIGHT_OPTIONS } from "../components/report-weight-constants";

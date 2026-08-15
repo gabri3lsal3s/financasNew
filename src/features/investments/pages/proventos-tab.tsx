@@ -4,7 +4,7 @@ import { Alert, Badge, Button, EmptyState, SkeletonTable } from "@/components/ui
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "@/domain/portfolio";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { currentMonth, monthLabel } from "@/lib/date";
 import { PORTFOLIO_TX_LABELS } from "@/lib/labels";
 import { getErrorMessage } from "@/services/errors";

@@ -3,10 +3,10 @@ import { Save, Shield, Trash2 } from "lucide-react";
 import { Alert, Button, EmptyState, NumberStepperInput, SkeletonList, SkeletonTable } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
 import { parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { playSound } from "@/services/audio-fx";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import {

@@ -6,7 +6,7 @@ import { CalculatorKeypad } from "@/components/modules/calculator-keypad";
 import { injectCalculatedValue } from "@/services/calculator-bridge";
 import { isCalculatorOpen, setCalculatorOpen, subscribeCalculatorOpen } from "@/services/calculator-open";
 import { triggerHaptic } from "@/services/haptics";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import {
   INITIAL_STATE,
   addHistory,

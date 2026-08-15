@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import type { PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";

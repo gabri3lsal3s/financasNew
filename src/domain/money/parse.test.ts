@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { centsToBRL, numberToCents, parseBRLToCents } from "./parse";
+import { numberToCents, parseBRLToCents } from "./parse";
+import { formatCentsAsBRL } from "@/services/masks/money";
 
 describe("parseBRLToCents", () => {
   it("interpreta formatos pt-BR comuns", () => {
@@ -20,10 +21,12 @@ describe("parseBRLToCents", () => {
   });
 });
 
-describe("centsToBRL", () => {
+// A formatação exibível vive em services/masks/money (fonte única — DRY);
+// este teste garante que o contrato de formatação permanece o esperado.
+describe("formatação canônica (formatCentsAsBRL)", () => {
   it("formata em pt-BR com R$ e milhar", () => {
-    expect(centsToBRL(150000)).toBe("R$\u00a01.500,00");
-    expect(centsToBRL(1)).toBe("R$\u00a00,01");
+    expect(formatCentsAsBRL(150000)).toBe("R$\u00a01.500,00");
+    expect(formatCentsAsBRL(1)).toBe("R$\u00a00,01");
   });
 });
 

@@ -1,7 +1,7 @@
 import { ArrowDownToLine, PiggyBank, Wallet } from "lucide-react";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 

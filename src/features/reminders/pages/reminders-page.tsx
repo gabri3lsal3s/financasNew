@@ -5,7 +5,7 @@ import { autoSelectBillMonth, buildCompetenceSummaries } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
 import { buildReminders } from "@/domain/reminders";
 import { shiftMonth } from "@/lib/date";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import {
   useAllCardExpenses,

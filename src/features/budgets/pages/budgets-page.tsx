@@ -17,9 +17,9 @@ import {
   resolveEffectiveLimit,
   spentByCategoryMap,
 } from "@/domain/budgets";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { useBudgets, useCategories, useExpenses, useIncomeGoals, useIncomes, useReallocateBudget, useSetIncomeGoal, useRemoveIncomeGoal } from "@/state";
 import { LimitDialog } from "@/features/budgets/components/limit-dialog";

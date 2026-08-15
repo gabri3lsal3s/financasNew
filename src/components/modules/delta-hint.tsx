@@ -1,6 +1,7 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { percentChange } from "@/domain/overview";
 import { cn } from "@/lib/utils";
+import { formatPercent } from "@/services/masks";
 
 export interface DeltaHintProps {
   currentCents: number;
@@ -8,9 +9,6 @@ export interface DeltaHintProps {
   /** Inverte a semântica (ex.: despesas — subir é ruim). */
   invert?: boolean;
 }
-
-const formatPercent = (value: number) =>
-  value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 /**
  * Comparativo Δ vs. período anterior — módulo de domínio reutilizável (F14).

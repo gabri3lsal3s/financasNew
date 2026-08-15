@@ -1,6 +1,6 @@
 import { useState, useRef, type MouseEvent, type KeyboardEvent } from "react";
 import { Radio } from "lucide-react";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { bestPurchaseDay, cardLimitUsage } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import type { CreditCard } from "@/types";

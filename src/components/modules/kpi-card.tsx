@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { MoneyText } from "@/components/ui/money-text";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Sparkline } from "@/components/ui/sparkline";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 
 export interface KpiCardProps {
   label: string;

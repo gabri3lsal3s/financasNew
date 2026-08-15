@@ -4,7 +4,7 @@ import { Badge, Button, ConfirmDialog, EmptyState, Modal, SkeletonTable } from "
 import { MoneyText } from "@/components/ui/money-text";
 import { useAssetPosition, useDeletePortfolioTransaction } from "@/state";
 import { PORTFOLIO_TX_LABELS } from "@/lib/labels";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { playSound } from "@/services/audio-fx";
 import { triggerHaptic } from "@/services/haptics";

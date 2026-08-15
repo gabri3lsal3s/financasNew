@@ -1,5 +1,5 @@
 import { MoneyInput, Select } from "@/components/ui";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { REPORT_WEIGHT_OPTIONS } from "./report-weight-constants";
 
 export interface ReportWeightFieldProps {

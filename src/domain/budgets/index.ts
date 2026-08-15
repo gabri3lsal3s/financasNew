@@ -1,4 +1,4 @@
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 
 /**
  * Orçamentos e metas de renda — ESPECIFICAÇÃO §3.5.2 / §3.5.3.

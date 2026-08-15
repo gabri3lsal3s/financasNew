@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 
 /**
  * MoneyText — primitivo de valor monetário (F12, hierarquia tipográfica).

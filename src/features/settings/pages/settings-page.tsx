@@ -55,7 +55,7 @@ import { listExpensesByRange } from "@/data/repositories/expenses";
 import { listIncomesByRange } from "@/data/repositories/incomes";
 import { downloadCsv, downloadJson } from "@/services/export-actions";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { BACKUP_TABLE_KEYS, parseBackupPayload } from "@/domain/export";
 import type { ExportExpenseRow, ExportIncomeRow, ExportInvoiceRow, ExportPositionRow, RestoreSummary } from "@/domain/export";
 import {

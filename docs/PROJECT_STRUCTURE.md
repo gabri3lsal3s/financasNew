@@ -163,15 +163,17 @@
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
-    │                              #   use-sidebar-state, use-draggable,
-    │                              #   use-scroll-position, use-swipe-action,
+    │                              #   use-sidebar-state, use-scroll-position,
+    │                              #   use-swipe-action,
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas),
     │                              #   use-pull-up-to-top (F26 — overscroll vertical)…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
-    │   ├── masks/                 #   máscaras de input
+    │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
+    │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
+    │   │                          #     formatPercent)
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)

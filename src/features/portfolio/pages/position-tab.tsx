@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, TrendingUp, Wallet } from "lucide-react";
 import { Alert, Badge, Button, EmptyState, SkeletonKpi, SkeletonTable } from "@/components/ui";
 import { AllocationDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { AssetFormDialog } from "@/features/portfolio/components/asset-form-dialog";
 import { TransactionFormDialog } from "@/features/portfolio/components/transaction-form-dialog";

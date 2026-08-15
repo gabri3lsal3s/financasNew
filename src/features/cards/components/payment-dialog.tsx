@@ -1,13 +1,8 @@
 import { useState } from "react";
 import { Alert, Button, DatePicker, Input, Modal, MoneyInput } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
+import { toISODate } from "@/domain/money";
 import { useCreateCardPayment, useCreateRefund } from "@/state";
-
-const toISODate = (date: Date): string => {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-};
 
 export interface PaymentDialogProps {
   cardId: string;

@@ -5,8 +5,8 @@ import {
   centsFromDigits,
   digitsFromCents,
   extractDigits,
-} from "@/domain/money/currency-input";
-import { formatCentsAsBRL } from "@/services/masks/money";
+} from "@/domain/money";
+import { formatCentsAsBRL } from "@/services/masks";
 
 export interface UseCurrencyInputOptions {
   /** Valor inicial em centavos (default 0). */

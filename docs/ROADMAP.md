@@ -1289,5 +1289,13 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | ✅ Concluída (2026-08-15) — hover-expand da sidebar em overlay (delay anti-disparo), bottom sheets mobile com drag-to-close (threshold/fling/resistência), primitivo Tooltip acessível nos botões do header |
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | 📋 Planejada |
 
+**Auditoria de limpeza de código (2026-08-15):**
+- **Dead code removido:** `hooks/use-draggable.ts` (+teste) — órfão desde a remoção do FAB flutuante; `layout/placeholder-page.tsx` — página placeholder de versões antigas sem uso; `layout/density-toggle.tsx` — toggle não montado (a densidade vive em `/configuracoes` via `useDensity`); `centsToBRL` de `domain/money/parse.ts` — duplicata exata de `services/masks/money.formatCentsAsBRL` (DRY).
+- **Dependências:** todas as deps de `package.json` são necessárias (as aparentemente "sem uso" são peer deps de RTL/jest-dom ou types do Node usados no `vite.config.ts`/`tsconfig`).
+- **DRY — `toISODate`:** cópias locais removidas de `wizard-state.ts` e `payment-dialog.tsx`; fonte única `domain/money/parcelar.toISODate`.
+- **DRY — `formatPercent`:** consolidadas 2 cópias idênticas (`delta-hint.tsx`, `overview-page.tsx`) no canônico `services/masks/percent.ts` (+teste).
+- **Barrels criados:** `domain/money/index.ts`, `domain/gestures/index.ts`, `services/masks/index.ts` (padrão AGENTS.md §7) — 36+ arquivos migrados de imports profundos para `@/` (barrel).
+- **Verificação:** 1050 testes / 138 arquivos · lint 0 erros · typecheck e build limpos.
+
 **Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.
 

@@ -28,9 +28,10 @@ import {
   computeOverview,
   openInvoicesTotal,
 } from "@/domain/overview";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
+import { formatPercent } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import {
   useAllCardExpenses,
@@ -51,9 +52,6 @@ import { cn } from "@/lib/utils";
 
 const weightedSum = (items: readonly { value: number; report_weight: number }[]) =>
   items.reduce((acc, item) => acc + numberToCents(item.value * item.report_weight), 0);
-
-const formatPercent = (value: number) =>
-  value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 export function OverviewPage() {
   const [month, setMonth] = useState(currentMonth);

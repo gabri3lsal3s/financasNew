@@ -3,6 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { ptBR } from "react-day-picker/locale";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 import type { ChevronProps, DayButtonProps } from "react-day-picker";
+import { toISODate } from "@/domain/money";
 import { cn } from "@/lib/utils";
 
 export interface DatePickerProps {
@@ -23,10 +24,8 @@ const toDate = (iso: string): Date | undefined => {
 
 const toISO = (date: Date | undefined): string => {
   if (!date) return "";
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  // Fonte única de ISO local (DRY): domain/money/parcelar.toISODate.
+  return toISODate(date);
 };
 
 /**

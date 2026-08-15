@@ -7,7 +7,7 @@ import { playSound } from "@/services/audio-fx";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import { useCreatePortfolioTransaction, useDeletePortfolioTransaction, useUpdatePortfolioTransaction } from "@/state";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import type { DbInsert, PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 
 export interface TransactionFormDialogProps {

@@ -19,11 +19,8 @@ export function parseBRLToCents(input: string): number | null {
   return Math.round(value * 100);
 }
 
-/** Formata centavos como texto pt-BR (R$ 1.500,00) — espelha services/masks. */
-export function centsToBRL(cents: number): string {
-  const value = cents / 100;
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
+// Formatação exibível (R$ 1.500,00) vive em `services/masks/money`
+// (`formatCentsAsBRL`) — fonte única (DRY); não duplicar aqui.
 
 /**
  * Helper canônico de conversão para centavos (F19).

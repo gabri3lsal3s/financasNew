@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import { triggerHaptic } from "@/services/haptics";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
 import { useDensity } from "@/hooks/use-density";

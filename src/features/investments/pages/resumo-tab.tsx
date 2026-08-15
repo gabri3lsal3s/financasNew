@@ -3,7 +3,7 @@ import { Plus, TrendingUp, Wallet } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonChart, SkeletonKpi, SkeletonTable } from "@/components/ui";
 import { AllocationDonut, CategoryDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
 import { dividendsInMonth, portfolioReturnPct } from "@/domain/portfolio";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useAllPortfolioTransactions, useDeletePortfolioAsset, usePortfolioAssets, usePortfolioPosition } from "@/state";

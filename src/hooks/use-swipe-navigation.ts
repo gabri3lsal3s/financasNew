@@ -7,7 +7,7 @@ import {
   LOCK_DISTANCE_PX,
   resolveSwipeIntent,
   type SwipeDirection,
-} from "@/domain/gestures/swipe";
+} from "@/domain/gestures";
 import { triggerHaptic } from "@/services/haptics";
 
 /**

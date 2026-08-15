@@ -27,7 +27,7 @@ import { dailyBudget, endOfMonthProjection, pendingProjection, spendingPace } fr
 import { budgetLimitsByCategory, budgetStatus, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets";
 import { computeOverview } from "@/domain/overview";
 import { aggregateByWeekday } from "@/domain/reports";
-import { numberToCents } from "@/domain/money/parse";
+import { numberToCents } from "@/domain/money";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
 import { getErrorMessage } from "@/services/errors";
