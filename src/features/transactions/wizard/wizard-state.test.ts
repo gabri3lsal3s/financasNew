@@ -6,9 +6,6 @@ import {
   defaultLaunchState,
   effectiveReportWeight,
   isPresetWeight,
-  isValidPercent,
-  parsePercentInput,
-  percentToWeight,
   reportWeightLabel,
   weightToPercentText,
 } from "./wizard-state";
@@ -62,37 +59,22 @@ describe("canProceed — validação por passo", () => {
     expect(canProceed({ ...base, debtEnabled: true, debtAmountCents: 500 })).toBe(true);
   });
 
-  it("passo 3 exige percentual válido no peso personalizado", () => {
-    const base = { ...defaultLaunchState(), step: 3, date: "2026-08-13", reportWeight: CUSTOM_WEIGHT_VALUE };
-    expect(canProceed({ ...base, reportWeightCustom: "" })).toBe(false);
-    expect(canProceed({ ...base, reportWeightCustom: "abc" })).toBe(false);
-    expect(canProceed({ ...base, reportWeightCustom: "150" })).toBe(false);
-    expect(canProceed({ ...base, reportWeightCustom: "37,5" })).toBe(true);
+  it("passo 3 exige valor considerado válido no peso personalizado", () => {
+    const base = {
+      ...defaultLaunchState(),
+      step: 3,
+      valueCents: 10000,
+      date: "2026-08-13",
+      reportWeight: CUSTOM_WEIGHT_VALUE,
+    };
+    expect(canProceed({ ...base, reportCustomAmountCents: -100 })).toBe(false);
+    expect(canProceed({ ...base, reportCustomAmountCents: 15000 })).toBe(false);
+    expect(canProceed({ ...base, reportCustomAmountCents: 3750 })).toBe(true);
   });
 });
 
 describe("peso no relatório — presets e valor personalizado", () => {
-  it("parsePercentInput aceita vírgula, ponto e sufixo %", () => {
-    expect(parsePercentInput("37,5")).toBe(37.5);
-    expect(parsePercentInput("37.5")).toBe(37.5);
-    expect(parsePercentInput("37%")).toBe(37);
-    expect(parsePercentInput(" 12 ")).toBe(12);
-    expect(parsePercentInput("")).toBeNull();
-    expect(parsePercentInput("abc")).toBeNull();
-  });
-
-  it("isValidPercent valida a faixa 0–100", () => {
-    expect(isValidPercent(0)).toBe(true);
-    expect(isValidPercent(100)).toBe(true);
-    expect(isValidPercent(37.5)).toBe(true);
-    expect(isValidPercent(-1)).toBe(false);
-    expect(isValidPercent(101)).toBe(false);
-    expect(isValidPercent(Number.NaN)).toBe(false);
-  });
-
-  it("converte percentual ↔ peso (0–100 ↔ 0–1)", () => {
-    expect(percentToWeight(37.5)).toBe(0.375);
-    expect(percentToWeight(100)).toBe(1);
+  it("weightToPercentText formata fração em percentual pt-BR", () => {
     expect(weightToPercentText(0.375)).toBe("37,5");
     expect(weightToPercentText(1)).toBe("100");
   });
@@ -107,22 +89,34 @@ describe("peso no relatório — presets e valor personalizado", () => {
     expect(isPresetWeight(CUSTOM_WEIGHT_VALUE)).toBe(false);
   });
 
-  it("reportWeightLabel formata presets e valores personalizados", () => {
+  it("reportWeightLabel formata presets e valores personalizados com valor em reais", () => {
     expect(reportWeightLabel(1)).toBe("100% (conta integralmente)");
     expect(reportWeightLabel(0)).toBe("Não conta nos relatórios");
     expect(reportWeightLabel(0.5)).toBe("50%");
     expect(reportWeightLabel(0.375)).toBe("37,5%");
+    expect(reportWeightLabel(0.375, 10000)).toContain("R$");
+    expect(reportWeightLabel(0.375, 10000)).toContain("37,5% no relatório");
   });
 
-  it("effectiveReportWeight usa o preset direto e resolve o personalizado", () => {
+  it("effectiveReportWeight usa o preset direto e calcula a fração do valor personalizado", () => {
     const base = defaultLaunchState();
     expect(effectiveReportWeight({ ...base, reportWeight: 0.5 })).toBe(0.5);
     expect(effectiveReportWeight({ ...base, reportWeight: 1 })).toBe(1);
     expect(
-      effectiveReportWeight({ ...base, reportWeight: CUSTOM_WEIGHT_VALUE, reportWeightCustom: "37,5" }),
+      effectiveReportWeight({
+        ...base,
+        valueCents: 10000,
+        reportWeight: CUSTOM_WEIGHT_VALUE,
+        reportCustomAmountCents: 3750,
+      }),
     ).toBe(0.375);
-    expect(effectiveReportWeight({ ...base, reportWeight: CUSTOM_WEIGHT_VALUE, reportWeightCustom: "100" })).toBe(1);
-    // Fallback defensivo (canProceed já bloqueia texto inválido).
-    expect(effectiveReportWeight({ ...base, reportWeight: CUSTOM_WEIGHT_VALUE, reportWeightCustom: "" })).toBe(0);
+    expect(
+      effectiveReportWeight({
+        ...base,
+        valueCents: 10000,
+        reportWeight: CUSTOM_WEIGHT_VALUE,
+        reportCustomAmountCents: 10000,
+      }),
+    ).toBe(1);
   });
 });

@@ -83,11 +83,11 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(screen.getByRole("button", { name: "Voltar" })).toBeDisabled();
   });
 
-  it("permite peso personalizado no relatório e persiste a fração resolvida", async () => {
+  it("permite peso personalizado no relatório e persiste a fração resolvida a partir do valor em reais", async () => {
     const user = userEvent.setup();
     render(<LaunchWizard />);
 
-    // Passo 1 — valor
+    // Passo 1 — valor (R$ 1.500,00 = 150000 centavos)
     await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "150000");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -95,14 +95,16 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     await user.click(screen.getByRole("button", { name: /alimentação/i }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    // Passo 3 — escolhe "Personalizado…" e digita 37,5
+    // Passo 3 — escolhe "Personalizado (definir valor em R$)…" e digita 56250 (R$ 562,50 = 37,5% de R$ 1.500,00)
     await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
-    await user.click(screen.getByRole("option", { name: "Personalizado…" }));
-    await user.type(screen.getByRole("textbox", { name: "Percentual personalizado do peso no relatório" }), "37,5");
+    await user.click(screen.getByRole("option", { name: /personalizado/i }));
+    const customInput = screen.getByRole("textbox", { name: "Valor considerado no relatório" });
+    await user.clear(customInput);
+    await user.type(customInput, "56250");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    // Passo 4 — revisão confirma o peso resolvido (37,5%)
-    expect(screen.getByText("37,5%")).toBeInTheDocument();
+    // Passo 4 — revisão confirma o peso resolvido (37,5%) e valor
+    expect(screen.getByText(/37,5% no relatório/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Confirmar lançamento" }));
 
     expect(createExpenseMock).toHaveBeenCalledTimes(1);

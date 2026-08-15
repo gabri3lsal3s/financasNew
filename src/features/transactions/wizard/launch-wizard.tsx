@@ -143,10 +143,11 @@ export function LaunchWizard() {
           onDescriptionChange={(description) => set("description", description)}
           onReportWeightChange={(weight) => {
             set("reportWeight", weight);
-            // Ao voltar para um preset, limpa o texto do percentual personalizado.
-            if (isPresetWeight(weight)) set("reportWeightCustom", "");
+            if (!isPresetWeight(weight) && state.reportCustomAmountCents === 0) {
+              set("reportCustomAmountCents", state.valueCents);
+            }
           }}
-          onReportWeightCustomChange={(text) => set("reportWeightCustom", text)}
+          onReportCustomAmountChange={(cents) => set("reportCustomAmountCents", cents)}
           onDebtToggle={(enabled) => set("debtEnabled", enabled)}
           onDebtAmountChange={(cents) => set("debtAmountCents", cents)}
           onDebtDueDateChange={(date) => set("debtDueDate", date)}

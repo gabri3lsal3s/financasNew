@@ -6,8 +6,9 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/services/errors";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import type { PaymentMethod, ReceiveType } from "@/types";
-import { CUSTOM_WEIGHT_VALUE, isPresetWeight } from "./wizard-state";
+import { CUSTOM_WEIGHT_VALUE, effectiveReportWeight, isPresetWeight } from "./wizard-state";
 import type { LaunchState } from "./wizard-state";
 
 export interface StepDetailsProps {
@@ -18,7 +19,7 @@ export interface StepDetailsProps {
   onReceiveTypeChange: (type: ReceiveType) => void;
   onDescriptionChange: (description: string) => void;
   onReportWeightChange: (weight: number) => void;
-  onReportWeightCustomChange: (text: string) => void;
+  onReportCustomAmountChange: (cents: number) => void;
   onDebtToggle: (enabled: boolean) => void;
   onDebtAmountChange: (cents: number) => void;
   onDebtDueDateChange: (date: string) => void;
@@ -48,8 +49,8 @@ const WEIGHT_OPTIONS = [
   { value: "0.75", label: "75%" },
   { value: "0.5", label: "50%" },
   { value: "0.25", label: "25%" },
-  { value: "0", label: "Não contar nos relatórios" },
-  { value: "custom", label: "Personalizado…" },
+  { value: "0", label: "Não contar nos relatórios (0%)" },
+  { value: "custom", label: "Personalizado (definir valor em R$)…" },
 ];
 
 /** Passo 3 — detalhes do lançamento. */
@@ -61,7 +62,7 @@ export function StepDetails({
   onReceiveTypeChange,
   onDescriptionChange,
   onReportWeightChange,
-  onReportWeightCustomChange,
+  onReportCustomAmountChange,
   onDebtToggle,
   onDebtAmountChange,
   onDebtDueDateChange,
@@ -141,15 +142,18 @@ export function StepDetails({
           ariaLabel="Peso no relatório"
         />
         {!isPresetWeight(state.reportWeight) ? (
-          <div className="flex items-center gap-2">
-            <Input
-              value={state.reportWeightCustom}
-              onChange={(event) => onReportWeightCustomChange(event.target.value)}
-              inputMode="decimal"
-              placeholder="Ex.: 37,5"
-              aria-label="Percentual personalizado do peso no relatório"
+          <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-raised p-3">
+            <span className="text-xs font-medium text-foreground">Valor gasto real considerado no relatório</span>
+            <MoneyInput
+              cents={state.reportCustomAmountCents}
+              onCentsChange={onReportCustomAmountChange}
+              aria-label="Valor considerado no relatório"
             />
-            <span className="shrink-0 text-sm text-muted-foreground">%</span>
+            {state.valueCents > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                Equivale a {Math.round(effectiveReportWeight(state) * 100)}% do valor total ({formatCentsAsBRL(state.valueCents)}).
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>

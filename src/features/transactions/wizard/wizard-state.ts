@@ -24,8 +24,8 @@ export interface LaunchState {
   receiveType: ReceiveType;
   description: string;
   reportWeight: number;
-  /** Texto cru do percentual personalizado (ex.: "37,5") — vazio = não usado. */
-  reportWeightCustom: string;
+  /** Valor em centavos considerado no relatório quando personalizado. */
+  reportCustomAmountCents: number;
   debtEnabled: boolean;
   debtAmountCents: number;
   /** YYYY-MM-DD */
@@ -53,7 +53,7 @@ export function defaultLaunchState(): LaunchState {
     receiveType: "pix",
     description: "",
     reportWeight: 1,
-    reportWeightCustom: "",
+    reportCustomAmountCents: 0,
     debtEnabled: false,
     debtAmountCents: 0,
     debtDueDate: "",
@@ -62,15 +62,15 @@ export function defaultLaunchState(): LaunchState {
 
 /* ------------------------------------------------------------------
    PESO NO RELATÓRIO — percentuais pré-definidos + valor personalizado
-   (0–100). O peso persistido é a fração 0–1 (invariante do schema).
+   em reais (calculado como fração 0–1 sobre o valor total do lançamento).
    ------------------------------------------------------------------ */
 
 export const REPORT_WEIGHT_PRESETS = [1, 0.75, 0.5, 0.25, 0] as const;
 
 /**
  * Valor sentinela que marca "peso personalizado em edição" no estado.
- * Não é um preset válido — o percentual digitado só vira peso via
- * `effectiveReportWeight` (e `canProceed` bloqueia até ser válido).
+ * Não é um preset válido — o valor em centavos vira peso via
+ * `effectiveReportWeight`.
  */
 export const CUSTOM_WEIGHT_VALUE = -1;
 
@@ -79,50 +79,34 @@ export function isPresetWeight(weight: number): boolean {
   return (REPORT_WEIGHT_PRESETS as readonly number[]).includes(weight);
 }
 
-/**
- * Converte texto pt-BR de percentual em número 0–100: aceita vírgula ou
- * ponto decimal e sufixo "%" ("37,5" · "37.5" · "37%"). Retorna null se
- * não for um número finito.
- */
-export function parsePercentInput(raw: string): number | null {
-  const cleaned = raw.trim().replace(/%$/, "").replace(",", ".");
-  if (cleaned === "") return null;
-  const value = Number(cleaned);
-  return Number.isFinite(value) ? value : null;
-}
-
-/** Percentual válido (0–100) — peso 0–1 é a invariante do schema. */
-export function isValidPercent(percent: number): boolean {
-  return Number.isFinite(percent) && percent >= 0 && percent <= 100;
-}
-
-/** Percentual (0–100) → peso (0–1). */
-export function percentToWeight(percent: number): number {
-  return percent / 100;
-}
-
-/** Peso (0–1) → texto pt-BR do percentual ("37,5"). */
+/** Formata número como texto percentual ("37,5"). */
 export function weightToPercentText(weight: number): string {
-  return String(weight * 100).replace(".", ",");
+  const percent = Number((weight * 100).toFixed(2));
+  return String(percent).replace(".", ",");
 }
 
-/** Rótulo do peso para a revisão (presets com texto amigável; custom em %). */
-export function reportWeightLabel(weight: number): string {
+/** Rótulo do peso para a revisão (presets com texto amigável; custom em R$ e %). */
+export function reportWeightLabel(weight: number, baseValueCents?: number): string {
   if (weight === 1) return "100% (conta integralmente)";
   if (weight === 0) return "Não conta nos relatórios";
   if (weight === 0.75 || weight === 0.5 || weight === 0.25) return `${Math.round(weight * 100)}%`;
+  if (baseValueCents != null && baseValueCents > 0) {
+    const customCents = Math.round(baseValueCents * weight);
+    const formatted = (customCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    return `${formatted} (${weightToPercentText(weight)}% no relatório)`;
+  }
   return `${weightToPercentText(weight)}%`;
 }
 
 /**
  * Peso efetivo para persistência: presets são usados direto; peso personalizado
- * resolve o percentual digitado (0–100 → fração 0–1, invariante do schema).
- * O fallback 0 é apenas defensivo — `canProceed` já exige percentual válido.
+ * calcula a fração real `reportCustomAmountCents / valueCents` (0–1).
  */
 export function effectiveReportWeight(state: LaunchState): number {
   if (isPresetWeight(state.reportWeight)) return state.reportWeight;
-  const percent = parsePercentInput(state.reportWeightCustom);
-  return percent !== null && isValidPercent(percent) ? percentToWeight(percent) : 0;
+  if (state.valueCents <= 0) return 1;
+  const ratio = state.reportCustomAmountCents / state.valueCents;
+  return Math.min(1, Math.max(0, Number(ratio.toFixed(4))));
 }
 
 /** Pode avançar do passo atual (validações por etapa). */
@@ -133,10 +117,9 @@ export function canProceed(state: LaunchState): boolean {
     if (!state.date) return false;
     if (state.type === "expense" && state.paymentMethod === "credit_card" && !state.cardId) return false;
     if (state.debtEnabled && state.debtAmountCents <= 0) return false;
-    // Peso personalizado: exige percentual válido (0–100).
+    // Peso personalizado: exige valor válido maior ou igual a zero e menor/igual ao valor total.
     if (!isPresetWeight(state.reportWeight)) {
-      const percent = parsePercentInput(state.reportWeightCustom);
-      if (percent === null || !isValidPercent(percent)) return false;
+      if (state.reportCustomAmountCents < 0 || state.reportCustomAmountCents > state.valueCents) return false;
     }
     return true;
   }
