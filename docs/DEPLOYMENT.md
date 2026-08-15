@@ -107,7 +107,7 @@ cp .env.example .env.local   # preencha VITE_SUPABASE_URL + VITE_SUPABASE_ANON_K
 npm run dev          # dev server (Vite)
 npm run typecheck    # tsc -b (valida TODO o projeto, inclusive testes)
 npm run lint         # eslint (0 erros esperado)
-npm run test         # vitest — 839 testes (108 arquivos)
+npm run test         # vitest — 1050 testes (138 arquivos)
 npm run build        # tsc -b && vite build (gera dist/ + Service Worker)
 npm run preview      # serve dist/ localmente (testa o build de produção)
 
@@ -125,7 +125,7 @@ npx supabase db reset  # aplica migrations + seed
 - ✅ **Build de produção:** `tsc -b` limpo, `vite build` ok, code-splitting por página, SW gerado (50 entradas precached).
 - ✅ **PWA:** manifest (`/pwa/manifest.webmanifest`), ícones (192/512/maskable/apple-touch), `offline.html`, registro `autoUpdate`, **prompt de instalação** (`beforeinstallprompt` via `InstallAppButton` no menu "Mais") e **toast de atualização automática** (F5.6) — auditoria PWA automatizada em `tests/pwa-audit.test.ts`.
 - ✅ **Segurança:** headers no `vercel.json` (nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy), cache imutável para assets.
-- ✅ **Testes:** 839 verdes (domínio puro, RPCs, telas, a11y com axe, teclado, deep-links, auditorias).
+- ✅ **Testes:** 1050 verdes (domínio puro, RPCs, telas, a11y com axe, teclado, deep-links, auditorias).
 - ✅ **Erros de rede:** gateway único (`getErrorMessage` pt-BR) + retry manual em todas as telas.
 
 ---
@@ -178,7 +178,7 @@ curl -X POST 'https://<REF>.supabase.co/functions/v1/quotes' \
 [ ] Auth: SMTP configurado (confirmação de e-mail no cadastro)
 [x] Vercel: repo importado, buildCommand `npm run build`, output `dist` — ✅ produção
 [x] Vercel: VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY configuradas — ✅ produção
-[x] Deploy verde: typecheck + lint + 839 testes + build — ✅ produção
+[x] Deploy verde: typecheck + lint + 1050 testes + build — ✅ produção
 [ ] Login/cadastro/recuperação funcionando em produção (QA manual)
 [ ] Onboarding guiado (criar categorias/cartão/lançamento) funcional (QA manual)
 [ ] PWA instalável + App Shell offline (QA manual)
