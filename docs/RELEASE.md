@@ -8,10 +8,10 @@
 
 ## 1. PRÉ-REQUISITOS DE AMBIENTE
 
-- [ ] `DEPLOYMENT.md` §8: projeto Supabase criado, migrations aplicadas, RLS ativo, SMTP configurado, env vars na Vercel.
+- [x] **Deploy de produção funcional** (confirmado 2026-08-15): frontend no Vercel + Supabase remoto; migrations aplicadas, RLS ativo e env vars na Vercel.
 - [ ] `VITE_SENTRY_DSN` definido na Vercel (opcional — sem ele o app funciona; com ele erros de produção + Web Vitals são reportados).
-- [ ] Secrets de CI/CD configurados no GitHub (`VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`; `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_ID` para a edge function de cotações).
-- [ ] Edge function de cotações deployada + cron agendado (ver `DEPLOYMENT.md` §7.1).
+- [ ] Secrets de CI/CD configurados no GitHub (`VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`; `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_ID` para a edge function de cotações) — para o CI/CD automatizado.
+- [ ] Edge function de cotações deployada + cron agendado (ver `DEPLOYMENT.md` §7.1) — status a confirmar.
 - [ ] `npm test` verde na branch `main` (gates do CI/CD `deploy.yml`).
 
 ---

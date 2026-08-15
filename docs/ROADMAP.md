@@ -378,8 +378,12 @@
 1. ✅ **Prova de fidelidade:** suíte espelhando cada regra do ESPECIFICAÇÃO (regressão contra o app anterior).
 2. ✅ Segurança: revisão final de RLS, rate limit, secrets/ambiente.
 3. ✅ Observabilidade: logging de erros (**decisão: Sentry**) + métricas básicas (Web Vitals).
-4. Deploy: **hosting do frontend = Vercel** (`vercel.json` com SPA rewrites, headers de segurança e cache PWA) + backend/banco = **Supabase** (Postgres + RLS + Auth + migrations em `supabase/`); **workflow `deploy.yml` criado** (gates de qualidade obrigatórios + deploy condicional na Vercel e da edge function `quotes` quando os secrets existirem); pendente apenas a configuração das credenciais reais (Vercel/Supabase) — ver `DEPLOYMENT.md` e `RELEASE.md`.
+4. ✅ **Deploy funcional em produção:** frontend no Vercel (domínio `*.vercel.app`, env vars `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` configuradas — confirmado pelo usuário, 2026-08-15) + backend/banco no Supabase (migrations aplicadas). **CI/CD `deploy.yml` criado** (gates de qualidade obrigatórios + deploy condicional na Vercel e da edge function `quotes` quando os secrets existirem); resta apenas a confirmação do deploy da edge function de cotações e o agendamento do cron (ver `DEPLOYMENT.md` §7.1).
 5. QA final multi-dispositivo + documento de release: **`docs/RELEASE.md` criado** (checklist QA desktop/mobile × 3 temas × 6 acentos, matriz de fluxos críticos, corte/rollback e template de registro) — pendente apenas a execução manual do QA.
+
+**Progresso — Fase 6, entrega 4 (deploy):**
+- **✅ Deploy de produção funcional (confirmado pelo usuário, 2026-08-15):** frontend publicado no Vercel e consumindo o projeto Supabase remoto (`https://lnsfcajcfofgvpvabwbi.supabase.co`); env vars de produção configuradas. **F6.4 concluída.**
+- Pendência residual: **deploy da edge function `quotes`** (F1.7) no Supabase remoto + cron de atualização — status a confirmar; a função está implementada e testada (15 testes) e o passo a passo está em `DEPLOYMENT.md` §7.1.
 
 **Progresso — Fase 6, entrega 2 (segurança — auditoria RLS, rate limit, secrets):**
 - **Auditoria RLS automatizada** (`src/tests/security-audit.test.ts`, 9 testes — roda no CI, impede regressão):
@@ -436,8 +440,8 @@
 **✅ DoD**
 - Suíte de fidelidade 100% verde.
 - Revisão RLS auditada (nenhuma leitura cross-user).
-- Deploy de produção funcional com variáveis protegidas.
-- Checklist de QA aprovado em desktop + mobile nos 3 temas.
+- Deploy de produção funcional com variáveis protegidas — ✅ **confirmado** (2026-08-15).
+- Checklist de QA aprovado em desktop + mobile nos 3 temas — pendente (manual).
 
 ---
 

@@ -137,7 +137,7 @@ npx supabase db reset  # aplica migrations + seed
 | # | Item | Impacto se ausente | Onde implementar |
 |---|---|---|---|
 | 1 | ~~**Edge function de cotações**~~ | **✅ Implementada (F1.7)** — `supabase/functions/quotes/` (Deno) + motor puro testado (15 testes). **Falta apenas deploy + cron.** | deploy: `supabase functions deploy quotes --project-ref <ref>`; agendar: pg_cron (abaixo) ou Supabase Cron |
-| 2 | ~~**CI/CD de produção**~~ | **✅ Implementado (F6.4)** — `.github/workflows/deploy.yml` (gates + deploy condicional Vercel/Supabase). **Falta configurar os secrets.** | GitHub → Settings → Secrets: `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`; `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_ID` |
+| 2 | ~~**Deploy de produção**~~ | **✅ Funcional (confirmado 2026-08-15)** — frontend no Vercel + Supabase remoto; env vars configuradas. `deploy.yml` pronto para o CI/CD automatizado (gates + deploy condicional quando os secrets GitHub existirem). | GitHub → Settings → Secrets: `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`; `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_ID` |
 | 3 | ~~Observabilidade (Sentry)~~ | **✅ Feito (F6.3)** — SDK env-gated por `VITE_SENTRY_DSN` (bundle separado, Web Vitals + erros + usuário). | basta configurar o DSN na Vercel |
 | 4 | **Testes contra banco real** | RPCs testados via mocks; sem prova de RLS/rollback em Postgres real. | vitest + Supabase local (ROADMAP **F1** — DoD: isolamento RLS + rollback de RPCs; exige Docker local) |
 | 5 | **QA final multi-dispositivo + release** | Checklist documentado (RELEASE.md) mas não executado manualmente. | `docs/RELEASE.md` — matriz de 16 fluxos em desktop/mobile × 3 temas × 6 acentos |
@@ -172,19 +172,19 @@ curl -X POST 'https://<REF>.supabase.co/functions/v1/quotes' \
 ## 8. CHECKLIST RÁPIDO DE PRONTIDÃO
 
 ```markdown
-[ ] Projeto Supabase criado e migrations 0001–0009 aplicadas (19 tabelas + RPCs)
-[ ] RLS ativo com policies por usuário (Settings → Database → RLS)
-[ ] Auth: Site URL e Redirect URLs apontando para o domínio Vercel
+[x] Projeto Supabase criado e migrations aplicadas (19 tabelas + RPCs) — ✅ produção
+[x] RLS ativo com policies por usuário (Settings → Database → RLS) — ✅ produção
+[x] Auth: Site URL e Redirect URLs apontando para o domínio Vercel — ✅ produção
 [ ] Auth: SMTP configurado (confirmação de e-mail no cadastro)
-[ ] Vercel: repo importado, buildCommand `npm run build`, output `dist`
-[ ] Vercel: VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY configuradas
-[ ] Deploy verde: typecheck + lint + 825 testes + build
-[ ] Login/cadastro/recuperação funcionando em produção
-[ ] Onboarding guiado (criar categorias/cartão/lançamento) funcional
-[ ] PWA instalável + App Shell offline
+[x] Vercel: repo importado, buildCommand `npm run build`, output `dist` — ✅ produção
+[x] Vercel: VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY configuradas — ✅ produção
+[x] Deploy verde: typecheck + lint + 825 testes + build — ✅ produção
+[ ] Login/cadastro/recuperação funcionando em produção (QA manual)
+[ ] Onboarding guiado (criar categorias/cartão/lançamento) funcional (QA manual)
+[ ] PWA instalável + App Shell offline (QA manual)
 [ ] Lighthouse mobile ≥ 90 (baseline)
-[ ] Edge function `quotes` deployada + cron (DEPLOYMENT §7.1)
-[ ] CI/CD: secrets `VERCEL_*`/`SUPABASE_*` configurados · [ ] Sentry: adicionar `VITE_SENTRY_DSN` na Vercel quando quiser ativar
+[ ] Edge function `quotes` deployada + cron (DEPLOYMENT §7.1) — status a confirmar
+[ ] CI/CD automatizado: secrets `VERCEL_*`/`SUPABASE_*` no GitHub · [ ] Sentry: adicionar `VITE_SENTRY_DSN` na Vercel quando quiser ativar
 [ ] QA final multi-dispositivo (docs/RELEASE.md §2–3)
 ```
 
