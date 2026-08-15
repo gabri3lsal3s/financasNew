@@ -993,3 +993,19 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 > - Pendências operacionais vigentes: deploy/cron da edge function de cotações (F1.7), testes contra banco real (F1 DoD), QA manual final (F6.5).
 >
 > As decisões default podem ser revisadas a qualquer momento (P1–P6 continuam em aberto para ajuste).
+
+### 6.1 Ordem de execução das próximas fases (status 2026-08-15)
+
+> Todas as fases F14–F20 estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
+
+| Ordem | Fase | Trilha | Depende de | Status |
+|---|---|---|---|---|
+| 1 | **F14** — Consistência de Estados & Ergonomia de Dados | A | — | 📋 Não iniciada |
+| 2 | **F15** — Micro-Interações & Conforto Visual | A | F14 | 📋 Não iniciada |
+| 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 (pode intercalar) | 📋 Não iniciada |
+| 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | 📋 Não iniciada |
+| 5 | **F16** — Carteira na Home (KPI real) | B | P1 (deploy/cron F1.7) · F14 | 📋 Não iniciada |
+| 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | 📋 Não iniciada |
+| 7 | **F18** — Proventos (extrato & calendário) | B | F17 | 📋 Não iniciada |
+
+**Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e **commitar e pushar** antes de avançar para a próxima.

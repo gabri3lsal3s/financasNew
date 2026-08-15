@@ -91,7 +91,6 @@ html[data-theme="light"] {
   --z-floating-tools: 60;
   --z-toast: 70;
   --z-tooltip: 80;
-  --z-orientation-lock: 90;
 }
 
 /* ----------------------------------------------------------------

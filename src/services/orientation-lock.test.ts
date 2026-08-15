@@ -1,53 +1,13 @@
 /**
- * Bloqueio estrito de orientação mobile (portrait only) — HOTFIX 2026-08-15.
- * Cobre: manifest (`orientation: portrait`) + `screen.orientation.lock` (JS)
- * + overlay de fallback alimentado por `isLandscapeMobile()`.
+ * Bloqueio estrito de orientação mobile (portrait only).
+ * Cobre: chamada a lockPortrait com fallback seguro, eventos de gesto e ciclo de vida.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  initOrientationLock,
-  isLandscapeMobile,
-  lockPortrait,
-  resetOrientationLock,
-  subscribeOrientationLock,
-} from "./orientation-lock";
+import { initOrientationLock, lockPortrait } from "./orientation-lock";
 
-interface MediaQueryListMock {
-  matches: boolean;
-  media: string;
-  onchange: null;
-  addListener: () => void;
-  removeListener: () => void;
-  addEventListener: () => void;
-  removeEventListener: () => void;
-  dispatchEvent: () => boolean;
-}
-
-function stubMatchMedia(matches: boolean): void {
-  const mq: MediaQueryListMock = {
-    matches,
-    media: "(pointer: coarse)",
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  };
-  Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: vi.fn().mockReturnValue(mq),
-  });
-}
-
-function stubViewport(width: number, height: number): void {
-  Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: width });
-  Object.defineProperty(window, "innerHeight", { writable: true, configurable: true, value: height });
-}
-
-function stubOrientationLock(supported: boolean): void {
+function stubOrientationLock(supported: boolean, mockLock?: ReturnType<typeof vi.fn>): void {
   const orientation = supported
-    ? { lock: vi.fn().mockResolvedValue(undefined) }
+    ? { lock: mockLock ?? vi.fn().mockResolvedValue(undefined) }
     : {};
   Object.defineProperty(window, "screen", {
     writable: true,
@@ -56,7 +16,7 @@ function stubOrientationLock(supported: boolean): void {
   });
 }
 
-describe("lockPortrait — screen.orientation.lock('portrait')", () => {
+describe("lockPortrait — screen.orientation.lock", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -66,80 +26,101 @@ describe("lockPortrait — screen.orientation.lock('portrait')", () => {
     expect(() => lockPortrait()).not.toThrow();
   });
 
-  it("chama lock('portrait') quando a API existe", () => {
-    stubOrientationLock(true);
+  it("chama lock('portrait-primary') quando a API existe", () => {
+    const mockLock = vi.fn().mockResolvedValue(undefined);
+    stubOrientationLock(true, mockLock);
     lockPortrait();
-    const lock = (screen as Screen & { orientation: { lock: ReturnType<typeof vi.fn> } }).orientation.lock;
-    expect(lock).toHaveBeenCalledWith("portrait");
+    expect(mockLock).toHaveBeenCalledWith("portrait-primary");
+  });
+
+  it("tenta 'portrait' como fallback se 'portrait-primary' for rejeitado", async () => {
+    const mockLock = vi.fn().mockImplementation((target: string) => {
+      if (target === "portrait-primary") return Promise.reject(new Error("Not supported"));
+      return Promise.resolve();
+    });
+    stubOrientationLock(true, mockLock);
+    lockPortrait();
+    expect(mockLock).toHaveBeenCalledWith("portrait-primary");
+    // Aguarda microtasks
+    await Promise.resolve();
+    expect(mockLock).toHaveBeenCalledWith("portrait");
+  });
+
+  it("suporta navegadores com prefixos legados (lockOrientation)", () => {
+    const mockLegacyLock = vi.fn().mockReturnValue(true);
+    Object.defineProperty(window, "screen", {
+      writable: true,
+      configurable: true,
+      value: { lockOrientation: mockLegacyLock },
+    });
+    lockPortrait();
+    expect(mockLegacyLock).toHaveBeenCalledWith("portrait-primary");
   });
 });
 
-describe("isLandscapeMobile — store externo do overlay de fallback", () => {
+describe("initOrientationLock — ciclo de vida e ativação por gestos", () => {
+  let cleanup: (() => void) | null = null;
+
   beforeEach(() => {
-    stubMatchMedia(false);
-    stubViewport(390, 844); // portrait mobile
-    resetOrientationLock();
+    stubOrientationLock(true);
   });
 
   afterEach(() => {
-    resetOrientationLock();
+    cleanup?.();
+    cleanup = null;
     vi.restoreAllMocks();
   });
 
-  it("inicia false (portrait)", () => {
-    expect(isLandscapeMobile()).toBe(false);
+  it("bloqueia orientação no bootstrap", () => {
+    const mockLock = vi.fn().mockResolvedValue(undefined);
+    stubOrientationLock(true, mockLock);
+    cleanup = initOrientationLock();
+    expect(mockLock).toHaveBeenCalledWith("portrait-primary");
   });
 
-  it("não ativa em dispositivo de toque sem matchMedia (desktop jsdom)", () => {
-    // matchMedia indisponível → tratado como não-toque
-    Object.defineProperty(window, "matchMedia", { writable: true, value: undefined });
-    stubViewport(844, 390); // landscape
-    initOrientationLock();
-    expect(isLandscapeMobile()).toBe(false);
+  it("reaplica o lock em eventos de toque/clique do usuário", () => {
+    const mockLock = vi.fn().mockResolvedValue(undefined);
+    stubOrientationLock(true, mockLock);
+    cleanup = initOrientationLock();
+    mockLock.mockClear();
+
+    window.dispatchEvent(new Event("pointerdown"));
+    expect(mockLock).toHaveBeenCalledWith("portrait-primary");
+
+    mockLock.mockClear();
+    window.dispatchEvent(new Event("touchstart"));
+    expect(mockLock).toHaveBeenCalledWith("portrait-primary");
+
+    mockLock.mockClear();
+    window.dispatchEvent(new Event("click"));
+    expect(mockLock).toHaveBeenCalledWith("portrait-primary");
   });
 
-  it("ativa em paisagem num dispositivo de toque", () => {
-    stubMatchMedia(true); // pointer: coarse
-    stubViewport(844, 390); // landscape
-    initOrientationLock();
-    expect(isLandscapeMobile()).toBe(true);
+  it("reaplica o lock ao retornar à visibilidade", () => {
+    const mockLock = vi.fn().mockResolvedValue(undefined);
+    stubOrientationLock(true, mockLock);
+    cleanup = initOrientationLock();
+    mockLock.mockClear();
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(mockLock).toHaveBeenCalledWith("portrait-primary");
   });
 
-  it("notifica assinantes ao mudar para paisagem", () => {
-    // Inicia em retrato (state false) com um assinante registrado.
-    const listener = vi.fn();
-    const unsubscribe = subscribeOrientationLock(listener);
-    try {
-      stubMatchMedia(true);
-      stubViewport(844, 390);
-      initOrientationLock();
-      expect(listener).toHaveBeenCalled();
-      expect(isLandscapeMobile()).toBe(true);
-    } finally {
-      unsubscribe();
-    }
-  });
+  it("cleanup remove os listeners de eventos", () => {
+    const mockLock = vi.fn().mockResolvedValue(undefined);
+    stubOrientationLock(true, mockLock);
+    cleanup = initOrientationLock();
+    mockLock.mockClear();
 
-  it("resetOrientationLock volta para retrato e notifica", () => {
-    const listener = vi.fn();
-    const unsubscribe = subscribeOrientationLock(listener);
-    try {
-      stubMatchMedia(true);
-      stubViewport(844, 390);
-      initOrientationLock();
-      expect(isLandscapeMobile()).toBe(true);
-      listener.mockClear();
-      resetOrientationLock();
-      expect(isLandscapeMobile()).toBe(false);
-      expect(listener).toHaveBeenCalled();
-    } finally {
-      unsubscribe();
-    }
-  });
-
-  it("initOrientationLock retorna cleanup que remove os listeners", () => {
-    const cleanup = initOrientationLock();
-    expect(typeof cleanup).toBe("function");
     cleanup();
+    cleanup = null;
+
+    window.dispatchEvent(new Event("pointerdown"));
+    window.dispatchEvent(new Event("click"));
+    expect(mockLock).not.toHaveBeenCalled();
   });
 });

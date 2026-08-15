@@ -1,101 +1,117 @@
 /**
- * Bloqueio estrito de orientação mobile (portrait only).
+ * Bloqueio de orientação mobile para retrato estrito (portrait only).
  *
  * Combinado com o manifest (`orientation: "portrait"` + `display: "standalone"`):
- *   1. `screen.orientation.lock("portrait")` — trava a UI no PWA instalado e em
- *      navegadores que suportam a API (Chrome Android/desktop, etc.);
- *   2. Store externo `isLandscapeMobile()` — detecta paisagem em tela de toque
- *      e alimenta o overlay de fallback (navegadores sem suporte à API: iOS
- *      Safari, Chrome não-instalado), que pede ao usuário girar o dispositivo.
- *
- * Segue o padrão de store externo do projeto (pwa.ts / calculator-open.ts):
- * subscribe/getSnapshot consumidos via `useSyncExternalStore`.
+ * 1. Chamada a `screen.orientation.lock("portrait-primary")` / `lock("portrait")`
+ *    na inicialização e no primeiro gesto do usuário (pointerdown/touchstart/click),
+ *    satisfazendo a exigência de ativação por interação do usuário de navegadores mobile;
+ * 2. Reaplicação contínua em `visibilitychange` (ao voltar para a aba/app),
+ *    `fullscreenchange` e mudanças de orientação/redimensionamento.
+ * 3. Suporte a prefixos legados de navegadores (`lockOrientation`, `mozLockOrientation`, `msLockOrientation`).
+ * 4. Silencioso quando o navegador não suporta ou recusa a chamada.
  */
 
-/** Suporte da API de lock de orientação. */
-function hasOrientationLock(): boolean {
-  const orientation = (screen as Screen & { orientation?: ScreenOrientation }).orientation;
-  return typeof orientation?.lock === "function";
-}
+type LegacyScreen = Screen & {
+  orientation?: ScreenOrientation & {
+    lock?: (orientation: string) => Promise<void>;
+  };
+  lockOrientation?: (orientation: string) => boolean;
+  mozLockOrientation?: (orientation: string) => boolean;
+  msLockOrientation?: (orientation: string) => boolean;
+};
 
 /**
- * Tenta travar a orientação em retrato. No-op silencioso quando a API não
- * existe ou o navegador recusa (ex.: página não-standalone) — nesses casos o
- * overlay de fallback cobre.
+ * Tenta travar a orientação em modo retrato (portrait-primary / portrait).
+ * Trata rejeições silenciosamente sem disparar exceções.
  */
 export function lockPortrait(): void {
-  if (!hasOrientationLock()) return;
+  if (typeof window === "undefined" || typeof screen === "undefined") return;
+
+  const scr = screen as LegacyScreen;
+
+  // W3C Screen Orientation API padrão
+  if (scr.orientation && typeof scr.orientation.lock === "function") {
+    try {
+      const lockPromise = scr.orientation.lock("portrait-primary");
+      if (lockPromise && typeof lockPromise.catch === "function") {
+        lockPromise.catch(() => {
+          // Fallback para portrait genérico se portrait-primary for rejeitado
+          try {
+            scr.orientation?.lock?.("portrait")?.catch?.(() => {});
+          } catch {
+            // Silencioso
+          }
+        });
+      }
+      return;
+    } catch {
+      // Fallback para APIs legadas
+    }
+  }
+
+  // APIs com prefixos legados
   try {
-    void (screen as Screen & { orientation: ScreenOrientation }).orientation
-      .lock("portrait")
-      .catch(() => {
-        // Navegador recusou o lock (não-standalone/fullscreen) — fallback visual.
-      });
+    if (typeof scr.lockOrientation === "function") {
+      if (!scr.lockOrientation("portrait-primary")) {
+        scr.lockOrientation("portrait");
+      }
+    } else if (typeof scr.mozLockOrientation === "function") {
+      if (!scr.mozLockOrientation("portrait-primary")) {
+        scr.mozLockOrientation("portrait");
+      }
+    } else if (typeof scr.msLockOrientation === "function") {
+      if (!scr.msLockOrientation("portrait-primary")) {
+        scr.msLockOrientation("portrait");
+      }
+    }
   } catch {
-    // Sem suporte — fallback visual.
+    // Sem suporte — silencioso
   }
 }
 
-// ---------------------------------------------------------------------------
-// Store externo — "está em paisagem num dispositivo móvel?"
-// ---------------------------------------------------------------------------
-
-let landscapeMobile = false;
-const listeners = new Set<() => void>();
-
-function detectLandscapeMobile(): boolean {
-  if (typeof window === "undefined") return false;
-  const isTouch = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  const isLandscape = window.innerWidth > window.innerHeight;
-  return isTouch && isLandscape;
-}
-
-/** Estado atual (getSnapshot do useSyncExternalStore). */
-export function isLandscapeMobile(): boolean {
-  return landscapeMobile;
-}
-
 /**
- * Zera o estado (usado em testes/limpeza — mesmo padrão de `setCalculatorOpen`
- * para stores externos do projeto). Não remove os listeners da janela.
- */
-export function resetOrientationLock(): void {
-  if (landscapeMobile === false) return;
-  landscapeMobile = false;
-  for (const listener of listeners) listener();
-}
-
-/** Assinatura para a UI reagir à mudança de orientação (overlay). */
-export function subscribeOrientationLock(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-function refresh(): void {
-  const next = detectLandscapeMobile();
-  if (next === landscapeMobile) return;
-  landscapeMobile = next;
-  for (const listener of listeners) listener();
-}
-
-/**
- * Inicializa o bloqueio: aplica o lock e observa a orientação/tamanho da
- * tela para o overlay de fallback. Chamado uma vez no bootstrap.
+ * Inicializa o bloqueio contínuo de orientação em retrato:
+ * - Aplica o lock imediatamente no bootstrap;
+ * - Reaplica na interação do usuário (pointerdown, touchstart, click);
+ * - Reaplica ao retornar ao app (visibilitychange), fullscreen ou redimensionamento.
  */
 export function initOrientationLock(): () => void {
-  lockPortrait();
-  refresh();
+  if (typeof window === "undefined") return () => {};
 
-  window.addEventListener("resize", refresh);
-  window.addEventListener("orientationchange", refresh);
-  // Reaplica o lock ao voltar de fullscreen (o navegador pode liberar a trava).
-  document.addEventListener("fullscreenchange", lockPortrait);
+  lockPortrait();
+
+  const handleUserInteraction = () => {
+    lockPortrait();
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      lockPortrait();
+    }
+  };
+
+  const handleOrientationChange = () => {
+    lockPortrait();
+  };
+
+  // Re-tenta lock no primeiro toque/interação (gesto do usuário)
+  window.addEventListener("pointerdown", handleUserInteraction, { passive: true });
+  window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+  window.addEventListener("click", handleUserInteraction, { passive: true });
+
+  // Eventos de ciclo de vida e estado
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  document.addEventListener("fullscreenchange", handleUserInteraction);
+  window.addEventListener("orientationchange", handleOrientationChange);
+  window.addEventListener("resize", handleOrientationChange);
 
   return () => {
-    window.removeEventListener("resize", refresh);
-    window.removeEventListener("orientationchange", refresh);
-    document.removeEventListener("fullscreenchange", lockPortrait);
+    window.removeEventListener("pointerdown", handleUserInteraction);
+    window.removeEventListener("touchstart", handleUserInteraction);
+    window.removeEventListener("click", handleUserInteraction);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    document.removeEventListener("fullscreenchange", handleUserInteraction);
+    window.removeEventListener("orientationchange", handleOrientationChange);
+    window.removeEventListener("resize", handleOrientationChange);
   };
 }

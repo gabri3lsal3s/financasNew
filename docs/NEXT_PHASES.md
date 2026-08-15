@@ -279,6 +279,6 @@ F17 (Dashboard /investments)               ← Trilha B — depende de P2/P3
 F18 (Proventos)                            ← Trilha B — depende de P4/P5
 ```
 
-**Pré-requisitos transversais:** suíte 837 testes verde + typecheck/lint/build (CI `ci.yml`) · deploy F1.7 (edge function + cron) se P1 = (a) · sem migrations obrigatórias fora de P4 = (c).
+**Pré-requisitos transversais:** suíte 839 testes verde + typecheck/lint/build (CI `ci.yml`) · deploy F1.7 (edge function + cron) se P1 = (a) · sem migrations obrigatórias fora de P4 = (c).
 
 **Referências:** `docs/ROADMAP.md` (F0–F13) · `docs/ARCHITECTURE.md` (camadas) · `docs/PROJECT_STRUCTURE.md` (onde criar) · `docs/DESIGN_SYSTEM.md` (visual) · `docs/RELEASE.md` (QA/corte).

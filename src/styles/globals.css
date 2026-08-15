@@ -81,7 +81,6 @@
   --z-floating-tools: var(--z-floating-tools);
   --z-toast: var(--z-toast);
   --z-tooltip: var(--z-tooltip);
-  --z-orientation-lock: var(--z-orientation-lock);
 
   /* Animações dos primitivos (Radix) */
   --animate-accordion-down: accordion-down 0.2s ease-out;
