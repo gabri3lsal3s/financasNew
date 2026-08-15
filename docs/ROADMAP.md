@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **Status:** v1.1 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase.
+> **Status:** v1.2 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** insere formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa), oriundas da proposta oficial `docs/NEXT_PHASES.md` (seção §6).
 > **Referências:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (estrutura e convenções) · [`ESPECIFICACAO_TECNICA.md`](../ESPECIFICACAO_TECNICA.md) (regras de negócio, schema, UI/UX).
 
 ---
@@ -33,6 +33,11 @@
 | **F11** | Centro de Personalização, Experiência Tátil & Micro-Interações Vivas | Acentos de cor, estilos de card, botões com ripple/spring, abas com sliding pill, hub /configuracoes e dashboard modular | Personalização & Micro-Interações |
 | **F12** | Polimento de UI/UX, Design System & Experiência Visual | Superfícies/profundidade consistentes, hierarquia tipográfica de dados financeiros, empty states e skeletons por contexto, micro-interações de entrada/saída e feedback de escrita, harmonização claro/escuro/OLED | Polimento & Design System |
 | **F13** | Hotfixes Mobile, Layout Fixo & Consistência | Header & BottomNav fixos com scroll interno no main, Scroll-to-Top unificado, salvaguarda de overflow, ícones dinâmicos de categoria e edição completa de despesas | Mobile Shell, Categorias & Edição |
+| **F14** | Consistência de Estados & Ergonomia de Dados (Trilha A) | Skeletons por contexto na carteira, rentabilidade (lucro/prejuízo não realizado), densidade & teclado | Carteira refinada |
+| **F15** | Micro-Interações & Conforto Visual (Trilha A) | Feedback de escrita uniforme, NumberTicker na Posição, hover/focus refinados | Polish financeiro |
+| **F16** | Carteira na Home — KPI Real (Trilha B) | KPI de investimentos real + widget de alocação (elimina o stub da Home) | Home com carteira |
+| **F17** | Dashboard de Investimentos `/investments` (Trilha B) | KPIs executivos, donuts de alocação (classe/ticker), posições com lucro/prejuízo | Dashboard investimentos |
+| **F18** | Proventos: Extrato & Calendário (Trilha B) | Extrato mensal de proventos recebidos + calendário (escopo mínimo) | Proventos |
 
 ---
 
@@ -778,6 +783,109 @@
 
 ---
 
+### Fase 14 — Consistência de Estados & Ergonomia de Dados (Trilha A — prioritária)
+
+**Objetivo:** eliminar as inconsistências de loading/vazio/erro da carteira (F4) e elevar a leitura rápida de dados financeiros. **Trilha A — Refinamento Máximo de UI/UX & Conforto Visual (prioridade principal).**
+
+**Entregas (na ordem):**
+1. **Skeletons por contexto na carteira** — substituir os blocos genéricos (`h-24 w-full` / `h-48 w-full`) de `PositionTab` por `SkeletonKpi` (3 KPIs) + `SkeletonTable` (linhas da `PositionTable`) — zero Layout Shift (padrão F12).
+2. **Empty states ricos** — `PositionTab`, `TargetsTab` e `AporteTab` com `EmptyState` por contexto (tom primary/portfolio) e CTA multi-ação (adicionar ativo / registrar transação).
+3. **Rentabilidade na Posição** — colunas/estatísticas derivadas no domínio: `unrealizedPnl` (valor − custo) e `unrealizedPct` (÷ custo) — **função pura em `domain/portfolio` com testes de reconciliação** (regra de ouro: UI só recebe valores), exibidas com `MoneyText` + tom semântico (positive/negative).
+4. **Hierarquia de patrimônio** — KPI "Patrimônio total" com comparativo (Δ vs. mês anterior via série mensal derivada) no padrão `DeltaHint` da Overview.
+5. **Densidade & teclado** — propagar o toggle de densidade à `PositionTable`; auditar `inputMode` (numeric/decimal) nos formulários de ativo/transação; alvos de toque ≥ 44px em ações de linha.
+
+**Arquivos:** `src/domain/portfolio/` (+ testes) · `src/features/portfolio/pages/position-tab.tsx` · `src/components/modules/position-table.tsx` · `src/features/portfolio/components/transaction-form-dialog.tsx` · `src/features/portfolio/components/asset-form-dialog.tsx`.
+
+**✅ DoD (critérios de aceite)**
+- `PositionTab` sem blocos `h-24`/`h-48` genéricos — skeletons por contexto em todas as abas.
+- Rentabilidade (não realizada e %) calculada em `domain/portfolio` (função pura) com testes de reconciliação (ex.: compra 10 × R$ 100 → preço R$ 120 ⇒ +R$ 200 / +20%).
+- Colunas de lucro/prejuízo com tom semântico correto (negativo nunca vira "R$ 0,00" — `MoneyText`).
+- `inputMode` correto em todos os campos numéricos da carteira; axe sem violações nas 3 abas.
+- Suíte 100% verde; revisão desktop + mobile nos 3 temas.
+
+---
+
+### Fase 15 — Micro-Interações, Feedback & Conforto Visual (Trilha A)
+
+**Objetivo:** elevar a sensação de acabamento nas telas financeiras com micro-interações de feedback e leitura confortável.
+
+**Entregas (na ordem):**
+1. **Feedback de escrita uniforme** — check animado após concluir transações da carteira (comprar/vender/provento, definir meta) — mesmo padrão das ações de conclusão existentes (F12).
+2. **Transições de dados** — estender `NumberTicker` aos valores dinâmicos da Posição (patrimônio/rentabilidade ao trocar dados), respeitando o toggle "Contagem Numérica Animada" (F11).
+3. **Hover/focus refinados** — linhas da `PositionTable` com hover elevado e `focus-visible` ring (padrão `Card interactive`); manter o destaque de preço manual ("informado manualmente").
+4. **Cards de investimento na Home** — micro-transição de entrada (fade + slide sutil, já existente nas rotas) ao montar o widget de carteira (F16).
+5. **Conforto visual** — revisar densidade do dashboard (KPIs, cards de resumo), respiro vertical (`gap`) e contraste de rótulos secundários nas telas de carteira.
+
+**Arquivos:** `src/components/modules/position-table.tsx` · `src/components/modules/kpi-card.tsx` (reuso) · `src/features/overview/pages/overview-page.tsx` · `src/components/ui/number-ticker.tsx` (reuso).
+
+**✅ DoD (critérios de aceite)**
+- Toda ação de escrita da carteira com feedback visual/háptico; `prefers-reduced-motion`/`data-motion` respeitados.
+- NumberTicker ativo nos valores principais da posição quando habilitado; desliga sem quebra de layout.
+- Hover/focus unificados (mesma linguagem das demais telas — zero classes soltas novas).
+- Suíte 100% verde; auditoria axe na carteira sem violações.
+
+---
+
+### Fase 16 — Carteira na Home: KPI Real & Widget de Alocação (Trilha B)
+
+**Objetivo:** eliminar o stub "Carteira na Fase 4" da Visão Geral e dar visibilidade imediata do investimento no Início. **Trilha B — Módulo de Carteira de Investimentos completo e integrado.**
+
+**Entregas (na ordem):**
+1. **KPI "Investimentos" real** — `usePortfolioPosition().totalBRL` no lugar de `totals.investmentCents` (hoje sempre 0); sparkline de patrimônio (série mensal derivada — padrão F8) e hint contextual (nº de ativos / fonte dos preços).
+2. **Widget "Carteira em resumo"** na Home (gated por `dashboardWidgets` — F11): patrimônio total, caixa derivado, nº de ativos e **mini-donut de alocação por classe** — novo módulo `AllocationDonut` (genérico de ativos, padrão `CategoryDonut`, SVG próprio).
+3. **Deep-link** — clique no KPI/widget → `/investments` (F17).
+4. **Estados** — loading (`SkeletonKpi`), vazio (`EmptyState` "Sem investimentos" com CTA → `/carteira`), erro (gateway + retry) — Online First.
+
+**Arquivos:** `src/features/overview/pages/overview-page.tsx` · `src/components/modules/allocation-donut.tsx` (novo) · `src/domain/overview` (extensão pura para série de patrimônio + testes).
+
+**✅ DoD (critérios de aceite)**
+- Nenhum texto "Fase 4"/stub de carteira na Home — KPI com valor real e estados completos.
+- Donut de alocação por classe com paleta da marca (AA) e legenda acessível; axe sem violações.
+- Série de patrimônio (para sparkline) é função pura testada (derivada do ledger + preços).
+- Widget respeita a modulação do dashboard (Configurações > Dashboard).
+
+---
+
+### Fase 17 — Dashboard de Investimentos (`/investments`) (Trilha B)
+
+**Objetivo:** visão executiva da carteira com gráficos, rentabilidade e posições — tela de **leitura** separada da operação (`/carteira` mantém cadastro/metas/aporte).
+
+**Entregas (na ordem):**
+1. **Rota `/investments`** — nova página em `appRoutes` + item de navegação (fonte única `nav-items`; slot no menu "Mais").
+2. **KPIs executivos** — Patrimônio Total, Rentabilidade da Carteira (ponderada pelo valor, derivada dos `unrealizedPct` por ativo), Proventos no mês (recebidos) e Alocação por Classe.
+3. **Gráficos de distribuição patrimonial** — donut/rosca **por classe de ativo** e **por ticker** (SVG próprio, padrão `CategoryDonut` — sem libs novas).
+4. **Tabela de posições avançada** — PM (custo médio), quantidade, valor de mercado, **Lucro/Prejuízo não realizado (R$ e %)** (motor da F14), fonte do preço (badge manual/api/fallback) e peso na carteira — com ordenação e densidade.
+5. **Acessos rápidos** — botões para `/carteira` (registrar transação, metas, aporte).
+
+**Arquivos:** `src/features/investments/` (novo — `pages/` + `components/` + `index.ts`, padrão do `PROJECT_STRUCTURE.md` §5) · `src/app/routes.ts` · `src/components/layout/nav-items.tsx` · `src/domain/portfolio` (motores de agregados puros + testes).
+
+**✅ DoD (critérios de aceite)**
+- `/investments` com KPIs, 2 donuts (classe e ticker), tabela com lucro/prejuízo e rentabilidade — todos derivados no domínio (funções puras testadas).
+- Deep-link da Home chega à tela correta; navegação (sidebar/bottom/menu Mais) consistente — sem rotas duplicadas (fonte única `nav-items`).
+- Estados loading/vazio/erro completos; axe sem violações; 3 temas × acentos consistentes.
+- Suíte 100% verde (incl. testes dos motores de agregado).
+
+---
+
+### Fase 18 — Proventos: Extrato & Calendário (Trilha B)
+
+**Objetivo:** dar visibilidade total dos rendimentos da carteira — **recebidos** (escopo mínimo; provisionados ficam para ajuste futuro sob demanda).
+
+**Entregas (na ordem):**
+1. **Extrato de proventos recebidos** — agregação de `portfolio_transactions` (`dividend`/`jcp`/`fii_yield`) por mês e por ativo (o ledger já separa `dividends`); lista com valores, datas e totais.
+2. **Calendário de proventos** — visão mensal (reuso de `MonthPicker` + lista ordenada); destaque do mês atual.
+3. **Provisionados — fora do escopo inicial** (decisão default: apenas recebidos; estimativa por histórico ou migration ficam como ajuste futuro — P4 em aberto para revisão).
+4. **Integração com o app** — proventos ficam **só na carteira**, fora do fluxo financeiro core (D11 preservado — sem lançamento automático [PROVENTO] na Home/Relatórios).
+
+**Arquivos:** `src/domain/portfolio/dividends.ts` (motor puro + testes) · `src/features/investments/` (aba "Proventos").
+
+**✅ DoD (critérios de aceite)**
+- Extrato mensal correto (soma por mês = transações de provento, reconciliado por teste).
+- Calendário com navegação mensal e estado vazio acolhedor.
+- Suíte 100% verde; axe sem violações.
+
+---
+
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
 
 **Regra absoluta:** primitivo antes do módulo, módulo antes da tela. Se uma tela precisar de algo que não existe, **pare e extraia** — não duplique.
@@ -795,6 +903,7 @@
 - **F8:** `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`, `CategoryDonut`, `SavingsHealthCard`, `DailyFlowChart`, `PrivacyToggle`.
 - **F9:** `FloatingCalculator`, `CalculatorKeypad`, `ScrollToTop`.
 - **F10:** `BrandLogo`, `BrandIcon`.
+- **F16:** `AllocationDonut` (genérico de ativos — padrão `CategoryDonut`, SVG próprio).
 
 ### 4.3 Telas (por fase) — `features/`
 Sempre composição fina: layout (`components/layout`) + módulos (`components/modules`) + contratos (`state/`). Sem JSX duplicado entre telas — qualquer repetição vira módulo novo.
@@ -814,13 +923,21 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-## 6. PRÓXIMAS FASES (PROPOSTA OFICIAL)
+## 6. PRÓXIMAS FASES (PROPOSTA OFICIAL — INSERIDAS)
 
-> **Auditoria concluída (2026-08-15):** as fases F0–F13 estão implementadas. A proposta oficial das próximas fases — **Trilha A (UI/UX & Conforto Visual, prioritária)** e **Trilha B (Módulo de Carteira de Investimentos completo/integrado)** — está em `docs/NEXT_PHASES.md` (diagnóstico, fases F14–F18 com entregas e DoD, e perguntas de alinhamento técnico P1–P6).
+> **Auditoria concluída (2026-08-15):** as fases F0–F13 estão implementadas. A proposta oficial (diagnóstico completo, fases F14–F18 com entregas/DoD e perguntas P1–P6) está em `docs/NEXT_PHASES.md`.
+>
+> **Fases F14–F18 inseridas formalmente neste roadmap (2026-08-15, §3)** com as decisões **default** de P1–P6 aplicadas (ver `NEXT_PHASES.md` §4):
+> - **P1 = (a)** cotações: edge function (F1.7/Yahoo) + preço manual como fonte primária — deploy/cron da F1.7 é pré-requisito da F16.
+> - **P2 = (a)** gráficos: SVG próprio (padrão `CategoryDonut`) — sem libs novas.
+> - **P3 = (a)** rota nova `/investments` (leitura), mantendo `/carteira` para operação.
+> - **P4 = (a)** proventos: apenas recebidos (escopo mínimo — sem migration).
+> - **P5 = (b)** proventos ficam só na carteira (fora do fluxo financeiro core — D11 preservado).
+> - **P6 = (a)** ordem: Trilha A (F14–F15) antes da Trilha B (F16–F18).
 >
 > **Estado atual dos pontos citados na auditoria:**
-> - Home: o KPI "Investimentos" ainda usa stub (`computeOverview(..., 0)` + hint "Carteira na Fase 4") — preenchimento previsto na Fase 16.
+> - Home: o KPI "Investimentos" ainda usa stub (`computeOverview(..., 0)` + hint "Carteira na Fase 4") — preenchimento previsto na **Fase 16**.
 > - Carteira: F4 concluída (ledger, valoração, metas, aporte em `/carteira`); faltam rentabilidade na Posição (F14), dashboard `/investments` (F17) e proventos (F18).
 > - Pendências operacionais vigentes: deploy/cron da edge function de cotações (F1.7), testes contra banco real (F1 DoD), QA manual final (F6.5).
 >
-> A inserção formal das fases F14–F18 neste roadmap ocorre após o alinhamento técnico (§4 do `NEXT_PHASES.md`).
+> As decisões default podem ser revisadas a qualquer momento (P1–P6 continuam em aberto para ajuste).

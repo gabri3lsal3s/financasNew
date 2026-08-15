@@ -5,7 +5,7 @@
 > **1. Refinamento Máximo de UI/UX & Conforto Visual (Prioridade Principal)** — elevar usabilidade, fluidez, micro-interações, consistência de Design System e ergonomia em desktop e mobile.
 > **2. Módulo de Carteira de Investimentos completo e integrado** — tirar o placeholder da Home do papel e entregar o ecossistema de investimentos.
 >
-> Este documento é a fonte da proposta; a inserção formal das fases no `ROADMAP.md` ocorre após o alinhamento técnico (§4).
+> **As fases F14–F18 foram inseridas formalmente no `ROADMAP.md` §3 (2026-08-15)** com as decisões **default** de P1–P6 aplicadas (§4 abaixo); este documento permanece como fonte de detalhes, critérios de aceite e perguntas de alinhamento. Qualquer revisão de P1–P6 é ajustada em ambos os documentos.
 
 ---
 
