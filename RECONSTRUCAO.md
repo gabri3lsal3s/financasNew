@@ -4,7 +4,7 @@
 >
 > **Escopo do novo app:** Gestão Financeira Pessoal (receitas, despesas, cartões, dívidas, orçamentos) + Análise/Diagnóstico + Projeção/Corte de Gastos + **Investimentos reduzidos ao Sistema de Rebalanceamento de Carteira** (aportes, metas percentuais por ativo/classe e cálculo do valor a aportar).
 >
-> **⚠️ Nota (auditoria v1.0):** documento **histórico**. Decisões posteriores superam o escopo declarado aqui — ex.: **Storage via Cloudflare R2** (D11) e **edge function de cotações** (ambas listadas como "fora do escopo" abaixo). A fonte de verdade é o `ESPECIFICACAO_TECNICA.md`.
+> **⚠️ Nota (auditoria v1.0):** documento **histórico**. Decisões posteriores superam o escopo declarado aqui — ex.: **edge function de cotações** (listada como "fora do escopo" abaixo) e **storage de arquivos (D11), REMOVIDO do escopo** (decisão do usuário, 2026-08-15). A fonte de verdade é o `ESPECIFICACAO_TECNICA.md`.
 
 ---
 

@@ -2,7 +2,7 @@
  * Módulo de env — única fonte das variáveis do cliente (VITE_*).
  *
  * Falha com mensagem clara quando a configuração está incompleta (Fase 1 do
- * ROADMAP). Nunca expõe segredos do servidor (service role, R2): essas
+ * ROADMAP). Nunca expõe segredos do servidor (service role): essas
  * variáveis existem apenas fora do bundle (edge functions / migrações).
  */
 export interface SupabaseEnv {

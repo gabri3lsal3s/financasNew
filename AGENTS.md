@@ -9,7 +9,7 @@
 
 Aplicativo **web 100% Online First** de **gestão financeira pessoal** (receitas, despesas, cartões, dívidas, orçamentos, relatórios, insights e projeção) + **motor simplificado de rebalanceamento de carteira** (metas e valor de aporte).
 
-- **Stack:** React 18+ (Vite) · TypeScript estrito · Tailwind CSS · shadcn/ui · TanStack Query · Supabase (Postgres + RLS + Auth) · Cloudflare R2 (arquivos).
+- **Stack:** React 18+ (Vite) · TypeScript estrito · Tailwind CSS · shadcn/ui · TanStack Query · Supabase (Postgres + RLS + Auth).
 - **Idioma do produto e dos docs:** pt-BR.
 
 ## 2. DOCUMENTOS OBRIGATÓRIOS

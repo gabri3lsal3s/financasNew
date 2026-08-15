@@ -2,7 +2,7 @@
 
 > **Status:** v1.0 — consolida o `RECONSTRUCAO.md` (regras de negócio) + decisões de **Arquitetura & Resiliência (Etapa 1)** + **Diretriz de UI/UX (Etapa 2)**.
 >
-> **Stack definida:** Supabase (BaaS — auth + Postgres + RLS) · React 18+ com **Vite** · TypeScript estrito · Tailwind CSS · shadcn/ui · TanStack Query (estado de servidor) · **Cloudflare R2** (storage de arquivos).
+> **Stack definida:** Supabase (BaaS — auth + Postgres + RLS) · React 18+ com **Vite** · TypeScript estrito · Tailwind CSS · shadcn/ui · TanStack Query (estado de servidor).
 >
 > **Objetivo:** ser a fonte única e executável de regras de negócio, arquitetura e visão de produto para a reconstrução do zero.
 
@@ -22,7 +22,7 @@
 | D8 | Navegação | **Sidebar fixa (desktop) + bottom tabs (mobile)** | Escala com 8+ áreas; padrão moderno SaaS/fintech |
 | D9 | Temas | **Light / Dark / OLED** (true black) com toggle e preferência do sistema | Suporte completo; OLED economiza bateria em AMOLED |
 | D10 | Lançamento rápido | **Tela cheia guiada** (wizard 4 passos) + **atalho global** + defaults inteligentes | Respeita a escolha de fluxo guiado mantendo a fricção mínima |
-| D11 | Storage de arquivos | **Cloudflare R2** atrás de abstração própria (`src/services/storage`), upload via presigned URLs | A UI nunca conhece a implementação; anexos (comprovantes, avatar) ficam fora do fluxo financeiro core |
+| ~~D11~~ | ~~Storage de arquivos~~ | ~~**Cloudflare R2** atrás de abstração própria (`src/services/storage`), upload via presigned URLs~~ | ~~A UI nunca conhece a implementação; anexos (comprovantes, avatar) ficam fora do fluxo financeiro core~~ — **REMOVIDO DO ESCOPO** (decisão do usuário, 2026-08-15): nenhuma tela usa upload e anexos não participam do fluxo financeiro core; o primitivo `Dropzone` permanece para uso futuro |
 | D12 | Parcelamento | **Cliente calcula** (`domain/money`, centavos) **+ servidor valida invariantes** (soma = original, 1–60, datas) | Lógica de divisão única em TS; SQL só valida — sem duplicação |
 
 ---
@@ -104,11 +104,9 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Gateway único de erros** (`getErrorMessage`): mensagens pt-BR padronizadas; casos especiais — rate limit (aguarde alguns minutos), e-mail não confirmado, sessão expirada, rede indisponível (Online First → erro explícito com "Tentar novamente").
 - **Contrato de estado** por domínio: `{ data, isLoading, isError, error, mutate (CRUD), refresh }` — consumível por qualquer tela sem acoplamento ao cliente de dados.
 
-### 1.8 Storage de arquivos (Cloudflare R2 — D11)
+### 1.8 Storage de arquivos (~~D11~~ — REMOVIDO DO ESCOPO)
 
-- R2 é a base de arquivos do app (ex.: comprovantes de despesa, avatar), **atrás de uma abstração própria** (`src/services/storage`): a UI nunca conhece a implementação.
-- Upload por **presigned URLs** emitidos por endpoint próprio (edge function/API); leitura por URLs assinadas com expiração; sem chaves do R2 no cliente.
-- **Fora do fluxo financeiro core**: anexos não participam de cálculos; são metadados de enriquecimento (link/`storage_key` em entidades opcionais).
+> **Decisão do usuário (2026-08-15):** o storage de arquivos (Cloudflare R2) foi **removido do escopo** — nenhuma tela usa upload hoje e anexos não participam do fluxo financeiro core. O primitivo `Dropzone` (`components/ui`) permanece disponível caso a feature (comprovantes, avatar) seja retomada no futuro; nesse caso, retomar a abstração `services/storage` + endpoint de presigned URLs.
 
 ---
 
@@ -542,7 +540,7 @@ Erros via gateway único (`getErrorMessage`), §1.7.
 5. **RPCs transacionais** (D1): catálogo inicial — `create_expense_with_debt`, `create_refund`, `delete_expense_installments`, `pay_debt`, `receive_debt`, `settle_integrated_receivable`, `delete_category_migrate`, `set_budget_limit`, `set_income_goal`, `recalculate_bill_competences`. **Recebem parcelas calculadas no cliente (`domain/money`) e validam invariantes no servidor** (D12).
 6. Gateway de erros (`getErrorMessage`) + contratos de estado (TanStack Query + hooks) para os domínios-base.
 7. Tabela `asset_prices` + edge function de atualização de cotações (cache em servidor).
-8. Serviço de storage (Cloudflare R2): abstração `src/services/storage` + endpoint de presigned URLs — fora do fluxo financeiro core.
+8. ~~Serviço de storage (Cloudflare R2)~~ — **REMOVIDO DO ESCOPO** (decisão do usuário, 2026-08-15).
 
 **✅ DoD:** teste de isolamento RLS (usuário A não lê dados de B); **cada RPC com teste de transação** (falha no meio → rollback total); contrato `data | loading | error | CRUD | refresh` disponível para os domínios-base; todas as mensagens de erro do gateway cobertas por teste.
 
