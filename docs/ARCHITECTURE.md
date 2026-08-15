@@ -14,7 +14,6 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 | Frontend | React 18+ (Vite) · TypeScript estrito · Tailwind CSS · shadcn/ui | UI 100% componentizada, desacoplada da lógica |
 | Estado | TanStack Query (server state) + hooks/contexto | Contratos `data \| loading \| error \| CRUD \| refresh` |
 | Dados | Supabase (Postgres + RLS + Auth) | Fonte única da verdade; RPCs transacionais |
-| Arquivos | Cloudflare R2 | Storage de arquivos atrás de abstração própria (D11) |
 | Integração externa | Yahoo Finance (via proxy/cache em servidor) | Cotações para valoração da carteira |
 | PWA | vite-plugin-pwa (manifest + service worker) | App Shell com carregamento instantâneo; dados seguem Online First — SW nunca cacheia dados (ver `PWA_GUIDELINES.md`) |
 
@@ -38,7 +37,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 │  UI  — features/ (telas) + components/modules + layout      │
 │        consome contratos de estado, funções puras de        │
 │        domain/ e serviços de apresentação. NUNCA chama      │
-│        Supabase/R2 diretamente.                             │
+│        Supabase diretamente.                                │
 └───────────────────────────┬─────────────────────────────────┘
                             │ data | loading | error | CRUD | refresh
 ┌───────────────────────────▼─────────────────────────────────┐
@@ -53,10 +52,10 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 │           valida payloads com zod (borda)                   │
 └───────────────┬──────────────────────────────┬──────────────┘
                 │                              │
-┌───────────────▼───────────────┐  ┌───────────▼──────────────┐
-│  Supabase (Postgres + RLS)    │  │  Cloudflare R2 (storage) │
-│  + funções RPC transacionais  │  │  via presigned URLs      │
-└───────────────────────────────┘  └──────────────────────────┘
+┌───────────────▼───────────────┐
+│  Supabase (Postgres + RLS)    │
+│  + funções RPC transacionais  │
+└───────────────────────────────┘
 
   DOMAIN (motores puros, sem deps)  ← usado por state (derivados),
   money · competence · debts ·        data (validação) e testes.
@@ -71,7 +70,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - `state/` → importa `data/`, `domain/` (derivados), `types/`.
 - `data/` → importa `domain/` (validação), `types/`, `services/errors`.
 - `domain/` → **nenhuma dependência** além de `lib/` (constantes) e `types/`.
-- `services/` → apresentação (formatação) e integrações (erros, storage); não conhece o domínio financeiro.
+- `services/` → apresentação (formatação) e integrações (erros); não conhece o domínio financeiro.
 
 ---
 
@@ -144,8 +143,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de input monetário/datas
-    │   ├── errors.ts              #   Gateway getErrorMessage (pt-BR)
-    │   └── storage/               #   Abstração Cloudflare R2 (presigned URLs) — D11
+    │   └── errors.ts              #   Gateway getErrorMessage (pt-BR)
     ├── lib/                       # utils, constantes (APP_START_DATE, faixas, limites)
     ├── types/                     # Contratos de domínio TS (Receita, Despesa, Cartão, …)
     ├── styles/                    # tokens (light/dark/oled), globals
@@ -192,11 +190,9 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - **Estado de tela** (wizard, modais, filtros): hooks locais de `features/`. **Sem** store global de dados de negócio — dados de negócio vivem no servidor, nunca em memória de cliente.
 - **Sessão expirada (401):** redirect para login **preservando a rota pretendida** (retorno pós-login); mensagem via gateway.
 
-### 5.4 Storage de arquivos (D11 — Cloudflare R2)
+### 5.4 Storage de arquivos (~~D11~~ — REMOVIDO DO ESCOPO)
 
-- Toda operação de arquivo passa por `services/storage` (upload/ler/remover). A UI nunca importa SDK do R2.
-- Fluxo: pedir presigned URL ao endpoint próprio → upload direto → salvar `storage_key` na entidade (ex.: comprovante de despesa).
-- Anexos são **metadados de enriquecimento**, fora dos cálculos financeiros.
+> **Decisão do usuário (2026-08-15):** storage de arquivos (Cloudflare R2) foi **removido do escopo** — nenhuma tela usa upload e anexos não participam dos cálculos financeiros. O primitivo `Dropzone` (`components/ui`) permanece disponível caso a feature seja retomada.
 
 ---
 
@@ -215,8 +211,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - `services/format`: moeda (`Intl.NumberFormat` pt-BR), datas (timezone local — nunca `toISOString` em ranges de mês), percentuais.
 - `services/masks`: máscaras de input monetário (`inputMode=numeric`), datas.
 - `services/errors`: **gateway único** `getErrorMessage` com mensagens pt-BR; casos especiais: rate limit, e-mail não confirmado, sessão expirada, rede indisponível.
-- `services/storage`: abstração R2 (D11).
-- Cotações: proxy/cache em servidor + fallback estático + **preço manual** (D5) + guardrail de spike > 50%/dia.
+- Cotações: **edge function `supabase/functions/quotes/`** (F1.7, Deno — fetch Yahoo em cascata + upsert do cache global `asset_prices` com `source 'api'`; motor puro testado em `_shared/quotes-core.ts`) + fallback estático + **preço manual** (D5) + guardrail de spike > 50%/dia. A UI nunca chama a API externa — sempre lê o cache do servidor.
 
 ---
 
@@ -261,7 +256,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 | D8 — Sidebar + bottom tabs | `components/layout` |
 | D9 — Temas light/dark/oled | `src/styles` (tokens) + ThemeProvider |
 | D10 — Wizard guiado | `features/transactions/wizard` |
-| D11 — Cloudflare R2 | `services/storage` + endpoint de presigned URLs |
+| ~~D11~~ — ~~Cloudflare R2~~ | ~~`services/storage` + endpoint de presigned URLs~~ — **REMOVIDO DO ESCOPO** (decisão do usuário, 2026-08-15) |
 | D12 — Parcelamento | Cliente calcula (`domain/money`) + servidor valida invariantes | Lógica única em TS; SQL só valida |
 
 ---

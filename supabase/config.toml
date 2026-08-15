@@ -390,6 +390,13 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Edge function de cotações (F1.7): atualiza o cache global `asset_prices`
+# (user_id NULL, source 'api') com preços do Yahoo Finance. A autenticação é
+# feita no corpo da função com o service role (ver index.ts) — por isso o
+# JWT do gateway é desabilitado (verify_jwt = false).
+[functions.quotes]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

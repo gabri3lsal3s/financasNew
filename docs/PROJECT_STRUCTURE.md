@@ -22,7 +22,7 @@
 |---|---|---|
 | `src/pages` | `src/features/<área>/pages/` | Feature = área funcional coesa (páginas + componentes locais + hooks locais); páginas soltas criam acoplamento falso entre áreas |
 | `src/core` | `src/domain/` | Motores de cálculo puros; "core" é ambíguo, "domain" comunica a intenção |
-| `src/api` | `src/data/` + `src/state/` | `data/` = integração remota (Supabase/RPC/R2); `state/` = contratos para a UI |
+| `src/api` | `src/data/` + `src/state/` | `data/` = integração remota (Supabase/RPC); `state/` = contratos para a UI |
 | `src/lib` | `src/lib/` (constantes/utils) **+** `src/services/` (formatação/máscaras/erros) | Separa utilitários genéricos de serviços de apresentação |
 | `public/pwa` | `public/pwa/` | Manifest, ícones, service worker e splash (ver `PWA_GUIDELINES.md`) |
 
@@ -52,9 +52,14 @@
 │       └── offline.html           # Fallback offline (App Shell mínimo)
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
-│   └── migrations/                # 0001_schema.sql · 0002_rls.sql · 0003_functions.sql …
-│                                  # 0009_backfill_profiles.sql (schema, RLS por auth.uid(),
-│                                  # triggers + RPCs transacionais + backfill de perfis)
+│   ├── migrations/                # 0001_schema.sql · 0002_rls.sql · 0003_functions.sql …
+│   │                              # 0009_backfill_profiles.sql (schema, RLS por auth.uid(),
+│   │                              # triggers + RPCs transacionais + backfill de perfis)
+│   └── functions/                 # Edge functions (runtime Deno — fora do bundle Vite)
+│       ├── _shared/quotes-core.ts #   Motor puro de cotações (F1.7) — TS sem I/O, testável
+│       │                          #   em src/tests/quotes-core.test.ts
+│       └── quotes/index.ts        #   Edge function de cotações: fetch Yahoo em cascata +
+│                                  #   upsert do cache global asset_prices (auth por service role)
 │
 └── src/
     ├── main.tsx                   # Entry point: ReactDOM + registerPWA()
@@ -136,9 +141,8 @@
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
     │   ├── audio-fx.ts            #   Feedback sonoro sintetizado via Web Audio (F11)
-    │   ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
+    │    ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
-    │   ├── storage/               #   Abstração Cloudflare R2 (presigned URLs)
     │   └── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F9)
     │
     ├── lib/                       # Constantes e utils genéricos
@@ -166,15 +170,16 @@
 | `src/components/layout/` | Estrutura de página (sidebar/tabs/header) | Conteúdo de tela | `sidebar.tsx` |
 | `src/features/` | Telas + orquestração por área funcional | Cálculo de negócio, chamada direta a `data/` | `transactions/` |
 | `src/domain/` | **Motores de cálculo puros e testáveis** | Import de React/Supabase, formatação | `money/parcelar.ts` |
-| `src/data/` | Integração remota (Supabase, RPCs, R2) | Regra de negócio, estado de UI | `repositories/expenses.ts` |
+| `src/data/` | Integração remota (Supabase, RPCs) | Regra de negócio, estado de UI | `repositories/expenses.ts` |
 | `src/state/` | Contratos `data\|loading\|error\|CRUD\|refresh` | Lógica de apresentação | `queries/useExpenses.ts` |
 | `src/hooks/` | Hooks de UI reaproveitáveis (não de dados) | Fetch (isso é `state/`) | `useDebounce.ts` |
-| `src/services/` | Formatação, máscaras, gateway de erros, storage | Regra de negócio | `format/money.ts` |
+| `src/services/` | Formatação, máscaras, gateway de erros | Regra de negócio | `format/money.ts` |
 | `src/lib/` | Constantes e utils genéricos | Formatação pt-BR (é `services/`) | `constants.ts` |
 | `src/types/` | Tipos de domínio e contratos TS | Implementação | `expense.ts` |
 | `src/styles/` | Design tokens e estilos globais | Cores hard-coded em componente | `tokens.css` |
 | `public/pwa/` | Manifest, ícones, SW assets, offline | Código-fonte | `manifest.webmanifest` |
 | `supabase/migrations/` | Schema, RLS e funções/RPCs versionados (fonte do banco) | Dados sensíveis/segredos | `0003_functions.sql` |
+| `supabase/functions/` | Edge functions em runtime **Deno** (fora do bundle Vite; `_shared/` = motor puro compartilhado) | Segredos do servidor no corpo (só env da function); imports de `src/` | `quotes/index.ts` (F1.7) |
 | `docs/` | Documentação viva (governança em §7) | Arquivos soltos de outra natureza | `PWA_GUIDELINES.md` |
 
 ---

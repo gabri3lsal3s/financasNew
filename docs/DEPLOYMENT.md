@@ -1,7 +1,7 @@
 # 🚀 DEPLOYMENT.md — Guia de Deploy e Pleno Funcionamento
 
 > **Status:** guia validado contra o código atual (Fase 5 concluída — commit `d47c938`).
-> Stack: **Vercel** (frontend Vite/React) + **Supabase** (Postgres + RLS + Auth + RPCs) + **Cloudflare R2** (storage, futuro).
+> Stack: **Vercel** (frontend Vite/React) + **Supabase** (Postgres + RLS + Auth + RPCs).
 > O app é **100% Online First**: dados vivem na nuvem; o PWA cacheia apenas o App Shell e assets estáticos.
 
 ---
@@ -14,14 +14,14 @@
 │  / (SPA + PWA)  │  HTTPS │  ├─ Auth (email/senha)       │
 │  /pwa/*         │        │  ├─ RLS (todas as tabelas)   │
 └─────────────────┘        │  ├─ RPCs transacionais (D1)  │
-        │                  │  └─ Migrations versionadas   │
-        └──► (futuro) Cloudflare R2 (presigned URLs)
+                           │  └─ Migrations versionadas   │
+                           └──────────────────────────────┘
 ```
 
 - **Frontend:** Vercel — `vercel.json` já configurado (SPA rewrites, headers de segurança, cache PWA).
 - **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0008: schema, RLS, RPCs, overrides, metas).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
-- **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito por uma **edge function** (pendente — ver §7).
+- **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito pela **edge function `quotes`** (implementada em `supabase/functions/quotes/` — F1.7; falta deploy + cron — ver §7.1).
 
 ---
 
@@ -70,7 +70,7 @@
    | `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Supabase → Settings → API → anon public key |
 
    > ⚠️ Use a **anon key** (pública). A `service_role` NUNCA vai para o cliente (RLS depende disso).
-   > Outras variáveis do `.env.example` (`SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `R2_*`, `SUPABASE_FUNCTION_URL`, `QUOTES_CRON_SCHEDULE`) são **só de servidor/CLI/edge functions** — não necessárias para o frontend funcionar hoje.
+   > Outras variáveis do `.env.example` (`SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_FUNCTION_URL`, `QUOTES_CRON_SCHEDULE`) são **só de servidor/CLI/edge functions** — não necessárias para o frontend funcionar hoje.
    > **Opcional — Sentry (F6.3):** crie um projeto em [sentry.io](https://sentry.io), copie o DSN (Settings → Projects → Client Keys) e adicione `VITE_SENTRY_DSN`. Sem essa variável o app funciona normalmente (o SDK nem entra no bundle); com ela, erros de produção + Web Vitals (LCP/INP/CLS) são reportados e correlacionados ao usuário logado.
 
 4. Clique em **Deploy**. O build roda `tsc -b && vite build` (typecheck + bundle com code-splitting + geração do Service Worker PWA).
@@ -95,7 +95,6 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | Servidor/edge functions (fora do bundle) | ❌ só p/ edge functions |
 | `SUPABASE_FUNCTION_URL` | Edge functions de cotações (futuro) | ❌ pendente (§7) |
 | `QUOTES_CRON_SCHEDULE` | Cron da edge function de cotações | ❌ pendente (§7) |
-| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL` | Storage (futuro — presigned URLs) | ❌ não usado no código atual |
 
 ---
 
@@ -108,7 +107,7 @@ cp .env.example .env.local   # preencha VITE_SUPABASE_URL + VITE_SUPABASE_ANON_K
 npm run dev          # dev server (Vite)
 npm run typecheck    # tsc -b (valida TODO o projeto, inclusive testes)
 npm run lint         # eslint (0 erros esperado)
-npm run test         # vitest — 453 testes (65 arquivos)
+npm run test         # vitest — 810 testes (105 arquivos)
 npm run build        # tsc -b && vite build (gera dist/ + Service Worker)
 npm run preview      # serve dist/ localmente (testa o build de produção)
 
@@ -124,9 +123,9 @@ npx supabase db reset  # aplica migrations + seed
 - ✅ **Migrations completas:** 0001 schema (19 tabelas), 0002 RLS (policies por usuário), 0003 RPCs transacionais (parcelamento, dívidas, cartões, orçamentos, categorias), 0004–0008 (cartões/dívidas, budgets, lembretes, override de preço, metas de alocação).
 - ✅ **Auth funcional:** login/cadastro/recuperação + trigger `handle_new_user` (profiles + preferências) + RLS.
 - ✅ **Build de produção:** `tsc -b` limpo, `vite build` ok, code-splitting por página, SW gerado (43 entradas precached).
-- ✅ **PWA:** manifest (`/pwa/manifest.webmanifest`), ícones (192/512/maskable/apple-touch), `offline.html`, registro `autoUpdate`.
+- ✅ **PWA:** manifest (`/pwa/manifest.webmanifest`), ícones (192/512/maskable/apple-touch), `offline.html`, registro `autoUpdate`, **prompt de instalação** (`beforeinstallprompt` via `InstallAppButton` no menu "Mais") e **toast de atualização automática** (F5.6) — auditoria PWA automatizada em `tests/pwa-audit.test.ts`.
 - ✅ **Segurança:** headers no `vercel.json` (nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy), cache imutável para assets.
-- ✅ **Testes:** 453 verdes (domínio puro, RPCs, telas, a11y com axe, teclado, deep-links).
+- ✅ **Testes:** 810 verdes (domínio puro, RPCs, telas, a11y com axe, teclado, deep-links).
 - ✅ **Erros de rede:** gateway único (`getErrorMessage` pt-BR) + retry manual em todas as telas.
 
 ---
@@ -137,12 +136,36 @@ npx supabase db reset  # aplica migrations + seed
 
 | # | Item | Impacto se ausente | Onde implementar |
 |---|---|---|---|
-| 1 | **Edge function de cotações** (atualiza `asset_prices` com `user_id NULL` + cron) | Ativos sem preço manual ficam com **fallback** (`0` p/ BRL, `5,25` p/ USD) e badge "referência". O usuário pode digitar preço manual na carteira como contorno. | `supabase/functions/quotes/` (leitura de API de cotações + upsert em lote + cron pg_cron ou Supabase Cron) |
-| 2 | **Storage R2** (`src/services/storage/`) | Nenhuma tela usa upload hoje — apenas documentado no env. | `src/services/storage/` + edge function de presigned URLs |
-| 3 | **F5.6 — PWA polish** | PWA instalável, mas sem prompt `beforeinstallprompt` customizado e sem toast de atualização automática. | `src/app/pwa.ts` + UI (ROADMAP F5.6) |
-| 4 | **CI/CD de produção** | Deploy manual via Vercel (git push já dispara; sem gates de testes no CI). | GitHub Actions: `npm ci && typecheck && lint && test` antes do deploy |
-| 5 | ~~Observabilidade (Sentry)~~ | **✅ Feito (F6.3)** — SDK env-gated por `VITE_SENTRY_DSN` (bundle separado, Web Vitals + erros + usuário). | basta configurar o DSN na Vercel |
-| 6 | **Testes contra banco real** | RPCs testados via mocks; sem prova de RLS/rollback em Postgres real. | vitest + Supabase local (ROADMAP F6.1) |
+| 1 | ~~**Edge function de cotações**~~ | **✅ Implementada (F1.7)** — `supabase/functions/quotes/` (Deno) + motor puro testado (15 testes). **Falta apenas deploy + cron.** | deploy: `supabase functions deploy quotes --project-ref <ref>`; agendar: pg_cron (abaixo) ou Supabase Cron |
+| 2 | ~~**CI/CD de produção**~~ | **✅ Implementado (F6.4)** — `.github/workflows/deploy.yml` (gates + deploy condicional Vercel/Supabase). **Falta configurar os secrets.** | GitHub → Settings → Secrets: `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`; `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_ID` |
+| 3 | ~~Observabilidade (Sentry)~~ | **✅ Feito (F6.3)** — SDK env-gated por `VITE_SENTRY_DSN` (bundle separado, Web Vitals + erros + usuário). | basta configurar o DSN na Vercel |
+| 4 | **Testes contra banco real** | RPCs testados via mocks; sem prova de RLS/rollback em Postgres real. | vitest + Supabase local (ROADMAP **F1** — DoD: isolamento RLS + rollback de RPCs; exige Docker local) |
+| 5 | **QA final multi-dispositivo + release** | Checklist documentado (RELEASE.md) mas não executado manualmente. | `docs/RELEASE.md` — matriz de 16 fluxos em desktop/mobile × 3 temas × 6 acentos |
+
+### 7.1 Edge function de cotações — deploy & cron
+
+```bash
+# 1. Deploy (a autenticação usa o service role no corpo da função):
+supabase functions deploy quotes --project-ref <SEU_REF>
+
+# 2. Agendar a cada 6h (requer extensões pg_cron e pg_net habilitadas no projeto):
+select cron.schedule('quotes-6h', '0 */6 * * *', $cron$
+  select net.http_post(
+    url := 'https://<REF>.supabase.co/functions/v1/quotes',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer <SUPABASE_SERVICE_ROLE_KEY>'
+    ),
+    body := '{}'
+  );
+$cron$);
+
+# 3. Teste manual:
+curl -X POST 'https://<REF>.supabase.co/functions/v1/quotes' \
+  -H "Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>"
+```
+
+> ⚠️ O `verify_jwt = false` está no `supabase/config.toml` — a função valida o service role no próprio corpo. Não exponha o service role no cliente.
 
 ---
 
@@ -155,12 +178,14 @@ npx supabase db reset  # aplica migrations + seed
 [ ] Auth: SMTP configurado (confirmação de e-mail no cadastro)
 [ ] Vercel: repo importado, buildCommand `npm run build`, output `dist`
 [ ] Vercel: VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY configuradas
-[ ] Deploy verde: typecheck + lint + 453 testes + build
+[ ] Deploy verde: typecheck + lint + 825 testes + build
 [ ] Login/cadastro/recuperação funcionando em produção
 [ ] Onboarding guiado (criar categorias/cartão/lançamento) funcional
 [ ] PWA instalável + App Shell offline
 [ ] Lighthouse mobile ≥ 90 (baseline)
-[ ] (Futuro) Edge function de cotações + R2 storage + CI/CD · [ ] Sentry: adicionar `VITE_SENTRY_DSN` na Vercel quando quiser ativar
+[ ] Edge function `quotes` deployada + cron (DEPLOYMENT §7.1)
+[ ] CI/CD: secrets `VERCEL_*`/`SUPABASE_*` configurados · [ ] Sentry: adicionar `VITE_SENTRY_DSN` na Vercel quando quiser ativar
+[ ] QA final multi-dispositivo (docs/RELEASE.md §2–3)
 ```
 
 ---

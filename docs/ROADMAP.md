@@ -20,7 +20,7 @@
 | Fase | Nome | Entrega central | UI entregue |
 |---|---|---|---|
 | **F0** | Fundação & Design System | Repo, CI, tokens (light/dark/oled), **primitivos de UI**, shell de navegação | Shell + primitivos |
-| **F1** | Infraestrutura de Dados & Auth | Schema, RLS, audit_events, **RPCs transacionais**, contratos de estado, cotações, R2 | Auth |
+| **F1** | Infraestrutura de Dados & Auth | Schema, RLS, audit_events, **RPCs transacionais**, contratos de estado, cotações | Auth |
 | **F2** | Core de Finanças Pessoais | Domínio puro + CRUDs (receitas/despesas/cartões/dívidas/orçamentos) | Telas CRUD + wizard |
 | **F3** | Análise, Projeção & Corte | Motor de insights, projeção, relatórios, lembretes | Telas de análise |
 | **F4** | Carteira & Rebalanceamento | Ledger, valoração, metas, calculadora de aporte | Telas de carteira |
@@ -83,14 +83,14 @@
 **Objetivo:** alicerce Online First — dados seguros, atômicos e auditáveis.
 
 **Entregas (na ordem):**
-1. Projeto Supabase + cliente único (`data/client.ts`) + módulo de env; estado de conexão/erro explícito. **`.env.example` documentado** (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, proxy de cotações, R2).
+1. Projeto Supabase + cliente único (`data/client.ts`) + módulo de env; estado de conexão/erro explícito. **`.env.example` documentado** (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, proxy de cotações).
 2. Auth: login, registro, recuperação de senha, sessão, perfil (`profiles` via trigger) + telas de auth (usando primitivos da F0).
 3. **Schema completo** (ESPECIFICAÇÃO §2) com migrations versionadas: constraints (parcelas 1–60, card no crédito, pesos 0–1, soma de metas ≤ 100% via trigger) e índices.
 4. **RLS** por `auth.uid()` em todas as tabelas; `audit_events` imutável (insert + select, sem update/delete).
 5. **RPCs transacionais (D1):** `create_expense_with_debt`, `create_refund`, `delete_expense_installments`, `pay_debt`, `receive_debt`, `settle_integrated_receivable`, `delete_category_migrate`, `set_budget_limit`, `set_income_goal`, `recalculate_bill_competences` + wrappers tipados (`data/rpc.ts`). **Recebem parcelas calculadas no cliente (`domain/money`) e validam invariantes no servidor** (soma = total, 1–60, datas ≥ APP_START_DATE).
 6. Gateway de erros (`services/errors`) + **contratos de estado** (`state/`) para os domínios-base.
 7. Cotações: tabela `asset_prices` + edge function de atualização (cache em servidor) + fallback + suporte a **preço manual**.
-8. **Storage (D11):** abstração `services/storage` + endpoint de presigned URLs (Cloudflare R2).
+8. ~~**Storage (D11):** abstração `services/storage` + endpoint de presigned URLs~~ — **REMOVIDO DO ESCOPO** (decisão do usuário, 2026-08-15): anexos/avatar ficam fora do fluxo financeiro core e nenhuma tela usa upload; o primitivo `Dropzone` permanece disponível caso a feature surja no futuro.
 
 **✅ DoD**
 - Teste de isolamento RLS (usuário A não lê dados de B).
@@ -107,9 +107,8 @@
 - [x] **Gateway de erros** (`src/services/errors`): `classifyError` + `getErrorMessage` (rate limit, e-mail não confirmado, credenciais, sessão expirada, rede, duplicado, validação) + 8 testes
 - [x] **Auth**: `src/data/auth.ts` (login/registro/recuperação/signOut), `src/hooks/use-auth.ts` (sessão + `onAuthStateChange`, erro de config sem crash), telas `/entrar` `/cadastro` `/recuperar-senha` com primitivos da F0 + guard `RequireAuth` no router (redireciona preservando a rota)
 - [x] Primitivo novo `Alert` (erro/sucesso/info/warning) — exigido pelo DRY das telas de formulário
-- [ ] Cotações: edge function + cache `asset_prices` (exige deploy/config — F1.7)
-- [ ] Storage R2: `services/storage` + endpoint de presigned URLs (F1.8)
-- [ ] **Testes contra banco real (Supabase local)** — pgTAP/vitest + Postgres: isolamento RLS e rollback de RPCs (DoD; exige ambiente local)
+- [x] **Cotações (F1.7)**: edge function `supabase/functions/quotes/` (Deno) — motor puro testável em `_shared/quotes-core.ts` (15 testes: normalização de ticker B3/cripto/internacional, parse da Yahoo Chart API v8, guardrail de spike, montagem do upsert) + handler com fetch em cascata (query1→query2, timeout 4s, tolerante a falha por ticker), auth por service role, upsert do cache global (`user_id NULL`, `source 'api'`, delete+insert por ticker) e `verify_jwt = false` no `config.toml`. **Deploy/config pendente** (exige credenciais e cron — ver DEPLOYMENT §7.1 e RELEASE.md)
+- [ ] **Testes contra banco real (Supabase local)** — pgTAP/vitest + Postgres: isolamento RLS e rollback de RPCs (DoD; exige ambiente local com Docker — não disponível neste ambiente)
 - [ ] Configurar `.env.local` com credenciais reais do projeto Supabase para validar o fluxo de auth de ponta a ponta
 
 ---
@@ -379,8 +378,8 @@
 1. ✅ **Prova de fidelidade:** suíte espelhando cada regra do ESPECIFICAÇÃO (regressão contra o app anterior).
 2. ✅ Segurança: revisão final de RLS, rate limit, secrets/ambiente.
 3. ✅ Observabilidade: logging de erros (**decisão: Sentry**) + métricas básicas (Web Vitals).
-4. Deploy: **hosting do frontend = Vercel** (`vercel.json` com SPA rewrites, headers de segurança e cache PWA) + backend/banco = **Supabase** (Postgres + RLS + Auth + migrations em `supabase/`); pendente CI/CD de produção e env seguros (Supabase, proxy de cotações, R2).
-5. QA final multi-dispositivo + documento de release.
+4. Deploy: **hosting do frontend = Vercel** (`vercel.json` com SPA rewrites, headers de segurança e cache PWA) + backend/banco = **Supabase** (Postgres + RLS + Auth + migrations em `supabase/`); **workflow `deploy.yml` criado** (gates de qualidade obrigatórios + deploy condicional na Vercel e da edge function `quotes` quando os secrets existirem); pendente apenas a configuração das credenciais reais (Vercel/Supabase) — ver `DEPLOYMENT.md` e `RELEASE.md`.
+5. QA final multi-dispositivo + documento de release: **`docs/RELEASE.md` criado** (checklist QA desktop/mobile × 3 temas × 6 acentos, matriz de fluxos críticos, corte/rollback e template de registro) — pendente apenas a execução manual do QA.
 
 **Progresso — Fase 6, entrega 2 (segurança — auditoria RLS, rate limit, secrets):**
 - **Auditoria RLS automatizada** (`src/tests/security-audit.test.ts`, 9 testes — roda no CI, impede regressão):
@@ -402,6 +401,10 @@
 - **5 testes** (`services/observability.test.ts`): sem DSN → no-op total; com DSN → init com DSN + tracing; init idempotente; `reportError` com contexto; `setObservabilityUser`/null.
 - **Deploy:** `VITE_SENTRY_DSN` documentado no `.env.example` + `docs/DEPLOYMENT.md` (§3.2 opcional e §4).
 - **F6.3 concluída ✅** — decisão registrada em `ARCHITECTURE.md` §11 e `ESPECIFICACAO_TECNICA.md` (DECISÕES EM ABERTO nº 3 → RESOLVIDA).
+
+**Progresso — Fase 6, entregas 4–5 (deploy + release):**
+- **CI/CD de produção (`deploy.yml`):** gates `quality` (typecheck + lint + test + build) obrigatórios em todo push em `main`; jobs `deploy-vercel` (Vercel production) e `deploy-supabase-functions` (edge function `quotes`) condicionais à existência dos secrets (`VERCEL_*`, `SUPABASE_*`) — sem credenciais o deploy é pulado e o CI continua verde (não quebra).
+- **Documento de release (`docs/RELEASE.md`):** QA final multi-dispositivo (matriz de 16 fluxos críticos em desktop/mobile × 3 temas × 6 acentos), QA visual/a11y (contraste AA, overflow, teclado, axe, Lighthouse ≥ 90), consistência de dados (parcelamento, competência, cascata, audit_events), corte de release (tag semântica → CI/CD → pós-deploy), rollback e template de registro.
 
 **Progresso — Fase 6, entrega 1 (prova de fidelidade):**
 - **`src/tests/fidelity.test.ts`** — **63 testes** espelhando as regras do ESPECIFICAÇÃO §1.3–§4.5: um teste por regra com exemplo representativo, organizado por seção da spec, verificando a **invariante central** (soma de parcelas = original, saldo = rendas − despesas − investimentos, competência ≥ closing → mês seguinte, prioridade dos alertas 1–6, tetos setoriais, guardrail de spike, limites da busca, etc.). Complementa (não duplica) a cobertura profunda dos testes colocalizados de cada motor.
