@@ -1,7 +1,9 @@
+import { Fragment } from "react";
 import { Banknote, Landmark, PiggyBank, ReceiptText, TrendingUp } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { monthLabel } from "@/lib/date";
 import type { OverviewTotals } from "@/domain/overview";
+import type { DetailedCloseCategory } from "@/domain/reports";
 
 export interface MonthlyCloseCategory {
   name: string;
@@ -26,6 +28,12 @@ export interface MonthlyClosePrintViewProps {
   incomeCount: number;
   categories: MonthlyCloseCategory[];
   paidInvoices: MonthlyCloseInvoice[];
+  /**
+   * F22 evolução — despesas em detalhe (categoria → dia → gasto com
+   * descrição, método de pagamento, cartão e parcela). Quando presente e
+   * não vazio, renderiza a seção "Despesas em detalhe" após o resumo.
+   */
+  detailedCategories?: DetailedCloseCategory[];
   /** App + identidade do documento. */
   appName?: string;
 }
@@ -49,6 +57,7 @@ export function MonthlyClosePrintView({
   incomeCount,
   categories,
   paidInvoices,
+  detailedCategories = [],
   appName = "Finanças Pessoais",
 }: MonthlyClosePrintViewProps) {
   const generatedAt = formatDate(new Date().toISOString().slice(0, 10));
@@ -148,6 +157,60 @@ export function MonthlyClosePrintView({
           </table>
         )}
       </section>
+
+      {/* Despesas em detalhe (F22 evolução) — categoria → dia → gasto com
+          descrição, método de pagamento, cartão e parcela. */}
+      {detailedCategories.length > 0 ? (
+        <section aria-label="Despesas em detalhe">
+          <h2 className="text-sm font-semibold text-foreground">Despesas em detalhe</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Cada gasto do mês separado por categoria e dia, com método de pagamento.
+          </p>
+          <div className="mt-3 flex flex-col gap-4">
+            {detailedCategories.map((category) => (
+              <div key={category.categoryId} className="break-inside-avoid">
+                <div className="flex items-center justify-between gap-2 border-b border-border pb-1">
+                  <span className="text-xs font-semibold text-foreground">{category.name}</span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    <MoneyText cents={category.totalCents} tone="negative" />
+                  </span>
+                </div>
+                <table className="w-full border-collapse text-sm">
+                  <tbody>
+                    {category.days.map((day) => (
+                      <Fragment key={day.date}>
+                        <tr className="bg-muted/40">
+                          <td colSpan={3} className="py-1.5 pl-2 text-xs font-medium text-muted-foreground">
+                            {day.label} · {day.weekdayLabel}
+                          </td>
+                          <td className="py-1.5 pr-2 text-right text-xs font-semibold tabular-nums">
+                            <MoneyText cents={day.totalCents} tone="negative" />
+                          </td>
+                        </tr>
+                        {day.entries.map((entry) => (
+                          <tr key={entry.id} className="border-b border-border/40">
+                            <td className="py-1 pl-4 pr-2">{entry.description}</td>
+                            <td className="py-1 pr-2 text-xs text-muted-foreground">
+                              {entry.paymentMethodLabel}
+                              {entry.cardName ? ` · ${entry.cardName}` : ""}
+                            </td>
+                            <td className="py-1 pr-2 text-xs text-muted-foreground">
+                              {entry.installmentLabel ?? ""}
+                            </td>
+                            <td className="py-1 pr-2 text-right tabular-nums">
+                              <MoneyText cents={entry.valueCents} tone="negative" />
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Faturas quitadas */}
       <section aria-label="Faturas quitadas">

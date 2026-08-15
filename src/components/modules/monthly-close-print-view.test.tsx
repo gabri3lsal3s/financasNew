@@ -80,4 +80,55 @@ describe("MonthlyClosePrintView (F22)", () => {
     );
     expect(container.querySelector(".print-area")).not.toBeNull();
   });
+
+  it("F22 evolução — renderiza despesas em detalhe por categoria e dia", () => {
+    render(
+      <MonthlyClosePrintView
+        month="2026-08"
+        totals={totals}
+        expenseCount={2}
+        incomeCount={0}
+        categories={[]}
+        paidInvoices={[]}
+        detailedCategories={[
+          {
+            categoryId: "c1",
+            name: "Alimentação",
+            totalCents: 12000,
+            days: [
+              {
+                date: "2026-08-12",
+                label: "12/8",
+                weekdayLabel: "Quarta",
+                totalCents: 12000,
+                entries: [
+                  {
+                    id: "e1",
+                    date: "2026-08-12",
+                    description: "Mercado",
+                    paymentMethodLabel: "Cartão de crédito",
+                    cardName: "Nubank",
+                    installmentLabel: "2/3",
+                    valueCents: 12000,
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Despesas em detalhe")).toBeInTheDocument();
+    expect(screen.getByText("Alimentação")).toBeInTheDocument();
+    expect(screen.getByText("12/8 · Quarta")).toBeInTheDocument();
+    expect(screen.getByText("Mercado")).toBeInTheDocument();
+    expect(screen.getByText("Cartão de crédito · Nubank")).toBeInTheDocument();
+    expect(screen.getByText("2/3")).toBeInTheDocument();
+  });
+
+  it("F22 evolução — sem dados detalhados a seção não aparece", () => {
+    render(<MonthlyClosePrintView month="2026-08" totals={totals} expenseCount={1} incomeCount={0} categories={[]} paidInvoices={[]} />);
+    expect(screen.queryByText("Despesas em detalhe")).not.toBeInTheDocument();
+  });
 });

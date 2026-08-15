@@ -1087,6 +1087,12 @@
 - [x] **Web Share (entrega 4)** — `src/services/export-actions.ts` (`downloadBlob/downloadCsv/downloadJson` + `shareText` com fallback clipboard, 4 testes) e botões "Compartilhar" em `ReportDetailDialog` (resumo com itens + totais), `ExpenseDetailDialog` e `IncomeDetailDialog` (comprovante da transação).
 - [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
 
+**Evolução pós-F22 — Fechamento DETALHADO (2026-08-15, a pedido do usuário):**
+- [x] **Motor puro `domain/reports/detailed-close.ts`** (+4 testes) — `buildDetailedMonthlyClose(expenses, resolvers)`: agrupa as despesas do mês em **categoria → dia → gasto** (ordenação determinística: categoria por total desc, dias por data asc, gastos por valor desc); cada gasto carrega descrição, rótulo de método de pagamento, nome do cartão e parcela ("2/3" — null para avulsos); rótulos injetados por resolvers (sem import de Supabase/UI).
+- [x] **`MonthlyClosePrintView` com seção "Despesas em detalhe"** (+2 testes): por categoria (nome + total), por dia (data curta + dia da semana + subtotal) e por gasto (descrição, método · cartão, parcela, valor — `MoneyText` com tom negativo); `break-inside-avoid` na impressão; a seção só aparece quando há dados detalhados.
+- [x] **Integração na página de Relatórios** (modo mês): `closeDetailedCategories` montado com `buildDetailedMonthlyClose` (rótulos via `PAYMENT_METHOD_LABELS`/`activeCardName`/`WEEKDAY_LABELS` Monday-first) e passado ao documento; modal ampliado para `max-w-3xl` com descrição atualizada.
+- [x] Suíte completa **1079 testes / 140 arquivos** verde; typecheck/lint/build limpos.
+
 ---
 
 ### Fase 23 — Engenharia de Performance & Code-Splitting 3D

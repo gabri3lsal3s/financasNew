@@ -16,11 +16,13 @@ import {
   aggregateByCategory,
   aggregateByPaymentMethod,
   aggregateByWeekday,
+  buildDetailedMonthlyClose,
   mergePaidDebts,
   mondayFirstWeekday,
   percentChange,
   validateCustomPeriod,
   WEEKDAY_LABELS,
+  type DetailedCloseCategory,
   type ReportEntry,
 } from "@/domain/reports";
 import { currentMonth, currentYear, monthLabel, monthRange, shiftMonth, yearRange } from "@/lib/date";
@@ -247,6 +249,33 @@ export function ReportsPage() {
       date: payment.date,
     }));
 
+  // F22 evolução — fechamento DETALHADO: categoria → dia → cada gasto com
+  // descrição, método de pagamento, cartão e parcela (somente no modo mês).
+  const closeDetailedCategories: DetailedCloseCategory[] =
+    mode === "month"
+      ? buildDetailedMonthlyClose(
+          expenses.map((e) => ({
+            id: e.id,
+            date: e.date,
+            description: e.description,
+            paymentMethod: e.payment_method,
+            cardId: e.card_id,
+            installmentsTotal: e.installments_total,
+            installmentNumber: e.installment_number,
+            installmentGroupId: e.installment_group_id,
+            categoryId: e.category_id,
+            valueCents: numberToCents(e.value),
+          })),
+          {
+            categoryName: (id) => categoryById.get(id)?.name ?? "Outra",
+            cardName: (id) => activeCardName.get(id) ?? null,
+            paymentMethodLabel: (method) =>
+              PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS] ?? method,
+            weekdayLabel: (date) => WEEKDAY_LABELS[mondayFirstWeekday(date)] ?? "",
+          },
+        )
+      : [];
+
   return (
     <div className="flex flex-col gap-6">
       {/* F12 — sem header visual: abas + seletor de período direto; título apenas p/ leitores de tela. */}
@@ -449,8 +478,8 @@ export function ReportsPage() {
         open={closeOpen}
         onOpenChange={setCloseOpen}
         title="Fechamento Mensal"
-        description={`Resumo executivo de ${monthLabel(month)} — pronto para imprimir ou salvar em PDF.`}
-        className="max-w-2xl print:max-w-none print:shadow-none print:border-0"
+        description={`Fechamento detalhado de ${monthLabel(month)}: resumo executivo + cada gasto por categoria e dia, com método de pagamento — pronto para imprimir ou salvar em PDF.`}
+        className="max-w-3xl print:max-w-none print:shadow-none print:border-0"
         hideCalculator
       >
         <div className="mt-4">
@@ -461,6 +490,7 @@ export function ReportsPage() {
             incomeCount={incomes.length}
             categories={closeCategories}
             paidInvoices={closeInvoices}
+            detailedCategories={closeDetailedCategories}
           />
         </div>
         <div className="mt-6 flex justify-end gap-2 print:hidden">

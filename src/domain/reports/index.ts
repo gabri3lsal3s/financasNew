@@ -278,3 +278,16 @@ export function validateCustomPeriod(start: string, end: string): { ok: true; pe
 
 /** Variação percentual vs período anterior (reutiliza o motor do overview). */
 export { percentChange } from "@/domain/overview";
+
+// ---------------------------------------------------------------------------
+// Fechamento mensal detalhado (F22 evolução)
+// ---------------------------------------------------------------------------
+
+export {
+  buildDetailedMonthlyClose,
+  type DetailedCloseCategory,
+  type DetailedCloseDay,
+  type DetailedCloseEntry,
+  type DetailedCloseExpenseInput,
+  type DetailedCloseResolvers,
+} from "./detailed-close";
