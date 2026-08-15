@@ -141,11 +141,11 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (useDebounce, useMedia, …)
     ├── services/                  # Apresentação + integrações
-    │   ├── format/                #   moeda, datas, percentuais (pt-BR)
-    │   ├── masks/                 #   máscaras de input monetário/datas
-    │   └── errors.ts              #   Gateway getErrorMessage (pt-BR)
-    ├── lib/                       # utils, constantes (APP_START_DATE, faixas, limites)
-    ├── types/                     # Contratos de domínio TS (Receita, Despesa, Cartão, …)
+    │   ├── masks/                 #   máscaras de apresentação (moeda/percentual pt-BR)
+    │   ├── errors/                #   Gateway getErrorMessage (classifyError + pt-BR)
+    │   └── *.ts                   #   haptics, audio-fx, export-actions, observability…
+    ├── lib/                       # utils genéricos (date, labels, env, cn)
+    ├── types/                     # Contratos de domínio TS (schema.ts + database.ts)
     ├── styles/                    # tokens (light/dark/oled), globals
     └── tests/                     # helpers, fixtures, setup do Vitest
 ```
@@ -162,7 +162,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 | Chamada a Supabase/RPC | `data/` | `repositories/expenses.ts`, `rpc.ts` |
 | Hook que expõe dados à UI | `state/` | `useExpenses({ month })` |
 | Formatação/máscara/apresentação | `services/` | `formatBRL()`, `moneyMask()` |
-| Constante global do domínio | `lib/` | `APP_START_DATE`, faixas de atenção 85/90/95 |
+| Constante global do domínio | `types/` | `APP_START_DATE` (schema.ts), faixas de atenção 85/90/95 |
 
 ---
 

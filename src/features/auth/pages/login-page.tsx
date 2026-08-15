@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router";
 import { Alert, Button, Input } from "@/components/ui";
 import { signInWithEmail } from "@/data/auth";
-import { AuthShell } from "@/features/auth/auth-shell";
+import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
 

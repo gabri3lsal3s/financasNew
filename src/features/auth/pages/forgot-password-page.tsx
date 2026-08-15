@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { Link } from "react-router";
 import { Alert, Button, Input } from "@/components/ui";
 import { resetPasswordForEmail } from "@/data/auth";
-import { AuthShell } from "@/features/auth/auth-shell";
+import { AuthShell } from "@/features/auth/components/auth-shell";
 import { getErrorMessage } from "@/services/errors";
 
 export function ForgotPasswordPage() {

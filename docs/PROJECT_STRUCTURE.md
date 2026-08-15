@@ -170,7 +170,6 @@
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas),
     │                              #   use-pull-up-to-top (F26 — overscroll vertical)…)
     ├── services/                  # Apresentação + integrações
-    │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)
@@ -184,10 +183,12 @@
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
     │   └── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F9)
     │
-    ├── lib/                       # Constantes e utils genéricos
-    │   ├── constants.ts           #   APP_START_DATE, faixas 85/90/95, limites…
+    ├── lib/                       # Utils genéricos (sem regra financeira)
+    │   ├── date.ts                #   mês YYYY-MM, ranges, currentMonth (com teste)
+    │   ├── env.ts                 #   getSupabaseEnv — falha clara se VITE_* faltar
     │   ├── labels.ts              #   Labels pt-BR compartilhados (formas de pagamento, recebimento)
-    │   └── utils.ts               #   funções sem domínio financeiro (clamp, soma…)
+    │   └── utils.ts               #   cn() (clsx + tailwind-merge)
+    │   # APP_START_DATE, faixas 85/90/95 → src/types/schema.ts (contrato de domínio)
     │
     ├── types/                     # Contratos de domínio TS (Receita, Despesa, Cartão…)
     ├── styles/                    # Design tokens (única fonte)
@@ -212,8 +213,8 @@
 | `src/data/` | Integração remota (Supabase, RPCs) | Regra de negócio, estado de UI | `repositories/expenses.ts` |
 | `src/state/` | Contratos `data\|loading\|error\|CRUD\|refresh` | Lógica de apresentação | `queries/useExpenses.ts` |
 | `src/hooks/` | Hooks de UI reaproveitáveis (não de dados) | Fetch (isso é `state/`) | `useDebounce.ts` |
-| `src/services/` | Formatação, máscaras, gateway de erros | Regra de negócio | `format/money.ts` |
-| `src/lib/` | Constantes e utils genéricos | Formatação pt-BR (é `services/`) | `constants.ts` |
+| `src/services/` | Formatação, máscaras, gateway de erros | Regra de negócio | `masks/money.ts` |
+| `src/lib/` | Constantes e utils genéricos | Formatação pt-BR (é `services/`) | `date.ts` |
 | `src/types/` | Tipos de domínio e contratos TS | Implementação | `expense.ts` |
 | `src/styles/` | Design tokens e estilos globais | Cores hard-coded em componente | `tokens.css` |
 | `public/pwa/` | Manifest, ícones, SW assets, offline | Código-fonte | `manifest.webmanifest` |
@@ -264,8 +265,8 @@ src/features/transactions/
 | Chamada ao Supabase / RPC transacional | `src/data/` (repositories ou `rpc.ts`) |
 | Hook que expõe dados à UI | `src/state/` |
 | Hook de UI reaproveitável (debounce, media query) | `src/hooks/` |
-| Formatação, máscara, mensagem de erro | `src/services/` |
-| Constante global (APP_START_DATE, faixas) | `src/lib/constants.ts` |
+| Formatação, máscara, mensagem de erro | `src/services/` (ex.: `masks/`) |
+| Constante global de domínio (APP_START_DATE, faixas) | `src/types/schema.ts` (contratos de domínio) ou `src/lib/` |
 | Tipo/contrato de domínio | `src/types/` |
 | Cor, fonte, raio, sombra | `src/styles/tokens.css` — **nunca** em componente |
 | Manifest, ícone, splash, offline | `public/pwa/` |
