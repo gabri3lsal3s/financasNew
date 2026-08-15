@@ -74,7 +74,9 @@
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
-    │   │   │                      #   virtual-list (F5.5), toast, scroll-to-top-button (F9),
+    │   │   │                      #   virtual-list (F5.5), toast,
+    │   │   │                      #   pull-up-to-top-indicator (F26 — substitui o
+    │   │   │                      #     scroll-to-top-button F9, removido),
     │   │   │                      #   number-ticker, sparkline (F8), color-picker,
     │   │   │                      #   icon-picker (pós-F10), live-pulse-beacon (F11),
     │   │   │                      #   tooltip (F25 — primitivo acessível, CSS puro),
@@ -163,8 +165,7 @@
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
-    │                              #   use-sidebar-state, use-scroll-position,
-    │                              #   use-swipe-action,
+    │                              #   use-sidebar-state, use-swipe-action,
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas),
@@ -274,8 +275,9 @@ src/features/transactions/
 | SQL de operação manual (cron da edge function de cotações) | `supabase/quotes-cron.sql` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
 | Proposta oficial de próximas fases (F14–F20) | `docs/NEXT_PHASES.md` (Trilha A: UI/UX · Trilha B: Investimentos) |
-| Motor puro de gestos (axis-lock, thresholds, flick) | `src/domain/gestures/` (ex.: `swipe.ts` — F20) |
+| Motor puro de gestos (axis-lock, thresholds, flick, overscroll) | `src/domain/gestures/` (ex.: `swipe.ts` — F20 · `overscroll.ts` — F26) |
 | Hook de navegação por gesto (swipe horizontal) | `src/hooks/use-swipe-navigation.ts` (F20) |
+| Hook de pull-up / overscroll to top (FSM + barreira de inércia) | `src/hooks/use-pull-up-to-top.ts` (F26) |
 | Navegador de mês com swipe (envole o `MonthPicker`) | `src/components/modules/month-swiper.tsx` (F20) |
 | Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |
 

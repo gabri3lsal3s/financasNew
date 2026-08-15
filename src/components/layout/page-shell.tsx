@@ -8,7 +8,8 @@ import { GlobalSearch } from "@/components/layout/global-search";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Skeleton } from "@/components/ui";
+import { PullUpToTopIndicator, Skeleton } from "@/components/ui";
+import { usePullUpToTop } from "@/hooks/use-pull-up-to-top";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 
@@ -27,6 +28,8 @@ export function PageShell() {
   useVisualCustomization();
   const { isCollapsed, toggle } = useSidebarState();
   const location = useLocation();
+  // F26 — pull-up to top: handlers no contêiner de scroll + indicador fixo.
+  const pullUp = usePullUpToTop();
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
@@ -54,7 +57,10 @@ export function PageShell() {
             <ThemeToggle />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+        <main
+          className="flex-1 overflow-y-auto overflow-x-hidden min-h-0"
+          {...pullUp.pointerHandlers}
+        >
           <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 lg:px-8">
             {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
             <div key={location.pathname} className="animate-route-in">
@@ -64,6 +70,12 @@ export function PageShell() {
             </div>
           </div>
         </main>
+        {/* F26 — feedback visual do pull-up (decorativo; a lógica vive no hook). */}
+        <PullUpToTopIndicator
+          state={pullUp.state}
+          progress={pullUp.progress}
+          pullDistance={pullUp.pullDistance}
+        />
       </div>
       <BottomNav />
     </div>

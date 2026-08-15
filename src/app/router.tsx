@@ -4,7 +4,6 @@ import { Skeleton } from "@/components/ui";
 import { PageShell } from "@/components/layout/page-shell";
 import { MoreMenu } from "@/components/layout/more-menu";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
-import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
 import { LaunchWizard } from "@/features/transactions";
 import { useAuth } from "@/hooks/use-auth";
@@ -40,16 +39,11 @@ function RequireAuth() {
     return <Navigate to="/entrar" replace state={{ from: location }} />;
   }
 
-  // Wizard de tela cheia: fluxo focado, sem scroll-to-top (o botão flutuaria
-  // sobre o painel centralizado do desktop).
-  const isWizard = location.pathname === "/transacoes/novo";
-
   return (
     <>
       {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas,
           incluindo o wizard de tela cheia (fora do PageShell). */}
       <FloatingCalculator />
-      <ScrollToTopButton hidden={isWizard} />
       <Outlet />
     </>
   );

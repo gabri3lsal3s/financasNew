@@ -1201,7 +1201,7 @@
    - Remoção de `<ScrollToTopButton />` de `src/app/router.tsx` e descontinuação em `src/components/ui/scroll-to-top-button.tsx`.
    - Limpeza das regras CSS específicas de body modal para scroll-to-top em `src/styles/globals.css`.
 
-**Arquivos:** `src/domain/gestures/overscroll.ts` (+ testes) · `src/hooks/use-pull-up-to-top.ts` (+ testes) · `src/components/modules/pull-up-indicator.tsx` (+ testes) · `src/components/layout/page-shell.tsx` · `src/app/router.tsx` · `src/styles/globals.css`.
+**Arquivos:** `src/domain/gestures/overscroll.ts` (+ testes) · `src/hooks/use-pull-up-to-top.ts` (+ testes) · `src/components/ui/pull-up-to-top-indicator.tsx` (+ testes) · `src/components/layout/page-shell.tsx` · `src/app/router.tsx` · `src/styles/globals.css`.
 
 **✅ DoD (critérios de aceite)**
 - Botão flutuante legado removido da interface móvel, eliminando sobreposições com listas e FABs.
@@ -1212,6 +1212,14 @@
 - Rolagem suave executada com sucesso ao soltar o dedo no threshold armado; suporte a `prefers-reduced-motion` (rolagem instantânea).
 - Suíte completa de testes 100% verde; typecheck e lint limpos.
 
+**Progresso — F26 concluída (2026-08-15):**
+- [x] Motor puro `domain/gestures/overscroll.ts`: `computePullDistance` (resistência elástica logarítmica — 1:1 nos primeiros px, assíntota em `maxPull` 140px), `isAtScrollBottom` (tolerância 2px) e `evaluatePullIntent` (trigger exige threshold E rodapé estático) + 10 testes
+- [x] Hook `usePullUpToTop`: FSM `idle → at_bottom → pulling → threshold_reached → triggered/cancelled`; barreira de inércia revalidada a cada movimento (momentum desarma); cancelamento reversível (recuar o dedo desfaz o threshold — `triggeredRef` resetado); decisão de soltura por **ref** (imune a closure stale); sem `setPointerCapture` (coexistência com o swipe-to-action das linhas — arrasto horizontal mantém dy ≈ 0); engaja só com conteúdo rolável (`scrollHeight > clientHeight`) + 7 testes
+- [x] Primitivo `PullUpToTopIndicator` (`components/ui/`): seta + anel de progresso SVG (`stroke-primary`, dashoffset pelo progresso; completo e com seta primária no estado armado), decorativo (`pointer-events-none` + `aria-hidden`), `z-sticky` acima da BottomNav + 5 testes
+- [x] Integração no `PageShell` (handlers no `main` + indicador fixo) e **remoção** do `ScrollToTopButton` + `useScrollPosition` do roteador; regra CSS de trava de diálogos (`[data-scroll-to-top]`) removida (o indicador é decorativo e não intercepta interação)
+- [x] Wizard `/transacoes/novo` continua sem gesto (fora do PageShell — mesmo comportamento do botão antigo)
+- [x] Suíte completa verde; typecheck/lint/build limpos
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
@@ -1220,7 +1228,7 @@
 
 ### 4.1 Primitivos (Fase 0 e extensões) — `components/ui`
 `Button → Input → MoneyInput → Select → Card → Badge → Skeleton → EmptyState → Progress → Modal/Dialog → ConfirmDialog → Tabs → DataList → Stepper → Command → Toast → Checkbox → RadioGroup → DatePicker → Slider → Accordion → Textarea → Dropzone`
-(+ `VirtualList`, `ScrollToTopButton` (descontinuado no mobile em F26), `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10), `LivePulseBeacon` (F11), `Tooltip` (F25). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
+(+ `VirtualList`, `PullUpToTopIndicator` (F26 — substitui o `ScrollToTopButton` F9, **removido na F26**), `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10), `LivePulseBeacon` (F11), `Tooltip` (F25). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
 
 ### 4.2 Módulos de domínio (por fase) — `components/modules`
 - **F0/F2:** `MoneyInput` é primitivo de UI (Fase 0); `CategoryIcon`, `MonthPicker`, `TransactionRow`, `KpiCard`, `BudgetProgressBar`, `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge`, `WizardShell`.
@@ -1287,7 +1295,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | ✅ Concluída (2026-08-15) — política de cache centralizada `state/cache-policy.ts` (estático 5 min + gcTime 30 min / analítico / cotações / transacional), pre-fetching de chunks das rotas vizinhas (`prefetchPageChunks` + `useRoutePrefetch`) e decisão: 3D CSS sem Three.js (code-splitting WebGL N/A — lazy por rota já existente) |
 | 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | ✅ Concluída (2026-08-15) — motor puro `domain/fire` (regra 4%, projeção anual, fundo de emergência), `PlanningSection` com gauge + simulador na aba Planejamento do Insights (inputs editáveis, gráfico SVG sem libs) |
 | 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | ✅ Concluída (2026-08-15) — hover-expand da sidebar em overlay (delay anti-disparo), bottom sheets mobile com drag-to-close (threshold/fling/resistência), primitivo Tooltip acessível nos botões do header |
-| 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | 📋 Planejada |
+| 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | ✅ Concluída (2026-08-15) — motor puro `domain/gestures/overscroll` (resistência elástica + barreira de inércia + threshold), hook `usePullUpToTop` (FSM com cancelamento reversível, decisão por ref, sem pointer capture para coexistir com swipe-to-action), primitivo `PullUpToTopIndicator` (anel SVG `stroke-primary`), integração no PageShell e remoção do `ScrollToTopButton`/`useScrollPosition` do roteador + regra CSS de diálogos |
 
 **Auditoria de limpeza de código (2026-08-15):**
 - **Dead code removido:** `hooks/use-draggable.ts` (+teste) — órfão desde a remoção do FAB flutuante; `layout/placeholder-page.tsx` — página placeholder de versões antigas sem uso; `layout/density-toggle.tsx` — toggle não montado (a densidade vive em `/configuracoes` via `useDensity`); `centsToBRL` de `domain/money/parse.ts` — duplicata exata de `services/masks/money.formatCentsAsBRL` (DRY).

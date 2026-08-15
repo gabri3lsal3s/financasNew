@@ -413,12 +413,9 @@
     z-index: var(--z-tooltip);
   }
 
-  /* O scroll-to-top nunca deve aparecer sobre diálogos abertos: quando um
-     modal Radix está aberto (Modal, ConfirmDialog, paleta de busca, popovers
-     com role="dialog"), o botão some — a interação pertence ao diálogo. */
-  body:has([role="dialog"][data-state="open"]) [data-scroll-to-top] {
-    display: none;
-  }
+  /* F26 — o indicador de pull-up é decorativo (pointer-events-none) e nunca
+     intercepta interação; por isso não precisa da trava de diálogos que o
+     antigo botão ScrollToTop (F9) exigia. */
 }
 
 /* ----------------------------------------------------------------
