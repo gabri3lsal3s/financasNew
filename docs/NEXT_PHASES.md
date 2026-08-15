@@ -1,6 +1,6 @@
 # 🧭 NEXT_PHASES.md — Proposta de Novas Fases do Roadmap
 
-> **Status:** v1.0 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15).
+> **Status:** v1.1 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adiciona o diagnóstico funcional de Insights (§1.4) e a **Fase 19 — Inteligência & Consistência dos Insights** (Trilha A), após auditoria da funcionalidade (2026-08-15).
 > Objetivos estratégicos:
 > **1. Refinamento Máximo de UI/UX & Conforto Visual (Prioridade Principal)** — elevar usabilidade, fluidez, micro-interações, consistência de Design System e ergonomia em desktop e mobile.
 > **2. Módulo de Carteira de Investimentos completo e integrado** — tirar o placeholder da Home do papel e entregar o ecossistema de investimentos.
@@ -46,6 +46,27 @@
 6. **Transições** — entradas/saídas de abas e rotas já existem (150ms), mas cards de valor não têm micro-transição de mudança (NumberTicker já cobre KPIs; estender à tabela de posição é opcional).
 7. **Consistência de densidade** — `DataList` suporta densidade; `PositionTable`/`ReportTable` herdam? Validar propagação do toggle de densidade para a carteira.
 
+### 1.4 Insights — diagnóstico funcional (2026-08-15)
+
+**O que JÁ é sólido (não reconstruir — evoluir):** motores puros testáveis em `domain/insights` (alertas priorizados §3.7.1, assinaturas §3.7.2, recorrências §3.7.3, confiança §3.7.4, feedback persistido §3.7.4, diagnósticos §3.7.6) + `domain/savings` (§3.7.5) + `domain/projection` (§3.8) — ~100 testes; aprendizado ignorar/confirmar/restaurar persistido em `insight_feedback`; DRY já aplicado (`invoiceDueDate`, `percentChange` reexportado, `AlertCard` reusado, `MoneyText` na varredura F12).
+
+**Problemas encontrados (repetições desnecessárias / inconsistências / lacunas):**
+
+| # | Problema | Evidência | Correção proposta |
+|---|---|---|---|
+| 1 | **Código morto F8 (4 módulos + teste)** | `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`, `SavingsHealthCard` — removidos do dashboard na F12 (widget `summary`), mas permanecem exportados no barrel com teste próprio (`smart-cards.test.tsx`); nenhuma tela os usa | Remover módulos + teste + exports do barrel |
+| 2 | **Órfãos no domínio** | `runwayMonths` e `cumulativeBalance` (`domain/overview`) perderam consumidor após F11/F12 (DailyFlowChart virou linhas; `SavingsHealthCard` sai) — só testes os usam | Remover ou reaproveitar (`runwayMonths` como KPI de reserva na carteira F16/17) |
+| 3 | **8 `toCents` locais divergentes** | `insights-page`, `budgets-page`, `overview-page`, `reports-page` (sem guarda) vs `position-tab`, `targets-tab`, `position-table`, `aporte-result` (com `isFinite`) — comportamento inconsistente para NaN/Infinity; nenhum helper canônico em `domain/money` | Criar `numberToCents` puro (com guarda) e substituir todos |
+| 4 | **3 listas sobrepostas de categorias essenciais/agregadoras** | `ESSENTIAL_CATEGORIES` (3 itens) em `subscriptions.ts` · `AGGREGATING_CATEGORY_ICONS` (7) em `recurrences.ts` · `isEssentialIcon` (8 = união das duas, duplicada) na `InsightsPage` | Fonte única `ESSENTIAL_CATEGORY_ICONS` exportada do domínio |
+| 5 | **Normalização duplicada** | `normalizeServiceName` (subscriptions) vs `normalizeKey` (recurrences) — mesma lógica de acentos/minúsculas com variações | Unificar em `normalizeText` |
+| 6 | **Tolerância de valores duplicada** | `hasStableValue` (±5%) vs `hasValuesWithin` (tolerância param) — mesma verificação "todos dentro de X% do primeiro" | Unificar em `valuesWithinTolerance` (`hasStableValue` delega) |
+| 7 | **Reuso de motores na página** | InsightsPage recalcula rendas/despesas/saldo/savings rate com reduces inline (peso de relatório) em vez de `computeOverview`; reimplementa bucketing de fim de semana manualmente (÷5/÷2) em vez de `aggregateByWeekday` (7 dias Monday-first já testado) | Reusar `computeOverview`/`aggregateByWeekday` |
+| 8 | **Padrão repetido em 3 páginas** | Montagem de `limitsByCategory` + `spentByCategory` (peso de relatório) repetida em Overview, Budgets e Insights | Helpers puros compartilhados (`budgetLimitsByCategory`/`spentByCategoryMap`) em `domain/budgets` |
+| 9 | **Lacuna de motor exibido** | `isSignificantTrend` (tendência > 15% vs mês anterior, §3.7.6) nunca é exibida no aba Diagnósticos — motor pronto e testado, tela não usa | Exibir no aba Diagnósticos |
+| 10 | **O(n²) na montagem de recorrências** | `allExpenses` faz `.find` na lista de categorias **por despesa** (4 meses) | Pré-computar Map categoria → ícone |
+| 11 | **Investimentos zerados nas projeções** | `dailyBudget`/`endOfMonthProjection` recebem `investmentsCents: 0` — mesmo stub da Home; inconsistente quando a carteira entrar (F16) | Usar `usePortfolioPosition` (já existe desde a F4) |
+| 12 | **Labels locais** | `LEVEL_LABELS` (subscription/recurring/similar) na página — o hub DRY `lib/labels.ts` existe | Mover para `lib/labels.ts` |
+
 ---
 
 ## 2. TRILHA A — REFINAMENTO UI/UX & CONFORTO VISUAL (PRIORITÁRIA)
@@ -90,6 +111,31 @@
 - NumberTicker ativo nos valores principais da posição quando habilitado; desliga sem quebra de layout.
 - Hover/focus unificados (mesma linguagem das demais telas — zero classes soltas novas).
 - Suíte 100% verde; auditoria axe na carteira sem violações.
+
+### Fase 19 — Inteligência & Consistência dos Insights (Trilha A)
+
+> **Origem:** auditoria funcional de Insights (2026-08-15) — ver diagnóstico §1.4. Fase de **evolução** (sem reconstruir motores): unifica fontes de verdade, remove repetições/código morto e fecha lacunas entre motores e UI. **Trilha A** (refinamento/consistência) — pode ser executada antes ou depois da Trilha B (P6 = A primeiro; a entrega 6 não depende da F16, `usePortfolioPosition` existe desde a F4).
+
+**Objetivo:** tornar os insights mais inteligentes, precisos, organizados e consistentes — uma única implementação para cada regra, zero código morto e motores 100% aproveitados pela UI.
+
+**Entregas (na ordem):**
+1. **Limpeza de código morto F8** — remover `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`, `SavingsHealthCard` + `smart-cards.test.tsx` + exports do barrel (a F12 já os substituiu pelo widget `summary`); remover ou reaproveitar os órfãos `runwayMonths`/`cumulativeBalance` (`runwayMonths` pode virar KPI de meses de reserva na F16/17).
+2. **Fonte única de normalização e essencialidade** — `normalizeText` (unifica `normalizeServiceName`/`normalizeKey`), `valuesWithinTolerance` (unifica `hasStableValue`/`hasValuesWithin`; `hasStableValue` delega) e `ESSENTIAL_CATEGORY_ICONS` (essencial ∪ agregadoras — elimina as 3 listas sobrepostas: página, subscriptions, recurrences) em `domain/insights`, com testes de unificação (mesmos resultados dos motores anteriores).
+3. **Helper canônico de centavos** — `numberToCents(value)` puro em `domain/money` (com guarda `isFinite`, contrato único); substituir os ~8 `toCents` locais divergentes de features (comportamento consistente para NaN/Infinity).
+4. **Reuso de motores na InsightsPage** — `computeOverview` para rendas/despesas/saldo/savings rate (em vez dos reduces inline); `aggregateByWeekday` para o diagnóstico de fim de semana (em vez do bucketing manual ÷5/÷2); helpers `budgetLimitsByCategory`/`spentByCategoryMap` compartilhados com Overview/Budgets; Map de categorias pré-computado (O(n²) → O(n)).
+5. **Fechar lacuna de diagnóstico** — exibir tendência significativa (`isSignificantTrend`, §3.7.6 — gastos vs mês anterior > 15%) no aba Diagnósticos (motor pronto, tela não usa).
+6. **Consistência com a carteira** — projeções (`dailyBudget`/`endOfMonthProjection`) passam a receber investimentos reais de `usePortfolioPosition` (hoje hardcoded 0), alinhando Insights à Home pós-F16.
+7. **Organização de labels** — mover `LEVEL_LABELS` (subscription/recurring/similar) para `src/lib/labels.ts` (hub DRY existente); mensagens de motivo de sugestão de limite via constantes (sem strings soltas).
+
+**Arquivos:** `src/domain/insights/*` (normalize/tolerance/essentials) · `src/domain/savings/index.ts` · `src/domain/money/parse.ts` (+ `numberToCents`) · `src/domain/overview/index.ts` (limpeza de órfãos) · `src/domain/budgets` (helpers compartilhados) · `src/features/insights/pages/insights-page.tsx` · `src/features/budgets/pages/budgets-page.tsx` · `src/features/overview/pages/overview-page.tsx` · remoções em `src/components/modules/` (`smart-*-card.tsx`, `savings-health-card.tsx`, `smart-cards.test.tsx`) + barrel.
+
+**✅ DoD (critérios de aceite):**
+- Zero código morto F8: módulos removidos, barrel limpo (nenhum export órfão); `runwayMonths`/`cumulativeBalance` removidos ou reutilizados.
+- Uma única implementação de normalização, tolerância de valores e lista de categorias essenciais — verificada por testes de unificação.
+- `numberToCents` único em `domain/money` com testes; nenhum `toCents` local restante em features.
+- InsightsPage reusa `computeOverview`/`aggregateByWeekday`/helpers compartilhados — sem reduces/bucketing inline duplicados; sem `.find` por item (Map).
+- Diagnósticos exibem tendência significativa; projeções usam investimentos reais (consistente com F16).
+- Suíte 100% verde (motores unificados + página + auditoria axe); typecheck/lint/build limpos.
 
 ---
 
@@ -174,6 +220,7 @@
 ```
 F14 (Consistência de Estados & Ergonomia)  ← Trilha A — PRIORITÁRIA
 F15 (Micro-Interações & Conforto Visual)   ← Trilha A
+F19 (Inteligência & Consistência dos Insights) ← Trilha A — após F15; pode ser executada antes da Trilha B
 F16 (Carteira na Home — KPI real)          ← Trilha B — depende de P1
 F17 (Dashboard /investments)               ← Trilha B — depende de P2/P3
 F18 (Proventos)                            ← Trilha B — depende de P4/P5

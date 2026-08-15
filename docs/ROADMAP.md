@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **Status:** v1.2 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** insere formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa), oriundas da proposta oficial `docs/NEXT_PHASES.md` (seção §6).
+> **Status:** v1.2 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** insere formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa) e **v1.3** adiciona a **F19 — Inteligência & Consistência dos Insights** (Trilha A), oriundas da proposta oficial `docs/NEXT_PHASES.md` (seção §6).
 > **Referências:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (estrutura e convenções) · [`ESPECIFICACAO_TECNICA.md`](../ESPECIFICACAO_TECNICA.md) (regras de negócio, schema, UI/UX).
 
 ---
@@ -38,6 +38,7 @@
 | **F16** | Carteira na Home — KPI Real (Trilha B) | KPI de investimentos real + widget de alocação (elimina o stub da Home) | Home com carteira |
 | **F17** | Dashboard de Investimentos `/investments` (Trilha B) | KPIs executivos, donuts de alocação (classe/ticker), posições com lucro/prejuízo | Dashboard investimentos |
 | **F18** | Proventos: Extrato & Calendário (Trilha B) | Extrato mensal de proventos recebidos + calendário (escopo mínimo) | Proventos |
+| **F19** | Inteligência & Consistência dos Insights (Trilha A) | Limpeza de código morto F8, fontes únicas (normalização/tolerância/essenciais), `numberToCents` único, reuso de motores na página, tendência nos Diagnósticos, investimentos reais nas projeções | Insights refinados |
 
 ---
 
@@ -886,6 +887,31 @@
 
 ---
 
+### Fase 19 — Inteligência & Consistência dos Insights (Trilha A)
+
+**Objetivo:** tornar a funcionalidade de insights mais inteligente, precisa, organizada e consistente — **sem repetições desnecessárias**: uma única implementação para cada regra, zero código morto e motores 100% aproveitados pela UI. Fase de **evolução** (sem reconstruir motores) originada da auditoria funcional de Insights (2026-08-15) — diagnóstico completo em `NEXT_PHASES.md` §1.4.
+
+**Entregas (na ordem):**
+1. **Limpeza de código morto F8** — remover `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`, `SavingsHealthCard` + `smart-cards.test.tsx` + exports do barrel (a F12 já os substituiu pelo widget `summary`); remover ou reaproveitar os órfãos `runwayMonths`/`cumulativeBalance` (`runwayMonths` pode virar KPI de meses de reserva na F16/17).
+2. **Fonte única de normalização e essencialidade** — `normalizeText` (unifica `normalizeServiceName`/`normalizeKey`), `valuesWithinTolerance` (unifica `hasStableValue`/`hasValuesWithin`; `hasStableValue` delega) e `ESSENTIAL_CATEGORY_ICONS` (essencial ∪ agregadoras — elimina as 3 listas sobrepostas: `isEssentialIcon` da página, `ESSENTIAL_CATEGORIES` de subscriptions, `AGGREGATING_CATEGORY_ICONS` de recurrences) em `domain/insights`, com testes de unificação.
+3. **Helper canônico de centavos** — `numberToCents(value)` puro em `domain/money` (com guarda `isFinite`, contrato único); substituir os ~8 `toCents` locais divergentes de features (hoje alguns sem guarda — comportamento inconsistente para NaN/Infinity).
+4. **Reuso de motores na InsightsPage** — `computeOverview` para rendas/despesas/saldo/savings rate (em vez dos reduces inline com peso de relatório); `aggregateByWeekday` para o diagnóstico de fim de semana (em vez do bucketing manual ÷5/÷2); helpers `budgetLimitsByCategory`/`spentByCategoryMap` compartilhados com Overview/Budgets (padrão repetido em 3 páginas); Map de categorias pré-computado (O(n²) → O(n)).
+5. **Fechar lacuna de diagnóstico** — exibir tendência significativa (`isSignificantTrend`, §3.7.6 — gastos vs mês anterior > 15%) no aba Diagnósticos (motor pronto e testado, tela não usa).
+6. **Consistência com a carteira** — projeções (`dailyBudget`/`endOfMonthProjection`) passam a receber investimentos reais de `usePortfolioPosition` (hoje `investmentsCents: 0`, mesmo stub da Home) — sem dependência da F16 (`usePortfolioPosition` existe desde a F4), mas alinhado a ela.
+7. **Organização de labels** — mover `LEVEL_LABELS` (subscription/recurring/similar) para `src/lib/labels.ts` (hub DRY existente); mensagens de motivo de sugestão de limite via constantes (sem strings soltas).
+
+**Arquivos:** `src/domain/insights/*` (normalize/tolerance/essentials) · `src/domain/savings/index.ts` · `src/domain/money/parse.ts` (+ `numberToCents`) · `src/domain/overview/index.ts` (limpeza de órfãos) · `src/domain/budgets` (helpers compartilhados) · `src/features/insights/pages/insights-page.tsx` · `src/features/budgets/pages/budgets-page.tsx` · `src/features/overview/pages/overview-page.tsx` · remoções em `src/components/modules/` (`smart-*-card.tsx`, `savings-health-card.tsx`, `smart-cards.test.tsx`) + barrel.
+
+**✅ DoD (critérios de aceite)**
+- Zero código morto F8: módulos removidos, barrel limpo (nenhum export órfão); `runwayMonths`/`cumulativeBalance` removidos ou reutilizados.
+- Uma única implementação de normalização, tolerância de valores e lista de categorias essenciais — verificada por testes de unificação (mesmos resultados dos motores anteriores).
+- `numberToCents` único em `domain/money` com testes; nenhum `toCents` local restante em features.
+- InsightsPage reusa `computeOverview`/`aggregateByWeekday`/helpers compartilhados — sem reduces/bucketing inline duplicados; sem `.find` por item (Map).
+- Diagnósticos exibem tendência significativa; projeções usam investimentos reais (consistente com F16).
+- Suíte 100% verde (motores unificados + página + auditoria axe); typecheck/lint/build limpos.
+
+---
+
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
 
 **Regra absoluta:** primitivo antes do módulo, módulo antes da tela. Se uma tela precisar de algo que não existe, **pare e extraia** — não duplique.
@@ -900,7 +926,7 @@
 - **F4:** `PositionTable`, `TargetEditor` (barra de soma), `AporteResult`.
 - **F5:** `GlobalSearch` (⌘K), `HighlightRow`, `OnboardingCard`.
 - **F7:** `CollapsibleSidebar`, `AdaptiveHeader`, `MobileBottomNav5Slot`.
-- **F8:** `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`, `CategoryDonut`, `SavingsHealthCard`, `DailyFlowChart`, `PrivacyToggle`.
+- **F8:** `CategoryDonut`, `DailyFlowChart`, `PrivacyToggle` — `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard` e `SavingsHealthCard` foram substituídos pelo widget `summary` (F12) e **serão removidos na F19** (código morto).
 - **F9:** `FloatingCalculator`, `CalculatorKeypad`, `ScrollToTop`.
 - **F10:** `BrandLogo`, `BrandIcon`.
 - **F16:** `AllocationDonut` (genérico de ativos — padrão `CategoryDonut`, SVG próprio).
@@ -927,13 +953,13 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 > **Auditoria concluída (2026-08-15):** as fases F0–F13 estão implementadas. A proposta oficial (diagnóstico completo, fases F14–F18 com entregas/DoD e perguntas P1–P6) está em `docs/NEXT_PHASES.md`.
 >
-> **Fases F14–F18 inseridas formalmente neste roadmap (2026-08-15, §3)** com as decisões **default** de P1–P6 aplicadas (ver `NEXT_PHASES.md` §4):
+> **Fases F14–F18 inseridas formalmente neste roadmap (2026-08-15, §3)** com as decisões **default** de P1–P6 aplicadas (ver `NEXT_PHASES.md` §4); **Fase 19 (Inteligência & Consistência dos Insights, Trilha A)** adicionada em 2026-08-15 após auditoria funcional (diagnóstico em `NEXT_PHASES.md` §1.4):
 > - **P1 = (a)** cotações: edge function (F1.7/Yahoo) + preço manual como fonte primária — deploy/cron da F1.7 é pré-requisito da F16.
 > - **P2 = (a)** gráficos: SVG próprio (padrão `CategoryDonut`) — sem libs novas.
 > - **P3 = (a)** rota nova `/investments` (leitura), mantendo `/carteira` para operação.
 > - **P4 = (a)** proventos: apenas recebidos (escopo mínimo — sem migration).
 > - **P5 = (b)** proventos ficam só na carteira (fora do fluxo financeiro core — D11 preservado).
-> - **P6 = (a)** ordem: Trilha A (F14–F15) antes da Trilha B (F16–F18).
+> - **P6 = (a)** ordem: Trilha A (F14–F15 e F19) antes da Trilha B (F16–F18).
 >
 > **Estado atual dos pontos citados na auditoria:**
 > - Home: o KPI "Investimentos" ainda usa stub (`computeOverview(..., 0)` + hint "Carteira na Fase 4") — preenchimento previsto na **Fase 16**.
