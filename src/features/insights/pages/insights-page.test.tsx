@@ -68,9 +68,13 @@ vi.mock("@/state", () => ({
 }));
 
 describe("InsightsPage (motor de insights §3.7)", () => {
-  it("renderiza a aba de alertas", () => {
+  it("renderiza a aba unificada 'Alertas & Diagnósticos' como primeira", () => {
     render(<InsightsPage />);
-    expect(screen.getByRole("tab", { name: "Alertas" })).toBeInTheDocument();
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs[0]).toHaveAccessibleName("Alertas & Diagnósticos");
+    // Alertas (fixture: elogio por poupança) + KPIs de diagnóstico na mesma aba.
+    expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
+    expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
   });
 
   it("lista assinaturas/recorrências e permite ignorar", async () => {
@@ -100,7 +104,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("renderiza diagnósticos com tendência de gastos (F19 — motor §3.7.6)", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
+    await user.click(screen.getByRole("tab", { name: "Alertas & Diagnósticos" }));
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
     // Mês atual igual ao anterior (fixture) → variação 0.0% (não significativa).
@@ -110,7 +114,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("diagnósticos: gastos de fim de semana comparáveis exibem a razão e sem alerta absurdo (F27)", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
+    await user.click(screen.getByRole("tab", { name: "Alertas & Diagnósticos" }));
     // Fixture: despesas só em dias úteis → razão 0.0× (comparável, sem alerta).
     expect(screen.getByText("0.0×")).toBeInTheDocument();
     expect(screen.queryByText(/gastos de fim de semana.*maiores/i)).not.toBeInTheDocument();

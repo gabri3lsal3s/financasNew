@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lightbulb, Repeat, Sparkles } from "lucide-react";
-import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
+import { Alert, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { AlertCard, InsightList, PlanningSection, ProjectionLine } from "@/components/modules";
 import { criticalAlerts } from "@/domain/insights/alerts";
@@ -52,7 +52,7 @@ import {
  * investimentos reais da carteira nas projeções.
  */
 export function InsightsPage() {
-  const [tab, setTab] = useState("alerts");
+  const [tab, setTab] = useState("diagnostics");
   const month = currentMonth();
 
   const month0 = useExpenses(month);
@@ -260,28 +260,66 @@ export function InsightsPage() {
           swipeable
           items={[
             {
-              value: "alerts",
-              label: "Alertas",
-              content:
-                alerts.length === 0 ? (
-                  <EmptyState
-                    icon={<Lightbulb className="size-6" aria-hidden="true" />}
-                    title="Nada crítico"
-                    description="Nenhum alerta ativo no momento."
-                    tone="positive"
-                  />
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {alerts.map((alert) => (
-                      <AlertCard
-                        key={alert.id}
-                        priority={alert.priority as 1 | 2 | 3 | 4 | 5 | 6}
-                        title={alert.title}
-                        description={alert.description}
-                      />
-                    ))}
+              // Unificados (2026-08-15): alertas críticos + diagnóstico em uma
+              // única aba, primeiro lugar — alertas em destaque, KPIs de
+              // diagnóstico e avisos contextuais na mesma linha de leitura.
+              value: "diagnostics",
+              label: "Alertas & Diagnósticos",
+              content: (
+                <div className="flex flex-col gap-4 min-w-0">
+                  {alerts.length === 0 ? (
+                    <p className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted-foreground min-w-0">
+                      <Lightbulb className="size-4 shrink-0" aria-hidden="true" />
+                      Nenhum alerta crítico ativo no momento.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {alerts.map((alert) => (
+                        <AlertCard
+                          key={alert.id}
+                          priority={alert.priority as 1 | 2 | 3 | 4 | 5 | 6}
+                          title={alert.title}
+                          description={alert.description}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
+                    <DiagnosticCard label="Saúde da poupança" value={SAVINGS_HEALTH_LABELS[health]} />
+                    <DiagnosticCard
+                      label="Concentração de renda"
+                      value={`${concentration.topSharePercent.toFixed(0)}%`}
+                      tone={concentration.alert ? "negative" : "positive"}
+                    />
+                    <DiagnosticCard
+                      label="Gastos fim de semana"
+                      value={weekendComparable ? `${weekendRatio.toFixed(1)}×` : "—"}
+                      tone={weekendComparable ? (weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive") : "neutral"}
+                    />
+                    <DiagnosticCard
+                      label="Tendência de gastos"
+                      value={`${trendPercent >= 0 ? "+" : ""}${trendPercent.toFixed(1)}%`}
+                      tone={trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
+                    />
+                    <DiagnosticCard label="Taxa de poupança" value={`${savingsRate.toFixed(1)}%`} tone={savingsRate >= 20 ? "positive" : savingsRate >= 0 ? "neutral" : "negative"} />
                   </div>
-                ),
+
+                  {concentration.alert ? (
+                    <Alert variant="warning">Uma única fonte representa mais de 60% da sua renda — diversifique.</Alert>
+                  ) : null}
+                  {weekendComparable && weekendRatio > WEEKEND_RATIO_LIMIT ? (
+                    <Alert variant="warning">Seus gastos de fim de semana estão {weekendRatio.toFixed(1)}× maiores que os de dias úteis.</Alert>
+                  ) : null}
+                  {trendSignificant ? (
+                    <Alert variant={trendPercent > 0 ? "warning" : "success"}>
+                      {trendPercent > 0
+                        ? `Gastos ${trendPercent.toFixed(1)}% acima do mês anterior — tendência significativa.`
+                        : `Gastos ${Math.abs(trendPercent).toFixed(1)}% abaixo do mês anterior — tendência significativa de queda.`}
+                    </Alert>
+                  ) : null}
+                </div>
+              ),
             },
             {
               value: "recurrences",
@@ -411,46 +449,7 @@ export function InsightsPage() {
               label: "Planejamento",
               content: <PlanningSection balanceCents={balanceCents} monthlyExpensesCents={Math.max(1, expenseCents)} />,
             },
-            {
-              value: "diagnostics",
-              label: "Diagnósticos",
-              content: (
-                <div className="flex flex-col gap-3 min-w-0">
-                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
-                    <DiagnosticCard label="Saúde da poupança" value={SAVINGS_HEALTH_LABELS[health]} />
-                    <DiagnosticCard
-                      label="Concentração de renda"
-                      value={`${concentration.topSharePercent.toFixed(0)}%`}
-                      tone={concentration.alert ? "negative" : "positive"}
-                    />
-                    <DiagnosticCard
-                      label="Gastos fim de semana"
-                      value={weekendComparable ? `${weekendRatio.toFixed(1)}×` : "—"}
-                      tone={weekendComparable ? (weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive") : "neutral"}
-                    />
-                    <DiagnosticCard
-                      label="Tendência de gastos"
-                      value={`${trendPercent >= 0 ? "+" : ""}${trendPercent.toFixed(1)}%`}
-                      tone={trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
-                    />
-                    <DiagnosticCard label="Taxa de poupança" value={`${savingsRate.toFixed(1)}%`} tone={savingsRate >= 20 ? "positive" : savingsRate >= 0 ? "neutral" : "negative"} />
-                  </div>
-                  {concentration.alert ? (
-                    <Alert variant="warning">Uma única fonte representa mais de 60% da sua renda — diversifique.</Alert>
-                  ) : null}
-                  {weekendComparable && weekendRatio > WEEKEND_RATIO_LIMIT ? (
-                    <Alert variant="warning">Seus gastos de fim de semana estão {weekendRatio.toFixed(1)}× maiores que os de dias úteis.</Alert>
-                  ) : null}
-                  {trendSignificant ? (
-                    <Alert variant={trendPercent > 0 ? "warning" : "success"}>
-                      {trendPercent > 0
-                        ? `Gastos ${trendPercent.toFixed(1)}% acima do mês anterior — tendência significativa.`
-                        : `Gastos ${Math.abs(trendPercent).toFixed(1)}% abaixo do mês anterior — tendência significativa de queda.`}
-                    </Alert>
-                  ) : null}
-                </div>
-              ),
-            },
+
           ]}
         />
       )}

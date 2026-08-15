@@ -1,8 +1,8 @@
-# FASES_IMPLEMENTADAS.md — Resumo de Implementação (F0–F28)
+# FASES_IMPLEMENTADAS.md — Resumo de Implementação (F0–F29)
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-15):** fases **F0–F28 concluídas** · suíte **1084 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-15):** fases **F0–F29 concluídas** · suíte **1087 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -185,6 +185,11 @@
 
 - **Problema:** o hub `/investments` estava **bagunçado no mobile** — KPIs em 1 coluna (o app usa 2×2), tabela de posição larga com scroll horizontal (8+ colunas) e metas por classe estourando a largura.
 - **Solução:** **cards de posição empilhados no mobile** (tabela completa só em `sm+`, mesmas ações via `PositionRowActions` extraído — DRY); **KPIs 2×2** (padrão do app); metas por classe empilháveis (`flex-col sm:flex-row`); header responsivo; **remoção do código morto pós-F17** (`portfolio-page`/`position-tab`) e barrel do feature corrigido.
+
+## F29 — Insights: Inteligência de Recorrências, Alertas & Diagnósticos e Polish do Planejamento
+
+- **Problema:** (1) assinaturas/recorrências **sumiam do extrato** — serviço conhecido (Netflix, Spotify…) com reajuste de preço acima de ±50% era descartado, e faturas variáveis (água/luz) passavam da tolerância por compararem com o **primeiro** valor; catálogo pequeno; (2) alertas e diagnósticos ficavam em **abas separadas** (leitura duplicada); (3) Planejamento com cards lado a lado apertados e gráfico FIRE **distorcido** (`preserveAspectRatio="none"` esticava os textos).
+- **Solução:** (1) **nome conhecido/categoria de assinatura sempre emitem a ocorrência** — a variância só reduz a confiança (penalidade no `confidenceScore`); tolerância `recurring`/`similar` relativa à **mediana**; catálogo expandido (+20 serviços: globoplay, starplus, crunchyroll, deezer, alura, xbox, nordvpn, uberone…); (2) abas unificadas em **"Alertas & Diagnósticos"** (primeira: alertas em destaque → KPIs → avisos contextuais); (3) Planejamento com cards **uma linha cada** (largura cheia), headers com subtítulo, gauge em linha com os stats em chips, inputs FIRE em 3 colunas e `FireProjectionChart` sem distorção (proporcional, máx. 460px).
 
 ---
 

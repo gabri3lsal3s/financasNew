@@ -44,10 +44,9 @@ export function FireProjectionChart({ series, targetCents, className }: FireProj
     <div className={cn("flex flex-col gap-1", className)}>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="w-full"
+        className="h-auto w-full"
         role="img"
         aria-label={`Projeção do patrimônio até ${lastYear} anos — meta FIRE de ${formatCentsAsBRL(targetCents)}. Valor final projetado: ${finalLabel}.`}
-        preserveAspectRatio="none"
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">

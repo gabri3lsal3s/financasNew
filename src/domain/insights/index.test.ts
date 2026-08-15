@@ -129,12 +129,54 @@ describe("recorrências (§3.7.3 — 3 níveis)", () => {
 
   it("detecta recurring (mesma descrição, valor ±50%)", () => {
     const occurrences = detectRecurrences([
-      expense({ id: "b1", description: "Academia", month: "2026-07", valueCents: 8000 }),
-      expense({ id: "b2", description: "Academia", month: "2026-08", valueCents: 10000 }), // +25%
+      expense({ id: "b1", description: "Condominio", month: "2026-07", valueCents: 8000 }),
+      expense({ id: "b2", description: "Condominio", month: "2026-08", valueCents: 10000 }), // +25%
     ]);
     const rec = occurrences.find((o) => o.level === "recurring");
     expect(rec).toBeDefined();
     expect(rec?.averageCents).toBe(9000);
+  });
+
+  it("mantém serviço conhecido com REAJUSTE grande (variância > ±50%) como assinatura", () => {
+    // Netflix 21,90 → 55,90 (plano/reajuste): antes caía fora da tolerância
+    // e sumia do extrato; agora o NOME é sinal forte — a assinatura continua,
+    // com a confiança reduzida pela penalidade de variância.
+    const occurrences = detectRecurrences([
+      expense({ id: "c1", description: "Netflix", month: "2026-06", valueCents: 2190 }),
+      expense({ id: "c2", description: "Netflix", month: "2026-07", valueCents: 5590 }),
+    ]);
+    const sub = occurrences.find((o) => o.level === "subscription");
+    expect(sub).toBeDefined();
+    expect(sub?.name).toBe("Netflix");
+    expect(sub?.averageCents).toBe((2190 + 5590) / 2);
+    // confiança penalizada pela variância (não fica em 0.98)
+    expect(sub!.confidence).toBeLessThan(0.98);
+    expect(sub!.confidence).toBeGreaterThan(0);
+  });
+
+  it("detecta recurring com fatura VARIÁVEL (tolerância relativa à mediana)", () => {
+    // Água [80, 130, 95]: vs. primeiro (±62%) passaria, vs. mediana 95 (±37%) passa.
+    const occurrences = detectRecurrences([
+      expense({ id: "d1", description: "Água", month: "2026-06", valueCents: 8000 }),
+      expense({ id: "d2", description: "Água", month: "2026-07", valueCents: 13000 }),
+      expense({ id: "d3", description: "Água", month: "2026-08", valueCents: 9500 }),
+    ]);
+    const rec = occurrences.find((o) => o.level === "recurring");
+    expect(rec).toBeDefined();
+    expect(rec?.name).toBe("Água");
+  });
+
+  it("novos serviços do catálogo são reconhecidos (globoplay, crunchyroll, alura)", () => {
+    const occurrences = detectRecurrences([
+      expense({ id: "e1", description: "Globoplay", month: "2026-07", valueCents: 2990 }),
+      expense({ id: "e2", description: "Globoplay", month: "2026-08", valueCents: 2990 }),
+      expense({ id: "f1", description: "Crunchyroll", month: "2026-07", valueCents: 1990 }),
+      expense({ id: "f2", description: "Crunchyroll", month: "2026-08", valueCents: 1990 }),
+      expense({ id: "g1", description: "Alura", month: "2026-07", valueCents: 7500 }),
+      expense({ id: "g2", description: "Alura", month: "2026-08", valueCents: 7500 }),
+    ]);
+    const names = occurrences.filter((o) => o.level === "subscription").map((o) => o.name);
+    expect(names).toEqual(expect.arrayContaining(["Globoplay", "Crunchyroll", "Alura"]));
   });
 
   it("filtra parcelas (parcelamento não é recorrência)", () => {

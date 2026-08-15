@@ -13,7 +13,7 @@
 
 import { confidenceScore, varianceOf, type RecurrenceKind } from "./confidence";
 import { classifySubscription } from "./subscriptions";
-import { ESSENTIAL_CATEGORY_ICONS, normalizeText, valuesWithinTolerance } from "./shared";
+import { ESSENTIAL_CATEGORY_ICONS, normalizeText } from "./shared";
 
 export interface ExpenseLike {
   id: string;
@@ -42,6 +42,21 @@ export interface RecurrenceOccurrence {
 
 const RECURRING_TOLERANCE = 0.5; // ±50% (recurring)
 const SIMILAR_TOLERANCE = 0.3; // ±30% (similar)
+
+/**
+ * Tolerância relativa à MEDIANA (robusta a outliers e à ordem dos meses).
+ * A antiga checagem relativa ao PRIMEIRO valor descartava faturas/boletos
+ * variáveis (ex.: água [80, 130, 95] — ±62% vs. primeiro, mas ±37% vs.
+ * mediana 95) e perdia recorrências reais.
+ */
+export function valuesWithinToleranceOfMedian(values: readonly number[], tolerance: number): boolean {
+  if (values.length < 2) return false;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  const median = sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
+  if (median <= 0) return false;
+  return values.every((value) => Math.abs(value - median) / median <= tolerance);
+}
 
 /** Meses distintos de um conjunto de ocorrências. */
 function monthsWith(values: readonly string[]): number {
@@ -86,16 +101,19 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
     const months = [...new Set(group.map((e) => e.month))];
     const categoryIcons = [...new Set(group.map((e) => e.categoryIcon))];
 
-    // subscription: valor estável (±5%) — usa a árvore de decisão de assinaturas.
+    // subscription: usa a árvore de decisão de assinaturas (nome conhecido
+    // no catálogo OU categoria de assinatura são sinais fortes).
     const subscription = classifySubscription({
       name: first.description ?? "",
       categoryIcon: categoryIcons[0],
       monthlyValuesCents: values,
     });
 
-    // Nível subscription exige VALOR ESTÁVEL (§3.7.3); com valor variável,
-    // a ocorrência cai para `recurring`/`similar` conforme a tolerância.
-    if (subscription && subscription.signs.stableValue) {
+    // O NOME conhecido (Netflix, Spotify…) é sinal forte: mesmo com reajuste
+    // de preço/plano (variância > ±5% ou até > ±50%) a assinatura deve
+    // continuar aparecendo — a confiança é que cai (penalidade de variância
+    // no `confidenceScore`). Antes, variação > ±50% descartava a ocorrência.
+    if (subscription !== null && months.length >= 2) {
       const variance = varianceOf(values);
       const confidence = confidenceScore({
         base: subscription.confidence,
@@ -116,8 +134,9 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
       continue;
     }
 
-    // recurring: mesma descrição, valor ±50%.
-    const stable = valuesWithinTolerance(values, RECURRING_TOLERANCE);
+    // recurring: mesma descrição, valor ±50% relativo à MEDIANA (robusto a
+    // outliers — faturas variáveis como água/luz não somem do extrato).
+    const stable = valuesWithinToleranceOfMedian(values, RECURRING_TOLERANCE);
     if (stable && months.length >= 2) {
       const variance = varianceOf(values);
       const confidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
@@ -153,7 +172,7 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
     const distinctMonths = monthsWith(months);
     if (distinctMonths < 2) continue;
 
-    if (!valuesWithinTolerance(totals, SIMILAR_TOLERANCE)) continue;
+    if (!valuesWithinToleranceOfMedian(totals, SIMILAR_TOLERANCE)) continue;
 
     const variance = varianceOf(totals);
     const confidence = confidenceScore({ base: 0.6, monthsHistory: distinctMonths, kind: "similar", variance });
