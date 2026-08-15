@@ -2,7 +2,7 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
-import type { DbInsert, PortfolioAsset, PortfolioTransaction } from "@/types";
+import type { DbInsert, DbUpdate, PortfolioAsset, PortfolioTransaction } from "@/types";
 
 /**
  * Carteira — integração remota (ledger §3.11.2).
@@ -91,4 +91,59 @@ export async function createPortfolioTransaction(
     throw new AppError("unknown", "Resposta vazia ao criar transação.", null);
   }
   return mapTransaction(data);
+}
+
+/** Edita um ativo (ticker/classe/moeda) — CRUD completo do usuário. */
+export async function updatePortfolioAsset(id: string, patch: DbUpdate<PortfolioAsset>): Promise<PortfolioAsset> {
+  const { data, error } = await resolveQuery<PortfolioAsset>(
+    getSupabase().from("portfolio_assets").update(patch).eq("id", id).select().single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao editar ativo.", null);
+  }
+  return mapAsset(data);
+}
+
+/**
+ * Exclui um ativo — as transações e metas vinculadas são removidas em cascata
+ * pelo banco (`portfolio_transactions.asset_id`/`allocation_targets.asset_id`
+ * com `on delete cascade`). A posição derivada é recalculada automaticamente.
+ */
+export async function deletePortfolioAsset(id: string): Promise<void> {
+  const { error } = await resolveQuery(getSupabase().from("portfolio_assets").delete().eq("id", id));
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/** Edita uma transação da carteira (alimenta o ledger derivado). */
+export async function updatePortfolioTransaction(
+  id: string,
+  patch: DbUpdate<PortfolioTransaction>,
+): Promise<PortfolioTransaction> {
+  const { data, error } = await resolveQuery<PortfolioTransaction>(
+    getSupabase().from("portfolio_transactions").update(patch).eq("id", id).select().single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao editar transação.", null);
+  }
+  return mapTransaction(data);
+}
+
+/** Exclui uma transação — o ledger da posição é recalculado. */
+export async function deletePortfolioTransaction(id: string): Promise<void> {
+  const { error } = await resolveQuery(getSupabase().from("portfolio_transactions").delete().eq("id", id));
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
 }

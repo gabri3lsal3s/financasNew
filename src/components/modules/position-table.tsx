@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, List, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
@@ -33,6 +33,12 @@ export interface PositionTableProps {
   rows: PositionRow[];
   /** Ação por linha (ex.: registrar transação) — omita para ocultar a coluna. */
   onRegisterTransaction?: (assetId: string, ticker: string) => void;
+  /** Abre a lista de lançamentos do ativo (CRUD completo — editar/excluir). */
+  onListTransactions?: (assetId: string, ticker: string) => void;
+  /** Abre o formulário de edição do ativo (ticker/classe/moeda). */
+  onEditAsset?: (assetId: string, ticker: string) => void;
+  /** Confirma a exclusão do ativo (transações e metas em cascata). */
+  onDeleteAsset?: (assetId: string, ticker: string) => void;
   emptyMessage?: string;
   /**
    * F17 — ordenação por coluna clicável (aria-sort + ícone de direção).
@@ -100,7 +106,7 @@ function SortableHeader({ label, active, direction, onClick }: { label: string; 
  * domínio, a UI só formata). Respeita o toggle global de densidade (F8).
  * `sortable` (F17) habilita ordenação por coluna clicável (aria-sort).
  */
-export function PositionTable({ rows, onRegisterTransaction, emptyMessage, sortable = false }: PositionTableProps) {
+export function PositionTable({ rows, onRegisterTransaction, onListTransactions, onEditAsset, onDeleteAsset, emptyMessage, sortable = false }: PositionTableProps) {
   const density = useDensity();
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" } | null>(null);
 
@@ -227,22 +233,64 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage, sorta
     },
   ];
 
-  if (onRegisterTransaction) {
+  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onEditAsset || onDeleteAsset);
+
+  if (hasRowActions) {
     columns.push({
       key: "actions",
       header: <span className="sr-only">Ações</span>,
       align: "right",
       cell: (row) => (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="min-h-11"
-          aria-label={`Registrar transação de ${row.ticker}`}
-          onClick={() => onRegisterTransaction(row.assetId, row.ticker)}
-        >
-          Movimentar
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          {onRegisterTransaction ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-11"
+              aria-label={`Registrar transação de ${row.ticker}`}
+              onClick={() => onRegisterTransaction(row.assetId, row.ticker)}
+            >
+              Movimentar
+            </Button>
+          ) : null}
+          {onListTransactions ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-9 px-2"
+              aria-label={`Lançamentos de ${row.ticker}`}
+              onClick={() => onListTransactions(row.assetId, row.ticker)}
+            >
+              <List className="size-4" aria-hidden="true" />
+            </Button>
+          ) : null}
+          {onEditAsset ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-9 px-2"
+              aria-label={`Editar ${row.ticker}`}
+              onClick={() => onEditAsset(row.assetId, row.ticker)}
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </Button>
+          ) : null}
+          {onDeleteAsset ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-9 px-2 text-negative-strong hover:text-negative-strong"
+              aria-label={`Excluir ${row.ticker}`}
+              onClick={() => onDeleteAsset(row.assetId, row.ticker)}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+            </Button>
+          ) : null}
+        </div>
       ),
     });
   }

@@ -2,9 +2,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   createPortfolioAsset,
   createPortfolioTransaction,
+  deletePortfolioAsset,
+  deletePortfolioTransaction,
   listAllPortfolioTransactions,
   listPortfolioAssets,
   listPortfolioTransactions,
+  updatePortfolioAsset,
+  updatePortfolioTransaction,
 } from "./portfolio";
 
 interface Builder {
@@ -12,10 +16,15 @@ interface Builder {
   eq: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
 
 let lastInsertInput: unknown = null;
+let lastUpdateInput: unknown = null;
+let lastDeletedId: string | null = null;
+let lastEqValue: string | null = null;
 
 function makeBuilder(result: unknown): Builder {
   const builder = {
@@ -23,6 +32,8 @@ function makeBuilder(result: unknown): Builder {
     eq: vi.fn(),
     order: vi.fn(),
     insert: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
   builder.select.mockReturnValue(builder);
@@ -31,6 +42,32 @@ function makeBuilder(result: unknown): Builder {
   builder.insert.mockImplementation((input: unknown) => {
     lastInsertInput = input;
     return { ...builder, select: () => ({ ...builder, single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }) }) };
+  });
+  builder.update.mockImplementation((input: unknown) => {
+    lastUpdateInput = input;
+    const updateChain = {
+      ...builder,
+      eq: vi.fn((_col: string, value: string) => {
+        lastEqValue = value;
+        return updateChain;
+      }),
+      select: () => ({ ...builder, single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }) }),
+    };
+    return updateChain;
+  });
+  builder.eq.mockImplementation((_col: string, value: string) => {
+    lastEqValue = value;
+    return builder;
+  });
+  builder.delete.mockImplementation(() => {
+    const deleteChain = {
+      ...builder,
+      eq: vi.fn((_col: string, value: string) => {
+        lastDeletedId = value;
+        return deleteChain;
+      }),
+    };
+    return deleteChain;
   });
   return builder;
 }
@@ -48,6 +85,9 @@ vi.mock("@/data/session", () => ({
 describe("portfolio repository (Fase 4 — ledger §3.11.2)", () => {
   beforeEach(() => {
     lastInsertInput = null;
+    lastUpdateInput = null;
+    lastDeletedId = null;
+    lastEqValue = null;
   });
 
   it("listPortfolioAssets devolve os ativos", async () => {
@@ -94,6 +134,41 @@ describe("portfolio repository (Fase 4 — ledger §3.11.2)", () => {
     const row = await createPortfolioTransaction({ asset_id: "a1", type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 });
     expect(lastInsertInput).toMatchObject({ user_id: "u1", asset_id: "a1", type: "buy" });
     expect(row.total).toBe(1000);
+  });
+
+  it("updatePortfolioAsset edita os campos do ativo", async () => {
+    builder = makeBuilder({ data: { id: "a1", user_id: "u1", ticker: "PETR3", asset_class: "acao", currency: "BRL" } });
+    const asset = await updatePortfolioAsset("a1", { ticker: "PETR3", asset_class: "acao" });
+    expect(lastUpdateInput).toMatchObject({ ticker: "PETR3" });
+    expect(lastEqValue).toBe("a1");
+    expect(asset.ticker).toBe("PETR3");
+  });
+
+  it("updatePortfolioTransaction edita os campos da transação", async () => {
+    builder = makeBuilder(
+      { data: { id: "t1", user_id: "u1", asset_id: "a1", type: "buy", date: "2026-01-15", quantity: 15, price: 100, total: 1500 } },
+    );
+    const row = await updatePortfolioTransaction("t1", { quantity: 15, total: 1500 });
+    expect(lastUpdateInput).toMatchObject({ quantity: 15 });
+    expect(lastEqValue).toBe("t1");
+    expect(row.total).toBe(1500);
+  });
+
+  it("deletePortfolioAsset remove o ativo pelo id", async () => {
+    builder = makeBuilder({ data: null, error: null });
+    await deletePortfolioAsset("a1");
+    expect(lastDeletedId).toBe("a1");
+  });
+
+  it("deletePortfolioTransaction remove a transação pelo id", async () => {
+    builder = makeBuilder({ data: null, error: null });
+    await deletePortfolioTransaction("t1");
+    expect(lastDeletedId).toBe("t1");
+  });
+
+  it("delete propaga erro classificado quando a exclusão falha", async () => {
+    builder = makeBuilder({ data: null, error: { message: "network down", code: "NETWORK_ERROR" } });
+    await expect(deletePortfolioAsset("a1")).rejects.toThrow();
   });
 
   it("propaga erro classificado quando a leitura falha", async () => {

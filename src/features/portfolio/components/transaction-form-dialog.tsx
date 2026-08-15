@@ -1,18 +1,21 @@
 import { useState } from "react";
-import { Alert, Button, Input, Modal, MoneyInput, Select } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { todayISO } from "@/domain/debts";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { playSound } from "@/services/audio-fx";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
-import { useCreatePortfolioTransaction } from "@/state";
-import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
+import { useCreatePortfolioTransaction, useDeletePortfolioTransaction, useUpdatePortfolioTransaction } from "@/state";
+import { numberToCents } from "@/domain/money/parse";
+import type { DbInsert, PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 
 export interface TransactionFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   asset: PortfolioAsset;
+  /** Transação em edição — quando informada, o diálogo salva (update) em vez de criar. */
+  transaction?: PortfolioTransaction | null;
 }
 
 const TX_OPTIONS: { value: PortfolioTransactionType; label: string }[] = [
@@ -30,15 +33,41 @@ const NEEDS_QTY_PRICE: readonly PortfolioTransactionType[] = ["buy", "sell", "su
 const IS_DIVIDEND: readonly PortfolioTransactionType[] = ["dividend", "jcp", "fii_yield"];
 const IS_SPLIT: readonly PortfolioTransactionType[] = ["split", "reverse_split"];
 
-/** Registro de transação da carteira (§3.11.2) — alimenta o ledger derivado. */
-export function TransactionFormDialog({ open, onOpenChange, asset }: TransactionFormDialogProps) {
+/** Registro/edição de transação da carteira (§3.11.2) — alimenta o ledger derivado. */
+export function TransactionFormDialog({ open, onOpenChange, asset, transaction = null }: TransactionFormDialogProps) {
   const createTx = useCreatePortfolioTransaction();
-  const [type, setType] = useState<PortfolioTransactionType>("buy");
-  const [date, setDate] = useState(() => todayISO());
-  const [quantity, setQuantity] = useState("");
-  const [price, setPrice] = useState("");
-  const [amountCents, setAmountCents] = useState(0);
+  const updateTx = useUpdatePortfolioTransaction();
+  const deleteTx = useDeletePortfolioTransaction();
+  // Estado inicial derivado das props (lazy) + re-sincronização a cada
+  // abertura via "ajuste de estado durante render" (padrão oficial React —
+  // evita setState em effect, exigência das regras do React Compiler).
+  const [type, setType] = useState<PortfolioTransactionType>(() => transaction?.type ?? "buy");
+  const [date, setDate] = useState(() => transaction?.date ?? todayISO());
+  const [quantity, setQuantity] = useState(() => (transaction ? String(transaction.quantity) : ""));
+  const [price, setPrice] = useState(() => (transaction ? String(transaction.price) : ""));
+  const [amountCents, setAmountCents] = useState(() => (transaction ? numberToCents(transaction.total) : 0));
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      const tx = transaction;
+      setType(tx?.type ?? "buy");
+      setDate(tx?.date ?? todayISO());
+      setQuantity(tx ? String(tx.quantity) : "");
+      setPrice(tx ? String(tx.price) : "");
+      setAmountCents(tx ? numberToCents(tx.total) : 0);
+      setError(null);
+    }
+  }
+
+  const isEdit = transaction !== null;
+  const pending = createTx.isPending || updateTx.isPending || deleteTx.isPending;
+
+  const openDialog = (next: boolean) => {
+    onOpenChange(next);
+  };
 
   const withQtyPrice = NEEDS_QTY_PRICE.includes(type);
   const withAmount = IS_DIVIDEND.includes(type);
@@ -55,25 +84,26 @@ export function TransactionFormDialog({ open, onOpenChange, asset }: Transaction
       ? amountCents / 100
       : 0;
 
-  const canSubmit = !createTx.isPending && date !== "" && (withQtyPrice ? totalPreview > 0 : withAmount ? amountCents > 0 : withFactor ? parseNumber(quantity) > 0 : false);
+  const canSubmit = !pending && date !== "" && (withQtyPrice ? totalPreview > 0 : withAmount ? amountCents > 0 : withFactor ? parseNumber(quantity) > 0 : false);
 
   const submit = async () => {
     if (!canSubmit) return;
     setError(null);
     try {
       const base = { asset_id: asset.id, type, date };
+      let payload: Omit<DbInsert<PortfolioTransaction>, "user_id">;
       if (withQtyPrice) {
-        await createTx.mutateAsync({ ...base, quantity: parseNumber(quantity), price: parseNumber(price), total: totalPreview });
+        payload = { ...base, quantity: parseNumber(quantity), price: parseNumber(price), total: totalPreview };
       } else if (withAmount) {
-        await createTx.mutateAsync({ ...base, quantity: 0, price: 0, total: amountCents / 100 });
+        payload = { ...base, quantity: 0, price: 0, total: amountCents / 100 };
       } else {
-        await createTx.mutateAsync({ ...base, quantity: parseNumber(quantity), price: 0, total: 0 });
+        payload = { ...base, quantity: parseNumber(quantity), price: 0, total: 0 };
       }
-      setType("buy");
-      setDate(todayISO());
-      setQuantity("");
-      setPrice("");
-      setAmountCents(0);
+      if (isEdit && transaction) {
+        await updateTx.mutateAsync({ id: transaction.id, patch: payload });
+      } else {
+        await createTx.mutateAsync(payload);
+      }
       // Feedback de escrita uniforme (F15): haptic success + áudio de
       // confirmação ao registrar a transação (padrão F12 de conclusão).
       triggerHaptic("success");
@@ -84,32 +114,92 @@ export function TransactionFormDialog({ open, onOpenChange, asset }: Transaction
     }
   };
 
-  return (
-    <Modal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={`Transação · ${asset.ticker}`}
-      description="O ledger e o caixa derivado são recalculados a partir das transações."
-    >
-      <div className="mt-4 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Tipo de operação
-          <Select
-            value={type}
-            onValueChange={(value) => setType(value as PortfolioTransactionType)}
-            options={TX_OPTIONS}
-            ariaLabel="Tipo de operação"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Data
-          <DatePicker value={date} onValueChange={setDate} ariaLabel="Data da transação" />
-        </label>
+  const confirmDeleteTx = async () => {
+    if (!transaction) return;
+    setError(null);
+    try {
+      await deleteTx.mutateAsync(transaction.id);
+      triggerHaptic("warning");
+      playSound("delete", getVisualCustomization().soundEnabled);
+      setConfirmDelete(false);
+      onOpenChange(false);
+    } catch (err) {
+      setConfirmDelete(false);
+      setError(getErrorMessage(err));
+    }
+  };
 
-        {withQtyPrice ? (
-          <>
+  return (
+    <>
+      <Modal
+        open={open}
+        onOpenChange={openDialog}
+        title={`Transação · ${asset.ticker}`}
+        description={
+          isEdit
+            ? "Atualize a operação — o ledger e o caixa derivado são recalculados a partir das transações."
+            : "O ledger e o caixa derivado são recalculados a partir das transações."
+        }
+      >
+        <div className="mt-4 flex flex-col gap-4">
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Tipo de operação
+            <Select
+              value={type}
+              onValueChange={(value) => setType(value as PortfolioTransactionType)}
+              options={TX_OPTIONS}
+              ariaLabel="Tipo de operação"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Data
+            <DatePicker value={date} onValueChange={setDate} ariaLabel="Data da transação" />
+          </label>
+
+          {withQtyPrice ? (
+            <>
+              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                Quantidade
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min={0}
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                  placeholder="Ex.: 10"
+                  aria-label="Quantidade"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                Preço unitário ({asset.currency})
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min={0}
+                  value={price}
+                  onChange={(event) => setPrice(event.target.value)}
+                  placeholder="Ex.: 42,50"
+                  aria-label="Preço unitário"
+                />
+              </label>
+              <p className="num text-xs text-muted-foreground">
+                Total: <span className="font-semibold text-foreground">{totalPreview.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+              </p>
+            </>
+          ) : null}
+
+          {withAmount ? (
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              Quantidade
+              Valor do provento
+              <MoneyInput cents={amountCents} onCentsChange={setAmountCents} aria-label="Valor do provento" />
+            </label>
+          ) : null}
+
+          {withFactor ? (
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+              Fator ({type === "split" ? "2 = 2:1 (dobra cotas)" : "2 = 1:2 (reduz cotas)"})
               <Input
                 type="number"
                 inputMode="decimal"
@@ -117,63 +207,44 @@ export function TransactionFormDialog({ open, onOpenChange, asset }: Transaction
                 min={0}
                 value={quantity}
                 onChange={(event) => setQuantity(event.target.value)}
-                placeholder="Ex.: 10"
-                aria-label="Quantidade"
+                placeholder="Ex.: 2"
+                aria-label="Fator do desdobramento"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              Preço unitário ({asset.currency})
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min={0}
-                value={price}
-                onChange={(event) => setPrice(event.target.value)}
-                placeholder="Ex.: 42,50"
-                aria-label="Preço unitário"
-              />
-            </label>
-            <p className="num text-xs text-muted-foreground">
-              Total: <span className="font-semibold text-foreground">{totalPreview.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
-            </p>
-          </>
-        ) : null}
+          ) : null}
 
-        {withAmount ? (
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Valor do provento
-            <MoneyInput cents={amountCents} onCentsChange={setAmountCents} aria-label="Valor do provento" />
-          </label>
-        ) : null}
+          {error ? <Alert variant="error">{error}</Alert> : null}
 
-        {withFactor ? (
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Fator ({type === "split" ? "2 = 2:1 (dobra cotas)" : "2 = 1:2 (reduz cotas)"})
-            <Input
-              type="number"
-              inputMode="decimal"
-              step="any"
-              min={0}
-              value={quantity}
-              onChange={(event) => setQuantity(event.target.value)}
-              placeholder="Ex.: 2"
-              aria-label="Fator do desdobramento"
-            />
-          </label>
-        ) : null}
-
-        {error ? <Alert variant="error">{error}</Alert> : null}
-
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button type="button" onClick={() => void submit()} disabled={!canSubmit}>
-            {createTx.isPending ? "Salvando…" : "Registrar"}
-          </Button>
+          <div className="flex items-center justify-between gap-2">
+            {isEdit ? (
+              <Button type="button" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={pending}>
+                Excluir lançamento
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={() => void submit()} disabled={!canSubmit}>
+                {pending ? "Salvando…" : isEdit ? "Salvar" : "Registrar"}
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Excluir lançamento?"
+        description="A transação será removida e o ledger da posição recalculado automaticamente."
+        confirmLabel="Excluir"
+        variant="destructive"
+        confirmPending={deleteTx.isPending}
+        onConfirm={() => void confirmDeleteTx()}
+      />
+    </>
   );
 }

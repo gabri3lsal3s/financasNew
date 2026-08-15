@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Plus, TrendingUp, Wallet } from "lucide-react";
-import { Alert, Badge, Button, EmptyState, SkeletonChart, SkeletonKpi, SkeletonTable } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonChart, SkeletonKpi, SkeletonTable } from "@/components/ui";
 import { AllocationDonut, CategoryDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
 import { dividendsInMonth, portfolioReturnPct } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money/parse";
 import { currentMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
-import { useAllPortfolioTransactions, usePortfolioAssets, usePortfolioPosition } from "@/state";
+import { useAllPortfolioTransactions, useDeletePortfolioAsset, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { AssetFormDialog } from "@/features/portfolio/components/asset-form-dialog";
 import { TransactionFormDialog } from "@/features/portfolio/components/transaction-form-dialog";
+import { TransactionListDialog } from "@/features/portfolio/components/transaction-list-dialog";
 import type { PortfolioAsset } from "@/types";
 
 const formatPct = (value: number | null): string => {
@@ -26,15 +27,36 @@ export function ResumoTab() {
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
   const transactionsQuery = useAllPortfolioTransactions();
+  const deleteAsset = useDeletePortfolioAsset();
   const [assetOpen, setAssetOpen] = useState(false);
+  const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
+  const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [txFor, setTxFor] = useState<PortfolioAsset | null>(null);
+  const [listFor, setListFor] = useState<PortfolioAsset | null>(null);
 
   const rows = position.rows;
   const hasInvestments = rows.length > 0;
 
+  const assetById = (assetId: string): PortfolioAsset | undefined => (assetsQuery.data ?? []).find((a) => a.id === assetId);
+
   const openTransaction = (assetId: string) => {
-    const asset = (assetsQuery.data ?? []).find((a) => a.id === assetId);
+    const asset = assetById(assetId);
     if (asset) setTxFor(asset);
+  };
+
+  const openList = (assetId: string) => {
+    const asset = assetById(assetId);
+    if (asset) setListFor(asset);
+  };
+
+  const openEdit = (assetId: string) => {
+    const asset = assetById(assetId);
+    if (asset) setAssetEditing(asset);
+  };
+
+  const openDelete = (assetId: string) => {
+    const asset = assetById(assetId);
+    if (asset) setAssetToDelete(asset);
   };
 
   const returnPct = portfolioReturnPct(rows);
@@ -156,12 +178,27 @@ export function ResumoTab() {
                 {rows.length} {rows.length === 1 ? "ativo" : "ativos"}
               </Badge>
             </div>
-            <PositionTable rows={rows} sortable onRegisterTransaction={openTransaction} />
+            <PositionTable
+              rows={rows}
+              sortable
+              onRegisterTransaction={openTransaction}
+              onListTransactions={openList}
+              onEditAsset={openEdit}
+              onDeleteAsset={openDelete}
+            />
           </section>
         </>
       )}
 
       <AssetFormDialog open={assetOpen} onOpenChange={setAssetOpen} />
+      {assetEditing ? (
+        <AssetFormDialog
+          key={assetEditing.id}
+          open={assetEditing !== null}
+          onOpenChange={(next) => !next && setAssetEditing(null)}
+          asset={assetEditing}
+        />
+      ) : null}
       {txFor ? (
         <TransactionFormDialog
           key={txFor.id}
@@ -170,6 +207,27 @@ export function ResumoTab() {
           asset={txFor}
         />
       ) : null}
+      {listFor ? (
+        <TransactionListDialog
+          key={listFor.id}
+          open={listFor !== null}
+          onOpenChange={(next) => !next && setListFor(null)}
+          asset={listFor}
+        />
+      ) : null}
+      <ConfirmDialog
+        open={assetToDelete !== null}
+        onOpenChange={(next) => !next && setAssetToDelete(null)}
+        title={assetToDelete ? `Excluir ${assetToDelete.ticker}?` : "Excluir ativo?"}
+        description="O ativo, suas transações e metas de alocação serão removidos em cascata. A posição é recalculada automaticamente."
+        confirmLabel="Excluir"
+        variant="destructive"
+        confirmPending={deleteAsset.isPending}
+        onConfirm={() => {
+          if (!assetToDelete) return;
+          void deleteAsset.mutateAsync(assetToDelete.id).then(() => setAssetToDelete(null));
+        }}
+      />
     </div>
   );
 }
