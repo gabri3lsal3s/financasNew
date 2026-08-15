@@ -68,4 +68,10 @@ export type {
   MonthlyCloseCategory,
   MonthlyCloseInvoice,
 } from "./monthly-close-print-view";
+export { EmergencyFundGauge } from "./emergency-fund-gauge";
+export type { EmergencyFundGaugeProps } from "./emergency-fund-gauge";
+export { FireProjectionChart } from "./fire-projection-chart";
+export type { FireProjectionChartProps } from "./fire-projection-chart";
+export { PlanningSection } from "./planning-section";
+export type { PlanningSectionProps } from "./planning-section";
 

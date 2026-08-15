@@ -9,6 +9,7 @@ import { BudgetsPage } from "@/features/budgets/pages/budgets-page";
 import { CardsPage } from "@/features/cards/pages/cards-page";
 import { DebtsPage } from "@/features/debts/pages/debts-page";
 import { OverviewPage } from "@/features/overview/pages/overview-page";
+import { InsightsPage } from "@/features/insights/pages/insights-page";
 import { InvestmentsPage } from "@/features/investments/pages/investments-page";
 import { TransactionListPage } from "@/features/transactions/pages/transaction-list-page";
 import { LaunchWizard } from "@/features/transactions/wizard/launch-wizard";
@@ -189,6 +190,8 @@ vi.mock("@/state", () => ({
   useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSectorCaps: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSetFeedback: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 /**
@@ -259,6 +262,13 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
     const user = userEvent.setup();
     const { container } = render(<InvestmentsPage />);
     await user.click(screen.getByRole("tab", { name: "Proventos" }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("InsightsPage — aba Planejamento (F24) sem violações", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<InsightsPage />);
+    await user.click(screen.getByRole("tab", { name: "Planejamento" }));
     expect(await axe(container)).toHaveNoViolations();
   });
 

@@ -1119,9 +1119,25 @@
 
 ### Fase 24 — Planejamento Financeiro & Simulador FIRE
 
-**Objetivo (Trilha C — Estratégia):** planejamento financeiro de longo prazo com projeção de independência financeira (FIRE), fundo de emergência e metas de aporte — apoiado pelos dados de carteira e orçamentos (F16/F17). Especificação detalhada a ser consolidada na execução da fase (depende de F16/F17).
+**Objetivo (Trilha C — Estratégia):** planejamento financeiro de longo prazo com projeção de independência financeira (FIRE), fundo de emergência e metas de aporte — apoiado pelos dados do mês (saldo e despesas do Insights).
 
-**✅ DoD (critérios de aceite — referência):** projetor FIRE com premissas transparentes e editáveis; gauge de fundo de emergência; testes do motor puro (`domain/`); suíte completa verde.
+**Decisões registradas (F24):**
+- **Motor determinístico e conservador** (`domain/fire/`): regra dos 4% (meta = despesas anuais × 25), projeção anual `capital = (capital + aporte × 12) × (1 + retorno real)`, retorno real padrão 5% a.a. (editável), horizonte máx. 40 anos. Sem Monte Carlo — um norte simples e auditável (filosofia do app).
+- **Local:** seção/aba **Planejamento** na página de Insights (DRY — reuso dos dados e hooks já carregados; sem rota/nav nova). Fundo de emergência usa o **saldo líquido do mês** como proxy do caixa (premissa exposta na UI).
+- **UI sem libs de gráfico:** `EmergencyFundGauge` (anel SVG com faixas crítico/baixo/adequado/saudável) e `FireProjectionChart` (polilinha SVG capital × anos + linha da meta) — mesmo padrão dos donuts existentes.
+
+**✅ DoD (critérios de aceite)**
+- Projetor FIRE com premissas transparentes e editáveis (aporte, despesa e retorno real).
+- Gauge de fundo de emergência com faixas de saúde e cor por faixa.
+- Testes do motor puro (`domain/fire/`) cobrindo a aritmética da projeção e as faixas.
+- Auditoria de acessibilidade (axe) sem violações na aba Planejamento; suíte completa verde.
+
+**Progresso — F24 concluída (2026-08-15):**
+- [x] **Motor puro** — `src/domain/fire/` (novo, 9 testes): `fireTargetCents` (×25), `fireProjection` (série anual ano 0..40, `yearsToFire`, `reached`), `emergencyFundMonths` (meses + faixas de saúde) e constantes (`FIRE_TARGET_MULTIPLE`, `FIRE_WITHDRAWAL_RATE`, `DEFAULT_REAL_RETURN_RATE`, `FIRE_MAX_YEARS`).
+- [x] **Módulos SVG** — `EmergencyFundGauge` (4 testes) e `FireProjectionChart` (2 testes) em `components/modules/`, sem libs de gráfico, com `role="img"` + aria-label.
+- [x] **`PlanningSection`** (novo módulo, 4 testes): cards de fundo de emergência (gauge + saldo/despesa + faixas) e simulador FIRE (inputs de aporte/despesa/retorno com defaults do mês + meta, tempo até a meta e gráfico), 100% presentacional (motores puros).
+- [x] **Integração** — aba **Planejamento** na InsightsPage (entre Projeção & corte e Diagnósticos), com swipe; auditoria axe sem violações (heading order h1→h2).
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
 
 ---
 
@@ -1250,7 +1266,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | ✅ Concluída (2026-08-15) — motor `domain/predictions`, autopreenchimento no wizard + habituals + repetição nos diálogos |
 | 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | ✅ Concluída (2026-08-15) — `domain/export` (CSV pt-BR + backup versionado Zod), hub em `/configuracoes > Dados` (JSON + CSVs por período + restauração 2 etapas via RPC `restore_backup`), Fechamento Mensal imprimível em Relatórios e Web Share nos comprovantes |
 | 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | ✅ Concluída (2026-08-15) — política de cache centralizada `state/cache-policy.ts` (estático 5 min + gcTime 30 min / analítico / cotações / transacional), pre-fetching de chunks das rotas vizinhas (`prefetchPageChunks` + `useRoutePrefetch`) e decisão: 3D CSS sem Three.js (code-splitting WebGL N/A — lazy por rota já existente) |
-| 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | 📋 Planejada |
+| 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | ✅ Concluída (2026-08-15) — motor puro `domain/fire` (regra 4%, projeção anual, fundo de emergência), `PlanningSection` com gauge + simulador na aba Planejamento do Insights (inputs editáveis, gráfico SVG sem libs) |
 | 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | 📋 Planejada |
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | 📋 Planejada |
 

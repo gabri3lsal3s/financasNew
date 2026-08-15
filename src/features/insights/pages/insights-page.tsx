@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Lightbulb, Repeat, Sparkles } from "lucide-react";
 import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { AlertCard, InsightList, ProjectionLine } from "@/components/modules";
+import { AlertCard, InsightList, PlanningSection, ProjectionLine } from "@/components/modules";
 import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
 import { applyFeedback, type FeedbackDecision } from "@/domain/insights/feedback";
@@ -392,6 +392,12 @@ export function InsightsPage() {
                   </section>
                 </div>
               ),
+            },
+            {
+              // F24 — Planejamento Financeiro & Simulador FIRE (Trilha C).
+              value: "planning",
+              label: "Planejamento",
+              content: <PlanningSection balanceCents={balanceCents} monthlyExpensesCents={Math.max(1, expenseCents)} />,
             },
             {
               value: "diagnostics",
