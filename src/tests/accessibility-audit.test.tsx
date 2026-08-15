@@ -176,6 +176,11 @@ vi.mock("@/state", () => ({
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePortfolioAssets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSectorCaps: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
 }));
 
 /**

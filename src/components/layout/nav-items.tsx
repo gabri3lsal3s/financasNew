@@ -10,7 +10,6 @@ import {
   PiggyBank,
   Settings,
   Tags,
-  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -30,7 +29,7 @@ export const navItems: NavItem[] = [
   { label: "Categorias", path: "/categorias", icon: Tags },
   { label: "Relatórios", path: "/relatorios", icon: ChartPie },
   { label: "Insights", path: "/insights", icon: Lightbulb },
-  { label: "Carteira", path: "/carteira", icon: Wallet },
+  // Unificação (2026-08-15): área única de investimentos (ex-/carteira).
   { label: "Investimentos", path: "/investments", icon: ChartLine },
   { label: "Lembretes", path: "/lembretes", icon: Bell },
   { label: "Configurações", path: "/configuracoes", icon: Settings },

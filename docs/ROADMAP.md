@@ -905,7 +905,14 @@
 - [x] **Página `InvestmentsPage`** (`src/features/investments/`, barrel + página + 3 testes): KPIs executivos (Patrimônio total com Δ vs mês anterior, Rentabilidade ponderada com tom semântico, Proventos do mês, Ativos), donuts **por classe** (`AllocationDonut`, F16) e **por ativo** (`CategoryDonut`), tabela de posições com ordenação e acessos rápidos para `/carteira`.
 - [x] **Ordenação acessível (entrega 4)** — `PositionTable` ganha prop `sortable` (uma implementação, DRY): cabeçalhos clicáveis com `aria-sort` e ícone de direção (3 testes dedicados); a Posição existente permanece sem ordenação (padrão).
 - [x] **Estados completos (entrega 5)** — loading (SkeletonKpi ×4 + SkeletonChart ×2 + SkeletonTable), vazio (EmptyState "Sem investimentos" com CTA `/carteira`), erro (gateway + retry via `position.refetch`) — Online First; axe sem violações (auditoria P0 inclui a tela).
-- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`); deep-link da Home segue apontando para `/carteira` (decisão F16 do produto — F17 mantém).
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+
+**Atualização — Unificação da Carteira (decisão do produto, 2026-08-15):** a separação `/carteira` (operação) × `/investments` (leitura) foi **eliminada** em favor de uma **área única de Investimentos** em `/investments`, organizada por **abas internas** — o padrão de consolidação do app:
+- **`/investments`** agora é o **hub** com abas: **Resumo** (consolidação executiva + operação: KPIs, donuts de alocação por classe/ativo, tabela com ordenação, cadastro de ativo e movimentação), **Metas** (reuso de `TargetsTab`) e **Aporte** (reuso de `AporteTab`) — DRY, zero telas paralelas.
+- **`/carteira` vira redirect** para `/investments` (`RedirectToInvestments` em `routes.tsx`) — deep-links antigos (Home, FAB, favoritos, busca) continuam funcionando; o item "Carteira" saiu da navegação (fonte única `nav-items` mantém apenas "Investimentos").
+- **Arquivos:** `src/features/investments/pages/resumo-tab.tsx` (novo — absorve a página F17 como aba) · `src/features/investments/pages/investments-page.tsx` (hub de abas) · `src/app/routes.tsx` (redirect) · `src/components/layout/nav-items.tsx`.
+- Nada se perde: os motores puros (`summary.ts`), `AllocationDonut`, `PositionTable` sortable e os testes da F17 foram absorvidos pela aba **Resumo**.
+- **Fora de escopo nesta rodada:** aba "Relatório" da carteira (fica para a **F22** — exportação geral, decisão do produto).
 
 ---
 
@@ -1162,7 +1169,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 > **Decisões default aplicadas:**
 > - **P1 = (a)** cotações: edge function (F1.7/Yahoo) + preço manual como fonte primária — deploy/cron da F1.7 é pré-requisito da F16.
 > - **P2 = (a)** gráficos: SVG próprio (padrão `CategoryDonut`) — sem libs novas.
-> - **P3 = (a)** rota nova `/investments` (leitura), mantendo `/carteira` para operação.
+> - **P3 = (a)** rota nova `/investments` (leitura), mantendo `/carteira` para operação — **SUPERADA (2026-08-15):** decisão do produto de **área única** — `/investments` é o hub (abas Resumo/Metas/Aporte) e `/carteira` vira redirect.
 > - **P4 = (a)** proventos: apenas recebidos (escopo mínimo — sem migration).
 > - **P5 = (b)** proventos ficam só na carteira (fora do fluxo financeiro core — D11 preservado).
 > - **P6 = (a)** ordem: Trilha A (F14–F15, F19 e F20) antes da Trilha B (F16–F18), seguida pelas fases de inteligência, refinamento e escala (F21–F25).
@@ -1178,7 +1185,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 | ✅ Concluída (2026-08-15) |
 | 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | ✅ Concluída (2026-08-15) |
 | 5 | **F16** — Carteira na Home (KPI real + donut de alocação) | B | F14 | ✅ Concluída (2026-08-15) — KPI de aportes com deep-link; `AllocationDonut` na Posição (decisão: sem widget na Home) |
-| 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | ✅ Concluída (2026-08-15) |
+| 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | ✅ Concluída (2026-08-15) — **unificada em área única** (decisão 2026-08-15): `/carteira` virou redirect e `/investments` é o hub de abas Resumo/Metas/Aporte |
 | 7 | **F18** — Proventos (extrato & calendário) | B | F17 | 📋 Não iniciada |
 | 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | 📋 Planejada |
 | 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | 📋 Planejada |

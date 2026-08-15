@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import type { ComponentType } from "react";
+import { Navigate } from "react-router";
 
 const OverviewPage = lazy(() => import("@/features/overview/pages/overview-page").then((m) => ({ default: m.OverviewPage })));
 const TransactionListPage = lazy(() =>
@@ -13,7 +14,6 @@ const CategoriesPage = lazy(() =>
 );
 const ReportsPage = lazy(() => import("@/features/reports/pages/reports-page").then((m) => ({ default: m.ReportsPage })));
 const InsightsPage = lazy(() => import("@/features/insights/pages/insights-page").then((m) => ({ default: m.InsightsPage })));
-const PortfolioPage = lazy(() => import("@/features/portfolio/pages/portfolio-page").then((m) => ({ default: m.PortfolioPage })));
 const InvestmentsPage = lazy(() =>
   import("@/features/investments/pages/investments-page").then((m) => ({ default: m.InvestmentsPage })),
 );
@@ -26,6 +26,15 @@ export interface AppRoute {
   Component: ComponentType;
 }
 
+/**
+ * Unificação da carteira (2026-08-15): a antiga rota `/carteira` foi absorvida
+ * pela área única de investimentos (abas Resumo/Metas/Aporte). Redireciona os
+ * deep-links antigos (Home, FAB, favoritos) para o hub `/investments`.
+ */
+function RedirectToInvestments() {
+  return <Navigate to="/investments" replace />;
+}
+
 /** Mapa de rotas — deep-links (?card=, ?month=, ?q=) são parseados nas features (F1+). */
 export const appRoutes: AppRoute[] = [
   { path: "/", Component: OverviewPage },
@@ -36,8 +45,8 @@ export const appRoutes: AppRoute[] = [
   { path: "/categorias", Component: CategoriesPage },
   { path: "/relatorios", Component: ReportsPage },
   { path: "/insights", Component: InsightsPage },
-  { path: "/carteira", Component: PortfolioPage },
   { path: "/investments", Component: InvestmentsPage },
+  { path: "/carteira", Component: RedirectToInvestments },
   { path: "/lembretes", Component: RemindersPage },
   { path: "/configuracoes", Component: SettingsPage },
 ];

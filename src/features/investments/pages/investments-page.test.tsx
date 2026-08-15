@@ -43,6 +43,13 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSectorCaps: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
 }));
 
 describe("InvestmentsPage (F17 — dashboard /investments)", () => {
@@ -59,10 +66,11 @@ describe("InvestmentsPage (F17 — dashboard /investments)", () => {
     };
   });
 
-  it("vazio exibe EmptyState com CTA para a carteira", () => {
+  it("vazio exibe EmptyState com CTA para adicionar o primeiro ativo", () => {
     render(<InvestmentsPage />);
     expect(screen.getByText("Sem investimentos")).toBeInTheDocument();
-    expect(screen.getByText("Ir para a carteira")).toBeInTheDocument();
+    // Header e EmptyState oferecem o mesmo CTA (2 botões).
+    expect(screen.getAllByRole("button", { name: /Adicionar ativo/i }).length).toBeGreaterThan(0);
   });
 
   it("com posição mostra KPIs executivos, donuts e tabela com ordenação", () => {
