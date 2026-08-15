@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **Status:** v1.7 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); **v1.6** formalizou a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**; e **v1.7** formaliza a **F26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)**.
+> **Status:** v1.7 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); **v1.6** formalizou a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**; **v1.7** formalizou a **F26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)**; e **v1.8** registra a **conclusão da F27 — Insights: Precisão, Deduplicação & Casos de Borda** (2026-08-15).
 > **Referências:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (estrutura e convenções) · [`ESPECIFICACAO_TECNICA.md`](../ESPECIFICACAO_TECNICA.md) (regras de negócio, schema, UI/UX).
 
 ---
@@ -1220,6 +1220,30 @@
 - [x] Wizard `/transacoes/novo` continua sem gesto (fora do PageShell — mesmo comportamento do botão antigo)
 - [x] Suíte completa verde; typecheck/lint/build limpos
 
+### Fase 27 — Insights: Precisão, Deduplicação & Casos de Borda
+
+**Objetivo (Trilha A / Inteligência):** refinar o módulo de Insights para ser **mais preciso, consistente e sem repetições desnecessárias** (direção do produto 2026-08-15): bases de cálculo corretas, mensagens coerentes em casos de borda e eliminação de recomendações duplicadas. Sem novas features — só precisão do que já existe.
+
+**Problemas corrigidos:**
+- **`monthlyAvgCents` dos desafios usava só o mês atual** (rotulado "média mensal") — mês parcial/atípico distorcia as metas de corte. Agora a UI alimenta o motor com a **média real dos últimos meses com gasto** (novo `typicalMonthlySpendCents` em `domain/savings`): mês sem consumo não dilui a referência.
+- **Linha "30% em não essenciais" duplicava o desafio individual** quando havia 1 única categoria elegível (mesma base, mesmo número). `DiscretionaryChallenge` agora expõe `categoryCount` e a UI oculta a linha agregada com `categoryCount < 2` — ela só aparece quando realmente agrega (2+ categorias).
+- **`weekendRatio` sem dados de dia útil renderizava "∞×" e alerta "gastos ∞× maiores"** — mensagem sem sentido. A UI agora trata `weekdayDaily <= 0` como **incomparável**: exibe "—" com tom neutro e não dispara o alerta (o motor puro continua devolvendo `Infinity`/`0` — comportamento documentado em teste).
+
+**Arquivos:** `src/domain/savings/index.ts` (+ testes) · `src/features/insights/pages/insights-page.tsx` · `src/features/insights/pages/insights-page.test.tsx` · `src/domain/insights/index.test.ts`.
+
+**✅ DoD (critérios de aceite)**
+- Desafios usam média mensal real (meses com gasto); teste cobre mês vazio, mês parcial e mês único.
+- Linha "30% em não essenciais" some com 1 categoria elegível e aparece com 2+ (testes de página para ambos).
+- Card de fim de semana mostra "—" sem dados de dia útil, sem alerta absurdo; razão comparável segue exibindo `X.X×` com tom semântico.
+- Suíte completa 100% verde; typecheck/lint/build limpos.
+
+**Progresso — F27 concluída (2026-08-15):**
+- [x] `typicalMonthlySpendCents` em `domain/savings` (média dos meses com gasto; 0 sem base) + 4 testes
+- [x] `DiscretionaryChallenge.categoryCount` (base do corte) + teste de dedup
+- [x] `InsightsPage`: `spentByMonth` (4 mapas) → média real nos desafios; `showDiscretionary = categoryCount >= 2`; guarda `weekendComparable` ("—" + sem alerta + tom neutro)
+- [x] Testes de página: razão comparável sem alerta; dedup da linha agregada (1 categoria); exibição com 2+ categorias; domínio: `weekendSpendingRatio` Infinity/0 documentado
+- [x] Suíte completa **1075 testes / 140 arquivos** verde; typecheck/lint/build limpos
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
@@ -1296,6 +1320,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | ✅ Concluída (2026-08-15) — motor puro `domain/fire` (regra 4%, projeção anual, fundo de emergência), `PlanningSection` com gauge + simulador na aba Planejamento do Insights (inputs editáveis, gráfico SVG sem libs) |
 | 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | ✅ Concluída (2026-08-15) — hover-expand da sidebar em overlay (delay anti-disparo), bottom sheets mobile com drag-to-close (threshold/fling/resistência), primitivo Tooltip acessível nos botões do header |
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | ✅ Concluída (2026-08-15) — motor puro `domain/gestures/overscroll` (resistência elástica + barreira de inércia + threshold), hook `usePullUpToTop` (FSM com cancelamento reversível, decisão por ref, sem pointer capture para coexistir com swipe-to-action), primitivo `PullUpToTopIndicator` (anel SVG `stroke-primary`), integração no PageShell e remoção do `ScrollToTopButton`/`useScrollPosition` do roteador + regra CSS de diálogos |
+| 14 | **F27** — Insights: Precisão, Deduplicação & Casos de Borda | A / Inteligência | F19 | ✅ Concluída (2026-08-15) — média mensal real nos desafios (`typicalMonthlySpendCents`), `categoryCount` no discricionário (linha "30% em não essenciais" oculta com 1 categoria — sem repetição) e guarda de `weekendRatio` incomparável ("—" sem alerta absurdo) |
 
 **Auditoria de limpeza de código (2026-08-15):**
 - **Dead code removido:** `hooks/use-draggable.ts` (+teste) — órfão desde a remoção do FAB flutuante; `layout/placeholder-page.tsx` — página placeholder de versões antigas sem uso; `layout/density-toggle.tsx` — toggle não montado (a densidade vive em `/configuracoes` via `useDensity`); `centsToBRL` de `domain/money/parse.ts` — duplicata exata de `services/masks/money.formatCentsAsBRL` (DRY).

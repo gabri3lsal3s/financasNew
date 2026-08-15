@@ -125,6 +125,11 @@ export interface DiscretionaryChallenge {
   targetCents: number;
   /** Economia mensal = total × 0,30. */
   savingsCents: number;
+  /**
+   * Quantidade de categorias na base do corte (F27) — permite à UI ocultar
+   * a linha agregada quando ela duplica um desafio individual (1 categoria).
+   */
+  categoryCount: number;
 }
 
 /**
@@ -136,9 +141,10 @@ export function discretionaryChallenge(
   monthlyIncomeCents: number,
 ): DiscretionaryChallenge | null {
   const highSpendFloor = Math.round(monthlyIncomeCents * HIGH_SPEND_THRESHOLD_PERCENT);
-  const totalAvgCents = categories
-    .filter((category) => !category.essential && category.monthlyAvgCents >= highSpendFloor)
-    .reduce((acc, category) => acc + category.monthlyAvgCents, 0);
+  const eligible = categories.filter(
+    (category) => !category.essential && category.monthlyAvgCents >= highSpendFloor,
+  );
+  const totalAvgCents = eligible.reduce((acc, category) => acc + category.monthlyAvgCents, 0);
   if (totalAvgCents <= 0) return null;
 
   return {
@@ -146,7 +152,23 @@ export function discretionaryChallenge(
     totalAvgCents,
     targetCents: Math.round(totalAvgCents * 0.7),
     savingsCents: Math.round(totalAvgCents * 0.3),
+    categoryCount: eligible.length,
   };
+}
+
+/**
+ * Média mensal típica de uma categoria (F27 — precisão dos desafios).
+ *
+ * Espec §3.7.5 pede "média mensal" — antes a UI passava o gasto do mês
+ * atual como se fosse média (impreciso para meses parciais ou atípicos).
+ * Média apenas dos meses com gasto > 0: um mês sem consumo não dilui a
+ * referência de corte; `0` quando a categoria não gastou em nenhum mês.
+ */
+export function typicalMonthlySpendCents(monthlyValues: readonly number[]): number {
+  const withSpend = monthlyValues.filter((value) => value > 0);
+  if (withSpend.length === 0) return 0;
+  const total = withSpend.reduce((acc, value) => acc + value, 0);
+  return Math.round(total / withSpend.length);
 }
 
 // ---------------------------------------------------------------------------

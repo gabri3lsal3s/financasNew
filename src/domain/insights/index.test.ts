@@ -201,6 +201,9 @@ describe("diagnósticos (§3.7.6)", () => {
   it("ratio de fim de semana > 1.5 alerta", () => {
     expect(weekendSpendingRatio(10000, 16000) > 1.5).toBe(true);
     expect(weekendSpendingRatio(10000, 10000)).toBe(1);
+    // Sem gasto em dia útil → incomparável (Infinity); sem gastos → 0.
+    expect(weekendSpendingRatio(0, 5000)).toBe(Number.POSITIVE_INFINITY);
+    expect(weekendSpendingRatio(0, 0)).toBe(0);
   });
 
   it("tendência significativa acima de 15%", () => {

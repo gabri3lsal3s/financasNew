@@ -20,6 +20,7 @@ import {
   buildLimitSuggestions,
   discretionaryChallenge,
   pickTopChallenges,
+  typicalMonthlySpendCents,
   type CategorySpend,
   type BudgetUsage,
 } from "@/domain/savings";
@@ -100,7 +101,10 @@ export function InsightsPage() {
   // Orçamentos estourados no mês (com herança) — helpers compartilhados (F19).
   const budgets = budgetsQuery.data ?? [];
   const limitsByCategory = budgetLimitsByCategory(budgets);
+  // F27 — mapa por mês (4 meses) para a média real dos desafios; o mapa do
+  // mês atual segue sendo usado por estouros e sugestões de limite.
   const spentByCategory = spentByCategoryMap(month0.data ?? []);
+  const spentByMonth = [month0, month1, month2, month3].map((q) => spentByCategoryMap(q.data ?? []));
   const overspentBudgets = (categoriesQuery.data ?? [])
     .filter((c) => c.type === "expense")
     .map((c) => ({
@@ -170,18 +174,23 @@ export function InsightsPage() {
     }));
   const pendingSummary = pendingProjection(pending);
 
-  // Desafios e sugestões de corte — essencialidade pela fonte única (F19).
+  // Desafios e sugestões de corte — essencialidade pela fonte única (F19) e
+  // média mensal real (F27): média dos meses com gasto, não o mês isolado.
   const categorySpends: CategorySpend[] = (categoriesQuery.data ?? [])
     .filter((c) => c.type === "expense")
     .map((c) => ({
       categoryId: c.id,
       name: c.name,
       icon: c.icon,
-      monthlyAvgCents: Math.round(spentByCategory.get(c.id) ?? 0),
+      monthlyAvgCents: typicalMonthlySpendCents(spentByMonth.map((m) => m.get(c.id) ?? 0)),
       essential: c.icon != null && ESSENTIAL_CATEGORY_ICONS.has(c.icon),
     }));
   const challenges = pickTopChallenges(buildChallengeOptions(categorySpends, incomeCents));
+  // F27 — sem repetição: com 1 única categoria elegível, o desafio individual
+  // (30% dela) já cobre o mesmo número; a linha agregada só agrega quando há
+  // 2+ categorias na base.
   const discretionary = discretionaryChallenge(categorySpends, incomeCents);
+  const showDiscretionary = discretionary !== null && discretionary.categoryCount >= 2;
 
   const usages: BudgetUsage[] = (categoriesQuery.data ?? [])
     .filter((c) => c.type === "expense")
@@ -217,6 +226,9 @@ export function InsightsPage() {
   const weekdayDaily = weekdayTotals.slice(0, 5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 5;
   const weekendDaily = weekdayTotals.slice(5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 2;
   const weekendRatio = weekendSpendingRatio(weekdayDaily, weekendDaily);
+  // F27 — sem dados de dia útil a comparação não faz sentido (evita "∞×" e
+  // alertas absurdos de "gastos ∞× maiores"): exibe "—" e não alerta.
+  const weekendComparable = weekdayDaily > 0;
 
   // Tendência significativa vs mês anterior (motor §3.7.6 — F19 entrega 5).
   const prevExpenseCents = weightedSum(month1.data ?? []);
@@ -339,7 +351,7 @@ export function InsightsPage() {
                       </span>
                       <h3 className="text-sm font-semibold text-foreground">Desafios de economia</h3>
                     </div>
-                    {challenges.length === 0 && !discretionary ? (
+                    {challenges.length === 0 && !showDiscretionary ? (
                       <p className="text-xs text-muted-foreground">Nenhum desafio sugerido agora.</p>
                     ) : (
                       <div className="flex flex-col gap-2 min-w-0">
@@ -354,7 +366,7 @@ export function InsightsPage() {
                             </span>
                           </div>
                         ))}
-                        {discretionary ? (
+                        {showDiscretionary && discretionary ? (
                           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-positive/40 bg-positive/5 p-3 text-xs min-w-0">
                             <span className="font-medium text-foreground min-w-0 flex-1">30% em não essenciais</span>
                             <span className="num shrink-0 font-semibold text-positive-strong">
@@ -413,8 +425,8 @@ export function InsightsPage() {
                     />
                     <DiagnosticCard
                       label="Gastos fim de semana"
-                      value={`${weekendRatio === Infinity ? "∞" : weekendRatio.toFixed(1)}×`}
-                      tone={weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive"}
+                      value={weekendComparable ? `${weekendRatio.toFixed(1)}×` : "—"}
+                      tone={weekendComparable ? (weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive") : "neutral"}
                     />
                     <DiagnosticCard
                       label="Tendência de gastos"
@@ -426,7 +438,7 @@ export function InsightsPage() {
                   {concentration.alert ? (
                     <Alert variant="warning">Uma única fonte representa mais de 60% da sua renda — diversifique.</Alert>
                   ) : null}
-                  {weekendRatio > WEEKEND_RATIO_LIMIT ? (
+                  {weekendComparable && weekendRatio > WEEKEND_RATIO_LIMIT ? (
                     <Alert variant="warning">Seus gastos de fim de semana estão {weekendRatio.toFixed(1)}× maiores que os de dias úteis.</Alert>
                   ) : null}
                   {trendSignificant ? (

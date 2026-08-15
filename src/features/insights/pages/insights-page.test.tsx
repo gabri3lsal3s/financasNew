@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { InsightsPage } from "./insights-page";
 
 const setFeedbackMock = vi.fn();
@@ -11,21 +11,24 @@ const expenseCategories = [
 ];
 const incomeCategories = [{ id: "c3", name: "Salário", icon: "salario", color: null, type: "income" }];
 
-function makeExpenseMonth(prefix: string) {
-  return [
-    { id: `${prefix}-1`, description: "Streaming", category_id: "c2", value: 1990, report_weight: 1, date: `${prefix}-05`, installment_group_id: null },
-    { id: `${prefix}-2`, description: "Academia", category_id: "c2", value: 9900, report_weight: 1, date: `${prefix}-10`, installment_group_id: null },
-  ];
-}
+/** Fixture mutável (vi.hoisted — disponível no factory do mock) para os cenários F27. */
+const fixture = vi.hoisted(() => ({
+  incomeCents: 500_000,
+  // Default: 2 despesas de Lazer por mês (11.890¢) em dias úteis.
+  monthlyExpenses: (month: string) => [
+    { id: `${month}-1`, description: "Streaming", category_id: "c2", value: 1990, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+    { id: `${month}-2`, description: "Academia", category_id: "c2", value: 9900, report_weight: 1, date: `${month}-10`, installment_group_id: null },
+  ],
+}));
 
 vi.mock("@/state", () => ({
   useExpenses: (month: string) => ({
-    data: month === "2026-08" ? makeExpenseMonth("2026-08") : makeExpenseMonth(month),
+    data: fixture.monthlyExpenses(month),
     isLoading: false,
     error: null,
   }),
   useIncomes: () => ({
-    data: [{ id: "i1", value: 5000, report_weight: 1, category_id: "c3", date: "2026-08-05" }],
+    data: [{ id: "i1", value: fixture.incomeCents / 100, report_weight: 1, category_id: "c3", date: "2026-08-05" }],
     isLoading: false,
     error: null,
   }),
@@ -102,5 +105,47 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
     // Mês atual igual ao anterior (fixture) → variação 0.0% (não significativa).
     expect(screen.getByText("+0.0%")).toBeInTheDocument();
+  });
+
+  it("diagnósticos: gastos de fim de semana comparáveis exibem a razão e sem alerta absurdo (F27)", async () => {
+    const user = userEvent.setup();
+    render(<InsightsPage />);
+    await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
+    // Fixture: despesas só em dias úteis → razão 0.0× (comparável, sem alerta).
+    expect(screen.getByText("0.0×")).toBeInTheDocument();
+    expect(screen.queryByText(/gastos de fim de semana.*maiores/i)).not.toBeInTheDocument();
+  });
+
+  it("desafios: linha '30% em não essenciais' some quando duplica o desafio individual (F27 — dedup)", async () => {
+    const user = userEvent.setup();
+    // Lazer como única categoria de alto gasto não essencial (60.000 ≥ 10% da renda).
+    fixture.monthlyExpenses = (month) => [
+      { id: `${month}-1`, description: "Viagem", category_id: "c2", value: 60_000, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+    ];
+    render(<InsightsPage />);
+    await user.click(screen.getByRole("tab", { name: "Projeção & corte" }));
+    // O desafio individual aparece (corta 30% da Lazer).
+    expect(screen.getByText(/Lazer — cortar 30%/)).toBeInTheDocument();
+    // A linha agregada fica oculta (mesma base de 1 categoria — repetição).
+    expect(screen.queryByText("30% em não essenciais")).not.toBeInTheDocument();
+  });
+
+  it("desafios: linha '30% em não essenciais' aparece com 2+ categorias elegíveis (F27)", async () => {
+    const user = userEvent.setup();
+    fixture.monthlyExpenses = (month) => [
+      { id: `${month}-1`, description: "Viagem", category_id: "c2", value: 60_000, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+      { id: `${month}-2`, description: "Delivery", category_id: "c1", value: 55_000, report_weight: 1, date: `${month}-10`, installment_group_id: null },
+    ];
+    render(<InsightsPage />);
+    await user.click(screen.getByRole("tab", { name: "Projeção & corte" }));
+    expect(screen.getByText("30% em não essenciais")).toBeInTheDocument();
+  });
+
+  afterEach(() => {
+    fixture.incomeCents = 500_000;
+    fixture.monthlyExpenses = (month) => [
+      { id: `${month}-1`, description: "Streaming", category_id: "c2", value: 1990, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+      { id: `${month}-2`, description: "Academia", category_id: "c2", value: 9900, report_weight: 1, date: `${month}-10`, installment_group_id: null },
+    ];
   });
 });

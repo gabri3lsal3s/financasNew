@@ -4,6 +4,7 @@ import {
   buildChallengeOptions,
   pickTopChallenges,
   discretionaryChallenge,
+  typicalMonthlySpendCents,
   suggestIncrease,
   suggestReduction,
   buildLimitSuggestions,
@@ -101,6 +102,16 @@ describe("desafios de economia (§3.7.5)", () => {
     expect(challenge!.totalAvgCents).toBe(140_000);
     expect(challenge!.targetCents).toBe(98_000);
     expect(challenge!.savingsCents).toBe(42_000);
+    expect(challenge!.categoryCount).toBe(2);
+  });
+
+  it("desafio '30% em não essenciais' expõe a contagem da base (F27 — dedup UI)", () => {
+    const single = discretionaryChallenge(
+      [{ categoryId: "a", name: "A", icon: null, monthlyAvgCents: 80_000, essential: false }],
+      500_000,
+    );
+    expect(single).not.toBeNull();
+    expect(single!.categoryCount).toBe(1); // UI oculta a linha (duplica o desafio individual)
   });
 
   it("desafio '30% em não essenciais' é null sem base de corte", () => {
@@ -111,6 +122,25 @@ describe("desafios de economia (§3.7.5)", () => {
         500_000,
       ),
     ).toBeNull();
+  });
+});
+
+describe("média mensal típica (F27 — precisão dos desafios)", () => {
+  it("média apenas dos meses com gasto (mês vazio não dilui)", () => {
+    expect(typicalMonthlySpendCents([80_000, 0, 60_000, 0])).toBe(70_000); // (80+60)/2
+  });
+
+  it("meses parciais entram na média normalmente", () => {
+    expect(typicalMonthlySpendCents([80_000, 80_000, 40_000])).toBe(66_667);
+  });
+
+  it("0 quando não gastou em nenhum mês ou lista vazia", () => {
+    expect(typicalMonthlySpendCents([])).toBe(0);
+    expect(typicalMonthlySpendCents([0, 0, 0])).toBe(0);
+  });
+
+  it("mês único com gasto retorna o próprio valor", () => {
+    expect(typicalMonthlySpendCents([42_500, 0, 0])).toBe(42_500);
   });
 });
 
