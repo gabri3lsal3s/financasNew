@@ -191,6 +191,13 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 - Não há cadastro formal de recorrência: o motor de insights (§3.8) **aprende do histórico** e detecta repetições mensais.
 
+#### 3.2.6 Valor Real vs. Valor no Relatório (Rateio e Ponderação)
+
+- **Entrada no lançamento:** opções rápidas em porcentagem (100%, 75%, 50%, 25%, 0%) e opção **"Personalizado"** com entrada direta do **valor gasto real em reais (R$)** considerado no relatório. O sistema converte e persiste a fração normalizada (0–1).
+- **Listas e Linhas de Transação:** quando uma despesa/receita possui `report_weight < 1`, o componente `TransactionRow` exibe o valor real/nominal em destaque com a indicação secundária `Relat.: R$ X,XX`.
+- **Detalhamento e Edição (`ExpenseDetailDialog`):** exibe o valor nominal e o valor no relatório correspondente tanto no cabeçalho quanto na lista de metadados, e permite editar o peso e o valor considerado no relatório.
+- **Cartões e Relatórios:** totalização e gráficos segregam e exibem simultaneamente os valores nominais brutos e os valores ponderados.
+
 ### 3.3 Cartões de Crédito
 
 #### 3.3.1 CRUD

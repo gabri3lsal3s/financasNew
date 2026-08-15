@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerHaptic } from "@/services/haptics";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
 import { useDensity } from "@/hooks/use-density";
@@ -11,8 +12,12 @@ export interface TransactionRowProps {
   title: string;
   subtitle?: string;
   date?: string;
-  /** Valor em centavos — exibido com sinal e cor pelo tipo. */
+  /** Valor real/nominal em centavos — exibido com sinal e cor pelo tipo. */
   amountCents: number;
+  /** Valor considerado no relatório em centavos (quando houver rateio/peso < 1). */
+  weightedAmountCents?: number;
+  /** Peso no relatório (0 a 1). */
+  reportWeight?: number;
   kind: "income" | "expense" | "neutral";
   icon?: string | null;
   iconColor?: string | null;
@@ -41,6 +46,8 @@ export function TransactionRow({
   subtitle,
   date,
   amountCents,
+  weightedAmountCents,
+  reportWeight,
   kind,
   icon,
   iconColor,
@@ -54,6 +61,17 @@ export function TransactionRow({
   const compact = density === "compact";
   const swipe = useSwipeAction({ onOpen: () => triggerHaptic("light") });
   const hasSwipe = swipeActions !== undefined;
+
+  const effectiveWeightedCents =
+    weightedAmountCents !== undefined
+      ? weightedAmountCents
+      : reportWeight !== undefined
+        ? Math.round(amountCents * reportWeight)
+        : undefined;
+
+  const hasDifferentWeight =
+    effectiveWeightedCents !== undefined &&
+    Math.abs(effectiveWeightedCents) !== Math.abs(amountCents);
 
   const content = (
     <div
@@ -78,14 +96,23 @@ export function TransactionRow({
       </div>
       {badges ? <div className="flex shrink-0 items-center gap-1.5">{badges}</div> : null}
       {/* Máscara global via .num (globals.css) — aria-hidden preserva a privacidade p/ leitores de tela. */}
-      <MoneyText
-        cents={kind === "expense" ? -Math.abs(amountCents) : amountCents}
-        variant="value"
-        tone={kindTone[kind]}
-        sign={kindSign[kind]}
-        className="shrink-0"
-        aria-hidden={masked || undefined}
-      />
+      <div className="flex flex-col items-end shrink-0 text-right">
+        <MoneyText
+          cents={kind === "expense" ? -Math.abs(amountCents) : amountCents}
+          variant="value"
+          tone={kindTone[kind]}
+          sign={kindSign[kind]}
+          aria-hidden={masked || undefined}
+        />
+        {hasDifferentWeight ? (
+          <span
+            className="text-[11px] text-muted-foreground font-mono"
+            title="Valor considerado no relatório"
+          >
+            Relat.: {formatCentsAsBRL(effectiveWeightedCents)}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 

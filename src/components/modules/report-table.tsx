@@ -58,7 +58,7 @@ export function ReportTable({
             header: "Nominal (100%)",
             align: "right" as const,
             cell: (row: ReportRow) => (
-              <MoneyText cents={row.brutoCents ?? row.valueCents} tone="muted" className="text-xs" />
+              <MoneyText cents={row.brutoCents ?? row.valueCents} tone="default" className="text-xs text-muted-foreground" />
             ),
           },
         ]
@@ -93,7 +93,7 @@ export function ReportTable({
           {hasDualMetrics && effectiveTotalBruto !== effectiveTotalPonderado ? (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span>Nominal:</span>
-              <MoneyText cents={effectiveTotalBruto} tone="muted" />
+              <MoneyText cents={effectiveTotalBruto} tone="default" className="text-muted-foreground" />
             </div>
           ) : null}
           <div className="flex items-center gap-1.5 text-sm font-semibold">

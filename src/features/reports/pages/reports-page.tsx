@@ -317,7 +317,7 @@ function SummaryCard({
       <div className="flex flex-col gap-0.5 mt-1 min-h-[18px]">
         {brutoCents !== undefined && brutoCents !== cents ? (
           <span className="truncate text-[11px] text-muted-foreground">
-            Nominal: <MoneyText cents={brutoCents} tone="muted" className="text-[11px]" />
+            Nominal: <MoneyText cents={brutoCents} tone="default" className="text-[11px] text-muted-foreground" />
           </span>
         ) : null}
         {delta !== null && delta !== undefined ? (

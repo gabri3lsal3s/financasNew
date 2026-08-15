@@ -35,6 +35,7 @@ function ExpenseRow({
       date={expense.date}
       subtitle={subtitle}
       amountCents={Math.round(expense.value * 100)}
+      reportWeight={expense.report_weight}
       kind="expense"
       icon={category?.icon}
       iconColor={category?.color}
@@ -68,6 +69,7 @@ function IncomeRow({ income, category }: { income: Income; category?: Category |
       title={income.description || category?.name || "Receita"}
       date={income.date}
       amountCents={Math.round(income.value * 100)}
+      reportWeight={income.report_weight}
       kind="income"
       icon={category?.icon}
       iconColor={category?.color}

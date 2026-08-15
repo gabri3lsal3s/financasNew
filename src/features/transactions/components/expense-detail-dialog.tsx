@@ -3,9 +3,11 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import { useCategories, useCreditCards, useDeleteExpense, useUpdateExpense } from "@/state";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
+import { resolveBillCompetence } from "@/domain/competence";
 import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod } from "@/types";
 
 export interface ExpenseDetailDialogProps {
@@ -29,7 +31,15 @@ const PAYMENT_OPTIONS = [
   { value: "other", label: "Outro" },
 ];
 
-import { resolveBillCompetence } from "@/domain/competence";
+const WEIGHT_PRESETS = [1, 0.75, 0.5, 0.25, 0];
+const WEIGHT_OPTIONS = [
+  { value: "1", label: "100% (conta integralmente)" },
+  { value: "0.75", label: "75%" },
+  { value: "0.5", label: "50%" },
+  { value: "0.25", label: "25%" },
+  { value: "0", label: "Não contar nos relatórios (0%)" },
+  { value: "custom", label: "Personalizado (definir valor em R$)…" },
+];
 
 interface ExpenseEditFormProps {
   expense: Expense;
@@ -45,6 +55,7 @@ interface ExpenseEditFormProps {
     payment_method: PaymentMethod;
     card_id: string | null;
     bill_competence: string | null;
+    report_weight: number;
   }) => Promise<void>;
 }
 
@@ -63,6 +74,11 @@ function ExpenseEditForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(expense.payment_method);
   const [cardId, setCardId] = useState<string>(expense.card_id || "");
   const [billCompetence, setBillCompetence] = useState<string>(expense.bill_competence || "");
+  const isPreset = WEIGHT_PRESETS.includes(expense.report_weight);
+  const [weightMode, setWeightMode] = useState<string>(isPreset ? String(expense.report_weight) : "custom");
+  const [reportCustomAmountCents, setReportCustomAmountCents] = useState(
+    Math.round(expense.value * expense.report_weight * 100),
+  );
   const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -82,6 +98,16 @@ function ExpenseEditForm({
       setFormError("Selecione o cartão de crédito.");
       return;
     }
+
+    if (weightMode === "custom" && (reportCustomAmountCents < 0 || reportCustomAmountCents > valueCents)) {
+      setFormError("O valor no relatório deve ser entre zero e o valor total da despesa.");
+      return;
+    }
+
+    const calculatedWeight =
+      weightMode === "custom"
+        ? Number((reportCustomAmountCents / valueCents).toFixed(4))
+        : Number(weightMode);
 
     setFormError(null);
     try {
@@ -104,6 +130,7 @@ function ExpenseEditForm({
         payment_method: paymentMethod,
         card_id: paymentMethod === "credit_card" ? cardId || null : null,
         bill_competence: effectiveCompetence,
+        report_weight: calculatedWeight,
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -204,6 +231,37 @@ function ExpenseEditForm({
         </>
       ) : null}
 
+      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        Peso no relatório
+        <Select
+          value={weightMode}
+          onValueChange={(val) => {
+            setWeightMode(val);
+            if (val === "custom" && reportCustomAmountCents === 0) {
+              setReportCustomAmountCents(valueCents);
+            }
+          }}
+          options={WEIGHT_OPTIONS}
+          ariaLabel="Peso no relatório"
+        />
+      </label>
+
+      {weightMode === "custom" ? (
+        <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-raised p-3">
+          <span className="text-xs font-medium text-foreground">Valor gasto real considerado no relatório</span>
+          <MoneyInput
+            cents={reportCustomAmountCents}
+            onCentsChange={setReportCustomAmountCents}
+            aria-label="Valor considerado no relatório"
+          />
+          {valueCents > 0 ? (
+            <span className="text-xs text-muted-foreground">
+              Equivale a {Math.round((reportCustomAmountCents / valueCents) * 100)}% do valor total ({formatCentsAsBRL(valueCents)}).
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="mt-2 flex items-center justify-end gap-2">
         <Button
           type="button"
@@ -264,6 +322,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
     payment_method: PaymentMethod;
     card_id: string | null;
     bill_competence: string | null;
+    report_weight: number;
   }) => {
     if (!expense) return;
     setError(null);
@@ -313,6 +372,11 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                       variant="value"
                       className="text-3xl font-bold"
                     />
+                    {expense.report_weight < 1 ? (
+                      <span className="text-xs font-mono text-muted-foreground">
+                        Valor no relatório: {formatCentsAsBRL(Math.round(expense.value * expense.report_weight * 100))} ({Math.round(expense.report_weight * 100)}%)
+                      </span>
+                    ) : null}
                     <p className="text-sm font-medium text-foreground">
                       {expense.description || currentCategory?.name || "Despesa"}
                     </p>
@@ -353,6 +417,14 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                       {PAYMENT_METHOD_LABELS[expense.payment_method] ?? expense.payment_method}
                     </dd>
                   </div>
+                  {expense.report_weight < 1 ? (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-xs text-muted-foreground">Valor no relatório</dt>
+                      <dd className="font-medium text-foreground text-xs font-mono">
+                        {formatCentsAsBRL(Math.round(expense.value * expense.report_weight * 100))} ({Math.round(expense.report_weight * 100)}%)
+                      </dd>
+                    </div>
+                  ) : null}
                   {isInstallment ? (
                     <div className="flex items-center justify-between">
                       <dt className="text-xs text-muted-foreground">Parcela</dt>

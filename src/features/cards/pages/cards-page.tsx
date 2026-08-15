@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { Plus, Trash2, Undo2, WalletCards } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, Skeleton } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, EmptyState, MoneyText, Skeleton } from "@/components/ui";
 import {
   CreditCardWallet,
   InvoiceStatusBadge,
@@ -356,19 +356,14 @@ export function CardsPage() {
             ) : (
               competenceExpenses.map((expense) => {
                 const category = categoryById.get(expense.category_id);
-                const hasCustomWeight = expense.report_weight < 1;
                 const title = expense.description || category?.name || "Despesa";
                 return (
                   <TransactionRow
                     key={expense.id}
                     title={title}
                     date={expense.date}
-                    subtitle={
-                      hasCustomWeight
-                        ? `${Math.round(expense.report_weight * 100)}% no relatório (Ponderado: ${formatCentsAsBRL(Math.round(expense.value * expense.report_weight * 100))})`
-                        : undefined
-                    }
                     amountCents={Math.round(expense.value * 100)}
+                    reportWeight={expense.report_weight}
                     kind="expense"
                     icon={category?.icon}
                     iconColor={category?.color}

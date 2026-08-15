@@ -46,7 +46,7 @@ describe("FloatingCalculator (F9)", () => {
     registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
-    await openCalculator(user);
+    await openCalculator();
 
     await user.click(screen.getByRole("button", { name: "Dígito 2" }));
     await user.click(screen.getByRole("button", { name: "Somar" }));
@@ -62,7 +62,7 @@ describe("FloatingCalculator (F9)", () => {
     registerCalculatorTarget(setter);
     const user = userEvent.setup();
     render(<FloatingCalculator />);
-    await openCalculator(user);
+    await openCalculator();
 
     await user.click(screen.getByRole("button", { name: "Dígito 1" }));
     await user.click(screen.getByRole("button", { name: "Dígito 0" }));
@@ -78,7 +78,7 @@ describe("FloatingCalculator (F9)", () => {
     registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
-    await openCalculator(user);
+    await openCalculator();
 
     // Remove o campo ativo enquanto o painel está aberto.
     const target = getCalculatorTarget();
@@ -94,7 +94,7 @@ describe("FloatingCalculator (F9)", () => {
     registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
-    await openCalculator(user);
+    await openCalculator();
 
     await user.click(screen.getByRole("button", { name: "Dígito 1" }));
     await user.click(screen.getByRole("button", { name: "Dígito 0" }));

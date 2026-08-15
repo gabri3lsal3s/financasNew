@@ -34,14 +34,16 @@ describe("TransactionRow", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("todas as linhas usam a mesma superfície (bg-surface) — receitas e despesas iguais", () => {
-    const { container } = render(
-      <>
-        <TransactionRow title="Salário" amountCents={1000} kind="income" />
-        <TransactionRow title="Aluguel" amountCents={1000} kind="expense" />
-      </>,
+  it("exibe valor real e valor ponderado no relatório quando reportWeight < 1", () => {
+    render(
+      <TransactionRow
+        title="Jantar Compartilhado"
+        amountCents={20000}
+        reportWeight={0.5}
+        kind="expense"
+      />,
     );
-    const rows = Array.from(container.querySelectorAll(".rounded-xl.bg-surface"));
-    expect(rows).toHaveLength(2);
+    expect(screen.getByText("−R$ 200,00")).toBeInTheDocument();
+    expect(screen.getByText(/Relat\.:\s*R\$\s*100,00/)).toBeInTheDocument();
   });
 });
