@@ -777,11 +777,10 @@
   - ESLint 100% verde com 0 erros e 0 warnings (`npm run lint`).
 
 **Correções pós-F13 (2026-08-15):**
-- [x] **Bloqueio estrito de orientação mobile (portrait only) — 3 camadas combinadas:**
+- [x] **Bloqueio estrito de orientação mobile (portrait only):**
   - **Manifest** (`public/pwa/manifest.webmanifest`): `orientation: "portrait"` + `display: "standalone"` (PWA instalado respeita a trava do sistema).
-  - **JS** (`src/services/orientation-lock.ts`): `screen.orientation.lock("portrait")` no bootstrap (`initOrientationLock` no `main.tsx`) — cobre Chrome/API com suporte; no-op silencioso sem suporte; reaplica ao voltar de fullscreen.
-  - **Overlay de fallback** (`src/components/modules/orientation-lock-overlay.tsx`): quando um dispositivo de toque está em paisagem e a API não segurou (iOS Safari, Chrome não-instalado), exibe "Gire o dispositivo" (ícone `RotateCcw` + texto pt-BR, `role="status"`) impedindo o uso em landscape — montado no `main.tsx` (cobre telas de auth também), acima de tudo via novo token `--z-orientation-lock: 90`.
-  - **Testes:** 12 novos (8 do serviço — lock no-op/com API, detecção de paisagem mobile, notificação de assinantes, reset; 4 do overlay — retrato/desktop não renderizam, paisagem renderiza, axe sem violações). Suíte completa **837 testes** verde; typecheck/lint/build sem erros.
+  - **JS** (`src/services/orientation-lock.ts`): `lockPortrait()` com `screen.orientation.lock("portrait-primary")`/`lock("portrait")` no bootstrap e no **primeiro gesto do usuário** (pointerdown/touchstart/click — exigência de ativação por interação de navegadores mobile), reaplicação em `visibilitychange`/`fullscreenchange`/rotação, prefixos legados (`lockOrientation`/`mozLockOrientation`/`msLockOrientation`) e no-op silencioso onde não há suporte. O overlay de fallback "Gire o dispositivo" foi **removido** (decisão do usuário, 2026-08-15 — o bloqueio fica por conta do manifest + API; sem bloqueio visual em paisagem).
+  - **Testes:** cobertura do serviço (lock no-op/com API, ativação por gesto, reaplicação em eventos, prefixos legados, reset).
 
 ---
 
