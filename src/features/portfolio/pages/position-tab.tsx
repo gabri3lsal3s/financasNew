@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Wallet } from "lucide-react";
-import { Alert, Button, EmptyState, Skeleton } from "@/components/ui";
-import { KpiCard, PositionTable } from "@/components/modules";
+import { Alert, Button, EmptyState, SkeletonKpi, SkeletonTable } from "@/components/ui";
+import { DeltaHint, KpiCard, PositionTable } from "@/components/modules";
 import { usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { AssetFormDialog } from "@/features/portfolio/components/asset-form-dialog";
 import { TransactionFormDialog } from "@/features/portfolio/components/transaction-form-dialog";
@@ -20,6 +20,11 @@ export function PositionTab() {
     const asset = (assetsQuery.data ?? []).find((a) => a.id === assetId);
     if (asset) setTxFor(asset);
   };
+
+  // Comparativo Δ vs. mês anterior (F14) — série mensal derivada no state.
+  const series = position.monthlySeries;
+  const previousPoint = series.length > 0 ? series[series.length - 2] : undefined;
+  const previousCents = previousPoint ? toCents(previousPoint.valueBRL) : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,19 +50,21 @@ export function PositionTab() {
       ) : null}
 
       {position.isLoading ? (
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-3 gap-3">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
+        <div className="flex flex-col gap-3" aria-hidden="true">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <SkeletonKpi />
+            <SkeletonKpi />
+            <SkeletonKpi />
           </div>
-          <Skeleton className="h-48 w-full" />
+          <SkeletonTable rows={5} />
         </div>
       ) : position.rows.length === 0 ? (
         <EmptyState
           icon={<Wallet className="size-6" aria-hidden="true" />}
           title="Carteira vazia"
           description="Adicione um ativo e registre as transações para montar a posição e usar a calculadora de aporte."
+          tone="portfolio"
+          headingLevel="h2"
           action={
             <Button type="button" onClick={() => setAssetOpen(true)}>
               <Plus aria-hidden="true" />
@@ -68,7 +75,12 @@ export function PositionTab() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <KpiCard label="Patrimônio total" cents={toCents(position.totalBRL)} tone="portfolio" />
+            <KpiCard
+              label="Patrimônio total"
+              cents={toCents(position.totalBRL)}
+              tone="portfolio"
+              hint={<DeltaHint currentCents={toCents(position.totalBRL)} previousCents={previousCents} />}
+            />
             <KpiCard
               label="Caixa derivado"
               cents={toCents(position.cashBRL)}

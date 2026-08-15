@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Save, Shield, Trash2 } from "lucide-react";
-import { Alert, Button, EmptyState, Input, Skeleton } from "@/components/ui";
+import { Alert, Button, EmptyState, Input, SkeletonList, SkeletonTable } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
 import { parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -23,7 +23,7 @@ const toCents = (value: number) => Math.round((Number.isFinite(value) ? value : 
  * (≤ 100%, validada na UI e no banco via RPC), metas por classe e travas
  * setoriais (max_sector_acoes / max_sector_fiis).
  */
-export function TargetsTab() {
+export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
@@ -133,15 +133,24 @@ export function TargetsTab() {
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       {loading ? (
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-48 w-full" />
+        <div className="flex flex-col gap-3" aria-hidden="true">
+          <SkeletonList rows={4} />
+          <SkeletonTable rows={3} />
         </div>
       ) : position.rows.length === 0 ? (
         <EmptyState
           icon={<Save className="size-6" aria-hidden="true" />}
           title="Sem ativos para definir metas"
           description="Adicione ativos na aba Posição para definir as metas de alocação."
+          tone="portfolio"
+          headingLevel="h2"
+          action={
+            onGoToPosition ? (
+              <Button type="button" onClick={onGoToPosition}>
+                Ir para Posição
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <TargetEditor

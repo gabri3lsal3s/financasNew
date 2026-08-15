@@ -804,6 +804,18 @@
 - `inputMode` correto em todos os campos numéricos da carteira; axe sem violações nas 3 abas.
 - Suíte 100% verde; revisão desktop + mobile nos 3 temas.
 
+**Progresso — F14 (2026-08-15):**
+- [x] **Rentabilidade não realizada no domínio** — `positionPnl(valueBRL, totalCost)` → `{ unrealizedPnl, unrealizedPct }` (pct `null` sem custo — caixa) em `domain/portfolio` com **8 testes de reconciliação** (DoD: compra 10 × R$ 100 → preço R$ 120 ⇒ +R$ 200 / +20%; prejuízo negativo; sem custo; arredondamentos).
+- [x] **Série mensal derivada** — `portfolioMonthlySeries` (função pura: ledger acumulado até o fim de cada mês, valorado aos preços atuais — aproximação documentada) com **4 testes**; exposta em `usePortfolioPosition.monthlySeries` (últimos 6 meses) para o comparativo e a sparkline da F16.
+- [x] **Skeletons por contexto na carteira** — `PositionTab` (3× `SkeletonKpi` + `SkeletonTable rows={5}`), `TargetsTab` (`SkeletonList` + `SkeletonTable`), `AporteTab` (`SkeletonKpi` + `SkeletonChart`) — **zero blocos genéricos `h-24`/`h-48`** (padrão F12).
+- [x] **Empty states ricos** — as 3 abas com `EmptyState` contextual: tom `portfolio` (novo tone no primitivo) + CTA (Posição: "Adicionar ativo"; Metas/Aporte: "Ir para Posição" via callback de troca de aba) + `headingLevel` (`h2` direto sob o `h1` — ordem de headings válida, a11y).
+- [x] **Hierarquia de patrimônio** — KPI "Patrimônio total" com comparativo **Δ vs. mês anterior** (`DeltaHint` — módulo compartilhado extraído da Overview, DRY §4) alimentado pela série mensal.
+- [x] **Colunas de Lucro/Prejuízo e Rentab.** — `PositionTable` com `MoneyText` (tom semântico `auto` + sinal explícito — negativo nunca vira "R$ 0,00") e % com cor; caixa exibido como em-dash; densidade propagada via `useDensity`; ação de linha com alvo de toque ≥ 44px (`min-h-11`).
+- [x] **Teclado/inputMode auditados** — todos os campos numéricos da carteira já usavam `inputMode="decimal"` (quantidade/preço/fator, metas, travas); sem mudanças necessárias.
+- [x] **A11y** — axe sem violações nas **3 abas** (teste dedicado); `TargetEditor` com `h2` (ordem de heading sob o `h1` da página); `EmptyState` com `headingLevel` configurável.
+- [x] **Testes** — 8 novos de `positionPnl` (reconciliação DoD) + 4 de `portfolioMonthlySeries` + 4 do `DeltaHint` + 1 axe nas 3 abas; página com assertions das novas colunas. Suíte completa verde; typecheck/lint/build limpos.
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+
 ---
 
 ### Fase 15 — Micro-Interações, Feedback & Conforto Visual (Trilha A)
@@ -995,11 +1007,11 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### 6.1 Ordem de execução das próximas fases (status 2026-08-15)
 
-> Todas as fases F14–F20 estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
+> **F14 concluída (2026-08-15)** — ver progresso na seção §3. As demais fases F15–F20 estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
 
 | Ordem | Fase | Trilha | Depende de | Status |
 |---|---|---|---|---|
-| 1 | **F14** — Consistência de Estados & Ergonomia de Dados | A | — | 📋 Não iniciada |
+| 1 | **F14** — Consistência de Estados & Ergonomia de Dados | A | — | ✅ Concluída (2026-08-15) |
 | 2 | **F15** — Micro-Interações & Conforto Visual | A | F14 | 📋 Não iniciada |
 | 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 (pode intercalar) | 📋 Não iniciada |
 | 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | 📋 Não iniciada |

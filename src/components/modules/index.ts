@@ -1,5 +1,7 @@
 export { KpiCard } from "./kpi-card";
 export type { KpiCardProps } from "./kpi-card";
+export { DeltaHint } from "./delta-hint";
+export type { DeltaHintProps } from "./delta-hint";
 export { CategoryIcon } from "./category-icon";
 export type { CategoryIconProps } from "./category-icon";
 export { CATEGORY_ICON_MAP, CATEGORY_ICON_OPTIONS } from "./category-icons";

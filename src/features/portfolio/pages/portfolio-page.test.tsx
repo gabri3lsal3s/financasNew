@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { axe } from "vitest-axe";
 import { PortfolioPage } from "./portfolio-page";
 
 const rows = [
@@ -17,6 +18,8 @@ const rows = [
     source: "manual",
     valueBRL: 425,
     pct: 42.5,
+    unrealizedPnl: 25,
+    unrealizedPct: 6.25,
     isCash: false,
   },
   {
@@ -32,6 +35,8 @@ const rows = [
     source: "fallback",
     valueBRL: 575,
     pct: 57.5,
+    unrealizedPnl: 0,
+    unrealizedPct: null,
     isCash: true,
   },
 ];
@@ -41,6 +46,14 @@ vi.mock("@/state", () => ({
     rows,
     totalBRL: 1000,
     cashBRL: -425,
+    monthlySeries: [
+      { month: "2026-03", valueBRL: 800 },
+      { month: "2026-04", valueBRL: 900 },
+      { month: "2026-05", valueBRL: 950 },
+      { month: "2026-06", valueBRL: 1100 },
+      { month: "2026-07", valueBRL: 1000 },
+      { month: "2026-08", valueBRL: 1000 },
+    ],
     isLoading: false,
     error: null,
     refetch: vi.fn(),
@@ -73,6 +86,19 @@ describe("PortfolioPage (carteira §3.11 — Fase 4 entrega 5)", () => {
     expect(screen.getByTitle("Ativo de caixa/reserva valorado 1:1")).toBeInTheDocument();
   });
 
+  it("exibe rentabilidade não realizada (F14): lucro com sinal e tom, caixa sem percentual", () => {
+    render(<PortfolioPage />);
+    // PETR4: valor 425 − custo 400 = +25 (6,25%). MoneyText com sinal explícito.
+    expect(screen.getByText("+R$ 25,00")).toBeInTheDocument();
+    expect(screen.getByText("+6,3%")).toBeInTheDocument();
+    // CAIXA (1:1): sem lucro/prejuízo e sem rentabilidade — em-dash.
+    const dashes = screen.getAllByText("—");
+    expect(dashes.length).toBeGreaterThanOrEqual(2);
+    // Comparativo Δ vs. mês anterior (série derivada): 1.000 vs 1.000 → variação 0%
+    // (DeltaHint renderiza 0,0% com a seta neutra — paridade com a Overview).
+    expect(screen.getByText("0,0%")).toBeInTheDocument();
+  });
+
   it("edita metas por ativo com barra de soma e mostra travas setoriais", async () => {
     const user = userEvent.setup();
     render(<PortfolioPage />);
@@ -101,5 +127,15 @@ describe("PortfolioPage (carteira §3.11 — Fase 4 entrega 5)", () => {
     // Aporte informado e sobra (sem metas, nada é alocado).
     expect(screen.getAllByText("R$ 1.000,00").length).toBeGreaterThan(0);
     expect(screen.getByText(/Nenhum ativo elegível/)).toBeInTheDocument();
+  });
+
+  it("não tem violações de acessibilidade nas 3 abas (DoD F14)", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PortfolioPage />);
+    expect(await axe(container)).toHaveNoViolations();
+    await user.click(screen.getByRole("tab", { name: "Metas" }));
+    expect(await axe(container)).toHaveNoViolations();
+    await user.click(screen.getByRole("tab", { name: "Aporte" }));
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

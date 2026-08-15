@@ -4,6 +4,8 @@ import {
   applyOperation,
   computeLedger,
   convertToBRL,
+  portfolioMonthlySeries,
+  positionPnl,
   valuePosition,
   type LedgerTransaction,
 } from "./index";
@@ -147,5 +149,89 @@ describe("applyOperation (unitário)", () => {
     const base = { quantity: 10, averageCost: 100, totalCost: 1000, dividends: 0 };
     const result = applyOperation(base, { type: "fii_yield", quantity: 0, price: 0, total: 42 });
     expect(result).toEqual({ quantity: 10, averageCost: 100, totalCost: 1000, dividends: 42 });
+  });
+});
+
+describe("positionPnl — rentabilidade não realizada (F14, DoD)", () => {
+  it("compra 10 × R$ 100 → preço R$ 120 ⇒ +R$ 200 / +20%", () => {
+    // DoD F14: reconciliação manual — custo 1.000, valor 1.200.
+    const pnl = positionPnl(1200, 1000);
+    expect(pnl.unrealizedPnl).toBe(200);
+    expect(pnl.unrealizedPct).toBe(20);
+  });
+
+  it("preço abaixo do custo ⇒ prejuízo negativo (valor − custo)", () => {
+    const pnl = positionPnl(900, 1000);
+    expect(pnl.unrealizedPnl).toBe(-100);
+    expect(pnl.unrealizedPct).toBe(-10);
+  });
+
+  it("sem custo (caixa/reserva 1:1) ⇒ percentual null", () => {
+    const pnl = positionPnl(500, 0);
+    expect(pnl.unrealizedPnl).toBe(500);
+    expect(pnl.unrealizedPct).toBeNull();
+  });
+
+  it("arredonda o PnL para 2 casas e o percentual para 2 casas", () => {
+    const pnl = positionPnl(1000.05, 999.99);
+    expect(pnl.unrealizedPnl).toBe(0.06);
+    expect(pnl.unrealizedPct).toBe(0.01); // 0,06 ÷ 999,99 × 100 ≈ 0,006% → 0,01%
+  });
+});
+
+describe("portfolioMonthlySeries — série mensal derivada (F14)", () => {
+  const buy = (overrides: Partial<LedgerTransaction> & Pick<LedgerTransaction, "type" | "date">): LedgerTransaction =>
+    tx({ ...overrides, quantity: overrides.quantity ?? 10, price: overrides.price ?? 100, total: overrides.total ?? 1000 });
+
+  it("valora cada mês com o ledger acumulado até o fim do mês (preço atual)", () => {
+    const transactionsByAsset = new Map([
+      ["a1", [buy({ type: "buy", date: "2026-01-15", quantity: 10, price: 100, total: 1000 })]],
+    ]);
+    const assets = [{ assetId: "a1", isCash: false, priceBRL: 120 }];
+    const series = portfolioMonthlySeries(transactionsByAsset, assets, ["2026-01", "2026-02", "2026-03"]);
+    // Jan: 10 × 120 = 1.200 · Fev/Mar: mesma posição (sem novas transações) → 1.200.
+    expect(series).toEqual([
+      { month: "2026-01", valueBRL: 1200 },
+      { month: "2026-02", valueBRL: 1200 },
+      { month: "2026-03", valueBRL: 1200 },
+    ]);
+  });
+
+  it("mês sem transações ainda vale a posição acumulada anterior", () => {
+    const transactionsByAsset = new Map([
+      ["a1", [buy({ type: "buy", date: "2026-01-15" })]],
+      ["c1", [{ ...tx({ type: "buy", date: "2026-01-05" }), quantity: 500, price: 1, total: 500 }]],
+    ]);
+    const assets = [
+      { assetId: "a1", isCash: false, priceBRL: 120 },
+      { assetId: "c1", isCash: true, priceBRL: 1 },
+    ];
+    const series = portfolioMonthlySeries(transactionsByAsset, assets, ["2026-01", "2026-02"]);
+    // Jan: ativo 10×120=1.200 + caixa 500×1=500 ⇒ 1.700. Fev: idem.
+    expect(series).toEqual([
+      { month: "2026-01", valueBRL: 1700 },
+      { month: "2026-02", valueBRL: 1700 },
+    ]);
+  });
+
+  it("compra posterior aumenta a posição apenas no mês dela", () => {
+    const transactionsByAsset = new Map([
+      ["a1", [buy({ type: "buy", date: "2026-01-15", quantity: 10 }), buy({ type: "buy", date: "2026-03-10", quantity: 10 })]],
+    ]);
+    const assets = [{ assetId: "a1", isCash: false, priceBRL: 120 }];
+    const series = portfolioMonthlySeries(transactionsByAsset, assets, ["2026-01", "2026-02", "2026-03"]);
+    expect(series).toEqual([
+      { month: "2026-01", valueBRL: 1200 },
+      { month: "2026-02", valueBRL: 1200 },
+      { month: "2026-03", valueBRL: 2400 },
+    ]);
+  });
+
+  it("carteira sem transações → zero em todos os meses", () => {
+    const series = portfolioMonthlySeries(new Map(), [{ assetId: "a1", isCash: false, priceBRL: 120 }], ["2026-01", "2026-02"]);
+    expect(series).toEqual([
+      { month: "2026-01", valueBRL: 0 },
+      { month: "2026-02", valueBRL: 0 },
+    ]);
   });
 });

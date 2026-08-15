@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
 import type { PriceSource } from "@/domain/portfolio";
+import { useDensity } from "@/hooks/use-density";
+import { cn } from "@/lib/utils";
 import type { AssetCurrency } from "@/types";
 import type { ReactNode } from "react";
 
@@ -17,6 +19,10 @@ export interface PositionRow {
   source: PriceSource;
   valueBRL: number;
   pct: number;
+  /** Lucro/prejuízo não realizado em BRL (valor − custo; F14). */
+  unrealizedPnl: number;
+  /** Rentabilidade % sobre o custo (null quando não há custo — caixa; F14). */
+  unrealizedPct: number | null;
   isCash: boolean;
 }
 
@@ -35,12 +41,19 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
 
 const toCents = (value: number): number => Math.round((Number.isFinite(value) ? value : 0) * 100);
 
+const formatPct = (value: number): string =>
+  `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+
 /**
- * Posição da carteira — módulo de domínio reutilizável (F4).
+ * Posição da carteira — módulo de domínio reutilizável (F4 + F14).
  * Recebe linhas prontas (posição derivada no state); marca a fonte do preço,
- * destacando o override manual ("informado manualmente" — DoD F4).
+ * destacando o override manual ("informado manualmente" — DoD F4), e exibe a
+ * rentabilidade não realizada com tom semântico (F14 — valores calculados no
+ * domínio, a UI só formata). Respeita o toggle global de densidade (F8).
  */
 export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: PositionTableProps) {
+  const density = useDensity();
+
   const columns: {
     key: string;
     header: ReactNode;
@@ -104,6 +117,32 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
       cell: (row) => <MoneyText cents={toCents(row.valueBRL)} tone="default" />,
     },
     {
+      key: "unrealizedPnl",
+      header: "Lucro/Prejuízo",
+      align: "right",
+      cell: (row) =>
+        row.isCash ? (
+          <span className="num text-sm text-muted-foreground">—</span>
+        ) : (
+          <MoneyText cents={toCents(row.unrealizedPnl)} tone="auto" sign="explicit" />
+        ),
+    },
+    {
+      key: "unrealizedPct",
+      header: "Rentab.",
+      align: "right",
+      cell: (row) => {
+        if (row.isCash || row.unrealizedPct === null) {
+          return <span className="num text-sm text-muted-foreground">—</span>;
+        }
+        return (
+          <span className={cn("num text-sm font-semibold", row.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong")}>
+            {formatPct(row.unrealizedPct)}
+          </span>
+        );
+      },
+    },
+    {
       key: "pct",
       header: "% patrimônio",
       align: "right",
@@ -114,13 +153,14 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
   if (onRegisterTransaction) {
     columns.push({
       key: "actions",
-      header: "",
+      header: <span className="sr-only">Ações</span>,
       align: "right",
       cell: (row) => (
         <Button
           type="button"
           size="sm"
           variant="ghost"
+          className="min-h-11"
           aria-label={`Registrar transação de ${row.ticker}`}
           onClick={() => onRegisterTransaction(row.assetId, row.ticker)}
         >
@@ -135,7 +175,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
       columns={columns}
       rows={rows}
       rowKey={(row) => row.assetId}
-      density="default"
+      density={density === "compact" ? "compact" : "comfortable"}
       emptyMessage={emptyMessage ?? "Nenhum ativo na carteira."}
     />
   );

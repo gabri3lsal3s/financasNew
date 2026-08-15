@@ -24,8 +24,16 @@ export function PortfolioPage() {
         onValueChange={(value) => setTab(value as PortfolioTab)}
         items={[
           { value: "position", label: "Posição", content: <PositionTab /> },
-          { value: "targets", label: "Metas", content: <TargetsTab /> },
-          { value: "aporte", label: "Aporte", content: <AporteTab /> },
+          {
+            value: "targets",
+            label: "Metas",
+            content: <TargetsTab onGoToPosition={() => setTab("position")} />,
+          },
+          {
+            value: "aporte",
+            label: "Aporte",
+            content: <AporteTab onGoToPosition={() => setTab("position")} />,
+          },
         ]}
       />
     </div>

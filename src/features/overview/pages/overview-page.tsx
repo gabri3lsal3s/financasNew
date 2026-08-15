@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Activity, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Activity, Inbox, PieChart, PiggyBank, ShieldCheck, Target, Wallet } from "lucide-react";
 import { Alert, Badge, EmptyState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   DailyFlowChart,
+  DeltaHint,
   KpiCard,
   MonthPicker,
   OnboardingCard,
@@ -23,7 +24,6 @@ import {
   buildDailyFlow,
   computeOverview,
   openInvoicesTotal,
-  percentChange,
 } from "@/domain/overview";
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -51,20 +51,6 @@ const weightedSum = (items: readonly { value: number; report_weight: number }[])
 
 const formatPercent = (value: number) =>
   value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-
-function DeltaHint({ currentCents, previousCents, invert }: { currentCents: number; previousCents: number; invert?: boolean }) {
-  const delta = percentChange(currentCents, previousCents);
-  if (delta === null) return null;
-  const up = delta >= 0;
-  const positive = invert ? !up : up;
-  const Icon = up ? TrendingUp : TrendingDown;
-  return (
-    <span className={cn("inline-flex items-center gap-0.5", positive ? "text-positive-strong" : "text-negative-strong")}>
-      <Icon className="size-3" aria-hidden="true" />
-      <span>{formatPercent(Math.abs(delta))}%</span>
-    </span>
-  );
-}
 
 export function OverviewPage() {
   const [month, setMonth] = useState(currentMonth);

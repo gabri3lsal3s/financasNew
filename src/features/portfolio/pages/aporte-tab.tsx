@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Calculator } from "lucide-react";
-import { Alert, EmptyState, MoneyInput, RadioGroup, Skeleton } from "@/components/ui";
+import { Alert, Button, EmptyState, MoneyInput, RadioGroup, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
   classCapsFromSectorCaps,
@@ -23,7 +23,7 @@ import {
  * por meta individual de ativo ou por meta de classe, com travas setoriais
  * e log de roteamento. Nada é persistido: a sugestão é um relatório.
  */
-export function AporteTab() {
+export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
@@ -85,15 +85,24 @@ export function AporteTab() {
       {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
 
       {loading ? (
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-48 w-full" />
+        <div className="flex flex-col gap-3" aria-hidden="true">
+          <SkeletonKpi />
+          <SkeletonChart />
         </div>
       ) : assets.length === 0 ? (
         <EmptyState
           icon={<Calculator className="size-6" aria-hidden="true" />}
           title="Carteira vazia"
           description="Adicione ativos na aba Posição antes de simular o aporte."
+          tone="portfolio"
+          headingLevel="h2"
+          action={
+            onGoToPosition ? (
+              <Button type="button" onClick={onGoToPosition}>
+                Ir para Posição
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <>
@@ -135,6 +144,7 @@ export function AporteTab() {
               icon={<Calculator className="size-6" aria-hidden="true" />}
               title="Informe o valor do aporte"
               description="A simulação distribui o aporte pelos gaps de alocação e devolve a sobra para caixa/reserva."
+              headingLevel="h2"
             />
           ) : result ? (
             <AporteResult

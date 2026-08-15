@@ -175,6 +175,69 @@ export function convertToBRL(valueCents: number, currency: "BRL" | "USD", usdRat
   return currency === "USD" ? Math.round(valueCents * usdRate) : valueCents;
 }
 
+// ---------------------------------------------------------------------------
+// Rentabilidade não realizada & série mensal derivada (F14)
+// ---------------------------------------------------------------------------
+
+export interface PositionPnl {
+  /** Lucro/prejuízo não realizado em BRL: valor de mercado − custo total. */
+  unrealizedPnl: number;
+  /**
+   * Rentabilidade % sobre o custo (÷ custo total). `null` quando não há
+   * custo (ex.: caixa/reserva 1:1 — o conceito de rentabilidade não se aplica).
+   */
+  unrealizedPct: number | null;
+}
+
+/**
+ * Rentabilidade de uma posição (§F14): valor de mercado − custo total e
+ * percentual sobre o custo. Função pura — a UI só exibe os valores (regra
+ * de ouro: nenhum cálculo em componente).
+ */
+export function positionPnl(valueBRL: number, totalCost: number): PositionPnl {
+  const unrealizedPnl = roundMoney(valueBRL - totalCost);
+  const unrealizedPct = totalCost > 0 ? Math.round((unrealizedPnl / totalCost) * 10000) / 100 : null;
+  return { unrealizedPnl, unrealizedPct };
+}
+
+export interface MonthlySeriesPoint {
+  /** Mês YYYY-MM (ascendente). */
+  month: string;
+  /** Patrimônio derivado ao fim do mês (BRL). */
+  valueBRL: number;
+}
+
+export interface MonthlySeriesAsset {
+  assetId: string;
+  isCash: boolean;
+  /** Preço unitário atual em BRL (caixa = 1 — valor 1:1). */
+  priceBRL: number;
+}
+
+/**
+ * Série mensal derivada do patrimônio (§F14): para cada mês, aplica o ledger
+ * com as transações até o fim do mês e valora com os PREÇOS ATUAIS
+ * (aproximação — o histórico de cotações não é armazenado; a posição do mês
+ * é derivada das transações, valorada ao preço de hoje). Permite o
+ * comparativo "Δ vs. mês anterior" do KPI Patrimônio e a futura sparkline
+ * (F16). Função pura testável.
+ */
+export function portfolioMonthlySeries(
+  transactionsByAsset: ReadonlyMap<string, readonly LedgerTransaction[]>,
+  assets: readonly MonthlySeriesAsset[],
+  months: readonly string[],
+): MonthlySeriesPoint[] {
+  return months.map((month) => {
+    let total = 0;
+    for (const asset of assets) {
+      const txs = (transactionsByAsset.get(asset.assetId) ?? []).filter((tx) => tx.date.slice(0, 7) <= month);
+      const ledger = computeLedger(txs);
+      total = roundMoney(total + (asset.isCash ? ledger.quantity : ledger.quantity * asset.priceBRL));
+    }
+    return { month, valueBRL: roundMoney(total) };
+  });
+}
+
 export {
   FALLBACK_USD_RATE,
   applySpikeGuardrail,

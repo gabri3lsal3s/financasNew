@@ -47,7 +47,7 @@ export function TargetEditor({
 
   return (
     <section aria-label={heading ?? "Metas de alocação"} className="flex flex-col gap-4">
-      {heading ? <h3 className="text-sm font-semibold text-foreground">{heading}</h3> : null}
+      {heading ? <h2 className="text-sm font-semibold text-foreground">{heading}</h2> : null}
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">

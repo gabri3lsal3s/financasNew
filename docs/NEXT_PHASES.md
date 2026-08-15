@@ -1,6 +1,6 @@
 # 🧭 NEXT_PHASES.md — Proposta de Novas Fases do Roadmap
 
-> **Status:** v1.2 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação.
+> **Status:** v1.3 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação; **v1.3** registra a **conclusão da Fase 14** (2026-08-15 — ver `ROADMAP.md` §3): rentabilidade não realizada no domínio, série mensal derivada, skeletons por contexto, empty states ricos com CTA e a11y (axe nas 3 abas).
 > Objetivos estratégicos:
 > **1. Refinamento Máximo de UI/UX & Conforto Visual (Prioridade Principal)** — elevar usabilidade, fluidez, micro-interações, consistência de Design System e ergonomia em desktop e mobile.
 > **2. Módulo de Carteira de Investimentos completo e integrado** — tirar o placeholder da Home do papel e entregar o ecossistema de investimentos.

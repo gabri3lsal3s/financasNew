@@ -4,20 +4,25 @@ import {
   computeLedger,
   fallbackPriceFor,
   isCashAssetClass,
+  portfolioMonthlySeries,
+  positionPnl,
   resolvePrice,
   usdRateFromPrices,
   valueAssetPosition,
   type LedgerTransaction,
   type PriceSource,
 } from "@/domain/portfolio";
+import { currentMonth, shiftMonth } from "@/lib/date";
 import type { AssetCurrency, PortfolioTransaction } from "@/types";
 
 /**
  * Posição consolidada da carteira (§3.11.2) — derivação local de exibição:
  *   • Ledger por ativo (custo médio, quantidade, proventos — domain puro);
  *   • Valoração em BRL com pipeline manual → cache → fallback (D5);
+ *   • Rentabilidade não realizada (valor − custo, % sobre o custo — F14);
  *   • Caixa/reserva com valor 1:1 (quantidade = valor);
- *   • pctAtual = valor ÷ patrimônio total × 100.
+ *   • pctAtual = valor ÷ patrimônio total × 100;
+ *   • Série mensal derivada (F14) para o comparativo Δ vs. mês anterior.
  * Nenhuma posição é armazenada — tudo derivado das transações + cotações.
  */
 
@@ -40,6 +45,10 @@ export interface PortfolioPositionRow {
   valueBRL: number;
   /** % do patrimônio (0–100). */
   pct: number;
+  /** Lucro/prejuízo não realizado em BRL (valor − custo; F14). */
+  unrealizedPnl: number;
+  /** Rentabilidade % sobre o custo (null quando não há custo — caixa; F14). */
+  unrealizedPct: number | null;
   isCash: boolean;
 }
 
@@ -49,6 +58,12 @@ export interface PortfolioPosition {
   totalBRL: number;
   /** Caixa derivado do ledger (fluxo líquido) — pode ser negativo. */
   cashBRL: number;
+  /**
+   * Série mensal derivada (F14): últimos 6 meses, valorados com os preços
+   * atuais (aproximação documentada em `portfolioMonthlySeries`). Usada no
+   * comparativo "Δ vs. mês anterior" do KPI Patrimônio e na sparkline (F16).
+   */
+  monthlySeries: { month: string; valueBRL: number }[];
   isLoading: boolean;
   error: unknown;
   /** Reexecuta as consultas de ativos, transações e preços. */
@@ -112,6 +127,7 @@ export function usePortfolioPosition(): PortfolioPosition {
     }
 
     totalBRL = round2(totalBRL + valueBRL);
+    const pnl = positionPnl(valueBRL, ledger.totalCost);
     rawRows.push({
       assetId: asset.id,
       ticker: asset.ticker,
@@ -124,6 +140,8 @@ export function usePortfolioPosition(): PortfolioPosition {
       priceBRL,
       source,
       valueBRL: round2(valueBRL),
+      unrealizedPnl: pnl.unrealizedPnl,
+      unrealizedPct: pnl.unrealizedPct,
       isCash,
     });
   }
@@ -133,10 +151,21 @@ export function usePortfolioPosition(): PortfolioPosition {
     pct: totalBRL > 0 ? Math.round((row.valueBRL / totalBRL) * 10000) / 100 : 0,
   }));
 
+  // Série mensal derivada (F14): últimos 6 meses (inclusive o atual), valorada
+  // com os preços atuais — aproximação documentada em `portfolioMonthlySeries`.
+  const months = Array.from({ length: 6 }, (_, index) => shiftMonth(currentMonth(), index - 5));
+  const seriesAssets = rawRows.map((row) => ({
+    assetId: row.assetId,
+    isCash: row.isCash,
+    priceBRL: row.priceBRL,
+  }));
+  const monthlySeries = portfolioMonthlySeries(transactionsByAsset, seriesAssets, months);
+
   return {
     rows,
     totalBRL,
     cashBRL,
+    monthlySeries,
     isLoading: assetsQuery.isLoading || transactionsQuery.isLoading || pricesQuery.isLoading,
     error: assetsQuery.error ?? transactionsQuery.error ?? pricesQuery.error,
     refetch: () => {

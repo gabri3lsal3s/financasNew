@@ -13,7 +13,13 @@ export interface EmptyStateProps {
    * (positive/negative/warning) quando o estado vazio carregar esse sentido.
    * O ícone é exibido SEM fundo — apenas a cor tonal.
    */
-  tone?: "default" | "primary" | "positive" | "negative" | "warning";
+  tone?: "default" | "primary" | "positive" | "negative" | "warning" | "portfolio";
+  /**
+   * Nível do heading (F14 — a11y): `h3` quando o empty state vive dentro de
+   * uma seção com h2 (padrão); `h2` quando é o primeiro conteúdo direto sob
+   * o h1 da página (sem seção intermediária — ordem de headings válida).
+   */
+  headingLevel?: "h2" | "h3";
 }
 
 const toneIcon: Record<NonNullable<EmptyStateProps["tone"]>, string> = {
@@ -22,9 +28,10 @@ const toneIcon: Record<NonNullable<EmptyStateProps["tone"]>, string> = {
   positive: "text-positive-strong",
   negative: "text-negative-strong",
   warning: "text-warning-strong",
+  portfolio: "text-portfolio",
 };
 
-export function EmptyState({ icon, title, description, action, className, tone = "primary" }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, className, tone = "primary", headingLevel = "h3" }: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -37,7 +44,11 @@ export function EmptyState({ icon, title, description, action, className, tone =
           {icon}
         </div>
       ) : null}
-      <h3 className="font-display text-lg font-bold text-foreground">{title}</h3>
+      {headingLevel === "h2" ? (
+        <h2 className="font-display text-lg font-bold text-foreground">{title}</h2>
+      ) : (
+        <h3 className="font-display text-lg font-bold text-foreground">{title}</h3>
+      )}
       {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
