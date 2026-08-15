@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { STALE_TIMES } from "@/state/cache-policy";
 import {
   listAssetPrices,
   removeManualPrice,
@@ -13,7 +14,7 @@ export function useAssetPrices() {
   return useQuery({
     queryKey: assetPricesKey,
     queryFn: () => listAssetPrices(),
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.quotes,
   });
 }
 

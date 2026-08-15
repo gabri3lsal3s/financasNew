@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listReminderStates, setReminderState } from "@/data/repositories/reminder-states";
 import type { ReminderState } from "@/domain/reminders";
+import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
 export const reminderStatesKey = ["reminder-states"] as const;
 
@@ -16,7 +17,8 @@ export function useReminderStates() {
         snoozeUntil: row.snooze_until ?? undefined,
       }));
     },
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
   });
 }
 

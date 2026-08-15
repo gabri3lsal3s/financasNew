@@ -8,11 +8,15 @@ import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
 import { LaunchWizard } from "@/features/transactions";
 import { useAuth } from "@/hooks/use-auth";
+import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 
 /** Guard de autenticação: sem sessão → tela de login preservando a rota de origem. */
 function RequireAuth() {
   const { session, loading, configError } = useAuth();
   const location = useLocation();
+
+  // F23 — pre-fetching discreto dos chunks das rotas vizinhas (idle).
+  useRoutePrefetch();
 
   if (configError) {
     return (

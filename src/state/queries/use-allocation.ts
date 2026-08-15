@@ -8,6 +8,7 @@ import {
   type AllocationTargetInput,
 } from "@/data/repositories/allocation-targets";
 import { getUserPreferences, updateSectorCaps, type SectorCaps } from "@/data/repositories/user-preferences";
+import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
 export const allocationTargetsKey = ["allocation_targets"] as const;
 export const groupTargetsKey = (groupType: "class" | "sector") => ["group_targets", groupType] as const;
@@ -18,7 +19,8 @@ export function useAllocationTargets() {
   return useQuery({
     queryKey: allocationTargetsKey,
     queryFn: () => listAllocationTargets(),
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
   });
 }
 
@@ -38,7 +40,8 @@ export function useGroupTargets(groupType: "class" | "sector") {
   return useQuery({
     queryKey: groupTargetsKey(groupType),
     queryFn: () => listGroupTargets(groupType),
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
   });
 }
 
@@ -75,7 +78,8 @@ export function useSectorCaps() {
         maxSectorFiis: prefs?.max_sector_fiis ?? null,
       };
     },
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
   });
 }
 

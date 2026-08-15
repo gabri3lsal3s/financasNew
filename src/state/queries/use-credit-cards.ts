@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { listActiveCreditCards, listCreditCards } from "@/data/repositories/credit-cards";
+import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
 export const creditCardsKey = ["credit_cards"] as const;
 
@@ -8,7 +9,8 @@ export function useCreditCards() {
   return useQuery({
     queryKey: [...creditCardsKey],
     queryFn: () => listCreditCards(),
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
   });
 }
 
@@ -17,6 +19,7 @@ export function useActiveCreditCards() {
   return useQuery({
     queryKey: [...creditCardsKey, { active: true }],
     queryFn: () => listActiveCreditCards(),
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
   });
 }

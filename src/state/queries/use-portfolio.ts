@@ -13,6 +13,7 @@ import {
 import { computeLedger, type LedgerTransaction } from "@/domain/portfolio";
 import { allocationTargetsKey } from "./use-allocation";
 import type { DbInsert, DbUpdate, PortfolioAsset, PortfolioTransaction } from "@/types";
+import { STALE_TIMES } from "@/state/cache-policy";
 
 export const portfolioAssetsKey = ["portfolio_assets"] as const;
 export const portfolioTransactionsKey = ["portfolio_transactions"] as const;
@@ -23,7 +24,7 @@ export function usePortfolioAssets() {
   return useQuery({
     queryKey: portfolioAssetsKey,
     queryFn: () => listPortfolioAssets(),
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.analytical,
   });
 }
 
@@ -32,7 +33,7 @@ export function useAllPortfolioTransactions() {
   return useQuery({
     queryKey: allPortfolioTransactionsKey,
     queryFn: () => listAllPortfolioTransactions(),
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.analytical,
   });
 }
 
@@ -42,7 +43,7 @@ export function useAssetPosition(assetId: string | null) {
     queryKey: [...portfolioTransactionsKey, assetId],
     queryFn: () => listPortfolioTransactions(assetId as string),
     enabled: assetId !== null,
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.analytical,
   });
 
   const ledger = computeLedger(

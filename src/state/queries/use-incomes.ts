@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { listIncomesByMonth, listIncomesByRange } from "@/data/repositories/incomes";
+import { STALE_TIMES } from "@/state/cache-policy";
 
 export const incomesKey = ["incomes"] as const;
 
@@ -9,7 +10,7 @@ export function useIncomesByRange(start: string, end: string, options?: { enable
     queryKey: [...incomesKey, "range", start, end],
     queryFn: () => listIncomesByRange(start, end),
     enabled: options?.enabled ?? true,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.transactional,
   });
 }
 
@@ -18,6 +19,6 @@ export function useIncomes(month: string) {
   return useQuery({
     queryKey: [...incomesKey, month],
     queryFn: () => listIncomesByMonth(month),
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.transactional,
   });
 }

@@ -1096,12 +1096,47 @@
 **Entregas (na ordem):**
 1. **Code-splitting das bibliotecas 3D:** encapsulamento do Three.js e React Three Fiber em chunk lazy dinâmico, carregado exclusivamente quando a visualização 3D de cartões for ativada pelo usuário.
 2. **Sintonia fina de cache e refetch:** calibração de `staleTime` e `gcTime` no TanStack Query por tipo de dado (estático, analítico, cotações e transacional), eliminando requisições repetidas em trocas rápidas de abas.
-3. **Pre-fetching de rotas vizinhas:** pré-carregamento discreto dos chunks de código e queries das rotas adjacentes ao interag- **✅ DoD (critérios de aceite)**
+3. **Pre-fetching de rotas vizinhas:** pré-carregamento discreto dos chunks de código e queries das rotas adjacentes ao interagir com a navegação (BottomNav/Sidebar), sem competir com o primeiro paint.
+
+**Decisões registradas (F23):**
+- **Entrega 1 — N/A (sem WebGL):** o projeto **não possui Three.js/React Three Fiber** — a "carteira 3D" de cartões é CSS puro (`credit-card-3d.tsx`/`credit-card-wallet.tsx`, zero dependências WebGL) e a `CardsPage` inteira já é um chunk lazy por rota (F5.5). Não há biblioteca pesada para dividir; o lazy por rota é o boundary correto (o wallet é renderizado incondicionalmente na página).
+- **Cache (entrega 2):** política centralizada em `src/state/cache-policy.ts` (fonte única) — **estático** (categorias, cartões, pagamentos, metas de alocação, preferências): `staleTime` 5 min + `gcTime` 30 min; **analítico** (overview, busca, portfolio/ledger, feedback, lembretes): 60 s; **cotações** (asset_prices): 60 s; **transacional** (despesas, receitas, dívidas, orçamentos): 30 s. Consistência garantida por invalidação por mutação (não por refetch de foco).
+- **Pre-fetch (entrega 3):** apenas **chunks de código** (não queries) — `prefetchPageChunks` em `routes.tsx` (loaders compartilhados com o `lazy`) + hook `useRoutePrefetch` no `RequireAuth`: no primeiro idle pré-carrega as rotas primárias da BottomNav (/, /transacoes, /cartoes, /relatorios, /investments) e a cada navegação os vizinhos (anterior/próximo) da rota atual; idempotente e silencioso (falha de rede ignorada).
+
+**✅ DoD (critérios de aceite)**
+- Zero bibliotecas 3D/WebGL no bundle; a visualização 3D de cartões carrega junto do chunk lazy da rota (sem custo fora dela).
+- Política de cache centralizada e aplicada a todas as queries; trocas rápidas de aba sem refetch redundante de dados estáticos.
+- Chunks das rotas vizinhas pré-carregados no idle sem competir com o primeiro paint; falhas de rede silenciosas (retry natural na navegação).
+- Suíte completa de testes 100% verde; typecheck e lint limpos.
+
+**Progresso — F23 concluída (2026-08-15):**
+- [x] **Política de cache (entrega 2)** — `src/state/cache-policy.ts` (novo): `STALE_TIMES` por tipo (estático 5 min / analítico 60 s / cotações 60 s / transacional 30 s) + `STATIC_GC_TIME` 30 min; aplicada nas 15 queries de estado (categorias, cartões, pagamentos, metas de alocação, lembretes e feedback → estático com gcTime longo; overview/busca/portfolio → analítico; asset_prices → cotações; despesas/receitas/dívidas/orçamentos → transacional). `useCategoryUsage` mantém `staleTime: 0` (contagem on-demand do fluxo de exclusão — intencional).
+- [x] **Pre-fetching de rotas (entrega 3)** — `src/app/routes.tsx` refatorado: `pageLoaders` como fonte única (compartilhados entre `lazy` e `prefetchPageChunks`); novo hook `src/hooks/use-route-prefetch.ts` (3 testes) no `RequireAuth`: primárias da BottomNav no primeiro idle + vizinhos por navegação, via `requestIdleCallback` (fallback `setTimeout` 1 s), cancelável.
+- [x] **Entrega 1 (code-splitting 3D)** — **N/A documentado**: sem Three.js/R3F no projeto; 3D CSS dentro do chunk lazy da rota `/cartoes` (ver Decisões).
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+
+---
+
+### Fase 24 — Planejamento Financeiro & Simulador FIRE
+
+**Objetivo (Trilha C — Estratégia):** planejamento financeiro de longo prazo com projeção de independência financeira (FIRE), fundo de emergência e metas de aporte — apoiado pelos dados de carteira e orçamentos (F16/F17). Especificação detalhada a ser consolidada na execução da fase (depende de F16/F17).
+
+**✅ DoD (critérios de aceite — referência):** projetor FIRE com premissas transparentes e editáveis; gauge de fundo de emergência; testes do motor puro (`domain/`); suíte completa verde.
+
+---
+
+### Fase 25 — Micro-interações, Feedback Visual & Ergonomia
+
+**Objetivo (Trilha A / Refinamento):** elevar o polimento das micro-interações (sidebar por hover, bottom sheets fluidas no mobile, feedback de sucesso) respeitando `prefers-reduced-motion` e os modos de movimento do app (F7/F12). Especificação detalhada a ser consolidada na execução da fase.
+
+**✅ DoD (critérios de aceite)**
 - Sidebar expande suavemente por hover no desktop sem deslocar os elementos da página; zero disparos acidentais com mouse rápido; botão de toggle manual e persistência funcionando perfeitamente.
 - Modais no mobile comportam-se como Bottom Sheets fluidas com fechamento por arrasto.
 - Micro-interações respeitam estritamente `prefers-reduced-motion` e as configurações de `data-motion` (desligando efeitos nos modos "Econômica" e "Reduzida").
 - Auditoria de acessibilidade (`axe-core`) com 0 violações nas novas superfícies e tooltips.
 - Suíte completa de testes 100% verde (incluindo testes de integração da Sidebar e Bottom Sheets).
+
+---
 
 ### Fase 26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)
 
@@ -1214,7 +1249,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 7 | **F18** — Proventos (extrato & calendário) | B | F17 | ✅ Concluída (2026-08-15) — motor `dividends.ts` + aba Proventos no hub `/investments` (extrato mensal + calendário anual) |
 | 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | ✅ Concluída (2026-08-15) — motor `domain/predictions`, autopreenchimento no wizard + habituals + repetição nos diálogos |
 | 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | ✅ Concluída (2026-08-15) — `domain/export` (CSV pt-BR + backup versionado Zod), hub em `/configuracoes > Dados` (JSON + CSVs por período + restauração 2 etapas via RPC `restore_backup`), Fechamento Mensal imprimível em Relatórios e Web Share nos comprovantes |
-| 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | 📋 Planejada |
+| 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | ✅ Concluída (2026-08-15) — política de cache centralizada `state/cache-policy.ts` (estático 5 min + gcTime 30 min / analítico / cotações / transacional), pre-fetching de chunks das rotas vizinhas (`prefetchPageChunks` + `useRoutePrefetch`) e decisão: 3D CSS sem Three.js (code-splitting WebGL N/A — lazy por rota já existente) |
 | 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | 📋 Planejada |
 | 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | 📋 Planejada |
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | 📋 Planejada |

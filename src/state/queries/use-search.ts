@@ -7,6 +7,7 @@ import { listAllCategories } from "@/data/repositories/categories";
 import { DEBT_STATUS_LABELS, debtStatus } from "@/domain/debts";
 import type { SearchEntry } from "@/domain/search";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
+import { STALE_TIMES } from "@/state/cache-policy";
 
 export const allExpensesKey = ["expenses", "all"] as const;
 export const allIncomesKey = ["incomes", "all"] as const;
@@ -21,31 +22,31 @@ export function useGlobalSearchEntries(enabled: boolean) {
     queryKey: allExpensesKey,
     queryFn: () => listAllExpenses(),
     enabled,
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.analytical,
   });
   const incomesQuery = useQuery({
     queryKey: allIncomesKey,
     queryFn: () => listAllIncomes(),
     enabled,
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.analytical,
   });
   const debtsQuery = useQuery({
     queryKey: ["debts"] as const,
     queryFn: () => listDebts(),
     enabled,
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.analytical,
   });
   const cardsQuery = useQuery({
     queryKey: ["credit_cards"] as const,
     queryFn: () => listCreditCards(),
     enabled,
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.analytical,
   });
   const categoriesQuery = useQuery({
     queryKey: ["categories", "all"] as const,
     queryFn: () => listAllCategories(),
     enabled,
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.analytical,
   });
 
   const categories = categoriesQuery.data ?? [];

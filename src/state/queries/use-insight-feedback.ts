@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listFeedback, setFeedback } from "@/data/repositories/insight-feedback";
 import type { FeedbackDecision } from "@/domain/insights/feedback";
+import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
 export const feedbackKey = ["insight-feedback"] as const;
 
@@ -15,7 +16,8 @@ export function useFeedback() {
         FeedbackDecision
       >;
     },
-    staleTime: 60_000,
+    staleTime: STALE_TIMES.static,
+    gcTime: STATIC_GC_TIME,
   });
 }
 

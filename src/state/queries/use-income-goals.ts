@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { listIncomeGoals } from "@/data/repositories/income-goals";
+import { STALE_TIMES } from "@/state/cache-policy";
 
 export const incomeGoalsKey = ["income_goals"] as const;
 
@@ -8,6 +9,6 @@ export function useIncomeGoals() {
   return useQuery({
     queryKey: [...incomeGoalsKey],
     queryFn: () => listIncomeGoals(),
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.transactional,
   });
 }

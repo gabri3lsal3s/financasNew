@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getExpense, listExpensesByMonth, listExpensesByRange } from "@/data/repositories/expenses";
+import { STALE_TIMES } from "@/state/cache-policy";
 
 export const expensesKey = ["expenses"] as const;
 
@@ -8,7 +9,7 @@ export function useExpenses(month: string) {
   return useQuery({
     queryKey: [...expensesKey, month],
     queryFn: () => listExpensesByMonth(month),
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.transactional,
   });
 }
 
@@ -18,7 +19,7 @@ export function useExpensesByRange(start: string, end: string, options?: { enabl
     queryKey: [...expensesKey, "range", start, end],
     queryFn: () => listExpensesByRange(start, end),
     enabled: options?.enabled ?? true,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.transactional,
   });
 }
 
@@ -28,6 +29,6 @@ export function useExpense(id: string | null) {
     queryKey: [...expensesKey, id],
     queryFn: () => getExpense(id as string),
     enabled: id !== null,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.transactional,
   });
 }

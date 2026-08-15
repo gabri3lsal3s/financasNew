@@ -2,23 +2,30 @@ import { lazy } from "react";
 import type { ComponentType } from "react";
 import { Navigate } from "react-router";
 
-const OverviewPage = lazy(() => import("@/features/overview/pages/overview-page").then((m) => ({ default: m.OverviewPage })));
-const TransactionListPage = lazy(() =>
-  import("@/features/transactions/pages/transaction-list-page").then((m) => ({ default: m.TransactionListPage })),
-);
-const CardsPage = lazy(() => import("@/features/cards/pages/cards-page").then((m) => ({ default: m.CardsPage })));
-const DebtsPage = lazy(() => import("@/features/debts/pages/debts-page").then((m) => ({ default: m.DebtsPage })));
-const BudgetsPage = lazy(() => import("@/features/budgets/pages/budgets-page").then((m) => ({ default: m.BudgetsPage })));
-const CategoriesPage = lazy(() =>
-  import("@/features/categories/pages/categories-page").then((m) => ({ default: m.CategoriesPage })),
-);
-const ReportsPage = lazy(() => import("@/features/reports/pages/reports-page").then((m) => ({ default: m.ReportsPage })));
-const InsightsPage = lazy(() => import("@/features/insights/pages/insights-page").then((m) => ({ default: m.InsightsPage })));
-const InvestmentsPage = lazy(() =>
-  import("@/features/investments/pages/investments-page").then((m) => ({ default: m.InvestmentsPage })),
-);
-const RemindersPage = lazy(() => import("@/features/reminders/pages/reminders-page").then((m) => ({ default: m.RemindersPage })));
-const SettingsPage = lazy(() => import("@/features/settings/pages/settings-page").then((m) => ({ default: m.SettingsPage })));
+type PageModule = { default: ComponentType };
+
+/**
+ * Loaders das páginas — fonte única para o `lazy` das rotas e para o
+ * pre-fetching discreto de chunks (F23): `import()` cacheia o módulo, então
+ * `lazy(loader)` e `prefetchPageChunks` compartilham o mesmo chunk.
+ */
+const pageLoaders: Record<string, () => Promise<PageModule>> = {
+  "/": () => import("@/features/overview/pages/overview-page").then((m) => ({ default: m.OverviewPage })),
+  "/transacoes": () =>
+    import("@/features/transactions/pages/transaction-list-page").then((m) => ({ default: m.TransactionListPage })),
+  "/cartoes": () => import("@/features/cards/pages/cards-page").then((m) => ({ default: m.CardsPage })),
+  "/dividas": () => import("@/features/debts/pages/debts-page").then((m) => ({ default: m.DebtsPage })),
+  "/orcamentos": () => import("@/features/budgets/pages/budgets-page").then((m) => ({ default: m.BudgetsPage })),
+  "/categorias": () =>
+    import("@/features/categories/pages/categories-page").then((m) => ({ default: m.CategoriesPage })),
+  "/relatorios": () => import("@/features/reports/pages/reports-page").then((m) => ({ default: m.ReportsPage })),
+  "/insights": () => import("@/features/insights/pages/insights-page").then((m) => ({ default: m.InsightsPage })),
+  "/investments": () =>
+    import("@/features/investments/pages/investments-page").then((m) => ({ default: m.InvestmentsPage })),
+  "/lembretes": () => import("@/features/reminders/pages/reminders-page").then((m) => ({ default: m.RemindersPage })),
+  "/configuracoes": () =>
+    import("@/features/settings/pages/settings-page").then((m) => ({ default: m.SettingsPage })),
+};
 
 export interface AppRoute {
   path: string;
@@ -37,16 +44,20 @@ function RedirectToInvestments() {
 
 /** Mapa de rotas — deep-links (?card=, ?month=, ?q=) são parseados nas features (F1+). */
 export const appRoutes: AppRoute[] = [
-  { path: "/", Component: OverviewPage },
-  { path: "/transacoes", Component: TransactionListPage },
-  { path: "/cartoes", Component: CardsPage },
-  { path: "/dividas", Component: DebtsPage },
-  { path: "/orcamentos", Component: BudgetsPage },
-  { path: "/categorias", Component: CategoriesPage },
-  { path: "/relatorios", Component: ReportsPage },
-  { path: "/insights", Component: InsightsPage },
-  { path: "/investments", Component: InvestmentsPage },
+  ...Object.entries(pageLoaders).map(([path, loader]) => ({ path, Component: lazy(loader) })),
+  // /carteira não tem loader próprio — é redirect puro para o hub.
   { path: "/carteira", Component: RedirectToInvestments },
-  { path: "/lembretes", Component: RemindersPage },
-  { path: "/configuracoes", Component: SettingsPage },
 ];
+
+/**
+ * Pre-fetching discreto de chunks (F23, entrega 3): pré-carrega os módulos
+ * das rotas listadas sem renderizá-los. Idempotente (o `import()` cacheia) e
+ * silencioso (falha de rede é ignorada — Online First com retry natural na
+ * navegação real).
+ */
+export function prefetchPageChunks(paths: readonly string[]): void {
+  for (const path of paths) {
+    const loader = pageLoaders[path];
+    if (loader) void loader().catch(() => undefined);
+  }
+}
