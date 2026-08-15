@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **Status:** v1.7 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); **v1.6** formalizou a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**; **v1.7** formalizou a **F26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)**; e **v1.8** registra a **conclusão da F27 — Insights: Precisão, Deduplicação & Casos de Borda** (2026-08-15).
+> **Status:** v1.7 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); **v1.6** formalizou a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**; **v1.7** formalizou a **F26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)**; **v1.8** registra a **conclusão da F27 — Insights: Precisão, Deduplicação & Casos de Borda** (2026-08-15); e **v1.9** registra a **conclusão da F28 — Investimentos: Mobile Responsive & Organização** (2026-08-15).
 > **Referências:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (estrutura e convenções) · [`ESPECIFICACAO_TECNICA.md`](../ESPECIFICACAO_TECNICA.md) (regras de negócio, schema, UI/UX).
 
 ---
@@ -1244,6 +1244,32 @@
 - [x] Testes de página: razão comparável sem alerta; dedup da linha agregada (1 categoria); exibição com 2+ categorias; domínio: `weekendSpendingRatio` Infinity/0 documentado
 - [x] Suíte completa **1075 testes / 140 arquivos** verde; typecheck/lint/build limpos
 
+### Fase 28 — Investimentos: Mobile Responsive & Organização
+
+**Objetivo (Trilha A / Mobile Polish):** deixar a área de investimentos (`/investments`) **responsiva e organizada como o restante do app** no mobile — o hub estava com KPIs em 1 coluna (o app usa 2×2), tabela de posição larga com scroll horizontal (8+ colunas) e linhas de metas por classe estourando a largura da tela.
+
+**Problemas corrigidos:**
+- **KPIs em 1 coluna no mobile** — `ResumoTab` usava `grid-cols-1`; o padrão do app (ex.: Home) é 2×2 no mobile → `grid-cols-2 lg:grid-cols-4` (skeleton alinhado).
+- **PositionTable larga com scroll horizontal** — no mobile a tabela vira **cards empilhados** (`sm:hidden`): cada posição mostra ticker/classe, rentabilidade %, valor + lucro/prejuízo (tone semântico), linha de detalhes (qtd · preço com fonte · custo médio) e as ações (Movimentar/Lançamentos/Editar/Excluir — extraídas em `PositionRowActions` compartilhado, DRY com a tabela). A tabela completa permanece em `sm+` com a mesma ordenação (`aria-sort` intacta).
+- **Linhas de metas por classe estourando a tela** — `flex` em linha com stepper fixo (`w-44`) + 2 botões não cabiam no mobile: agora empilham (nome + controles) e retomam a linha em `sm+` (`flex-col sm:flex-row`).
+- **Header do Resumo sem responsividade** — descrição longa + CTA lado a lado no mobile: empilham (`flex-col sm:flex-row`), botão ocupa a largura no mobile.
+- **Código morto removido (pós-F17):** `portfolio-page.tsx` + `position-tab.tsx` + `portfolio-page.test.tsx` (a unificação F17 fez `/carteira` virar redirect — as páginas antigas não eram montadas). O barrel `features/portfolio` passou a exportar as páginas vivas (`TargetsTab`/`AporteTab`) e o hub importa pelo barrel.
+
+**Arquivos:** `src/components/modules/position-table.tsx` (+ testes) · `src/features/investments/pages/resumo-tab.tsx` · `src/features/portfolio/pages/targets-tab.tsx` · `src/features/investments/pages/investments-page.tsx` · `src/features/portfolio/index.ts` · remoção de `src/features/portfolio/pages/{portfolio-page,position-tab}.tsx` + teste.
+
+**✅ DoD (critérios de aceite)**
+- Mobile: posições legíveis sem scroll horizontal (cards), KPIs 2×2 e metas por classe sem overflow; desktop inalterado (tabela completa com ordenação).
+- Mesmas ações disponíveis nos cards e na tabela (componente único `PositionRowActions`).
+- Zero código morto da carteira antiga; barrel do feature consistente.
+- Suíte completa 100% verde; typecheck/lint/build limpos.
+
+**Progresso — F28 concluída (2026-08-15):**
+- [x] `PositionTable` com cards mobile (`sm:hidden` + `hidden sm:block`) e `PositionRowActions` extraído (DRY) + 3 testes novos (cards com valor/lucro/rentab, ações nos cards, vazio nos cards)
+- [x] `ResumoTab`: header empilhado no mobile + KPIs `grid-cols-2 lg:grid-cols-4` (skeleton alinhado)
+- [x] `TargetsTab`: metas por classe empilham no mobile (`flex-col sm:flex-row`), stepper flexível
+- [x] Dead code removido (`portfolio-page`/`position-tab` + teste) e barrel `features/portfolio` corrigido (hub importa `TargetsTab`/`AporteTab` pelo barrel)
+- [x] Suíte completa **1073 testes / 139 arquivos** verde; typecheck/lint/build limpos
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
@@ -1321,6 +1347,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | ✅ Concluída (2026-08-15) — hover-expand da sidebar em overlay (delay anti-disparo), bottom sheets mobile com drag-to-close (threshold/fling/resistência), primitivo Tooltip acessível nos botões do header |
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | ✅ Concluída (2026-08-15) — motor puro `domain/gestures/overscroll` (resistência elástica + barreira de inércia + threshold), hook `usePullUpToTop` (FSM com cancelamento reversível, decisão por ref, sem pointer capture para coexistir com swipe-to-action), primitivo `PullUpToTopIndicator` (anel SVG `stroke-primary`), integração no PageShell e remoção do `ScrollToTopButton`/`useScrollPosition` do roteador + regra CSS de diálogos |
 | 14 | **F27** — Insights: Precisão, Deduplicação & Casos de Borda | A / Inteligência | F19 | ✅ Concluída (2026-08-15) — média mensal real nos desafios (`typicalMonthlySpendCents`), `categoryCount` no discricionário (linha "30% em não essenciais" oculta com 1 categoria — sem repetição) e guarda de `weekendRatio` incomparável ("—" sem alerta absurdo) |
+| 15 | **F28** — Investimentos: Mobile Responsive & Organização | A / Mobile Polish | F17 | ✅ Concluída (2026-08-15) — cards de posição no mobile (sem scroll horizontal) com `PositionRowActions` compartilhado, KPIs 2×2 (padrão do app), metas por classe empilháveis e remoção do código morto pós-F17 (`portfolio-page`/`position-tab`) |
 
 **Auditoria de limpeza de código (2026-08-15):**
 - **Dead code removido:** `hooks/use-draggable.ts` (+teste) — órfão desde a remoção do FAB flutuante; `layout/placeholder-page.tsx` — página placeholder de versões antigas sem uso; `layout/density-toggle.tsx` — toggle não montado (a densidade vive em `/configuracoes` via `useDensity`); `centsToBRL` de `domain/money/parse.ts` — duplicata exata de `services/masks/money.formatCentsAsBRL` (DRY).

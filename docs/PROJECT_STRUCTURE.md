@@ -116,7 +116,9 @@
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)
     │   ├── portfolio/             #   Carteira (portfólio) — componentes de operação
-    │   │                          #   (position/targets/aporte tabs, reutilizados no hub) +
+    │   │                          #   (targets/aporte tabs, reutilizados no hub; a antiga
+    │   │                          #   página /carteira e a position-tab foram removidas na
+    │   │                          #   F28 — /investments é o hub único desde a F17) +
     │   │                          #   CRUD completo (2026-08-15): asset-form-dialog,
     │   │                          #   transaction-form-dialog, transaction-list-dialog
     │   └── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+unificação):

@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PositionTable } from "./position-table";
 import type { PositionRow } from "./position-table";
 
@@ -79,5 +79,39 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     const pctHeader = screen.getByRole("button", { name: /Rentab/i });
     await user.click(pctHeader);
     expect(pctHeader).toHaveAttribute("aria-sort", "ascending");
+  });
+
+  it("F28 — mobile: renderiza cards empilhados com valor, lucro e rentabilidade", () => {
+    render(<PositionTable rows={rows} />);
+    const mobileList = screen.getByRole("list", { name: "Posições (visão móvel)" });
+    // Cards: ticker presente e o par valor/lucro-prejuízo em cada posição.
+    expect(within(mobileList).getByText("PETR4")).toBeInTheDocument();
+    expect(within(mobileList).getAllByText("Lucro/Prejuízo")).toHaveLength(3);
+    // Caixa: sem rentabilidade → travessão.
+    expect(within(mobileList).getByText("CAIXA")).toBeInTheDocument();
+    // O mesmo conjunto de linhas aparece na tabela (sm+) — sem perda de dados.
+    expect(screen.getAllByText("PETR4")).toHaveLength(2);
+  });
+
+  it("F28 — mobile: ações de linha disponíveis também nos cards", () => {
+    const onRegister = vi.fn();
+    render(
+      <PositionTable
+        rows={rows}
+        onRegisterTransaction={onRegister}
+        onListTransactions={() => undefined}
+        onEditAsset={() => undefined}
+        onDeleteAsset={() => undefined}
+      />,
+    );
+    const mobileList = screen.getByRole("list", { name: "Posições (visão móvel)" });
+    // O CTA "Movimentar" aparece em cada card (mesma ação da tabela).
+    expect(within(mobileList).getAllByRole("button", { name: /Registrar transação/ })).toHaveLength(3);
+  });
+
+  it("F28 — mobile: mensagem vazia também no layout de cards", () => {
+    render(<PositionTable rows={[]} emptyMessage="Carteira sem posições." />);
+    const mobileList = screen.getByRole("list", { name: "Posições (visão móvel)" });
+    expect(within(mobileList).getByText("Carteira sem posições.")).toBeInTheDocument();
   });
 });

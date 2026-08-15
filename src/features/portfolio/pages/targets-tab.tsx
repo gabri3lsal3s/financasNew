@@ -193,52 +193,55 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
               const target = classTargetOf(className);
               const savedTarget = storedClassTargets.get(className) ?? 0;
               return (
-                <div key={className} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background p-3">
+                /* F28 — mobile: nome e controles empilham (sem overflow); sm+ em linha. */
+                <div key={className} className="flex flex-col gap-3 rounded-lg border border-border/60 bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 flex-col">
                     <p className="truncate text-sm font-medium text-foreground">{className}</p>
                     <p className="text-xs text-muted-foreground">
                       {position.rows.filter((r) => r.assetClass === className).length} ativo(s)
                     </p>
                   </div>
-                  <div className="flex w-44 shrink-0 items-center gap-2">
-                    <NumberStepperInput
-                      value={target}
-                      min={0}
-                      max={100}
-                      step={0.5}
-                      ariaLabel={`Meta da classe ${className} em %`}
-                      onValueChange={(next) =>
-                        setClassDraft((prev) => ({
-                          ...prev,
-                          [className]: parseTargetInput(next),
-                        }))
-                      }
-                      className="[&_input]:text-right"
-                    />
-                    <span className="text-sm text-muted-foreground">%</span>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={target > 0 ? "secondary" : "outline"}
-                      disabled={savingClass === className}
-                      onClick={() => void saveClass(className)}
-                    >
-                      {savingClass === className ? "Salvando…" : "Salvar"}
-                    </Button>
-                    {savedTarget > 0 ? (
+                  <div className="flex w-full items-center gap-2 sm:w-auto">
+                    <div className="flex flex-1 items-center gap-2 sm:w-44 sm:flex-none">
+                      <NumberStepperInput
+                        value={target}
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        ariaLabel={`Meta da classe ${className} em %`}
+                        onValueChange={(next) =>
+                          setClassDraft((prev) => ({
+                            ...prev,
+                            [className]: parseTargetInput(next),
+                          }))
+                        }
+                        className="[&_input]:text-right"
+                      />
+                      <span className="shrink-0 text-sm text-muted-foreground">%</span>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
                       <Button
                         type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Remover meta da classe ${className}`}
+                        size="sm"
+                        variant={target > 0 ? "secondary" : "outline"}
                         disabled={savingClass === className}
-                        onClick={() => void removeClass(className)}
+                        onClick={() => void saveClass(className)}
                       >
-                        <Trash2 className="size-4" aria-hidden="true" />
+                        {savingClass === className ? "Salvando…" : "Salvar"}
                       </Button>
-                    ) : null}
+                      {savedTarget > 0 ? (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Remover meta da classe ${className}`}
+                          disabled={savingClass === className}
+                          onClick={() => void removeClass(className)}
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               );

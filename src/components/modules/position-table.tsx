@@ -75,6 +75,11 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
 const formatPct = (value: number): string =>
   `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 
+/** Quantidade formatada (inteiro sem casas; fracionário até 4). */
+function formatQuantity(quantity: number): string {
+  return Number.isInteger(quantity) ? String(quantity) : quantity.toFixed(4);
+}
+
 /** Cabeçalho clicável com direção (F17 — ordenação acessível). */
 function SortableHeader({ label, active, direction, onClick }: { label: string; active: boolean; direction: "asc" | "desc"; onClick: () => void }) {
   return (
@@ -241,67 +246,174 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
       header: <span className="sr-only">Ações</span>,
       align: "right",
       cell: (row) => (
-        <div className="flex items-center justify-end gap-1">
-          {onRegisterTransaction ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="min-h-11"
-              aria-label={`Registrar transação de ${row.ticker}`}
-              onClick={() => onRegisterTransaction(row.assetId, row.ticker)}
-            >
-              Movimentar
-            </Button>
-          ) : null}
-          {onListTransactions ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="min-h-9 px-2"
-              aria-label={`Lançamentos de ${row.ticker}`}
-              onClick={() => onListTransactions(row.assetId, row.ticker)}
-            >
-              <List className="size-4" aria-hidden="true" />
-            </Button>
-          ) : null}
-          {onEditAsset ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="min-h-9 px-2"
-              aria-label={`Editar ${row.ticker}`}
-              onClick={() => onEditAsset(row.assetId, row.ticker)}
-            >
-              <Pencil className="size-4" aria-hidden="true" />
-            </Button>
-          ) : null}
-          {onDeleteAsset ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="min-h-9 px-2 text-negative-strong hover:text-negative-strong"
-              aria-label={`Excluir ${row.ticker}`}
-              onClick={() => onDeleteAsset(row.assetId, row.ticker)}
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-            </Button>
-          ) : null}
-        </div>
+        <PositionRowActions
+          row={row}
+          onRegisterTransaction={onRegisterTransaction}
+          onListTransactions={onListTransactions}
+          onEditAsset={onEditAsset}
+          onDeleteAsset={onDeleteAsset}
+        />
       ),
     });
   }
 
   return (
-    <DataList
-      columns={columns}
-      rows={sortedRows}
-      rowKey={(row) => row.assetId}
-      density={density === "compact" ? "compact" : "comfortable"}
-      emptyMessage={emptyMessage ?? "Nenhum ativo na carteira."}
-    />
+    <>
+      {/* F28 — mobile: cards empilhados (legíveis, sem scroll horizontal).
+          A tabela completa fica para sm+ (a mesma ordenação vale nos dois). */}
+      <ul aria-label="Posições (visão móvel)" className="flex flex-col gap-2 sm:hidden">
+        {sortedRows.length === 0 ? (
+          <li className="rounded-xl border border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
+            {emptyMessage ?? "Nenhum ativo na carteira."}
+          </li>
+        ) : (
+          sortedRows.map((row) => {
+            const pctLabel =
+              row.isCash || row.unrealizedPct === null
+                ? "—"
+                : formatPct(row.unrealizedPct);
+            const pctTone =
+              row.isCash || row.unrealizedPct === null
+                ? "text-muted-foreground"
+                : row.unrealizedPct >= 0
+                  ? "text-positive-strong"
+                  : "text-negative-strong";
+            return (
+              <li key={row.assetId} className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3.5 shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+                    {row.assetClass ? <span className="truncate text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
+                  </div>
+                  <span className={cn("num shrink-0 text-sm font-semibold", pctTone)}>{pctLabel}</span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-[11px] text-muted-foreground">Valor</span>
+                    <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />
+                  </div>
+                  <div className="flex min-w-0 flex-col items-end gap-0.5">
+                    <span className="text-[11px] text-muted-foreground">Lucro/Prejuízo</span>
+                    {row.isCash ? (
+                      <span className="num text-sm text-muted-foreground">—</span>
+                    ) : (
+                      <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                  <span>
+                    <span className="font-medium text-foreground/70">Qtd</span> {row.isCash ? "—" : formatQuantity(row.quantity)}
+                  </span>
+                  <span>
+                    <span className="font-medium text-foreground/70">Preço</span>{" "}
+                    {row.isCash ? (
+                      "1:1"
+                    ) : (
+                      <>
+                        <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />{" "}
+                        <span className="text-[10px]">{PRICE_SOURCE_LABEL[row.source].label}</span>
+                      </>
+                    )}
+                  </span>
+                  <span>
+                    <span className="font-medium text-foreground/70">Custo médio</span>{" "}
+                    {row.isCash ? "—" : <MoneyText cents={numberToCents(row.averageCost)} tone="default" />}
+                  </span>
+                </div>
+
+                {hasRowActions ? (
+                  <div className="flex items-center justify-end gap-1 border-t border-border/60 pt-2">
+                    <PositionRowActions
+                      row={row}
+                      onRegisterTransaction={onRegisterTransaction}
+                      onListTransactions={onListTransactions}
+                      onEditAsset={onEditAsset}
+                      onDeleteAsset={onDeleteAsset}
+                    />
+                  </div>
+                ) : null}
+              </li>
+            );
+          })
+        )}
+      </ul>
+
+      <div className="hidden sm:block">
+        <DataList
+          columns={columns}
+          rows={sortedRows}
+          rowKey={(row) => row.assetId}
+          density={density === "compact" ? "compact" : "comfortable"}
+          emptyMessage={emptyMessage ?? "Nenhum ativo na carteira."}
+        />
+      </div>
+    </>
+  );
+}
+
+interface PositionRowActionsProps {
+  row: PositionRow;
+  onRegisterTransaction?: (assetId: string, ticker: string) => void;
+  onListTransactions?: (assetId: string, ticker: string) => void;
+  onEditAsset?: (assetId: string, ticker: string) => void;
+  onDeleteAsset?: (assetId: string, ticker: string) => void;
+}
+
+/** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28). */
+function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onEditAsset, onDeleteAsset }: PositionRowActionsProps) {
+  return (
+    <div className="flex items-center justify-end gap-1">
+      {onRegisterTransaction ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="min-h-11"
+          aria-label={`Registrar transação de ${row.ticker}`}
+          onClick={() => onRegisterTransaction(row.assetId, row.ticker)}
+        >
+          Movimentar
+        </Button>
+      ) : null}
+      {onListTransactions ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="min-h-9 px-2"
+          aria-label={`Lançamentos de ${row.ticker}`}
+          onClick={() => onListTransactions(row.assetId, row.ticker)}
+        >
+          <List className="size-4" aria-hidden="true" />
+        </Button>
+      ) : null}
+      {onEditAsset ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="min-h-9 px-2"
+          aria-label={`Editar ${row.ticker}`}
+          onClick={() => onEditAsset(row.assetId, row.ticker)}
+        >
+          <Pencil className="size-4" aria-hidden="true" />
+        </Button>
+      ) : null}
+      {onDeleteAsset ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="min-h-9 px-2 text-negative-strong hover:text-negative-strong"
+          aria-label={`Excluir ${row.ticker}`}
+          onClick={() => onDeleteAsset(row.assetId, row.ticker)}
+        >
+          <Trash2 className="size-4" aria-hidden="true" />
+        </Button>
+      ) : null}
+    </div>
   );
 }

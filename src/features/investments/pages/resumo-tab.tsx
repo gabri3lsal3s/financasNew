@@ -81,11 +81,12 @@ export function ResumoTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-2">
+      {/* F28 — mobile: descrição e CTA empilham (botão ocupa a largura); sm+ em linha. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           Posição derivada do ledger: nunca armazenada, sempre recalculada das transações e cotações.
         </p>
-        <Button type="button" size="sm" onClick={() => setAssetOpen(true)}>
+        <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setAssetOpen(true)}>
           <Plus aria-hidden="true" />
           Adicionar ativo
         </Button>
@@ -104,7 +105,7 @@ export function ResumoTab() {
 
       {position.isLoading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <SkeletonKpi />
             <SkeletonKpi />
             <SkeletonKpi />
@@ -132,7 +133,8 @@ export function ResumoTab() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* F28 — KPIs 2×2 no mobile (padrão do app, ex.: Home), 4 colunas no desktop. */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <KpiCard
               label="Patrimônio total"
               valueCents={numberToCents(position.totalBRL)}
