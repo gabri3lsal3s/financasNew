@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { BrandLogo } from "@/components/layout/brand-logo";
+import { BrandLogo } from "@/components/layout";
 
 export interface AuthShellProps {
   title: string;

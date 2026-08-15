@@ -68,8 +68,9 @@
     │   ├── router.tsx             # <Routes> a partir de routes.ts
     │   ├── routes.tsx             # Mapa de rotas + deep-links (?card=, ?month=, ?q=) +
     │   │                          #   redirect /carteira → /investments (unificação 2026-08-15)
-    │   └── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
-    │                              #   instalação/atualização (PWA_GUIDELINES §6)
+    │   ├── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
+    │   │                          #   instalação/atualização (PWA_GUIDELINES §6)
+    │   └── theme-provider.tsx     # ThemeProvider — aplica tema/accent do usuário (F11)
     │
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
@@ -88,11 +89,11 @@
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, installment-badge,
-    │   │   │                      #   onboarding-card, pwa-update-toast,
-    │   │   │                      #   install-app-button (F5.6), smart-spending-pace-card,
-    │   │   │                      #   smart-invoice-projection-card, smart-anomalies-card,
-    │   │   │                      #   category-donut, savings-health-card, daily-flow-chart (F8),
+    │   │   │                      #   onboarding-card, pwa-update-toast, install-app-button (F5.6),
+    │   │   │                      #   category-donut, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
+    │   │   │                      #   credit-card-3d + credit-card-wallet (F13),
+    │   │   │                      #   delta-hint (F14), highlight-row, projection-line,
     │   │   │                      #   month-swiper (F20 — swipe no MonthPicker),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22 — backup/CSV/restauração em Configurações),
@@ -102,8 +103,10 @@
     │   │   │                      #   pull-up-indicator (F26 — micro-indicador overscroll)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
-    │       │                      #   app-header, privacy-toggle (F8), brand-logo (F10), page-shell
-    │       └── index.ts
+    │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10),
+    │       │                      #   privacy-toggle (F8), theme-toggle, calculator-button,
+    │       │                      #   global-search (busca no header)
+    │       └── index.ts           #   barrel (AGENTS.md §7 — importações externas via @/components/layout)
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
     │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8)
@@ -131,8 +134,16 @@
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…)
     │   ├── cards/                 #   saldo de fatura, status da fatura (closed/open/near_due/overdue)
-    │   ├── reports/               #   peso de relatório (base × weight)
+    │   ├── budgets/               #   regras por categoria (CATEGORY_RULES), status/limites
+    │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow
+    │   ├── reports/               #   peso de relatório (base × weight) + detailed-close.ts
+    │   │                          #     (F22 evolução — fechamento mensal em categoria → dia → gasto)
     │   ├── insights/              #   alertas, assinaturas, recorrências, confiança
+    │   ├── savings/               #   F27: desafios de economia (média mensal típica, corte
+    │   │                          #     discricionário 10/20/30% — typicalMonthlySpendCents)
+    │   ├── reminders/             #   agregação de lembretes (conta/dívida) e preferências
+    │   ├── accessibility/         #   F15: contraste AA — hexToRgb/relativeLuminance/
+    │   │                          #     contrastRatio/isAANormalText/isAALargeText
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── virtualization/        #   janela de renderização de listas (F5.5)
@@ -152,6 +163,9 @@
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)
+    │   ├── query.ts               #   QueryResult<T> — contrato base data\|error
+    │   ├── auth.ts                #   Operações de autenticação (login/registro/recuperação)
+    │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS auth.uid())
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
     │   │                          #   export.ts (F22: fetchAllUserData + restoreBackup),
@@ -163,7 +177,10 @@
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId)…
-    │   └── mutations.ts           #   useCreateExpense(), useDeleteInstallment()…
+    │   └── mutations/             #   useCreateExpense(), useDeleteInstallment()…
+    │                              #     (use-expense-mutations, use-card-mutations,
+    │                              #      use-budget-mutations, use-debt-mutations,
+    │                              #      use-category-mutations, use-income-mutations)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
@@ -184,6 +201,8 @@
     │   │                          #     API com fallback clipboard — DOM glue)
     │    ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
+    │   ├── calculator-open.ts    #   Store compartilhado de abertura da calculadora
+    │   │                          #     (header e modais abrem o mesmo painel — F9/pós-F25)
     │   └── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F9)
     │
     ├── lib/                       # Utils genéricos (sem regra financeira)
@@ -198,7 +217,11 @@
     │   ├── tokens.css             #   light / dark / oled
     │   └── globals.css            #   @theme (Tailwind v4) + base + .num/.display
     │
-    └── tests/                     # Helpers, fixtures, setup do Vitest
+    └── tests/                     # Auditorias + setup do Vitest: fidelity (contratos
+                                   #     db/schema/domain), axe-sanity + keyboard-navigation
+                                   #     (a11y), accessibility-audit (contraste AA via
+                                   #     domain/accessibility), pwa + pwa-audit, security-audit,
+                                   #     quotes-core (edge de cotações), setup.ts
 ```
 
 ---

@@ -124,20 +124,34 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…)
+    │   ├── cards/                 #   saldo de fatura, status da fatura
+    │   ├── budgets/               #   regras por categoria, status/limites
+    │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow
+    │   ├── reports/               #   peso de relatório + detailed-close (fechamento detalhado)
     │   ├── insights/              #   alertas, assinaturas, recorrências, confiança
+    │   ├── savings/               #   F27: desafios de economia (média típica, corte discricionário)
+    │   ├── reminders/             #   agregação de lembretes (conta/dívida) e preferências
+    │   ├── accessibility/         #   F15: contraste AA (relativeLuminance/contrastRatio)
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
-    │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento
+    │   ├── gestures/              #   F20/F26: swipe + overscroll (axis-lock, thresholds)
+    │   ├── export/                #   F22: CSV pt-BR + backup versionado com Zod
+    │   ├── fire/                  #   F24: regra dos 4%, projeção e faixas de emergência
+    │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
+    │                              #   summary (rentabilidade/alocação) + dividends (F18)
     │
     ├── data/                      # SERVIÇOS DE DADOS
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)
+    │   ├── query.ts               #   QueryResult<T> — contrato base data|error
+    │   ├── auth.ts                #   Operações de autenticação
+    │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS)
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
     │   │                          #   budgets.ts, portfolio.ts, categories.ts
     │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
     │
     ├── state/                     # CONTRATOS DE ESTADO
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), …
-    │   └── mutations.ts           #   useCreateExpense(), useDeleteInstallment(), …
+    │   └── mutations/             #   useCreateExpense(), useDeleteInstallment(), …
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (useDebounce, useMedia, …)
     ├── services/                  # Apresentação + integrações

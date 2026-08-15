@@ -1,8 +1,7 @@
 import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation } from "react-router";
 import { appRoutes } from "@/app/routes";
 import { Skeleton } from "@/components/ui";
-import { PageShell } from "@/components/layout/page-shell";
-import { MoreMenu } from "@/components/layout/more-menu";
+import { MoreMenu, PageShell } from "@/components/layout";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
 import { LaunchWizard } from "@/features/transactions";

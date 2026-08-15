@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router";
 import { prefetchPageChunks } from "@/app/routes";
-import { navItems } from "@/components/layout/nav-items";
+import { navItems } from "@/components/layout";
 
 /** Rotas primárias da BottomNav — pré-carregadas no primeiro idle da sessão. */
 const PRIMARY_PATHS = ["/", "/transacoes", "/cartoes", "/relatorios", "/investments"] as const;
