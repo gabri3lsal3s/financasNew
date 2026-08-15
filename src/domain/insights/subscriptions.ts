@@ -77,21 +77,11 @@ export const KNOWN_SERVICES: Record<string, CutTier> = {
 /** Categorias que indicam assinatura. */
 const SUBSCRIPTION_CATEGORIES = new Set(["assinaturas", "streaming", "musica", "software"]);
 
-/** Nomes essenciais conhecidos nunca recebem sugestão de corte. */
-const ESSENTIAL_CATEGORIES = new Set(["moradia", "saude", "educacao"]);
-
-/** Remove acentos e espaços para casar com o catálogo. */
-export function normalizeServiceName(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
-}
+import { ESSENTIAL_CATEGORY_ICONS, normalizeServiceKey, valuesWithinTolerance } from "./shared";
 
 /** Sinal 1 — nome conhecido no catálogo de serviços. */
 export function isKnownService(name: string): boolean {
-  const normalized = normalizeServiceName(name);
+  const normalized = normalizeServiceKey(name);
   for (const key of Object.keys(KNOWN_SERVICES)) {
     if (normalized.includes(key)) return true;
   }
@@ -104,20 +94,18 @@ export function isSubscriptionCategory(categoryIcon: string | null | undefined):
 }
 
 /** Sinal 3 — valores estáveis entre meses (tolerância ±5%). */
+/** Sinal 3 — valores estáveis entre meses (delega para a fonte única). */
 export function hasStableValue(monthlyValuesCents: readonly number[], tolerance = VALUE_TOLERANCE): boolean {
-  if (monthlyValuesCents.length < 2) return false;
-  const base = monthlyValuesCents[0] ?? 0;
-  if (base <= 0) return false;
-  return monthlyValuesCents.every((value) => Math.abs(value - base) / base <= tolerance);
+  return valuesWithinTolerance(monthlyValuesCents, tolerance);
 }
 
 /** Tier a partir do catálogo (com fallback por categoria). */
 export function tierOf(name: string, categoryIcon: string | null | undefined): CutTier {
-  const normalized = normalizeServiceName(name);
+  const normalized = normalizeServiceKey(name);
   for (const key of Object.keys(KNOWN_SERVICES)) {
     if (normalized.includes(key)) return KNOWN_SERVICES[key] ?? "discretionary";
   }
-  if (categoryIcon && ESSENTIAL_CATEGORIES.has(categoryIcon)) return "essential";
+  if (categoryIcon && ESSENTIAL_CATEGORY_ICONS.has(categoryIcon)) return "essential";
   return "discretionary";
 }
 

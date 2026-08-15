@@ -3,11 +3,9 @@ import {
   accountsNet,
   buildDailyFlow,
   computeOverview,
-  cumulativeBalance,
   monthlySeries,
   openInvoicesTotal,
   percentChange,
-  runwayMonths,
 } from "./index";
 
 const TODAY = "2026-08-13";
@@ -139,36 +137,4 @@ describe("monthlySeries (F8 — sparklines dos KPIs)", () => {
   });
 });
 
-describe("cumulativeBalance (F8 — curva de saldo acumulado)", () => {
-  it("acumula o saldo dia a dia", () => {
-    const flow = buildDailyFlow("2026-08", [
-      { date: "2026-08-05", kind: "income", amountCents: 100000 },
-      { date: "2026-08-06", kind: "expense", amountCents: 30000 },
-      { date: "2026-08-10", kind: "expense", amountCents: 20000 },
-    ]);
-    const curve = cumulativeBalance(flow);
-    expect(curve).toHaveLength(31);
-    expect(curve[4]?.balanceCents).toBe(100000); // dia 5
-    expect(curve[5]?.balanceCents).toBe(70000); // dia 6
-    expect(curve[9]?.balanceCents).toBe(50000); // dia 10
-    expect(curve[30]?.balanceCents).toBe(50000); // fim do mês
-  });
 
-  it("pode ficar negativo em picos de despesa", () => {
-    const flow = buildDailyFlow("2026-08", [
-      { date: "2026-08-01", kind: "expense", amountCents: 90000 },
-    ]);
-    expect(cumulativeBalance(flow)[0]?.balanceCents).toBe(-90000);
-  });
-});
-
-describe("runwayMonths (F8 — saúde da poupança)", () => {
-  it("meses de reserva = renda ÷ despesas", () => {
-    expect(runwayMonths(600000, 200000)).toBe(3);
-    expect(runwayMonths(500000, 400000)).toBeCloseTo(1.25, 5);
-  });
-
-  it("null sem despesas (sem divisão por zero)", () => {
-    expect(runwayMonths(600000, 0)).toBeNull();
-  });
-});

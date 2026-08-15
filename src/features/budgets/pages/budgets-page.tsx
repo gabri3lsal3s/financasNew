@@ -6,6 +6,7 @@ import { CategoryIcon, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import {
   BUDGET_STATUS_LABELS,
+  budgetLimitsByCategory,
   budgetStatus,
   globalUsedPercent,
   incomeGoalStatus,
@@ -14,15 +15,15 @@ import {
   progressTone,
   reallocationSuggestion,
   resolveEffectiveLimit,
+  spentByCategoryMap,
 } from "@/domain/budgets";
+import { numberToCents } from "@/domain/money/parse";
 import { currentMonth } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 import { useBudgets, useCategories, useExpenses, useIncomeGoals, useIncomes, useReallocateBudget, useSetIncomeGoal, useRemoveIncomeGoal } from "@/state";
 import { LimitDialog } from "@/features/budgets/components/limit-dialog";
 import type { Category } from "@/types";
-
-const toCents = (value: number) => Math.round(value * 100);
 
 /** Orçamentos (§3.5.2) e metas de renda (§3.5.3). */
 export function BudgetsPage() {
@@ -46,23 +47,16 @@ export function BudgetsPage() {
   const budgets = budgetsQuery.data ?? [];
 
   // Limites agrupados por categoria: cada uma herda APENAS do próprio histórico.
-  const limitsByCategory = new Map<string, { month: string; limitCents: number }[]>();
-  for (const budget of budgets) {
-    const list = limitsByCategory.get(budget.category_id) ?? [];
-    list.push({ month: budget.month, limitCents: toCents(budget.limit) });
-    limitsByCategory.set(budget.category_id, list);
-  }
+  // Helpers compartilhados (F19) — mesma agregação de Overview/Insights.
+  const limitsByCategory = budgetLimitsByCategory(budgets);
 
-  const totalExpensesCents = (expensesQuery.data ?? []).reduce((acc, e) => acc + toCents(e.value * e.report_weight), 0);
-  const totalIncomesCents = (incomesQuery.data ?? []).reduce((acc, i) => acc + toCents(i.value * i.report_weight), 0);
+  const totalExpensesCents = (expensesQuery.data ?? []).reduce((acc, e) => acc + numberToCents(e.value * e.report_weight), 0);
+  const totalIncomesCents = (incomesQuery.data ?? []).reduce((acc, i) => acc + numberToCents(i.value * i.report_weight), 0);
 
-  const spentByCategory = new Map<string, number>();
-  for (const expense of expensesQuery.data ?? []) {
-    spentByCategory.set(expense.category_id, (spentByCategory.get(expense.category_id) ?? 0) + toCents(expense.value * expense.report_weight));
-  }
+  const spentByCategory = spentByCategoryMap(expensesQuery.data ?? []);
   const realizedByCategory = new Map<string, number>();
   for (const income of incomesQuery.data ?? []) {
-    realizedByCategory.set(income.category_id, (realizedByCategory.get(income.category_id) ?? 0) + toCents(income.value * income.report_weight));
+    realizedByCategory.set(income.category_id, (realizedByCategory.get(income.category_id) ?? 0) + numberToCents(income.value * income.report_weight));
   }
 
   const categories = expenseCategories.data ?? [];
@@ -89,7 +83,7 @@ export function BudgetsPage() {
   // categorias com limite só herdado ficam de fora (origem não teria valor a reduzir).
   const storedLimitsByCategory = new Map<string, number>();
   for (const budget of budgets) {
-    if (budget.month === month) storedLimitsByCategory.set(budget.category_id, toCents(budget.limit));
+    if (budget.month === month) storedLimitsByCategory.set(budget.category_id, numberToCents(budget.limit));
   }
   const suggestion = reallocationSuggestion(
     rows.map((row) => ({
@@ -120,7 +114,7 @@ export function BudgetsPage() {
 
   const goalsByCategory = new Map<string, number>();
   for (const goal of goalsQuery.data ?? []) {
-    if (goal.month === month) goalsByCategory.set(goal.category_id, toCents(goal.expected));
+    if (goal.month === month) goalsByCategory.set(goal.category_id, numberToCents(goal.expected));
   }
 
   return (

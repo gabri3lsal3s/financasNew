@@ -64,6 +64,12 @@ export interface PortfolioPosition {
    * comparativo "Δ vs. mês anterior" do KPI Patrimônio e na sparkline (F16).
    */
   monthlySeries: { month: string; valueBRL: number }[];
+  /**
+   * Aporte líquido do mês corrente em centavos (F19): compras + subscrições
+   * − vendas do mês. É a "saída mensal de investimentos" usada nas projeções
+   * de insights — não o patrimônio (que distorceria o superávit).
+   */
+  monthlyContributionCents: number;
   isLoading: boolean;
   error: unknown;
   /** Reexecuta as consultas de ativos, transações e preços. */
@@ -161,11 +167,22 @@ export function usePortfolioPosition(): PortfolioPosition {
   }));
   const monthlySeries = portfolioMonthlySeries(transactionsByAsset, seriesAssets, months);
 
+  // Aporte líquido do mês corrente (F19): compras + subscrições debitam,
+  // vendas creditam; proventos/splits não contam como aporte.
+  const currentMonthKey = currentMonth();
+  let contributionBRL = 0;
+  for (const tx of transactionsQuery.data ?? []) {
+    if (!tx.date.startsWith(currentMonthKey)) continue;
+    if (tx.type === "buy" || tx.type === "subscription") contributionBRL += tx.total;
+    else if (tx.type === "sell") contributionBRL -= tx.total;
+  }
+
   return {
     rows,
     totalBRL,
     cashBRL,
     monthlySeries,
+    monthlyContributionCents: Math.round(contributionBRL * 100),
     isLoading: assetsQuery.isLoading || transactionsQuery.isLoading || pricesQuery.isLoading,
     error: assetsQuery.error ?? transactionsQuery.error ?? pricesQuery.error,
     refetch: () => {

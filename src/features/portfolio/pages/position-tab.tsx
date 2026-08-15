@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Plus, Wallet } from "lucide-react";
 import { Alert, Button, EmptyState, SkeletonKpi, SkeletonTable } from "@/components/ui";
 import { DeltaHint, KpiCard, PositionTable } from "@/components/modules";
+import { numberToCents } from "@/domain/money/parse";
 import { usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { AssetFormDialog } from "@/features/portfolio/components/asset-form-dialog";
 import { TransactionFormDialog } from "@/features/portfolio/components/transaction-form-dialog";
 import type { PortfolioAsset } from "@/types";
 
-const toCents = (value: number) => Math.round((Number.isFinite(value) ? value : 0) * 100);
 
 /** Posição (§3.11.2) — patrimônio, caixa derivado e posições valoradas. */
 export function PositionTab() {
@@ -24,7 +24,7 @@ export function PositionTab() {
   // Comparativo Δ vs. mês anterior (F14) — série mensal derivada no state.
   const series = position.monthlySeries;
   const previousPoint = series.length > 0 ? series[series.length - 2] : undefined;
-  const previousCents = previousPoint ? toCents(previousPoint.valueBRL) : 0;
+  const previousCents = previousPoint ? numberToCents(previousPoint.valueBRL) : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,13 +80,13 @@ export function PositionTab() {
               // F15 — transição de dados: NumberTicker (respeita o toggle
               // "Contagem Numérica Animada" e prefers-reduced-motion internamente).
               // Patrimônio é sempre ≥ 0 (o format BRL zera negativos).
-              valueCents={toCents(position.totalBRL)}
+              valueCents={numberToCents(position.totalBRL)}
               tone="portfolio"
-              hint={<DeltaHint currentCents={toCents(position.totalBRL)} previousCents={previousCents} />}
+              hint={<DeltaHint currentCents={numberToCents(position.totalBRL)} previousCents={previousCents} />}
             />
             <KpiCard
               label="Caixa derivado"
-              cents={toCents(position.cashBRL)}
+              cents={numberToCents(position.cashBRL)}
               tone={position.cashBRL < 0 ? "negative" : position.cashBRL > 0 ? "positive" : "default"}
               hint="Fluxo líquido do ledger (compras debitam; vendas e proventos creditam)"
             />

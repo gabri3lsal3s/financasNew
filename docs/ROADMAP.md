@@ -931,6 +931,17 @@
 - Diagnósticos exibem tendência significativa; projeções usam investimentos reais (consistente com F16).
 - Suíte 100% verde (motores unificados + página + auditoria axe); typecheck/lint/build limpos.
 
+**Progresso — F19 concluída (2026-08-15):**
+- [x] **Limpeza de código morto F8 (entrega 1)** — removidos `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`, `SavingsHealthCard` + `smart-cards.test.tsx` + exports do barrel (substituídos pelo widget `summary` desde a F12); removidos os órfãos `runwayMonths`/`cumulativeBalance` (+ `CumulativePoint`) de `domain/overview` com seus testes — zero código morto.
+- [x] **Fontes únicas (entrega 2)** — novo `domain/insights/shared.ts` com `normalizeText` (unifica `normalizeServiceName`/`normalizeKey`; `normalizeServiceKey` para o catálogo), `valuesWithinTolerance` (unifica `hasStableValue`/`hasValuesWithin` — `hasStableValue` delega com ±5%) e `ESSENTIAL_CATEGORY_ICONS` (essenciais ∪ agregadoras, 8 itens — elimina as 3 listas sobrepostas: `isEssentialIcon` da página, `ESSENTIAL_CATEGORIES` de subscriptions, `AGGREGATING_CATEGORY_ICONS` de recurrences); barrel exporta apenas as fontes únicas. **Testes de unificação** (7): mesmos resultados dos motores anteriores.
+- [x] **`numberToCents` canônico (entrega 3)** — `domain/money/parse.ts` com guarda `isFinite` (NaN/Infinity → 0) + 2 testes; substituídos os **8 `toCents` locais divergentes** (insights, budgets, overview, reports, position-tab, targets-tab, position-table, aporte-result) — nenhum restante em features/módulos.
+- [x] **Reuso de motores na InsightsPage (entrega 4)** — `computeOverview` (rendas/despesas/saldo/savings rate com peso, sem reduces inline); `aggregateByWeekday` para o diagnóstico de fim de semana (médias diárias ÷5/÷2 derivadas do agregador, sem bucketing manual); helpers `budgetLimitsByCategory`/`spentByCategoryMap` em `domain/budgets` (2 testes) agora usados nas **3 páginas** (Overview, Budgets, Insights — DRY); Map de categorias pré-computado (O(n²) → O(n)).
+- [x] **Tendência significativa nos Diagnósticos (entrega 5)** — nova célula "Tendência de gastos" com `isSignificantTrend` (variação vs mês anterior, ±) + Alert warning (subida) / success (queda) quando > 15%; teste na página.
+- [x] **Investimentos reais nas projeções (entrega 6)** — `usePortfolioPosition` expõe **`monthlyContributionCents`** (aporte líquido do mês: compras + subscrições − vendas — saída mensal real, não o patrimônio, que distorceria o superávit); `dailyBudget`/`endOfMonthProjection`/`computeOverview` da página usam o valor (alinhado à F16, sem depender dela).
+- [x] **Labels organizados (entrega 7)** — `RECURRENCE_LEVEL_LABELS` movido para `src/lib/labels.ts` (hub DRY, tipado por `RecurrenceKind`); motivos de sugestão de limite via `increaseReason`/`reduceReason` (constantes com template — sem strings soltas em `domain/savings`).
+- [x] **Testes** — 12 novos (7 unificação + 2 `numberToCents` + 2 helpers budgets + 1 tendência na página) e 7 removidos (smart-cards + órfãos); suíte completa verde; typecheck/lint limpos.
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+
 ---
 
 ### Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX) (Trilha A)
@@ -1016,13 +1027,13 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### 6.1 Ordem de execução das próximas fases (status 2026-08-15)
 
-> **F14 e F15 concluídas (2026-08-15)** — ver progresso na seção §3. As demais fases F16–F20 estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
+> **F14, F15 e F19 concluídas (2026-08-15)** — ver progresso na seção §3. As demais fases F16, F17, F18 e F20 estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
 
 | Ordem | Fase | Trilha | Depende de | Status |
 |---|---|---|---|---|
 | 1 | **F14** — Consistência de Estados & Ergonomia de Dados | A | — | ✅ Concluída (2026-08-15) |
 | 2 | **F15** — Micro-Interações & Conforto Visual | A | F14 | ✅ Concluída (2026-08-15) |
-| 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 (pode intercalar) | 📋 Não iniciada |
+| 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 (pode intercalar) | ✅ Concluída (2026-08-15) |
 | 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | 📋 Não iniciada |
 | 5 | **F16** — Carteira na Home (KPI real) | B | P1 (deploy/cron F1.7) · F14 | 📋 Não iniciada |
 | 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | 📋 Não iniciada |

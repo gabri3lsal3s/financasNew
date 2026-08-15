@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
+import { numberToCents } from "@/domain/money/parse";
 import type { PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
@@ -38,8 +39,6 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
   api: { label: "cotação", title: "Preço do cache de cotações" },
   fallback: { label: "referência", title: "Preço de referência estático (sem cotação atualizada)" },
 };
-
-const toCents = (value: number): number => Math.round((Number.isFinite(value) ? value : 0) * 100);
 
 const formatPct = (value: number): string =>
   `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
@@ -86,7 +85,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
       align: "right",
       cell: (row) => (
         <div className="flex flex-col items-end gap-0.5">
-          {row.isCash ? <span className="num text-sm text-foreground">1:1</span> : <MoneyText cents={toCents(row.priceBRL)} tone="default" />}
+          {row.isCash ? <span className="num text-sm text-foreground">1:1</span> : <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />}
           {row.isCash ? (
             <Badge variant="muted" title="Ativo de caixa/reserva valorado 1:1">
               caixa
@@ -107,14 +106,14 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
         row.isCash ? (
           <span className="num text-sm text-muted-foreground">—</span>
         ) : (
-          <MoneyText cents={toCents(row.averageCost)} tone="default" className="text-muted-foreground" />
+          <MoneyText cents={numberToCents(row.averageCost)} tone="default" className="text-muted-foreground" />
         ),
     },
     {
       key: "value",
       header: "Valor",
       align: "right",
-      cell: (row) => <MoneyText cents={toCents(row.valueBRL)} tone="default" />,
+      cell: (row) => <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />,
     },
     {
       key: "unrealizedPnl",
@@ -124,7 +123,7 @@ export function PositionTable({ rows, onRegisterTransaction, emptyMessage }: Pos
         row.isCash ? (
           <span className="num text-sm text-muted-foreground">—</span>
         ) : (
-          <MoneyText cents={toCents(row.unrealizedPnl)} tone="auto" sign="explicit" />
+          <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" />
         ),
     },
     {

@@ -178,6 +178,26 @@ export interface LimitSuggestion {
   reason: string;
 }
 
+// Mensagens de motivo das sugestões (F19 — constantes, sem strings soltas).
+const INCREASE_REASON = "Estourou o limite (excesso de {amount}).";
+const REDUCE_REASON = "Usou só {percent}% do limite — dá para reduzir.";
+
+/** Formata centavos como "R$ 1.234" (sem casas decimais) para mensagens. */
+function formatCents(cents: number): string {
+  const reais = Math.round(cents / 100);
+  return `R$ ${reais.toLocaleString("pt-BR")}`;
+}
+
+/** Motivo de aumento (estouro). */
+export function increaseReason(excessCents: number): string {
+  return INCREASE_REASON.replace("{amount}", formatCents(excessCents));
+}
+
+/** Motivo de redução (subutilização). */
+export function reduceReason(percentUsed: number): string {
+  return REDUCE_REASON.replace("{percent}", String(Math.round(percentUsed)));
+}
+
 /** Folga mínima para sugerir redução: > R$ 50. */
 export const REDUCE_SLACK_FLOOR_CENTS = 5000;
 /** Uso abaixo de 50% do limite habilita sugestão de redução. */
@@ -247,7 +267,7 @@ export function buildLimitSuggestions(
         kind: "increase",
         currentLimitCents: usage.limitCents,
         suggestedLimitCents: increase,
-        reason: `Estourou o limite (excesso de ${formatCents(increase - usage.limitCents)}).`,
+        reason: increaseReason(increase - usage.limitCents),
       });
       continue;
     }
@@ -261,7 +281,7 @@ export function buildLimitSuggestions(
         kind: "reduce",
         currentLimitCents: usage.limitCents,
         suggestedLimitCents: reduction,
-        reason: `Usou só ${Math.round((usage.spentCents / usage.limitCents) * 100)}% do limite — dá para reduzir.`,
+        reason: reduceReason((usage.spentCents / usage.limitCents) * 100),
       });
     }
   }
@@ -270,10 +290,4 @@ export function buildLimitSuggestions(
   return suggestions
     .sort((a, b) => Math.abs(b.suggestedLimitCents - b.currentLimitCents) - Math.abs(a.suggestedLimitCents - a.currentLimitCents))
     .slice(0, max);
-}
-
-/** Formata centavos como "R$ 1.234" (sem casas decimais) para mensagens. */
-function formatCents(cents: number): string {
-  const reais = Math.round(cents / 100);
-  return `R$ ${reais.toLocaleString("pt-BR")}`;
 }

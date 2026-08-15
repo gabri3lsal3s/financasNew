@@ -13,6 +13,7 @@
 
 import { confidenceScore, varianceOf, type RecurrenceKind } from "./confidence";
 import { classifySubscription } from "./subscriptions";
+import { ESSENTIAL_CATEGORY_ICONS, normalizeText, valuesWithinTolerance } from "./shared";
 
 export interface ExpenseLike {
   id: string;
@@ -42,26 +43,7 @@ export interface RecurrenceOccurrence {
 const RECURRING_TOLERANCE = 0.5; // ±50% (recurring)
 const SIMILAR_TOLERANCE = 0.3; // ±30% (similar)
 
-/** Categorias agregadoras excluídas da detecção `similar`. */
-export const AGGREGATING_CATEGORY_ICONS = new Set([
-  "mercado",
-  "supermercado",
-  "combustivel",
-  "transporte",
-  "farmacia",
-  "saude",
-  "moradia",
-]);
-
-/** Remove acentos para agrupar descrições ("Streaming" ≈ "streaming"). */
-function normalizeKey(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
+/** Meses distintos de um conjunto de ocorrências. */
 function monthsWith(values: readonly string[]): number {
   return new Set(values).size;
 }
@@ -77,7 +59,7 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
   // Agrupa por descrição normalizada (níveis subscription/recurring).
   const byName = new Map<string, ExpenseLike[]>();
   for (const expense of active) {
-    const key = normalizeKey(expense.description ?? expense.id);
+    const key = normalizeText(expense.description ?? expense.id);
     const list = byName.get(key) ?? [];
     list.push(expense);
     byName.set(key, list);
@@ -135,7 +117,7 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
     }
 
     // recurring: mesma descrição, valor ±50%.
-    const stable = hasValuesWithin(values, RECURRING_TOLERANCE);
+    const stable = valuesWithinTolerance(values, RECURRING_TOLERANCE);
     if (stable && months.length >= 2) {
       const variance = varianceOf(values);
       const confidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
@@ -155,7 +137,7 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
   // similar: mesma categoria, totais mensais ±30%, sem categorias agregadoras.
   for (const [categoryId, group] of byCategory) {
     const categoryIcon = group[0]?.categoryIcon;
-    if (categoryIcon && AGGREGATING_CATEGORY_ICONS.has(categoryIcon)) continue;
+    if (categoryIcon && ESSENTIAL_CATEGORY_ICONS.has(categoryIcon)) continue;
     if (seen.has(categoryId)) continue;
 
     // Total por mês dentro da categoria.
@@ -171,7 +153,7 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
     const distinctMonths = monthsWith(months);
     if (distinctMonths < 2) continue;
 
-    if (!hasValuesWithin(totals, SIMILAR_TOLERANCE)) continue;
+    if (!valuesWithinTolerance(totals, SIMILAR_TOLERANCE)) continue;
 
     const variance = varianceOf(totals);
     const confidence = confidenceScore({ base: 0.6, monthsHistory: distinctMonths, kind: "similar", variance });
@@ -187,12 +169,4 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
   }
 
   return occurrences.sort((a, b) => b.confidence - a.confidence);
-}
-
-/** Todos os valores dentro da tolerância relativa ao primeiro. */
-function hasValuesWithin(values: readonly number[], tolerance: number): boolean {
-  if (values.length < 2) return false;
-  const base = values[0] ?? 0;
-  if (base <= 0) return false;
-  return values.every((value) => Math.abs(value - base) / base <= tolerance);
 }

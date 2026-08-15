@@ -52,6 +52,16 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useSetFeedback: () => ({ mutate: setFeedbackMock }),
+  usePortfolioPosition: () => ({
+    rows: [],
+    totalBRL: 0,
+    cashBRL: 0,
+    monthlySeries: [],
+    monthlyContributionCents: 0,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 describe("InsightsPage (motor de insights §3.7)", () => {
@@ -84,10 +94,13 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     expect(screen.getByText("Pendências do período")).toBeInTheDocument();
   });
 
-  it("renderiza diagnósticos", async () => {
+  it("renderiza diagnósticos com tendência de gastos (F19 — motor §3.7.6)", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
     await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
+    expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
+    // Mês atual igual ao anterior (fixture) → variação 0.0% (não significativa).
+    expect(screen.getByText("+0.0%")).toBeInTheDocument();
   });
 });

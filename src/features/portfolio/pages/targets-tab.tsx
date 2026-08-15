@@ -3,6 +3,7 @@ import { Save, Shield, Trash2 } from "lucide-react";
 import { Alert, Button, EmptyState, Input, SkeletonList, SkeletonTable } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
 import { parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
+import { numberToCents } from "@/domain/money/parse";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { playSound } from "@/services/audio-fx";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -18,8 +19,6 @@ import {
   useSectorCaps,
   useUpdateSectorCaps,
 } from "@/state";
-
-const toCents = (value: number) => Math.round((Number.isFinite(value) ? value : 0) * 100);
 
 /**
  * Metas de alocação (§3.11.1) — edição em lote por ativo com barra de soma
@@ -55,7 +54,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   const assetRows = position.rows.map((row) => ({
     key: row.assetId,
     label: row.ticker,
-    detail: `${formatCentsAsBRL(toCents(row.valueBRL))} · ${row.pct.toFixed(1)}% hoje`,
+    detail: `${formatCentsAsBRL(numberToCents(row.valueBRL))} · ${row.pct.toFixed(1)}% hoje`,
     target: assetTargetOf(row.assetId),
   }));
 

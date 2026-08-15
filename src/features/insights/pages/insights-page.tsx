@@ -7,12 +7,14 @@ import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
 import { applyFeedback, type FeedbackDecision } from "@/domain/insights/feedback";
 import {
+  ESSENTIAL_CATEGORY_ICONS,
   incomeConcentration,
+  isSignificantTrend,
   savingsHealth,
   SAVINGS_HEALTH_LABELS,
   weekendSpendingRatio,
   WEEKEND_RATIO_LIMIT,
-} from "@/domain/insights/diagnostics";
+} from "@/domain/insights";
 import {
   buildChallengeOptions,
   buildLimitSuggestions,
@@ -22,8 +24,12 @@ import {
   type BudgetUsage,
 } from "@/domain/savings";
 import { dailyBudget, endOfMonthProjection, pendingProjection, spendingPace } from "@/domain/projection";
-import { budgetStatus, resolveEffectiveLimit } from "@/domain/budgets";
+import { budgetLimitsByCategory, budgetStatus, resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets";
+import { computeOverview } from "@/domain/overview";
+import { aggregateByWeekday } from "@/domain/reports";
+import { numberToCents } from "@/domain/money/parse";
 import { currentMonth, shiftMonth } from "@/lib/date";
+import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
 import { getErrorMessage } from "@/services/errors";
 import {
   useBudgets,
@@ -32,20 +38,17 @@ import {
   useExpenses,
   useFeedback,
   useIncomes,
+  usePortfolioPosition,
   useSetFeedback,
 } from "@/state";
-
-const toCents = (value: number) => Math.round(value * 100);
-
-const LEVEL_LABELS: Record<string, string> = {
-  subscription: "Assinatura",
-  recurring: "Recorrente",
-  similar: "Similar",
-};
 
 /**
  * Insights (§3.7) — alertas críticos, assinaturas/recorrências com
  * aprendizado (ignorar/confirmar/restaurar), projeção & corte e diagnósticos.
+ *
+ * F19 — reuso de motores do domínio (computeOverview, aggregateByWeekday,
+ * helpers compartilhados de budgets), fontes únicas de essencialidade e
+ * investimentos reais da carteira nas projeções.
  */
 export function InsightsPage() {
   const [tab, setTab] = useState("alerts");
@@ -61,9 +64,10 @@ export function InsightsPage() {
   const debtsQuery = useDebts();
   const feedbackQuery = useFeedback();
   const setFeedback = useSetFeedback();
+  const position = usePortfolioPosition();
 
   const loading =
-    month0.isLoading || month1.isLoading || month2.isLoading || month3.isLoading || incomesQuery.isLoading;
+    month0.isLoading || month1.isLoading || month2.isLoading || month3.isLoading || incomesQuery.isLoading || position.isLoading;
   const error =
     month0.error ??
     month1.error ??
@@ -75,10 +79,15 @@ export function InsightsPage() {
     debtsQuery.error ??
     feedbackQuery.error;
 
-  const incomeCents = (incomesQuery.data ?? []).reduce((acc, i) => acc + toCents(i.value * i.report_weight), 0);
-  const expenseCents = (month0.data ?? []).reduce((acc, e) => acc + toCents(e.value * e.report_weight), 0);
-  const balanceCents = incomeCents - expenseCents;
-  const savingsRate = incomeCents > 0 ? (balanceCents / incomeCents) * 100 : 0;
+  const weightedSum = (items: readonly { value: number; report_weight: number }[]) =>
+    items.reduce((acc, item) => acc + numberToCents(item.value * item.report_weight), 0);
+
+  // KPIs do mês com peso de relatório + investimentos reais (F19 — entrega 6):
+  // o saldo considera a saída mensal de investimentos (aporte líquido da
+  // carteira), alinhando Insights à Home pós-F16.
+  const investmentsCents = position.monthlyContributionCents;
+  const totals = computeOverview(weightedSum(incomesQuery.data ?? []), weightedSum(month0.data ?? []), investmentsCents);
+  const { incomeCents, expenseCents, balanceCents, savingsRatePercent: savingsRate } = totals;
   const burnRate = incomeCents > 0 ? (expenseCents / incomeCents) * 100 : 0;
 
   // Ritmo de gastos: acumulado ÷ esperado (1 = no trilho).
@@ -88,18 +97,10 @@ export function InsightsPage() {
   const pace = spendingPace({ spentCents: expenseCents, monthlyBudgetCents: Math.max(1, incomeCents), dayOfMonth, daysInMonth });
   const paceRatio = pace.active ? 1 + pace.gapPoints / 100 : 1;
 
-  // Orçamentos estourados no mês (com herança).
+  // Orçamentos estourados no mês (com herança) — helpers compartilhados (F19).
   const budgets = budgetsQuery.data ?? [];
-  const limitsByCategory = new Map<string, { month: string; limitCents: number }[]>();
-  for (const budget of budgets) {
-    const list = limitsByCategory.get(budget.category_id) ?? [];
-    list.push({ month: budget.month, limitCents: toCents(budget.limit) });
-    limitsByCategory.set(budget.category_id, list);
-  }
-  const spentByCategory = new Map<string, number>();
-  for (const expense of month0.data ?? []) {
-    spentByCategory.set(expense.category_id, (spentByCategory.get(expense.category_id) ?? 0) + toCents(expense.value * expense.report_weight));
-  }
+  const limitsByCategory = budgetLimitsByCategory(budgets);
+  const spentByCategory = spentByCategoryMap(month0.data ?? []);
   const overspentBudgets = (categoriesQuery.data ?? [])
     .filter((c) => c.type === "expense")
     .map((c) => ({
@@ -108,11 +109,11 @@ export function InsightsPage() {
     }))
     .filter((row) => row.limitCents > 0 && budgetStatus(row.spentCents, row.limitCents) === "exceeded").length;
 
-  // Déficit projetado (dia ≥ 10 e fora do trilho).
+  // Déficit projetado (dia ≥ 10 e fora do trilho) — com investimentos reais.
   const projection = endOfMonthProjection({
     phase: "current",
     incomesCents: incomeCents,
-    investmentsCents: 0,
+    investmentsCents,
     expensesCents: expenseCents,
     dayOfMonth,
     daysInMonth,
@@ -130,15 +131,17 @@ export function InsightsPage() {
   });
 
   // Assinaturas e recorrências: despesas dos últimos 3 meses (sem parcelas).
+  // Map de categorias pré-computado — O(n²) → O(n) (F19).
+  const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
   const allExpenses: ExpenseLike[] = [month0, month1, month2, month3]
     .flatMap((q, index) =>
       (q.data ?? []).map((e) => ({
         id: e.id,
         description: e.description,
         month: shiftMonth(month, -index),
-        valueCents: toCents(e.value * e.report_weight),
+        valueCents: numberToCents(e.value * e.report_weight),
         categoryId: e.category_id,
-        categoryIcon: categoriesQuery.data?.find((c) => c.id === e.category_id)?.icon ?? null,
+        categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
         installmentGroupId: e.installment_group_id,
       })),
     );
@@ -150,7 +153,7 @@ export function InsightsPage() {
   const daily = dailyBudget({
     phase: "current",
     incomesCents: incomeCents,
-    investmentsCents: 0,
+    investmentsCents,
     expensesCents: expenseCents,
     dayOfMonth,
     daysInMonth,
@@ -163,11 +166,11 @@ export function InsightsPage() {
     .map((d) => ({
       id: d.id,
       kind: d.type === "receivable" ? ("receivable" as const) : ("payable" as const),
-      remainingCents: toCents(d.amount),
+      remainingCents: numberToCents(d.amount),
     }));
   const pendingSummary = pendingProjection(pending);
 
-  // Desafios e sugestões de corte.
+  // Desafios e sugestões de corte — essencialidade pela fonte única (F19).
   const categorySpends: CategorySpend[] = (categoriesQuery.data ?? [])
     .filter((c) => c.type === "expense")
     .map((c) => ({
@@ -175,7 +178,7 @@ export function InsightsPage() {
       name: c.name,
       icon: c.icon,
       monthlyAvgCents: Math.round(spentByCategory.get(c.id) ?? 0),
-      essential: isEssentialIcon(c.icon),
+      essential: c.icon != null && ESSENTIAL_CATEGORY_ICONS.has(c.icon),
     }));
   const challenges = pickTopChallenges(buildChallengeOptions(categorySpends, incomeCents));
   const discretionary = discretionaryChallenge(categorySpends, incomeCents);
@@ -192,25 +195,33 @@ export function InsightsPage() {
     .filter((u) => u.limitCents > 0);
   const limitSuggestions = buildLimitSuggestions(usages, incomeCents);
 
-  // Diagnósticos.
+  // Diagnósticos — agregador de dia da semana compartilhado (F19).
   const incomeByCategory = new Map<string, number>();
   for (const income of incomesQuery.data ?? []) {
-    incomeByCategory.set(income.category_id, (incomeByCategory.get(income.category_id) ?? 0) + toCents(income.value * income.report_weight));
+    incomeByCategory.set(income.category_id, (incomeByCategory.get(income.category_id) ?? 0) + numberToCents(income.value * income.report_weight));
   }
   const concentration = incomeConcentration([...incomeByCategory.values()]);
   const health = savingsHealth(savingsRate);
-  const weekdayCents = new Map<number, number>();
-  const weekendCents = new Map<number, number>();
-  for (const expense of month0.data ?? []) {
-    const d = new Date(`${expense.date}T12:00:00`);
-    const weekday = (d.getDay() + 6) % 7;
-    const cents = toCents(expense.value * expense.report_weight);
-    if (weekday >= 5) weekendCents.set(weekday, (weekendCents.get(weekday) ?? 0) + cents);
-    else weekdayCents.set(weekday, (weekdayCents.get(weekday) ?? 0) + cents);
-  }
-  const weekdayDaily = [...weekdayCents.values()].reduce((a, b) => a + b, 0) / 5;
-  const weekendDaily = [...weekendCents.values()].reduce((a, b) => a + b, 0) / 2;
+  const weekdayTotals = aggregateByWeekday(
+    (month0.data ?? []).map((e) => ({
+      id: e.id,
+      date: e.date,
+      kind: "expense" as const,
+      categoryId: e.category_id,
+      categoryName: "",
+      baseCents: numberToCents(e.value),
+      weight: e.report_weight,
+    })),
+  );
+  // Monday-first: 0–4 úteis, 5–6 fim de semana — médias diárias (÷5 / ÷2).
+  const weekdayDaily = weekdayTotals.slice(0, 5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 5;
+  const weekendDaily = weekdayTotals.slice(5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 2;
   const weekendRatio = weekendSpendingRatio(weekdayDaily, weekendDaily);
+
+  // Tendência significativa vs mês anterior (motor §3.7.6 — F19 entrega 5).
+  const prevExpenseCents = weightedSum(month1.data ?? []);
+  const trendSignificant = isSignificantTrend(expenseCents, prevExpenseCents);
+  const trendPercent = prevExpenseCents > 0 ? ((expenseCents - prevExpenseCents) / prevExpenseCents) * 100 : 0;
 
   const handleFeedback = (occurrenceKey: string, decision: FeedbackDecision | null) => {
     setFeedback.mutate({ occurrenceKey, decision });
@@ -268,7 +279,7 @@ export function InsightsPage() {
                     items={visible.map((o) => ({
                       key: o.key,
                       title: o.name,
-                      subtitle: `${LEVEL_LABELS[o.level] ?? o.level} · ${o.months.length} mês(es)`,
+                      subtitle: `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`,
                       confidence: o.confidence,
                       amountCents: o.averageCents,
                       icon: <Repeat className="size-4" aria-hidden="true" />,
@@ -396,6 +407,11 @@ export function InsightsPage() {
                       value={`${weekendRatio === Infinity ? "∞" : weekendRatio.toFixed(1)}×`}
                       tone={weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive"}
                     />
+                    <DiagnosticCard
+                      label="Tendência de gastos"
+                      value={`${trendPercent >= 0 ? "+" : ""}${trendPercent.toFixed(1)}%`}
+                      tone={trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
+                    />
                     <DiagnosticCard label="Taxa de poupança" value={`${savingsRate.toFixed(1)}%`} tone={savingsRate >= 20 ? "positive" : savingsRate >= 0 ? "neutral" : "negative"} />
                   </div>
                   {concentration.alert ? (
@@ -403,6 +419,13 @@ export function InsightsPage() {
                   ) : null}
                   {weekendRatio > WEEKEND_RATIO_LIMIT ? (
                     <Alert variant="warning">Seus gastos de fim de semana estão {weekendRatio.toFixed(1)}× maiores que os de dias úteis.</Alert>
+                  ) : null}
+                  {trendSignificant ? (
+                    <Alert variant={trendPercent > 0 ? "warning" : "success"}>
+                      {trendPercent > 0
+                        ? `Gastos ${trendPercent.toFixed(1)}% acima do mês anterior — tendência significativa.`
+                        : `Gastos ${Math.abs(trendPercent).toFixed(1)}% abaixo do mês anterior — tendência significativa de queda.`}
+                    </Alert>
                   ) : null}
                 </div>
               ),
@@ -427,9 +450,4 @@ function DiagnosticCard({ label, value, tone }: { label: string; value: string; 
       </span>
     </div>
   );
-}
-
-/** Categorias essenciais nunca viram desafio de corte. */
-function isEssentialIcon(icon: string | null | undefined): boolean {
-  return icon != null && new Set(["moradia", "saude", "educacao", "mercado", "supermercado", "farmacia", "transporte", "combustivel"]).has(icon);
 }

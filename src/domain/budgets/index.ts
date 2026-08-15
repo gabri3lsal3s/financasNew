@@ -1,3 +1,5 @@
+import { numberToCents } from "@/domain/money/parse";
+
 /**
  * Orçamentos e metas de renda — ESPECIFICAÇÃO §3.5.2 / §3.5.3.
  *
@@ -209,3 +211,46 @@ export const INCOME_GOAL_LABELS: Record<IncomeGoalStatus, string> = {
   on_track: "Na meta",
   surplus: "Acima da meta",
 };
+
+// ---------------------------------------------------------------------------
+// Helpers compartilhados de agregação (F19) — usados em Overview, Budgets e
+// Insights (DRY: o padrão limitsByCategory/spentByCategory se repetia em 3 páginas)
+// ---------------------------------------------------------------------------
+
+/** Limite mensal de uma categoria, já em centavos. */
+export interface BudgetLimitEntry {
+  /** YYYY-MM */
+  month: string;
+  limitCents: number;
+}
+
+/**
+ * Agrupa os limites mensais por categoria (histórico de cada categoria —
+ * necessário para a herança `resolveEffectiveLimit`). Converte `limit`
+ * (reais) para centavos na borda — fonte única da agregação.
+ */
+export function budgetLimitsByCategory(
+  budgets: readonly { category_id: string; month: string; limit: number }[],
+): Map<string, BudgetLimitEntry[]> {
+  const byCategory = new Map<string, BudgetLimitEntry[]>();
+  for (const budget of budgets) {
+    const list = byCategory.get(budget.category_id) ?? [];
+    list.push({ month: budget.month, limitCents: numberToCents(budget.limit) });
+    byCategory.set(budget.category_id, list);
+  }
+  return byCategory;
+}
+
+/**
+ * Soma os gastos ponderados (peso de relatório) por categoria — fonte única
+ * da agregação usada em Overview/Budgets/Insights.
+ */
+export function spentByCategoryMap(
+  expenses: readonly { category_id: string; value: number; report_weight: number }[],
+): Map<string, number> {
+  const spent = new Map<string, number>();
+  for (const expense of expenses) {
+    spent.set(expense.category_id, (spent.get(expense.category_id) ?? 0) + numberToCents(expense.value * expense.report_weight));
+  }
+  return spent;
+}

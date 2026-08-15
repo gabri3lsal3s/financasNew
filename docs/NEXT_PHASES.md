@@ -1,6 +1,6 @@
 # 🧭 NEXT_PHASES.md — Proposta de Novas Fases do Roadmap
 
-> **Status:** v1.4 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação; **v1.3** registra a **conclusão da Fase 14** (2026-08-15 — ver `ROADMAP.md` §3): rentabilidade não realizada no domínio, série mensal derivada, skeletons por contexto, empty states ricos com CTA e a11y (axe nas 3 abas); **v1.4** registra a **conclusão da Fase 15** (2026-08-15): feedback de escrita uniforme (haptic + áudio nas ações da carteira), NumberTicker no Patrimônio da Posição e conforto visual.
+> **Status:** v1.5 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação; **v1.3** registra a **conclusão da Fase 14** (2026-08-15 — ver `ROADMAP.md` §3); **v1.4** registra a **conclusão da Fase 15** (2026-08-15); **v1.5** registra a **conclusão da Fase 19** (2026-08-15): código morto F8 removido, fontes únicas de normalização/essencialidade, `numberToCents` canônico, reuso de motores na InsightsPage, tendência significativa nos Diagnósticos e investimentos reais nas projeções.
 > Objetivos estratégicos:
 > **1. Refinamento Máximo de UI/UX & Conforto Visual (Prioridade Principal)** — elevar usabilidade, fluidez, micro-interações, consistência de Design System e ergonomia em desktop e mobile.
 > **2. Módulo de Carteira de Investimentos completo e integrado** — tirar o placeholder da Home do papel e entregar o ecossistema de investimentos.
@@ -143,6 +143,8 @@
 - Suíte 100% verde; auditoria axe na carteira sem violações.
 
 ### Fase 19 — Inteligência & Consistência dos Insights (Trilha A)
+
+> **Status: ✅ concluída (2026-08-15)** — ver progresso detalhado no `ROADMAP.md` §3. Resumo: smart cards F8 e órfãos do domínio removidos; `normalizeText`/`valuesWithinTolerance`/`ESSENTIAL_CATEGORY_ICONS` como fontes únicas; `numberToCents` canônico substituindo os 8 `toCents` locais; InsightsPage reusa `computeOverview`/`aggregateByWeekday`/helpers compartilhados; tendência significativa exibida nos Diagnósticos; projeções usam o aporte líquido real da carteira.
 
 > **Origem:** auditoria funcional de Insights (2026-08-15) — ver diagnóstico §1.4. Fase de **evolução** (sem reconstruir motores): unifica fontes de verdade, remove repetições/código morto e fecha lacunas entre motores e UI. **Trilha A** (refinamento/consistência) — pode ser executada antes ou depois da Trilha B (P6 = A primeiro; a entrega 6 não depende da F16, `usePortfolioPosition` existe desde a F4).
 

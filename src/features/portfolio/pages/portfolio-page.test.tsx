@@ -54,6 +54,7 @@ vi.mock("@/state", () => ({
       { month: "2026-07", valueBRL: 1000 },
       { month: "2026-08", valueBRL: 1000 },
     ],
+    monthlyContributionCents: 0,
     isLoading: false,
     error: null,
     refetch: vi.fn(),

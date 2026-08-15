@@ -6,11 +6,11 @@ export {
   hasStableValue,
   isKnownService,
   isSubscriptionCategory,
-  normalizeServiceName,
   tierOf,
 } from "./subscriptions";
 export type { CutTier, SubscriptionCandidate, SubscriptionClassification } from "./subscriptions";
-export { detectRecurrences, AGGREGATING_CATEGORY_ICONS } from "./recurrences";
+export { detectRecurrences } from "./recurrences";
+export { ESSENTIAL_CATEGORY_ICONS, normalizeServiceKey, normalizeText, valuesWithinTolerance } from "./shared";
 export type { ExpenseLike, RecurrenceOccurrence } from "./recurrences";
 export { confidenceScore, historyBonus, varianceOf } from "./confidence";
 export type { ConfidenceParams, RecurrenceKind } from "./confidence";

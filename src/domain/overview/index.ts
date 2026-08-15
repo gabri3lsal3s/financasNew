@@ -197,35 +197,4 @@ export function monthlySeries(
   return points;
 }
 
-export interface CumulativePoint {
-  /** YYYY-MM-DD */
-  day: string;
-  dayOfMonth: number;
-  /** Saldo acumulado até o dia (rendas − despesas − investimentos). */
-  balanceCents: number;
-}
 
-/**
- * Curva de saldo acumulado a partir do fluxo diário (F8) — ponto por dia,
- * saldo cumulativo (pode ficar negativo em dias de pico de despesa).
- */
-export function cumulativeBalance(dailyFlow: readonly DailyFlowItem[]): CumulativePoint[] {
-  let running = 0;
-  return dailyFlow.map((flow) => {
-    running += flow.incomeCents - flow.expenseCents - flow.investmentCents;
-    return { day: flow.day, dayOfMonth: flow.dayOfMonth, balanceCents: running };
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Saúde da poupança — meses de reserva (F8)
-// ---------------------------------------------------------------------------
-
-/**
- * Meses de reserva que a renda mensal cobre de despesas (income ÷ expense).
- * `null` sem despesas (não faz sentido dividir por zero).
- */
-export function runwayMonths(incomeCents: number, expenseCents: number): number | null {
-  if (expenseCents <= 0) return null;
-  return incomeCents / expenseCents;
-}

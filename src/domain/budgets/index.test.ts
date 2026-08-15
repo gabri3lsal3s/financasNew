@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  budgetLimitsByCategory,
   budgetStatus,
   exceededCents,
   globalUsedPercent,
@@ -8,6 +9,7 @@ import {
   progressTone,
   reallocationSuggestion,
   resolveEffectiveLimit,
+  spentByCategoryMap,
   suggestCategory,
   suggestLimitCents,
 } from "./index";
@@ -145,6 +147,31 @@ describe("reallocationSuggestion (§3.5.2)", () => {
         { categoryId: "b", limitCents: 100000, spentCents: 30000 },
       ]),
     ).toBeNull();
+  });
+});
+
+describe("budgetLimitsByCategory / spentByCategoryMap (F19 — helpers compartilhados)", () => {
+  it("agrupa limites mensais por categoria convertendo para centavos", () => {
+    const byCategory = budgetLimitsByCategory([
+      { category_id: "a", month: "2026-06", limit: 1000 },
+      { category_id: "a", month: "2026-08", limit: 1200 },
+      { category_id: "b", month: "2026-08", limit: 500 },
+    ]);
+    expect(byCategory.get("a")).toEqual([
+      { month: "2026-06", limitCents: 100000 },
+      { month: "2026-08", limitCents: 120000 },
+    ]);
+    expect(byCategory.get("b")).toEqual([{ month: "2026-08", limitCents: 50000 }]);
+  });
+
+  it("soma os gastos ponderados por categoria", () => {
+    const spent = spentByCategoryMap([
+      { category_id: "a", value: 120, report_weight: 1 },
+      { category_id: "a", value: 80, report_weight: 0.5 },
+      { category_id: "b", value: 50, report_weight: 1 },
+    ]);
+    expect(spent.get("a")).toBe(16000); // 12.000 + 4.000
+    expect(spent.get("b")).toBe(5000);
   });
 });
 

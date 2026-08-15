@@ -1,6 +1,7 @@
 import { ArrowDownToLine, PiggyBank, Wallet } from "lucide-react";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
+import { numberToCents } from "@/domain/money/parse";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -28,8 +29,6 @@ const MODE_LABEL: Record<AporteResultProps["mode"], string> = {
   class: "por meta de classe",
 };
 
-const toCents = (value: number): number => Math.round((Number.isFinite(value) ? value : 0) * 100);
-
 /**
  * Resultado da calculadora de aporte (§3.11.3) — módulo de domínio F4.
  * Log de roteamento: por ativo — valor alvo, atual, aporte sugerido,
@@ -56,19 +55,19 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
       key: "target",
       header: "Valor alvo",
       align: "right",
-      cell: (row) => <MoneyText cents={toCents(row.targetValueBRL)} tone="default" />,
+      cell: (row) => <MoneyText cents={numberToCents(row.targetValueBRL)} tone="default" />,
     },
     {
       key: "current",
       header: "Atual",
       align: "right",
-      cell: (row) => <MoneyText cents={toCents(row.currentValueBRL)} tone="default" className="text-muted-foreground" />,
+      cell: (row) => <MoneyText cents={numberToCents(row.currentValueBRL)} tone="default" className="text-muted-foreground" />,
     },
     {
       key: "allocated",
       header: "Aporte sugerido",
       align: "right",
-      cell: (row) => <MoneyText cents={toCents(row.allocatedBRL)} tone="portfolio" />,
+      cell: (row) => <MoneyText cents={numberToCents(row.allocatedBRL)} tone="portfolio" />,
     },
     {
       key: "quantity",
@@ -80,24 +79,24 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
       key: "price",
       header: "Preço",
       align: "right",
-      cell: (row) => <MoneyText cents={toCents(row.priceBRL)} tone="default" className="text-muted-foreground" />,
+      cell: (row) => <MoneyText cents={numberToCents(row.priceBRL)} tone="default" className="text-muted-foreground" />,
     },
   ];
 
   return (
     <section aria-label="Resultado da simulação de aporte" className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-3">
-        <ResultStat icon={<PiggyBank className="size-4" aria-hidden="true" />} label="Aporte informado" cents={toCents(aporte)} />
+        <ResultStat icon={<PiggyBank className="size-4" aria-hidden="true" />} label="Aporte informado" cents={numberToCents(aporte)} />
         <ResultStat
           icon={<ArrowDownToLine className="size-4" aria-hidden="true" />}
           label="Alocado em ativos"
-          cents={toCents(totalAllocated)}
+          cents={numberToCents(totalAllocated)}
           accent
         />
         <ResultStat
           icon={<Wallet className="size-4" aria-hidden="true" />}
           label="Sobra para caixa"
-          cents={toCents(leftover)}
+          cents={numberToCents(leftover)}
           tone={leftover > 0 ? "attention" : "neutral"}
         />
       </div>

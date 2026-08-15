@@ -12,11 +12,13 @@ import {
 import { isOnboardingComplete } from "@/domain/onboarding";
 import {
   BUDGET_STATUS_LABELS,
+  budgetLimitsByCategory,
   budgetStatus,
   globalUsedPercent,
   isInheritedLimit,
   progressTone,
   resolveEffectiveLimit,
+  spentByCategoryMap,
 } from "@/domain/budgets";
 import { todayISO } from "@/domain/debts";
 import {
@@ -25,6 +27,7 @@ import {
   computeOverview,
   openInvoicesTotal,
 } from "@/domain/overview";
+import { numberToCents } from "@/domain/money/parse";
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
@@ -44,10 +47,8 @@ import {
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { cn } from "@/lib/utils";
 
-const toCents = (value: number) => Math.round(value * 100);
-
 const weightedSum = (items: readonly { value: number; report_weight: number }[]) =>
-  items.reduce((acc, item) => acc + toCents(item.value * item.report_weight), 0);
+  items.reduce((acc, item) => acc + numberToCents(item.value * item.report_weight), 0);
 
 const formatPercent = (value: number) =>
   value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -120,32 +121,25 @@ export function OverviewPage() {
   const debts = debtsQuery.data ?? [];
   const receivablePending = debts
     .filter((d) => d.type === "receivable" && d.paid_at === null && d.due_date >= rangeStart && d.due_date < rangeEnd)
-    .reduce((acc, d) => acc + toCents(d.amount), 0);
+    .reduce((acc, d) => acc + numberToCents(d.amount), 0);
   const payablePending = debts
     .filter((d) => d.type === "payable" && d.paid_at === null && d.due_date >= rangeStart && d.due_date < rangeEnd)
-    .reduce((acc, d) => acc + toCents(d.amount), 0);
+    .reduce((acc, d) => acc + numberToCents(d.amount), 0);
   const openInvoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
   const accountsBalance = accountsNet(receivablePending, payablePending, openInvoices);
 
   // Fluxo diário (barras empilhadas) + curva de saldo acumulado.
   const dailyItems = [
-    ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: toCents(i.value * i.report_weight) })),
-    ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: toCents(e.value * e.report_weight) })),
+    ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: numberToCents(i.value * i.report_weight) })),
+    ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: numberToCents(e.value * e.report_weight) })),
   ];
   const dailyFlow = buildDailyFlow(month, dailyItems);
 
   // Orçamentos compactos (§3.6): progresso e lista de atenção.
+  // Helpers compartilhados (F19) — mesma agregação de Budgets/Insights.
   const budgets = budgetsQuery.data ?? [];
-  const limitsByCategory = new Map<string, { month: string; limitCents: number }[]>();
-  for (const budgetRow of budgets) {
-    const list = limitsByCategory.get(budgetRow.category_id) ?? [];
-    list.push({ month: budgetRow.month, limitCents: toCents(budgetRow.limit) });
-    limitsByCategory.set(budgetRow.category_id, list);
-  }
-  const spentByCategory = new Map<string, number>();
-  for (const expense of expensesQuery.data ?? []) {
-    spentByCategory.set(expense.category_id, (spentByCategory.get(expense.category_id) ?? 0) + toCents(expense.value * expense.report_weight));
-  }
+  const limitsByCategory = budgetLimitsByCategory(budgets);
+  const spentByCategory = spentByCategoryMap(expensesQuery.data ?? []);
   const budgetRows = (expenseCategories.data ?? [])
     .map((category) => ({
       category,

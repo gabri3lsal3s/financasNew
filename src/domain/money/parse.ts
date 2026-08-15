@@ -24,3 +24,12 @@ export function centsToBRL(cents: number): string {
   const value = cents / 100;
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
+
+/**
+ * Helper canônico de conversão para centavos (F19).
+ * Guarda `isFinite` — NaN/Infinity viram 0 (contrato único; antes havia
+ * ~8 `toCents` locais divergentes, metade sem a guarda). Nunca lança.
+ */
+export function numberToCents(value: number): number {
+  return Math.round((Number.isFinite(value) ? value : 0) * 100);
+}
