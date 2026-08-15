@@ -352,7 +352,7 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 
 ### 14.10 Identidade Visual & Assets Oficiais da Marca
 - **Componente:** `src/components/layout/brand-logo.tsx`.
-- **Assets:** Gerados a partir de `identidadeVisual/` em `public/brand/` (`logo.png`, `logo-192.png`, `logo-128.png`, `logo-64.png`, `logo-32.png`, `logo-full.png`) e `public/pwa/icons/` (`icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon-180.png`, `favicon.ico`).
+- **Assets:** Gerados a partir de `identidadeVisual/` em `public/brand/` (`logo.png`, `logo-192.png`, `logo-128.png`, `logo-64.png`, `logo-32.png`, `favicon-32.png`, `favicon-16.png`, `favicon.svg`, `logo-full.png`) e `public/pwa/icons/` (`icon-192.png`, `icon-512.png` com transparência icon-only `purpose: "any"`, `maskable-192.png`, `maskable-512.png` com fundo seguro `purpose: "maskable"`, `apple-touch-icon-180.png`, `favicon.ico`, `favicon.svg`).
 - **Padrão:** O `BrandLogo` renderiza o emblema oficial com antialiasing de alta resolução, suporte a modos símbolo único, marca horizontal e lockup completo com subtítulo ("Organização & Economia"), padronizado em Header mobile, Sidebar desktop, AuthShell, MoreMenu e PWA.
 
 ### 14.11 Iconografia Sem Fundo ("Icon-Only") & Tokens Semânticos

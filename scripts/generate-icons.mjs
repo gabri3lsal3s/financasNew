@@ -281,18 +281,38 @@ function renderTransparentIcon(size, scale = 0.96) {
   });
 }
 
-// Gera Ícones PWA (composição em fundo 100% branco #FFFFFF uniforme, sem qualquer textura ou diferença de tom)
-const pwaTargets = [
-  { name: "icon-192.png", size: 192, scale: 0.90 },
-  { name: "icon-512.png", size: 512, scale: 0.90 },
-  { name: "maskable-512.png", size: 512, scale: 0.72 }, // 80% safe zone
-  { name: "apple-touch-icon-180.png", size: 180, scale: 0.88 },
+// Gera Ícones PWA Transparentes (purpose: "any" — padrão icon-only, sem caixa de fundo)
+const pwaTransparentTargets = [
+  { name: "icon-192.png", size: 192, scale: 0.96 },
+  { name: "icon-512.png", size: 512, scale: 0.96 },
+  { name: "icon-transparent-192.png", size: 192, scale: 0.96 },
+  { name: "icon-transparent-512.png", size: 512, scale: 0.96 },
+  { name: "pwa-192x192.png", size: 192, scale: 0.96 },
+  { name: "pwa-512x512.png", size: 512, scale: 0.96 },
+  { name: "apple-touch-icon-180.png", size: 180, scale: 0.94 },
+  { name: "apple-touch-icon.png", size: 180, scale: 0.94 },
 ];
 
-for (const { name, size, scale } of pwaTargets) {
+for (const { name, size, scale } of pwaTransparentTargets) {
+  const buf = renderTransparentIcon(size, scale);
+  writeFileSync(join(pwaIconsDir, name), buf);
+  console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo 100% transparente — icon-only / purpose: any)`);
+}
+
+// Gera Ícones PWA Adaptativos/Mascaráveis com Fundo (purpose: "maskable" — fallback seguro com safe zone 80%)
+const pwaMaskableTargets = [
+  { name: "maskable-192.png", size: 192, scale: 0.72 },
+  { name: "maskable-512.png", size: 512, scale: 0.72 },
+  { name: "icon-maskable-192.png", size: 192, scale: 0.72 },
+  { name: "icon-maskable-512.png", size: 512, scale: 0.72 },
+  { name: "pwa-maskable-192x192.png", size: 192, scale: 0.72 },
+  { name: "pwa-maskable-512x512.png", size: 512, scale: 0.72 },
+];
+
+for (const { name, size, scale } of pwaMaskableTargets) {
   const buf = renderPwaWhiteIcon(size, scale);
   writeFileSync(join(pwaIconsDir, name), buf);
-  console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo 100% branco uniforme #FFFFFF)`);
+  console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo branco uniforme — safe zone 80% / purpose: maskable)`);
 }
 
 // Gera Assets transparentes da marca (`public/brand/`)
@@ -323,7 +343,18 @@ const icoBuf = encodeIco([
   { width: 48, height: 48, buffer: fav48 },
 ]);
 writeFileSync(join(root, "public", "favicon.ico"), icoBuf);
-console.log(`✓ public/favicon.ico (multi-res 16, 32, 48)`);
+console.log(`✓ public/favicon.ico (multi-res 16, 32, 48 transparente)`);
+
+// Favicon SVG (vetorial / base64 de alta resolução transparente)
+const logo512Buf = renderTransparentIcon(512, 0.96);
+const logo512Base64 = logo512Buf.toString("base64");
+const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <image href="data:image/png;base64,${logo512Base64}" width="512" height="512" />
+</svg>\n`;
+
+writeFileSync(join(root, "public", "favicon.svg"), svgContent, "utf8");
+writeFileSync(join(brandDir, "favicon.svg"), svgContent, "utf8");
+console.log(`✓ public/favicon.svg & public/brand/favicon.svg (SVG transparente)`);
 
 // Lockup horizontal completo
 const fullLockupPath = join(root, "identidadeVisual", "Gemini_Generated_Image_ru6ti5ru6ti5ru6t (1).png");
@@ -332,4 +363,4 @@ if (existsSync(fullLockupPath)) {
   console.log(`✓ public/brand/logo-full.png (lockup horizontal com tipografia)`);
 }
 
-console.log("Todos os assets da marca foram gerados com sucesso!");
+console.log("Todos os assets da marca e do PWA foram gerados com sucesso!");

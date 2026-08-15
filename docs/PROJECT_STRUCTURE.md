@@ -43,11 +43,11 @@
 │   └── ROADMAP.md                 # Fases de execução e Definition of Done
 │
 ├── public/                        # Assets estáticos servidos na raiz (não processados)
-│   ├── favicon.ico
-│   ├── brand/                     # Assets oficiais da marca (logo.png, logo-128, favicon-32, logo-full)
+│   ├── favicon.ico / favicon.svg  # Multi-resolução (16, 32, 48) e SVG transparente
+│   ├── brand/                     # Assets oficiais da marca (logo.png, logo-128, favicon-32, favicon.svg, logo-full)
 │   └── pwa/                       # Artefatos PWA — ver PWA_GUIDELINES.md
 │       ├── manifest.webmanifest
-│       ├── icons/                 # icon-192, icon-512, maskable-512, apple-touch-icon-180
+│       ├── icons/                 # icon-192, icon-512 (transparente), maskable-192/512 (safe zone), apple-touch-icon-180
 │       ├── screenshots/           # 1280x800 (desktop) + 720x1280 (mobile)
 │       └── offline.html           # Fallback offline (App Shell mínimo)
 │
@@ -76,7 +76,11 @@
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
     │   │   │                      #   virtual-list (F5.5), toast, scroll-to-top-button (F9),
     │   │   │                      #   number-ticker, sparkline (F8), color-picker,
-    │   │   │                      #   icon-picker (pós-F10), live-pulse-beacon (F11)…
+    │   │   │                      #   icon-picker (pós-F10), live-pulse-beacon (F11),
+    │   │   │                      #   tooltip (F25 — primitivo acessível, CSS puro),
+    │   │   │                      #   number-stepper-input (pós-F25 — substitui o
+    │   │   │                      #     input[type=number] nativo: botões −/+ com
+    │   │   │                      #     long-press e min/max/step)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
@@ -88,6 +92,11 @@
     │   │   │                      #   category-donut, savings-health-card, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   month-swiper (F20 — swipe no MonthPicker),
+    │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
+    │   │   │                      #   export-data-hub (F22 — backup/CSV/restauração em Configurações),
+    │   │   │                      #   monthly-close-print-view (F22 — fechamento mensal imprimível),
+    │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section
+    │   │   │                      #     (F24 — fundo de emergência e simulador FIRE no Insights),
     │   │   │                      #   pull-up-indicator (F26 — micro-indicador overscroll)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
@@ -109,7 +118,8 @@
     │   │                          #   CRUD completo (2026-08-15): asset-form-dialog,
     │   │                          #   transaction-form-dialog, transaction-list-dialog
     │   └── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+unificação):
-    │                              #     hub de abas (Resumo/Metas/Aporte) — pages/resumo-tab.tsx
+    │                              #     hub de abas (Resumo/Metas/Proventos/Aporte) —
+    │                              #     pages/resumo-tab.tsx · pages/proventos-tab.tsx (F18)
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
@@ -123,19 +133,31 @@
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── virtualization/        #   janela de renderização de listas (F5.5)
     │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F9)
+    │   ├── predictions/           #   predição de entrada (F21): similaridade de descrição,
+    │   │                          #     inferência de categoria/forma/cartão e habituais
     │   ├── gestures/              #   gestos puros: swipe.ts (F20), overscroll.ts (F26)
+    │   ├── export/                #   F22: serialização CSV pt-BR (`;`/`,`/BOM — csv.ts)
+    │   │                          #     e backup versionado com Zod + integridade
+    │   │                          #     referencial (backup.ts, BACKUP_TABLE_KEYS)
+    │   ├── fire/                  #   F24: regra dos 4% (meta = despesas × 25),
+    │   │                          #     projeção anual determinística e faixas do
+    │   │                          #     fundo de emergência (index.ts)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
-    │                              #   summary.ts (F17: rentabilidade, proventos, alocação)
+    │                              #   summary.ts (F17: rentabilidade, alocação),
+    │                              #   dividends.ts (F18: extrato e calendário de proventos)
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
+    │   │                          #   export.ts (F22: fetchAllUserData + restoreBackup),
     │   │                          #   onboarding.ts (contagens do primeiro uso),
     │   │                          #   profiles.ts (auto-cura de perfis órfãos)
     │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
     │
     ├── state/                     # CONTRATOS DE ESTADO para a UI
+    │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
+    │   │                          #     (estático 5 min, analítico, cotações, transacional)
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId)…
     │   └── mutations.ts           #   useCreateExpense(), useDeleteInstallment()…
     │
@@ -145,6 +167,7 @@
     │                              #   use-scroll-position, use-swipe-action,
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
+    │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas),
     │                              #   use-pull-up-to-top (F26 — overscroll vertical)…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
@@ -153,6 +176,8 @@
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
     │   ├── audio-fx.ts            #   Feedback sonoro sintetizado via Web Audio (F11)
+    │   ├── export-actions.ts      #   F22: downloadBlob/Csv/Json + shareText (Web Share
+    │   │                          #     API com fallback clipboard — DOM glue)
     │    ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
     │   └── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F9)

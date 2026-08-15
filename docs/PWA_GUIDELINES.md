@@ -11,19 +11,21 @@
 
 ```
 public/
-├── favicon.ico
+├── favicon.ico                       # Multi-resolução (16, 32, 48) transparente
+├── favicon.svg                       # Favicon vetorial/SVG transparente
 ├── brand/                            # Assets oficiais da marca (ver §3)
 │   ├── logo.png (512x512)
 │   ├── logo-192.png / logo-128.png / logo-64.png / logo-32.png
-│   ├── favicon-32.png / favicon-16.png
+│   ├── favicon-32.png / favicon-16.png / favicon.svg
 │   └── logo-full.png
 └── pwa/
     ├── manifest.webmanifest          # Manifest (ver §2)
-    ├── icons/                        # Ícones PWA com fundo Azul Petróleo #142531 (ver §3)
-    │   ├── icon-192.png
-    │   ├── icon-512.png
-    │   ├── maskable-512.png
-    │   └── apple-touch-icon-180.png
+    ├── icons/                        # Ícones PWA transparentes (icon-only) + maskable
+    │   ├── icon-192.png (transparente, purpose: "any")
+    │   ├── icon-512.png (transparente, purpose: "any")
+    │   ├── maskable-192.png (fundo branco, safe zone 80%, purpose: "maskable")
+    │   ├── maskable-512.png (fundo branco, safe zone 80%, purpose: "maskable")
+    │   └── apple-touch-icon-180.png (transparente, 180x180)
     ├── screenshots/                  # UI de instalação enriquecida (Chrome)
     │   ├── desktop-1280x800.png
     │   └── mobile-720x1280.png
@@ -54,15 +56,16 @@ Referência completa (ajustar nomes à marca final):
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#142531",
+  "background_color": "#FFFFFF",
   "theme_color": [
     { "color": "#F4F7F9", "media": "(prefers-color-scheme: light)" },
     { "color": "#0C1923", "media": "(prefers-color-scheme: dark)" }
   ],
   "categories": ["finance", "productivity"],
   "icons": [
-    { "src": "/pwa/icons/icon-192.png",  "sizes": "192x192", "type": "image/png" },
-    { "src": "/pwa/icons/icon-512.png",  "sizes": "512x512", "type": "image/png" },
+    { "src": "/pwa/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/pwa/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
@@ -72,7 +75,7 @@ Referência completa (ajustar nomes à marca final):
 }
 ```
 
-**Campos obrigatórios:** `name`, `short_name`, `start_url`, `display: standalone`, `background_color`, `theme_color`, `icons` (192 + 512), `description`.
+**Campos obrigatórios:** `name`, `short_name`, `start_url`, `display: standalone`, `background_color`, `theme_color`, `icons` (192 + 512 com `purpose: any` e `purpose: maskable`), `description`.
 
 **Campos recomendados:** `id`, `scope`, `orientation: portrait` (respeita o padrão vertical e o bloqueio de rotação do dispositivo móvel), `lang: pt-BR`, `categories`, `shortcuts` (atalhos de ações frequentes — lançamento rápido, D10).
 
@@ -83,7 +86,7 @@ Referência completa (ajustar nomes à marca final):
 **Arquivos:** `src/services/orientation-lock.ts` (+ testes em `src/services/orientation-lock.test.ts`).
 
 **Cores do manifesto (alinhadas ao DESIGN_SYSTEM — identidade "Guia Financeiro", F10):**
-- `background_color`: `#142531` (Azul Petróleo — fundo do ícone) — splash Android contínuo com o ícone.
+- `background_color`: `#FFFFFF` — splash padrão contínuo e neutro.
 - `theme_color`: suporta `media` para light/dark:
   ```json
   "theme_color": [
@@ -96,18 +99,20 @@ Referência completa (ajustar nomes à marca final):
 
 ## 3. ÍCONES
 
-| Arquivo | Tamanho | Uso |
-|---|---|---|
-| `icon-192.png` | 192×192 | Manifest — instalável (requisito Chrome) |
-| `icon-512.png` | 512×512 | Manifest — splash e lojas |
-| `maskable-512.png` | 512×512 | Manifest (`purpose: maskable`) — recorte adaptativo |
-| `apple-touch-icon-180.png` | 180×180 | iOS (add to home screen) |
-| `favicon.ico` + `favicon-32.png/16.png` | 16/32 | Navegador |
+| Arquivo | Tamanho | Propósito | Uso |
+|---|---|---|---|
+| `icon-192.png` | 192×192 | `purpose: "any"` | Manifest — padrão icon-only com **fundo 100% transparente** |
+| `icon-512.png` | 512×512 | `purpose: "any"` | Manifest — padrão icon-only com **fundo 100% transparente** |
+| `maskable-192.png` | 192×192 | `purpose: "maskable"` | Manifest — recorte adaptativo Android (safe zone 80% em fundo branco) |
+| `maskable-512.png` | 512×512 | `purpose: "maskable"` | Manifest — recorte adaptativo Android (safe zone 80% em fundo branco) |
+| `apple-touch-icon-180.png` | 180×180 | — | iOS (add to home screen) |
+| `favicon.svg` | Vetorial/Scalable | — | Navegadores modernos (renderização nítida transparente) |
+| `favicon.ico` + `favicon-32.png/16.png` | 16/32/48 | — | Navegador legado e abas |
 
 **Requisitos dos ícones:**
-- PNG, com fundo **não transparente** (192/512 e apple-touch).
-- **Maskable:** o conteúdo essencial dentro dos **80% centrais** (zona segura de recorte); fundo preenchido com a cor da marca.
-- Gerados pelo script `scripts/generate-icons.mjs` (`npm run icons`) a partir da marca "Guia Financeiro" (F10, design de referência `identidadeVisual/`) — carteira orbital: fundo Azul Petróleo `#142531`, esfera Teal Petróleo com gradiente vertical e núcleo petróleo, faixas orbitais em Ouro Âmbar `#DDA726` e satélite dourado no topo — nas resoluções acima. O `maskable` usa conteúdo em 72% (zona segura de 80%).
+- **Ícone Padrão PWA (Icon-Only / `purpose: "any"`):** PNG com **fundo 100% transparente**, sem caixa de fundo branca ou preta, permitindo visual livre e moderno no desktop (Windows, macOS, Linux, ChromeOS) e mobile.
+- **Maskable (`purpose: "maskable"`):** Conteúdo essencial dentro dos **80% centrais** (zona segura de recorte) com fundo preenchido uniforme `#FFFFFF`, garantindo que launchers adaptativos (Android One UI, Pixel Launcher, MIUI) apliquem suas máscaras sem cortar o logotipo.
+- Gerados pelo script `scripts/generate-icons.mjs` (`npm run icons`) a partir da marca "Guia Financeiro" (`identidadeVisual/foto-sem-fundo.png`).
 
 ---
 

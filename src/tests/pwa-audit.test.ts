@@ -27,13 +27,27 @@ describe("Auditoria PWA (instalabilidade)", () => {
     const sizes = manifest.icons.map((icon: { sizes: string }) => icon.sizes);
     expect(sizes).toContain("192x192");
     expect(sizes).toContain("512x512");
-    expect(manifest.icons.some((icon: { purpose?: string }) => icon.purpose === "maskable")).toBe(true);
+    expect(manifest.icons.some((icon: { purpose?: string; sizes: string }) => icon.purpose === "any" && icon.sizes === "192x192")).toBe(true);
+    expect(manifest.icons.some((icon: { purpose?: string; sizes: string }) => icon.purpose === "any" && icon.sizes === "512x512")).toBe(true);
+    expect(manifest.icons.some((icon: { purpose?: string; sizes: string }) => icon.purpose === "maskable" && icon.sizes === "192x192")).toBe(true);
+    expect(manifest.icons.some((icon: { purpose?: string; sizes: string }) => icon.purpose === "maskable" && icon.sizes === "512x512")).toBe(true);
   });
 
-  it("ícones PWA existem em disco (192/512/maskable/apple-touch)", () => {
-    for (const file of ["icon-192.png", "icon-512.png", "maskable-512.png", "apple-touch-icon-180.png"]) {
+  it("ícones PWA e favicons existem em disco (192/512/maskable/apple-touch/favicon)", () => {
+    for (const file of [
+      "icon-192.png",
+      "icon-512.png",
+      "icon-transparent-192.png",
+      "icon-transparent-512.png",
+      "maskable-192.png",
+      "maskable-512.png",
+      "apple-touch-icon-180.png",
+    ]) {
       expect(existsSync(resolve(root, "public/pwa/icons", file))).toBe(true);
     }
+
+    expect(existsSync(resolve(root, "public/favicon.svg"))).toBe(true);
+    expect(existsSync(resolve(root, "public/favicon.ico"))).toBe(true);
   });
 
   it("index.html tem meta tags PWA/iOS e viewport com safe areas", () => {
