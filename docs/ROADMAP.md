@@ -1041,6 +1041,15 @@
 - Atalhos de repetição preservam as invariantes financeiras e geram novos IDs/audit_events no envio.
 - Acessibilidade e suporte a teclado (Tab/Enter/Setas) mantidos no autopreenchimento.
 
+**Progresso — F21 concluída (2026-08-15):**
+- [x] **Motor preditivo puro (entrega 1)** — `src/domain/predictions/` (novo, 11 testes): `normalizeText`/`tokenize` (acentos, tokens ≥ 2 chars), `jaccardTokens` (similaridade 0–1), `recencyFactor` (janela de ~90 dias), `predictFromHistory` (agrupa histórico por categoria+forma+cartão, similaridade × frequência × recência, top 3) e `buildHabitualEntries` (favoritos por frequência com valor mais recente, top 5).
+- [x] **Histórico preditivo no state (entrega 2)** — `usePredictionHistory` (`src/state/queries/use-prediction-history.ts`): despesas + rendas + categorias no contrato do motor, queries habilitadas sob demanda (`enabled` — zero custo fora do wizard).
+- [x] **`PredictionSuggestions`** (novo módulo `components/modules/`, 4 testes): listbox acessível (role listbox/option, foco + clique, sem emojis), rótulos por valor (forma/cartão/recebimento), aplicação por 1 toque.
+- [x] **Autopreenchimento no wizard (entrega 2)** — `StepDetails` exibe sugestões ao digitar descrição (≥ 3 chars) e `onApplySuggestion` preenche categoria/forma/cartão/valor; `StepValue` mostra **Lançamentos Habituais** (entrega 3 — templates derivados do histórico, 1 toque). 2 testes de fluxo no wizard.
+- [x] **Repetição rápida (entrega 4)** — botões "Repetir no mês atual" nos diálogos de detalhe (`ExpenseDetailDialog`/`IncomeDetailDialog`): clona com data ajustada para hoje, novos IDs/audit_events, invariantes preservadas (peso, cartão, competência) — 2 testes.
+- [x] **Acessibilidade** — sugestões por teclado (Tab + Enter) e axe sem violações (LaunchWizard na auditoria P0).
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+
 ---
 
 ### Fase 22 — Central de Exportação, Backup & Fechamento Mensal
@@ -1186,7 +1195,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 5 | **F16** — Carteira na Home (KPI real + donut de alocação) | B | F14 | ✅ Concluída (2026-08-15) — KPI de aportes com deep-link; `AllocationDonut` na Posição (decisão: sem widget na Home) |
 | 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | ✅ Concluída (2026-08-15) — **unificada em área única** (decisão 2026-08-15): `/carteira` virou redirect e `/investments` é o hub de abas Resumo/Metas/Aporte |
 | 7 | **F18** — Proventos (extrato & calendário) | B | F17 | ✅ Concluída (2026-08-15) — motor `dividends.ts` + aba Proventos no hub `/investments` (extrato mensal + calendário anual) |
-| 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | 📋 Planejada |
+| 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | ✅ Concluída (2026-08-15) — motor `domain/predictions`, autopreenchimento no wizard + habituals + repetição nos diálogos |
 | 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | 📋 Planejada |
 | 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | 📋 Planejada |
 | 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | 📋 Planejada |

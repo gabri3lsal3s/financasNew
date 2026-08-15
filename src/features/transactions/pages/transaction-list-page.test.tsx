@@ -42,8 +42,10 @@ vi.mock("@/state", () => ({
   useCreditCards: () => ({ data: [], isLoading: false, error: null }),
   useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("TransactionListPage — listagem por mês", () => {

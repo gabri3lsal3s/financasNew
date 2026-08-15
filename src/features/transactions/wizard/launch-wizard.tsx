@@ -6,7 +6,9 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
 import { getErrorMessage } from "@/services/errors";
-import { useActiveCreditCards, useCategories, useCreateExpense, useCreateIncome } from "@/state";
+import { buildHabitualEntries, predictFromHistory } from "@/domain/predictions";
+import { todayISO } from "@/domain/debts";
+import { useActiveCreditCards, useCategories, useCreateExpense, useCreateIncome, usePredictionHistory } from "@/state";
 import type { DbInsert, Income, PaymentMethod, ReceiveType } from "@/types";
 import { StepCategory } from "./step-category";
 import { StepDetails } from "./step-details";
@@ -33,6 +35,13 @@ export function LaunchWizard() {
   const cardsQuery = useActiveCreditCards();
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
+
+  // F21 — histórico preditivo: ativo apenas nos passos de entrada (1 e 3),
+  // zero custo nos demais (Online First — sugestões 100% locais).
+  const predictionActive = state.step === 1 || state.step === 3;
+  const prediction = usePredictionHistory(predictionActive);
+  const suggestions = predictFromHistory(prediction.entries, state.description, state.type, todayISO());
+  const habits = buildHabitualEntries(prediction.entries, state.type, 5);
 
   const set = <K extends keyof LaunchState>(key: K, value: LaunchState[K]) =>
     setState((prev) => ({ ...prev, [key]: value }));
@@ -121,6 +130,18 @@ export function LaunchWizard() {
           }}
           onValueChange={(cents) => set("valueCents", cents)}
           onInstallmentsChange={(count) => set("installments", count)}
+          onApplyHabitual={(habit) => {
+            set("valueCents", Math.round(habit.value * 100));
+            set("categoryId", habit.categoryId);
+            set("description", habit.description);
+            if (habit.paymentMethod) {
+              set("paymentMethod", habit.paymentMethod as PaymentMethod);
+              set("cardId", habit.cardId);
+            } else if (habit.receiveType) {
+              set("receiveType", habit.receiveType as ReceiveType);
+            }
+          }}
+          habits={habits}
         />
       ) : null}
 
@@ -146,6 +167,17 @@ export function LaunchWizard() {
           onCardChange={(cardId) => set("cardId", cardId)}
           onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
           onDescriptionChange={(description) => set("description", description)}
+          onApplySuggestion={(suggestion) => {
+            set("categoryId", suggestion.categoryId);
+            if (suggestion.paymentMethod) {
+              set("paymentMethod", suggestion.paymentMethod as PaymentMethod);
+              set("cardId", suggestion.cardId);
+            } else if (suggestion.receiveType) {
+              set("receiveType", suggestion.receiveType as ReceiveType);
+            }
+            if (suggestion.value > 0) set("valueCents", Math.round(suggestion.value * 100));
+          }}
+          suggestions={suggestions}
           onReportWeightChange={(weight) => {
             set("reportWeight", weight);
             if (!isPresetWeight(weight) && state.reportCustomAmountCents === 0) {

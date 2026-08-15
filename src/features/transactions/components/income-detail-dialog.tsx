@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Pencil, Sparkles, Trash2 } from "lucide-react";
+import { Copy, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
-import { useCategories, useDeleteIncome, useUpdateIncome } from "@/state";
+import { useCategories, useCreateIncome, useDeleteIncome, useUpdateIncome } from "@/state";
 import { RECEIVE_TYPE_LABELS } from "@/lib/labels";
+import { todayISO } from "@/domain/debts";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
-import type { Category, Income, ReceiveType } from "@/types";
+import type { Category, DbInsert, Income, ReceiveType } from "@/types";
 
 const RECEIVE_OPTIONS = Object.entries(RECEIVE_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
@@ -194,6 +195,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
   const categoriesQuery = useCategories("income");
   const deleteIncome = useDeleteIncome();
   const updateIncome = useUpdateIncome();
+  const createIncome = useCreateIncome();
 
   const categories = categoriesQuery.data ?? [];
   const currentCategory = categories.find((c) => c.id === income?.category_id);
@@ -227,6 +229,31 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
     });
     setIsEditing(false);
     onOpenChange(false);
+  };
+
+  /**
+   * Repetição rápida (F21): clona a receita no mês atual com data ajustada
+   * para hoje — nova renda com os mesmos campos, novos IDs/audit_events.
+   */
+  const handleRepeat = async () => {
+    if (!income) return;
+    setError(null);
+    const date = todayISO();
+    try {
+      const input = {
+        value: income.value,
+        date,
+        category_id: income.category_id,
+        receive_type: income.receive_type,
+        description: income.description || null,
+        report_weight: income.report_weight,
+        source_ref: null,
+      } satisfies Omit<DbInsert<Income>, "user_id">;
+      await createIncome.mutateAsync(input);
+      onOpenChange(false);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
   };
 
   return (
@@ -333,7 +360,18 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
                 </dl>
 
                 {!isReadOnly ? (
-                  <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => void handleRepeat()}
+                      disabled={createIncome.isPending}
+                    >
+                      <Copy className="size-3.5" aria-hidden="true" />
+                      {createIncome.isPending ? "Repetindo…" : "Repetir no mês atual"}
+                    </Button>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

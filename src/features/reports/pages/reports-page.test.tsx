@@ -61,6 +61,7 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("ReportsPage (relatórios §3.6)", () => {

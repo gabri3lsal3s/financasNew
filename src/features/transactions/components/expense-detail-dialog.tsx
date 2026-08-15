@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
-import { useCategories, useCreditCards, useDeleteExpense, useUpdateExpense } from "@/state";
+import { useCategories, useCreditCards, useCreateExpense, useDeleteExpense, useUpdateExpense } from "@/state";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
+import { todayISO } from "@/domain/debts";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
 import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod } from "@/types";
@@ -271,6 +272,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
   const cardsQuery = useCreditCards();
   const deleteExpense = useDeleteExpense();
   const updateExpense = useUpdateExpense();
+  const createExpense = useCreateExpense();
 
   const categories = categoriesQuery.data ?? [];
   const cards = cardsQuery.data ?? [];
@@ -308,6 +310,44 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
     });
     setIsEditing(false);
     onOpenChange(false);
+  };
+
+  /**
+   * Repetição rápida (F21): clona o lançamento no mês atual com data ajustada
+   * para hoje — nova despesa única (1 parcela) com os mesmos campos, novos
+   * IDs e audit_events no envio (invariantes financeiras preservadas).
+   */
+  const handleRepeat = async () => {
+    if (!expense) return;
+    setError(null);
+    const selectedCard = cards.find((card) => card.id === expense.card_id);
+    const date = todayISO();
+    try {
+      await createExpense.mutateAsync({
+        value: expense.value,
+        date,
+        categoryId: expense.category_id,
+        paymentMethod: expense.payment_method,
+        cardId: expense.payment_method === "credit_card" ? expense.card_id : null,
+        description: expense.description || null,
+        reportWeight: expense.report_weight,
+        installments: [
+          {
+            date,
+            value: expense.value,
+            billCompetence:
+              expense.payment_method === "credit_card"
+                ? resolveBillCompetence(new Date(`${date}T12:00:00`), selectedCard?.closing_day ?? 10)
+                : null,
+          },
+        ],
+        debtAmount: null,
+        debtDueDate: null,
+      });
+      onOpenChange(false);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
   };
 
   return (
@@ -417,7 +457,18 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                   ) : null}
                 </dl>
 
-                <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => void handleRepeat()}
+                    disabled={createExpense.isPending}
+                  >
+                    <Copy className="size-3.5" aria-hidden="true" />
+                    {createExpense.isPending ? "Repetindo…" : "Repetir no mês atual"}
+                  </Button>
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

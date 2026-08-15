@@ -67,5 +67,6 @@ export {
   sectorCapsKey,
 } from "./queries/use-allocation";
 export { useGlobalSearchEntries, allExpensesKey, allIncomesKey } from "./queries/use-search";
+export { usePredictionHistory } from "./queries/use-prediction-history";
 export { useOnboardingCounts, onboardingKey } from "./queries/use-onboarding";
 

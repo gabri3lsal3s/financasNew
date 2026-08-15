@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PredictionSuggestions } from "@/components/modules";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import type { PaymentMethod, ReceiveType } from "@/types";
 import { REPORT_WEIGHT_OPTIONS } from "../components/report-weight-constants";
 import { CUSTOM_WEIGHT_VALUE, effectiveReportWeight, isPresetWeight } from "./wizard-state";
@@ -24,6 +26,24 @@ export interface StepDetailsProps {
   onDebtToggle: (enabled: boolean) => void;
   onDebtAmountChange: (cents: number) => void;
   onDebtDueDateChange: (date: string) => void;
+  /** Aplica uma sugestão preditiva (F21) — preenche categoria/forma/cartão/valor. */
+  onApplySuggestion: (suggestion: {
+    categoryId: string;
+    paymentMethod: string | null;
+    cardId: string | null;
+    receiveType: string | null;
+    value: number;
+  }) => void;
+  /** Sugestões derivadas do histórico (F21) — vazio oculta o bloco. */
+  suggestions: {
+    categoryId: string;
+    categoryName: string;
+    paymentMethod: string | null;
+    cardId: string | null;
+    receiveType: string | null;
+    value: number;
+    confidence: number;
+  }[];
   cards: { id: string; name: string }[] | undefined;
   cardsLoading: boolean;
   cardsError: unknown;
@@ -58,11 +78,15 @@ export function StepDetails({
   onDebtToggle,
   onDebtAmountChange,
   onDebtDueDateChange,
+  onApplySuggestion,
+  suggestions,
   cards,
   cardsLoading,
   cardsError,
 }: StepDetailsProps) {
   const isExpense = state.type === "expense";
+
+  const cardLabels = Object.fromEntries((cards ?? []).map((card) => [card.id, card.name]));
 
   return (
     <div className="flex flex-col gap-5">
@@ -121,6 +145,23 @@ export function StepDetails({
           onChange={(event) => onDescriptionChange(event.target.value)}
           placeholder={isExpense ? "Ex.: Supermercado do mês" : "Ex.: Salário"}
         />
+        {state.description.trim().length >= 3 ? (
+          <PredictionSuggestions
+            suggestions={suggestions}
+            paymentLabels={PAYMENT_METHOD_LABELS}
+            cardLabels={cardLabels}
+            receiveLabels={RECEIVE_TYPE_LABELS}
+            onApply={(suggestion) =>
+              onApplySuggestion({
+                categoryId: suggestion.categoryId,
+                paymentMethod: suggestion.paymentMethod,
+                cardId: suggestion.cardId,
+                receiveType: suggestion.receiveType,
+                value: suggestion.value,
+              })
+            }
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-1.5">

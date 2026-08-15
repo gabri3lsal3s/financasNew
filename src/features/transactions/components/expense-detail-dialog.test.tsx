@@ -6,6 +6,7 @@ import type { Expense } from "@/types";
 
 const updateExpenseMock = vi.fn();
 const deleteExpenseMock = vi.fn();
+const createExpenseMock = vi.fn();
 
 vi.mock("@/state", () => ({
   useCategories: () => ({
@@ -30,6 +31,7 @@ vi.mock("@/state", () => ({
   }),
   useUpdateExpense: () => ({ mutateAsync: updateExpenseMock, isPending: false }),
   useDeleteExpense: () => ({ mutateAsync: deleteExpenseMock, isPending: false }),
+  useCreateExpense: () => ({ mutateAsync: createExpenseMock, isPending: false }),
 }));
 
 const baseExpense: Expense = {
@@ -51,6 +53,27 @@ const baseExpense: Expense = {
 };
 
 describe("ExpenseDetailDialog", () => {
+  it("repete o lançamento no mês atual com data ajustada (F21)", async () => {
+    createExpenseMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog open={true} onOpenChange={vi.fn()} expense={baseExpense} />);
+
+    await user.click(screen.getByRole("button", { name: /Repetir no mês atual/ }));
+
+    expect(createExpenseMock).toHaveBeenCalledTimes(1);
+    const input = createExpenseMock.mock.calls[0]?.[0];
+    expect(input).toMatchObject({
+      value: 120.5,
+      categoryId: "cat1",
+      paymentMethod: "credit_card",
+      cardId: "card1",
+      description: null,
+      reportWeight: 1,
+    });
+    // Data ajustada para hoje (não a original).
+    expect(input.date).not.toBe("2026-08-04");
+  });
+
   it("exibe o nome da categoria quando a despesa não tiver descrição", () => {
     render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
 

@@ -6,6 +6,7 @@ import type { Income } from "@/types";
 
 const updateIncomeMock = vi.fn();
 const deleteIncomeMock = vi.fn();
+const createIncomeMock = vi.fn();
 
 vi.mock("@/state", () => ({
   useCategories: () => ({
@@ -16,6 +17,7 @@ vi.mock("@/state", () => ({
   }),
   useUpdateIncome: () => ({ mutateAsync: updateIncomeMock, isPending: false }),
   useDeleteIncome: () => ({ mutateAsync: deleteIncomeMock, isPending: false }),
+  useCreateIncome: () => ({ mutateAsync: createIncomeMock, isPending: false }),
 }));
 
 function baseIncome(overrides: Partial<Income> = {}): Income {
@@ -35,6 +37,25 @@ function baseIncome(overrides: Partial<Income> = {}): Income {
 }
 
 describe("IncomeDetailDialog", () => {
+  it("repete a receita no mês atual com data ajustada (F21)", async () => {
+    createIncomeMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<IncomeDetailDialog open={true} onOpenChange={vi.fn()} income={baseIncome()} />);
+
+    await user.click(screen.getByRole("button", { name: /Repetir no mês atual/ }));
+
+    expect(createIncomeMock).toHaveBeenCalledTimes(1);
+    const input = createIncomeMock.mock.calls[0]?.[0];
+    expect(input).toMatchObject({
+      value: 3500,
+      category_id: "cat1",
+      receive_type: "pix",
+      report_weight: 1,
+    });
+    // Data ajustada para hoje (não a original).
+    expect(input.date).not.toBe("2026-08-05");
+  });
+
   it("exibe o nome da categoria quando a receita não tiver descrição", () => {
     render(<IncomeDetailDialog income={baseIncome()} open={true} onOpenChange={vi.fn()} />);
 

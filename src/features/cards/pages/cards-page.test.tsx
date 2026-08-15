@@ -73,6 +73,7 @@ vi.mock("@/state", () => ({
   useDeleteCardPayment: () => ({ mutateAsync: deleteCardPaymentMock, isPending: false }),
   useUpdateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => {

@@ -23,7 +23,10 @@ vi.mock("@/state", () => ({
   useActiveCreditCards: () => ({ data: [], isLoading: false, isError: false, error: null }),
   useCreateExpense: () => ({ mutateAsync: createExpenseMock, isPending: false }),
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePredictionHistory: () => ({ entries: predictionHistoryMock(), isLoading: false, error: null, refetch: vi.fn() }),
 }));
+
+const predictionHistoryMock = vi.fn(() => [] as unknown[]);
 
 describe("LaunchWizard — fluxo de lançamento (D10)", () => {
   beforeEach(() => {
@@ -117,5 +120,81 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
 
     expect(createExpenseMock).toHaveBeenCalledTimes(1);
     expect(createExpenseMock.mock.calls[0]?.[0].reportWeight).toBe(0.375);
+  });
+
+  it("autopreenche categoria/forma por descrição com 1 toque (F21)", async () => {
+    predictionHistoryMock.mockReturnValue([
+      {
+        id: "h1",
+        kind: "expense",
+        description: "Supermercado Pão de Açúcar",
+        categoryId: "c1",
+        categoryName: "Alimentação",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 200,
+        date: "2026-08-01",
+      },
+    ]);
+    const user = userEvent.setup();
+    render(<LaunchWizard />);
+
+    await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "10000");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    // Passo 2 — seleciona a categoria (necessária para avançar ao passo 3)
+    await user.click(screen.getByRole("button", { name: /alimentação/i }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 3 — digita a descrição → sugestão aparece → aplica em 1 toque
+    await user.type(screen.getByPlaceholderText(/Supermercado do mês/), "mercado pao de acucar");
+    const option = await screen.findByRole("option", { name: /Alimentação/ });
+    await user.click(option);
+
+    // Passo 4 — revisão alcançável: a sugestão aplicou a forma (pix) e valor.
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByRole("button", { name: "Confirmar lançamento" })).toBeEnabled();
+  });
+
+  it("exibe lançamentos habituais no passo 1 e preenche em 1 toque (F21)", async () => {
+    predictionHistoryMock.mockReturnValue([
+      {
+        id: "h1",
+        kind: "expense",
+        description: "Aluguel",
+        categoryId: "c1",
+        categoryName: "Alimentação",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 1500,
+        date: "2026-08-01",
+      },
+      {
+        id: "h2",
+        kind: "expense",
+        description: "Aluguel",
+        categoryId: "c1",
+        categoryName: "Alimentação",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 1500,
+        date: "2026-07-01",
+      },
+    ]);
+    const user = userEvent.setup();
+    render(<LaunchWizard />);
+
+    // Passo 1 — bloco de habituais com o lançamento mais frequente.
+    const habit = await screen.findByRole("button", { name: /Aluguel/ });
+    await user.click(habit);
+
+    // Valor preenchido (1500 > 0) → Continuar habilitado prova a aplicação.
+    const continuar = screen.getByRole("button", { name: "Continuar" });
+    expect(continuar).toBeEnabled();
+    await user.click(continuar);
+    // Categoria já selecionada pela aplicação do habitual.
+    expect(screen.getByRole("button", { name: "Continuar" })).toBeEnabled();
   });
 });
