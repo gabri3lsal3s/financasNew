@@ -14,7 +14,7 @@ describe("CalculatorButton — atalho da calculadora no header (pós-F10)", () =
     setCalculatorOpen(false);
   });
 
-  it("é um botão de ícone discreto com o visual dos botões do header", () => {
+  it("é um botão de ícone discreto com tooltip acessível (F25)", () => {
     render(
       <header>
         <CalculatorButton />
@@ -22,7 +22,10 @@ describe("CalculatorButton — atalho da calculadora no header (pós-F10)", () =
     );
 
     const button = within(screen.getByRole("banner")).getByRole("button", { name: "Abrir calculadora" });
-    expect(button).toHaveAttribute("title", "Calculadora");
+    // O tooltip (primitivo F25) substitui o title nativo e é vinculado via aria-describedby.
+    const describedBy = button.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    expect(screen.getByRole("tooltip", { name: "Calculadora" })).toHaveAttribute("id", describedBy!);
   });
 
   it("abre o painel da calculadora flutuante ao clicar", async () => {
@@ -36,11 +39,11 @@ describe("CalculatorButton — atalho da calculadora no header (pós-F10)", () =
       </>,
     );
 
-    expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const button = within(screen.getByRole("banner")).getByRole("button", { name: "Abrir calculadora" });
     await user.click(button);
 
-    expect(screen.getByText("Calculadora")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Calculadora");
   });
 
   it("o estado vive no store compartilhado (botão e FAB abrem o mesmo painel)", async () => {
@@ -56,6 +59,6 @@ describe("CalculatorButton — atalho da calculadora no header (pós-F10)", () =
 
     // O estado persiste no store — o FloatingCalculator abre ao montar.
     render(<FloatingCalculator />);
-    expect(screen.getByText("Calculadora")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Calculadora");
   });
 });

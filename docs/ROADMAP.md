@@ -1152,6 +1152,19 @@
 - Auditoria de acessibilidade (`axe-core`) com 0 violações nas novas superfícies e tooltips.
 - Suíte completa de testes 100% verde (incluindo testes de integração da Sidebar e Bottom Sheets).
 
+**Decisões registradas (F25):**
+- **Hover-expand em overlay:** a expansão por hover acontece **por cima** do conteúdo (a sidebar é `fixed`, com `shadow-2xl` no estado flutuante) — a margem da página (`lg:pl-*`) só muda com o toggle **persistido** (`useSidebarState`), então o hover **nunca desloca a página**.
+- **Atraso anti-disparo:** `HOVER_EXPAND_DELAY_MS = 120` na entrada e na saída — mouse rápido que apenas cruza a sidebar não expande (testado com fake timers).
+- **Bottom Sheet com drag-to-close:** no mobile o `Modal` vira folha inferior (`inset-x-0 bottom-0`, cantos superiores arredondados, slide-up `sheet-in` 250ms). O fechamento por arrasto usa pointer events nativos (touch/pena — nunca mouse), engaja **apenas** com `scrollTop === 0` e fora de elementos interativos (`INTERACTIVE_SELECTOR`), com resistência elástica (100px + fator 0.35), threshold de fechamento 96px, fling > 0.5px/ms e spring-back. Em `prefers-reduced-motion` o rubber-band é desligado (sem transform visual) e o reset do transform vive no handler (`onOpenChange`), não em effect (React Compiler).
+- **Tooltip primitivo (`ui/tooltip.tsx`):** CSS puro (group-hover/focus-within), `role="tooltip"` + `aria-describedby` injetado via `useId`/`cloneElement`; substituiu os `title` nativos dos botões do header (tema, privacidade, calculadora) — com `z-tooltip` e transição 150ms respeitando `prefers-reduced-motion`.
+- **Gating de movimento:** `sheet-in` é um fade (mantido no nível "Econômica"), zerado no "Reduzida"/`prefers-reduced-motion` pelas regras globais existentes; nenhuma lib nova de animação (Decisão A mantida).
+
+**Progresso — F25 concluída (2026-08-15):**
+- [x] Sidebar com hover-expand (overlay + delay 120ms anti-disparo + toggle persistido intacto) + testes (expansão, mouse rápido)
+- [x] Modal como bottom sheet mobile: alça (`lg:hidden`), slide-up `sheet-in` e drag-to-close (threshold, fling, resistência, spring-back) + testes (arrasto fecha, arrasto curto não fecha, mouse ignora)
+- [x] Primitivo `Tooltip` (axe 0 violações) aplicado nos botões do header (ThemeToggle, PrivacyToggle, CalculatorButton) + testes
+- [x] Suíte completa verde; typecheck/lint/build limpos
+
 ---
 
 ### Fase 26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)
@@ -1267,7 +1280,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | ✅ Concluída (2026-08-15) — `domain/export` (CSV pt-BR + backup versionado Zod), hub em `/configuracoes > Dados` (JSON + CSVs por período + restauração 2 etapas via RPC `restore_backup`), Fechamento Mensal imprimível em Relatórios e Web Share nos comprovantes |
 | 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | ✅ Concluída (2026-08-15) — política de cache centralizada `state/cache-policy.ts` (estático 5 min + gcTime 30 min / analítico / cotações / transacional), pre-fetching de chunks das rotas vizinhas (`prefetchPageChunks` + `useRoutePrefetch`) e decisão: 3D CSS sem Three.js (code-splitting WebGL N/A — lazy por rota já existente) |
 | 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | ✅ Concluída (2026-08-15) — motor puro `domain/fire` (regra 4%, projeção anual, fundo de emergência), `PlanningSection` com gauge + simulador na aba Planejamento do Insights (inputs editáveis, gráfico SVG sem libs) |
-| 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | 📋 Planejada |
+| 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | ✅ Concluída (2026-08-15) — hover-expand da sidebar em overlay (delay anti-disparo), bottom sheets mobile com drag-to-close (threshold/fling/resistência), primitivo Tooltip acessível nos botões do header |
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | 📋 Planejada |
 
 **Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.

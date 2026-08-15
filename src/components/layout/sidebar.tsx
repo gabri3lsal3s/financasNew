@@ -1,8 +1,12 @@
+import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { navItems } from "@/components/layout/nav-items";
+
+/** Atraso do hover-expand: evita disparos acidentais com mouse rápido (F25). */
+const HOVER_EXPAND_DELAY_MS = 120;
 
 export interface SidebarProps {
   /** Estado colapsado (dono: PageShell via useSidebarState — fonte única). */
@@ -15,22 +19,65 @@ export interface SidebarProps {
  * compacta (w-20, apenas ícones centralizados com labels acessíveis via
  * aria-label/title). Transição nativa CSS (zero libs de animação) com suporte
  * a `prefers-reduced-motion`.
+ *
+ * F25 — Hover-expand em overlay: quando colapsada, passar o mouse expande a
+ * sidebar por cima do conteúdo (fixed, sem deslocar a página) após um pequeno
+ * atraso (anti-disparo acidental). O toggle manual continua sendo a fonte da
+ * persistência (`useSidebarState`).
  */
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+  const [hoverExpanded, setHoverExpanded] = useState(false);
+  const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // A limpeza dos timers no unmount evita setState em componente desmontado.
+  useEffect(() => {
+    return () => {
+      if (enterTimer.current !== null) clearTimeout(enterTimer.current);
+      if (leaveTimer.current !== null) clearTimeout(leaveTimer.current);
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (leaveTimer.current !== null) {
+      clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+    // Só faz sentido expandir por hover se a sidebar estiver persistida colapsada.
+    if (isCollapsed && !hoverExpanded) {
+      enterTimer.current = setTimeout(() => setHoverExpanded(true), HOVER_EXPAND_DELAY_MS);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (enterTimer.current !== null) {
+      clearTimeout(enterTimer.current);
+      enterTimer.current = null;
+    }
+    // Pequeno atraso também na saída para evitar flicker ao cruzar bordas.
+    leaveTimer.current = setTimeout(() => setHoverExpanded(false), HOVER_EXPAND_DELAY_MS);
+  };
+
+  const expanded = !isCollapsed || hoverExpanded;
+
   return (
     <aside
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={cn(
         "fixed inset-y-0 left-0 z-sidebar hidden flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
-        isCollapsed ? "w-20" : "w-64",
+        expanded ? "w-64" : "w-20",
+        // Overlay por hover: sombra só quando flutuando sobre o conteúdo.
+        hoverExpanded && isCollapsed && "shadow-2xl",
       )}
     >
       <div
         className={cn(
           "flex h-16 shrink-0 items-center gap-2 border-b border-border",
-          isCollapsed ? "justify-center px-2" : "px-6",
+          expanded ? "px-6" : "justify-center px-2",
         )}
       >
-        <BrandLogo showWordmark={!isCollapsed} markClassName={isCollapsed ? "size-7" : "size-8"} />
+        <BrandLogo showWordmark={expanded} markClassName={expanded ? "size-8" : "size-7"} />
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2.5" aria-label="Navegação principal">
@@ -39,12 +86,12 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             key={item.path}
             to={item.path}
             end={item.path === "/"}
-            aria-label={isCollapsed ? item.label : undefined}
-            title={isCollapsed ? item.label : undefined}
+            aria-label={expanded ? undefined : item.label}
+            title={expanded ? undefined : item.label}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors",
-                isCollapsed && "justify-center px-2",
+                !expanded && "justify-center px-2",
                 isActive
                   ? "bg-primary/12 text-primary-strong font-semibold"
                   : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
@@ -52,7 +99,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             }
           >
             <item.icon className="size-5 shrink-0" aria-hidden="true" />
-            {!isCollapsed && <span>{item.label}</span>}
+            {expanded && <span>{item.label}</span>}
           </NavLink>
         ))}
       </nav>
@@ -61,19 +108,19 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         <button
           type="button"
           onClick={onToggle}
-          aria-label={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+          aria-label={expanded ? "Recolher menu lateral" : "Expandir menu lateral"}
           className={cn(
             "flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
-            isCollapsed && "justify-center px-2",
+            !expanded && "justify-center px-2",
           )}
         >
-          {isCollapsed ? (
-            <ChevronRight className="size-5" aria-hidden="true" />
-          ) : (
+          {expanded ? (
             <>
               <ChevronLeft className="size-5" aria-hidden="true" />
               <span>Recolher</span>
             </>
+          ) : (
+            <ChevronRight className="size-5" aria-hidden="true" />
           )}
         </button>
       </div>

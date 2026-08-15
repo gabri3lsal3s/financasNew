@@ -330,11 +330,11 @@ F21 (Inteligência de Entrada)              ← Trilha C (✅ Concluída)
 F22 (Central de Exportação & Backup)       ← Trilha C (✅ Concluída)
 F23 (Engenharia de Performance 3D)         ← Trilha C (✅ Concluída)
 F24 (Planejamento Financeiro FIRE)         ← Trilha C (✅ Concluída)
-F25 (Micro-interações & Ergonomia)         ← Trilha A
+F25 (Micro-interações & Ergonomia)         ← Trilha A (✅ Concluída)
 F26 (Pull-up Overscroll to Top)            ← Trilha A / Gesture UX
 ```
 
-**Pré-requisitos transversais:** suíte 839 testes verde + typecheck/lint/build (CI `ci.yml`) · deploy F1.7 (edge function + cron) se P1 = (a) · sem migrations obrigatórias fora de P4 = (c).
+**Pré-requisitos transversais:** suíte 1045 testes verde + typecheck/lint/build (CI `ci.yml`) · deploy F1.7 (edge function + cron) se P1 = (a) · sem migrations obrigatórias fora de P4 = (c).
 
 **Referências:** `docs/ROADMAP.md` (F0–F13, F14–F26) · `docs/ARCHITECTURE.md` (camadas) · `docs/PROJECT_STRUCTURE.md` (onde criar) · `docs/DESIGN_SYSTEM.md` (visual) · `docs/RELEASE.md` (QA/corte).
 
