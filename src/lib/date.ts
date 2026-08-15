@@ -54,6 +54,24 @@ export function currentYear(): number {
   return new Date().getFullYear();
 }
 
+const DATE_ONLY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+/**
+ * Formata uma data ISO (YYYY-MM-DD) como dd/mm/aaaa — apresentação pt-BR.
+ * Fonte única (DRY): antes havia `formatDate` duplicada em proventos-tab,
+ * transaction-list-dialog e use-search. Aceita data com ou sem componente de
+ * hora (a parte antes de "T" é usada); entradas fora do padrão retornam o
+ * próprio valor (fallback seguro, sem lançar).
+ */
+export function formatDateBR(iso: string): string {
+  const datePart = iso.split("T")[0] ?? "";
+  if (!DATE_ONLY_PATTERN.test(datePart)) {
+    return iso;
+  }
+  const [year, month, day] = datePart.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 /** Valida se é um ano plausível (entre 1900 e 2100). */
 export function isValidYear(year: number): boolean {
   return Number.isInteger(year) && year >= 1900 && year <= 2100;

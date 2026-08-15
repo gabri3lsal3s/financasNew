@@ -14,3 +14,21 @@ const percentFormatter = new Intl.NumberFormat("pt-BR", {
 export function formatPercent(value: number): string {
   return percentFormatter.format(Number.isFinite(value) ? value : 0);
 }
+
+const signedFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/**
+ * Percentual COM sinal e sufixo "%" ("+12,3%" / "-3,0%") — usado em
+ * variações/rentabilidades. Fonte única (DRY): antes havia `formatPct`
+ * duplicada em position-table.tsx e resumo-tab.tsx (idênticas).
+ * `null` (indisponível) -> "—".
+ */
+export function formatSignedPct(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return "—";
+  }
+  return `${value > 0 ? "+" : ""}${signedFormatter.format(value)}%`;
+}

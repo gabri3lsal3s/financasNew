@@ -2,6 +2,7 @@ import { Check, RotateCcw, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { formatCentsAsBRL } from "@/services/masks/money";
 
 export interface InsightListItemData {
   /** Chave estável da ocorrência (feedback). */
@@ -42,7 +43,7 @@ export function InsightList({
   onConfirm,
   onRestore,
   emptyLabel = "Nenhuma ocorrência encontrada.",
-  formatAmount = (cents) => `R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+  formatAmount = formatCentsAsBRL,
 }: InsightListProps) {
   if (items.length === 0) {
     return <p className="py-4 text-center text-sm text-muted-foreground">{emptyLabel}</p>;

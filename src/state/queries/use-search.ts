@@ -6,6 +6,7 @@ import { listCreditCards } from "@/data/repositories/credit-cards";
 import { listAllCategories } from "@/data/repositories/categories";
 import { DEBT_STATUS_LABELS, debtStatus } from "@/domain/debts";
 import type { SearchEntry } from "@/domain/search";
+import { formatDateBR } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { STALE_TIMES } from "@/state/cache-policy";
 
@@ -52,11 +53,6 @@ export function useGlobalSearchEntries(enabled: boolean) {
   const categories = categoriesQuery.data ?? [];
   const categoryById = new Map(categories.map((category) => [category.id, category]));
 
-  const formatDate = (iso: string): string => {
-    const parsed = new Date(`${iso}T12:00:00`);
-    return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleDateString("pt-BR");
-  };
-
   const expenses: SearchEntry[] = (expensesQuery.data ?? []).map((expense) => {
     const category = categoryById.get(expense.category_id);
     const methodLabel = PAYMENT_METHOD_LABELS[expense.payment_method] ?? expense.payment_method;
@@ -67,7 +63,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
       amountCents: Math.round(expense.value * 100),
       date: expense.date,
       label: expense.description || `Despesa · ${category?.name ?? "sem categoria"}`,
-      detail: `${category?.name ?? "Sem categoria"} · ${methodLabel} · ${formatDate(expense.date)}`,
+      detail: `${category?.name ?? "Sem categoria"} · ${methodLabel} · ${formatDateBR(expense.date)}`,
       link: { path: "/transacoes", params: { month: expense.date.slice(0, 7), q: expense.id } },
     };
   });
@@ -82,7 +78,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
       amountCents: Math.round(income.value * 100),
       date: income.date,
       label: income.description || `Renda · ${category?.name ?? "sem categoria"}`,
-      detail: `${category?.name ?? "Sem categoria"} · ${receiveLabel} · ${formatDate(income.date)}`,
+      detail: `${category?.name ?? "Sem categoria"} · ${receiveLabel} · ${formatDateBR(income.date)}`,
       link: { path: "/transacoes", params: { month: income.date.slice(0, 7), q: income.id } },
     };
   });
@@ -98,7 +94,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
       date: debt.due_date,
       statusWords: [DEBT_STATUS_LABELS[status]],
       label: debt.name,
-      detail: `${debt.type === "payable" ? "A pagar" : "A receber"} · ${DEBT_STATUS_LABELS[status]} · vence ${formatDate(debt.due_date)}`,
+      detail: `${debt.type === "payable" ? "A pagar" : "A receber"} · ${DEBT_STATUS_LABELS[status]} · vence ${formatDateBR(debt.due_date)}`,
       link: { path: "/dividas", params: { q: debt.id, type: debt.type } },
     };
   });

@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-15):** fases **F0–F28 concluídas** · suíte **1079 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-15):** fases **F0–F28 concluídas** · suíte **1084 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -185,6 +185,13 @@
 
 - **Problema:** o hub `/investments` estava **bagunçado no mobile** — KPIs em 1 coluna (o app usa 2×2), tabela de posição larga com scroll horizontal (8+ colunas) e metas por classe estourando a largura.
 - **Solução:** **cards de posição empilhados no mobile** (tabela completa só em `sm+`, mesmas ações via `PositionRowActions` extraído — DRY); **KPIs 2×2** (padrão do app); metas por classe empilháveis (`flex-col sm:flex-row`); header responsivo; **remoção do código morto pós-F17** (`portfolio-page`/`position-tab`) e barrel do feature corrigido.
+
+---
+
+## Auditoria de limpeza (2026-08-15 — refatoração DRY pós-F28)
+
+- **Problema:** duplicações de formatação espalhadas — `formatDate` (ISO → dd/mm/aaaa) idêntica em 3 arquivos, `formatPct` (sinal + % ) idêntica em 2, e máscara monetária inline reimplementada no default de `InsightList`.
+- **Solução:** fontes únicas com testes — `formatDateBR` em `src/lib/date.ts` (aceita data com/sem hora, fallback seguro para valores fora do padrão) e `formatSignedPct` em `src/services/masks/percent.ts` (`null`/inválido → "—"); 6 call sites atualizados (`proventos-tab`, `transaction-list-dialog`, `use-search`, `position-table`, `resumo-tab`, `insight-list`). Varredura adicional: zero arquivos órfãos, zero `console.log`/TODO pendentes e zero componentes não utilizados (deps do `package.json` todas em uso no bundle).
 
 ---
 

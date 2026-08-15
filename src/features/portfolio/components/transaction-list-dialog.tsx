@@ -5,6 +5,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { useAssetPosition, useDeletePortfolioTransaction } from "@/state";
 import { PORTFOLIO_TX_LABELS } from "@/lib/labels";
 import { numberToCents } from "@/domain/money";
+import { formatDateBR } from "@/lib/date";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { playSound } from "@/services/audio-fx";
 import { triggerHaptic } from "@/services/haptics";
@@ -16,11 +17,6 @@ export interface TransactionListDialogProps {
   onOpenChange: (open: boolean) => void;
   asset: PortfolioAsset | null;
 }
-
-const formatDate = (iso: string): string => {
-  const [year, month, day] = iso.split("-");
-  return `${day}/${month}/${year}`;
-};
 
 const formatQty = (value: number): string =>
   Number.isInteger(value) ? String(value) : value.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
@@ -100,7 +96,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <span className="truncate text-sm font-medium text-foreground">{PORTFOLIO_TX_LABELS[tx.type]}</span>
                       <span className="num text-[11px] text-muted-foreground">
-                        {formatDate(tx.date)}
+                        {formatDateBR(tx.date)}
                         {isSplit ? ` · fator ${formatQty(tx.quantity)}` : !isDividend && tx.quantity > 0 ? ` · ${formatQty(tx.quantity)} qtd` : ""}
                       </span>
                     </div>
@@ -153,7 +149,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
         title="Excluir lançamento?"
         description={
           deleting
-            ? `${PORTFOLIO_TX_LABELS[deleting.type]} de ${formatDate(deleting.date)} será removida. O ledger da posição é recalculado automaticamente.`
+            ? `${PORTFOLIO_TX_LABELS[deleting.type]} de ${formatDateBR(deleting.date)} será removida. O ledger da posição é recalculado automaticamente.`
             : undefined
         }
         confirmLabel="Excluir"

@@ -5,16 +5,11 @@ import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
-import { currentMonth, monthLabel } from "@/lib/date";
+import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { PORTFOLIO_TX_LABELS } from "@/lib/labels";
 import { getErrorMessage } from "@/services/errors";
 import { useAllPortfolioTransactions, usePortfolioAssets } from "@/state";
 import type { PortfolioTransaction, PortfolioTransactionType } from "@/types";
-
-const formatDate = (iso: string): string => {
-  const [year, month, day] = iso.split("-");
-  return `${day}/${month}/${year}`;
-};
 
 /**
  * Proventos da carteira (§F18) — extrato mensal dos rendimentos RECEBIDOS
@@ -116,7 +111,7 @@ export function ProventosTab() {
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <span className="truncate text-sm font-medium text-foreground">{entry.ticker}</span>
                       <span className="text-[11px] text-muted-foreground">
-                        {formatDate(entry.date)} · {PORTFOLIO_TX_LABELS[entry.type as PortfolioTransactionType] ?? entry.type}
+                        {formatDateBR(entry.date)} · {PORTFOLIO_TX_LABELS[entry.type as PortfolioTransactionType] ?? entry.type}
                       </span>
                     </div>
                     <span className="num shrink-0 text-sm font-semibold text-foreground">

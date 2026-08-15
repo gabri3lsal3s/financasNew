@@ -9,6 +9,7 @@ import { numberToCents } from "@/domain/money";
 import type { PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
+import { formatSignedPct } from "@/services/masks/percent";
 import type { AssetCurrency } from "@/types";
 
 export interface PositionRow {
@@ -71,9 +72,6 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
   api: { label: "cotação", title: "Preço do cache de cotações" },
   fallback: { label: "referência", title: "Preço de referência estático (sem cotação atualizada)" },
 };
-
-const formatPct = (value: number): string =>
-  `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 
 /** Quantidade formatada (inteiro sem casas; fracionário até 4). */
 function formatQuantity(quantity: number): string {
@@ -225,7 +223,7 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
         }
         return (
           <span className={cn("num text-sm font-semibold", row.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong")}>
-            {formatPct(row.unrealizedPct)}
+            {formatSignedPct(row.unrealizedPct)}
           </span>
         );
       },
@@ -271,7 +269,7 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
             const pctLabel =
               row.isCash || row.unrealizedPct === null
                 ? "—"
-                : formatPct(row.unrealizedPct);
+                : formatSignedPct(row.unrealizedPct);
             const pctTone =
               row.isCash || row.unrealizedPct === null
                 ? "text-muted-foreground"

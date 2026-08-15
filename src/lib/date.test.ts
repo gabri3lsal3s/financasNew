@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentMonth, currentYear, isValidMonth, isValidYear, monthLabel, monthRange, shiftMonth, yearRange } from "./date";
+import { currentMonth, currentYear, formatDateBR, isValidMonth, isValidYear, monthLabel, monthRange, shiftMonth, yearRange } from "./date";
 
 describe("lib/date (§4.1 — meses e anos em timezone local, sem toISOString)", () => {
   it("isValidMonth aceita apenas YYYY-MM", () => {
@@ -53,6 +53,23 @@ describe("lib/date (§4.1 — meses e anos em timezone local, sem toISOString)",
 
   it("yearRange rejeita ano inválido com erro claro", () => {
     expect(() => yearRange(1800)).toThrow(/Ano inválido/);
+  });
+
+  describe("formatDateBR (data ISO → dd/mm/aaaa)", () => {
+    it("formata data pura", () => {
+      expect(formatDateBR("2026-08-15")).toBe("15/08/2026");
+      expect(formatDateBR("2026-01-05")).toBe("05/01/2026");
+    });
+
+    it("ignora componente de hora", () => {
+      expect(formatDateBR("2026-08-15T12:00:00")).toBe("15/08/2026");
+    });
+
+    it("retorna o próprio valor quando o formato é inválido (fallback seguro)", () => {
+      expect(formatDateBR("invalido")).toBe("invalido");
+      expect(formatDateBR("2026-13-99")).toBe("2026-13-99");
+      expect(formatDateBR("")).toBe("");
+    });
   });
 });
 

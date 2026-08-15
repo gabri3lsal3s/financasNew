@@ -6,16 +6,12 @@ import { dividendsInMonth, portfolioReturnPct } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
+import { formatSignedPct } from "@/services/masks/percent";
 import { useAllPortfolioTransactions, useDeletePortfolioAsset, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { AssetFormDialog } from "@/features/portfolio/components/asset-form-dialog";
 import { TransactionFormDialog } from "@/features/portfolio/components/transaction-form-dialog";
 import { TransactionListDialog } from "@/features/portfolio/components/transaction-list-dialog";
 import type { PortfolioAsset } from "@/types";
-
-const formatPct = (value: number | null): string => {
-  if (value === null) return "—";
-  return `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
-};
 
 /**
  * Resumo da carteira (§F17 unificada) — consolidação executiva + operação:
@@ -143,7 +139,7 @@ export function ResumoTab() {
             />
             <KpiCard
               label="Rentabilidade"
-              value={formatPct(returnPct)}
+              value={formatSignedPct(returnPct)}
               tone={returnPct !== null && returnPct >= 0 ? "positive" : returnPct !== null ? "negative" : "default"}
               hint="Não realizada, ponderada pelo valor"
             />
