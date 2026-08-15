@@ -1,6 +1,6 @@
 # 🧭 NEXT_PHASES.md — Proposta de Novas Fases do Roadmap
 
-> **Status:** v1.1 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adiciona o diagnóstico funcional de Insights (§1.4) e a **Fase 19 — Inteligência & Consistência dos Insights** (Trilha A), após auditoria da funcionalidade (2026-08-15).
+> **Status:** v1.2 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação.
 > Objetivos estratégicos:
 > **1. Refinamento Máximo de UI/UX & Conforto Visual (Prioridade Principal)** — elevar usabilidade, fluidez, micro-interações, consistência de Design System e ergonomia em desktop e mobile.
 > **2. Módulo de Carteira de Investimentos completo e integrado** — tirar o placeholder da Home do papel e entregar o ecossistema de investimentos.
@@ -66,6 +66,34 @@
 | 10 | **O(n²) na montagem de recorrências** | `allExpenses` faz `.find` na lista de categorias **por despesa** (4 meses) | Pré-computar Map categoria → ícone |
 | 11 | **Investimentos zerados nas projeções** | `dailyBudget`/`endOfMonthProjection` recebem `investmentsCents: 0` — mesmo stub da Home; inconsistente quando a carteira entrar (F16) | Usar `usePortfolioPosition` (já existe desde a F4) |
 | 12 | **Labels locais** | `LEVEL_LABELS` (subscription/recurring/similar) na página — o hub DRY `lib/labels.ts` existe | Mover para `lib/labels.ts` |
+
+### 1.5 Swipe Navigation — mapeamento e diagnóstico (2026-08-15)
+
+**Casos de uso mapeados (onde o swipe agrega valor ergonômico real):**
+
+| # | Alvo | Telas | Onde na base | Veredito |
+|---|---|---|---|---|
+| 1 | **Navegador de meses/períodos** | Visão Geral, Transações, Cartões, Orçamentos, Relatórios | `MonthPicker` (módulo único) nas 5 páginas | **Alta** — 5 telas, um ponto de integração (DRY) |
+| 2 | **Sub-abas & filtros segmentados** | Insights (4 abas), Relatórios internos (categoria/forma/dia), Dívidas (2), Orçamentos (2), Carteira (3), Categorias (2) | primitivo `Tabs` (Radix) em `components/ui/tabs.tsx` | **Alta** — prop `swipeable` única no primitivo |
+| 3 | **Faturas de cartões (competência)** | Cartões | `MonthPicker` na CardsPage (item 1) | ✅ Coberto pelo item 1 |
+| 4 | **Trocar cartão na carteira 3D** | Cartões (`CreditCardWallet`) | seleção por tap + tilt 3D interativo | ⚠️ **Baixa** — conflita com tap/seleção e o modelo 3D; manter tap (postergar) |
+| 5 | **Cards de metas/alocação** | Futuro dashboard de investimentos (F16/17) | a criar | 🔜 Adiar — a engine fica disponível para F16/17 |
+| 6 | **Wizard de lançamento** | `/transacoes/novo` | 4 passos com formulários densos | ⛔ **Excluir** — isolamento de formulários |
+| 7 | **Configurações** | `/configuracoes` | muitas abas + formulários | ⛔ **Excluir** — opt-out explícito |
+
+**Matriz de riscos e diretrizes de mitigação:**
+
+| # | Risco / problemática | Detalhe do problema | Mitigação projetada |
+|---|---|---|---|
+| R1 | **Disparo acidental durante scroll vertical (Thumb Drift)** | O arco natural do polegar na rolagem vertical gera deslocamento horizontal involuntário | **Axis-Locking** com ângulo estrito de **±30° no eixo X** (`\|dy\| ≤ \|dx\|·tan(30°) ≈ 0.577·\|dx\|`) + **descarte imediato** se o vetor inicial dominar vertical (`\|dy\| > \|dx\|` no ponto de lock, ~8px); após o lock, `setPointerCapture` (o gesto é dono do pointer — drift no meio do swipe não cancela); `touch-action: pan-y` no contêiner (scroll vertical livre, pan horizontal bloqueado) |
+| R2 | **Falsos positivos em toques curtos / ajustes finos / gestos lentos** | Taps e micro-ajustes não devem alternar mês/aba | **Threshold de distância** `\|dx\| ≥ max(60px, 15% da viewport)` **OU** **flick** (`velocity > 0.3 px/ms` com `\|dx\| ≥ 30px`); lock só após ~8px de movimento; decisão final no `pointerup` |
+| R3 | **Colisão com Swipe-to-Action existente (exclusão/edição de despesas)** | `TransactionRow` + `useSwipeAction` capturam o pointer; o arrasto lateral da linha não pode trocar o mês do extrato | **Isolamento estrito no engine** (`ignoreSelectors` inclui `.swipeable-item`/`[data-swipe-action]`) — engine desacoplado, **sem alterar** `useSwipeAction`; teste de coexistência dedicado |
+| R4 | **Isolamento de áreas interativas** | Inputs, sliders, gráficos com scrub/tooltip e modais/drawers abertos não podem navegar | `ignoreSelectors`: `input, textarea, select, [role="dialog"], [data-swipe-nav-ignore], .no-swipe-nav`; `DailyFlowChart`/`CategoryDonut` (scrub) e o FAB da calculadora (arrastável) ganham `data-swipe-nav-ignore`; modais Radix são **portais** (isolamento natural — o overlay cobre a página e não propaga ao contêiner) |
+| R5 | **Falta de feedback de continuidade (elastic drag)** | Sem micro-transição, o usuário não percebe o progresso do gesto antes do gatilho | **Rubber-banding**: `translateX` com resistência crescente durante o arrasto (`onDragProgress`), spring-back animado ao soltar; haptic `light` no lock e `warning` na borda (início/fim de dados) |
+| R6 | **Conflito com scroll horizontal existente** | `Tabs.List` tem `overflow-x-auto` (abas roláveis) | Swipe detectado na **área de conteúdo** (não no List); se o alvo estiver em contêiner com scroll horizontal, ignora |
+| R7 | **Navegação assíncrona de dados** | Slide fake de dados que ainda não carregaram (refetch do mês) | Sem slide de página completa: apenas translate durante o arrasto + fade-in do conteúdo novo (TanStack refetch com skeletons existentes) |
+| R8 | **Acessibilidade / teclado** | Gesto exclusivo exclui usuários de teclado/leitores | Gestos são **adicionais**: `MonthPicker` (botões) e `Tabs` (Radix, teclado) permanecem; `prefers-reduced-motion`/`data-motion` desligam animações; aria-live opcional na mudança |
+| R9 | **Desktop / mouse** | Arrasto com mouse navegaria acidentalmente (seleção de texto, drag de janela) | Restrito a `pointerType === "touch" \| "pen"`; mouse **ignorado** (botões existentes cobrem desktop) |
 
 ---
 
@@ -136,6 +164,30 @@
 - InsightsPage reusa `computeOverview`/`aggregateByWeekday`/helpers compartilhados — sem reduces/bucketing inline duplicados; sem `.find` por item (Map).
 - Diagnósticos exibem tendência significativa; projeções usam investimentos reais (consistente com F16).
 - Suíte 100% verde (motores unificados + página + auditoria axe); typecheck/lint/build limpos.
+
+### Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX) (Trilha A)
+
+> **Origem:** mapeamento arquitetural e diagnóstico (2026-08-15) — ver §1.5. Navegação horizontal fluida no mobile (meses/períodos e sub-abas) com **rigor técnico absoluto** para evitar falsos positivos e quebra de componentes interativos existentes (Swipe-to-Action de despesas, gráficos com scrub, formulários, modais). **Trilha A** (refinamento mobile-first).
+
+**Objetivo:** engine unificada de gestos reutilizável + integração em navegadores de mês (5 telas) e sub-abas (6 telas), com feedback elástico e isolamento estrito de áreas interativas — **sem regressão** no Swipe-to-Action existente.
+
+**Entregas (na ordem):**
+1. **Motor puro de gestos** — `src/domain/gestures/swipe.ts` (funções puras testáveis): `resolveSwipeIntent` (direção/distância/velocidade/flick), `isHorizontalLock(dx, dy, degrees = 30)` (axis-lock ±30°: `|dy| ≤ |dx|·tan(30°)` + saída se `|dy| > |dx|`), `isFlick(velocity > 0.3 px/ms, |dx| ≥ 30px)`, `activationDistance(vw)` (`max(60px, 15% viewport)`) e `boundaryResistance` (elastic overscroll).
+2. **Engine unificada `useSwipeNavigation`** — `src/hooks/use-swipe-navigation.ts`: máquina de estado `idle → tracking → locked → settled` com `setPointerCapture` após o lock; `ignoreSelectors` (`input, textarea, select, [role="dialog"], [data-swipe-nav-ignore], .no-swipe-nav, .swipeable-item`); `pointerType` só `touch`/`pen` + `event.isPrimary`; `touch-action: pan-y` no contêiner; callbacks `onDragProgress(offsetPx)`/`onNavigate(previous|next)`/`onBoundary()`; limites `canGoPrevious`/`canGoNext`; haptics (`light` no lock, `warning` na borda) e respeito a `prefers-reduced-motion`/`data-motion`.
+3. **Navegação temporal horizontal (`MonthSwiper`)** — módulo `src/components/modules/month-swiper.tsx` que envolve o `MonthPicker` com o swipe (esquerda = próximo mês, direita = anterior), aplicado nas **5 telas** com seletor (Visão Geral, Transações, Cartões, Orçamentos, Relatórios — DRY, uma integração reusada). Borda inferior `month > APP_START_DATE (2026-01)` (spec §4.1); `canGoNext` configurável (padrão: sem limite — paridade com os botões). Transição: translate do conteúdo durante o arrasto + fade-in do novo conteúdo (sem slide fake de dados assíncronos).
+4. **Navegação entre sub-abas e filtros** — primitivo `Tabs` ganha prop `swipeable?: boolean` (uma implementação, DRY): swipe na **área de conteúdo** (não no List com `overflow-x-auto`) alterna abas com translate elástico. Aplicado em Insights (4), Relatórios internos (3), Dívidas (2), Orçamentos (2), Carteira (3), Categorias (2). **Desabilitado** em Configurações e no wizard (formulários densos — isolamento).
+5. **Proteção e isolamento de componentes de ação rápida** — coexistência garantida com o Swipe-to-Action de despesas (`TransactionRow`/`useSwipeAction`): o engine ignora gestos iniciados em `.swipeable-item`/`[data-swipe-action]` (sem alterar o `useSwipeAction` — engine desacoplado); `data-swipe-nav-ignore` nos gráficos com scrub (`DailyFlowChart`, `CategoryDonut`) e no FAB da calculadora (arrastável); modais Radix são portais (isolamento natural pelo overlay).
+6. **Micro-interações de feedback tátil** — elastic drag (rubber-banding com resistência crescente + spring-back animado), haptic `light` ao travar e `warning` na borda (início/fim de dados), `select-none` durante o arrasto (sem seleção de texto), aria-live opcional na mudança de mês/aba.
+
+**Arquivos:** `src/domain/gestures/swipe.ts` (+ testes) · `src/hooks/use-swipe-navigation.ts` (+ testes) · `src/components/modules/month-swiper.tsx` (+ testes) · `src/components/ui/tabs.tsx` (prop `swipeable`) · integrações em `src/features/{overview,transactions,cards,budgets,reports,insights,debts,portfolio,categories}/pages/*` · `data-swipe-nav-ignore` em `daily-flow-chart.tsx`, `category-donut.tsx`, `floating-calculator.tsx`.
+
+**✅ DoD (critérios de aceite):**
+- Motor puro com testes: axis-lock ±30° (incl. saída por dominância vertical), thresholds (60px / 15% vw), flick > 0.3 px/ms, boundary/resistência, filtro de ignore selectors.
+- Hook com testes de integração (Pointer Events + capture): swipe horizontal → `onNavigate` 1x; rolagem vertical → não navega; swipe sobre `.swipeable-item` (TransactionRow), `input` e modal → não navega; overscroll na borda → spring-back **sem** navegação.
+- `MonthSwiper` nas 5 telas de mês (uma integração reusada — DRY); `Tabs swipeable` nas 6 telas de abas; Configurações/wizard sem swipe (isolamento verificado).
+- **Zero regressão** no Swipe-to-Action: testes existentes de `useSwipeAction` verdes + novo teste de coexistência.
+- `prefers-reduced-motion`/`data-motion` respeitados; axe sem violações; typecheck/lint/build limpos; suíte 100% verde.
+- Revisão manual em dispositivo real (iOS Safari + Chrome Android): thumb drift em scroll rápido, coexistência com exclusão de despesas e bordas de mês — matriz em `RELEASE.md`.
 
 ---
 
@@ -221,6 +273,7 @@
 F14 (Consistência de Estados & Ergonomia)  ← Trilha A — PRIORITÁRIA
 F15 (Micro-Interações & Conforto Visual)   ← Trilha A
 F19 (Inteligência & Consistência dos Insights) ← Trilha A — após F15; pode ser executada antes da Trilha B
+F20 (Swipe Navigation & Gesture UX)        ← Trilha A — após F15/F19; mobile-first, independe da Trilha B
 F16 (Carteira na Home — KPI real)          ← Trilha B — depende de P1
 F17 (Dashboard /investments)               ← Trilha B — depende de P2/P3
 F18 (Proventos)                            ← Trilha B — depende de P4/P5

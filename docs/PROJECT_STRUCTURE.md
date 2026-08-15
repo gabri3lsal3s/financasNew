@@ -85,7 +85,8 @@
     │   │   │                      #   install-app-button (F5.6), smart-spending-pace-card,
     │   │   │                      #   smart-invoice-projection-card, smart-anomalies-card,
     │   │   │                      #   category-donut, savings-health-card, daily-flow-chart (F8),
-    │   │   │                      #   floating-calculator, calculator-keypad (F9)…
+    │   │   │                      #   floating-calculator, calculator-keypad (F9),
+    │   │   │                      #   month-swiper (F20 — swipe no MonthPicker)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   app-header, privacy-toggle (F8), brand-logo (F10), page-shell
@@ -133,7 +134,8 @@
     │                              #   use-highlight-target, use-pwa-install,
     │                              #   use-sidebar-state, use-draggable,
     │                              #   use-scroll-position, use-swipe-action,
-    │                              #   use-privacy-mask, use-visual-customization (F11)…)
+    │                              #   use-privacy-mask, use-visual-customization (F11),
+    │                              #   use-swipe-navigation (F20 — gesto horizontal)…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de input
@@ -233,7 +235,10 @@ src/features/transactions/
 | Script operacional fora do bundle (deploy/cron de edge function) | `scripts/` (ex.: `deploy-quotes.mjs`) |
 | SQL de operação manual (cron da edge function de cotações) | `supabase/quotes-cron.sql` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
-| Proposta oficial de próximas fases (F14–F18) | `docs/NEXT_PHASES.md` (Trilha A: UI/UX · Trilha B: Investimentos) |
+| Proposta oficial de próximas fases (F14–F20) | `docs/NEXT_PHASES.md` (Trilha A: UI/UX · Trilha B: Investimentos) |
+| Motor puro de gestos (axis-lock, thresholds, flick) | `src/domain/gestures/` (ex.: `swipe.ts` — F20) |
+| Hook de navegação por gesto (swipe horizontal) | `src/hooks/use-swipe-navigation.ts` (F20) |
+| Navegador de mês com swipe (envole o `MonthPicker`) | `src/components/modules/month-swiper.tsx` (F20) |
 | Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |
 
 ---

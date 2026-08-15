@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **Status:** v1.2 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** insere formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa) e **v1.3** adiciona a **F19 — Inteligência & Consistência dos Insights** (Trilha A), oriundas da proposta oficial `docs/NEXT_PHASES.md` (seção §6).
+> **Status:** v1.2 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** insere formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa) e **v1.3** adiciona a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adiciona a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A) — oriundas da proposta oficial `docs/NEXT_PHASES.md` (seção §6).
 > **Referências:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (estrutura e convenções) · [`ESPECIFICACAO_TECNICA.md`](../ESPECIFICACAO_TECNICA.md) (regras de negócio, schema, UI/UX).
 
 ---
@@ -39,6 +39,7 @@
 | **F17** | Dashboard de Investimentos `/investments` (Trilha B) | KPIs executivos, donuts de alocação (classe/ticker), posições com lucro/prejuízo | Dashboard investimentos |
 | **F18** | Proventos: Extrato & Calendário (Trilha B) | Extrato mensal de proventos recebidos + calendário (escopo mínimo) | Proventos |
 | **F19** | Inteligência & Consistência dos Insights (Trilha A) | Limpeza de código morto F8, fontes únicas (normalização/tolerância/essenciais), `numberToCents` único, reuso de motores na página, tendência nos Diagnósticos, investimentos reais nas projeções | Insights refinados |
+| **F20** | Sistema de Gestos & Navegação por Swipe (Trilha A) | Engine `useSwipeNavigation` (axis-lock ±30°, thresholds/flick, isolamento), `MonthSwiper` nas 5 telas de mês, `Tabs swipeable` nas 6 telas de abas, feedback elástico | Gesture UX mobile |
 
 ---
 
@@ -912,6 +913,30 @@
 
 ---
 
+### Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX) (Trilha A)
+
+**Objetivo:** navegação horizontal fluida no mobile (meses/períodos e sub-abas) com **rigor técnico absoluto** — zero falsos positivos e coexistência com componentes interativos existentes (Swipe-to-Action de despesas, gráficos com scrub, formulários, modais). Mapeamento arquitetural e matriz de riscos em `NEXT_PHASES.md` §1.5.
+
+**Entregas (na ordem):**
+1. **Motor puro de gestos** — `src/domain/gestures/swipe.ts` (funções puras testáveis): `resolveSwipeIntent` (direção/distância/velocidade/flick), `isHorizontalLock` (axis-lock **±30°**: `|dy| ≤ |dx|·tan(30°)` + **descarte imediato** se `|dy| > |dx|` no ponto de lock — Thumb Drift), `isFlick` (`velocity > 0.3 px/ms` com `|dx| ≥ 30px`), `activationDistance(vw)` (`max(60px, 15% viewport)`) e `boundaryResistance` (elastic overscroll).
+2. **Engine unificada `useSwipeNavigation`** — `src/hooks/use-swipe-navigation.ts`: máquina de estado `idle → tracking → locked → settled` com `setPointerCapture` após o lock (o gesto é dono do pointer — drift no meio do swipe não cancela); `ignoreSelectors` (`input, textarea, select, [role="dialog"], [data-swipe-nav-ignore], .no-swipe-nav, .swipeable-item`); `pointerType` só `touch`/`pen` + `event.isPrimary` (mouse desabilitado — desktop usa botões); `touch-action: pan-y` no contêiner (scroll vertical livre, pan horizontal bloqueado); callbacks `onDragProgress(offsetPx)`/`onNavigate(previous|next)`/`onBoundary()`; limites `canGoPrevious`/`canGoNext`; haptics (`light` no lock, `warning` na borda).
+3. **Navegação temporal horizontal (`MonthSwiper`)** — módulo `src/components/modules/month-swiper.tsx` que envolve o `MonthPicker` com o swipe (esquerda = próximo mês, direita = anterior), aplicado nas **5 telas** com seletor de mês (Visão Geral, Transações, Cartões, Orçamentos, Relatórios — DRY, uma integração reusada). Borda inferior `month > APP_START_DATE (2026-01)` (spec §4.1); `canGoNext` configurável (padrão: sem limite — paridade com os botões). Transição: translate do conteúdo durante o arrasto + fade-in do novo conteúdo (sem slide fake de dados assíncronos — refetch com skeletons existentes).
+4. **Navegação entre sub-abas e filtros** — primitivo `Tabs` ganha prop `swipeable?: boolean` (uma implementação, DRY): swipe na **área de conteúdo** (não no List com `overflow-x-auto`) alterna abas com translate elástico. Aplicado em Insights (4 abas), Relatórios internos (categoria/forma/dia), Dívidas (a pagar/a receber), Orçamentos (limites/metas), Carteira (posição/metas/aporte), Categorias (tipos). **Desabilitado** em Configurações e no wizard de lançamento (formulários densos — isolamento).
+5. **Proteção e isolamento de componentes de ação rápida** — coexistência garantida com o Swipe-to-Action de despesas (`TransactionRow`/`useSwipeAction`): o engine ignora gestos iniciados em `.swipeable-item`/`[data-swipe-action]` (engine desacoplado — **sem alterar** `useSwipeAction`); `data-swipe-nav-ignore` nos gráficos com scrub (`DailyFlowChart`, `CategoryDonut`) e no FAB da calculadora (arrastável); modais Radix são portais (isolamento natural pelo overlay).
+6. **Micro-interações de feedback tátil** — elastic drag (rubber-banding com resistência crescente + spring-back animado), haptic `light` ao travar e `warning` na borda (início/fim de dados — elastic overscroll), `select-none` durante o arrasto, aria-live opcional na mudança de mês/aba.
+
+**Arquivos:** `src/domain/gestures/swipe.ts` (+ testes) · `src/hooks/use-swipe-navigation.ts` (+ testes) · `src/components/modules/month-swiper.tsx` (+ testes) · `src/components/ui/tabs.tsx` (prop `swipeable`) · integrações em `src/features/{overview,transactions,cards,budgets,reports,insights,debts,portfolio,categories}/pages/*` · `data-swipe-nav-ignore` em `daily-flow-chart.tsx`, `category-donut.tsx`, `floating-calculator.tsx`.
+
+**✅ DoD (critérios de aceite)**
+- Motor puro com testes: axis-lock ±30° (incl. saída por dominância vertical), thresholds (60px / 15% vw), flick > 0.3 px/ms, boundary/resistência, filtro de ignore selectors.
+- Hook com testes de integração (Pointer Events + capture): swipe horizontal → `onNavigate` 1x; rolagem vertical → **não** navega (scroll preservado); swipe sobre `.swipeable-item` (TransactionRow), `input` e modal → não navega; overscroll na borda → spring-back **sem** navegação.
+- `MonthSwiper` nas 5 telas de mês (uma integração reusada — DRY); `Tabs swipeable` nas 6 telas de abas; Configurações/wizard sem swipe (isolamento verificado).
+- **Zero regressão** no Swipe-to-Action: testes existentes de `useSwipeAction` verdes + novo teste de coexistência.
+- `prefers-reduced-motion`/`data-motion` respeitados; axe sem violações; typecheck/lint/build limpos; suíte 100% verde.
+- Revisão manual em dispositivo real (iOS Safari + Chrome Android): thumb drift em scroll rápido, coexistência com exclusão de despesas e bordas de mês — matriz em `RELEASE.md`.
+
+---
+
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
 
 **Regra absoluta:** primitivo antes do módulo, módulo antes da tela. Se uma tela precisar de algo que não existe, **pare e extraia** — não duplique.
@@ -930,6 +955,7 @@
 - **F9:** `FloatingCalculator`, `CalculatorKeypad`, `ScrollToTop`.
 - **F10:** `BrandLogo`, `BrandIcon`.
 - **F16:** `AllocationDonut` (genérico de ativos — padrão `CategoryDonut`, SVG próprio).
+- **F20:** `MonthSwiper` (envolve `MonthPicker` com swipe) — primitivo `Tabs` ganha `swipeable` (navegação por gesto em sub-abas).
 
 ### 4.3 Telas (por fase) — `features/`
 Sempre composição fina: layout (`components/layout`) + módulos (`components/modules`) + contratos (`state/`). Sem JSX duplicado entre telas — qualquer repetição vira módulo novo.
@@ -959,7 +985,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 > - **P3 = (a)** rota nova `/investments` (leitura), mantendo `/carteira` para operação.
 > - **P4 = (a)** proventos: apenas recebidos (escopo mínimo — sem migration).
 > - **P5 = (b)** proventos ficam só na carteira (fora do fluxo financeiro core — D11 preservado).
-> - **P6 = (a)** ordem: Trilha A (F14–F15 e F19) antes da Trilha B (F16–F18).
+> - **P6 = (a)** ordem: Trilha A (F14–F15, F19 e F20) antes da Trilha B (F16–F18).
 >
 > **Estado atual dos pontos citados na auditoria:**
 > - Home: o KPI "Investimentos" ainda usa stub (`computeOverview(..., 0)` + hint "Carteira na Fase 4") — preenchimento previsto na **Fase 16**.
