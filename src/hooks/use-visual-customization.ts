@@ -128,11 +128,23 @@ export function subscribeVisualCustomization(listener: () => void): () => void {
   };
 }
 
-export function getVisualCustomization(): VisualCustomization {
-  if (!isInitialized && typeof window !== "undefined") {
+export function initVisualCustomization(): VisualCustomization {
+  if (typeof window !== "undefined") {
     currentConfig = readStoredConfig();
     applyDomAttributes(currentConfig);
     isInitialized = true;
+  }
+  return currentConfig;
+}
+
+// Inicializa imediatamente ao carregar o módulo no ambiente de navegador
+if (typeof window !== "undefined") {
+  initVisualCustomization();
+}
+
+export function getVisualCustomization(): VisualCustomization {
+  if (!isInitialized && typeof window !== "undefined") {
+    return initVisualCustomization();
   }
   return currentConfig;
 }

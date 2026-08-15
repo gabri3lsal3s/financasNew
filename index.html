@@ -22,6 +22,29 @@
       rel="stylesheet"
     />
     <title>Guia Financeiro — Gestão Financeira Pessoal</title>
+    <script>
+      (function() {
+        try {
+          var accent = localStorage.getItem('financas_accent_theme');
+          if (accent && accent !== 'teal') {
+            document.documentElement.setAttribute('data-accent', accent);
+          }
+          var theme = localStorage.getItem('financas:theme');
+          if (!theme || theme === 'system') {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.setAttribute('data-theme', theme);
+          var surface = localStorage.getItem('financas_surface_style');
+          if (surface && surface !== 'glass') {
+            document.documentElement.setAttribute('data-surface-style', surface);
+          }
+          var motion = localStorage.getItem('financas_motion_level');
+          if (motion && motion !== 'fluid') {
+            document.documentElement.setAttribute('data-motion', motion);
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

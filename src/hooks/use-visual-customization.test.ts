@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   getVisualCustomization,
+  initVisualCustomization,
   updateVisualCustomization,
 } from "./use-visual-customization";
 
@@ -20,6 +21,18 @@ describe("useVisualCustomization (F11)", () => {
     expect(config.soundEnabled).toBe(false);
     expect(config.numberTickerEnabled).toBe(true);
     expect(config.dashboardWidgets.kpis).toBe(true);
+  });
+
+  it("restaura a personalização salva no localStorage imediatamente no init", () => {
+    window.localStorage.setItem("financas_accent_theme", "mono");
+    window.localStorage.setItem("financas_surface_style", "flat");
+    window.localStorage.setItem("financas_motion_level", "reduced");
+
+    const config = initVisualCustomization();
+    expect(config.accent).toBe("mono");
+    expect(document.documentElement.getAttribute("data-accent")).toBe("mono");
+    expect(document.documentElement.getAttribute("data-surface-style")).toBe("flat");
+    expect(document.documentElement.getAttribute("data-motion")).toBe("reduced");
   });
 
   it("atualiza a cor de destaque (accent) e reflete no DOM", () => {

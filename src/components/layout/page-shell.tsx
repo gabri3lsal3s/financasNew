@@ -10,6 +10,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Skeleton } from "@/components/ui";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
+import { useVisualCustomization } from "@/hooks/use-visual-customization";
 
 /** Fallback de carregamento das rotas lazy (bundle splitting F5.5) — Skeleton, sem spinner. */
 function RouteFallback() {
@@ -23,6 +24,7 @@ function RouteFallback() {
 }
 
 export function PageShell() {
+  useVisualCustomization();
   const { isCollapsed, toggle } = useSidebarState();
   const location = useLocation();
 

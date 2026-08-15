@@ -5,7 +5,10 @@ import { AppProviders } from "@/app/providers";
 import { AppRouter } from "@/app/router";
 import { registerPWA } from "@/app/pwa";
 import { initObservability } from "@/services/observability";
+import { initVisualCustomization } from "@/hooks/use-visual-customization";
 
+// Aplica preferências visuais (acento, superfície, movimento) imediatamente
+initVisualCustomization();
 registerPWA();
 // Observabilidade (Sentry) — no-op sem VITE_SENTRY_DSN (dev/testes).
 void initObservability();
