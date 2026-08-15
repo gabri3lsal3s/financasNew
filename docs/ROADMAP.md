@@ -78,7 +78,7 @@
 - [x] **Primitivos restantes** (ciclo 2) — Select, Checkbox, RadioGroup, DatePicker, Slider, Accordion, Textarea, Dropzone, Modal, ConfirmDialog, Tabs, DataList, Stepper, Command (⌘K), Toast — todos com testes (32/32) e tokens do DESIGN_SYSTEM
 - [x] Shell de navegação (Sidebar + BottomNav + PageShell) + rotas das 10 áreas + menu "Mais" + deep-link `?novo=`
 - [x] PWA base: `vite-plugin-pwa` (generateSW, 9 entradas) + manifest + ícones placeholder + `offline.html`
-- [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente
+- [x] Revisão visual no browser (desktop/mobile/3 temas) — concluída (2026-08-15)
 
 **Progresso — ciclo de implementação 2 (2026-08-13):**
 - [x] Primitivos interativos com Radix UI (base do shadcn, já declarada na arquitetura): Select, Checkbox, RadioGroup, Modal, ConfirmDialog, Tabs, Toast, Slider, Accordion, DatePicker (react-day-picker v10 com `getDefaultClassNames` + tokens), Command (⌘K via cmdk)
@@ -86,7 +86,7 @@
 - [x] Polyfills de teste (PointerEvent, ResizeObserver, hasPointerCapture) + 18 novos testes de interação (abrir/selecionar/toggle/confirmar) — suíte total 32/32
 - [x] Animações dos primitivos registradas nos tokens (`animate-accordion-up/down`, `animate-toast-in/out`)
 - [x] `Toaster` montado no shell (`app/providers.tsx`) — infra de feedback pronta para as fases de dados
-- [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente
+- [x] Revisão visual no browser (desktop/mobile/3 temas) — concluída (2026-08-15)
 - [x] Integrar `Command` (⌘K) global no shell com atalho de teclado (com as rotas reais — entregue na F5.1)
 
 ---
@@ -493,7 +493,7 @@
 - [x] **Entrega 2 — Sidebar colapsável** (`sidebar.tsx` + `use-sidebar-state.ts`): modo expandido (`w-64`, logo + texto + ícones) ↔ compacto (`w-20`, só ícones centralizados com `aria-label`/`title`); toggle no rodapé da sidebar (ChevronLeft/Right) com **persistência imediata** em `localStorage` (`financas_sidebar_collapsed`); transição nativa `transition-[width] duration-200 ease-out` com `motion-reduce:transition-none` (Decisão A — zero libs de animação); **estado elevado no PageShell** (fonte única — Sidebar é controlada via props `isCollapsed`/`onToggle`); axe sem violações nos dois modos.
 - [x] **Entrega 3 — PageShell dinâmico + header adaptativo** (`page-shell.tsx` + `command.tsx`): margem esquerda acompanha a sidebar em tempo real (`lg:pl-64` ↔ `lg:pl-20` com transição); header sticky fluido (`px-4 lg:px-8`, `bg-surface/80` + `backdrop-blur` — DESIGN_SYSTEM §6); busca responsiva: a paleta `Command` agora posiciona `top-4` no mobile (abaixo do header sticky) e `sm:top-[15%]`, com `max-h-[85dvh]` e largura `w-[calc(100vw-2rem)]` sem overflow horizontal.
 - [x] **Testes de layout (DoD)**: `use-sidebar-state.test.ts` (default/persistência/toggle), `bottom-nav.test.tsx` (5 slots na ordem, FAB `?novo=despesa`, Relatórios fora, toque 44px, ativo), `sidebar.test.tsx` (modos, aria-labels, callback, axe), `page-shell.test.tsx` (montagem completa com router real + margem dinâmica + persistência integrada).
-- [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente (pré-requisito manual)
+- [x] Revisão visual no browser (desktop/mobile/3 temas) — concluída (2026-08-15, confirmada pelo usuário)
 
 **Fase 7 concluída ✅** — entregas 1–3 verdes: BottomNav 5 slots, Sidebar colapsável persistida e PageShell/Header adaptativos; suíte completa **558 testes** verde + typecheck/lint/build sem erros.
 
@@ -546,7 +546,7 @@
 - **Densidade (Decisão 4):** store `hooks/use-density.ts` persistida (`financas_density`) + `layout/density-toggle.tsx` no header (`aria-pressed`) aplicada em **TransactionRow** (padding) e **DataList** (prop `density` já existente).
 - **Polish:** `Skeleton` com **shimmer** (`--animate-shimmer`, gradiente com tokens); transição de rota no `PageShell` (`--animate-route-in` 150ms, `prefers-reduced-motion` global desativa); `Card` com `transition-shadow hover:shadow-md`; haptic "success" no **ConfirmDialog** e "light" no **FAB** da BottomNav.
 - **Testes:** 23 novos (haptics, ticker, sparkline, privacidade, densidade, swipe, privacy-toggle) — suíte **581 testes** verde.
-- [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente (manual)
+- [x] Revisão visual no browser (desktop/mobile/3 temas) — concluída (2026-08-15, confirmada pelo usuário)
 
 **Progresso — Fase 8, entrega 2 (Dashboard com insights financeiros):**
 - **Domínio puro** (`domain/overview` + 10 testes): `monthlySeries` (totais mensais dos últimos meses p/ sparklines), `cumulativeBalance` (curva de saldo acumulado dia a dia) e `runwayMonths` (meses de reserva = renda ÷ despesas; null sem despesas).
@@ -554,7 +554,7 @@
 - **Integração na Visão Geral:** KPIs com **NumberTicker** (valueCents) + **micro-sparklines** (6 meses via `useExpensesByRange`/`useIncomesByRange`); seção de **cards inteligentes** (ritmo/faturas/anomalias) no topo; donut de categorias (top 5 do mês); fluxo diário substituído pelo `DailyFlowChart`; alertas críticos (mesmos insumos da InsightsPage: paceRatio, orçamentos estourados, burn rate, déficit projetado).
 - **Títulos dos cards em `<h2>`** (heading-order axe: h1 → h2 no topo da página) — sem violações na auditoria P0 (10/10).
 - **Testes:** 23 novos (10 domínio + 12 módulos + 2 página) — suíte **605 testes** verde; lint 0 erros; build OK.
-- [ ] Revisão visual no browser (desktop/mobile/3 temas) — pendente (manual)
+- [x] Revisão visual no browser (desktop/mobile/3 temas) — concluída (2026-08-15, confirmada pelo usuário)
 
 **✅ Fase 8 concluída** (entregas 1 e 2 verdes): design system premium, haptics, privacidade, densidade, swipe-to-action, ticker/sparklines, donut, fluxo avançado e cards inteligentes na Visão Geral.
 
@@ -743,7 +743,7 @@
 - [x] **Blindagem do teste de segurança (F6.2):** `security-audit.test.ts` lia arquivos rastreados pelo `git ls-files` (índice) sem checar existência em disco — a renomeação `routes.tsx` → `routes.ts` (não staged) quebrava a suíte com ENOENT; agora arquivos ausentes no working tree são ignorados (o teste valida apenas o que existe).
 - [x] **Visão Geral "dashboard limpo e objetivo" (consolidação de widgets):** a modulação do Início foi simplificada — os widgets `pace`/`invoices`/`anomalies`/`savingsHealth` (cards inteligentes F8) deram lugar a um único widget `summary` (Saldo Líquido de Contas & Poupança); os cards inteligentes e a realocação de orçamento saem do dashboard (continuam completos em Insights/Orçamentos — DRY, sem duplicação); o gradiente glass saiu do `main` e passou ao `body` com `background-attachment: fixed` (cor de acento ancorada à janela, não à coluna de conteúdo). Config `DashboardWidgetsConfig` e página de Configurações atualizadas em conjunto.
 - [x] Typecheck, lint (0 erros), build e suíte completa verdes (102 arquivos / **759 testes**).
-- [ ] Revisão visual no browser (desktop/mobile/3 temas × 6 acentos) — pendente (manual)
+- [x] Revisão visual no browser (desktop/mobile/3 temas × 6 acentos) — concluída (2026-08-15, confirmada pelo usuário)
 
 **Progresso — Fase 12, ciclo de implementação 2 (2026-08-14) — ergonomia de navegação:**
 - [x] **Sem headers nas páginas com seletor de mês:** Visão Geral, Transações, Cartões, Orçamentos e Relatórios não exibem mais o cabeçalho de título (h1 visual + botões) — o app mostra **direto o seletor de mês/período** no topo. O título permanece apenas como `h1 sr-only` (leitores de tela + ordem de heading preservada na auditoria axe). Em Transações, o botão "Nova transação" fica ao lado do seletor **só no desktop** (`hidden sm:inline-flex`).

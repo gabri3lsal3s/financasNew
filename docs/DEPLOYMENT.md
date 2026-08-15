@@ -93,8 +93,8 @@
 | `VITE_SENTRY_DSN` | Observabilidade (F6.3) — `src/services/observability.ts` | ❌ opcional (sem DSN = sem Sentry) |
 | `SUPABASE_DB_URL` | CLI/CI/edge functions (fora do bundle) | ❌ só p/ CLI/migrações |
 | `SUPABASE_SERVICE_ROLE_KEY` | Servidor/edge functions (fora do bundle) | ❌ só p/ edge functions |
-| `SUPABASE_FUNCTION_URL` | Edge functions de cotações (futuro) | ❌ pendente (§7) |
-| `QUOTES_CRON_SCHEDULE` | Cron da edge function de cotações | ❌ pendente (§7) |
+| `SUPABASE_FUNCTION_URL` | Edge functions de cotações (futuro) | ✅ definida — consumida pelos scripts `quotes:deploy`/`quotes:cron` (§7.1) |
+| `QUOTES_CRON_SCHEDULE` | Cron da edge function de cotações | ✅ definida — consumida pelo `quotes:cron` (§7.1) |
 
 ---
 

@@ -331,7 +331,7 @@ F22 (Central de Exportação & Backup)       ← Trilha C (✅ Concluída)
 F23 (Engenharia de Performance 3D)         ← Trilha C (✅ Concluída)
 F24 (Planejamento Financeiro FIRE)         ← Trilha C (✅ Concluída)
 F25 (Micro-interações & Ergonomia)         ← Trilha A (✅ Concluída)
-F26 (Pull-up Overscroll to Top)            ← Trilha A / Gesture UX
+F26 (Pull-up Overscroll to Top)            ← Trilha A / Gesture UX (✅ Concluída)
 ```
 
 **Pré-requisitos transversais:** suíte 1050 testes verde + typecheck/lint/build (CI `ci.yml`) · deploy F1.7 (edge function + cron) se P1 = (a) · sem migrations obrigatórias fora de P4 = (c).
