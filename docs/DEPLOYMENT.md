@@ -144,26 +144,26 @@ npx supabase db reset  # aplica migrations + seed
 
 ### 7.1 Edge function de cotações — deploy & cron
 
+> Scripts prontos: `npm run quotes:deploy` e `npm run quotes:cron` (lêem o `.env` local — ref do projeto, service role e schedule).
+
 ```bash
 # 1. Deploy (a autenticação usa o service role no corpo da função):
-supabase functions deploy quotes --project-ref <SEU_REF>
+npm run quotes:deploy
+# equivalente: supabase functions deploy quotes --project-ref <SEU_REF>
 
-# 2. Agendar a cada 6h (requer extensões pg_cron e pg_net habilitadas no projeto):
-select cron.schedule('quotes-6h', '0 */6 * * *', $cron$
-  select net.http_post(
-    url := 'https://<REF>.supabase.co/functions/v1/quotes',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer <SUPABASE_SERVICE_ROLE_KEY>'
-    ),
-    body := '{}'
-  );
-$cron$);
+# 2. Gerar o SQL do agendamento já preenchido (a cada 6h por padrão):
+npm run quotes:cron
+#   → copie a saída para o SQL Editor do Supabase (Dashboard > SQL Editor) e execute.
+#   Requer as extensões pg_cron e pg_net (Dashboard > Database > Extensions).
 
 # 3. Teste manual:
 curl -X POST 'https://<REF>.supabase.co/functions/v1/quotes' \
   -H "Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>"
 ```
+
+- **SQL versionado:** `supabase/quotes-cron.sql` (idempotente, com placeholders `<CRON_SCHEDULE>`/`<FUNCTION_URL>`/`<SERVICE_ROLE_KEY>`); o `npm run quotes:cron` gera a versão preenchida a partir do `.env`.
+- **Script de operação:** `scripts/deploy-quotes.mjs` (Node ESM — segue o padrão de `scripts/`).
+- **Cron manual (sem script):** ver o template em `supabase/quotes-cron.sql`.
 
 > ⚠️ O `verify_jwt = false` está no `supabase/config.toml` — a função valida o service role no próprio corpo. Não exponha o service role no cliente.
 

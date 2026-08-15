@@ -21,7 +21,9 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
-    "db:types": "supabase gen types typescript --local > src/types/database.types.ts"
+    "db:types": "supabase gen types typescript --local > src/types/database.types.ts",
+    "quotes:deploy": "node scripts/deploy-quotes.mjs deploy",
+    "quotes:cron": "node scripts/deploy-quotes.mjs cron"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.20",

@@ -230,6 +230,8 @@ src/features/transactions/
 | Tipo/contrato de domínio | `src/types/` |
 | Cor, fonte, raio, sombra | `src/styles/tokens.css` — **nunca** em componente |
 | Manifest, ícone, splash, offline | `public/pwa/` |
+| Script operacional fora do bundle (deploy/cron de edge function) | `scripts/` (ex.: `deploy-quotes.mjs`) |
+| SQL de operação manual (cron da edge function de cotações) | `supabase/quotes-cron.sql` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
 | Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |
 
