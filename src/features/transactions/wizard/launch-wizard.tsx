@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { X } from "lucide-react";
+import { CalculatorButton } from "@/components/layout/calculator-button";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
@@ -96,9 +97,13 @@ export function LaunchWizard() {
       <div className="flex w-full max-w-lg flex-col gap-6 md:max-h-[calc(100dvh-3rem)] md:overflow-y-auto md:rounded-2xl md:border md:border-border md:bg-surface md:p-6 md:shadow-lg">
         <header className="flex items-center justify-between">
           <h1 className="font-display text-xl font-bold">Novo lançamento</h1>
-          <Button type="button" variant="ghost" size="icon" aria-label="Fechar" onClick={() => navigate("/transacoes")}>
-            <X aria-hidden="true" />
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {/* Mesmo padrão dos modais (F10): calculadora acessível no wizard, que fica fora do PageShell. */}
+            <CalculatorButton />
+            <Button type="button" variant="ghost" size="icon" aria-label="Fechar" onClick={() => navigate("/transacoes")}>
+              <X aria-hidden="true" />
+            </Button>
+          </div>
         </header>
 
         <Stepper steps={[...WIZARD_STEPS]} current={state.step} />

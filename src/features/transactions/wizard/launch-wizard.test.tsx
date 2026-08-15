@@ -39,6 +39,14 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(screen.getByText("Revisão")).toBeInTheDocument();
   });
 
+  it("expõe o botão da calculadora no header (mesmo padrão dos modais)", () => {
+    render(<LaunchWizard />);
+    const calculator = screen.getByRole("button", { name: "Abrir calculadora" });
+    expect(calculator).toHaveAttribute("title", "Calculadora");
+    // O wizard fica fora do PageShell: o atalho próprio garante acesso à calculadora.
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
+  });
+
   it("avança pelos passos e confirma a despesa com parcelamento", async () => {
     const user = userEvent.setup();
     render(<LaunchWizard />);
