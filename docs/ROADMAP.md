@@ -943,6 +943,14 @@
 - Calendário com navegação mensal e estado vazio acolhedor.
 - Suíte 100% verde; axe sem violações.
 
+**Progresso — F18 concluída (2026-08-15):**
+- [x] **Motor puro (entregas 1–2)** — `src/domain/portfolio/dividends.ts` (novo, 7 testes): `isDividendType` (dividend/jcp/fii_yield), `dividendsInMonth` (**movido de `summary.ts` — fonte única**, DRY com a F17), `dividendExtractForMonth` (extrato do mês com ticker, ordenado por data desc, reconciliado: soma = `dividendsInMonth`) e `dividendsByYear` (12 meses do ano, zero quando vazio — calendário).
+- [x] **Aba "Proventos" no hub `/investments`** (`proventos-tab.tsx` novo, barrel + 4 testes): **MonthPicker** (navegação mensal reusada), KPIs (Recebido no mês + Total no ano), **Extrato do mês** (lista com ticker, data e tipo via `PORTFOLIO_TX_LABELS`) e **Calendário anual** (12 botões de mês clicáveis com `aria-pressed`, destaque do mês ativo e navegação direta) — todos derivados no domínio (funções puras).
+- [x] **Estados completos (entrega 4)** — loading (`SkeletonTable`), vazio (`EmptyState` "Sem proventos ainda"), erro (gateway + retry) — Online First.
+- [x] **Integração (entrega 3/4)** — proventos **só na carteira** (D11 preservado: sem lançamento automático [PROVENTO] no fluxo financeiro core); escopo mínimo — provisionados fora (decisão F18).
+- [x] **Acessibilidade** — aba Proventos com extrato no auditoria axe (12 testes, sem violações); navegação mensal e calendário clicáveis por teclado.
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+
 ---
 
 ### Fase 19 — Inteligência & Consistência dos Insights (Trilha A)
@@ -1177,7 +1185,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | ✅ Concluída (2026-08-15) |
 | 5 | **F16** — Carteira na Home (KPI real + donut de alocação) | B | F14 | ✅ Concluída (2026-08-15) — KPI de aportes com deep-link; `AllocationDonut` na Posição (decisão: sem widget na Home) |
 | 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | ✅ Concluída (2026-08-15) — **unificada em área única** (decisão 2026-08-15): `/carteira` virou redirect e `/investments` é o hub de abas Resumo/Metas/Aporte |
-| 7 | **F18** — Proventos (extrato & calendário) | B | F17 | 📋 Não iniciada |
+| 7 | **F18** — Proventos (extrato & calendário) | B | F17 | ✅ Concluída (2026-08-15) — motor `dividends.ts` + aba Proventos no hub `/investments` (extrato mensal + calendário anual) |
 | 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | 📋 Planejada |
 | 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | 📋 Planejada |
 | 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | 📋 Planejada |

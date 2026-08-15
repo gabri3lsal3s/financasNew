@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Tabs } from "@/components/ui";
 import { ResumoTab } from "./resumo-tab";
+import { ProventosTab } from "./proventos-tab";
 import { TargetsTab } from "@/features/portfolio/pages/targets-tab";
 import { AporteTab } from "@/features/portfolio/pages/aporte-tab";
 
-type InvestmentsTab = "resumo" | "metas" | "aporte";
+type InvestmentsTab = "resumo" | "metas" | "aporte" | "proventos";
 
 /**
  * Investimentos — área única de consolidação da carteira (unificação /carteira
- * + dashboard): Resumo (posição executiva + operação), Metas (limites por
- * ativo/classe + travas setoriais) e Aporte (rebalanceamento). A antiga rota
- * `/carteira` redireciona para cá. Simples e organizado: sem telas paralelas.
+ * + dashboard): Resumo (posição executiva + operação), Proventos (extrato e
+ * calendário de rendimentos — F18), Metas (limites por ativo/classe + travas
+ * setoriais) e Aporte (rebalanceamento). A antiga rota `/carteira` redireciona
+ * para cá. Simples e organizado: sem telas paralelas.
  */
 export function InvestmentsPage() {
   const [tab, setTab] = useState<InvestmentsTab>("resumo");
@@ -20,7 +22,7 @@ export function InvestmentsPage() {
       <header>
         <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Investimentos</h1>
         <p className="text-sm text-muted-foreground">
-          Consolidação da carteira: posição, limites de alocação e rebalanceamento em um só lugar.
+          Consolidação da carteira: posição, rendimentos, limites de alocação e rebalanceamento em um só lugar.
         </p>
       </header>
 
@@ -30,6 +32,11 @@ export function InvestmentsPage() {
         swipeable
         items={[
           { value: "resumo", label: "Resumo", content: <ResumoTab /> },
+          {
+            value: "proventos",
+            label: "Proventos",
+            content: <ProventosTab />,
+          },
           {
             value: "metas",
             label: "Metas",

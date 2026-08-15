@@ -34,26 +34,6 @@ export function portfolioReturnPct(
 }
 
 // ---------------------------------------------------------------------------
-// Proventos
-// ---------------------------------------------------------------------------
-
-const DIVIDEND_TYPES = new Set(["dividend", "jcp", "fii_yield"]);
-
-/** Soma dos proventos recebidos no mês (YYYY-MM) — valor em BRL. */
-export function dividendsInMonth(
-  transactions: readonly { type: string; date: string; total: number }[],
-  month: string,
-): number {
-  let total = 0;
-  for (const tx of transactions) {
-    if (DIVIDEND_TYPES.has(tx.type) && tx.date.startsWith(month)) {
-      total += tx.total;
-    }
-  }
-  return Math.round(total * 100) / 100;
-}
-
-// ---------------------------------------------------------------------------
 // Alocação por ticker
 // ---------------------------------------------------------------------------
 

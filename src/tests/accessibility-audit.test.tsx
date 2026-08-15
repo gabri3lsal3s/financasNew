@@ -13,6 +13,9 @@ import { InvestmentsPage } from "@/features/investments/pages/investments-page";
 import { TransactionListPage } from "@/features/transactions/pages/transaction-list-page";
 import { LaunchWizard } from "@/features/transactions/wizard/launch-wizard";
 
+const portfolioTransactionsMock = vi.fn(() => [] as unknown[]);
+const portfolioAssetsMock = vi.fn(() => [] as unknown[]);
+
 vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
@@ -144,7 +147,7 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useAllPortfolioTransactions: () => ({
-    data: [],
+    data: portfolioTransactionsMock(),
     isLoading: false,
     isError: false,
     error: null,
@@ -174,7 +177,7 @@ vi.mock("@/state", () => ({
   useExpense: () => ({ data: { id: "e1", base_amount: 1000 }, isLoading: false, isError: false, error: null }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  usePortfolioAssets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  usePortfolioAssets: () => ({ data: portfolioAssetsMock(), isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -240,6 +243,21 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
 
   it("InvestmentsPage sem violações", async () => {
     const { container } = render(<InvestmentsPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("InvestmentsPage — aba Proventos com extrato sem violações (F18)", async () => {
+    portfolioTransactionsMock.mockReturnValue([
+      { id: "t1", user_id: "u1", asset_id: "a1", type: "dividend", date: "2026-08-10", quantity: 0, price: 0, total: 100 },
+      { id: "t2", user_id: "u1", asset_id: "a2", type: "fii_yield", date: "2026-08-20", quantity: 0, price: 0, total: 50.25 },
+    ]);
+    portfolioAssetsMock.mockReturnValue([
+      { id: "a1", user_id: "u1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" },
+      { id: "a2", user_id: "u1", ticker: "MXRF11", asset_class: "FIIs", currency: "BRL" },
+    ]);
+    const user = userEvent.setup();
+    const { container } = render(<InvestmentsPage />);
+    await user.click(screen.getByRole("tab", { name: "Proventos" }));
     expect(await axe(container)).toHaveNoViolations();
   });
 

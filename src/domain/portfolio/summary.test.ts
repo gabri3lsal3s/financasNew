@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocationByTicker, dividendsInMonth, portfolioReturnPct } from "./summary";
+import { allocationByTicker, portfolioReturnPct } from "./summary";
 
 describe("portfolioReturnPct — rentabilidade ponderada pelo valor (§F17)", () => {
   it("pondera os percentuais pelo valor de mercado e ignora caixa", () => {
@@ -24,24 +24,6 @@ describe("portfolioReturnPct — rentabilidade ponderada pelo valor (§F17)", ()
       { valueBRL: 3334, unrealizedPct: 10 },
     ]);
     expect(pct).toBe(10);
-  });
-});
-
-describe("dividendsInMonth — proventos recebidos no mês (§F17)", () => {
-  const txs = [
-    { type: "dividend", date: "2026-08-05", total: 100 },
-    { type: "jcp", date: "2026-08-20", total: 50.5 },
-    { type: "fii_yield", date: "2026-08-28", total: 75.25 },
-    { type: "dividend", date: "2026-07-10", total: 999 }, // outro mês
-    { type: "buy", date: "2026-08-01", total: 5000 }, // não é provento
-  ];
-
-  it("soma apenas proventos do mês pedido", () => {
-    expect(dividendsInMonth(txs, "2026-08")).toBe(225.75);
-  });
-
-  it("mês sem proventos → 0", () => {
-    expect(dividendsInMonth(txs, "2026-09")).toBe(0);
   });
 });
 

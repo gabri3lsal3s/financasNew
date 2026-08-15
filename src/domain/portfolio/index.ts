@@ -281,8 +281,10 @@ export {
   usdRateFromPrices,
   valueAssetPosition,
 } from "./valuation";
-export { allocationByTicker, dividendsInMonth, portfolioReturnPct } from "./summary";
+export { allocationByTicker, portfolioReturnPct } from "./summary";
 export type { AllocationTickerSlice } from "./summary";
+export { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "./dividends";
+export type { DividendEntry, DividendTransaction, MonthDividendSummary } from "./dividends";
 export type { AssetValuation, PriceCandidate, PriceSource, ResolvedPrice } from "./valuation";
 export {
   clampTargetPercentage,
