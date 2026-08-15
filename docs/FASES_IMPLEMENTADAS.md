@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-15):** fases **F0–F28 concluídas** · suíte **1073 testes / 139 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-15):** fases **F0–F28 concluídas** · suíte **1079 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
