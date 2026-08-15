@@ -2,7 +2,10 @@ import { useState } from "react";
 import { Alert, Button, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { todayISO } from "@/domain/debts";
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
+import { playSound } from "@/services/audio-fx";
 import { getErrorMessage } from "@/services/errors";
+import { triggerHaptic } from "@/services/haptics";
 import { useCreatePortfolioTransaction } from "@/state";
 import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
 
@@ -71,6 +74,10 @@ export function TransactionFormDialog({ open, onOpenChange, asset }: Transaction
       setQuantity("");
       setPrice("");
       setAmountCents(0);
+      // Feedback de escrita uniforme (F15): haptic success + áudio de
+      // confirmação ao registrar a transação (padrão F12 de conclusão).
+      triggerHaptic("success");
+      playSound("success", getVisualCustomization().soundEnabled);
       onOpenChange(false);
     } catch (err) {
       setError(getErrorMessage(err));

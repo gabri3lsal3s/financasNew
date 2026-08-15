@@ -77,7 +77,10 @@ export function PositionTab() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <KpiCard
               label="Patrimônio total"
-              cents={toCents(position.totalBRL)}
+              // F15 — transição de dados: NumberTicker (respeita o toggle
+              // "Contagem Numérica Animada" e prefers-reduced-motion internamente).
+              // Patrimônio é sempre ≥ 0 (o format BRL zera negativos).
+              valueCents={toCents(position.totalBRL)}
               tone="portfolio"
               hint={<DeltaHint currentCents={toCents(position.totalBRL)} previousCents={previousCents} />}
             />

@@ -837,6 +837,15 @@
 - Hover/focus unificados (mesma linguagem das demais telas — zero classes soltas novas).
 - Suíte 100% verde; auditoria axe na carteira sem violações.
 
+**Progresso — F15 concluída (2026-08-15):**
+- [x] **Feedback de escrita uniforme (entrega 1)** — haptic `success` + áudio de confirmação (`playSound("success", …)` no padrão F12) em todas as ações de escrita da carteira: `TransactionFormDialog` (registrar compra/venda/provento), `AssetFormDialog` (adicionar ativo) e `TargetsTab` (salvar metas por ativo, por classe, remover meta e salvar travas setoriais).
+- [x] **Transições de dados (entrega 2)** — KPI "Patrimônio total" da Posição passa a usar `valueCents` (NumberTicker animado F8/F11, respeitando o toggle "Contagem Numérica Animada" e `prefers-reduced-motion` internamente); Caixa derivado mantém `cents` (pode ser negativo — format BRL não aplicável).
+- [x] **Hover/focus refinados (entrega 3)** — herdados do padrão `Card interactive`/`DataList` já vigentes na `PositionTable` (hover elevado + `focus-visible` ring) e no `Button` (press `active:scale` + transição) — zero classes soltas novas; destaque de preço manual preservado.
+- [x] **Cards de investimento na Home (entrega 4)** — **adiada para a F16** (o widget ainda não existe; a micro-transição de entrada já é herdada das rotas).
+- [x] **Conforto visual (entrega 5)** — gaps/contraste de rótulos da carteira revisados (seções com `gap-4`/`gap-6` consistentes, `muted-foreground` em labels secundários, densidade propagada); formulários com `inputMode="decimal"` (auditado).
+- [x] **Testes** — 2 novos por diálogo (`TransactionFormDialog`, `AssetFormDialog`): feedback dispara no submit válido e **não** dispara com formulário inválido (mock de `haptics`/`audio-fx`); ticker da Posição coberto pelo `kpi-card.test.tsx` (valueCents) + página. Suíte completa verde; typecheck (`tsc -b`)/lint limpos.
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+
 ---
 
 ### Fase 16 — Carteira na Home: KPI Real & Widget de Alocação (Trilha B)
@@ -1007,12 +1016,12 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### 6.1 Ordem de execução das próximas fases (status 2026-08-15)
 
-> **F14 concluída (2026-08-15)** — ver progresso na seção §3. As demais fases F15–F20 estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
+> **F14 e F15 concluídas (2026-08-15)** — ver progresso na seção §3. As demais fases F16–F20 estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
 
 | Ordem | Fase | Trilha | Depende de | Status |
 |---|---|---|---|---|
 | 1 | **F14** — Consistência de Estados & Ergonomia de Dados | A | — | ✅ Concluída (2026-08-15) |
-| 2 | **F15** — Micro-Interações & Conforto Visual | A | F14 | 📋 Não iniciada |
+| 2 | **F15** — Micro-Interações & Conforto Visual | A | F14 | ✅ Concluída (2026-08-15) |
 | 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 (pode intercalar) | 📋 Não iniciada |
 | 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | 📋 Não iniciada |
 | 5 | **F16** — Carteira na Home (KPI real) | B | P1 (deploy/cron F1.7) · F14 | 📋 Não iniciada |

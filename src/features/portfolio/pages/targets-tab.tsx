@@ -3,8 +3,11 @@ import { Save, Shield, Trash2 } from "lucide-react";
 import { Alert, Button, EmptyState, Input, SkeletonList, SkeletonTable } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
 import { parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
+import { playSound } from "@/services/audio-fx";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
+import { triggerHaptic } from "@/services/haptics";
 import {
   useAllocationTargets,
   useGroupTargets,
@@ -67,6 +70,9 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       );
       setAssetDraft({});
       setSaved(true);
+      // Feedback de escrita uniforme (F15) — mesmo padrão das demais ações.
+      triggerHaptic("success");
+      playSound("success", getVisualCustomization().soundEnabled);
       window.setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -79,6 +85,8 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     try {
       await saveClassTarget.mutateAsync({ name: className, target: classTargetOf(className) });
       setClassDraft((prev) => ({ ...prev, [className]: classTargetOf(className) }));
+      triggerHaptic("success");
+      playSound("success", getVisualCustomization().soundEnabled);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -96,6 +104,8 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         delete next[className];
         return next;
       });
+      triggerHaptic("success");
+      playSound("success", getVisualCustomization().soundEnabled);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -115,6 +125,8 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         maxSectorAcoes: parseCap(capsDraft.acoes),
         maxSectorFiis: parseCap(capsDraft.fiis),
       });
+      triggerHaptic("success");
+      playSound("success", getVisualCustomization().soundEnabled);
     } catch (err) {
       setCapsError(getErrorMessage(err));
     }
