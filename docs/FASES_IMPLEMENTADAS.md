@@ -191,6 +191,8 @@
 - **Problema:** (1) assinaturas/recorrências **sumiam do extrato** — serviço conhecido (Netflix, Spotify…) com reajuste de preço acima de ±50% era descartado, e faturas variáveis (água/luz) passavam da tolerância por compararem com o **primeiro** valor; catálogo pequeno; (2) alertas e diagnósticos ficavam em **abas separadas** (leitura duplicada); (3) Planejamento com cards lado a lado apertados e gráfico FIRE **distorcido** (`preserveAspectRatio="none"` esticava os textos).
 - **Solução:** (1) **nome conhecido/categoria de assinatura sempre emitem a ocorrência** — a variância só reduz a confiança (penalidade no `confidenceScore`); tolerância `recurring`/`similar` relativa à **mediana**; catálogo expandido (+20 serviços: globoplay, starplus, crunchyroll, deezer, alura, xbox, nordvpn, uberone…); (2) abas unificadas em **"Alertas & Diagnósticos"** (primeira: alertas em destaque → KPIs → avisos contextuais); (3) Planejamento com cards **uma linha cada** (largura cheia), headers com subtítulo, gauge em linha com os stats em chips, inputs FIRE em 3 colunas e `FireProjectionChart` sem distorção (proporcional, máx. 460px).
 
+**Ajuste pós-F29 (2026-08-15, decisão de produto):** botões do header (tema/privacidade/calculadora) voltaram ao `title` nativo (Tooltip primitivo mantido na biblioteca); `brand-logo` com `whitespace-nowrap` + animação `fade-slide-in` (token em `globals.css`) para o colapso da sidebar.
+
 ---
 
 ## Auditoria de limpeza (2026-08-15 — refatoração DRY pós-F28)

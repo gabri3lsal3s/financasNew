@@ -71,13 +71,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         hoverExpanded && isCollapsed && "shadow-2xl",
       )}
     >
-      <div
-        className={cn(
-          "flex h-16 shrink-0 items-center gap-2 border-b border-border",
-          expanded ? "px-6" : "justify-center px-2",
-        )}
-      >
-        <BrandLogo showWordmark={expanded} markClassName={expanded ? "size-8" : "size-7"} />
+      <div className="flex h-16 shrink-0 items-center border-b border-border px-6 overflow-hidden">
+        <BrandLogo showWordmark={expanded} markClassName="size-8 shrink-0" />
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2.5" aria-label="Navegação principal">
@@ -90,7 +85,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             title={expanded ? undefined : item.label}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap",
                 !expanded && "justify-center px-2",
                 isActive
                   ? "bg-primary/12 text-primary-strong font-semibold"
@@ -99,7 +94,11 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             }
           >
             <item.icon className="size-5 shrink-0" aria-hidden="true" />
-            {expanded && <span>{item.label}</span>}
+            {expanded && (
+              <span className="overflow-hidden whitespace-nowrap animate-fade-slide-in">
+                {item.label}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -110,17 +109,19 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           onClick={onToggle}
           aria-label={expanded ? "Recolher menu lateral" : "Expandir menu lateral"}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
+            "flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground overflow-hidden whitespace-nowrap",
             !expanded && "justify-center px-2",
           )}
         >
           {expanded ? (
             <>
-              <ChevronLeft className="size-5" aria-hidden="true" />
-              <span>Recolher</span>
+              <ChevronLeft className="size-5 shrink-0" aria-hidden="true" />
+              <span className="overflow-hidden whitespace-nowrap animate-fade-slide-in">
+                Recolher
+              </span>
             </>
           ) : (
-            <ChevronRight className="size-5" aria-hidden="true" />
+            <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
           )}
         </button>
       </div>

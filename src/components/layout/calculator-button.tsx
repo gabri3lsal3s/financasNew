@@ -1,6 +1,5 @@
 import { Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
 import { setCalculatorOpen } from "@/services/calculator-open";
 import { triggerHaptic } from "@/services/haptics";
 
@@ -11,19 +10,18 @@ import { triggerHaptic } from "@/services/haptics";
  */
 export function CalculatorButton() {
   return (
-    <Tooltip content="Calculadora">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="Abrir calculadora"
-        onClick={() => {
-          triggerHaptic("light");
-          setCalculatorOpen(true);
-        }}
-      >
-        <Calculator aria-hidden="true" />
-      </Button>
-    </Tooltip>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label="Abrir calculadora"
+      title="Calculadora"
+      onClick={() => {
+        triggerHaptic("light");
+        setCalculatorOpen(true);
+      }}
+    >
+      <Calculator aria-hidden="true" />
+    </Button>
   );
 }

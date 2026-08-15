@@ -14,7 +14,7 @@ describe("CalculatorButton — atalho da calculadora no header (pós-F10)", () =
     setCalculatorOpen(false);
   });
 
-  it("é um botão de ícone discreto com tooltip acessível (F25)", () => {
+  it("é um botão de ícone discreto com title acessível", () => {
     render(
       <header>
         <CalculatorButton />
@@ -22,10 +22,7 @@ describe("CalculatorButton — atalho da calculadora no header (pós-F10)", () =
     );
 
     const button = within(screen.getByRole("banner")).getByRole("button", { name: "Abrir calculadora" });
-    // O tooltip (primitivo F25) substitui o title nativo e é vinculado via aria-describedby.
-    const describedBy = button.getAttribute("aria-describedby");
-    expect(describedBy).toBeTruthy();
-    expect(screen.getByRole("tooltip", { name: "Calculadora" })).toHaveAttribute("id", describedBy!);
+    expect(button).toHaveAttribute("title", "Calculadora");
   });
 
   it("abre o painel da calculadora flutuante ao clicar", async () => {

@@ -2,7 +2,6 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/app/theme-provider";
 import type { ThemePreference } from "@/app/theme-provider";
 import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
 
 const ORDER: ThemePreference[] = ["light", "dark", "oled", "system"];
 
@@ -20,16 +19,15 @@ export function ThemeToggle() {
   const Icon = preference === "light" ? Sun : preference === "system" ? Monitor : Moon;
 
   return (
-    <Tooltip content={`Tema: ${LABELS[preference]}`}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={`Tema atual: ${LABELS[preference]}. Alternar tema.`}
-        onClick={() => setPreference(next)}
-      >
-        <Icon aria-hidden="true" />
-      </Button>
-    </Tooltip>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={`Tema atual: ${LABELS[preference]}. Alternar tema.`}
+      title={`Tema: ${LABELS[preference]}`}
+      onClick={() => setPreference(next)}
+    >
+      <Icon aria-hidden="true" />
+    </Button>
   );
 }

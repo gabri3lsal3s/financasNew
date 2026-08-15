@@ -45,10 +45,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
   it("expõe o botão da calculadora no header (mesmo padrão dos modais)", () => {
     render(<LaunchWizard />);
     const calculator = screen.getByRole("button", { name: "Abrir calculadora" });
-    // F25: o botão usa o primitivo Tooltip (aria-describedby) em vez do title nativo.
-    const describedBy = calculator.getAttribute("aria-describedby");
-    expect(describedBy).toBeTruthy();
-    expect(screen.getByRole("tooltip", { name: "Calculadora" })).toHaveAttribute("id", describedBy!);
+    expect(calculator).toHaveAttribute("title", "Calculadora");
     // O wizard fica fora do PageShell: o atalho próprio garante acesso à calculadora.
     expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
   });

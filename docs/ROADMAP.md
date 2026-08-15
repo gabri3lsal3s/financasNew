@@ -1284,6 +1284,8 @@
 - [x] **Polish do Planejamento (F24):** cards empilhados **uma linha cada** (`flex-col`, largura cheia) com headers consistentes (título + subtítulo), gauge do fundo de emergência em linha com os stats (Caixa/Despesa em chips `bg-muted/30`), inputs FIRE em 3 colunas no desktop e `FireProjectionChart` sem distorção (`preserveAspectRatio="none"` removido — texto dos eixos proporcional, largura limitada a 460px)
 - [x] Testes: +3 no domínio (reajuste > 50% ainda é assinatura, mediana para faturas variáveis, novos serviços do catálogo) e aba unificada na página — **1087 testes / 140 arquivos** verdes; typecheck/lint/build limpos
 
+**Ajuste pós-F29 (2026-08-15, decisão de produto):** os botões do header (tema, privacidade, calculadora) voltaram ao atributo nativo `title` — o primitivo `Tooltip` permanece na biblioteca (`ui/tooltip.tsx`, exportado no barrel e listado em §4.1) para uso pontual quando necessário; `brand-logo` ganhou `whitespace-nowrap` + animação `fade-slide-in` no wordmark (token novo em `globals.css`) para o colapso da sidebar não quebrar linha. Testes dos botões atualizados para o `title`.
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI

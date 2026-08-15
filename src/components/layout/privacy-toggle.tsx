@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
 import { togglePrivacyMask, usePrivacyMask } from "@/hooks/use-privacy-mask";
 
 /**
@@ -30,18 +29,19 @@ export function PrivacyToggle() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const label = masked ? "Mostrar valores (P)" : "Ocultar valores (P)";
+
   return (
-    <Tooltip content={masked ? "Mostrar valores (P)" : "Ocultar valores (P)"}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={masked ? "Mostrar valores (P)" : "Ocultar valores (P)"}
-        aria-pressed={masked}
-        onClick={() => togglePrivacyMask()}
-      >
-        {masked ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-      </Button>
-    </Tooltip>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={label}
+      title={label}
+      aria-pressed={masked}
+      onClick={() => togglePrivacyMask()}
+    >
+      {masked ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+    </Button>
   );
 }
