@@ -153,17 +153,17 @@ html[data-theme="dark"] {
 }
 
 /* ----------------------------------------------------------------
-   TEMA OLED — "True Black + Órbitas Douradas"
+   TEMA OLED — "True Black + Alto Contraste P&B"
    Fundo #000000 (economia de bateria em AMOLED) com relevo em bordas
-   ardósia (#1C2E3D) e acentos luminosos (teal/ouro).
+   cinza neutro puro (#2E2E2E / 0% saturação) e contraste limpo.
    ---------------------------------------------------------------- */
 html[data-theme="oled"] {
   --background: 0 0% 0%;            /* #000000 — true black (AMOLED) */
   --surface: 0 0% 4%;               /* #0A0A0A */
   --surface-hover: 0 0% 8%;         /* #141414 — hover perceptível sobre true black */
   --surface-active: 0 0% 12%;       /* #1F1F1F — pressed */
-  --border: 207 37% 17%;            /* #1C2E3D — bordas ardósia (elevação principal) */
-  --input: 207 30% 22%;             /* #27394A */
+  --border: 0 0% 18%;               /* #2E2E2E — cinza neutro puro P&B (sem matiz azulada) */
+  --input: 0 0% 24%;                /* #3D3D3D — cinza neutro */
   --muted: 0 0% 6%;                 /* #0F0F0F */
   --foreground: 0 0% 98%;           /* #FAFAFA */
   --muted-foreground: 0 0% 50%;     /* #808080 — AA sobre #000 (5.3:1) */
@@ -225,7 +225,7 @@ html[data-theme="dark"] {
 
 html[data-theme="oled"] {
   --overlay: 0 0% 0% / 70%;        /* escurecimento maior (sem perder o true black) */
-  --scrollbar-thumb: 207 20% 22%;  /* ardósia discreto (sem acender pixels) */
+  --scrollbar-thumb: 0 0% 22%;     /* cinza neutro discreto (sem acender pixels) */
   --scrollbar-track: 0 0% 4%;
 }
 
@@ -343,6 +343,27 @@ html[data-theme="oled"][data-accent="rose"] {
   --primary: 351 95% 71%;
   --primary-strong: 351 95% 71%;
   --ring: 351 95% 71%;
+}
+
+/* --- Monochrome (Preto & Branco / Minimalista) --- */
+:root[data-accent="mono"],
+html[data-theme="light"][data-accent="mono"] {
+  --primary: 0 0% 12%;              /* #1F1F1F — preto com alto contraste no tema claro */
+  --primary-strong: 0 0% 0%;        /* #000000 */
+  --primary-foreground: 0 0% 100%;  /* #FFFFFF — texto branco sobre preto */
+  --ring: 0 0% 20%;
+}
+html[data-theme="dark"][data-accent="mono"] {
+  --primary: 0 0% 96%;              /* #F5F5F5 — branco puro no tema escuro */
+  --primary-strong: 0 0% 100%;      /* #FFFFFF */
+  --primary-foreground: 0 0% 0%;    /* #000000 — texto preto sobre branco */
+  --ring: 0 0% 80%;
+}
+html[data-theme="oled"][data-accent="mono"] {
+  --primary: 0 0% 98%;              /* #FAFAFA — branco puro no OLED */
+  --primary-strong: 0 0% 100%;      /* #FFFFFF */
+  --primary-foreground: 0 0% 0%;    /* #000000 — texto preto sobre branco */
+  --ring: 0 0% 80%;
 }
 
 /* ================================================================

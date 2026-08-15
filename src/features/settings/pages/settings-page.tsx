@@ -44,6 +44,7 @@ import { playSound } from "@/services/audio-fx";
 import { triggerHaptic } from "@/services/haptics";
 import { useAuth } from "@/hooks/use-auth";
 import { getSupabase } from "@/data/client";
+import { cn } from "@/lib/utils";
 
 const ACCENT_OPTIONS: { id: AccentTheme; label: string; bgClass: string; hex: string }[] = [
   { id: "teal", label: "Teal Vital (Oficial)", bgClass: "bg-[#2A9D8F]", hex: "#2A9D8F" },
@@ -52,12 +53,13 @@ const ACCENT_OPTIONS: { id: AccentTheme; label: string; bgClass: string; hex: st
   { id: "sapphire", label: "Safira Petróleo", bgClass: "bg-[#0284C7]", hex: "#0284C7" },
   { id: "violet", label: "Violeta Íris", bgClass: "bg-[#7C3AED]", hex: "#7C3AED" },
   { id: "rose", label: "Coral Rosé", bgClass: "bg-[#E11D48]", hex: "#E11D48" },
+  { id: "mono", label: "Monocromático (P&B)", bgClass: "bg-foreground", hex: "#000000" },
 ];
 
 const THEME_OPTIONS: { id: ThemePreference; label: string; icon: typeof Sun; desc: string }[] = [
   { id: "light", label: "Claro", icon: Sun, desc: "Vital Petróleo & Ouro" },
   { id: "dark", label: "Escuro", icon: Moon, desc: "Abissal Teal" },
-  { id: "oled", label: "OLED", icon: Smartphone, desc: "True Black + Órbitas" },
+  { id: "oled", label: "OLED", icon: Smartphone, desc: "True Black + Alto Contraste P&B" },
   { id: "system", label: "Automático", icon: Sliders, desc: "Sincronizado ao sistema" },
 ];
 
@@ -188,25 +190,32 @@ export function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {ACCENT_OPTIONS.map((a) => {
+                {ACCENT_OPTIONS.map((a, idx) => {
                   const isSelected = visual.accent === a.id;
+                  const isLastOdd = idx === ACCENT_OPTIONS.length - 1 && ACCENT_OPTIONS.length % 2 !== 0;
                   return (
                     <button
                       key={a.id}
                       type="button"
                       onClick={() => visual.setAccent(a.id)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all select-none cursor-pointer ${
+                      className={cn(
+                        "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all select-none cursor-pointer min-w-0",
                         isSelected
                           ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
-                          : "border-border bg-surface hover:bg-surface-hover hover:border-border/80"
-                      }`}
+                          : "border-border bg-surface hover:bg-surface-hover hover:border-border/80",
+                        isLastOdd && "col-span-2 sm:col-span-1",
+                      )}
                     >
                       <span
-                        className={`size-6 rounded-full shrink-0 shadow-sm ${a.bgClass} flex items-center justify-center`}
+                        className={`size-6 rounded-full shrink-0 shadow-sm ${a.bgClass} flex items-center justify-center border border-border/60`}
                       >
-                        {isSelected && <Check className="size-3.5 text-white" />}
+                        {isSelected && (
+                          <Check
+                            className={`size-3.5 ${a.id === "mono" ? "text-background" : "text-white"}`}
+                          />
+                        )}
                       </span>
-                      <span className="font-medium text-sm text-foreground leading-tight">
+                      <span className="font-medium text-sm text-foreground leading-tight truncate">
                         {a.label}
                       </span>
                     </button>

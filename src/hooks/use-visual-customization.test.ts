@@ -28,6 +28,10 @@ describe("useVisualCustomization (F11)", () => {
     expect(config.accent).toBe("emerald");
     expect(document.documentElement.getAttribute("data-accent")).toBe("emerald");
 
+    updateVisualCustomization({ accent: "mono" });
+    expect(getVisualCustomization().accent).toBe("mono");
+    expect(document.documentElement.getAttribute("data-accent")).toBe("mono");
+
     updateVisualCustomization({ accent: "teal" });
     expect(document.documentElement.getAttribute("data-accent")).toBeNull();
   });

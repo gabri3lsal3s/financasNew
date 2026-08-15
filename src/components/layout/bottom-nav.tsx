@@ -75,9 +75,11 @@ export function BottomNav() {
           className="flex min-h-11 items-center justify-center"
           onClick={() => triggerHaptic("light")}
         >
-          {/* FAB discreto (pós-F10): contorno de cor em vez de fundo sólido. */}
-          <span className="-mt-6 flex size-12 items-center justify-center rounded-full border border-primary-strong/40 bg-background/95 text-primary-strong shadow-sm ring-4 ring-background transition-transform active:scale-95">
-            <Plus className="size-6" aria-hidden="true" />
+          {/* FAB com fundo na cor do tema e contorno nítido suave (sem serrilhamento de box-shadow ring) */}
+          <span className="-mt-6 flex size-14 items-center justify-center rounded-full bg-background shadow-xs transform-gpu">
+            <span className="flex size-12 items-center justify-center rounded-full border-[1.5px] border-primary bg-surface text-primary shadow-sm transition-transform active:scale-95 hover:border-primary-strong hover:text-primary-strong transform-gpu">
+              <Plus className="size-6" aria-hidden="true" />
+            </span>
           </span>
         </NavLink>
 

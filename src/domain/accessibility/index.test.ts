@@ -187,6 +187,11 @@ const ACCENTS = {
     dark: { primary: "#FB6F84", strong: "#FB6F84" },
     oled: { primary: "#FB6F84", strong: "#FB6F84" },
   },
+  mono: {
+    light: { primary: "#1F1F1F", strong: "#000000" },
+    dark: { primary: "#F5F5F5", strong: "#FFFFFF" },
+    oled: { primary: "#FAFAFA", strong: "#FFFFFF" },
+  },
 } as const;
 
 /** Fundos e foregrounds dos 3 temas (mesmos dos PALETTES acima). */
@@ -196,7 +201,7 @@ const ACCENT_CONTEXT = {
   oled: { background: "#000000", foreground: "#022C22" },
 } as const;
 
-describe("contraste AA das 6 paletas de acento × 3 temas (F11 DoD — F12)", () => {
+describe("contraste AA das 7 paletas de acento × 3 temas (F11 DoD — F12)", () => {
   for (const [accent, themes] of Object.entries(ACCENTS)) {
     describe(`acento ${accent}`, () => {
       for (const [theme, colors] of Object.entries(themes)) {

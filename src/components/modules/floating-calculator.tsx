@@ -103,7 +103,7 @@ export function FloatingCalculator() {
           type="button"
           aria-label="Abrir calculadora"
           title="Calculadora"
-          className="fixed z-floating-tools flex items-center justify-center rounded-full border border-primary-strong/40 bg-background/95 text-primary-strong shadow-sm transition-transform active:scale-95"
+          className="fixed z-floating-tools flex items-center justify-center rounded-full border-[1.5px] border-primary bg-surface text-primary shadow-lg transition-transform active:scale-95 hover:border-primary-strong hover:text-primary-strong transform-gpu"
           style={{ left: draggable.position.x, top: draggable.position.y, width: FAB_SIZE, height: FAB_SIZE }}
           {...draggable.pointerHandlers}
           onClick={() => {

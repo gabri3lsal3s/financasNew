@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-export type AccentTheme = "teal" | "emerald" | "gold" | "sapphire" | "violet" | "rose";
+export type AccentTheme = "teal" | "emerald" | "gold" | "sapphire" | "violet" | "rose" | "mono";
 export type SurfaceStyle = "glass" | "flat" | "elevated";
 export type MotionLevel = "fluid" | "eco" | "reduced";
 
@@ -82,7 +82,7 @@ function readStoredConfig(): VisualCustomization {
   try {
     const rawAccent = window.localStorage.getItem(STORAGE_KEYS.accent) as AccentTheme | null;
     const accent: AccentTheme =
-      rawAccent && ["teal", "emerald", "gold", "sapphire", "violet", "rose"].includes(rawAccent)
+      rawAccent && ["teal", "emerald", "gold", "sapphire", "violet", "rose", "mono"].includes(rawAccent)
         ? rawAccent
         : "teal";
 

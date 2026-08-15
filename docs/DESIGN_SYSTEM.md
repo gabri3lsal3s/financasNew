@@ -27,13 +27,13 @@
 | `--surface` | `0 0% 100%` `#FFF` | `206 42% 15%` `#162836` | `0 0% 4%` `#0A0A0A` | Cards, modais, tabelas |
 | `--surface-hover` | `200 22% 94%` | `206 41% 19%` | `0 0% 8%` | Hover de linhas/cards |
 | `--surface-active` | `200 20% 90%` | `204 39% 23%` | `0 0% 12%` | Estado pressionado |
-| `--border` | `200 18% 87%` `#D7E1E6` | `208 36% 21%` `#23384A` | `207 37% 17%` `#1C2E3D` | Bordas e divisores (ardósia-teal) |
-| `--input` | `200 16% 79%` | `208 34% 26%` | `207 30% 22%` | Bordas de campos |
+| `--border` | `200 18% 87%` `#D7E1E6` | `208 36% 21%` `#23384A` | `0 0% 18%` `#2E2E2E` | Bordas e divisores (cinza neutro P&B no OLED) |
+| `--input` | `200 16% 79%` | `208 34% 26%` | `0 0% 24%` `#3D3D3D` | Bordas de campos |
 | `--muted` | `200 20% 95%` | `206 42% 12%` | `0 0% 6%` | Skeletons, backgrounds suaves |
 | `--foreground` | `205 42% 14%` `#142531` | `199 39% 94%` `#E8F1F5` | `0 0% 98%` | Texto principal (Azul Petróleo Profundo) |
 | `--muted-foreground` | `215 26% 35%` `#475569` | `204 22% 68%` `#9DB2C0` | `0 0% 50%` | Texto secundário, rótulos |
 | `--overlay` | `12 40% 10% / 40%` | `0 0% 0% / 60%` | `0 0% 0% / 70%` | Escurecimento de modais/palette (glass §8) |
-| `--scrollbar-thumb` / `--scrollbar-track` | `200 16% 74%` / `204 29% 95%` | `208 30% 32%` / `206 49% 11%` | `207 20% 22%` / `0 0% 4%` | Scrollbars via tokens (§13) |
+| `--scrollbar-thumb` / `--scrollbar-track` | `200 16% 74%` / `204 29% 95%` | `208 30% 32%` / `206 49% 11%` | `0 0% 22%` / `0 0% 4%` | Scrollbars via tokens (§13) |
 
 ### 2.2 Marca — primárias e accent
 
@@ -50,7 +50,7 @@
 
 > **Regra de contraste (AA):** em Light, texto pequeno **não** usa `--primary` (3.0:1 — gráficos/fills) — usa `--primary-strong` (5.7:1). `--accent` (ouro) é decorativo/grande (glow, órbita); texto sobre ouro usa `--accent-foreground` (AA). Em Dark, `--primary` já é claro e o foreground escuro garante 8:1.
 
-> **Acentos personalizáveis (F11):** o root aceita `data-accent="emerald|gold|rose|sapphire|violet"` (teal é o padrão, sem atributo) — sobrescreve `--primary`/`--primary-strong`/`--ring` nos 3 temas, aplicado via `use-visual-customization` (persistido em `localStorage`). Regra de contraste: o mesmo princípio acima vale por paleta (texto pequeno usa a variante *strong*).
+> **Acentos personalizáveis (F11/F13):** o root aceita `data-accent="emerald|gold|rose|sapphire|violet|mono"` (teal é o padrão, sem atributo) — sobrescreve `--primary`/`--primary-strong`/`--ring` nos 3 temas, aplicado via `use-visual-customization` (persistido em `localStorage`). `mono` oferece a opção Monocromático Preto & Branco puro de alto contraste. Regra de contraste: o mesmo princípio acima vale por paleta (texto pequeno usa a variante *strong*).
 
 ### 2.3 Semânticas financeiras
 
