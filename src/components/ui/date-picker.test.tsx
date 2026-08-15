@@ -37,4 +37,21 @@ describe("DatePicker", () => {
     await user.click(screen.getByRole("button", { name: "Limpar data" }));
     expect(onValueChange).toHaveBeenCalledWith("");
   });
+
+  it("F25: header com setas Lucide nas extremidades e navegação de mês", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker value="" onValueChange={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Selecione a data" }));
+
+    // navLayout="around": botões de navegação acessíveis com ícones Lucide.
+    const previous = await screen.findByRole("button", { name: /mês anterior/i });
+    const next = screen.getByRole("button", { name: /próximo mês/i });
+    expect(previous).toBeInTheDocument();
+    expect(next).toBeInTheDocument();
+    // O caption (Mês/Ano) muda ao navegar (header centralizado funcional).
+    const captionBefore = screen.getByRole("status").textContent ?? "";
+    await user.click(next);
+    const captionAfter = screen.getByRole("status").textContent ?? "";
+    expect(captionAfter).not.toBe(captionBefore);
+  });
 });

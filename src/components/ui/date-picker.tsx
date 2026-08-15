@@ -1,7 +1,8 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { CalendarDays, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { ptBR } from "react-day-picker/locale";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
+import type { ChevronProps, DayButtonProps } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
 export interface DatePickerProps {
@@ -28,6 +29,41 @@ const toISO = (date: Date | undefined): string => {
   return `${y}-${m}-${d}`;
 };
 
+/**
+ * Chevron próprio (F25/pós-F13): substitui o polígono SVG padrão do DayPicker
+ * por `Lucide ChevronLeft/ChevronRight`, com contraste garantido em qualquer
+ * tema (Dark/Light/acento customizado).
+ */
+function ThemedChevron({ orientation = "left", className, ...props }: ChevronProps) {
+  const Icon = orientation === "right" ? ChevronRight : ChevronLeft;
+  return <Icon className={cn("size-4", className)} aria-hidden="true" {...props} />;
+}
+
+/**
+ * Botão de dia (F25): dia selecionado com fundo sólido em gradiente sutil da
+ * cor primária ativa do tema + texto de alto contraste; dia atual (today) com
+ * ponto indicador; disabled/outside com opacidade reduzida.
+ */
+function ThemedDayButton({ modifiers, className, ...props }: DayButtonProps) {
+  return (
+    <button
+      type="button"
+      {...props}
+      className={cn(
+        "size-9 rounded-full text-sm font-medium text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        modifiers.selected &&
+          "bg-gradient-to-b from-primary to-primary/90 font-semibold text-primary-foreground shadow-sm hover:from-primary hover:to-primary",
+        modifiers.today &&
+          !modifiers.selected &&
+          "relative after:absolute after:bottom-0.5 after:left-1/2 after:size-1 after:-translate-x-1/2 after:rounded-full after:bg-primary",
+        modifiers.outside && "text-muted-foreground opacity-50",
+        modifiers.disabled && "text-muted-foreground opacity-40",
+        className,
+      )}
+    />
+  );
+}
+
 /** DatePicker próprio do app (Radix Popover + DayPicker) — substitui `<input type="date">` nativo (DESIGN_SYSTEM §13). */
 export function DatePicker({
   value,
@@ -42,25 +78,24 @@ export function DatePicker({
   const dayPickerClassNames = {
     ...base,
     root: cn(base.root, "p-3"),
-    month_caption: cn(base.month_caption, "font-display text-sm font-semibold text-foreground"),
+    // Header centralizado (F25): `navLayout="around"` coloca as setas nas
+    // extremidades do mês e o seletor de Mês/Ano centralizado (flex-1).
+    month: cn(base.month, "flex items-center justify-between gap-1"),
+    month_caption: cn(base.month_caption, "flex-1 text-center"),
+    caption_label: cn(base.caption_label, "font-display text-sm font-semibold text-foreground"),
     weekday: cn(base.weekday, "text-xs font-medium text-muted-foreground"),
     day: cn(base.day, "h-9 w-9"),
-    day_button: cn(
-      base.day_button,
-      "size-9 rounded-full text-sm text-foreground transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-    ),
-    selected: cn(base.selected, "bg-primary-strong text-primary-foreground hover:bg-primary-strong"),
-    today: cn(base.today, "ring-2 ring-primary/40 ring-inset"),
-    outside: cn(base.outside, "text-muted-foreground opacity-50"),
-    disabled: cn(base.disabled, "text-muted-foreground opacity-40"),
     button_previous: cn(
       base.button_previous,
-      "flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     ),
     button_next: cn(
       base.button_next,
-      "flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     ),
+    chevron: cn(base.chevron, "size-4"),
+    outside: cn(base.outside, "text-muted-foreground opacity-50"),
+    disabled: cn(base.disabled, "text-muted-foreground opacity-40"),
   };
 
   return (
@@ -108,6 +143,8 @@ export function DatePicker({
             weekStartsOn={0}
             disabled={{ before: new Date("2000-01-01") }}
             classNames={dayPickerClassNames}
+            components={{ Chevron: ThemedChevron, DayButton: ThemedDayButton }}
+            navLayout="around"
           />
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>

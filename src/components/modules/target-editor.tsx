@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumberStepperInput } from "@/components/ui/number-stepper-input";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -84,17 +84,15 @@ export function TargetEditor({
                 <p className="truncate text-sm font-medium text-foreground">{row.label}</p>
                 {row.detail ? <p className="truncate text-xs text-muted-foreground">{row.detail}</p> : null}
               </div>
-              <div className="flex w-28 shrink-0 items-center gap-2">
-                <Input
-                  type="number"
-                  inputMode="decimal"
+              <div className="flex w-44 shrink-0 items-center gap-2">
+                <NumberStepperInput
+                  value={Number.isFinite(row.target) ? row.target : 0}
                   min={0}
                   max={100}
                   step={0.5}
-                  value={Number.isFinite(row.target) ? row.target : 0}
-                  aria-label={`Meta de ${row.label} em %`}
-                  onChange={(event) => onTargetChange(row.key, Number(event.target.value))}
-                  className="h-9 text-right font-mono tabular-nums"
+                  ariaLabel={`Meta de ${row.label} em %`}
+                  onValueChange={(next) => onTargetChange(row.key, Number(next))}
+                  className="[&_input]:text-right"
                 />
                 <span className="text-sm text-muted-foreground">%</span>
               </div>

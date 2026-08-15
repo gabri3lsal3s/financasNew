@@ -1165,6 +1165,12 @@
 - [x] Primitivo `Tooltip` (axe 0 violações) aplicado nos botões do header (ThemeToggle, PrivacyToggle, CalculatorButton) + testes
 - [x] Suíte completa verde; typecheck/lint/build limpos
 
+**Auditoria de elementos nativos do navegador (pós-F25):**
+- [x] **DatePicker refatorado:** `navLayout="around"` distribui as setas (`Lucide ChevronLeft/ChevronRight` via componente `Chevron` customizado) nas extremidades com o seletor Mês/Ano centralizado (`month_caption flex-1 text-center`) — eliminado o bug das setas coladas; dia selecionado com gradiente da cor primária ativa (`bg-gradient-to-b from-primary to-primary/90` + `text-primary-foreground` + `shadow-sm`); dia atual com **dot indicator** (`after:bg-primary`); foco tátil `ring-2` mantido
+- [x] **NumberStepperInput (`ui/number-stepper-input.tsx`):** substitui `input[type="number"]` nativo — spin buttons ocultos via CSS global (`::-webkit-outer/inner-spin-button` + `-moz-appearance: textfield`); botões `+`/`−` (Lucide) com feedback tátil, respeito a `min`/`max`/`step`, **long-press com repetição contínua** (delay 400ms + intervalo 100ms, ref espelhado do valor) e anti-double-fire; digitação manual livre (`inputMode="decimal"`) — 7 testes
+- [x] **Substituições aplicadas (zero `type="number"` no app):** `TargetEditor` (metas por ativo), `TargetsTab` (metas por classe + travas setoriais Ações/FIIs) e `TransactionFormDialog` (quantidade, preço unitário, fator de desdobramento)
+- [x] **Auditoria geral:** selects/checkboxes/radios já são primitivos Radix; range/date/file/textarea já têm `Slider`/`DatePicker`/`Dropzone`/`Textarea`; nenhum `window.confirm/alert/prompt` em uso (ConfirmDialog/Toast); zero inputs crus fora de `components/ui/`; scrollbars ocultas por decisão pós-F10 (não reestilizadas para não reintroduzir layout shift)
+
 ---
 
 ### Fase 26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)

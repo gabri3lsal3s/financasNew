@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, ConfirmDialog, Input, Modal, MoneyInput, Select } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, Modal, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { todayISO } from "@/domain/debts";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
@@ -160,28 +160,24 @@ export function TransactionFormDialog({ open, onOpenChange, asset, transaction =
             <>
               <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
                 Quantidade
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
-                  min={0}
+                <NumberStepperInput
                   value={quantity}
-                  onChange={(event) => setQuantity(event.target.value)}
+                  step={1}
+                  min={0}
+                  onValueChange={setQuantity}
                   placeholder="Ex.: 10"
-                  aria-label="Quantidade"
+                  ariaLabel="Quantidade"
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
                 Preço unitário ({asset.currency})
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
-                  min={0}
+                <NumberStepperInput
                   value={price}
-                  onChange={(event) => setPrice(event.target.value)}
+                  step={0.01}
+                  min={0}
+                  onValueChange={setPrice}
                   placeholder="Ex.: 42,50"
-                  aria-label="Preço unitário"
+                  ariaLabel="Preço unitário"
                 />
               </label>
               <p className="num text-xs text-muted-foreground">
@@ -200,15 +196,13 @@ export function TransactionFormDialog({ open, onOpenChange, asset, transaction =
           {withFactor ? (
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               Fator ({type === "split" ? "2 = 2:1 (dobra cotas)" : "2 = 1:2 (reduz cotas)"})
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min={0}
+              <NumberStepperInput
                 value={quantity}
-                onChange={(event) => setQuantity(event.target.value)}
+                step={1}
+                min={0}
+                onValueChange={setQuantity}
                 placeholder="Ex.: 2"
-                aria-label="Fator do desdobramento"
+                ariaLabel="Fator do desdobramento"
               />
             </label>
           ) : null}

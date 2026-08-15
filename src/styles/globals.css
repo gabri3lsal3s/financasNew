@@ -255,6 +255,19 @@
     display: none;
   }
 
+  /* F25/pós-F13 — sem spin buttons nativos do navegador em inputs numéricos:
+     o NumberStepperInput (e qualquer input numérico do app) usa botões −/+ 
+     próprios; os controles padrão do browser são ocultados (Chrome/Safari/Edge
+     via ::-webkit-*, Firefox via appearance: textfield). */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
   /* Microinterações respeitam usuários com movimento reduzido (a11y) */
   @media (prefers-reduced-motion: reduce) {
     *,

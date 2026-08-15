@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Save, Shield, Trash2 } from "lucide-react";
-import { Alert, Button, EmptyState, Input, SkeletonList, SkeletonTable } from "@/components/ui";
+import { Alert, Button, EmptyState, NumberStepperInput, SkeletonList, SkeletonTable } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
 import { parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money/parse";
@@ -200,22 +200,20 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                       {position.rows.filter((r) => r.assetClass === className).length} ativo(s)
                     </p>
                   </div>
-                  <div className="flex w-28 shrink-0 items-center gap-2">
-                    <Input
-                      type="number"
-                      inputMode="decimal"
+                  <div className="flex w-44 shrink-0 items-center gap-2">
+                    <NumberStepperInput
+                      value={target}
                       min={0}
                       max={100}
                       step={0.5}
-                      value={target}
-                      aria-label={`Meta da classe ${className} em %`}
-                      onChange={(event) =>
+                      ariaLabel={`Meta da classe ${className} em %`}
+                      onValueChange={(next) =>
                         setClassDraft((prev) => ({
                           ...prev,
-                          [className]: parseTargetInput(event.target.value),
+                          [className]: parseTargetInput(next),
                         }))
                       }
-                      className="h-9 text-right font-mono tabular-nums"
+                      className="[&_input]:text-right"
                     />
                     <span className="text-sm text-muted-foreground">%</span>
                   </div>
@@ -265,32 +263,26 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Máx. Ações (%)
-            <Input
-              type="number"
-              inputMode="decimal"
+            <NumberStepperInput
+              value={capsDraft.acoes !== "" ? capsDraft.acoes : capsDefaults?.maxSectorAcoes ?? ""}
               min={0}
               max={100}
               step={1}
-              value={capsDraft.acoes !== "" ? capsDraft.acoes : capsDefaults?.maxSectorAcoes ?? ""}
               placeholder="Sem trava"
-              aria-label="Teto de exposição para Ações"
-              onChange={(event) => setCapsDraft((prev) => ({ ...prev, acoes: event.target.value }))}
-              className="font-mono tabular-nums"
+              ariaLabel="Teto de exposição para Ações"
+              onValueChange={(next) => setCapsDraft((prev) => ({ ...prev, acoes: next }))}
             />
           </label>
           <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Máx. FIIs (%)
-            <Input
-              type="number"
-              inputMode="decimal"
+            <NumberStepperInput
+              value={capsDraft.fiis !== "" ? capsDraft.fiis : capsDefaults?.maxSectorFiis ?? ""}
               min={0}
               max={100}
               step={1}
-              value={capsDraft.fiis !== "" ? capsDraft.fiis : capsDefaults?.maxSectorFiis ?? ""}
               placeholder="Sem trava"
-              aria-label="Teto de exposição para FIIs"
-              onChange={(event) => setCapsDraft((prev) => ({ ...prev, fiis: event.target.value }))}
-              className="font-mono tabular-nums"
+              ariaLabel="Teto de exposição para FIIs"
+              onValueChange={(next) => setCapsDraft((prev) => ({ ...prev, fiis: next }))}
             />
           </label>
         </div>

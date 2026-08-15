@@ -63,4 +63,6 @@ export { LivePulseBeacon } from "./live-pulse-beacon";
 export type { LivePulseBeaconProps } from "./live-pulse-beacon";
 export { Tooltip } from "./tooltip";
 export type { TooltipProps } from "./tooltip";
+export { NumberStepperInput } from "./number-stepper-input";
+export type { NumberStepperInputProps } from "./number-stepper-input";
 
