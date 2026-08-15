@@ -1,6 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OverviewPage } from "./overview-page";
+
+vi.mock("react-router", () => ({
+  useNavigate: () => navigateMock,
+}));
+
+const navigateMock = vi.fn();
+let portfolioTransactionsMock: { id: string; asset_id: string; type: string; date: string; total: number }[] = [];
 
 const expenseCategories = [
   { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense" },
@@ -96,14 +104,27 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useAllPortfolioTransactions: () => ({
+    data: portfolioTransactionsMock,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {
+  beforeEach(() => {
+    navigateMock.mockReset();
+    portfolioTransactionsMock = [];
+  });
+
   it("exibe os KPIs fundamentais com peso de relatório", () => {
     render(<OverviewPage />);
-    // "Receitas"/"Despesas" aparecem no KPI e na legenda do fluxo diário.
+    // "Receitas"/"Despesas"/"Investimentos" aparecem nos KPIs.
     expect(screen.getAllByText("Receitas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Despesas").length).toBeGreaterThan(0);
+    expect(screen.getByText("Investimentos")).toBeInTheDocument();
     expect(screen.getByText("Saldo do mês")).toBeInTheDocument();
     // Receitas 5.000 · Despesas 3.100 · Saldo 1.900 (3.100 também no centro do donut).
     expect(screen.getByText("R$ 5.000,00")).toBeInTheDocument();
@@ -149,5 +170,33 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     // Moradia R$ 3.000/2.000 → Excedida (aparece no donut e nos orçamentos)
     expect(screen.getByText("Excedida")).toBeInTheDocument();
     expect(screen.getAllByText("Moradia").length).toBeGreaterThan(0);
+  });
+
+  it("KPI de investimentos reflete os aportes realizados no mês e navega para /carteira", async () => {
+    const user = userEvent.setup();
+    portfolioTransactionsMock = [
+      { id: "tx1", asset_id: "a1", type: "buy", date: "2026-08-05", total: 1500 },
+      { id: "tx2", asset_id: "a2", type: "subscription", date: "2026-08-15", total: 500 },
+      { id: "tx3", asset_id: "a1", type: "buy", date: "2026-07-20", total: 1000 },
+    ];
+
+    render(<OverviewPage />);
+
+    // Investimentos no mês 2026-08: 1.500 + 500 = R$ 2.000,00
+    // (valor aparece no KPI e no DeltaHint do comparativo)
+    expect(screen.getAllByText("R$ 2.000,00").length).toBeGreaterThan(0);
+    // Comparativo com mês anterior (2.000 vs 1.000 → +100%)
+    expect(screen.getByText("100,0%")).toBeInTheDocument();
+
+    // Clique no KPI navega para /carteira
+    const kpiButton = screen.getByRole("button", { name: /Investimentos/i });
+    await user.click(kpiButton);
+    expect(navigateMock).toHaveBeenCalledWith("/carteira");
+  });
+
+  it("não exibe o card Carteira em Resumo na Home (permanece na Carteira)", () => {
+    render(<OverviewPage />);
+    expect(screen.queryByText("Carteira em resumo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Patrimônio total")).not.toBeInTheDocument();
   });
 });

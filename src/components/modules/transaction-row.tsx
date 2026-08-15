@@ -116,8 +116,20 @@ export function TransactionRow({
     </div>
   );
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (swipe.open) {
+      e.stopPropagation();
+      swipe.close();
+      return;
+    }
+    if (swipe.dragging) {
+      return;
+    }
+    onClick?.();
+  };
+
   const row = onClick ? (
-    <button type="button" onClick={onClick} className="w-full text-left focus-visible:outline-none">
+    <button type="button" onClick={handleClick} className="w-full text-left focus-visible:outline-none">
       {content}
     </button>
   ) : (

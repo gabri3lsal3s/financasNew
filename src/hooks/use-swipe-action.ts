@@ -5,6 +5,8 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 export const SWIPE_ACTION_WIDTH = 96;
 /** Deslocamento mínimo (px) para abrir/fechar no final do gesto. */
 const OPEN_THRESHOLD = SWIPE_ACTION_WIDTH / 2;
+/** Limiar em px para considerar que o usuário iniciou um arrasto horizontal. */
+const DRAG_THRESHOLD = 6;
 
 export interface UseSwipeActionOptions {
   /** Disparado ao revelar as ações (ex.: haptic "light"). */
@@ -33,15 +35,21 @@ export interface UseSwipeActionReturn {
 
 /**
  * Swipe-to-Action mobile (F8 — Decisão 2): deslizar a linha para a esquerda
- * revela ações rápidas. Vanilla Pointer Events (`pointerdown/move/up` com
- * `setPointerCapture`) — zero dependências; gestos verticais são ignorados
- * (scroll nativo preservado).
+ * revela ações rápidas. Vanilla Pointer Events (`pointerdown/move/up`) —
+ * zero dependências; gestos verticais são ignorados (scroll nativo preservado).
+ * O ponteiro só é capturado quando o arrasto horizontal realmente se inicia,
+ * garantindo que cliques normais cheguem aos botões e modais filhos.
  */
 export function useSwipeAction({ onOpen, onClose }: UseSwipeActionOptions = {}): UseSwipeActionReturn {
   const [open, setOpenState] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [offset, setOffset] = useState(0);
-  const dragRef = useRef<{ startX: number; startY: number; base: number } | null>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    base: number;
+    isDragging: boolean;
+  } | null>(null);
 
   const settle = useCallback(
     (next: boolean) => {
@@ -65,8 +73,8 @@ export function useSwipeAction({ onOpen, onClose }: UseSwipeActionOptions = {}):
         startX: event.clientX,
         startY: event.clientY,
         base: open ? -SWIPE_ACTION_WIDTH : 0,
+        isDragging: false,
       };
-      event.currentTarget.setPointerCapture(event.pointerId);
     },
     [open],
   );
@@ -76,31 +84,81 @@ export function useSwipeAction({ onOpen, onClose }: UseSwipeActionOptions = {}):
     if (!drag) return;
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
+
     // Gesto predominantemente vertical → deixa o scroll nativo seguir.
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+    if (!drag.isDragging && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
       dragRef.current = null;
       return;
     }
-    setDragging(true);
-    // Só deslize para a esquerda abre; para a direita apenas recolhe (clamp em 0).
-    setOffset(Math.min(0, drag.base + dx));
+
+    // Inicia o arrasto quando ultrapassa o limiar horizontal
+    if (!drag.isDragging && Math.abs(dx) > DRAG_THRESHOLD) {
+      drag.isDragging = true;
+      try {
+        if (typeof event.currentTarget.setPointerCapture === "function") {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
+      } catch {
+        // Ignora ambiente onde setPointerCapture não existe
+      }
+      setDragging(true);
+    }
+
+    if (drag.isDragging) {
+      // Só deslize para a esquerda abre; para a direita apenas recolhe (clamp em 0).
+      setOffset(Math.min(0, drag.base + dx));
+    }
   }, []);
 
-  const onPointerUp = useCallback(() => {
-    const drag = dragRef.current;
-    dragRef.current = null;
-    if (!drag) {
-      setDragging(false);
-      return;
-    }
-    if (offset < -OPEN_THRESHOLD) settle(true);
-    else settle(false);
-  }, [offset, settle]);
+  const onPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const drag = dragRef.current;
+      dragRef.current = null;
 
-  const onPointerCancel = useCallback(() => {
-    dragRef.current = null;
-    settle(open);
-  }, [open, settle]);
+      if (!drag) {
+        setDragging(false);
+        return;
+      }
+
+      if (drag.isDragging) {
+        try {
+          if (typeof event.currentTarget.releasePointerCapture === "function") {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        } catch {
+          // Ignora
+        }
+        const dx = event.clientX - drag.startX;
+        const currentOffset = Math.min(0, drag.base + dx);
+        if (currentOffset < -OPEN_THRESHOLD) {
+          settle(true);
+        } else {
+          settle(false);
+        }
+      } else {
+        setDragging(false);
+      }
+    },
+    [settle],
+  );
+
+  const onPointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const drag = dragRef.current;
+      if (drag?.isDragging) {
+        try {
+          if (typeof event.currentTarget.releasePointerCapture === "function") {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        } catch {
+          // Ignora
+        }
+      }
+      dragRef.current = null;
+      settle(open);
+    },
+    [open, settle],
+  );
 
   return {
     open,

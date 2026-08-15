@@ -1,5 +1,5 @@
 import { useState, useRef, type MouseEvent, type KeyboardEvent } from "react";
-import { Radio, Sparkles } from "lucide-react";
+import { Radio } from "lucide-react";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { bestPurchaseDay, cardLimitUsage } from "@/domain/cards";
 import { cn } from "@/lib/utils";
@@ -65,19 +65,13 @@ function EmvChip({ className }: { className?: string }) {
 /**
  * Gera gradiente suave com base na cor do cartão.
  */
-function getCardGradient(colorHex?: string | null): { background: string; glowColor: string } {
+function getCardGradient(colorHex?: string | null): string {
   if (!colorHex || colorHex.trim() === "") {
-    return {
-      background: "linear-gradient(135deg, #162432 0%, #0F172A 100%)",
-      glowColor: "rgba(15, 23, 42, 0.4)",
-    };
+    return "linear-gradient(135deg, #162432 0%, #0F172A 100%)";
   }
 
   const hex = colorHex.trim();
-  return {
-    background: `linear-gradient(135deg, ${hex}EE 0%, ${hex}99 40%, #090e15 100%)`,
-    glowColor: `${hex}55`,
-  };
+  return `linear-gradient(135deg, ${hex}EE 0%, ${hex}99 40%, #090e15 100%)`;
 }
 
 /**
@@ -158,7 +152,7 @@ export function CreditCard3D({
   const cardRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0, isHovered: false });
 
-  const { background, glowColor } = getCardGradient(card.color);
+  const background = getCardGradient(card.color);
   const limit = cardLimitUsage(card.credit_limit, usedLimitCents);
   const bestDay = bestPurchaseDay(card.closing_day);
 
@@ -214,8 +208,8 @@ export function CreditCard3D({
               ? "translateZ(4px)"
               : "rotateX(0deg) rotateY(0deg) translateZ(0)",
           boxShadow: isSelected
-            ? `0 14px 30px -10px ${glowColor}, 0 0 0 1px rgba(255,255,255,0.25)`
-            : "0 8px 20px -8px rgba(0,0,0,0.35)",
+            ? "0 10px 24px -6px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.25)"
+            : "0 6px 16px -6px rgba(0,0,0,0.35)",
           transition: tilt.isHovered
             ? "transform 0.12s ease-out, box-shadow 0.2s ease-out"
             : "transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease-out",
@@ -280,13 +274,10 @@ export function CreditCard3D({
         {/* Linha 3: Rodapé — Número Mascarado, Ciclo de Datas e Limite */}
         <div className="relative z-10 flex flex-col gap-1.5 pt-2 border-t border-white/10">
           {/* Dados do Ciclo: Melhor Dia, Fechamento, Vencimento */}
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-1 text-emerald-300 font-medium text-[11px] sm:text-xs">
-              <Sparkles className="size-3" aria-hidden="true" />
-              <span>Melhor dia: {bestDay}</span>
-            </div>
+          <div className="flex items-center justify-between text-[11px] sm:text-xs text-white/75 font-mono">
+            <span>Melhor dia: {bestDay}</span>
 
-            <div className="flex items-center gap-2.5 text-[11px] sm:text-xs text-white/75 font-mono">
+            <div className="flex items-center gap-2.5">
               <span>Fechamento: {card.closing_day}</span>
               <span>Vencimento: {card.due_day}</span>
             </div>

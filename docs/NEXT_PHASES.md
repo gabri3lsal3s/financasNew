@@ -1,6 +1,6 @@
 # 🧭 NEXT_PHASES.md — Proposta de Novas Fases do Roadmap
 
-> **Status:** v1.9 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.9** registra a **unificação da carteira em área única** (decisão do produto, 2026-08-15 — ver `ROADMAP.md` §3, F17): `/investments` vira o hub de abas **Resumo/Metas/Aporte** (a F17 é absorvida pela aba Resumo, com reuso de `TargetsTab`/`AporteTab`) e `/carteira` vira redirect. **v1.8** registra a **conclusão da Fase 17** (2026-08-15 — ver `ROADMAP.md` §3): rota `/investments` com KPIs executivos, motores puros `portfolioReturnPct`/`dividendsInMonth`/`allocationByTicker` (`domain/portfolio/summary.ts`), donuts por classe e por ativo, e `PositionTable` com ordenação acessível (`sortable`). **v1.7** registra a **conclusão da Fase 16** (2026-08-15 — ver `ROADMAP.md` §3): KPI de investimentos real na Home (aportes líquidos do mês com sparkline e DeltaHint — decisão do produto), `KpiCard` com `onClick` acessível (deep-link `/carteira`), motor puro `allocationByClass` e módulo `AllocationDonut` integrado na aba Posição (decisão: sem widget na Home — o resumo permanece na Carteira). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação; **v1.3** registra a **conclusão da Fase 14** (2026-08-15 — ver `ROADMAP.md` §3); **v1.4** registra a **conclusão da Fase 15** (2026-08-15); **v1.5** registra a **conclusão da Fase 19** (2026-08-15): código morto F8 removido, fontes únicas de normalização/essencialidade, `numberToCents` canônico, reuso de motores na InsightsPage, tendência significativa nos Diagnósticos e investimentos reais nas projeções; **v1.6** registra a **conclusão da Fase 20** (2026-08-15): motor puro `domain/gestures/swipe.ts`, engine `useSwipeNavigation`, `MonthSwiper` nas 5 telas de mês, `Tabs swipeable` nas 6 telas de abas e isolamento (`data-swipe-nav-ignore` nos gráficos).
+> **Status:** v1.10 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.10** adiciona o diagnóstico e especificação da **Fase 26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)** (Trilha A — Mobile Gesture UX), substituindo o botão flutuante de scroll-to-top por overscroll elástico discreto no final da página. **v1.9** registra a **unificação da carteira em área única** (decisão do produto, 2026-08-15 — ver `ROADMAP.md` §3, F17): `/investments` vira o hub de abas **Resumo/Metas/Aporte** (a F17 é absorvida pela aba Resumo, com reuso de `TargetsTab`/`AporteTab`) e `/carteira` vira redirect. **v1.8** registra a **conclusão da Fase 17** (2026-08-15 — ver `ROADMAP.md` §3): rota `/investments` com KPIs executivos, motores puros `portfolioReturnPct`/`dividendsInMonth`/`allocationByTicker` (`domain/portfolio/summary.ts`), donuts por classe e por ativo, e `PositionTable` com ordenação acessível (`sortable`). **v1.7** registra a **conclusão da Fase 16** (2026-08-15 — ver `ROADMAP.md` §3): KPI de investimentos real na Home (aportes líquidos do mês com sparkline e DeltaHint — decisão do produto), `KpiCard` com `onClick` acessível (deep-link `/carteira`), motor puro `allocationByClass` e módulo `AllocationDonut` integrado na aba Posição (decisão: sem widget na Home — o resumo permanece na Carteira). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação; **v1.3** registra a **conclusão da Fase 14** (2026-08-15 — ver `ROADMAP.md` §3); **v1.4** registra a **conclusão da Fase 15** (2026-08-15); **v1.5** registra a **conclusão da Fase 19** (2026-08-15): código morto F8 removido, fontes únicas de normalização/essencialidade, `numberToCents` canônico, reuso de motores na InsightsPage, tendência significativa nos Diagnósticos e investimentos reais nas projeções; **v1.6** registra a **conclusão da Fase 20** (2026-08-15): motor puro `domain/gestures/swipe.ts`, engine `useSwipeNavigation`, `MonthSwiper` nas 5 telas de mês, `Tabs swipeable` nas 6 telas de abas e isolamento (`data-swipe-nav-ignore` nos gráficos).
 > Objetivos estratégicos:
 > **1. Refinamento Máximo de UI/UX & Conforto Visual (Prioridade Principal)** — elevar usabilidade, fluidez, micro-interações, consistência de Design System e ergonomia em desktop e mobile.
 > **2. Módulo de Carteira de Investimentos completo e integrado** — tirar o placeholder da Home do papel e entregar o ecossistema de investimentos.
@@ -93,7 +93,18 @@
 | R6 | **Conflito com scroll horizontal existente** | `Tabs.List` tem `overflow-x-auto` (abas roláveis) | Swipe detectado na **área de conteúdo** (não no List); se o alvo estiver em contêiner com scroll horizontal, ignora |
 | R7 | **Navegação assíncrona de dados** | Slide fake de dados que ainda não carregaram (refetch do mês) | Sem slide de página completa: apenas translate durante o arrasto + fade-in do conteúdo novo (TanStack refetch com skeletons existentes) |
 | R8 | **Acessibilidade / teclado** | Gesto exclusivo exclui usuários de teclado/leitores | Gestos são **adicionais**: `MonthPicker` (botões) e `Tabs` (Radix, teclado) permanecem; `prefers-reduced-motion`/`data-motion` desligam animações; aria-live opcional na mudança |
-| R9 | **Desktop / mouse** | Arrasto com mouse navegaria acidentalmente (seleção de texto, drag de janela) | Restrito a `pointerType === "touch" \| "pen"`; mouse **ignorado** (botões existentes cobrem desktop) |
+| R9 | **Desktop / mouse** | Arrasto com mouse navegaria acidentalmente (seleção de texto, drag de janela) | Restrito a `pointerType === "touch" | "pen"`; mouse **ignorado** (botões existentes cobrem desktop) |
+
+### 1.6 Pull-up / Overscroll to Top — Diagnóstico e Arquitetura (2026-08-15)
+
+**Problema:** O botão flutuante `ScrollToTopButton` atual permanece sobreposto no canto inferior direito das telas longas (Dashboard, Transações, Relatórios), poluindo visualmente a interface móvel e conflitando ergonomicamente com os cards de rodapé e o layout limpo ("Obsidian Glass").
+
+**Solução Projetada:** Substituição por um gesto nativo de **Pull-up / Overscroll to Top** disparado no final da rolagem, com:
+1. **Máquina de Estados Finita:** `IDLE → AT_BOTTOM → PULLING → THRESHOLD_REACHED → TRIGGERED / CANCELLED`.
+2. **Barreira de Inércia (Dois Tempos):** Fling ou rolagem rápida (*momentum scrolling*) que apenas atinge o rodapé **nunca** arma o gatilho. O gesto exige parada estática (`scrollTop + clientHeight >= scrollHeight - 2px`) e um segundo toque/arrasto intencional para cima.
+3. **Resistência Elástica (Rubber-banding):** Curva logarítmica com limiar deliberado (`threshold = 80px`).
+4. **Cancelamento Reversível:** Se o usuário empurrar o dedo de volta antes do `touchend`, o gatilho é desarmado sem executar scroll. O scroll suave ao topo só roda ao soltar o dedo com o threshold sustentado.
+5. **Micro-Indicador Minimalista:** Micro-componente SVG integrado aos tokens do tema (`text-primary`, `stroke-primary`), renderizado no fluxo de rolagem do `main`, abaixo da BottomNav fixa e respeitando a `safe-area-bottom`.
 
 ---
 
@@ -195,6 +206,28 @@
 - `prefers-reduced-motion`/`data-motion` respeitados; axe sem violações; typecheck/lint/build limpos; suíte 100% verde.
 - Revisão manual em dispositivo real (iOS Safari + Chrome Android): thumb drift em scroll rápido, coexistência com exclusão de despesas e bordas de mês — matriz em `RELEASE.md`.
 
+### Fase 26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) (Trilha A)
+
+> **Origem:** diagnóstico arquitetural (2026-08-15) — ver §1.6. Substituição do botão lateral flutuante legado (`ScrollToTopButton`) por gesto de overscroll vertical no final da rolagem, garantindo zero interferência visual na interface móvel e eliminação de disparos involuntários.
+
+**Objetivo:** engine de overscroll no rodapé (`usePullUpToTop`) com curva de resistência elástica, barreira estrita contra inércia/momentum scrolling, máquina de estados finitos com cancelamento dinâmico e micro-indicador minimalista integrado ao tema ativo.
+
+**Entregas (na ordem):**
+1. **Motor puro de física e overscroll (`src/domain/gestures/overscroll.ts`):** `computePullDistance` (curva elástica logarítmica com damping), `isAtScrollBottom` (tolerância de 2px) e `evaluatePullIntent` (threshold de 80px).
+2. **Engine gestual `usePullUpToTop` (`src/hooks/use-pull-up-to-top.ts`):** listeners Touch/Pointer sobre o contêiner `main`; barreira de dois tempos (repouso estático obrigatório no rodapé antes de iniciar o overscroll); cancelamento dinâmico ao recuar o dedo antes de soltar (`touchend`); disparo suave `main.scrollTo({ top: 0, behavior: 'smooth' })`.
+3. **Micro-indicador visual `PullUpToTopIndicator` (`src/components/modules/pull-up-indicator.tsx`):** micro-componente vetorial sutil no rodapé (seta com rotação de 180° e arco de progresso SVG), estilizado exclusivamente com tokens (`text-primary`, `stroke-primary`), posicionado com margem de segurança `bottom-safe-area` abaixo da BottomNav fixa.
+4. **Feedback háptico & transição:** pulso tátil leve (`light`) no disparo do threshold; suporte estrito a `prefers-reduced-motion` e `data-motion`.
+5. **Descontinuação do botão flutuante legado:** remoção de `<ScrollToTopButton />` de `src/app/router.tsx`, limpeza de seletores CSS em `src/styles/globals.css`.
+
+**Arquivos:** `src/domain/gestures/overscroll.ts` (+ testes) · `src/hooks/use-pull-up-to-top.ts` (+ testes) · `src/components/modules/pull-up-indicator.tsx` (+ testes) · `src/components/layout/page-shell.tsx` · `src/app/router.tsx` · `src/styles/globals.css`.
+
+**✅ DoD (critérios de aceite):**
+- Motor puro com testes unitários cobrindo curva de resistência, detecção de rodapé e threshold.
+- Inércia rápida (fling) no final da página verificada: não arma o gatilho sem segundo toque estático intencional.
+- Cancelamento dinâmico verificado: retrair o dedo desfaz o gatilho sem rolar a página.
+- Micro-indicador visual integrado ao tema ativo, sem overflow nem colisão com BottomNav fixa.
+- Suíte 100% verde; typecheck e lint limpos.
+
 ---
 
 ## 3. TRILHA B — MÓDULO DE CARTEIRA DE INVESTIMENTOS (INTEGRAÇÃO COMPLETA)
@@ -226,6 +259,8 @@
 > **Status: ✅ concluída (2026-08-15)** — ver progresso detalhado no `ROADMAP.md` §3. Resumo: rota `/investments` (lazy + `nav-items`) com KPIs executivos (patrimônio com Δ, rentabilidade ponderada, proventos do mês, ativos), donuts por classe e por ativo (DRY sobre `AllocationDonut`/`CategoryDonut`), tabela de posições com ordenação acessível (`aria-sort`) e estados loading/vazio/erro completos (axe sem violações).
 
 > **Unificação da Carteira (decisão do produto, 2026-08-15):** a área de investimentos virou **área única** — `/investments` é o **hub** com abas **Resumo** (consolidação executiva + operação: KPIs, donuts, tabela, cadastro de ativo e movimentação — absorve a página F17), **Metas** e **Aporte** (reuso de `TargetsTab`/`AporteTab`). `/carteira` virou **redirect** para `/investments` (deep-links preservados) e o item "Carteira" saiu da navegação. Aba "Relatório" da carteira fica para a **F22** (exportação geral).
+
+> **CRUD completo de ativos e lançamentos (2026-08-15):** usuário com controle total — **editar/excluir** ativos (cascata de transações/metas no banco) e lançamentos (extrato `TransactionListDialog` com edição/exclusão por linha), via `update/deletePortfolioAsset`/`Transaction` (repository + state) e `AssetFormDialog`/`TransactionFormDialog` em modo edição com `ConfirmDialog` — ver `ROADMAP.md` §3 (F17).
 
 **Objetivo:** área única de consolidação de investimentos — colocar ativos, verificar limites (metas), rebalancear (aporte) e acompanhar a posição (resumo), organizada por abas internas.
 
@@ -282,15 +317,22 @@
 ## 5. ORDEM SUGERIDA E MAPEAMENTO
 
 ```
-F14 (Consistência de Estados & Ergonomia)  ← Trilha A — PRIORITÁRIA
-F15 (Micro-Interações & Conforto Visual)   ← Trilha A
-F19 (Inteligência & Consistência dos Insights) ← Trilha A — após F15; pode ser executada antes da Trilha B
-F20 (Swipe Navigation & Gesture UX)        ← Trilha A — após F15/F19; mobile-first, independe da Trilha B
-F16 (Carteira na Home — KPI real)          ← Trilha B — depende de P1
-F17 (Dashboard /investments)               ← Trilha B — depende de P2/P3
+F14 (Consistência de Estados & Ergonomia)  ← Trilha A — PRIORITÁRIA (✅ Concluída)
+F15 (Micro-Interações & Conforto Visual)   ← Trilha A (✅ Concluída)
+F19 (Inteligência & Consistência dos Insights) ← Trilha A (✅ Concluída)
+F20 (Swipe Navigation & Gesture UX)        ← Trilha A (✅ Concluída)
+F16 (Carteira na Home — KPI real)          ← Trilha B (✅ Concluída)
+F17 (Dashboard /investments)               ← Trilha B (✅ Concluída)
 F18 (Proventos)                            ← Trilha B — depende de P4/P5
+F21 (Inteligência de Entrada)              ← Trilha C
+F22 (Central de Exportação & Backup)       ← Trilha C
+F23 (Engenharia de Performance 3D)         ← Trilha C
+F24 (Planejamento Financeiro FIRE)         ← Trilha C
+F25 (Micro-interações & Ergonomia)         ← Trilha A
+F26 (Pull-up Overscroll to Top)            ← Trilha A / Gesture UX
 ```
 
 **Pré-requisitos transversais:** suíte 839 testes verde + typecheck/lint/build (CI `ci.yml`) · deploy F1.7 (edge function + cron) se P1 = (a) · sem migrations obrigatórias fora de P4 = (c).
 
-**Referências:** `docs/ROADMAP.md` (F0–F13) · `docs/ARCHITECTURE.md` (camadas) · `docs/PROJECT_STRUCTURE.md` (onde criar) · `docs/DESIGN_SYSTEM.md` (visual) · `docs/RELEASE.md` (QA/corte).
+**Referências:** `docs/ROADMAP.md` (F0–F13, F14–F26) · `docs/ARCHITECTURE.md` (camadas) · `docs/PROJECT_STRUCTURE.md` (onde criar) · `docs/DESIGN_SYSTEM.md` (visual) · `docs/RELEASE.md` (QA/corte).
+

@@ -21,8 +21,16 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
-  useExpensesByRange: () => ({ data: [], isLoading: false, error: null }),
-  useIncomesByRange: () => ({ data: [], isLoading: false, error: null }),
+  useExpensesByRange: (start: string) => ({
+    data: start === "2026-01-01" ? expenses : [],
+    isLoading: false,
+    error: null,
+  }),
+  useIncomesByRange: (start: string) => ({
+    data: start === "2026-01-01" ? incomes : [],
+    isLoading: false,
+    error: null,
+  }),
   useDebts: () => ({
     data: [
       { id: "d1", name: "Paga", type: "receivable", amount: 1000, due_date: "2026-08-10", paid_at: "2026-08-11" },
@@ -39,6 +47,19 @@ vi.mock("@/state", () => ({
     ],
     isLoading: false,
     error: null,
+  }),
+  useCreditCards: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
+  useDeleteExpense: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateExpense: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
   }),
 }));
 
@@ -60,6 +81,26 @@ describe("ReportsPage (relatórios §3.6)", () => {
     expect(screen.getByText("Despesas")).toBeInTheDocument();
   });
 
+  it("permite alternar para a aba 'Por ano' e exibir dados anuais", async () => {
+    const user = userEvent.setup();
+    render(<ReportsPage />);
+
+    const yearTab = screen.getByRole("tab", { name: /Por ano/i });
+    await user.click(yearTab);
+
+    // Deve exibir o seletor de ano
+    expect(screen.getByRole("group", { name: "Selecionar ano" })).toBeInTheDocument();
+    expect(screen.getByText("2026")).toBeInTheDocument();
+
+    // Dados anuais agregados
+    expect(screen.getByText("Alimentação")).toBeInTheDocument();
+    expect(screen.getByText("R$ 6.000,00")).toBeInTheDocument();
+
+    // Navega para o ano anterior
+    await user.click(screen.getByRole("button", { name: "Ano anterior" }));
+    expect(screen.getByText("2025")).toBeInTheDocument();
+  });
+
   it("permite alternar entre as abas de agregação (Categoria, Forma, Dia da semana)", async () => {
     const user = userEvent.setup();
     render(<ReportsPage />);
@@ -78,5 +119,44 @@ describe("ReportsPage (relatórios §3.6)", () => {
     await user.click(weekdayTab);
     expect(screen.getByText("Segunda")).toBeInTheDocument();
     expect(screen.getByText("Sábado")).toBeInTheDocument();
+  });
+
+  it("abre o modal de detalhamento ao clicar em uma categoria", async () => {
+    const user = userEvent.setup();
+    render(<ReportsPage />);
+
+    const alimentacaoRow = screen.getByText("Alimentação");
+    await user.click(alimentacaoRow);
+
+    expect(screen.getByText("Despesas — Alimentação")).toBeInTheDocument();
+    expect(screen.getByText("1 despesa")).toBeInTheDocument();
+  });
+
+  it("abre o modal de detalhamento ao clicar em uma forma de pagamento", async () => {
+    const user = userEvent.setup();
+    render(<ReportsPage />);
+
+    const formaTab = screen.getByRole("tab", { name: /Por forma/i });
+    await user.click(formaTab);
+
+    const pixRow = screen.getByText("Pix");
+    await user.click(pixRow);
+
+    expect(screen.getByText("Despesas — Pix")).toBeInTheDocument();
+    expect(screen.getByText("1 despesa")).toBeInTheDocument();
+  });
+
+  it("abre o modal de detalhamento ao clicar em um dia da semana", async () => {
+    const user = userEvent.setup();
+    render(<ReportsPage />);
+
+    const weekdayTab = screen.getByRole("tab", { name: /Por dia da semana/i });
+    await user.click(weekdayTab);
+
+    const segundaRow = screen.getByText("Segunda");
+    await user.click(segundaRow);
+
+    expect(screen.getByText("Despesas — Segunda")).toBeInTheDocument();
+    expect(screen.getByText("1 despesa")).toBeInTheDocument();
   });
 });

@@ -333,8 +333,10 @@ export function InsightsPage() {
 
                   {/* Desafios de economia */}
                   <section aria-label="Desafios de economia" className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="size-4 text-attention shrink-0" aria-hidden="true" />
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-warning/10 border border-warning/20 text-warning-strong">
+                        <Sparkles className="size-3.5" aria-hidden="true" />
+                      </span>
                       <h3 className="text-sm font-semibold text-foreground">Desafios de economia</h3>
                     </div>
                     {challenges.length === 0 && !discretionary ? (

@@ -146,7 +146,7 @@ function ResultStat({
         cents={cents}
         variant="value"
         tone="default"
-        className={cn("text-xl font-semibold", accent && "text-portfolio", tone === "attention" && "text-attention")}
+        className={cn("text-xl font-semibold", accent && "text-portfolio", tone === "attention" && "text-warning-strong")}
       />
     </div>
   );

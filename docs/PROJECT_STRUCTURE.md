@@ -66,7 +66,8 @@
     ├── app/                       # Bootstrap e orquestração (SEM lógica de negócio)
     │   ├── providers.tsx          # AuthProvider, QueryClientProvider, ThemeProvider
     │   ├── router.tsx             # <Routes> a partir de routes.ts
-    │   ├── routes.ts              # Mapa de rotas + deep-links (?card=, ?month=, ?q=)
+    │   ├── routes.tsx             # Mapa de rotas + deep-links (?card=, ?month=, ?q=) +
+    │   │                          #   redirect /carteira → /investments (unificação 2026-08-15)
     │   └── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
     │                              #   instalação/atualização (PWA_GUIDELINES §6)
     │
@@ -78,7 +79,7 @@
     │   │   │                      #   icon-picker (pós-F10), live-pulse-beacon (F11)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
-    │   │   │                      #   category-icon(+icons), month-picker, transaction-row,
+    │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, installment-badge,
     │   │   │                      #   onboarding-card, pwa-update-toast,
@@ -86,7 +87,8 @@
     │   │   │                      #   smart-invoice-projection-card, smart-anomalies-card,
     │   │   │                      #   category-donut, savings-health-card, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
-    │   │   │                      #   month-swiper (F20 — swipe no MonthPicker)…
+    │   │   │                      #   month-swiper (F20 — swipe no MonthPicker),
+    │   │   │                      #   pull-up-indicator (F26 — micro-indicador overscroll)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   app-header, privacy-toggle (F8), brand-logo (F10), page-shell
@@ -102,7 +104,12 @@
     │   ├── insights/              #   Insights, projeção e corte
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)
-    │   └── portfolio/             #   Carteira, metas, calculadora de aporte
+    │   ├── portfolio/             #   Carteira (portfólio) — componentes de operação
+    │   │                          #   (position/targets/aporte tabs, reutilizados no hub) +
+    │   │                          #   CRUD completo (2026-08-15): asset-form-dialog,
+    │   │                          #   transaction-form-dialog, transaction-list-dialog
+    │   └── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+unificação):
+    │                              #     hub de abas (Resumo/Metas/Aporte) — pages/resumo-tab.tsx
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
@@ -116,7 +123,9 @@
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── virtualization/        #   janela de renderização de listas (F5.5)
     │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F9)
-    │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento
+    │   ├── gestures/              #   gestos puros: swipe.ts (F20), overscroll.ts (F26)
+    │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
+    │                              #   summary.ts (F17: rentabilidade, proventos, alocação)
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)
@@ -135,7 +144,8 @@
     │                              #   use-sidebar-state, use-draggable,
     │                              #   use-scroll-position, use-swipe-action,
     │                              #   use-privacy-mask, use-visual-customization (F11),
-    │                              #   use-swipe-navigation (F20 — gesto horizontal)…)
+    │                              #   use-swipe-navigation (F20 — gesto horizontal),
+    │                              #   use-pull-up-to-top (F26 — overscroll vertical)…)
     ├── services/                  # Apresentação + integrações
     │   ├── format/                #   moeda, datas, percentuais (pt-BR)
     │   ├── masks/                 #   máscaras de input
@@ -166,7 +176,7 @@
 
 | Diretório | Responsabilidade | O que NUNCA colocar | Exemplo de arquivo |
 |---|---|---|---|
-| `src/app/` | Bootstrap: providers, roteamento, registro PWA | Lógica de negócio, marcação visual extensa | `routes.ts`, `pwa.ts` |
+| `src/app/` | Bootstrap: providers, roteamento, registro PWA | Lógica de negócio, marcação visual extensa | `routes.tsx`, `pwa.ts` |
 | `src/components/ui/` | Primitivos atômicos **agnósticos de domínio** | Regra financeira, fetch, formatação de moeda | `button.tsx`, `modal.tsx`, `money-input.tsx` |
 | `src/components/modules/` | Componentes de **domínio financeiro** reutilizáveis | Fetch, lógica de cálculo (recebe props prontas) | `debt-status-badge.tsx` |
 | `src/components/layout/` | Estrutura de página (sidebar/tabs/header) | Conteúdo de tela | `sidebar.tsx` |

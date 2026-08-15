@@ -354,3 +354,9 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Componente:** `src/components/layout/brand-logo.tsx`.
 - **Assets:** Gerados a partir de `identidadeVisual/` em `public/brand/` (`logo.png`, `logo-192.png`, `logo-128.png`, `logo-64.png`, `logo-32.png`, `logo-full.png`) e `public/pwa/icons/` (`icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon-180.png`, `favicon.ico`).
 - **Padrão:** O `BrandLogo` renderiza o emblema oficial com antialiasing de alta resolução, suporte a modos símbolo único, marca horizontal e lockup completo com subtítulo ("Organização & Economia"), padronizado em Header mobile, Sidebar desktop, AuthShell, MoreMenu e PWA.
+
+### 14.11 Iconografia Sem Fundo ("Icon-Only") & Tokens Semânticos
+- **Diretriz Global:** Todos os ícones da aplicação seguem o padrão *icon-only* limpo, sem containers visuais decorativos atrás (sem classes `bg-primary/10`, `rounded-full`, `rounded-lg`, `p-2` ou sombras/bordas ao redor do ícone).
+- **Herança & Tokens Semânticos:** Ícones herdam a cor semântica do tema ativo (`text-primary`, `text-primary-strong`, `text-muted-foreground`, `text-positive-strong`, `text-critical-strong`, `text-portfolio`) ou cores diretas da categoria quando aplicável (`CategoryIcon`). Cores estáticas hardcoded (ex.: `text-blue-500`, `text-purple-600`) são expressamente proibidas.
+- **Dimensões & Stroke Padronizados:** Ícones utilizam tamanhos da escala (`size-3.5`, `size-4`, `size-5`, `size-6` em empty states) com stroke uniforme (`lucide-react`), garantindo coerência visual e alinhamento impecável em todos os módulos e dispositivos.
+

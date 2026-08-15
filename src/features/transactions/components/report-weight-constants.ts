@@ -7,5 +7,5 @@ export const REPORT_WEIGHT_OPTIONS = [
   { value: "0.5", label: "50%" },
   { value: "0.25", label: "25%" },
   { value: "0", label: "Não contar nos relatórios (0%)" },
-  { value: "custom", label: "Personalizado (definir valor em R$)…" },
+  { value: "custom", label: "Personalizado" },
 ];

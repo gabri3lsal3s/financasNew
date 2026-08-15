@@ -3,66 +3,111 @@ import { ChartPie, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
-import { MonthPicker, ReportTable, type ReportRow } from "@/components/modules";
+import { MonthSwiper, ReportTable, YearPicker, type ReportRow } from "@/components/modules";
 import {
   aggregateByCategory,
   aggregateByPaymentMethod,
   aggregateByWeekday,
   mergePaidDebts,
+  mondayFirstWeekday,
   percentChange,
   validateCustomPeriod,
+  WEEKDAY_LABELS,
   type ReportEntry,
 } from "@/domain/reports";
-import { currentMonth, monthLabel, monthRange, shiftMonth } from "@/lib/date";
+import { currentMonth, currentYear, monthLabel, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useCategories, useDebts, useExpenses, useExpensesByRange, useIncomes, useIncomesByRange } from "@/state";
 import { cn } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
+import { ExpenseDetailDialog } from "@/features/transactions";
+import { ReportDetailDialog } from "../components/report-detail-dialog";
+import type { Expense } from "@/types";
 
-const toCents = (value: number) => Math.round(value * 100);
+import { numberToCents } from "@/domain/money/parse";
 
-type PeriodMode = "month" | "custom";
+type PeriodMode = "month" | "year" | "custom";
 type AggregationTab = "category" | "method" | "weekday";
 
 /** Relatórios (§3.6) — agregações por categoria/forma/dia da semana, comparativo, visão dupla (Bruto vs. Ponderado) e merge de dívidas pagas. */
 export function ReportsPage() {
   const [month, setMonth] = useState(currentMonth());
+  const [year, setYear] = useState(currentYear());
   const [mode, setMode] = useState<PeriodMode>("month");
   const [aggregationTab, setAggregationTab] = useState<AggregationTab>("category");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [detailModal, setDetailModal] = useState<{
+    open: boolean;
+    title: string;
+    expenses: Expense[];
+  } | null>(null);
 
-  const range = mode === "month" ? monthRange(month) : { start: customStart, end: addDay(customEnd) };
+  const range =
+    mode === "month"
+      ? monthRange(month)
+      : mode === "year"
+        ? yearRange(year)
+        : { start: customStart, end: addDay(customEnd) };
   const customValid =
     mode !== "custom" ||
     (customStart !== "" && customEnd !== "" && validateCustomPeriod(customStart, customEnd).ok);
 
-  // F5.5 (revisão de queries): em modo mês só as queries mensais rodam;
-  // em modo custom só as de range — evita fetch duplicado do mesmo período.
+  // Em modo mês só as queries mensais rodam; em modo ano ou custom só as de range.
+  const isYear = mode === "year";
   const isCustom = mode === "custom";
+
   const monthlyExpenses = useExpenses(month);
   const monthlyIncomes = useIncomes(month);
   const prevExpenses = useExpenses(shiftMonth(month, -1));
   const prevIncomes = useIncomes(shiftMonth(month, -1));
+
+  const yearExpenses = useExpensesByRange(range.start, range.end, { enabled: isYear });
+  const yearIncomes = useIncomesByRange(range.start, range.end, { enabled: isYear });
+  const prevYearRange = isYear ? yearRange(year - 1) : { start: "", end: "" };
+  const prevYearExpenses = useExpensesByRange(prevYearRange.start, prevYearRange.end, { enabled: isYear });
+  const prevYearIncomes = useIncomesByRange(prevYearRange.start, prevYearRange.end, { enabled: isYear });
+
   const rangeExpenses = useExpensesByRange(range.start, range.end, { enabled: isCustom && customValid });
   const rangeIncomes = useIncomesByRange(range.start, range.end, { enabled: isCustom && customValid });
   const debtsQuery = useDebts();
   const categoriesQuery = useCategories();
 
-  const expenses = mode === "month" ? (monthlyExpenses.data ?? []) : customValid ? (rangeExpenses.data ?? []) : [];
-  const incomes = mode === "month" ? (monthlyIncomes.data ?? []) : customValid ? (rangeIncomes.data ?? []) : [];
+  const expenses =
+    mode === "month"
+      ? (monthlyExpenses.data ?? [])
+      : mode === "year"
+        ? (yearExpenses.data ?? [])
+        : customValid
+          ? (rangeExpenses.data ?? [])
+          : [];
+  const incomes =
+    mode === "month"
+      ? (monthlyIncomes.data ?? [])
+      : mode === "year"
+        ? (yearIncomes.data ?? [])
+        : customValid
+          ? (rangeIncomes.data ?? [])
+          : [];
 
-  const loading = mode === "month"
-    ? monthlyExpenses.isLoading || monthlyIncomes.isLoading || prevExpenses.isLoading || prevIncomes.isLoading
-    : rangeExpenses.isLoading || rangeIncomes.isLoading;
+  const loading =
+    mode === "month"
+      ? monthlyExpenses.isLoading || monthlyIncomes.isLoading || prevExpenses.isLoading || prevIncomes.isLoading
+      : mode === "year"
+        ? yearExpenses.isLoading || yearIncomes.isLoading || prevYearExpenses.isLoading || prevYearIncomes.isLoading
+        : rangeExpenses.isLoading || rangeIncomes.isLoading;
   const error =
     (mode === "month"
       ? monthlyExpenses.error ?? monthlyIncomes.error ?? prevExpenses.error ?? prevIncomes.error
-      : rangeExpenses.error ?? rangeIncomes.error) ??
+      : mode === "year"
+        ? yearExpenses.error ?? yearIncomes.error ?? prevYearExpenses.error ?? prevYearIncomes.error
+        : rangeExpenses.error ?? rangeIncomes.error) ??
     debtsQuery.error ??
     categoriesQuery.error;
 
-  const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
+  const categories = categoriesQuery.data ?? [];
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   const toEntries = (
     list: readonly {
@@ -82,7 +127,7 @@ export function ReportsPage() {
       categoryName: categoryById.get(item.category_id)?.name ?? "Outra",
       categoryIcon: categoryById.get(item.category_id)?.icon ?? null,
       paymentMethod: item.payment_method ?? null,
-      baseCents: toCents(item.value),
+      baseCents: numberToCents(item.value),
       weight: item.report_weight,
     }));
 
@@ -91,24 +136,37 @@ export function ReportsPage() {
     .filter((d) => d.paid_at !== null && d.due_date >= range.start && d.due_date < range.end)
     .map((d) => ({
       kind: d.type === "receivable" ? ("receivable" as const) : ("payable" as const),
-      valueCents: toCents(d.amount),
+      valueCents: numberToCents(d.amount),
     }));
 
-  const baseIncomePonderadoCents = incomes.reduce((acc, i) => acc + toCents(i.value * i.report_weight), 0);
-  const baseIncomeBrutoCents = incomes.reduce((acc, i) => acc + toCents(i.value), 0);
+  const baseIncomePonderadoCents = incomes.reduce((acc, i) => acc + numberToCents(i.value * i.report_weight), 0);
+  const baseIncomeBrutoCents = incomes.reduce((acc, i) => acc + numberToCents(i.value), 0);
 
-  const baseExpensePonderadoCents = expenses.reduce((acc, e) => acc + toCents(e.value * e.report_weight), 0);
-  const baseExpenseBrutoCents = expenses.reduce((acc, e) => acc + toCents(e.value), 0);
+  const baseExpensePonderadoCents = expenses.reduce((acc, e) => acc + numberToCents(e.value * e.report_weight), 0);
+  const baseExpenseBrutoCents = expenses.reduce((acc, e) => acc + numberToCents(e.value), 0);
 
   const merged = mergePaidDebts(baseIncomePonderadoCents, baseExpensePonderadoCents, 0, paidDebts, {
     incomeBrutoCents: baseIncomeBrutoCents,
     expenseBrutoCents: baseExpenseBrutoCents,
   });
 
-  const prevIncomeCents = (prevIncomes.data ?? []).reduce((acc, i) => acc + toCents(i.value * i.report_weight), 0);
-  const prevExpenseCents = (prevExpenses.data ?? []).reduce((acc, e) => acc + toCents(e.value * e.report_weight), 0);
-  const incomeDelta = mode === "month" ? percentChange(merged.incomePonderadoCents, prevIncomeCents) : null;
-  const expenseDelta = mode === "month" ? percentChange(merged.expensePonderadoCents, prevExpenseCents) : null;
+  const prevIncomesList =
+    mode === "month"
+      ? (prevIncomes.data ?? [])
+      : mode === "year"
+        ? (prevYearIncomes.data ?? [])
+        : [];
+  const prevExpensesList =
+    mode === "month"
+      ? (prevExpenses.data ?? [])
+      : mode === "year"
+        ? (prevYearExpenses.data ?? [])
+        : [];
+
+  const prevIncomeCents = prevIncomesList.reduce((acc, i) => acc + numberToCents(i.value * i.report_weight), 0);
+  const prevExpenseCents = prevExpensesList.reduce((acc, e) => acc + numberToCents(e.value * e.report_weight), 0);
+  const incomeDelta = mode === "month" || mode === "year" ? percentChange(merged.incomePonderadoCents, prevIncomeCents) : null;
+  const expenseDelta = mode === "month" || mode === "year" ? percentChange(merged.expensePonderadoCents, prevExpenseCents) : null;
 
   const entries = toEntries(expenses);
   const byCategory = aggregateByCategory(entries);
@@ -144,7 +202,7 @@ export function ReportsPage() {
     percent: totalSpentPonderado > 0 ? (w.ponderadoCents / totalSpentPonderado) * 100 : 0,
   }));
 
-  const periodLabel = mode === "month" ? monthLabel(month) : `${customStart} a ${customEnd}`;
+  const periodLabel = mode === "month" ? monthLabel(month) : mode === "year" ? String(year) : `${customStart} a ${customEnd}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -158,7 +216,12 @@ export function ReportsPage() {
           {
             value: "month",
             label: "Por mês",
-            content: <MonthPicker value={month} onValueChange={setMonth} />,
+            content: <MonthSwiper value={month} onValueChange={setMonth} />,
+          },
+          {
+            value: "year",
+            label: "Por ano",
+            content: <YearPicker value={year} onValueChange={setYear} />,
           },
           {
             value: "custom",
@@ -234,6 +297,7 @@ export function ReportsPage() {
           <Tabs
             value={aggregationTab}
             onValueChange={(val) => setAggregationTab(val as AggregationTab)}
+            swipeable
             items={[
               {
                 value: "category",
@@ -245,6 +309,15 @@ export function ReportsPage() {
                     totalBrutoCents={totalSpentBruto}
                     totalPonderadoCents={totalSpentPonderado}
                     totalCents={totalSpentPonderado}
+                    onRowClick={(row) => {
+                      const filtered = expenses.filter((e) => e.category_id === row.key);
+                      const catName = categoryById.get(row.key)?.name ?? "Outra";
+                      setDetailModal({
+                        open: true,
+                        title: `Despesas — ${catName}`,
+                        expenses: filtered,
+                      });
+                    }}
                   />
                 ),
               },
@@ -258,6 +331,15 @@ export function ReportsPage() {
                     totalBrutoCents={totalSpentBruto}
                     totalPonderadoCents={totalSpentPonderado}
                     totalCents={totalSpentPonderado}
+                    onRowClick={(row) => {
+                      const filtered = expenses.filter((e) => (e.payment_method ?? "other") === row.key);
+                      const methodName = PAYMENT_METHOD_LABELS[row.key as keyof typeof PAYMENT_METHOD_LABELS] ?? row.key;
+                      setDetailModal({
+                        open: true,
+                        title: `Despesas — ${methodName}`,
+                        expenses: filtered,
+                      });
+                    }}
                   />
                 ),
               },
@@ -271,6 +353,16 @@ export function ReportsPage() {
                     totalBrutoCents={totalSpentBruto}
                     totalPonderadoCents={totalSpentPonderado}
                     totalCents={totalSpentPonderado}
+                    onRowClick={(row) => {
+                      const weekdayIndex = Number(row.key);
+                      const filtered = expenses.filter((e) => mondayFirstWeekday(e.date) === weekdayIndex);
+                      const weekdayName = WEEKDAY_LABELS[weekdayIndex] ?? "Dia da semana";
+                      setDetailModal({
+                        open: true,
+                        title: `Despesas — ${weekdayName}`,
+                        expenses: filtered,
+                      });
+                    }}
                   />
                 ),
               },
@@ -278,6 +370,26 @@ export function ReportsPage() {
           />
         </>
       )}
+
+      <ReportDetailDialog
+        open={detailModal !== null && detailModal.open}
+        onOpenChange={(open) => {
+          if (!open) setDetailModal(null);
+        }}
+        title={detailModal?.title ?? ""}
+        subtitle={periodLabel}
+        expenses={detailModal?.expenses ?? []}
+        categories={categories}
+        onSelectExpense={(exp) => setSelectedExpense(exp)}
+      />
+
+      <ExpenseDetailDialog
+        expense={selectedExpense}
+        open={selectedExpense !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedExpense(null);
+        }}
+      />
     </div>
   );
 }

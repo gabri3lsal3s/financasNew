@@ -18,6 +18,7 @@ export interface DataListProps<T> {
   density?: "compact" | "default" | "comfortable";
   emptyMessage?: string;
   className?: string;
+  onRowClick?: (row: T) => void;
 }
 
 const densityClass = {
@@ -44,6 +45,7 @@ export function DataList<T>({
   density = "default",
   emptyMessage = "Nenhum registro encontrado.",
   className,
+  onRowClick,
 }: DataListProps<T>) {
   return (
     <div className={cn("overflow-x-auto rounded-xl border border-border bg-surface shadow-sm", className)}>
@@ -70,8 +72,21 @@ export function DataList<T>({
             <div
               key={rowKey(row, index)}
               role="row"
+              tabIndex={onRowClick ? 0 : undefined}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined
+              }
               className={cn(
-                "flex items-center gap-3 border-b border-border/60 px-4 transition-colors last:border-b-0 hover:bg-muted/40",
+                "flex items-center gap-3 border-b border-border/60 px-4 transition-colors last:border-b-0",
+                onRowClick ? "cursor-pointer hover:bg-muted/60 active:bg-muted/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset" : "hover:bg-muted/40",
                 densityClass[density],
               )}
             >

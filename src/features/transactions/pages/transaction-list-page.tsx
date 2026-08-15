@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { VirtualList } from "@/components/ui/virtual-list";
-import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
+import { HighlightRow, KpiCard, MonthSwiper, TransactionRow } from "@/components/modules";
 import { currentMonth, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
@@ -146,19 +146,11 @@ export function TransactionListPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* F12 — sem header visual: seletor de mês direto; o botão de novo
-          lançamento fica ao lado (só desktop — no mobile o FAB da BottomNav
+          lançamento fica abaixo dos KPIs (só desktop — no mobile o FAB da BottomNav
           assume) e o título permanece apenas para leitores de tela. */}
       <h1 className="sr-only">Transações</h1>
 
-      <div className="flex items-center justify-between gap-3">
-        <MonthPicker value={month} onValueChange={handleMonthChange} className="flex-1" />
-        <Link to="/transacoes/novo" className="hidden sm:inline-flex">
-          <Button>
-            <Plus aria-hidden="true" />
-            Nova transação
-          </Button>
-        </Link>
-      </div>
+      <MonthSwiper value={month} onValueChange={handleMonthChange} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <KpiCard label="Receitas" cents={incomesTotalCents} tone="positive" />
@@ -169,6 +161,13 @@ export function TransactionListPage() {
           tone={balanceCents >= 0 ? "positive" : "negative"}
         />
       </div>
+
+      <Link to="/transacoes/novo" className="w-full">
+        <Button className="w-full">
+          <Plus aria-hidden="true" />
+          Nova transação
+        </Button>
+      </Link>
 
       {error ? (
         <div className="flex flex-col gap-3">

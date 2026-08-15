@@ -250,8 +250,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       ) : null}
 
       <section aria-label="Travas setoriais" className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
-        <div className="flex items-start gap-2">
-          <Shield className="mt-0.5 size-4 shrink-0 text-portfolio" aria-hidden="true" />
+        <div className="flex items-start gap-2.5">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
+            <Shield className="size-3.5" aria-hidden="true" />
+          </span>
           <div>
             <h3 className="text-sm font-semibold text-foreground">Travas setoriais</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">

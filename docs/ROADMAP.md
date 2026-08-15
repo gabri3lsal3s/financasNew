@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **Status:** v1.6 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); e **v1.6** formaliza a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**.
+> **Status:** v1.7 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); **v1.6** formalizou a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**; e **v1.7** formaliza a **F26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)**.
 > **Referências:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (estrutura e convenções) · [`ESPECIFICACAO_TECNICA.md`](../ESPECIFICACAO_TECNICA.md) (regras de negócio, schema, UI/UX).
 
 ---
@@ -45,6 +45,7 @@
 | **F23** | Engenharia de Performance & Code-Splitting 3D | Isolamento dinâmico de dependências 3D (Three.js), prefetching inteligente e sintonia fina de cache de queries | Otimização e Performance |
 | **F24** | Planejamento Financeiro & Simulador FIRE | Motor de independência financeira (juros compostos, regra 4%, taxa de poupança), meta de reserva de emergência e projeção multi-anual | Planejamento FIRE |
 | **F25** | Micro-interações, Feedback Visual & Ergonomia de Interface | Sidebar expand on hover com intent debounce e zero layout shift, Bottom Sheets no mobile, elevação tátil e tooltips | Micro-interações & Ergonomia |
+| **F26** | Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | Descontinuação do botão flutuante e introdução de overscroll elástico no fim da página (bottom pull-up) com barreira de inércia, micro-indicador minimalista e cancelamento dinâmico | Gesture UX & Mobile Polish |
 
 ---
 
@@ -914,6 +915,15 @@
 - Nada se perde: os motores puros (`summary.ts`), `AllocationDonut`, `PositionTable` sortable e os testes da F17 foram absorvidos pela aba **Resumo**.
 - **Fora de escopo nesta rodada:** aba "Relatório" da carteira (fica para a **F22** — exportação geral, decisão do produto).
 
+**Atualização — CRUD completo de ativos e lançamentos (2026-08-15):** o usuário tem controle total da carteira — adicionar, **editar** e **excluir** ativos e lançamentos:
+- **Repository** (`src/data/repositories/portfolio.ts`): `updatePortfolioAsset` / `deletePortfolioAsset` (cascata de transações e metas via banco) / `updatePortfolioTransaction` / `deletePortfolioTransaction` — 6 testes novos (update/delete + erro classificado).
+- **State** (`src/state/queries/use-portfolio.ts`): `useUpdatePortfolioAsset` / `useDeletePortfolioAsset` (invalida ativos, transações e metas — ledger recalculado) / `useUpdatePortfolioTransaction` / `useDeletePortfolioTransaction` — exportados no barrel.
+- **`AssetFormDialog`** com modo edição (formulário preenchido, `Salvar` via update) + **exclusão com `ConfirmDialog`** (aviso de cascata) — 2 testes novos.
+- **`TransactionFormDialog`** com modo edição (campos pré-preenchidos conforme o tipo) + **exclusão com `ConfirmDialog`** — 2 testes novos. Sincronização de estado na abertura via "ajuste durante render" (padrão oficial React — sem setState em effect).
+- **`TransactionListDialog`** (novo, `src/features/portfolio/components/`) — extrato cronológico dos lançamentos do ativo (reuso de `useAssetPosition`), com **editar** (abre o formulário preenchido) e **excluir** por lançamento, além de "Novo lançamento" — 4 testes.
+- **`PositionTable`** ganha ações por linha (opcionais): **Movimentar** (existente), **Lançamentos** (ícone `List`), **Editar** (`Pencil`) e **Excluir** (`Trash2`, tom negativo) — DRY, sem quebrar os usos existentes.
+- **`ResumoTab`** conecta tudo: editar/excluir ativo e abrir lançamentos direto da tabela de posições; labels de tipo de transação em fonte única (`src/lib/labels.ts` → `PORTFOLIO_TX_LABELS`).
+
 ---
 
 ### Fase 18 — Proventos: Extrato & Calendário (Trilha B)
@@ -1052,71 +1062,51 @@
 **Entregas (na ordem):**
 1. **Code-splitting das bibliotecas 3D:** encapsulamento do Three.js e React Three Fiber em chunk lazy dinâmico, carregado exclusivamente quando a visualização 3D de cartões for ativada pelo usuário.
 2. **Sintonia fina de cache e refetch:** calibração de `staleTime` e `gcTime` no TanStack Query por tipo de dado (estático, analítico, cotações e transacional), eliminando requisições repetidas em trocas rápidas de abas.
-3. **Pre-fetching de rotas vizinhas:** pré-carregamento discreto dos chunks de código e queries das rotas adjacentes ao interagir com menus ou ao iniciar gestos de navegação.
-4. **Auditoria de Web Vitals:** validação no pipeline de métricas de performance (LCP < 1.2s, INP < 50ms, CLS = 0).
-
-**Arquivos:** `src/components/modules/credit-card-3d.tsx` · `src/app/router.tsx` · `src/data/query.ts` · `src/state/`.
-
-**✅ DoD (critérios de aceite)**
-- Redução de pelo menos 35% no tamanho do bundle inicial do shell.
-- Carregamento assíncrono e suave da carteira 3D sem layout shift ou bloqueio de thread principal.
-- Navegação entre rotas e abas com percepção instantânea em dispositivos móveis.
-- Suíte completa de testes 100% verde sem quebras de lazy load.
-
----
-
-### Fase 24 — Planejamento Financeiro de Longo Prazo & Simulador FIRE
-
-**Objetivo:** conectar o fluxo financeiro pessoal (poupança mensal) com a carteira de investimentos em um motor integrado de projeção de independência financeira e metas de patrimônio.
-
-**Entregas (na ordem):**
-1. **Motor puro de projeção de longo prazo (`domain/fire/`):** fórmulas de juros compostos com aportes periódicos, correção inflacionária, cálculo de valor futuro e regra dos 4% (Safe Withdrawal Rate).
-2. **Simulador de Independência Financeira (FIRE):** cálculo da idade estimada de alcance do patrimônio alvo com base na taxa de poupança atual e rentabilidade histórica/projetada da carteira.
-3. **Rastreador de Reserva de Emergência:** dimensionamento automático da reserva ideal (3 a 12 meses de custo de vida essencial real, derivado dos gastos históricos do app) e progresso de cobertura.
-4. **Tela de Planejamento `/planejamento`:** visualização gráfica de curvas de projeção (conservador, moderado, arrojado) e ajuste de parâmetros com sliders acessíveis.
-
-**Arquivos:** `src/domain/fire/` (+ testes) · `src/features/planning/` (novo) · `src/app/routes.ts` · `src/components/layout/nav-items.tsx`.
-
-**✅ DoD (critérios de aceite)**
-- Funções matemáticas puras de juros compostos e FIRE validadas contra tabelas atuariais de referência.
-- Integração dinâmica consumindo média real de despesas e patrimônio consolidado.
-- Controles de ajuste (sliders, inputs) totalmente acessíveis via teclado e leitores de tela.
-- Suíte de testes 100% verde cobrindo todos os cenários de simulação.
-
----
-
-### Fase 25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)
-
-**Objetivo:** elevar o acabamento visual, a fluidez sensorial e o conforto ergonômico da aplicação em todas as superfícies, implementando a Sidebar inteligente com expansão por hover no desktop, experiência de Bottom Sheet móvel, micro-animações de confirmação e refinamento de transições em gráficos e estados de carregamento.
-
-**Entregas (na ordem):**
-1. **Sidebar Inteligente com Expand on Hover (Desktop):**
-   - Expansão flutuante em overlay suave (`w-64`, `shadow-2xl`, `bg-surface/95 backdrop-blur-md`) quando colapsada, sem causar Layout Shift na página (`PageShell` mantém `pl-20`).
-   - Debounce de intenção: delay de `180ms` no `mouseenter` e `120ms` no `mouseleave`.
-   - Botão de trava manual no rodapé preservando a persistência no `localStorage`.
-   - Isolamento via `@media (hover: hover) and (pointer: fine)` e suporte a `:focus-within`.
-2. **Bottom Sheets & Drawers Móveis:**
-   - Evolução do primitivo `Modal` no mobile para abertura em formato de gaveta inferior (slide-up elástico, puxador tátil superior e fechamento por gesto swipe-down).
-3. **Elevação, Foco e Tooltips Contextuais (Desktop):**
-   - Micro-elevação tátil e bordas iluminadas por tom semântico nos `KpiCard`.
-   - Micro-transições Radix de abertura em `Select`, `DatePicker` e menus de contexto.
-   - Sistema padronizado de `Tooltip` nos botões utilitários e ícones da Sidebar compacta.
-4. **Feedback Sensorial & Micro-animações de Conclusão:**
-   - Micro-animação elástica de confirmação com haptic `success` ao salvar registros, quitar parcelas ou liquidar faturas.
-   - Feedback de compressão elástica (`active:scale-[0.97]`) em cards, chips e botões no mobile.
-5. **Harmonização de Estados & Transições em Gráficos:**
-   - Sincronização da fase de onda do shimmer em todos os skeletons da tela.
-   - Transição suave (*cross-fade*) ao atualizar séries de dados em `DailyFlowChart` e `CategoryDonut`.
-   - Entrada escalonada (*stagger*) de 25ms nas listas e KPIs ao carregar telas.
-
-**Arquivos:** `src/components/layout/sidebar.tsx` · `src/components/layout/page-shell.tsx` · `src/hooks/use-sidebar-state.ts` · `src/components/ui/modal.tsx` · `src/components/ui/tooltip.tsx` · `src/components/modules/kpi-card.tsx` · `src/components/modules/daily-flow-chart.tsx` · `src/components/modules/category-donut.tsx` · `src/styles/globals.css`.
-
-**✅ DoD (critérios de aceite)**
+3. **Pre-fetching de rotas vizinhas:** pré-carregamento discreto dos chunks de código e queries das rotas adjacentes ao interag- **✅ DoD (critérios de aceite)**
 - Sidebar expande suavemente por hover no desktop sem deslocar os elementos da página; zero disparos acidentais com mouse rápido; botão de toggle manual e persistência funcionando perfeitamente.
 - Modais no mobile comportam-se como Bottom Sheets fluidas com fechamento por arrasto.
 - Micro-interações respeitam estritamente `prefers-reduced-motion` e as configurações de `data-motion` (desligando efeitos nos modos "Econômica" e "Reduzida").
 - Auditoria de acessibilidade (`axe-core`) com 0 violações nas novas superfícies e tooltips.
 - Suíte completa de testes 100% verde (incluindo testes de integração da Sidebar e Bottom Sheets).
+
+### Fase 26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)
+
+**Objetivo:** eliminar a poluição visual do botão flutuante lateral de "Rolar para o Topo" no mobile, substituindo-o por um mecanismo gestual discreto e natural de **Pull-up / Overscroll to Top** (arrasto vertical no fim da página) inspirado em padrões nativos (como o pull-down de arquivadas), implementado com rigor matemático absoluto contra disparos involuntários e inércia de rolagem.
+
+**Decisões Técnicas Alinhadas:**
+- **Remoção do Botão Flutuante Legado:** Descontinuação do botão lateral flutuante `ScrollToTopButton` no mobile, liberando o campo de visão móvel e eliminando colisões com cartões, listas e FAB central.
+- **Engine de Overscroll no Rodapé (`usePullUpToTop`):** Hook gestual dedicado conectado ao contêiner `main` com listeners Pointer/Touch nativos, rastreando o final estático do scroll e aplicando resistência elástica com barreira contra inércia de rolagem rápida (*momentum scrolling*).
+- **Máquina de Estados Finita e Cancelamento Dinâmico:** Ciclo de vida `IDLE → AT_BOTTOM → PULLING → THRESHOLD_REACHED → TRIGGERED / CANCELLED`. Cancelamento imediato e reversível caso o usuário recue o dedo antes do `touchend`.
+- **Micro-Indicador Minimalista:** Elemento visual sutil (seta minimalista com rotação suave e anel de progresso em arco) posicionado no rodapé da área rolável, respeitando `safe-area-bottom` e renderizado abaixo da Bottom Navigation Bar.
+
+**Entregas (na ordem):**
+1. **Motor Puro de Física e Overscroll (`src/domain/gestures/overscroll.ts`):**
+   - Funções puras testáveis: `computePullDistance(rawDeltaY, maxPull, resistanceFactor)` (resistência elástica logarítmica), `isAtScrollBottom(scrollTop, clientHeight, scrollHeight, tolerance = 2)` e `evaluatePullIntent(pullDistance, threshold, isStaticBottom)`.
+   - Limiar configurável (`threshold = 80px` efetivos, com piso de segurança).
+2. **Engine Gestual `usePullUpToTop` (`src/hooks/use-pull-up-to-top.ts`):**
+   - Hook gestual conectado ao contêiner `main` com listeners Pointer/Touch nativos (`touchstart`, `touchmove`, `touchend`, `touchcancel`).
+   - **Barreira de Inércia de Dois Tempos:** O overscroll só acumula se o contêiner já estiver em repouso estático no final (`scrollTop + clientHeight >= scrollHeight - 2px`); flings rápidos que batem no rodapé são ignorados.
+   - **Cancelamento Reversível:** Reduzir o arrasto desfaz o threshold em tempo real; rolagem suave ao topo (`scrollTo({ top: 0, behavior: 'smooth' })`) dispara estritamente ao soltar o dedo (`touchend`) com o threshold sustentado.
+3. **Micro-Indicador Visual `PullUpToTopIndicator` (`src/components/modules/pull-up-indicator.tsx`):**
+   - Micro-componente vetorial sutil no rodapé da página: seta minimalista com rotação de 180° e arco de progresso SVG, estilizado 100% com tokens do tema ativo (`text-primary`, `stroke-primary`).
+   - Z-Index seguro e sem overflow: renderizado no final do fluxo de conteúdo rolável do `main`, com margem inferior segura (`pb-28` / `safe-area-bottom`), sem colisão visual com a BottomNav fixa.
+4. **Feedback Háptico & Transição:**
+   - Vibração tátil sutil (`navigator.vibrate(10)` / `triggerHaptic('light')`) disparada no instante em que o threshold é atingido (*armed state*).
+   - Rolagem fluida e suave até o topo (`behavior: 'smooth'`), respeitando `prefers-reduced-motion` e `data-motion`.
+5. **Descontinuação do Botão Legado e Limpeza do Shell:**
+   - Remoção de `<ScrollToTopButton />` de `src/app/router.tsx` e descontinuação em `src/components/ui/scroll-to-top-button.tsx`.
+   - Limpeza das regras CSS específicas de body modal para scroll-to-top em `src/styles/globals.css`.
+
+**Arquivos:** `src/domain/gestures/overscroll.ts` (+ testes) · `src/hooks/use-pull-up-to-top.ts` (+ testes) · `src/components/modules/pull-up-indicator.tsx` (+ testes) · `src/components/layout/page-shell.tsx` · `src/app/router.tsx` · `src/styles/globals.css`.
+
+**✅ DoD (critérios de aceite)**
+- Botão flutuante legado removido da interface móvel, eliminando sobreposições com listas e FABs.
+- Motor puro de física coberto por testes unitários (curva elástica, tolerância de rodapé, disparo por threshold).
+- Barreira contra momentum scrolling verificada: inércia de rolagem rápida que atinge o rodapé não aciona o gesto sem um segundo toque estático intencional.
+- Cancelamento dinâmico verificado: puxar até armar e empurrar o dedo de volta desfaz o gatilho sem executar scroll.
+- Micro-indicador visual integrado ao tema ativo, sem ultrapassar a barra de navegação ou gerar scrollbar horizontal.
+- Rolagem suave executada com sucesso ao soltar o dedo no threshold armado; suporte a `prefers-reduced-motion` (rolagem instantânea).
+- Suíte completa de testes 100% verde; typecheck e lint limpos.
 
 ---
 
@@ -1126,7 +1116,7 @@
 
 ### 4.1 Primitivos (Fase 0 e extensões) — `components/ui`
 `Button → Input → MoneyInput → Select → Card → Badge → Skeleton → EmptyState → Progress → Modal/Dialog → ConfirmDialog → Tabs → DataList → Stepper → Command → Toast → Checkbox → RadioGroup → DatePicker → Slider → Accordion → Textarea → Dropzone`
-(+ `VirtualList`, `ScrollToTopButton`, `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10), `LivePulseBeacon` (F11), `Tooltip` (F25). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
+(+ `VirtualList`, `ScrollToTopButton` (descontinuado no mobile em F26), `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10), `LivePulseBeacon` (F11), `Tooltip` (F25). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
 
 ### 4.2 Módulos de domínio (por fase) — `components/modules`
 - **F0/F2:** `MoneyInput` é primitivo de UI (Fase 0); `CategoryIcon`, `MonthPicker`, `TransactionRow`, `KpiCard`, `BudgetProgressBar`, `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge`, `WizardShell`.
@@ -1143,6 +1133,7 @@
 - **F22:** `MonthlyClosePrintView`, `ExportDataHub`.
 - **F24:** `FireProjectionChart`, `EmergencyFundGauge`.
 - **F25:** `HoverExpandSidebar`, `BottomSheetShell`, `SuccessPulseFeedback`.
+- **F26:** `PullUpToTopIndicator` (micro-indicador minimalista de overscroll to top).
 
 ### 4.3 Telas (por fase) — `features/`
 Sempre composição fina: layout (`components/layout`) + módulos (`components/modules`) + contratos (`state/`). Sem JSX duplicado entre telas — qualquer repetição vira módulo novo.
@@ -1172,7 +1163,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 > - **P3 = (a)** rota nova `/investments` (leitura), mantendo `/carteira` para operação — **SUPERADA (2026-08-15):** decisão do produto de **área única** — `/investments` é o hub (abas Resumo/Metas/Aporte) e `/carteira` vira redirect.
 > - **P4 = (a)** proventos: apenas recebidos (escopo mínimo — sem migration).
 > - **P5 = (b)** proventos ficam só na carteira (fora do fluxo financeiro core — D11 preservado).
-> - **P6 = (a)** ordem: Trilha A (F14–F15, F19 e F20) antes da Trilha B (F16–F18), seguida pelas fases de inteligência, refinamento e escala (F21–F25).
+> - **P6 = (a)** ordem: Trilha A (F14–F15, F19 e F20) antes da Trilha B (F16–F18), seguida pelas fases de inteligência, refinamento e escala (F21–F26).
 
 ### 6.1 Ordem de execução das próximas fases (status 2026-08-15)
 
@@ -1192,5 +1183,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | 📋 Planejada |
 | 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | 📋 Planejada |
 | 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | 📋 Planejada |
+| 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | 📋 Planejada |
 
 **Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.
+

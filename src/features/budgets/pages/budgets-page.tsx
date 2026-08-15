@@ -200,9 +200,11 @@ export function BudgetsPage() {
 
           {/* Recomendação de realocação (§3.5.2) */}
           {suggestion && fromCategory && toCategory ? (
-            <div className="flex flex-col gap-3 rounded-xl border border-attention/40 bg-attention/5 p-4">
-              <div className="flex items-start gap-2">
-                <Sparkles className="mt-0.5 size-4 shrink-0 text-attention" aria-hidden="true" />
+            <div className="flex flex-col gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4">
+              <div className="flex items-start gap-2.5">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-warning/20 border border-warning/30 text-warning-strong">
+                  <Sparkles className="size-3.5" aria-hidden="true" />
+                </span>
                 <div className="text-sm">
                   <p className="font-medium text-foreground">Realocação sugerida</p>
                   <p className="mt-0.5 text-muted-foreground">

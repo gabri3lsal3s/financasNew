@@ -15,12 +15,12 @@ const buttonVariants = cva(
       // Estilo discreto (pós-F10): sem fundo sólido — borda de cor + texto
       // colorido, hover com tinta suave. Contraste AA nos 3 temas.
       variant: {
-        default: "border border-primary-strong/40 bg-transparent text-primary-strong hover:bg-primary/10",
+        default: "border border-primary/25 bg-primary/10 text-primary-strong hover:bg-primary/20 hover:border-primary/40 shadow-sm",
         secondary: "bg-secondary/15 text-foreground hover:bg-secondary/25",
         outline: "border border-border bg-surface text-foreground hover:bg-surface-hover hover:border-primary/40",
         ghost: "text-foreground hover:bg-surface-hover hover:text-primary",
-        destructive: "border border-critical/50 bg-transparent text-critical-strong hover:bg-critical/10",
-        positive: "border border-positive/50 bg-transparent text-positive-strong hover:bg-positive/10",
+        destructive: "border border-critical/40 bg-critical/10 text-critical-strong hover:bg-critical/20",
+        positive: "border border-positive/40 bg-positive/10 text-positive-strong hover:bg-positive/20",
       },
       size: {
         sm: "h-8 px-3 text-xs [&_svg]:size-3.5 sm:[&_svg]:size-4",

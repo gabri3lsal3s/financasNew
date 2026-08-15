@@ -26,6 +26,8 @@ export interface ReportTableProps {
   /** Total do grupo (para a linha de total — alias compatível). */
   totalCents: number;
   emptyLabel?: string;
+  /** Callback acionado ao clicar em uma linha para ver detalhes. */
+  onRowClick?: (row: ReportRow) => void;
 }
 
 /** Tabela de agregações de relatório (§3.6) — DRY para categoria/forma/dia com visão dupla (Nominal vs. Ponderado). */
@@ -36,6 +38,7 @@ export function ReportTable({
   totalPonderadoCents,
   totalCents,
   emptyLabel = "Sem dados no período.",
+  onRowClick,
 }: ReportTableProps) {
   const hasDualMetrics = rows.some(
     (r) => r.brutoCents !== undefined && r.ponderadoCents !== undefined && r.brutoCents !== r.ponderadoCents,
@@ -86,6 +89,7 @@ export function ReportTable({
         rows={[...rows]}
         rowKey={(row) => row.key}
         emptyMessage={emptyLabel}
+        onRowClick={onRowClick}
       />
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</span>

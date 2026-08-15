@@ -31,18 +31,18 @@ const variantIcon: Record<ToastVariant, typeof Info> = {
 
 const variantClass: Record<ToastVariant, string> = {
   default: "border-border",
-  success: "border-negative-strong/40",
+  success: "border-positive/40",
   info: "border-primary/40",
-  warning: "border-attention/40",
+  warning: "border-warning/40",
   destructive: "border-critical/40",
 };
 
 const variantIconClass: Record<ToastVariant, string> = {
   default: "text-muted-foreground",
-  success: "text-negative-strong",
+  success: "text-positive-strong",
   info: "text-primary-strong",
-  warning: "text-attention",
-  destructive: "text-critical",
+  warning: "text-warning-strong",
+  destructive: "text-critical-strong",
 };
 
 /** Toast próprio do app (Radix) — feedback de ações; substitui alert() nativo (DESIGN_SYSTEM §13). */

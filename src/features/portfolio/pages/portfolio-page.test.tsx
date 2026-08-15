@@ -68,16 +68,22 @@ vi.mock("@/state", () => ({
   useRemoveGroupTarget: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateSectorCaps: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeletePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeletePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("PortfolioPage (carteira §3.11 — Fase 4 entrega 5)", () => {
   it("mostra a posição com patrimônio, caixa derivado e preço manual destacado", () => {
     render(<PortfolioPage />);
-    // KPIs.
+    // KPIs (patrimônio também aparece no AllocationDonut da Posição — F16).
     expect(screen.getByText("Patrimônio total")).toBeInTheDocument();
-    expect(screen.getByText("R$ 1.000,00")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 1.000,00").length).toBeGreaterThan(0);
     expect(screen.getByText("Caixa derivado")).toBeInTheDocument();
+    // F16 — alocação por classe na Posição (donut reusado do módulo).
+    expect(screen.getByText("Alocação por classe")).toBeInTheDocument();
     // Ativos da tabela.
     expect(screen.getByText("PETR4")).toBeInTheDocument();
     expect(screen.getByText("CAIXA")).toBeInTheDocument();

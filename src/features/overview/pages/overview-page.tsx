@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Activity, Inbox, PieChart, PiggyBank, ShieldCheck, Target, Wallet } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Activity, DollarSign, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Alert, Badge, EmptyState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
@@ -34,6 +35,7 @@ import { getErrorMessage } from "@/services/errors";
 import {
   useAllCardExpenses,
   useAllCardPayments,
+  useAllPortfolioTransactions,
   useBudgets,
   useCategories,
   useCreditCards,
@@ -56,6 +58,7 @@ const formatPercent = (value: number) =>
 export function OverviewPage() {
   const [month, setMonth] = useState(currentMonth);
   const visual = useVisualCustomization();
+  const navigate = useNavigate();
 
   const prevMonth = shiftMonth(month, -1);
   const startRange = shiftMonth(month, -5);
@@ -80,6 +83,7 @@ export function OverviewPage() {
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
   const onboardingQuery = useOnboardingCounts();
+  const portfolioTransactionsQuery = useAllPortfolioTransactions();
 
   const loading =
     incomesQuery.isLoading ||
@@ -87,7 +91,8 @@ export function OverviewPage() {
     prevIncomesQuery.isLoading ||
     prevExpensesQuery.isLoading ||
     debtsQuery.isLoading ||
-    cardsQuery.isLoading;
+    cardsQuery.isLoading ||
+    portfolioTransactionsQuery.isLoading;
 
   const error =
     incomesQuery.error ??
@@ -96,7 +101,8 @@ export function OverviewPage() {
     prevExpensesQuery.error ??
     debtsQuery.error ??
     cardsQuery.error ??
-    budgetsQuery.error;
+    budgetsQuery.error ??
+    portfolioTransactionsQuery.error;
 
   const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
 
@@ -106,8 +112,23 @@ export function OverviewPage() {
   const prevIncomeCents = weightedSum(prevIncomesQuery.data ?? []);
   const prevExpenseCents = weightedSum(prevExpensesQuery.data ?? []);
 
-  const totals = computeOverview(incomeCents, expenseCents, 0);
-  const prevTotals = computeOverview(prevIncomeCents, prevExpenseCents, 0);
+  // Investimentos/Aportes no mês: compras + subscrições − vendas
+  const portfolioTxs = portfolioTransactionsQuery.data ?? [];
+  const computeMonthInvestments = (targetMonth: string) =>
+    portfolioTxs
+      .filter((tx) => tx.date.startsWith(targetMonth))
+      .reduce((acc, tx) => {
+        if (tx.type === "buy" || tx.type === "subscription") return acc + numberToCents(tx.total);
+        if (tx.type === "sell") return acc - numberToCents(tx.total);
+        return acc;
+      }, 0);
+
+  const investmentCents = Math.max(0, computeMonthInvestments(month));
+  const prevInvestmentCents = Math.max(0, computeMonthInvestments(prevMonth));
+  const investmentSpark = rangeMonths.map((m) => Math.max(0, computeMonthInvestments(m)));
+
+  const totals = computeOverview(incomeCents, expenseCents, investmentCents);
+  const prevTotals = computeOverview(prevIncomeCents, prevExpenseCents, prevInvestmentCents);
 
   // Sparklines com a série dos últimos 6 meses.
   const incomeSpark = rangeMonths.map((m) =>
@@ -201,6 +222,7 @@ export function OverviewPage() {
                 value={formatCentsAsBRL(totals.incomeCents)}
                 valueCents={totals.incomeCents}
                 tone="positive"
+                icon={<TrendingUp className="size-4" aria-hidden="true" />}
                 hint={<DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />}
                 spark={incomeSpark}
               />
@@ -209,15 +231,27 @@ export function OverviewPage() {
                 value={formatCentsAsBRL(totals.expenseCents)}
                 valueCents={totals.expenseCents}
                 tone="negative"
+                icon={<TrendingDown className="size-4" aria-hidden="true" />}
                 hint={<DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />}
                 spark={expenseSpark}
               />
-              <KpiCard label="Investimentos" cents={totals.investmentCents} tone="portfolio" hint="Carteira na Fase 4" />
+              {/* F16 — deep-link: KPI da carteira navega para /carteira (operação/metas). */}
+              <KpiCard
+                label="Investimentos"
+                value={formatCentsAsBRL(totals.investmentCents)}
+                valueCents={totals.investmentCents}
+                tone="portfolio"
+                icon={<TrendingUp className="size-4" aria-hidden="true" />}
+                hint={<DeltaHint currentCents={totals.investmentCents} previousCents={prevTotals.investmentCents} />}
+                spark={investmentSpark}
+                onClick={() => navigate("/carteira")}
+              />
               <KpiCard
                 label="Saldo do mês"
                 value={formatCentsAsBRL(totals.balanceCents)}
                 valueCents={totals.balanceCents}
                 tone={totals.balanceCents >= 0 ? "positive" : "negative"}
+                icon={<DollarSign className="size-4" aria-hidden="true" />}
               />
             </div>
           )}
@@ -228,8 +262,15 @@ export function OverviewPage() {
               <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center text-primary">
-                      <Wallet className="size-4" aria-hidden="true" />
+                    <span
+                      className={cn(
+                        "flex size-7 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                        accountsBalance >= 0
+                          ? "bg-primary/10 border-primary/20 text-primary-strong"
+                          : "bg-critical/10 border-critical/20 text-critical-strong",
+                      )}
+                    >
+                      <Wallet className="size-3.5" aria-hidden="true" />
                     </span>
                     <h2 className="text-sm font-semibold text-foreground">Saldo líquido de contas</h2>
                   </div>
@@ -263,8 +304,17 @@ export function OverviewPage() {
               <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center text-positive-strong">
-                      <PiggyBank className="size-4" aria-hidden="true" />
+                    <span
+                      className={cn(
+                        "flex size-7 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                        totals.savingsRatePercent >= 20
+                          ? "bg-positive/10 border-positive/20 text-positive-strong"
+                          : totals.savingsRatePercent >= 0
+                            ? "bg-primary/10 border-primary/20 text-primary-strong"
+                            : "bg-critical/10 border-critical/20 text-critical-strong",
+                      )}
+                    >
+                      <PiggyBank className="size-3.5" aria-hidden="true" />
                     </span>
                     <h2 className="text-sm font-semibold text-foreground">Taxa de poupança</h2>
                   </div>
@@ -293,8 +343,8 @@ export function OverviewPage() {
               {visual.dashboardWidgets.flow && (
                 <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                         <Activity className="size-3.5" aria-hidden="true" />
                       </span>
                       <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
@@ -314,8 +364,8 @@ export function OverviewPage() {
               {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
                 <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                         <PieChart className="size-3.5" aria-hidden="true" />
                       </span>
                       <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
@@ -332,8 +382,8 @@ export function OverviewPage() {
           {visual.dashboardWidgets.budgets && (
             <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                     <Target className="size-3.5" aria-hidden="true" />
                   </span>
                   <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Orçamentos do mês</h2>

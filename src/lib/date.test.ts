@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { currentMonth, isValidMonth, monthLabel, monthRange, shiftMonth } from "./date";
+import { currentMonth, currentYear, isValidMonth, isValidYear, monthLabel, monthRange, shiftMonth, yearRange } from "./date";
 
-describe("lib/date (§4.1 — meses em timezone local, sem toISOString)", () => {
+describe("lib/date (§4.1 — meses e anos em timezone local, sem toISOString)", () => {
   it("isValidMonth aceita apenas YYYY-MM", () => {
     expect(isValidMonth("2026-08")).toBe(true);
     expect(isValidMonth("2026-13")).toBe(false);
@@ -35,4 +35,24 @@ describe("lib/date (§4.1 — meses em timezone local, sem toISOString)", () => 
     const now = new Date();
     expect(currentMonth()).toBe(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
   });
+
+  it("currentYear retorna o ano corrente", () => {
+    expect(currentYear()).toBe(new Date().getFullYear());
+  });
+
+  it("isValidYear valida anos plausíveis", () => {
+    expect(isValidYear(2026)).toBe(true);
+    expect(isValidYear(1899)).toBe(false);
+    expect(isValidYear(2101)).toBe(false);
+    expect(isValidYear(2026.5)).toBe(false);
+  });
+
+  it("yearRange retorna intervalo do ano de 01/01 até 01/01 do ano seguinte", () => {
+    expect(yearRange(2026)).toEqual({ start: "2026-01-01", end: "2027-01-01" });
+  });
+
+  it("yearRange rejeita ano inválido com erro claro", () => {
+    expect(() => yearRange(1800)).toThrow(/Ano inválido/);
+  });
 });
+

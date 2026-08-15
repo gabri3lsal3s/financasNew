@@ -16,6 +16,14 @@ const TYPE_ICON: Record<SearchEntryType, typeof ArrowUpRight> = {
   category: Tags,
 };
 
+const TYPE_ICON_CLASS: Record<SearchEntryType, string> = {
+  expense: "text-negative-strong",
+  income: "text-positive-strong",
+  debt: "text-warning-strong",
+  card: "text-portfolio",
+  category: "text-primary-strong",
+};
+
 const TYPE_GROUP_LABEL: Record<SearchEntryType, string> = {
   expense: "Despesas",
   income: "Rendas",
@@ -67,7 +75,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
       value: `${entry.type}:${entry.id}`,
       label: entry.label,
       keywords: [...entry.text, ...(entry.statusWords ?? []), entry.detail ?? ""],
-      icon: <Icon className="size-4" aria-hidden="true" />,
+      icon: <Icon className={cn("size-4", TYPE_ICON_CLASS[entry.type])} aria-hidden="true" />,
       onSelect: () => {
         const params = new URLSearchParams(entry.link.params ?? {});
         navigate(`${entry.link.path}?${params.toString()}`);

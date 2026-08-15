@@ -238,9 +238,10 @@ export function CardsPage() {
         </div>
       ) : cards.length === 0 ? (
         <EmptyState
-          icon={<WalletCards className="size-8 text-primary" aria-hidden="true" />}
+          icon={<WalletCards className="size-6" aria-hidden="true" />}
           title="Nenhum cartão cadastrado"
           description="Adicione seus cartões de crédito para acompanhar faturas, limites disponíveis, melhor data de compra e extrato."
+          tone="primary"
           action={
             <Button onClick={() => openForm(null)} className="gap-2">
               <Plus className="size-4" aria-hidden="true" />

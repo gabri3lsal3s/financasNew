@@ -19,16 +19,16 @@ const variantIcon: Record<AlertVariant, typeof Info> = {
 
 const variantClass: Record<AlertVariant, string> = {
   info: "border-primary/30 bg-primary/5 text-foreground",
-  success: "border-negative-strong/30 bg-negative-strong/5 text-foreground",
-  warning: "border-attention/40 bg-attention/10 text-foreground",
+  success: "border-positive/30 bg-positive/5 text-foreground",
+  warning: "border-warning/40 bg-warning/10 text-foreground",
   error: "border-critical/40 bg-critical/10 text-foreground",
 };
 
 const iconClass: Record<AlertVariant, string> = {
   info: "text-primary-strong",
-  success: "text-negative-strong",
-  warning: "text-attention",
-  error: "text-critical",
+  success: "text-positive-strong",
+  warning: "text-warning-strong",
+  error: "text-critical-strong",
 };
 
 /** Alerta do app — feedback explícito de erro/sucesso nas bordas de formulário. */

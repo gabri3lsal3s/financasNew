@@ -48,3 +48,28 @@ export function monthLabel(month: string): string {
     year: "numeric",
   });
 }
+
+/** Ano corrente (número inteiro de 4 dígitos) no fuso local. */
+export function currentYear(): number {
+  return new Date().getFullYear();
+}
+
+/** Valida se é um ano plausível (entre 1900 e 2100). */
+export function isValidYear(year: number): boolean {
+  return Number.isInteger(year) && year >= 1900 && year <= 2100;
+}
+
+export interface YearRange {
+  /** Primeiro dia do ano (YYYY-01-01) — inclusivo nas queries. */
+  start: string;
+  /** Primeiro dia do ano seguinte ((YYYY+1)-01-01) — exclusivo nas queries. */
+  end: string;
+}
+
+/** Range de consulta de um ano completo: [YYYY-01-01, (YYYY+1)-01-01). */
+export function yearRange(year: number): YearRange {
+  if (!isValidYear(year)) {
+    throw new Error(`Ano inválido: ${year} (esperado número entre 1900 e 2100).`);
+  }
+  return { start: `${year}-01-01`, end: `${year + 1}-01-01` };
+}

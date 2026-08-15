@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TransactionListPage } from "./transaction-list-page";
 
@@ -65,5 +66,21 @@ describe("TransactionListPage — listagem por mês", () => {
     expect(screen.getByText("R$ 3.500,00")).toBeInTheDocument();
     expect(screen.getByText("R$ 1.500,00")).toBeInTheDocument();
     expect(screen.getByText("R$ 2.000,00")).toBeInTheDocument();
+  });
+
+  it("abre o modal de detalhamento de despesa ao clicar na linha de despesa", async () => {
+    const user = userEvent.setup();
+    render(<TransactionListPage />);
+
+    await user.click(screen.getByText("Aluguel"));
+    expect(screen.getByRole("heading", { name: "Detalhes da despesa" })).toBeInTheDocument();
+  });
+
+  it("abre o modal de detalhamento de receita ao clicar na linha de receita", async () => {
+    const user = userEvent.setup();
+    render(<TransactionListPage />);
+
+    await user.click(screen.getByText("Salário"));
+    expect(screen.getByRole("heading", { name: "Detalhes da receita" })).toBeInTheDocument();
   });
 });

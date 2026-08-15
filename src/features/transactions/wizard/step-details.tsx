@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import type { PaymentMethod, ReceiveType } from "@/types";
+import { REPORT_WEIGHT_OPTIONS } from "../components/report-weight-constants";
 import { CUSTOM_WEIGHT_VALUE, effectiveReportWeight, isPresetWeight } from "./wizard-state";
 import type { LaunchState } from "./wizard-state";
 
@@ -42,15 +43,6 @@ const RECEIVE_TYPE_OPTIONS: { value: ReceiveType; label: string }[] = [
   { value: "pix", label: "Pix" },
   { value: "transfer", label: "Transferência" },
   { value: "other", label: "Outro" },
-];
-
-const WEIGHT_OPTIONS = [
-  { value: "1", label: "100% (conta integralmente)" },
-  { value: "0.75", label: "75%" },
-  { value: "0.5", label: "50%" },
-  { value: "0.25", label: "25%" },
-  { value: "0", label: "Não contar nos relatórios (0%)" },
-  { value: "custom", label: "Personalizado (definir valor em R$)…" },
 ];
 
 /** Passo 3 — detalhes do lançamento. */
@@ -138,7 +130,7 @@ export function StepDetails({
           onValueChange={(value) =>
             onReportWeightChange(value === "custom" ? CUSTOM_WEIGHT_VALUE : Number(value))
           }
-          options={WEIGHT_OPTIONS}
+          options={REPORT_WEIGHT_OPTIONS}
           ariaLabel="Peso no relatório"
         />
         {!isPresetWeight(state.reportWeight) ? (

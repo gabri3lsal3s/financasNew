@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { Plus, Wallet } from "lucide-react";
-import { Alert, Button, EmptyState, SkeletonKpi, SkeletonTable } from "@/components/ui";
-import { DeltaHint, KpiCard, PositionTable } from "@/components/modules";
+import { Plus, TrendingUp, Wallet } from "lucide-react";
+import { Alert, Badge, Button, EmptyState, SkeletonKpi, SkeletonTable } from "@/components/ui";
+import { AllocationDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
 import { numberToCents } from "@/domain/money/parse";
 import { usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { AssetFormDialog } from "@/features/portfolio/components/asset-form-dialog";
 import { TransactionFormDialog } from "@/features/portfolio/components/transaction-form-dialog";
 import type { PortfolioAsset } from "@/types";
-
 
 /** Posição (§3.11.2) — patrimônio, caixa derivado e posições valoradas. */
 export function PositionTab() {
@@ -25,6 +24,12 @@ export function PositionTab() {
   const series = position.monthlySeries;
   const previousPoint = series.length > 0 ? series[series.length - 2] : undefined;
   const previousCents = previousPoint ? numberToCents(previousPoint.valueBRL) : 0;
+
+  const nonCashCount = position.rows.filter((r) => !r.isCash).length;
+  const allocationSlices = position.rows.map((row) => ({
+    label: row.assetClass?.trim() || (row.isCash ? "Caixa" : "Sem classe"),
+    valueCents: Math.round(row.valueBRL * 100),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,6 +96,21 @@ export function PositionTab() {
               hint="Fluxo líquido do ledger (compras debitam; vendas e proventos creditam)"
             />
             <KpiCard label="Ativos" value={String(position.rows.length)} hint="Inclui caixa/reserva (1:1)" />
+          </div>
+
+          <div className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
+                  <TrendingUp className="size-3.5" aria-hidden="true" />
+                </span>
+                <h2 className="text-sm font-semibold text-foreground">Alocação por classe</h2>
+              </div>
+              <Badge variant="portfolio" className="text-[11px]">
+                {nonCashCount} {nonCashCount === 1 ? "ativo" : "ativos"}
+              </Badge>
+            </div>
+            <AllocationDonut slices={allocationSlices} className="sm:max-w-md" />
           </div>
 
           <PositionTable rows={position.rows} onRegisterTransaction={openTransaction} />
