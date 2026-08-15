@@ -98,6 +98,8 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
       className={cn("relative select-none", className)}
       onPointerMove={handlePointerMove}
       onPointerLeave={() => setScrubIndex(null)}
+      // F20 — isolamento: scrub do gráfico nunca dispara a navegação por swipe.
+      data-swipe-nav-ignore
     >
       <div className="relative h-44 w-full" aria-hidden="true">
         <svg viewBox={`0 0 ${LINE_WIDTH} ${LINE_HEIGHT}`} preserveAspectRatio="none" className="h-full w-full overflow-visible">

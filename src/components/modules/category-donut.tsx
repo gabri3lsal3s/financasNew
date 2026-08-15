@@ -80,7 +80,8 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
   );
 
   return (
-    <div className={cn("flex flex-col items-center gap-6 sm:flex-row sm:items-center", className)}>
+    // F20 — isolamento: gestos no donut (lista com hover) nunca viram swipe.
+    <div className={cn("flex flex-col items-center gap-6 sm:flex-row sm:items-center", className)} data-swipe-nav-ignore>
       {/* Anel SVG de alto contraste */}
       <div className="relative shrink-0 flex items-center justify-center">
         <svg

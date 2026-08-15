@@ -1,6 +1,6 @@
 # 🧭 NEXT_PHASES.md — Proposta de Novas Fases do Roadmap
 
-> **Status:** v1.5 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação; **v1.3** registra a **conclusão da Fase 14** (2026-08-15 — ver `ROADMAP.md` §3); **v1.4** registra a **conclusão da Fase 15** (2026-08-15); **v1.5** registra a **conclusão da Fase 19** (2026-08-15): código morto F8 removido, fontes únicas de normalização/essencialidade, `numberToCents` canônico, reuso de motores na InsightsPage, tendência significativa nos Diagnósticos e investimentos reais nas projeções.
+> **Status:** v1.6 — proposta oficial elaborada após auditoria completa da base de código (2026-08-15). **v1.1** adicionou o diagnóstico de Insights (§1.4) e a **Fase 19** (Trilha A); **v1.2** adiciona o mapeamento de **Swipe Navigation** (§1.5) e a **Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A), com matriz de riscos e mitigação; **v1.3** registra a **conclusão da Fase 14** (2026-08-15 — ver `ROADMAP.md` §3); **v1.4** registra a **conclusão da Fase 15** (2026-08-15); **v1.5** registra a **conclusão da Fase 19** (2026-08-15): código morto F8 removido, fontes únicas de normalização/essencialidade, `numberToCents` canônico, reuso de motores na InsightsPage, tendência significativa nos Diagnósticos e investimentos reais nas projeções; **v1.6** registra a **conclusão da Fase 20** (2026-08-15): motor puro `domain/gestures/swipe.ts`, engine `useSwipeNavigation`, `MonthSwiper` nas 5 telas de mês, `Tabs swipeable` nas 6 telas de abas e isolamento (`data-swipe-nav-ignore` nos gráficos).
 > Objetivos estratégicos:
 > **1. Refinamento Máximo de UI/UX & Conforto Visual (Prioridade Principal)** — elevar usabilidade, fluidez, micro-interações, consistência de Design System e ergonomia em desktop e mobile.
 > **2. Módulo de Carteira de Investimentos completo e integrado** — tirar o placeholder da Home do papel e entregar o ecossistema de investimentos.
@@ -170,6 +170,8 @@
 - Suíte 100% verde (motores unificados + página + auditoria axe); typecheck/lint/build limpos.
 
 ### Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX) (Trilha A)
+
+> **Status: ✅ concluída (2026-08-15)** — ver progresso detalhado no `ROADMAP.md` §3. Resumo: motor puro `src/domain/gestures/swipe.ts` (axis-lock ±30°, flick, activation, boundary resistance — 20 testes); engine `useSwipeNavigation` (máquina idle→tracking→locked→settled, ignoreSelectors, touch/pen + isPrimary, haptics — 13 testes); `MonthSwiper` nas 5 telas de mês (DRY); `Tabs` com prop `swipeable` nas 6 telas de abas; isolamento com `data-swipe-nav-ignore` nos gráficos com scrub (DailyFlowChart, CategoryDonut).
 
 > **Origem:** mapeamento arquitetural e diagnóstico (2026-08-15) — ver §1.5. Navegação horizontal fluida no mobile (meses/períodos e sub-abas) com **rigor técnico absoluto** para evitar falsos positivos e quebra de componentes interativos existentes (Swipe-to-Action de despesas, gráficos com scrub, formulários, modais). **Trilha A** (refinamento mobile-first).
 

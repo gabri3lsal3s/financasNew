@@ -1,9 +1,11 @@
+import { useRef } from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { triggerHaptic } from "@/services/haptics";
 import { playSound } from "@/services/audio-fx";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
+import { useSwipeNavigation } from "@/hooks/use-swipe-navigation";
 
 export interface TabItem {
   value: string;
@@ -18,6 +20,12 @@ export interface TabsProps {
   items: TabItem[];
   variant?: "underline" | "pills";
   className?: string;
+  /**
+   * F20 — navegação por gesto: swipe horizontal na área de conteúdo alterna
+   * as abas (esquerda = próxima, direita = anterior). Gestos adicionais ao
+   * teclado Radix (a11y). Desabilitado em telas com formulários densos.
+   */
+  swipeable?: boolean;
 }
 
 /** Tabs próprias do app (Radix) — acessível, com teclado e micro-interação (F11). */
@@ -27,7 +35,32 @@ export function Tabs({
   items,
   variant = "underline",
   className,
+  swipeable = false,
 }: TabsProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const currentIndex = Math.max(0, items.findIndex((item) => item.value === value));
+
+  const swipe = useSwipeNavigation({
+    onNavigate: (direction) => {
+      const nextIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
+      const next = items[nextIndex];
+      if (next) {
+        triggerHaptic("light");
+        const visual = getVisualCustomization();
+        playSound("click", visual.soundEnabled);
+        onValueChange(next.value);
+      }
+    },
+    canGoPrevious: currentIndex > 0,
+    canGoNext: currentIndex < items.length - 1,
+    onDragProgress: (offsetPx) => {
+      const node = contentRef.current;
+      if (node) {
+        node.style.transform = `translateX(${offsetPx}px)`;
+      }
+    },
+  });
+
   const handleTabChange = (val: string) => {
     triggerHaptic("light");
     const visual = getVisualCustomization();
@@ -62,15 +95,28 @@ export function Tabs({
           </TabsPrimitive.Trigger>
         ))}
       </TabsPrimitive.List>
-      {items.map((item) => (
-        <TabsPrimitive.Content
-          key={item.value}
-          value={item.value}
-          className="mt-4 outline-none focus-visible:ring-2 focus-visible:ring-ring animate-route-in"
-        >
-          {item.content}
-        </TabsPrimitive.Content>
-      ))}
+      {/* F20 — a área de conteúdo é o alvo do swipe (o List tem overflow-x-auto).
+          `touch-action: pan-y` preserva o scroll vertical. */}
+      <div
+        {...(swipeable ? swipe.pointerHandlers : {})}
+        ref={contentRef}
+        className="mt-4 will-change-transform"
+        style={{
+          touchAction: swipeable ? "pan-y" : undefined,
+          transition: swipe.dragging ? "none" : "transform 0.25s ease-out",
+        }}
+        data-swipe-tabs-content
+      >
+        {items.map((item) => (
+          <TabsPrimitive.Content
+            key={item.value}
+            value={item.value}
+            className="outline-none focus-visible:ring-2 focus-visible:ring-ring animate-route-in"
+          >
+            {item.content}
+          </TabsPrimitive.Content>
+        ))}
+      </div>
     </TabsPrimitive.Root>
   );
 }

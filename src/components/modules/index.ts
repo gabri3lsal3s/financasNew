@@ -7,6 +7,8 @@ export type { CategoryIconProps } from "./category-icon";
 export { CATEGORY_ICON_MAP, CATEGORY_ICON_OPTIONS } from "./category-icons";
 export { MonthPicker } from "./month-picker";
 export type { MonthPickerProps } from "./month-picker";
+export { MonthSwiper } from "./month-swiper";
+export type { MonthSwiperProps } from "./month-swiper";
 export { YearPicker } from "./year-picker";
 export type { YearPickerProps } from "./year-picker";
 export { TransactionRow } from "./transaction-row";

@@ -245,6 +245,7 @@ export function InsightsPage() {
         <Tabs
           value={tab}
           onValueChange={setTab}
+          swipeable
           items={[
             {
               value: "alerts",

@@ -22,6 +22,7 @@ export function PortfolioPage() {
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as PortfolioTab)}
+        swipeable
         items={[
           { value: "position", label: "Posição", content: <PositionTab /> },
           {

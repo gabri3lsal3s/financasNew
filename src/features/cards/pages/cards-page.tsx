@@ -6,7 +6,7 @@ import {
   CreditCardWallet,
   InvoiceStatusBadge,
   KpiCard,
-  MonthPicker,
+  MonthSwiper,
   TransactionRow,
 } from "@/components/modules";
 import {
@@ -277,7 +277,7 @@ export function CardsPage() {
               SEÇÃO 2: SELETOR DE MÊS, STATUS DA FATURA E KPIS
              ========================================================================= */}
           <div className="flex flex-col gap-4">
-            <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
+            <MonthSwiper value={effectiveMonth} onValueChange={setMonth} />
 
             {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -966,6 +966,16 @@
 - `prefers-reduced-motion`/`data-motion` respeitados; axe sem violações; typecheck/lint/build limpos; suíte 100% verde.
 - Revisão manual em dispositivo real (iOS Safari + Chrome Android): thumb drift em scroll rápido, coexistência com exclusão de despesas e bordas de mês — matriz em `RELEASE.md`.
 
+**Progresso — F20 concluída (2026-08-15):**
+- [x] **Motor puro de gestos (entrega 1)** — `src/domain/gestures/swipe.ts` com `isHorizontalLock` (axis-lock ±30° via `tan(30°)`, descarte imediato se `|dy| > |dx|` — Thumb Drift, rejeita deslocamento nulo), `isFlick` (> 0.3 px/ms e ≥ 30px), `activationDistance` (`max(60px, 15% vw)`), `boundaryResistance` (rubber-banding com fator 0.35), `directionOf` e `resolveSwipeIntent` (lock → flick → threshold → direção). **20 testes** (cones, drift, flick, piso/15%, resistência, decisão final).
+- [x] **Engine `useSwipeNavigation` (entrega 2)** — `src/hooks/use-swipe-navigation.ts`: máquina `idle → tracking → locked → settled` com `setPointerCapture` no lock; `ignoreSelectors` (`input, textarea, select, [role="dialog"], [data-swipe-nav-ignore], .no-swipe-nav, .swipeable-item, [data-swipe-action]`); `pointerType` só `touch`/`pen` + `isPrimary` (mouse desabilitado); `touch-action: pan-y`; callbacks `onDragProgress`/`onNavigate`/`onBoundary`; limites `canGoPrevious`/`canGoNext`; haptics `light` no lock e `warning` na borda. **13 testes de integração** (navega 1x, scroll vertical não navega, isolamento de `.swipeable-item`/`input`/`[data-swipe-nav-ignore]`, borda com spring-back, gesto curto, multi-touch, cancel).
+- [x] **MonthSwiper (entrega 3)** — `src/components/modules/month-swiper.tsx` envolve o `MonthPicker` (botões continuam — gesto é adicional, a11y): esquerda = próximo mês, direita = anterior; borda inferior em `APP_START_DATE` (2026-01) com resistência elástica; `canGoNext` configurável; translate do conteúdo durante o arrasto + spring-back. Aplicado nas **5 telas de mês** (Visão Geral, Transações, Cartões, Orçamentos, Relatórios) — DRY, uma integração reusada. **4 testes** (avança/volta, borda APP_START_DATE não navega, botões seguem funcionando).
+- [x] **Tabs swipeable (entrega 4)** — primitivo `Tabs` ganha prop `swipeable?: boolean` (default false): swipe na **área de conteúdo** (não no List com `overflow-x-auto`) alterna abas com translate elástico e haptic `light`; bordas (primeira/última aba) não navegam. Aplicado nas **6 telas de abas** (Insights, Relatórios internos categoria/forma/dia, Dívidas, Orçamentos, Carteira, Categorias). **Desabilitado** em Configurações e no wizard (formulários densos — isolamento). **3 testes novos** no primitivo (alterna, borda, sem handlers quando off).
+- [x] **Proteção e isolamento (entrega 5)** — coexistência com o Swipe-to-Action de despesas via `ignoreSelectors` (engine desacoplado, **sem alterar** `useSwipeAction`); `data-swipe-nav-ignore` adicionado nos gráficos com scrub (`DailyFlowChart`, `CategoryDonut`); modais Radix (incl. calculadora) são portais — isolamento natural pelo overlay + `[role="dialog"]` no ignoreSelectors (o FAB arrastável foi removido em fase anterior — a calculadora é modal).
+- [x] **Micro-interações de feedback (entrega 6)** — rubber-banding com resistência crescente + spring-back animado (`transition: transform 0.25s ease-out`, desligada durante o arrasto), haptic `light` no lock e `warning` na borda, `touch-action: pan-y` (scroll vertical livre), `select-none` herdado dos componentes.
+- [x] **Testes** — 40 novos (20 motor + 13 hook + 4 MonthSwiper + 3 Tabs swipeable); suíte completa verde; typecheck/lint limpos (o único erro de `tsc -b` é o arquivo WIP do usuário `report-detail-dialog.test.tsx`).
+- [ ] Revisão manual em dispositivo real (iOS Safari + Chrome Android): thumb drift, coexistência com exclusão de despesas e bordas de mês — matriz em `RELEASE.md`.
+
 ---
 
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
@@ -1027,14 +1037,14 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### 6.1 Ordem de execução das próximas fases (status 2026-08-15)
 
-> **F14, F15 e F19 concluídas (2026-08-15)** — ver progresso na seção §3. As demais fases F16, F17, F18 e F20 estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
+> **F14, F15, F19 e F20 concluídas (2026-08-15)** — ver progresso na seção §3. As demais fases F16, F17 e F18 (Trilha B) estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
 
 | Ordem | Fase | Trilha | Depende de | Status |
 |---|---|---|---|---|
 | 1 | **F14** — Consistência de Estados & Ergonomia de Dados | A | — | ✅ Concluída (2026-08-15) |
 | 2 | **F15** — Micro-Interações & Conforto Visual | A | F14 | ✅ Concluída (2026-08-15) |
 | 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 (pode intercalar) | ✅ Concluída (2026-08-15) |
-| 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | 📋 Não iniciada |
+| 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | ✅ Concluída (2026-08-15) |
 | 5 | **F16** — Carteira na Home (KPI real) | B | P1 (deploy/cron F1.7) · F14 | 📋 Não iniciada |
 | 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | 📋 Não iniciada |
 | 7 | **F18** — Proventos (extrato & calendário) | B | F17 | 📋 Não iniciada |

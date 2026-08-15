@@ -70,6 +70,7 @@ export function CategoriesPage() {
         <Tabs
           value={tab}
           onValueChange={(value) => handleTabChange(value as CategoryType)}
+          swipeable
           items={[
             { value: "expense", label: "Despesas", content: null },
             { value: "income", label: "Rendas", content: null },
