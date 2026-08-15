@@ -19,6 +19,7 @@ describe("Auditoria PWA (instalabilidade)", () => {
     expect(manifest.start_url).toBe("/");
     expect(manifest.scope).toBe("/");
     expect(manifest.display).toBe("standalone");
+    expect(manifest.orientation).toBe("portrait");
     expect(manifest.background_color).toBeTruthy();
     expect(manifest.theme_color).toBeTruthy();
     expect(manifest.lang).toBe("pt-BR");

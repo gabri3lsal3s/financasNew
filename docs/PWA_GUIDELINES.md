@@ -53,7 +53,7 @@ Referência completa (ajustar nomes à marca final):
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#142531",
   "theme_color": [
     { "color": "#F4F7F9", "media": "(prefers-color-scheme: light)" },
@@ -74,7 +74,7 @@ Referência completa (ajustar nomes à marca final):
 
 **Campos obrigatórios:** `name`, `short_name`, `start_url`, `display: standalone`, `background_color`, `theme_color`, `icons` (192 + 512), `description`.
 
-**Campos recomendados:** `id`, `scope`, `orientation: any` (o app funciona em retrato e paisagem), `lang: pt-BR`, `categories`, `shortcuts` (atalhos de ações frequentes — lançamento rápido, D10).
+**Campos recomendados:** `id`, `scope`, `orientation: portrait` (respeita o padrão vertical e o bloqueio de rotação do dispositivo móvel), `lang: pt-BR`, `categories`, `shortcuts` (atalhos de ações frequentes — lançamento rápido, D10).
 
 **Cores do manifesto (alinhadas ao DESIGN_SYSTEM — identidade "Guia Financeiro", F10):**
 - `background_color`: `#142531` (Azul Petróleo — fundo do ícone) — splash Android contínuo com o ícone.
