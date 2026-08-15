@@ -233,6 +233,7 @@ src/features/transactions/
 | Script operacional fora do bundle (deploy/cron de edge function) | `scripts/` (ex.: `deploy-quotes.mjs`) |
 | SQL de operação manual (cron da edge function de cotações) | `supabase/quotes-cron.sql` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
+| Proposta oficial de próximas fases (F14–F18) | `docs/NEXT_PHASES.md` (Trilha A: UI/UX · Trilha B: Investimentos) |
 | Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |
 
 ---

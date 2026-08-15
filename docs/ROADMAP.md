@@ -811,3 +811,16 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Revisão visual em desktop + mobile nos temas aplicáveis.
 - Sem reintrodução de escopo legado (B3, conciliação pesada, parsers) — ver `AGENTS.md`.
 - **Zero elementos nativos de controle** (select/checkbox/date/file/range/alert/dialog) — sempre primitivos do app (DESIGN_SYSTEM §13).
+
+---
+
+## 6. PRÓXIMAS FASES (PROPOSTA OFICIAL)
+
+> **Auditoria concluída (2026-08-15):** as fases F0–F13 estão implementadas. A proposta oficial das próximas fases — **Trilha A (UI/UX & Conforto Visual, prioritária)** e **Trilha B (Módulo de Carteira de Investimentos completo/integrado)** — está em `docs/NEXT_PHASES.md` (diagnóstico, fases F14–F18 com entregas e DoD, e perguntas de alinhamento técnico P1–P6).
+>
+> **Estado atual dos pontos citados na auditoria:**
+> - Home: o KPI "Investimentos" ainda usa stub (`computeOverview(..., 0)` + hint "Carteira na Fase 4") — preenchimento previsto na Fase 16.
+> - Carteira: F4 concluída (ledger, valoração, metas, aporte em `/carteira`); faltam rentabilidade na Posição (F14), dashboard `/investments` (F17) e proventos (F18).
+> - Pendências operacionais vigentes: deploy/cron da edge function de cotações (F1.7), testes contra banco real (F1 DoD), QA manual final (F6.5).
+>
+> A inserção formal das fases F14–F18 neste roadmap ocorre após o alinhamento técnico (§4 do `NEXT_PHASES.md`).
