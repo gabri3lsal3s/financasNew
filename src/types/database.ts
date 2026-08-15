@@ -165,6 +165,10 @@ export interface Database {
         Args: { p_group_type: "class" | "sector"; p_name: string };
         Returns: void;
       };
+      restore_backup: {
+        Args: { p_backup: unknown };
+        Returns: Record<string, number>;
+      };
     };
   };
 }

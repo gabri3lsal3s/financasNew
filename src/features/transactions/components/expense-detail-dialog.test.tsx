@@ -83,6 +83,17 @@ describe("ExpenseDetailDialog", () => {
     expect(screen.getAllByText("Alimentação").length).toBeGreaterThan(0);
   });
 
+  it("oferece compartilhamento via Web Share (F22)", async () => {
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog open={true} onOpenChange={vi.fn()} expense={baseExpense} />);
+
+    const shareButton = screen.getByRole("button", { name: /compartilhar/i });
+    await user.click(shareButton);
+
+    // Web Share/clipboard indisponíveis no jsdom — não deve lançar erro.
+    expect(screen.getByRole("button", { name: /compartilhar/i })).toBeInTheDocument();
+  });
+
   it("permite editar despesa e alterar a fatura (bill_competence) para transitar entre meses", async () => {
     updateExpenseMock.mockResolvedValue({});
     const user = userEvent.setup();

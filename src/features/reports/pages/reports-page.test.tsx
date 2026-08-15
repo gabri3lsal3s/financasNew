@@ -62,6 +62,16 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAllCardPayments: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
+  useActiveCreditCards: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 describe("ReportsPage (relatórios §3.6)", () => {

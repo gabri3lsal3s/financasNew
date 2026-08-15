@@ -441,3 +441,54 @@
      },
    } satisfies Config;
    ---------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------
+   Impressão — F22 (Fechamento Mensal imprimível)
+   Esconde todo o chrome da UI e exibe apenas o documento `.print-area`
+   (modal de fechamento), com cores claras fixas para economia de tinta.
+   ---------------------------------------------------------------- */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #1c1917 !important;
+  }
+
+  .print-area .text-muted-foreground {
+    color: #57534e !important;
+  }
+
+  .print-area .border-border,
+  .print-area .border-border\/60 {
+    border-color: #d6d3d1 !important;
+  }
+
+  .print-area .bg-muted\/30 {
+    background-color: #f5f5f4 !important;
+  }
+}

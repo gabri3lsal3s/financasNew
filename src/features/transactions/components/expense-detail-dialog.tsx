@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Copy, Pencil, Trash2 } from "lucide-react";
+import { Copy, Pencil, Share2, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { shareText } from "@/services/export-actions";
+import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
 import { useCategories, useCreditCards, useCreateExpense, useDeleteExpense, useUpdateExpense } from "@/state";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
@@ -317,6 +319,19 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
    * para hoje — nova despesa única (1 parcela) com os mesmos campos, novos
    * IDs e audit_events no envio (invariantes financeiras preservadas).
    */
+  const handleShare = async (): Promise<void> => {
+    if (!expense) return;
+    triggerHaptic("light");
+    const text = [
+      `Despesa: ${expense.description || currentCategory?.name || "Despesa"}`,
+      `Valor: ${formatCentsAsBRL(Math.round(expense.value * 100))}`,
+      `Data: ${expense.date}`,
+      `Categoria: ${currentCategory?.name ?? "Outra"}`,
+      `Pagamento: ${PAYMENT_METHOD_LABELS[expense.payment_method] ?? expense.payment_method}`,
+    ].join("\n");
+    await shareText("Despesa — Finanças Pessoais", text);
+  };
+
   const handleRepeat = async () => {
     if (!expense) return;
     setError(null);
@@ -458,17 +473,29 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                 </dl>
 
                 <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => void handleRepeat()}
-                    disabled={createExpense.isPending}
-                  >
-                    <Copy className="size-3.5" aria-hidden="true" />
-                    {createExpense.isPending ? "Repetindo…" : "Repetir no mês atual"}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => void handleShare()}
+                    >
+                      <Share2 className="size-3.5" aria-hidden="true" />
+                      Compartilhar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => void handleRepeat()}
+                      disabled={createExpense.isPending}
+                    >
+                      <Copy className="size-3.5" aria-hidden="true" />
+                      {createExpense.isPending ? "Repetindo…" : "Repetir no mês atual"}
+                    </Button>
+                  </div>
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

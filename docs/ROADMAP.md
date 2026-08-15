@@ -1070,6 +1070,23 @@
 - Layout de impressão com visual profissional sem elementos de navegação ou controles de UI.
 - Testes unitários para serializadores e componentes da tela de configurações.
 
+**Decisões registradas (F22):**
+- **CSV pt-BR/Excel:** delimitador `;` + separador decimal `,` + BOM UTF-8 (abertura correta em planilhas sem corrupção de acentos/valores). Datas `dd/mm/aaaa`; valores sempre em reais (não ponderados pelo peso de relatório — coluna extra "Valor p/ relatório" quando diverge).
+- **Período dos extratos:** por mês (padrão, `MonthPicker`) ou intervalo customizado (`DatePicker` de início/fim, fim exclusivo).
+- **Restauração substitui TUDO** (decisão validada com o usuário): RPC transacional `restore_backup` (migração 0010) — wipe dos dados atuais em ordem FK + insert com IDs originais, forçando `user_id = auth.uid()` (defesa contra injeção via security definer). Confirmação em 2 etapas (validação Zod + resumo + `ConfirmDialog` destrutivo).
+- **Sem R2/storage** (decisão anterior do usuário): backup e exportação são download/upload de arquivos locais.
+- **Web Share:** `navigator.share` com fallback para clipboard e silêncio no `AbortError` (usuário cancelou).
+- **Fechamento mensal:** valores REAIS (sem peso de relatório); impressão via truque `visibility` + `.print-area` (esconde todo o chrome) com cores claras fixas (`@media print` em `globals.css`).
+
+**Progresso — F22 concluída (2026-08-15):**
+- [x] **Motor de serialização (entrega 1)** — `src/domain/export/` (novo, 16 testes): `csv.ts` (`escapeCsvField`, `toCsv` `;`/CRLF, `csvWithBom`, `formatCsvDecimal/Float/Date`, serializers `serializeExpenses/Incomes/Invoices/PositionsCsv` com BOM) e `backup.ts` (payload versionado `BACKUP_VERSION=1`, schema Zod + **integridade referencial**: categorias/cartões/ativos referenciados existem no backup; `BACKUP_TABLE_KEYS` canônico, ordem FK).
+- [x] **Repositório de exportação (entrega 1)** — `src/data/repositories/export.ts` (+4 testes): `fetchAllUserData` (lê as 18 tabelas sob RLS em paralelo, monta o payload) e `restoreBackup` (RPC `restore_backup`, 4 testes).
+- [x] **RPC transacional (entrega 2)** — migração `20260101000010_backup_restore.sql`: `restore_backup(jsonb)` `security definer` — wipe em ordem FK (16 tabelas, joins para tabelas sem `user_id`) + insert com IDs originais forçando `user_id = auth.uid()` + `audit_events` (D2) + resumo de contagens.
+- [x] **Hub de Exportação e Dados (entrega 2)** — `ExportDataHub` (novo módulo `components/modules/`, 6 testes): backup JSON (substitui o botão legado que consultava tabelas inexistentes `transactions`/`accounts` — código morto), extratos CSV por mês/custom (Despesas, Receitas, Faturas, Posições) e restauração em 2 etapas (Dropzone → validação Zod + resumo → `ConfirmDialog` destrutivo → RPC → invalidação de queries).
+- [x] **Fechamento Mensal imprimível (entrega 3)** — `MonthlyClosePrintView` (novo módulo, 4 testes) + botão "Fechamento do mês" na página de Relatórios (modal max-w-2xl): KPIs (rendas/despesas/saldo/taxa de poupança via `computeOverview`), despesas por categoria (valores reais + %), faturas quitadas do mês, `@media print` com `.print-area` (esconde chrome, cores claras fixas, `@page` 12mm) e botão "Imprimir / Salvar PDF" (`window.print()`, `print:hidden` nos controles).
+- [x] **Web Share (entrega 4)** — `src/services/export-actions.ts` (`downloadBlob/downloadCsv/downloadJson` + `shareText` com fallback clipboard, 4 testes) e botões "Compartilhar" em `ReportDetailDialog` (resumo com itens + totais), `ExpenseDetailDialog` e `IncomeDetailDialog` (comprovante da transação).
+- [ ] Revisão visual desktop + mobile nos 3 temas (QA manual — `RELEASE.md`).
+
 ---
 
 ### Fase 23 — Engenharia de Performance & Code-Splitting 3D
@@ -1196,7 +1213,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | ✅ Concluída (2026-08-15) — **unificada em área única** (decisão 2026-08-15): `/carteira` virou redirect e `/investments` é o hub de abas Resumo/Metas/Aporte |
 | 7 | **F18** — Proventos (extrato & calendário) | B | F17 | ✅ Concluída (2026-08-15) — motor `dividends.ts` + aba Proventos no hub `/investments` (extrato mensal + calendário anual) |
 | 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | ✅ Concluída (2026-08-15) — motor `domain/predictions`, autopreenchimento no wizard + habituals + repetição nos diálogos |
-| 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | 📋 Planejada |
+| 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | ✅ Concluída (2026-08-15) — `domain/export` (CSV pt-BR + backup versionado Zod), hub em `/configuracoes > Dados` (JSON + CSVs por período + restauração 2 etapas via RPC `restore_backup`), Fechamento Mensal imprimível em Relatórios e Web Share nos comprovantes |
 | 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | 📋 Planejada |
 | 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | 📋 Planejada |
 | 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | 📋 Planejada |

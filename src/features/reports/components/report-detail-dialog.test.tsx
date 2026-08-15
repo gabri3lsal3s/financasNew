@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import { ReportDetailDialog } from "./report-detail-dialog";
 import type { Category, Expense } from "@/types";
 
+// Web Share indisponível no jsdom — o botão ainda renderiza e é clicável.
+
+
 const mockCategories: Category[] = [
   { id: "c1", user_id: "u1", name: "Alimentação", icon: "utensils", color: null, type: "expense", is_reserved: false, is_active: true },
   { id: "c2", user_id: "u1", name: "Transporte", icon: "car", color: null, type: "expense", is_reserved: false, is_active: true },
@@ -61,6 +64,7 @@ describe("ReportDetailDialog", () => {
 
     expect(screen.getByText("Despesas — Alimentação")).toBeInTheDocument();
     expect(screen.getByText("Agosto de 2026")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /compartilhar resumo/i })).toBeInTheDocument();
     expect(screen.getByText("2 despesas")).toBeInTheDocument();
     expect(screen.getByText("Supermercado")).toBeInTheDocument();
     expect(screen.getByText("Restaurante")).toBeInTheDocument();

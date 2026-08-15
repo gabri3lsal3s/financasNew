@@ -60,4 +60,12 @@ export { CreditCardWallet } from "./credit-card-wallet";
 export type { CreditCardWalletProps } from "./credit-card-wallet";
 export { PredictionSuggestions } from "./prediction-suggestions";
 export type { PredictionSuggestionsProps } from "./prediction-suggestions";
+export { ExportDataHub } from "./export-data-hub";
+export type { ExportDataHubProps, ExportCsvKind, ExportRange } from "./export-data-hub";
+export { MonthlyClosePrintView } from "./monthly-close-print-view";
+export type {
+  MonthlyClosePrintViewProps,
+  MonthlyCloseCategory,
+  MonthlyCloseInvoice,
+} from "./monthly-close-print-view";
 

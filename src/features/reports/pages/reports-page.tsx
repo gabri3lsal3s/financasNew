@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { ChartPie, TrendingDown, TrendingUp } from "lucide-react";
-import { Alert, EmptyState, Skeleton, Tabs } from "@/components/ui";
+import { ChartPie, Printer, TrendingDown, TrendingUp } from "lucide-react";
+import { Alert, Button, EmptyState, Modal, Skeleton, Tabs } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
-import { MonthSwiper, ReportTable, YearPicker, type ReportRow } from "@/components/modules";
+import {
+  MonthlyClosePrintView,
+  MonthSwiper,
+  ReportTable,
+  YearPicker,
+  type MonthlyCloseCategory,
+  type MonthlyCloseInvoice,
+  type ReportRow,
+} from "@/components/modules";
 import {
   aggregateByCategory,
   aggregateByPaymentMethod,
@@ -17,7 +25,17 @@ import {
 } from "@/domain/reports";
 import { currentMonth, currentYear, monthLabel, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
-import { useCategories, useDebts, useExpenses, useExpensesByRange, useIncomes, useIncomesByRange } from "@/state";
+import { computeOverview } from "@/domain/overview";
+import {
+  useActiveCreditCards,
+  useAllCardPayments,
+  useCategories,
+  useDebts,
+  useExpenses,
+  useExpensesByRange,
+  useIncomes,
+  useIncomesByRange,
+} from "@/state";
 import { cn } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { ExpenseDetailDialog } from "@/features/transactions";
@@ -43,6 +61,7 @@ export function ReportsPage() {
     title: string;
     expenses: Expense[];
   } | null>(null);
+  const [closeOpen, setCloseOpen] = useState(false);
 
   const range =
     mode === "month"
@@ -73,6 +92,8 @@ export function ReportsPage() {
   const rangeIncomes = useIncomesByRange(range.start, range.end, { enabled: isCustom && customValid });
   const debtsQuery = useDebts();
   const categoriesQuery = useCategories();
+  const allPaymentsQuery = useAllCardPayments();
+  const activeCardsQuery = useActiveCreditCards();
 
   const expenses =
     mode === "month"
@@ -204,6 +225,28 @@ export function ReportsPage() {
 
   const periodLabel = mode === "month" ? monthLabel(month) : mode === "year" ? String(year) : `${customStart} a ${customEnd}`;
 
+  // F22 — Fechamento mensal imprimível (valores REAIS, sem peso de relatório).
+  const closeIncomeCents = incomes.reduce((acc, i) => acc + numberToCents(i.value), 0);
+  const closeExpenseCents = expenses.reduce((acc, e) => acc + numberToCents(e.value), 0);
+  const closeTotals = computeOverview(closeIncomeCents, closeExpenseCents, 0);
+  const closeCategories: MonthlyCloseCategory[] = byCategory
+    .map((c) => ({
+      name: c.name,
+      totalCents: c.brutoCents,
+      pct: closeExpenseCents > 0 ? (c.brutoCents / closeExpenseCents) * 100 : 0,
+    }))
+    .sort((a, b) => b.totalCents - a.totalCents);
+  const activeCardName = new Map((activeCardsQuery.data ?? []).map((card) => [card.id, card.name]));
+  const closeRange = monthRange(month);
+  const closeInvoices: MonthlyCloseInvoice[] = (allPaymentsQuery.data ?? [])
+    .filter((payment) => payment.date >= closeRange.start && payment.date < closeRange.end)
+    .map((payment) => ({
+      cardName: activeCardName.get(payment.card_id) ?? "Cartão",
+      competenceMonth: payment.competence_month,
+      amountCents: numberToCents(payment.amount),
+      date: payment.date,
+    }));
+
   return (
     <div className="flex flex-col gap-6">
       {/* F12 — sem header visual: abas + seletor de período direto; título apenas p/ leitores de tela. */}
@@ -244,6 +287,16 @@ export function ReportsPage() {
           },
         ]}
       />
+
+      {/* F22 — Fechamento mensal imprimível (somente no modo mês) */}
+      {mode === "month" ? (
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={() => setCloseOpen(true)} className="gap-2">
+            <Printer className="size-4" aria-hidden="true" />
+            <span>Fechamento do mês</span>
+          </Button>
+        </div>
+      ) : null}
 
       {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
 
@@ -390,6 +443,36 @@ export function ReportsPage() {
           if (!open) setSelectedExpense(null);
         }}
       />
+
+      {/* F22 — Fechamento mensal imprimível (folha de estilo @media print) */}
+      <Modal
+        open={closeOpen}
+        onOpenChange={setCloseOpen}
+        title="Fechamento Mensal"
+        description={`Resumo executivo de ${monthLabel(month)} — pronto para imprimir ou salvar em PDF.`}
+        className="max-w-2xl print:max-w-none print:shadow-none print:border-0"
+        hideCalculator
+      >
+        <div className="mt-4">
+          <MonthlyClosePrintView
+            month={month}
+            totals={closeTotals}
+            expenseCount={expenses.length}
+            incomeCount={incomes.length}
+            categories={closeCategories}
+            paidInvoices={closeInvoices}
+          />
+        </div>
+        <div className="mt-6 flex justify-end gap-2 print:hidden">
+          <Button type="button" variant="outline" onClick={() => setCloseOpen(false)}>
+            Fechar
+          </Button>
+          <Button type="button" onClick={() => window.print()} className="gap-2">
+            <Printer className="size-4" aria-hidden="true" />
+            <span>Imprimir / Salvar PDF</span>
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -32,15 +33,27 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  usePortfolioPosition: () => ({
+    rows: [],
+    totalBRL: 0,
+    cashBRL: 0,
+    monthlySeries: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 function renderSettings() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <ThemeProvider>
-        <SettingsPage />
-      </ThemeProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <ThemeProvider>
+          <SettingsPage />
+        </ThemeProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

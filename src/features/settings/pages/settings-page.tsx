@@ -14,7 +14,6 @@ import {
   VolumeX,
   EyeOff,
   LogOut,
-  Download,
   RotateCcw,
   Zap,
   Sliders,
@@ -42,9 +41,30 @@ import {
 } from "@/hooks/use-visual-customization";
 import { playSound } from "@/services/audio-fx";
 import { triggerHaptic } from "@/services/haptics";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { getSupabase } from "@/data/client";
 import { cn } from "@/lib/utils";
+import { ExportDataHub } from "@/components/modules";
+import type { ExportCsvKind, ExportRange } from "@/components/modules";
+import { fetchAllUserData, restoreBackup } from "@/data/repositories/export";
+import { listAllCardPayments } from "@/data/repositories/card-payments";
+import { listCreditCards } from "@/data/repositories/credit-cards";
+import { listCategories } from "@/data/repositories/categories";
+import { listExpensesByRange } from "@/data/repositories/expenses";
+import { listIncomesByRange } from "@/data/repositories/incomes";
+import { downloadCsv, downloadJson } from "@/services/export-actions";
+import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
+import { numberToCents } from "@/domain/money/parse";
+import { BACKUP_TABLE_KEYS, parseBackupPayload } from "@/domain/export";
+import type { ExportExpenseRow, ExportIncomeRow, ExportInvoiceRow, ExportPositionRow, RestoreSummary } from "@/domain/export";
+import {
+  serializeExpensesCsv,
+  serializeIncomesCsv,
+  serializeInvoicesCsv,
+  serializePositionsCsv,
+} from "@/domain/export";
+import { usePortfolioPosition } from "@/state";
 
 const ACCENT_OPTIONS: { id: AccentTheme; label: string; bgClass: string; hex: string }[] = [
   { id: "teal", label: "Teal Vital (Oficial)", bgClass: "bg-[#2A9D8F]", hex: "#2A9D8F" },
@@ -82,43 +102,126 @@ export function SettingsPage() {
   const privacyMasked = usePrivacyMask();
   const visual = useVisualCustomization();
   const { user } = useAuth();
-  const [exporting, setExporting] = useState(false);
+  const queryClient = useQueryClient();
+  const portfolioPosition = usePortfolioPosition();
 
   const handleTestSound = (type: "click" | "success" | "pop") => {
     triggerHaptic("medium");
     playSound(type, true);
   };
 
-  const handleExportData = async () => {
-    try {
-      setExporting(true);
-      triggerHaptic("medium");
-      playSound("success", visual.soundEnabled);
-      const supabase = getSupabase();
-      const { data: transactions } = await supabase.from("transactions").select("*").limit(500);
-      const { data: accounts } = await supabase.from("accounts").select("*");
-      const { data: categories } = await supabase.from("categories").select("*");
+  // ---------------------------------------------------------------------
+  // F22 — Hub de Exportação e Dados (JSON completo + CSVs + restauração)
+  // ---------------------------------------------------------------------
 
-      const backup = {
-        exportedAt: new Date().toISOString(),
-        user: user?.email,
-        categories: categories ?? [],
-        accounts: accounts ?? [],
-        transactions: transactions ?? [],
-      };
+  const handleExportJson = async (): Promise<void> => {
+    const payload = await fetchAllUserData();
+    downloadJson(`financas_backup_${new Date().toISOString().slice(0, 10)}.json`, payload);
+  };
 
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `financas_backup_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // export fallback
-    } finally {
-      setExporting(false);
+  const rangeStamp = (range: ExportRange): string =>
+    `${range.start.slice(0, 10)}_a_${range.end.slice(0, 10)}`;
+
+  const handleExportCsv = async (kind: ExportCsvKind, range: ExportRange): Promise<void> => {
+    const stamp = rangeStamp(range);
+    if (kind === "expenses") {
+      const [rows, categories, cards] = await Promise.all([
+        listExpensesByRange(range.start, range.end),
+        listCategories(),
+        listCreditCards(),
+      ]);
+      const categoryName = new Map(categories.map((c) => [c.id, c.name]));
+      const cardName = new Map(cards.map((c) => [c.id, c.name]));
+      const csvRows: ExportExpenseRow[] = rows.map((e) => ({
+        date: e.date,
+        description: e.description ?? "",
+        categoryName: categoryName.get(e.category_id) ?? "Sem categoria",
+        valueCents: numberToCents(e.value),
+        reportValueCents: numberToCents(e.value * e.report_weight),
+        paymentMethodLabel: PAYMENT_METHOD_LABELS[e.payment_method] ?? e.payment_method,
+        cardName: e.card_id ? (cardName.get(e.card_id) ?? null) : null,
+        installments: e.installments_total > 1 ? `${e.installment_number}/${e.installments_total}` : "—",
+      }));
+      downloadCsv(`despesas_${stamp}.csv`, serializeExpensesCsv(csvRows));
+      return;
     }
+    if (kind === "incomes") {
+      const [rows, categories] = await Promise.all([
+        listIncomesByRange(range.start, range.end),
+        listCategories(),
+      ]);
+      const categoryName = new Map(categories.map((c) => [c.id, c.name]));
+      const csvRows: ExportIncomeRow[] = rows.map((i) => ({
+        date: i.date,
+        description: i.description ?? "",
+        categoryName: categoryName.get(i.category_id) ?? "Sem categoria",
+        valueCents: numberToCents(i.value),
+        reportValueCents: numberToCents(i.value * i.report_weight),
+        receiveTypeLabel: RECEIVE_TYPE_LABELS[i.receive_type] ?? i.receive_type,
+      }));
+      downloadCsv(`receitas_${stamp}.csv`, serializeIncomesCsv(csvRows));
+      return;
+    }
+    if (kind === "invoices") {
+      const [payments, cards] = await Promise.all([listAllCardPayments(), listCreditCards()]);
+      const cardName = new Map(cards.map((c) => [c.id, c.name]));
+      const csvRows: ExportInvoiceRow[] = payments
+        .filter((p) => p.date >= range.start && p.date < range.end)
+        .map((p) => ({
+          competenceMonth: p.competence_month,
+          cardName: cardName.get(p.card_id) ?? "Cartão removido",
+          amountCents: numberToCents(p.amount),
+          date: p.date,
+          note: p.note,
+          isRefund: p.is_refund,
+        }));
+      downloadCsv(`faturas_${stamp}.csv`, serializeInvoicesCsv(csvRows));
+      return;
+    }
+    const csvRows: ExportPositionRow[] = portfolioPosition.rows.map((r) => ({
+      ticker: r.ticker,
+      assetClass: r.assetClass,
+      currency: r.currency,
+      quantity: r.quantity,
+      averageCost: r.averageCost,
+      priceBRL: r.priceBRL,
+      valueBRL: r.valueBRL,
+      unrealizedPnl: r.unrealizedPnl,
+      unrealizedPct: r.unrealizedPct,
+      pct: r.pct,
+    }));
+    downloadCsv(`posicoes_${stamp}.csv`, serializePositionsCsv(csvRows));
+  };
+
+  const handleRestoreFile = async (file: File): Promise<RestoreSummary> => {
+    const text = await file.text();
+    let raw: unknown;
+    try {
+      raw = JSON.parse(text);
+    } catch {
+      throw new Error("Arquivo inválido: não é um JSON válido.");
+    }
+    const validation = parseBackupPayload(raw);
+    if (!validation.ok) {
+      throw new Error(validation.errors.join("\n"));
+    }
+    const summary: RestoreSummary = {};
+    for (const key of BACKUP_TABLE_KEYS) {
+      summary[key] = validation.payload.data[key].length;
+    }
+    return summary;
+  };
+
+  const handleConfirmRestore = async (file: File): Promise<void> => {
+    const text = await file.text();
+    const raw: unknown = JSON.parse(text);
+    const validation = parseBackupPayload(raw);
+    if (!validation.ok) {
+      throw new Error(validation.errors.join("\n"));
+    }
+    await restoreBackup(validation.payload);
+    await queryClient.invalidateQueries();
+    triggerHaptic("medium");
   };
 
   const handleLogout = async () => {
@@ -535,33 +638,21 @@ export function SettingsPage() {
       icon: <Database className="size-4" />,
       content: (
         <div className="space-y-6">
+          <ExportDataHub
+            onExportJson={handleExportJson}
+            onExportCsv={handleExportCsv}
+            onRestore={handleRestoreFile}
+            onConfirmRestore={handleConfirmRestore}
+          />
+
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Backup & Exportação</CardTitle>
+              <CardTitle className="text-base">Restaurar Padrões Visuais</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl border border-border bg-surface gap-3">
                 <div>
-                  <div className="font-semibold text-sm text-foreground">Exportar Dados Completos (JSON)</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Baixe uma cópia estruturada de transações, contas e categorias.
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  loading={exporting}
-                  onClick={handleExportData}
-                  className="gap-2 shrink-0"
-                >
-                  <Download className="size-4" />
-                  <span>Exportar JSON</span>
-                </Button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl border border-border bg-surface gap-3">
-                <div>
-                  <div className="font-semibold text-sm text-foreground">Restaurar Padrões Visuais</div>
+                  <div className="font-semibold text-sm text-foreground">Redefinir personalização</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     Volta temas, acentos, sons e animações para as configurações padrão de fábrica.
                   </div>

@@ -19,7 +19,7 @@
 ```
 
 - **Frontend:** Vercel — `vercel.json` já configurado (SPA rewrites, headers de segurança, cache PWA).
-- **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0009: schema, RLS, RPCs, overrides, metas, metas de alocação, backfill de perfis).
+- **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0010: schema, RLS, RPCs, overrides, metas, metas de alocação, backfill de perfis, restauração de backup F22).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
 - **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito pela **edge function `quotes`** (implementada em `supabase/functions/quotes/` — F1.7; falta deploy + cron — ver §7.1).
 
@@ -41,7 +41,7 @@
 ### 3.1 Supabase: criar o projeto e aplicar o schema
 
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
-2. Aplique as migrations **na ordem** (0001 → 0009). Duas opções:
+2. Aplique as migrations **na ordem** (0001 → 0010). Duas opções:
    - **Dashboard (SQL Editor):** cole o conteúdo de cada `supabase/migrations/*.sql` em ordem.
    - **CLI (recomendado):**
      ```bash
@@ -120,7 +120,7 @@ npx supabase db reset  # aplica migrations + seed
 
 ## 6. O QUE JÁ ESTÁ PRONTO (auditado)
 
-- ✅ **Migrations completas:** 0001 schema (19 tabelas), 0002 RLS (policies por usuário), 0003 RPCs transacionais (parcelamento, dívidas, cartões, orçamentos, categorias), 0004–0008 (cartões/dívidas, budgets, lembretes, override de preço, metas de alocação), 0009 (backfill idempotente de `profiles` + `user_preferences`).
+- ✅ **Migrations completas:** 0001 schema (19 tabelas), 0002 RLS (policies por usuário), 0003 RPCs transacionais (parcelamento, dívidas, cartões, orçamentos, categorias), 0004–0008 (cartões/dívidas, budgets, lembretes, override de preço, metas de alocação), 0009 (backfill idempotente de `profiles` + `user_preferences`), 0010 (`restore_backup` — restauração integral de backup F22).
 - ✅ **Auth funcional:** login/cadastro/recuperação + trigger `handle_new_user` (profiles + preferências) + RLS.
 - ✅ **Build de produção:** `tsc -b` limpo, `vite build` ok, code-splitting por página, SW gerado (50 entradas precached).
 - ✅ **PWA:** manifest (`/pwa/manifest.webmanifest`), ícones (192/512/maskable/apple-touch), `offline.html`, registro `autoUpdate`, **prompt de instalação** (`beforeinstallprompt` via `InstallAppButton` no menu "Mais") e **toast de atualização automática** (F5.6) — auditoria PWA automatizada em `tests/pwa-audit.test.ts`.

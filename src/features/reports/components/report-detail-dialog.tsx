@@ -1,8 +1,13 @@
-import { ReceiptText } from "lucide-react";
+import { useState } from "react";
+import { ReceiptText, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { MoneyText } from "@/components/ui/money-text";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TransactionRow } from "@/components/modules/transaction-row";
+import { formatCentsAsBRL } from "@/services/masks/money";
+import { shareText } from "@/services/export-actions";
+import { triggerHaptic } from "@/services/haptics";
 import type { Category, Expense } from "@/types";
 
 export interface ReportDetailDialogProps {
@@ -25,6 +30,7 @@ export function ReportDetailDialog({
   categories,
   onSelectExpense,
 }: ReportDetailDialogProps) {
+  const [sharing, setSharing] = useState(false);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   const totalBrutoCents = expenses.reduce((acc, e) => acc + Math.round(e.value * 100), 0);
@@ -33,6 +39,28 @@ export function ReportDetailDialog({
     0,
   );
   const hasDualMetrics = totalBrutoCents !== totalPonderadoCents;
+
+  const handleShare = async (): Promise<void> => {
+    triggerHaptic("light");
+    setSharing(true);
+    try {
+      const lines = expenses.slice(0, 8).map((e) => {
+        const cat = categoryById.get(e.category_id);
+        return `- ${e.description || cat?.name || "Despesa"}: ${formatCentsAsBRL(Math.round(e.value * 100))} (${e.date})`;
+      });
+      const text = [
+        `${title}${subtitle ? ` — ${subtitle}` : ""}`,
+        `Total: ${formatCentsAsBRL(totalBrutoCents)}`,
+        ...(hasDualMetrics ? [`Ponderado: ${formatCentsAsBRL(totalPonderadoCents)}`] : []),
+        "",
+        ...lines,
+        expenses.length > 8 ? `... e mais ${expenses.length - 8} lançamento(s).` : "",
+      ].filter(Boolean).join("\n");
+      await shareText("Resumo de despesas — Finanças Pessoais", text);
+    } finally {
+      setSharing(false);
+    }
+  };
 
   return (
     <Modal
@@ -62,6 +90,18 @@ export function ReportDetailDialog({
               <MoneyText cents={totalPonderadoCents} tone="negative" />
             </span>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            loading={sharing}
+            aria-label="Compartilhar resumo"
+            onClick={() => void handleShare()}
+            className="gap-1.5 shrink-0"
+          >
+            <Share2 className="size-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Compartilhar</span>
+          </Button>
         </div>
 
         {/* Lista de despesas */}

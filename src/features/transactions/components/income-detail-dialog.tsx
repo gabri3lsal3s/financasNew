@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Copy, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { Copy, Pencil, Share2, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { shareText } from "@/services/export-actions";
+import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
 import { useCategories, useCreateIncome, useDeleteIncome, useUpdateIncome } from "@/state";
 import { RECEIVE_TYPE_LABELS } from "@/lib/labels";
@@ -235,6 +237,18 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
    * Repetição rápida (F21): clona a receita no mês atual com data ajustada
    * para hoje — nova renda com os mesmos campos, novos IDs/audit_events.
    */
+  const handleShare = async (): Promise<void> => {
+    if (!income) return;
+    triggerHaptic("light");
+    const text = [
+      `Receita: ${income.description || currentCategory?.name || "Receita"}`,
+      `Valor: ${formatCentsAsBRL(Math.round(income.value * 100))}`,
+      `Data: ${income.date}`,
+      `Categoria: ${currentCategory?.name ?? "Outra"}`,
+    ].join("\n");
+    await shareText("Receita — Finanças Pessoais", text);
+  };
+
   const handleRepeat = async () => {
     if (!income) return;
     setError(null);
@@ -361,17 +375,29 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
 
                 {!isReadOnly ? (
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => void handleRepeat()}
-                      disabled={createIncome.isPending}
-                    >
-                      <Copy className="size-3.5" aria-hidden="true" />
-                      {createIncome.isPending ? "Repetindo…" : "Repetir no mês atual"}
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => void handleShare()}
+                      >
+                        <Share2 className="size-3.5" aria-hidden="true" />
+                        Compartilhar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => void handleRepeat()}
+                        disabled={createIncome.isPending}
+                      >
+                        <Copy className="size-3.5" aria-hidden="true" />
+                        {createIncome.isPending ? "Repetindo…" : "Repetir no mês atual"}
+                      </Button>
+                    </div>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
