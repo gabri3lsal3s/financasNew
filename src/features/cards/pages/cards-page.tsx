@@ -29,7 +29,8 @@ import {
 } from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
 import { PaymentDialog } from "@/features/cards/components/payment-dialog";
-import type { CardPayment, CreditCard } from "@/types";
+import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
+import type { CardPayment, CreditCard, Expense } from "@/types";
 import { cn } from "@/lib/utils";
 
 type PaymentMode = "payment" | "refund" | null;
@@ -62,6 +63,7 @@ export function CardsPage() {
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [deletingCard, setDeletingCard] = useState<CreditCard | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<CardPayment | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(null);
 
@@ -181,9 +183,12 @@ export function CardsPage() {
     }
   };
 
-  const usedLimitMap: Record<string, number> = {};
-  if (selectedCard) {
-    usedLimitMap[selectedCard.id] = summary?.saldoCents ?? 0;
+  const usedLimitMap: Record<string, { brutoCents: number; ponderadoCents: number }> = {};
+  if (selectedCard && summary) {
+    usedLimitMap[selectedCard.id] = {
+      brutoCents: summary.saldoBrutoCents,
+      ponderadoCents: summary.saldoPonderadoCents,
+    };
   }
 
   return (
@@ -274,14 +279,33 @@ export function CardsPage() {
           <div className="flex flex-col gap-4">
             <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
 
-            {/* KPIs da fatura */}
+            {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <KpiCard label="Previsto" cents={summary?.previstoCents ?? 0} />
+              <KpiCard
+                label="Fatura Total (Bruto)"
+                cents={summary?.previstoBrutoCents ?? 0}
+                hint={
+                  summary && summary.previstoBrutoCents !== summary.previstoPonderadoCents ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                      <span>Ponderada:</span>
+                      <MoneyText cents={summary.previstoPonderadoCents} tone="default" />
+                    </span>
+                  ) : undefined
+                }
+              />
               <KpiCard label="Pago" cents={summary?.pagoCents ?? 0} />
               <KpiCard
-                label="Saldo aberto"
-                cents={summary?.saldoCents ?? 0}
-                tone={summary && summary.saldoCents > 0 ? "negative" : "positive"}
+                label="Saldo aberto (Bruto)"
+                cents={summary?.saldoBrutoCents ?? 0}
+                tone={summary && summary.saldoBrutoCents > 0 ? "negative" : "positive"}
+                hint={
+                  summary && summary.saldoBrutoCents !== summary.saldoPonderadoCents ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                      <span>Ponderado:</span>
+                      <MoneyText cents={summary.saldoPonderadoCents} tone="default" />
+                    </span>
+                  ) : undefined
+                }
               />
             </div>
 
@@ -332,20 +356,23 @@ export function CardsPage() {
             ) : (
               competenceExpenses.map((expense) => {
                 const category = categoryById.get(expense.category_id);
+                const hasCustomWeight = expense.report_weight < 1;
+                const title = expense.description || category?.name || "Despesa";
                 return (
                   <TransactionRow
                     key={expense.id}
-                    title={expense.description || "Despesa sem descrição"}
+                    title={title}
                     date={expense.date}
                     subtitle={
-                      expense.report_weight < 1
-                        ? `${Math.round(expense.report_weight * 100)}% no relatório`
+                      hasCustomWeight
+                        ? `${Math.round(expense.report_weight * 100)}% no relatório (Ponderado: ${formatCentsAsBRL(Math.round(expense.value * expense.report_weight * 100))})`
                         : undefined
                     }
-                    amountCents={Math.round(expense.value * expense.report_weight * 100)}
+                    amountCents={Math.round(expense.value * 100)}
                     kind="expense"
                     icon={category?.icon}
                     iconColor={category?.color}
+                    onClick={() => setSelectedExpense(expense)}
                   />
                 );
               })
@@ -480,6 +507,14 @@ export function CardsPage() {
           }}
         />
       ) : null}
+
+      <ExpenseDetailDialog
+        expense={selectedExpense}
+        open={selectedExpense !== null}
+        onOpenChange={(next) => {
+          if (!next) setSelectedExpense(null);
+        }}
+      />
     </div>
   );
 }

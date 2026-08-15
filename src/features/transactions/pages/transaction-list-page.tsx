@@ -27,7 +27,7 @@ function ExpenseRow({
   category?: Category | null;
   onClick?: () => void;
 }) {
-  const title = expense.description || "Despesa sem descrição";
+  const title = expense.description || category?.name || "Despesa";
   const subtitle = expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : undefined;
   return (
     <TransactionRow
@@ -65,7 +65,7 @@ const PLAIN_THRESHOLD = 60;
 function IncomeRow({ income, category }: { income: Income; category?: Category | null }) {
   return (
     <TransactionRow
-      title={income.description || "Renda sem descrição"}
+      title={income.description || category?.name || "Receita"}
       date={income.date}
       amountCents={Math.round(income.value * 100)}
       kind="income"

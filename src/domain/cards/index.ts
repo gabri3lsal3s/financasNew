@@ -74,13 +74,21 @@ function shiftMonth(month: string, delta: number): string {
 export interface CompetenceSummary {
   /** YYYY-MM */
   month: string;
-  /** Previsto = soma das despesas com peso aplicado (centavos). */
+  /** Previsto Bruto = soma nominal de todas as despesas lançadas (100%, centavos). */
+  previstoBrutoCents: number;
+  /** Previsto Ponderado = soma das despesas com peso de relatório aplicado (centavos). */
+  previstoPonderadoCents: number;
+  /** Previsto = soma das despesas com peso aplicado (alias compatível, centavos). */
   previstoCents: number;
   /** Pago = soma dos pagamentos positivos (centavos). Estornos ficam à parte. */
   pagoCents: number;
   /** Soma dos estornos (valores absolutos, centavos). */
   estornoCents: number;
-  /** Saldo aberto = max(0, previsto − pago) (centavos). */
+  /** Saldo aberto bruto = max(0, previstoBruto − pago) (centavos). */
+  saldoBrutoCents: number;
+  /** Saldo aberto ponderado = max(0, previstoPonderado − pago) (centavos). */
+  saldoPonderadoCents: number;
+  /** Saldo aberto = max(0, previsto − pago) (alias compatível, centavos). */
   saldoCents: number;
 }
 
@@ -105,21 +113,26 @@ export function buildCompetenceSummaries(
 
   const summaries: CompetenceSummary[] = [];
   for (const month of months) {
-    const previsto = expenses
-      .filter((e) => e.bill_competence === month)
-      .reduce((acc, e) => acc + Math.round(e.value * e.report_weight * 100), 0);
+    const monthExpenses = expenses.filter((e) => e.bill_competence === month);
+    const previstoBruto = monthExpenses.reduce((acc, e) => acc + Math.round(e.value * 100), 0);
+    const previstoPonderado = monthExpenses.reduce((acc, e) => acc + Math.round(e.value * e.report_weight * 100), 0);
     const pago = payments
       .filter((p) => p.competence_month === month && p.amount > 0)
       .reduce((acc, p) => acc + Math.round(p.amount * 100), 0);
     const estorno = payments
       .filter((p) => p.competence_month === month && p.amount < 0)
       .reduce((acc, p) => acc + Math.round(-p.amount * 100), 0);
+
     summaries.push({
       month,
-      previstoCents: previsto,
+      previstoBrutoCents: previstoBruto,
+      previstoPonderadoCents: previstoPonderado,
+      previstoCents: previstoPonderado,
       pagoCents: pago,
       estornoCents: estorno,
-      saldoCents: invoiceBalance(previsto, pago),
+      saldoBrutoCents: invoiceBalance(previstoBruto, pago),
+      saldoPonderadoCents: invoiceBalance(previstoPonderado, pago),
+      saldoCents: invoiceBalance(previstoPonderado, pago),
     });
   }
   return summaries.sort((a, b) => (a.month < b.month ? 1 : -1));

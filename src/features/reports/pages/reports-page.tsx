@@ -22,11 +22,13 @@ import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 const toCents = (value: number) => Math.round(value * 100);
 
 type PeriodMode = "month" | "custom";
+type AggregationTab = "category" | "method" | "weekday";
 
-/** Relatórios (§3.6) — agregações por categoria/forma/dia da semana, comparativo e merge de dívidas pagas. */
+/** Relatórios (§3.6) — agregações por categoria/forma/dia da semana, comparativo, visão dupla (Bruto vs. Ponderado) e merge de dívidas pagas. */
 export function ReportsPage() {
   const [month, setMonth] = useState(currentMonth());
   const [mode, setMode] = useState<PeriodMode>("month");
+  const [aggregationTab, setAggregationTab] = useState<AggregationTab>("category");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
@@ -92,38 +94,54 @@ export function ReportsPage() {
       valueCents: toCents(d.amount),
     }));
 
-  const baseIncomeCents = incomes.reduce((acc, i) => acc + toCents(i.value * i.report_weight), 0);
-  const baseExpenseCents = expenses.reduce((acc, e) => acc + toCents(e.value * e.report_weight), 0);
-  const merged = mergePaidDebts(baseIncomeCents, baseExpenseCents, 0, paidDebts);
+  const baseIncomePonderadoCents = incomes.reduce((acc, i) => acc + toCents(i.value * i.report_weight), 0);
+  const baseIncomeBrutoCents = incomes.reduce((acc, i) => acc + toCents(i.value), 0);
+
+  const baseExpensePonderadoCents = expenses.reduce((acc, e) => acc + toCents(e.value * e.report_weight), 0);
+  const baseExpenseBrutoCents = expenses.reduce((acc, e) => acc + toCents(e.value), 0);
+
+  const merged = mergePaidDebts(baseIncomePonderadoCents, baseExpensePonderadoCents, 0, paidDebts, {
+    incomeBrutoCents: baseIncomeBrutoCents,
+    expenseBrutoCents: baseExpenseBrutoCents,
+  });
 
   const prevIncomeCents = (prevIncomes.data ?? []).reduce((acc, i) => acc + toCents(i.value * i.report_weight), 0);
   const prevExpenseCents = (prevExpenses.data ?? []).reduce((acc, e) => acc + toCents(e.value * e.report_weight), 0);
-  const incomeDelta = mode === "month" ? percentChange(merged.incomeCents, prevIncomeCents) : null;
-  const expenseDelta = mode === "month" ? percentChange(merged.expenseCents, prevExpenseCents) : null;
+  const incomeDelta = mode === "month" ? percentChange(merged.incomePonderadoCents, prevIncomeCents) : null;
+  const expenseDelta = mode === "month" ? percentChange(merged.expensePonderadoCents, prevExpenseCents) : null;
 
   const entries = toEntries(expenses);
   const byCategory = aggregateByCategory(entries);
   const byMethod = aggregateByPaymentMethod(entries);
   const byWeekday = aggregateByWeekday(entries);
-  const totalSpent = baseExpenseCents + paidDebts.filter((d) => d.kind === "payable").reduce((a, d) => a + d.valueCents, 0);
+
+  const paidDebtsPayablesCents = paidDebts.filter((d) => d.kind === "payable").reduce((a, d) => a + d.valueCents, 0);
+  const totalSpentPonderado = baseExpensePonderadoCents + paidDebtsPayablesCents;
+  const totalSpentBruto = baseExpenseBrutoCents + paidDebtsPayablesCents;
 
   const categoryRows: ReportRow[] = byCategory.map((c) => ({
     key: c.categoryId,
     label: c.name,
-    valueCents: c.totalCents,
-    percent: totalSpent > 0 ? (c.totalCents / totalSpent) * 100 : 0,
+    brutoCents: c.brutoCents,
+    ponderadoCents: c.ponderadoCents,
+    valueCents: c.ponderadoCents,
+    percent: totalSpentPonderado > 0 ? (c.ponderadoCents / totalSpentPonderado) * 100 : 0,
   }));
   const methodRows: ReportRow[] = byMethod.map((m) => ({
     key: m.method,
     label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
-    valueCents: m.totalCents,
-    percent: totalSpent > 0 ? (m.totalCents / totalSpent) * 100 : 0,
+    brutoCents: m.brutoCents,
+    ponderadoCents: m.ponderadoCents,
+    valueCents: m.ponderadoCents,
+    percent: totalSpentPonderado > 0 ? (m.ponderadoCents / totalSpentPonderado) * 100 : 0,
   }));
   const weekdayRows: ReportRow[] = byWeekday.map((w) => ({
     key: String(w.weekday),
     label: w.label,
-    valueCents: w.totalCents,
-    percent: totalSpent > 0 ? (w.totalCents / totalSpent) * 100 : 0,
+    brutoCents: w.brutoCents,
+    ponderadoCents: w.ponderadoCents,
+    valueCents: w.ponderadoCents,
+    percent: totalSpentPonderado > 0 ? (w.ponderadoCents / totalSpentPonderado) * 100 : 0,
   }));
 
   const periodLabel = mode === "month" ? monthLabel(month) : `${customStart} a ${customEnd}`;
@@ -179,14 +197,29 @@ export function ReportsPage() {
         />
       ) : (
         <>
-          {/* Resumo com merge de dívidas (§4.3) e comparativo */}
+          {/* Resumo com merge de dívidas (§4.3), comparativo e visão dupla (Ponderado vs. Nominal) */}
           <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
-            <SummaryCard label="Rendas" cents={merged.incomeCents} tone="positive" delta={incomeDelta} positiveIsGood />
-            <SummaryCard label="Despesas" cents={merged.expenseCents} tone="negative" delta={expenseDelta} positiveIsGood={false} />
+            <SummaryCard
+              label="Rendas"
+              cents={merged.incomePonderadoCents}
+              brutoCents={merged.incomeBrutoCents}
+              tone="positive"
+              delta={incomeDelta}
+              positiveIsGood
+            />
+            <SummaryCard
+              label="Despesas"
+              cents={merged.expensePonderadoCents}
+              brutoCents={merged.expenseBrutoCents}
+              tone="negative"
+              delta={expenseDelta}
+              positiveIsGood={false}
+            />
             <SummaryCard
               label="Saldo"
-              cents={merged.balanceCents}
-              tone={merged.balanceCents >= 0 ? "positive" : "negative"}
+              cents={merged.balancePonderadoCents}
+              brutoCents={merged.balanceBrutoCents}
+              tone={merged.balancePonderadoCents >= 0 ? "positive" : "negative"}
             />
             <SummaryCard label="Dívidas pagas" cents={paidDebts.reduce((a, d) => a + d.valueCents, 0)} />
           </section>
@@ -197,25 +230,49 @@ export function ReportsPage() {
             </p>
           ) : null}
 
-          {/* Agregações */}
+          {/* Agregações com abas interativas corrigidas */}
           <Tabs
-            value="category"
-            onValueChange={() => {}}
+            value={aggregationTab}
+            onValueChange={(val) => setAggregationTab(val as AggregationTab)}
             items={[
               {
                 value: "category",
                 label: "Por categoria",
-                content: <ReportTable title="Categoria" rows={categoryRows} totalCents={totalSpent} />,
+                content: (
+                  <ReportTable
+                    title="Categoria"
+                    rows={categoryRows}
+                    totalBrutoCents={totalSpentBruto}
+                    totalPonderadoCents={totalSpentPonderado}
+                    totalCents={totalSpentPonderado}
+                  />
+                ),
               },
               {
                 value: "method",
                 label: "Por forma",
-                content: <ReportTable title="Forma de pagamento" rows={methodRows} totalCents={totalSpent} />,
+                content: (
+                  <ReportTable
+                    title="Forma de pagamento"
+                    rows={methodRows}
+                    totalBrutoCents={totalSpentBruto}
+                    totalPonderadoCents={totalSpentPonderado}
+                    totalCents={totalSpentPonderado}
+                  />
+                ),
               },
               {
                 value: "weekday",
                 label: "Por dia da semana",
-                content: <ReportTable title="Dia da semana" rows={weekdayRows} totalCents={totalSpent} />,
+                content: (
+                  <ReportTable
+                    title="Dia da semana"
+                    rows={weekdayRows}
+                    totalBrutoCents={totalSpentBruto}
+                    totalPonderadoCents={totalSpentPonderado}
+                    totalCents={totalSpentPonderado}
+                  />
+                ),
               },
             ]}
           />
@@ -228,13 +285,16 @@ export function ReportsPage() {
 function SummaryCard({
   label,
   cents,
+  brutoCents,
   delta,
   positiveIsGood = true,
   tone,
 }: {
   label: string;
-  /** Valor em centavos — renderiza MoneyText hero (padrão F12). */
+  /** Valor ponderado em centavos — renderiza MoneyText hero (padrão F12). */
   cents: number;
+  /** Valor nominal bruto em centavos (opcional). */
+  brutoCents?: number;
   delta?: number | null;
   positiveIsGood?: boolean;
   tone?: "positive" | "negative";
@@ -254,12 +314,19 @@ function SummaryCard({
         tone={tone ?? "default"}
         className="truncate"
       />
-      {delta !== null && delta !== undefined ? (
-        <span className={cn("num inline-flex items-center gap-0.5 truncate text-[11px]", good ? "text-positive-strong" : "text-critical")}>
-          {delta >= 0 ? <TrendingUp className="size-3" aria-hidden="true" /> : <TrendingDown className="size-3" aria-hidden="true" />}
-          {Math.abs(delta).toFixed(1)}% vs anterior
-        </span>
-      ) : null}
+      <div className="flex flex-col gap-0.5 mt-1 min-h-[18px]">
+        {brutoCents !== undefined && brutoCents !== cents ? (
+          <span className="truncate text-[11px] text-muted-foreground">
+            Nominal: <MoneyText cents={brutoCents} tone="muted" className="text-[11px]" />
+          </span>
+        ) : null}
+        {delta !== null && delta !== undefined ? (
+          <span className={cn("num inline-flex items-center gap-0.5 truncate text-[11px]", good ? "text-positive-strong" : "text-critical")}>
+            {delta >= 0 ? <TrendingUp className="size-3" aria-hidden="true" /> : <TrendingDown className="size-3" aria-hidden="true" />}
+            {Math.abs(delta).toFixed(1)}% vs anterior
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -77,37 +77,51 @@ describe("weightedSum", () => {
 });
 
 describe("aggregateByCategory (§3.6)", () => {
-  it("soma ponderada por categoria, ordenada por total desc", () => {
+  it("soma bruto e ponderado por categoria, ordenada por ponderado desc", () => {
     const totals = aggregateByCategory(entries);
     expect(totals).toHaveLength(2);
     expect(totals[0]).toEqual({
       categoryId: "c2",
       name: "Lazer",
       icon: "lazer",
+      brutoCents: 30_000,
+      ponderadoCents: 30_000,
       totalCents: 30_000,
     });
     expect(totals[1]).toEqual({
       categoryId: "c1",
       name: "Alimentação",
       icon: "alimentacao",
-      totalCents: 20_000, // 10.000 + 10.000 (20.000 × 0,5)
+      brutoCents: 30_000, // 10.000 + 20.000
+      ponderadoCents: 20_000, // 10.000 + (20.000 × 0,5)
+      totalCents: 20_000,
     });
   });
 });
 
 describe("aggregateByPaymentMethod (§3.6)", () => {
-  it("agrupa por forma de pagamento com peso aplicado", () => {
+  it("agrupa por forma de pagamento calculando bruto e ponderado", () => {
     const totals = aggregateByPaymentMethod(entries);
     expect(totals).toHaveLength(2);
-    expect(totals[0]).toEqual({ method: "credit_card", totalCents: 40_000 }); // 10.000 + 30.000
-    expect(totals[1]).toEqual({ method: "pix", totalCents: 10_000 });
+    expect(totals[0]).toEqual({
+      method: "credit_card",
+      brutoCents: 50_000, // 20.000 + 30.000
+      ponderadoCents: 40_000, // 10.000 + 30.000
+      totalCents: 40_000,
+    });
+    expect(totals[1]).toEqual({
+      method: "pix",
+      brutoCents: 10_000,
+      ponderadoCents: 10_000,
+      totalCents: 10_000,
+    });
   });
 
   it("sem forma declarada cai em 'other'", () => {
     const totals = aggregateByPaymentMethod([
       { ...entries[0]!, paymentMethod: null },
     ]);
-    expect(totals).toEqual([{ method: "other", totalCents: 10_000 }]);
+    expect(totals).toEqual([{ method: "other", brutoCents: 10_000, ponderadoCents: 10_000, totalCents: 10_000 }]);
   });
 });
 
@@ -117,36 +131,50 @@ describe("aggregateByWeekday (§3.6/§4.1 — Monday-first)", () => {
     expect(mondayFirstWeekday("2026-08-08")).toBe(5);
   });
 
-  it("retorna os 7 dias sempre presentes, com totais ponderados", () => {
+  it("retorna os 7 dias sempre presentes, com totais brutos e ponderados", () => {
     const totals = aggregateByWeekday(entries);
     expect(totals).toHaveLength(7);
     expect(totals[0]?.label).toBe("Segunda");
-    expect(totals[0]?.totalCents).toBe(10_000);
-    expect(totals[1]?.totalCents).toBe(10_000); // terça (e2 com peso 0,5)
-    expect(totals[5]?.totalCents).toBe(30_000); // sábado
+    expect(totals[0]?.brutoCents).toBe(10_000);
+    expect(totals[0]?.ponderadoCents).toBe(10_000);
+    expect(totals[1]?.label).toBe("Terça");
+    expect(totals[1]?.brutoCents).toBe(20_000);
+    expect(totals[1]?.ponderadoCents).toBe(10_000); // terça (e2 com peso 0,5)
+    expect(totals[5]?.label).toBe("Sábado");
+    expect(totals[5]?.brutoCents).toBe(30_000);
+    expect(totals[5]?.ponderadoCents).toBe(30_000); // sábado
     expect(totals[6]?.totalCents).toBe(0); // domingo sem movimento
   });
 });
 
 describe("mergePaidDebts (§4.3)", () => {
-  it("recebíveis somam às rendas; pagáveis às despesas; saldo recalculado", () => {
+  it("recebíveis somam às rendas; pagáveis às despesas; saldos recalculados", () => {
     const merged = mergePaidDebts(
-      300_000, // rendas
-      150_000, // despesas
+      300_000, // rendas ponderadas
+      150_000, // despesas ponderadas
       50_000, // investimentos
       [
         { kind: "receivable", valueCents: 20_000 },
         { kind: "payable", valueCents: 10_000 },
       ],
+      {
+        incomeBrutoCents: 350_000,
+        expenseBrutoCents: 200_000,
+      },
     );
-    expect(merged.incomeCents).toBe(320_000);
-    expect(merged.expenseCents).toBe(160_000);
-    expect(merged.balanceCents).toBe(110_000); // 320 − 160 − 50
+    expect(merged.incomePonderadoCents).toBe(320_000);
+    expect(merged.incomeBrutoCents).toBe(370_000);
+    expect(merged.expensePonderadoCents).toBe(160_000);
+    expect(merged.expenseBrutoCents).toBe(210_000);
+    expect(merged.balancePonderadoCents).toBe(110_000); // 320 − 160 − 50
+    expect(merged.balanceBrutoCents).toBe(110_000); // 370 − 210 − 50
   });
 
   it("sem dívidas pagas mantém os totais", () => {
     const merged = mergePaidDebts(300_000, 150_000, 50_000, []);
-    expect(merged).toEqual({ incomeCents: 300_000, expenseCents: 150_000, balanceCents: 100_000 });
+    expect(merged.incomeCents).toBe(300_000);
+    expect(merged.expenseCents).toBe(150_000);
+    expect(merged.balanceCents).toBe(100_000);
   });
 });
 

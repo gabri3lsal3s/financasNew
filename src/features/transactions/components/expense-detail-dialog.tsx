@@ -29,6 +29,8 @@ const PAYMENT_OPTIONS = [
   { value: "other", label: "Outro" },
 ];
 
+import { resolveBillCompetence } from "@/domain/competence";
+
 interface ExpenseEditFormProps {
   expense: Expense;
   categories: Category[];
@@ -42,6 +44,7 @@ interface ExpenseEditFormProps {
     category_id: string;
     payment_method: PaymentMethod;
     card_id: string | null;
+    bill_competence: string | null;
   }) => Promise<void>;
 }
 
@@ -59,6 +62,7 @@ function ExpenseEditForm({
   const [categoryId, setCategoryId] = useState(expense.category_id);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(expense.payment_method);
   const [cardId, setCardId] = useState<string>(expense.card_id || "");
+  const [billCompetence, setBillCompetence] = useState<string>(expense.bill_competence || "");
   const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -81,6 +85,17 @@ function ExpenseEditForm({
 
     setFormError(null);
     try {
+      const effectiveCard = cards.find((c) => c.id === cardId);
+      const effectiveCompetence =
+        paymentMethod === "credit_card"
+          ? billCompetence.trim() ||
+            (effectiveCard && date
+              ? resolveBillCompetence(new Date(`${date}T12:00:00`), effectiveCard.closing_day)
+              : date
+                ? date.slice(0, 7)
+                : null)
+          : null;
+
       await onSave({
         description: description.trim(),
         value: valueCents / 100,
@@ -88,6 +103,7 @@ function ExpenseEditForm({
         category_id: categoryId,
         payment_method: paymentMethod,
         card_id: paymentMethod === "credit_card" ? cardId || null : null,
+        bill_competence: effectiveCompetence,
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -158,16 +174,34 @@ function ExpenseEditForm({
       </label>
 
       {paymentMethod === "credit_card" && cards.length > 0 ? (
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Cartão de crédito
-          <Select
-            value={cardId}
-            onValueChange={setCardId}
-            options={cardOptions}
-            placeholder="Selecione o cartão"
-            ariaLabel="Cartão de crédito"
-          />
-        </label>
+        <>
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Cartão de crédito
+            <Select
+              value={cardId}
+              onValueChange={(val) => {
+                setCardId(val);
+                const selectedCard = cards.find((c) => c.id === val);
+                if (selectedCard && date) {
+                  setBillCompetence(resolveBillCompetence(new Date(`${date}T12:00:00`), selectedCard.closing_day));
+                }
+              }}
+              options={cardOptions}
+              placeholder="Selecione o cartão"
+              ariaLabel="Cartão de crédito"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Fatura (Competência)
+            <Input
+              value={billCompetence}
+              onChange={(e) => setBillCompetence(e.target.value)}
+              placeholder="AAAA-MM (ex: 2026-08)"
+              aria-label="Competência da fatura"
+            />
+          </label>
+        </>
       ) : null}
 
       <div className="mt-2 flex items-center justify-end gap-2">
@@ -229,6 +263,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
     category_id: string;
     payment_method: PaymentMethod;
     card_id: string | null;
+    bill_competence: string | null;
   }) => {
     if (!expense) return;
     setError(null);
@@ -278,7 +313,9 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                       variant="value"
                       className="text-3xl font-bold"
                     />
-                    <p className="text-sm font-medium text-foreground">{expense.description || "Sem descrição"}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {expense.description || currentCategory?.name || "Despesa"}
+                    </p>
                   </div>
                   <Button
                     type="button"

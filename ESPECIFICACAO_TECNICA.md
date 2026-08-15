@@ -207,12 +207,17 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 #### 3.3.3 Fatura, pagamentos e estornos
 
+- **Visão dupla da fatura:** no cartão 3D, nos KPIs e no extrato da fatura, o sistema exibe simultaneamente:
+  1. **Fatura Total (Valor Bruto / 100% nominal):** total desembolsado no cartão.
+  2. **Fatura Ponderada (Com Pesos do Relatório):** total considerado após pesos/rateios percentuais.
+- **Detalhamento e edição pela fatura:** a tela de cartões permite clicar em qualquer despesa da fatura para abrir seu diálogo de detalhes, edição completa (categoria, valor, data, forma) e alteração/transição de competência da fatura (`bill_competence`) ou exclusão.
+- **Fallback de descrição:** quando um lançamento não possuir descrição textual, o sistema exibe o nome de sua respectiva categoria como título principal (nunca textos genéricos como "despesa sem descrição").
 - Fatura consolida: despesas do período (com peso aplicado, `base_amount` preservado para auditoria), pagamentos e estornos.
 - **Estorno** = pagamento com valor negativo OU nota iniciando em `[REFUND]`; sem competência explícita, resolvida pela data do pagamento.
 - **Estorno gera renda automática** (RPC `create_refund`, D1): cria receita na categoria reservada **"Estorno"**, vinculada por nota `[REFUND]{id da renda}` — somente-leitura (§3.1); valor no relatório limitado a 0–valor do estorno.
 - Pagamento de fatura: CRUD com competência; total pago abate o previsto.
 - **Seleção do mês de fatura:** mês atual se tiver pendências; senão varre **para trás** (até APP_START_DATE) pelo mês mais recente com pendências; se nenhum, tenta o mês seguinte; por fim, mês atual. Deep-links (`?card=` / `?month=`) sobrepõem.
-- **Saldo aberto** = `max(0, previsto − pago)` (por competência; pagamento a maior nunca gera saldo negativo).
+- **Saldo aberto** = `max(0, previsto − pago)` (por competência; pagamento a maior nunca gera saldo negativo), exibido com saldo bruto e saldo ponderado.
 - **Lembrete de fatura:** alerta com saldo aberto, `overdue` (vencida) ou `near_due` (janela configurável, default 3 dias antes do vencimento).
 
 ### 3.4 Dívidas / Contas a Pagar e Receber

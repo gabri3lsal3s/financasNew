@@ -7,8 +7,10 @@ import type { CreditCard } from "@/types";
 
 export interface CreditCard3DProps {
   card: CreditCard;
-  /** Valor utilizado ou saldo da fatura em centavos. */
+  /** Valor nominal total / bruto utilizado na fatura em centavos. */
   usedLimitCents?: number;
+  /** Valor ponderado com pesos de relatório em centavos. */
+  usedLimitPonderadoCents?: number;
   /** Mês de competência da fatura (YYYY-MM). */
   competenceMonth?: string;
   /** Se o cartão está atualmente selecionado. */
@@ -146,6 +148,7 @@ function CardBrandBadge({ brand, name }: { brand?: string | null; name: string }
 export function CreditCard3D({
   card,
   usedLimitCents = 0,
+  usedLimitPonderadoCents,
   isSelected = false,
   isInteractive = true,
   onClick,
@@ -202,7 +205,7 @@ export function CreditCard3D({
         onKeyDown={handleKeyDown}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        aria-label={`Cartão ${card.name}, fatura atual ${formatCentsAsBRL(usedLimitCents)}`}
+        aria-label={`Cartão ${card.name}, fatura atual ${formatCentsAsBRL(usedLimitCents)}${usedLimitPonderadoCents !== undefined ? `, ponderada ${formatCentsAsBRL(usedLimitPonderadoCents)}` : ""}`}
         aria-pressed={isInteractive ? isSelected : undefined}
         style={{
           transform: tilt.isHovered
@@ -255,14 +258,22 @@ export function CreditCard3D({
             <Radio className="size-4 rotate-90 text-white/70" aria-label="Aproximação" />
           </div>
 
-          {/* Fatura Atual em destaque */}
+          {/* Fatura Atual (Bruto + Ponderada) */}
           <div className="flex flex-col items-end text-right">
-            <span className="text-[10px] uppercase font-medium tracking-wider text-white/60">
-              Fatura Atual
+            <span className="text-[10px] uppercase font-medium tracking-wider text-white/70">
+              Fatura Total (Bruto)
             </span>
             <span className="font-mono text-base sm:text-lg font-bold text-white drop-shadow-xs">
               {formatCentsAsBRL(usedLimitCents)}
             </span>
+            {usedLimitPonderadoCents !== undefined && (
+              <div className="flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded bg-black/35 border border-white/10">
+                <span className="text-[9px] uppercase tracking-wider text-white/70">Ponderada:</span>
+                <span className="font-mono text-[11px] font-semibold text-white">
+                  {formatCentsAsBRL(usedLimitPonderadoCents)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -7,6 +7,11 @@ import type { InvoiceStatus } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import type { CreditCard } from "@/types";
 
+export interface CardLimitUsageEntry {
+  brutoCents: number;
+  ponderadoCents: number;
+}
+
 export interface CreditCardWalletProps {
   cards: CreditCard[];
   selectedCardId: string | null;
@@ -14,8 +19,8 @@ export interface CreditCardWalletProps {
   onEditCard?: (card: CreditCard) => void;
   onDeleteCard?: (card: CreditCard) => void;
   onNewCard?: () => void;
-  /** Mapeamento de limite utilizado em centavos por ID do cartão. */
-  usedLimitMap?: Record<string, number>;
+  /** Mapeamento de limite utilizado em centavos ou objeto { brutoCents, ponderadoCents } por ID do cartão. */
+  usedLimitMap?: Record<string, number | CardLimitUsageEntry>;
   /** Competência da fatura atual (YYYY-MM). */
   competenceMonth?: string;
   /** Status da fatura ("closed" | "open" | "near_due" | "overdue"). */
@@ -186,18 +191,25 @@ export function CreditCardWallet({
         )}
 
         {/* Cartão 3D renderizado em destaque */}
-        {currentCard && (
-          <div className="flex-1 min-w-0 max-w-[360px] sm:max-w-[420px] flex justify-center transform transition-all duration-300">
-            <CreditCard3D
-              card={currentCard}
-              usedLimitCents={usedLimitMap[currentCard.id] ?? 0}
-              competenceMonth={competenceMonth}
-              isSelected={true}
-              isInteractive={true}
-              onClick={() => onSelectCard(currentCard.id)}
-            />
-          </div>
-        )}
+        {currentCard && (() => {
+          const limitEntry = usedLimitMap[currentCard.id];
+          const usedLimitCents = typeof limitEntry === "object" ? limitEntry.brutoCents : (limitEntry ?? 0);
+          const usedLimitPonderadoCents = typeof limitEntry === "object" ? limitEntry.ponderadoCents : undefined;
+
+          return (
+            <div className="flex-1 min-w-0 max-w-[360px] sm:max-w-[420px] flex justify-center transform transition-all duration-300">
+              <CreditCard3D
+                card={currentCard}
+                usedLimitCents={usedLimitCents}
+                usedLimitPonderadoCents={usedLimitPonderadoCents}
+                competenceMonth={competenceMonth}
+                isSelected={true}
+                isInteractive={true}
+                onClick={() => onSelectCard(currentCard.id)}
+              />
+            </div>
+          );
+        })()}
 
         {/* Botão Próximo externo */}
         {cards.length > 1 && (

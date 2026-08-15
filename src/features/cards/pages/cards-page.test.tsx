@@ -71,6 +71,8 @@ vi.mock("@/state", () => ({
   useUpdateCard: () => ({ mutateAsync: updateCardMock, isPending: false }),
   useDeleteCard: () => ({ mutateAsync: deleteCardMock, isPending: false }),
   useDeleteCardPayment: () => ({ mutateAsync: deleteCardPaymentMock, isPending: false }),
+  useUpdateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => {
@@ -78,17 +80,17 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     render(<CardsPage />);
     expect(screen.getByText("Sua Carteira")).toBeInTheDocument();
     expect(screen.getAllByText("Nubank").length).toBeGreaterThan(0);
-    expect(screen.getByText("Fatura Atual")).toBeInTheDocument();
+    expect(screen.getAllByText("Fatura Total (Bruto)").length).toBeGreaterThan(0);
     expect(screen.getByText(/Melhor dia:/i)).toBeInTheDocument();
     expect(screen.getByText(/Fechamento:/i)).toBeInTheDocument();
     expect(screen.getByText(/Vencimento:/i)).toBeInTheDocument();
   });
 
-  it("exibe KPIs da fatura (previsto, pago, saldo aberto)", () => {
+  it("exibe KPIs da fatura (fatura total bruto, pago, saldo aberto)", () => {
     render(<CardsPage />);
-    expect(screen.getByText("Previsto")).toBeInTheDocument();
+    expect(screen.getAllByText("Fatura Total (Bruto)").length).toBeGreaterThan(0);
     expect(screen.getByText("Pago")).toBeInTheDocument();
-    expect(screen.getByText("Saldo aberto")).toBeInTheDocument();
+    expect(screen.getByText("Saldo aberto (Bruto)")).toBeInTheDocument();
     // Previsto R$ 150,00 · Pago R$ 100,00 · Saldo R$ 50,00
     expect(screen.getAllByText("R$ 150,00").length).toBeGreaterThan(0);
     expect(screen.getAllByText("R$ 100,00").length).toBeGreaterThan(0);
@@ -180,6 +182,13 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     await user.click(screen.getByRole("button", { name: /adicionar novo cartão/i }));
     expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
+  });
+
+  it("abre o diálogo de detalhes da despesa ao clicar na linha da fatura", async () => {
+    const user = userEvent.setup();
+    render(<CardsPage />);
+    await user.click(screen.getByText("Supermercado"));
+    expect(screen.getByRole("heading", { name: "Detalhes da despesa" })).toBeInTheDocument();
   });
 
   it("abre o formulário de criação via FAB contextual (?novo=cartao)", () => {

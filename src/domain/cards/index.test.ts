@@ -50,18 +50,22 @@ describe("invoiceStatus", () => {
 });
 
 describe("buildCompetenceSummaries (§3.3.3)", () => {
-  it("aplica o peso de relatório no previsto e preserva base_amount", () => {
+  it("calcula previsto bruto (100%) e previsto ponderado com peso de relatório", () => {
     const summaries = buildCompetenceSummaries(
       [
         { bill_competence: "2026-08", value: 100, report_weight: 1 }, // R$ 100
-        { bill_competence: "2026-08", value: 200, report_weight: 0.5 }, // R$ 100 no relatório
+        { bill_competence: "2026-08", value: 200, report_weight: 0.5 }, // R$ 200 bruto / R$ 100 ponderado
       ],
       [],
     );
     const august = summaries.find((s) => s.month === "2026-08");
+    expect(august?.previstoBrutoCents).toBe(30000); // 100 + 200 = 300 reais
+    expect(august?.previstoPonderadoCents).toBe(20000); // 100 + 100 = 200 reais
     expect(august?.previstoCents).toBe(20000);
-    expect(august?.pagoCents).toBe(0);
+    expect(august?.saldoBrutoCents).toBe(30000);
+    expect(august?.saldoPonderadoCents).toBe(20000);
     expect(august?.saldoCents).toBe(20000);
+    expect(august?.pagoCents).toBe(0);
   });
 
   it("soma pagamentos positivos e estornos (negativos) à parte", () => {

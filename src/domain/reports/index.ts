@@ -50,6 +50,11 @@ export interface CategoryTotal {
   categoryId: string;
   name: string;
   icon?: string | null;
+  /** Total nominal bruto (100%) em centavos. */
+  brutoCents: number;
+  /** Total ponderado (com pesos) em centavos. */
+  ponderadoCents: number;
+  /** Alias retrocompatível para ponderadoCents. */
   totalCents: number;
 }
 
@@ -58,40 +63,67 @@ export function entryCents(entry: Pick<ReportEntry, "baseCents" | "weight">): nu
   return weightedCents(entry.baseCents, entry.weight);
 }
 
-/** Agrega por categoria (ponderado), ordenado por total decrescente. */
+/** Agrega por categoria (bruto e ponderado), ordenado por total ponderado decrescente. */
 export function aggregateByCategory(entries: readonly ReportEntry[]): CategoryTotal[] {
-  const map = new Map<string, CategoryTotal>();
+  const map = new Map<string, { categoryId: string; name: string; icon?: string | null; brutoCents: number; ponderadoCents: number }>();
   for (const entry of entries) {
     const existing = map.get(entry.categoryId);
+    const bruto = entry.baseCents;
+    const ponderado = entryCents(entry);
     if (existing) {
-      existing.totalCents += entryCents(entry);
+      existing.brutoCents += bruto;
+      existing.ponderadoCents += ponderado;
     } else {
       map.set(entry.categoryId, {
         categoryId: entry.categoryId,
         name: entry.categoryName,
         icon: entry.categoryIcon,
-        totalCents: entryCents(entry),
+        brutoCents: bruto,
+        ponderadoCents: ponderado,
       });
     }
   }
-  return [...map.values()].sort((a, b) => b.totalCents - a.totalCents);
+  return [...map.values()]
+    .map((item) => ({
+      ...item,
+      totalCents: item.ponderadoCents,
+    }))
+    .sort((a, b) => b.ponderadoCents - a.ponderadoCents);
 }
 
 export interface PaymentMethodTotal {
   method: string;
+  /** Total nominal bruto (100%) em centavos. */
+  brutoCents: number;
+  /** Total ponderado (com pesos) em centavos. */
+  ponderadoCents: number;
+  /** Alias retrocompatível para ponderadoCents. */
   totalCents: number;
 }
 
-/** Agrega por forma de pagamento (ponderado), ordenado por total decrescente. */
+/** Agrega por forma de pagamento (bruto e ponderado), ordenado por total ponderado decrescente. */
 export function aggregateByPaymentMethod(entries: readonly ReportEntry[]): PaymentMethodTotal[] {
-  const map = new Map<string, number>();
+  const map = new Map<string, { brutoCents: number; ponderadoCents: number }>();
   for (const entry of entries) {
     const method = entry.paymentMethod ?? "other";
-    map.set(method, (map.get(method) ?? 0) + entryCents(entry));
+    const existing = map.get(method);
+    const bruto = entry.baseCents;
+    const ponderado = entryCents(entry);
+    if (existing) {
+      existing.brutoCents += bruto;
+      existing.ponderadoCents += ponderado;
+    } else {
+      map.set(method, { brutoCents: bruto, ponderadoCents: ponderado });
+    }
   }
   return [...map.entries()]
-    .map(([method, totalCents]) => ({ method, totalCents }))
-    .sort((a, b) => b.totalCents - a.totalCents);
+    .map(([method, totals]) => ({
+      method,
+      brutoCents: totals.brutoCents,
+      ponderadoCents: totals.ponderadoCents,
+      totalCents: totals.ponderadoCents,
+    }))
+    .sort((a, b) => b.ponderadoCents - a.ponderadoCents);
 }
 
 /** Índice do dia da semana Monday-first: 0=Segunda … 6=Domingo (§4.1). */
@@ -106,15 +138,29 @@ export interface WeekdayTotal {
   /** 0=Segunda … 6=Domingo. */
   weekday: number;
   label: string;
+  /** Total nominal bruto (100%) em centavos. */
+  brutoCents: number;
+  /** Total ponderado (com pesos) em centavos. */
+  ponderadoCents: number;
+  /** Alias retrocompatível para ponderadoCents. */
   totalCents: number;
 }
 
 /** Agrega por dia da semana (Monday-first), com todos os 7 dias presentes. */
 export function aggregateByWeekday(entries: readonly ReportEntry[]): WeekdayTotal[] {
-  const totals = Array.from({ length: 7 }, (_, weekday) => ({ weekday, label: WEEKDAY_LABELS[weekday] ?? "", totalCents: 0 }));
+  const totals: WeekdayTotal[] = Array.from({ length: 7 }, (_, weekday) => ({
+    weekday,
+    label: WEEKDAY_LABELS[weekday] ?? "",
+    brutoCents: 0,
+    ponderadoCents: 0,
+    totalCents: 0,
+  }));
   for (const entry of entries) {
     const weekday = mondayFirstWeekday(entry.date);
-    totals[weekday]!.totalCents += entryCents(entry);
+    const target = totals[weekday]!;
+    target.brutoCents += entry.baseCents;
+    target.ponderadoCents += entryCents(entry);
+    target.totalCents = target.ponderadoCents;
   }
   return totals;
 }
@@ -130,9 +176,20 @@ export interface PaidDebt {
 }
 
 export interface MergedTotals {
+  /** Total bruto (100%) de rendas em centavos. */
+  incomeBrutoCents: number;
+  /** Total ponderado (com pesos) de rendas em centavos. */
+  incomePonderadoCents: number;
   incomeCents: number;
+  /** Total bruto (100%) de despesas em centavos. */
+  expenseBrutoCents: number;
+  /** Total ponderado (com pesos) de despesas em centavos. */
+  expensePonderadoCents: number;
   expenseCents: number;
-  /** saldo = rendas − despesas − investimentos (recalculado após merge). */
+  /** saldo bruto = rendas brutas − despesas brutas − investimentos. */
+  balanceBrutoCents: number;
+  /** saldo ponderado = rendas ponderadas − despesas ponderadas − investimentos. */
+  balancePonderadoCents: number;
   balanceCents: number;
 }
 
@@ -145,14 +202,36 @@ export function mergePaidDebts(
   baseExpenseCents: number,
   investmentCents: number,
   paidDebts: readonly PaidDebt[],
+  options?: {
+    incomeBrutoCents?: number;
+    expenseBrutoCents?: number;
+  },
 ): MergedTotals {
-  let income = baseIncomeCents;
-  let expense = baseExpenseCents;
+  let incomePonderado = baseIncomeCents;
+  let expensePonderado = baseExpenseCents;
+  let incomeBruto = options?.incomeBrutoCents ?? baseIncomeCents;
+  let expenseBruto = options?.expenseBrutoCents ?? baseExpenseCents;
+
   for (const debt of paidDebts) {
-    if (debt.kind === "receivable") income += debt.valueCents;
-    else expense += debt.valueCents;
+    if (debt.kind === "receivable") {
+      incomePonderado += debt.valueCents;
+      incomeBruto += debt.valueCents;
+    } else {
+      expensePonderado += debt.valueCents;
+      expenseBruto += debt.valueCents;
+    }
   }
-  return { incomeCents: income, expenseCents: expense, balanceCents: income - expense - investmentCents };
+  return {
+    incomeBrutoCents: incomeBruto,
+    incomePonderadoCents: incomePonderado,
+    incomeCents: incomePonderado,
+    expenseBrutoCents: expenseBruto,
+    expensePonderadoCents: expensePonderado,
+    expenseCents: expensePonderado,
+    balanceBrutoCents: incomeBruto - expenseBruto - investmentCents,
+    balancePonderadoCents: incomePonderado - expensePonderado - investmentCents,
+    balanceCents: incomePonderado - expensePonderado - investmentCents,
+  };
 }
 
 // ---------------------------------------------------------------------------
