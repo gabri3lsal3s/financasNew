@@ -8,7 +8,7 @@ export { useIncomeGoals, incomeGoalsKey } from "./queries/use-income-goals";
 export { useExpenses, useExpense, useExpensesByRange, expensesKey } from "./queries/use-expenses";
 export { useIncomes, useIncomesByRange, incomesKey } from "./queries/use-incomes";
 export { useCreateExpense, useDeleteExpense, useUpdateExpense } from "./mutations/use-expense-mutations";
-export { useCreateIncome, useDeleteIncome } from "./mutations/use-income-mutations";
+export { useCreateIncome, useDeleteIncome, useUpdateIncome } from "./mutations/use-income-mutations";
 export { useCreateCard, useUpdateCard, useDeleteCard, useCreateCardPayment, useCreateRefund, useDeleteCardPayment } from "./mutations/use-card-mutations";
 export {
   useCreateDebt,

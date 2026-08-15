@@ -12,6 +12,7 @@ import { getErrorMessage } from "@/services/errors";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useCategories, useExpenses, useIncomes } from "@/state";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
+import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
 import type { Category, Expense, Income } from "@/types";
 
 function sumCents(items: readonly { value: number }[]): number {
@@ -63,16 +64,42 @@ const ROW_HEIGHT = 64;
 // Acima deste total renderiza tudo direto (sem janela) — meses comuns.
 const PLAIN_THRESHOLD = 60;
 
-function IncomeRow({ income, category }: { income: Income; category?: Category | null }) {
+function IncomeRow({
+  income,
+  category,
+  onClick,
+}: {
+  income: Income;
+  category?: Category | null;
+  onClick?: () => void;
+}) {
+  const title = income.description || category?.name || "Receita";
+  // Rendas automáticas (source_ref, ex.: estorno [REFUND]) são somente-leitura.
+  const isReadOnly = income.source_ref != null;
   return (
     <TransactionRow
-      title={income.description || category?.name || "Receita"}
+      title={title}
       date={income.date}
       amountCents={Math.round(income.value * 100)}
       reportWeight={income.report_weight}
       kind="income"
       icon={category?.icon}
       iconColor={category?.color}
+      onClick={onClick}
+      swipeActions={
+        isReadOnly ? undefined : (
+          <Button
+            type="button"
+            variant="destructive"
+            aria-label={`Excluir ${title}`}
+            onClick={onClick}
+            className="h-full w-24 rounded-none"
+          >
+            <Trash2 aria-hidden="true" />
+            Excluir
+          </Button>
+        )
+      }
     />
   );
 }
@@ -80,6 +107,7 @@ function IncomeRow({ income, category }: { income: Income; category?: Category |
 export function TransactionListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
   const { highlightId } = useHighlightTarget("q");
 
   // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
@@ -184,7 +212,11 @@ export function TransactionListPage() {
                 aria-label="Receitas do mês"
                 renderRow={(income) => (
                   <HighlightRow highlightId={highlightId} id={income.id}>
-                    <IncomeRow income={income} category={categoryById.get(income.category_id)} />
+                    <IncomeRow
+                      income={income}
+                      category={categoryById.get(income.category_id)}
+                      onClick={() => setSelectedIncome(income)}
+                    />
                   </HighlightRow>
                 )}
               />
@@ -233,6 +265,14 @@ export function TransactionListPage() {
         open={selectedExpense !== null}
         onOpenChange={(open) => {
           if (!open) setSelectedExpense(null);
+        }}
+      />
+
+      <IncomeDetailDialog
+        income={selectedIncome}
+        open={selectedIncome !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedIncome(null);
         }}
       />
     </div>

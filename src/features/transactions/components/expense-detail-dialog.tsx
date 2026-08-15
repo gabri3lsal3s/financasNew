@@ -8,6 +8,8 @@ import { getErrorMessage } from "@/services/errors";
 import { useCategories, useCreditCards, useDeleteExpense, useUpdateExpense } from "@/state";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
+import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
+import { ReportWeightField } from "./report-weight-field";
 import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod } from "@/types";
 
 export interface ExpenseDetailDialogProps {
@@ -29,16 +31,6 @@ const PAYMENT_OPTIONS = [
   { value: "cash", label: "Dinheiro" },
   { value: "transfer", label: "Transferência" },
   { value: "other", label: "Outro" },
-];
-
-const WEIGHT_PRESETS = [1, 0.75, 0.5, 0.25, 0];
-const WEIGHT_OPTIONS = [
-  { value: "1", label: "100% (conta integralmente)" },
-  { value: "0.75", label: "75%" },
-  { value: "0.5", label: "50%" },
-  { value: "0.25", label: "25%" },
-  { value: "0", label: "Não contar nos relatórios (0%)" },
-  { value: "custom", label: "Personalizado (definir valor em R$)…" },
 ];
 
 interface ExpenseEditFormProps {
@@ -74,7 +66,7 @@ function ExpenseEditForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(expense.payment_method);
   const [cardId, setCardId] = useState<string>(expense.card_id || "");
   const [billCompetence, setBillCompetence] = useState<string>(expense.bill_competence || "");
-  const isPreset = WEIGHT_PRESETS.includes(expense.report_weight);
+  const isPreset = REPORT_WEIGHT_PRESETS.includes(expense.report_weight);
   const [weightMode, setWeightMode] = useState<string>(isPreset ? String(expense.report_weight) : "custom");
   const [reportCustomAmountCents, setReportCustomAmountCents] = useState(
     Math.round(expense.value * expense.report_weight * 100),
@@ -231,36 +223,20 @@ function ExpenseEditForm({
         </>
       ) : null}
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Peso no relatório
-        <Select
-          value={weightMode}
-          onValueChange={(val) => {
-            setWeightMode(val);
-            if (val === "custom" && reportCustomAmountCents === 0) {
-              setReportCustomAmountCents(valueCents);
-            }
-          }}
-          options={WEIGHT_OPTIONS}
-          ariaLabel="Peso no relatório"
-        />
-      </label>
-
-      {weightMode === "custom" ? (
-        <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-raised p-3">
-          <span className="text-xs font-medium text-foreground">Valor gasto real considerado no relatório</span>
-          <MoneyInput
-            cents={reportCustomAmountCents}
-            onCentsChange={setReportCustomAmountCents}
-            aria-label="Valor considerado no relatório"
-          />
-          {valueCents > 0 ? (
-            <span className="text-xs text-muted-foreground">
-              Equivale a {Math.round((reportCustomAmountCents / valueCents) * 100)}% do valor total ({formatCentsAsBRL(valueCents)}).
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+      <ReportWeightField
+        valueCents={valueCents}
+        mode={weightMode}
+        onModeChange={(val) => {
+          setWeightMode(val);
+          if (val === "custom" && reportCustomAmountCents === 0) {
+            setReportCustomAmountCents(valueCents);
+          }
+        }}
+        customAmountCents={reportCustomAmountCents}
+        onCustomAmountChange={setReportCustomAmountCents}
+        customLabel="Valor gasto real considerado no relatório"
+        ariaLabelCustom="Valor considerado no relatório"
+      />
 
       <div className="mt-2 flex items-center justify-end gap-2">
         <Button
