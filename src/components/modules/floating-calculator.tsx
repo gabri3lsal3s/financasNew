@@ -1,14 +1,9 @@
-import { useRef, useState, useSyncExternalStore } from "react";
-import { Calculator as CalculatorIcon, Check, History } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { Check, History } from "lucide-react";
 import { Button, Modal, NumberStepper } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CalculatorKeypad } from "@/components/modules/calculator-keypad";
-import { useDraggable } from "@/hooks/use-draggable";
-import {
-  getCalculatorTarget,
-  injectCalculatedValue,
-  subscribeCalculatorTarget,
-} from "@/services/calculator-bridge";
+import { injectCalculatedValue } from "@/services/calculator-bridge";
 import { isCalculatorOpen, setCalculatorOpen, subscribeCalculatorOpen } from "@/services/calculator-open";
 import { triggerHaptic } from "@/services/haptics";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -25,39 +20,17 @@ import {
 } from "@/domain/calculator";
 import type { CalculatorState, HistoryEntry } from "@/domain/calculator";
 
-const FAB_SIZE = 56;
-
-/** Calculadora flutuante (F9): FAB arrastável com snap às bordas + painel
- * retrátil. "Usar valor" injeta o resultado em centavos no MoneyInput ativo.
- * O estado de abertura é compartilhado (calculator-open): o botão do header
- * (CalculatorButton) e o FAB abrem o mesmo painel. O FAB usa z-[60] para
- * ficar visível acima de modais de formulário (z-50).
- *
- * Visibilidade do FAB (pós-F10): aparece SOMENTE quando há um campo de valor
- * ativo (MoneyInput focado) — ou seja, em modais/fluxos onde a calculadora
- * pode injetar dados. Fora disso, a calculadora é acessada pelo ícone do
- * header (CalculatorButton). */
+/**
+ * Calculadora (F9): modal acessível pelo header (CalculatorButton) e pelo
+ * botão de calculadora nos cabeçalhos de todos os modais do app.
+ * "Usar valor" injeta o resultado em centavos no MoneyInput focado/ativo.
+ */
 export function FloatingCalculator() {
-  // Store externo — abrir via header OU FAB abre o mesmo painel.
   const open = useSyncExternalStore(subscribeCalculatorOpen, isCalculatorOpen);
-  // FAB visível apenas com campo ativo registrado (foco em MoneyInput).
-  const hasTarget = useSyncExternalStore(subscribeCalculatorTarget, () => getCalculatorTarget() !== null);
   const [state, setState] = useState<CalculatorState>(INITIAL_STATE);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [installments, setInstallments] = useState(1);
   const [plan, setPlan] = useState<string | null>(null);
-
-  // FAB acima da BottomNav (mobile) e do ScrollToTop (desktop).
-  const bottomInset = typeof window !== "undefined" && window.innerWidth >= 1024 ? 72 : 128;
-  const dragMovedRef = useRef(false);
-  const draggable = useDraggable({
-    size: FAB_SIZE,
-    margin: 8,
-    bottomInset,
-    onDragStart: () => {
-      dragMovedRef.current = true;
-    },
-  });
 
   const handleEquals = () => {
     const previous = state;
@@ -96,36 +69,14 @@ export function FloatingCalculator() {
   const displayCents = decimalToCents(state.display);
 
   return (
-    <>
-      {/* FAB arrastável — apenas com campo de valor ativo (pós-F10) */}
-      {hasTarget ? (
-        <button
-          type="button"
-          aria-label="Abrir calculadora"
-          title="Calculadora"
-          className="fixed z-floating-tools flex items-center justify-center rounded-full border-[1.5px] border-primary bg-surface text-primary shadow-lg transition-transform active:scale-95 hover:border-primary-strong hover:text-primary-strong transform-gpu"
-          style={{ left: draggable.position.x, top: draggable.position.y, width: FAB_SIZE, height: FAB_SIZE }}
-          {...draggable.pointerHandlers}
-          onClick={() => {
-            if (dragMovedRef.current) {
-              dragMovedRef.current = false;
-              return;
-            }
-            setCalculatorOpen(true);
-            triggerHaptic("light");
-          }}
-        >
-          <CalculatorIcon className="size-5" aria-hidden="true" />
-        </button>
-      ) : null}
-
-      <Modal
-        open={open}
-        onOpenChange={setCalculatorOpen}
-        title="Calculadora"
-        description="Use o resultado no campo em foco do formulário."
-        elevated
-      >
+    <Modal
+      open={open}
+      onOpenChange={setCalculatorOpen}
+      title="Calculadora"
+      description="Use o resultado no campo em foco do formulário."
+      elevated
+      hideCalculator
+    >
         <div className="mt-4 flex flex-col gap-4">
           {/* Display */}
           <div className="flex flex-col gap-1 rounded-xl border border-border bg-muted p-4">
@@ -203,6 +154,5 @@ export function FloatingCalculator() {
           </Button>
         </div>
       </Modal>
-    </>
   );
 }

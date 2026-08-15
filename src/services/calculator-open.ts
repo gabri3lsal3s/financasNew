@@ -1,8 +1,8 @@
 /**
- * Estado de abertura da calculadora flutuante (pós-F10).
+ * Estado de abertura da calculadora.
  *
  * Store externo mínimo (subscribe/getSnapshot) para que o botão do header
- * (`CalculatorButton`) e o FAB flutuante abram o MESMO painel — o
+ * (`CalculatorButton`) e os botões nos cabeçalhos de modais abram o MESMO painel — o
  * `FloatingCalculator` consome via `useSyncExternalStore`.
  */
 

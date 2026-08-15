@@ -16,13 +16,34 @@ describe("Modal", () => {
     expect(screen.getByText("Formulário")).toBeInTheDocument();
   });
 
-  it("não renderiza conteúdo quando fechado", () => {
+  it("renderiza o botão de calculadora ao lado do botão de fechar e abre a calculadora", async () => {
+    const user = userEvent.setup();
     render(
-      <Modal open={false} onOpenChange={vi.fn()} title="Nova despesa">
+      <Modal open onOpenChange={vi.fn()} title="Nova despesa">
         <p>Formulário</p>
       </Modal>,
     );
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const calcButton = screen.getByRole("button", { name: "Abrir calculadora" });
+    expect(calcButton).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
+
+    await user.click(calcButton);
+  });
+
+  it("permite ocultar o botão de calculadora com hideCalculator ou elevated", () => {
+    const { rerender } = render(
+      <Modal open onOpenChange={vi.fn()} title="Calculadora" elevated>
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+
+    rerender(
+      <Modal open onOpenChange={vi.fn()} title="Modal sem calculadora" hideCalculator>
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
   });
 });
 

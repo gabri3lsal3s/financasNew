@@ -26,34 +26,19 @@ afterEach(() => {
   if (target) unregisterCalculatorTarget(target);
 });
 
-async function openCalculator(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Abrir calculadora" }));
+async function openCalculator() {
+  act(() => {
+    setCalculatorOpen(true);
+  });
   expect(screen.getByText("Calculadora")).toBeInTheDocument();
 }
 
 describe("FloatingCalculator (F9)", () => {
-  it("o FAB só aparece com campo de valor ativo (MoneyInput focado)", () => {
-    const { unmount } = render(<FloatingCalculator />);
-    // Sem campo registrado: FAB oculto (calculadora acessível pelo header).
-    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
-
-    let unregister: () => void = () => undefined;
-    act(() => {
-      unregister = registerFakeTarget();
-    });
-    expect(screen.getByRole("button", { name: "Abrir calculadora" })).toBeInTheDocument();
-
-    act(() => unregister());
-    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
-    unmount();
-  });
-
-  it("o FAB abre o painel da calculadora", async () => {
-    registerFakeTarget();
-    const user = userEvent.setup();
+  it("abre e fecha o painel da calculadora via store", async () => {
     render(<FloatingCalculator />);
+    expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
 
-    await openCalculator(user);
+    await openCalculator();
     expect(screen.getByRole("button", { name: "Dígito 7" })).toBeInTheDocument();
   });
 
