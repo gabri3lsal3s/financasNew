@@ -36,12 +36,16 @@ function RequireAuth() {
     return <Navigate to="/entrar" replace state={{ from: location }} />;
   }
 
+  // Wizard de tela cheia: fluxo focado, sem scroll-to-top (o botão flutuaria
+  // sobre o painel centralizado do desktop).
+  const isWizard = location.pathname === "/transacoes/novo";
+
   return (
     <>
       {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas,
           incluindo o wizard de tela cheia (fora do PageShell). */}
       <FloatingCalculator />
-      <ScrollToTopButton />
+      <ScrollToTopButton hidden={isWizard} />
       <Outlet />
     </>
   );

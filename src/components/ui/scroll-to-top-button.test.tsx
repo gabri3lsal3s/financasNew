@@ -50,4 +50,23 @@ describe("ScrollToTopButton (F9 — Decisão D)", () => {
 
     expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: "auto" });
   });
+
+  it("expõe o atributo data-scroll-to-top (alvo da regra CSS de modais)", async () => {
+    stubScrollY(420);
+    const { container } = render(<ScrollToTopButton />);
+    fireEvent.scroll(window);
+
+    const button = await screen.findByRole("button", { name: "Voltar ao topo" });
+    expect(button).toHaveAttribute("data-scroll-to-top");
+    expect(container.querySelector("[data-scroll-to-top]")).not.toBeNull();
+  });
+
+  it("não renderiza quando hidden (ex.: wizard de tela cheia)", async () => {
+    stubScrollY(420);
+    const { container } = render(<ScrollToTopButton hidden />);
+    fireEvent.scroll(window);
+
+    expect(container.querySelector("button")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Voltar ao topo" })).not.toBeInTheDocument();
+  });
 });

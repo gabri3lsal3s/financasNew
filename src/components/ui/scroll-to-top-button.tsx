@@ -5,6 +5,8 @@ import { useScrollPosition } from "@/hooks/use-scroll-position";
 export interface ScrollToTopButtonProps {
   /** Limiar de rolagem (px) para exibir (default 300). */
   threshold?: number;
+  /** Oculta o botão (ex.: fluxos de tela cheia como o wizard de lançamento). */
+  hidden?: boolean;
   className?: string;
 }
 
@@ -17,14 +19,17 @@ function prefersReducedMotion(): boolean {
  * posicionado acima da BottomNav no mobile e no canto inferior direito no
  * desktop. Rolagem suave (instantânea com prefers-reduced-motion).
  */
-export function ScrollToTopButton({ threshold = 300, className }: ScrollToTopButtonProps) {
+export function ScrollToTopButton({ threshold = 300, hidden = false, className }: ScrollToTopButtonProps) {
   const visible = useScrollPosition(threshold);
 
-  if (!visible) return null;
+  // Fluxos de tela cheia (ex.: wizard) não precisam do botão — e ele nunca
+  // deve aparecer sobre modais (regra CSS em globals.css: `:has()` no body).
+  if (!visible || hidden) return null;
 
   return (
     <button
       type="button"
+      data-scroll-to-top=""
       aria-label="Voltar ao topo"
       title="Voltar ao topo"
       onClick={() => {
