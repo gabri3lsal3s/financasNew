@@ -171,16 +171,16 @@ export function BudgetsPage() {
               {rows.map((row) => {
                 const status = budgetStatus(row.spentCents, row.limitCents);
                 return (
-                  <div key={row.category.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                  <div key={row.category.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0">
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                         <CategoryIcon icon={row.category.icon} color={row.category.color} />
-                        <p className="truncate text-sm font-medium text-foreground">{row.category.name}</p>
+                        <p className="truncate text-sm font-medium text-foreground min-w-0">{row.category.name}</p>
                         {row.inherited ? (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">herdado</span>
+                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">herdado</span>
                         ) : null}
                         {row.limitCents > 0 ? (
-                          <span className={`text-[10px] font-medium ${status === "exceeded" ? "text-critical" : "text-muted-foreground"}`}>
+                          <span className={`shrink-0 text-[10px] font-medium ${status === "exceeded" ? "text-critical" : "text-muted-foreground"}`}>
                             {BUDGET_STATUS_LABELS[status]}
                           </span>
                         ) : null}
@@ -191,6 +191,7 @@ export function BudgetsPage() {
                       type="button"
                       size="icon"
                       variant="ghost"
+                      className="shrink-0"
                       aria-label={`Editar limite de ${row.category.name}`}
                       onClick={() => setLimitFor(row.category)}
                     >
@@ -315,18 +316,18 @@ function IncomeGoalRow({
   const removeGoal = useRemoveIncomeGoal();
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <CategoryIcon icon={category.icon} color={category.color} />
-          <p className="text-sm font-medium text-foreground">{category.name}</p>
+          <p className="truncate text-sm font-medium text-foreground min-w-0">{category.name}</p>
         </div>
-        <span className={`text-xs font-medium ${deficit ? "text-critical" : expectedCents > 0 ? "text-positive-strong" : "text-muted-foreground"}`}>
+        <span className={`shrink-0 text-xs font-medium ${deficit ? "text-critical" : expectedCents > 0 ? "text-positive-strong" : "text-muted-foreground"}`}>
           {statusLabel}
         </span>
       </div>
-      <div className="flex items-end gap-2">
-        <p className="num flex-1 text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2.5 min-w-0">
+        <p className="num text-sm text-muted-foreground min-w-0">
           Realizado: <MoneyText cents={realizedCents} tone="default" />
           {expectedCents > 0 ? (
             <>
@@ -334,9 +335,9 @@ function IncomeGoalRow({
             </>
           ) : null}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <MoneyInput
-            className="w-40"
+            className="w-full sm:w-40"
             cents={cents}
             onCentsChange={setCents}
             aria-label={`Meta de renda de ${category.name}`}

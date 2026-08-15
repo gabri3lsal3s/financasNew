@@ -50,23 +50,23 @@ export function ProjectionLine({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="flex flex-col gap-0.5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
+        <div className="flex flex-col gap-0.5 min-w-0">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Diário disponível</span>
-          <span className="num text-lg font-semibold text-foreground">
-            {dailyCents === null ? "—" : <MoneyText cents={dailyCents} tone="default" className="text-lg" />}
+          <span className="num text-base sm:text-lg font-semibold text-foreground truncate">
+            {dailyCents === null ? "—" : <MoneyText cents={dailyCents} tone="default" className="text-base sm:text-lg" />}
           </span>
         </div>
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0.5 min-w-0">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Projeção do mês</span>
-          <span className="num text-lg font-semibold text-foreground">
-            {projectedExpensesCents === null ? "—" : <MoneyText cents={projectedExpensesCents} tone="default" className="text-lg" />}
+          <span className="num text-base sm:text-lg font-semibold text-foreground truncate">
+            {projectedExpensesCents === null ? "—" : <MoneyText cents={projectedExpensesCents} tone="default" className="text-base sm:text-lg" />}
           </span>
         </div>
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0.5 min-w-0">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Superávit projetado</span>
-          <span className="num text-lg font-semibold">
-            {surplusCents === null ? "—" : <MoneyText cents={surplusCents} tone={surplusCents >= 0 ? "positive" : "negative"} className="text-lg" />}
+          <span className="num text-base sm:text-lg font-semibold truncate">
+            {surplusCents === null ? "—" : <MoneyText cents={surplusCents} tone={surplusCents >= 0 ? "positive" : "negative"} className="text-base sm:text-lg" />}
           </span>
         </div>
       </div>

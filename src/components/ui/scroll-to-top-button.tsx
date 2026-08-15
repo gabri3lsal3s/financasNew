@@ -27,7 +27,14 @@ export function ScrollToTopButton({ threshold = 300, className }: ScrollToTopBut
       type="button"
       aria-label="Voltar ao topo"
       title="Voltar ao topo"
-      onClick={() => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" })}
+      onClick={() => {
+        const behavior = prefersReducedMotion() ? "auto" : "smooth";
+        window.scrollTo({ top: 0, behavior });
+        const main = document.querySelector("main");
+        if (main) {
+          main.scrollTo({ top: 0, behavior });
+        }
+      }}
       className={cn(
         "fixed bottom-20 right-4 z-sticky flex size-10 items-center justify-center rounded-full border border-border bg-surface text-foreground shadow-lg transition-colors hover:bg-surface-hover lg:bottom-6 lg:right-6",
         className,

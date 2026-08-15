@@ -32,6 +32,7 @@
 | **F10** | Identidade Visual Oficial "Guia Financeiro" | Reestilização dos 3 temas (Petróleo + Teal + Ouro + Coral), BrandLogo, assets PWA e contraste AA | Brand & Identidade |
 | **F11** | Centro de Personalização, Experiência Tátil & Micro-Interações Vivas | Acentos de cor, estilos de card, botões com ripple/spring, abas com sliding pill, hub /configuracoes e dashboard modular | Personalização & Micro-Interações |
 | **F12** | Polimento de UI/UX, Design System & Experiência Visual | Superfícies/profundidade consistentes, hierarquia tipográfica de dados financeiros, empty states e skeletons por contexto, micro-interações de entrada/saída e feedback de escrita, harmonização claro/escuro/OLED | Polimento & Design System |
+| **F13** | Hotfixes Mobile, Layout Fixo & Consistência | Header & BottomNav fixos com scroll interno no main, Scroll-to-Top unificado, salvaguarda de overflow, ícones dinâmicos de categoria e edição completa de despesas | Mobile Shell, Categorias & Edição |
 
 ---
 
@@ -737,6 +738,29 @@
 - [x] **Identidade visual & assets oficiais padronizados:** pipeline de geração em `scripts/generate-icons.mjs` conectado aos assets da pasta `identidadeVisual/` (fundo branco puro para PWA e transparência vetorial para marca/logos em `public/brand/` e `public/pwa/icons/`), integrado com alta nitidez no `BrandLogo`, Header, Sidebar e AuthShell.
 - [x] **Paleta de alto contraste para categorias e CategoryDonut:** tokens `--cat-1..10` atualizados nos 3 temas com saturação e contraste aprimorados para perfeita diferenciação cromática; `CategoryDonut` refinado com trilha limpa, tipografia de alta legibilidade e barras de progresso com contraste destacado.
 - [x] **DailyFlowChart sem sombras/gradientes:** remoção de áreas sombreadas sob as linhas do fluxo diário, preservando exclusivamente as curvas Bézier suaves e linhas guias horizontais limpas para estética minimalista e profissional.
+
+**Progresso — Fase 13 (2026-08-15) — Hotfixes de Layout Mobile, Overflow, Consistência de Dados e Edição de Despesas:**
+- [x] **Fixação da Estrutura de Navegação & Viewport Mobile:** `PageShell` atualizado com contêiner `h-dvh flex flex-col overflow-hidden text-foreground`. Header fixo (`shrink-0`), área de conteúdo isolada no `<main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 pb-28 pt-6">` e `BottomNav` fixa com z-index seguro.
+- [x] **Unificação do Scroll-to-Top:** `useScrollPosition` atualizado para monitorar o container `main` além da `window`. Botão de rolagem ao topo unificado na lateral com rolagem suave (`smooth`), sem duplicidades e sem sobrepor o FAB central da navegação.
+- [x] **Auditoria & Correção de Overflows no Mobile:**
+  - `globals.css`: adicionada salvaguarda global `html, body { overflow-x: hidden; max-width: 100vw; }`.
+  - `Modal`: adicionado `max-h-[90dvh] overflow-y-auto` preventivo em `DialogPrimitive.Content`.
+  - `BudgetProgressBar`: ajuste com `flex-wrap`, `min-w-0` e quebra segura de números e porcentagens.
+  - `BudgetsPage`: `IncomeGoalRow` reestruturado com `flex-col sm:flex-row sm:items-end justify-between gap-2.5` e `MoneyInput` fluido.
+  - `OverviewPage`: header de "Orçamentos do mês" responsivo com `flex-col sm:flex-row`.
+  - `ProjectionLine`, `InsightsPage` e `ReportsPage`: grades e cards com `min-w-0`, `flex-wrap` e quebras responsivas (`grid-cols-1 sm:grid-cols-3` / `sm:grid-cols-4`).
+  - `InsightList`: botões de ação ("Confirmar", "Ignorar", "Restaurar") tornados compactos no mobile (apenas ícones com `aria-label` e `title`).
+- [x] **Consistência de Ícones de Categoria & Cores Customizadas:**
+  - `CategoryDonut`: adicionado suporte para `icon` e `color` nos arcos SVG e nas fatias da legenda, integrando com `CategoryIcon`.
+  - `TransactionListPage`: integrado com `useCategories()`, mapeando e repassando `icon` e `iconColor` para `ExpenseRow` e `IncomeRow`.
+  - `CardsPage`: integrado com `useCategories("expense")`, repassando `icon` e `iconColor` para as despesas da fatura.
+- [x] **Edição Completa de Despesas (`ExpenseDetailDialog`):**
+  - Adicionado formulário de edição completo (`ExpenseEditForm` sem efeitos cascata) com campos de Descrição (`Input`), Valor (`MoneyInput`), Data (`DatePicker`), Categoria (`Select`), Forma de Pagamento (`Select`) e Cartão de Crédito (`Select` condicional).
+  - Persistência e invalidação integradas via mutação `useUpdateExpense`.
+- [x] **Validação & Qualidade:**
+  - 104 arquivos de teste / 797 testes automatizados 100% verdes (`npm test`).
+  - Typecheck estrito TypeScript 100% verde (`npx tsc --noEmit`).
+  - ESLint 100% verde com 0 erros e 0 warnings (`npm run lint`).
 
 ---
 

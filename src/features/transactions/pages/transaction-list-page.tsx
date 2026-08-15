@@ -10,15 +10,23 @@ import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components
 import { currentMonth, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useExpenses, useIncomes } from "@/state";
+import { useCategories, useExpenses, useIncomes } from "@/state";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
-import type { Expense, Income } from "@/types";
+import type { Category, Expense, Income } from "@/types";
 
 function sumCents(items: readonly { value: number }[]): number {
   return items.reduce((acc, item) => acc + Math.round(item.value * 100), 0);
 }
 
-function ExpenseRow({ expense, onClick }: { expense: Expense; onClick?: () => void }) {
+function ExpenseRow({
+  expense,
+  category,
+  onClick,
+}: {
+  expense: Expense;
+  category?: Category | null;
+  onClick?: () => void;
+}) {
   const title = expense.description || "Despesa sem descrição";
   const subtitle = expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : undefined;
   return (
@@ -28,6 +36,8 @@ function ExpenseRow({ expense, onClick }: { expense: Expense; onClick?: () => vo
       subtitle={subtitle}
       amountCents={Math.round(expense.value * 100)}
       kind="expense"
+      icon={category?.icon}
+      iconColor={category?.color}
       onClick={onClick}
       // Swipe-to-action (F8 — Decisão 2): excluir abre o diálogo de detalhe
       // existente (exclusão com cascata e modos).
@@ -52,13 +62,15 @@ const ROW_HEIGHT = 64;
 // Acima deste total renderiza tudo direto (sem janela) — meses comuns.
 const PLAIN_THRESHOLD = 60;
 
-function IncomeRow({ income }: { income: Income }) {
+function IncomeRow({ income, category }: { income: Income; category?: Category | null }) {
   return (
     <TransactionRow
       title={income.description || "Renda sem descrição"}
       date={income.date}
       amountCents={Math.round(income.value * 100)}
       kind="income"
+      icon={category?.icon}
+      iconColor={category?.color}
     />
   );
 }
@@ -90,9 +102,12 @@ export function TransactionListPage() {
 
   const expensesQuery = useExpenses(month);
   const incomesQuery = useIncomes(month);
+  const categoriesQuery = useCategories();
 
-  const loading = expensesQuery.isLoading || incomesQuery.isLoading;
-  const error = expensesQuery.error ?? incomesQuery.error;
+  const loading = expensesQuery.isLoading || incomesQuery.isLoading || categoriesQuery.isLoading;
+  const error = expensesQuery.error ?? incomesQuery.error ?? categoriesQuery.error;
+
+  const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
 
   const incomesTotalCents = sumCents(incomesQuery.data ?? []);
   const expensesTotalCents = sumCents(expensesQuery.data ?? []);
@@ -131,7 +146,7 @@ export function TransactionListPage() {
           <div>
             <Button
               variant="outline"
-              onClick={() => void Promise.all([expensesQuery.refetch(), incomesQuery.refetch()])}
+              onClick={() => void Promise.all([expensesQuery.refetch(), incomesQuery.refetch(), categoriesQuery.refetch()])}
             >
               Tentar novamente
             </Button>
@@ -167,7 +182,7 @@ export function TransactionListPage() {
                 aria-label="Receitas do mês"
                 renderRow={(income) => (
                   <HighlightRow highlightId={highlightId} id={income.id}>
-                    <IncomeRow income={income} />
+                    <IncomeRow income={income} category={categoryById.get(income.category_id)} />
                   </HighlightRow>
                 )}
               />
@@ -198,7 +213,11 @@ export function TransactionListPage() {
                 aria-label="Despesas do mês"
                 renderRow={(expense) => (
                   <HighlightRow highlightId={highlightId} id={expense.id}>
-                    <ExpenseRow expense={expense} onClick={() => setSelectedExpense(expense)} />
+                    <ExpenseRow
+                      expense={expense}
+                      category={categoryById.get(expense.category_id)}
+                      onClick={() => setSelectedExpense(expense)}
+                    />
                   </HighlightRow>
                 )}
               />

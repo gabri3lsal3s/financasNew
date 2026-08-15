@@ -8,6 +8,13 @@ vi.mock("react-router", () => ({
 }));
 
 vi.mock("@/state", () => ({
+  useCategories: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
   useExpenses: () => ({
     data: [
       {
@@ -31,7 +38,9 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useCreditCards: () => ({ data: [], isLoading: false, error: null }),
   useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("TransactionListPage — listagem por mês", () => {

@@ -17,6 +17,13 @@ const deleteCardMock = vi.fn();
 const deleteCardPaymentMock = vi.fn();
 
 vi.mock("@/state", () => ({
+  useCategories: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
   useCreditCards: () => ({
     data: [
       {

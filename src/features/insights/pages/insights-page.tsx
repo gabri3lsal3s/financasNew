@@ -301,49 +301,49 @@ export function InsightsPage() {
                   />
 
                   {/* Pendências projetadas */}
-                  <section aria-label="Pendências" className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
+                  <section aria-label="Pendências" className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
                     <h3 className="text-sm font-semibold text-foreground">Pendências do período</h3>
-                    <div className="grid grid-cols-3 gap-3 text-xs">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
+                      <div className="min-w-0">
                         <p className="text-muted-foreground">A receber</p>
-                        <MoneyText cents={pendingSummary.receivablesCents} tone="positive" className="text-xs" />
+                        <MoneyText cents={pendingSummary.receivablesCents} tone="positive" className="text-xs truncate" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-muted-foreground">A pagar</p>
-                        <MoneyText cents={pendingSummary.payablesCents} tone="negative" className="text-xs" />
+                        <MoneyText cents={pendingSummary.payablesCents} tone="negative" className="text-xs truncate" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-muted-foreground">Saldo projetado</p>
-                        <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-xs" />
+                        <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-xs truncate" />
                       </div>
                     </div>
                   </section>
 
                   {/* Desafios de economia */}
-                  <section aria-label="Desafios de economia" className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
+                  <section aria-label="Desafios de economia" className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="size-4 text-attention" aria-hidden="true" />
+                      <Sparkles className="size-4 text-attention shrink-0" aria-hidden="true" />
                       <h3 className="text-sm font-semibold text-foreground">Desafios de economia</h3>
                     </div>
                     {challenges.length === 0 && !discretionary ? (
                       <p className="text-xs text-muted-foreground">Nenhum desafio sugerido agora.</p>
                     ) : (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2 min-w-0">
                         {challenges.map((challenge) => (
-                          <div key={`${challenge.categoryId}-${challenge.percent}`} className="flex items-center justify-between rounded-lg border border-border/60 p-3 text-xs">
-                            <span className="font-medium text-foreground">
+                          <div key={`${challenge.categoryId}-${challenge.percent}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 p-3 text-xs min-w-0">
+                            <span className="font-medium text-foreground min-w-0 flex-1">
                               {challenge.name} — cortar {challenge.percent}% (meta{" "}
                               <MoneyText cents={challenge.targetCents} tone="default" className="privacy-mask text-xs" />)
                             </span>
-                            <span className="num font-semibold text-positive-strong">
+                            <span className="num shrink-0 font-semibold text-positive-strong">
                               <MoneyText cents={-challenge.savingsCents} tone="positive" sign="explicit" />/mês
                             </span>
                           </div>
                         ))}
                         {discretionary ? (
-                          <div className="flex items-center justify-between rounded-lg border border-positive/40 bg-positive/5 p-3 text-xs">
-                            <span className="font-medium text-foreground">30% em não essenciais</span>
-                            <span className="num font-semibold text-positive-strong">
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-positive/40 bg-positive/5 p-3 text-xs min-w-0">
+                            <span className="font-medium text-foreground min-w-0 flex-1">30% em não essenciais</span>
+                            <span className="num shrink-0 font-semibold text-positive-strong">
                               <MoneyText cents={-discretionary.savingsCents} tone="positive" sign="explicit" />/mês
                             </span>
                           </div>
@@ -353,17 +353,17 @@ export function InsightsPage() {
                   </section>
 
                   {/* Sugestões de limite */}
-                  <section aria-label="Sugestões de limite" className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
+                  <section aria-label="Sugestões de limite" className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
                     <h3 className="text-sm font-semibold text-foreground">Sugestões de limite</h3>
                     {limitSuggestions.length === 0 ? (
                       <p className="text-xs text-muted-foreground">Nenhuma sugestão de ajuste de limite agora.</p>
                     ) : (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2 min-w-0">
                         {limitSuggestions.map((s) => (
-                          <div key={`${s.categoryId}-${s.kind}`} className="flex items-start justify-between gap-2 rounded-lg border border-border/60 p-3 text-xs">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-medium text-foreground">{s.name}</span>
-                              <span className="text-muted-foreground">{s.reason}</span>
+                          <div key={`${s.categoryId}-${s.kind}`} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-border/60 p-3 text-xs min-w-0">
+                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                              <span className="font-medium text-foreground truncate">{s.name}</span>
+                              <span className="text-muted-foreground text-[11px]">{s.reason}</span>
                             </div>
                             <span className="shrink-0 font-semibold text-foreground">
                               <MoneyText cents={s.currentLimitCents} tone="default" /> → <MoneyText cents={s.suggestedLimitCents} tone="default" />
@@ -383,8 +383,8 @@ export function InsightsPage() {
               value: "diagnostics",
               label: "Diagnósticos",
               content: (
-                <div className="flex flex-col gap-3">
-                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div className="flex flex-col gap-3 min-w-0">
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
                     <DiagnosticCard label="Saúde da poupança" value={SAVINGS_HEALTH_LABELS[health]} />
                     <DiagnosticCard
                       label="Concentração de renda"
@@ -416,10 +416,10 @@ export function InsightsPage() {
 
 function DiagnosticCard({ label, value, tone }: { label: string; value: string; tone?: "positive" | "negative" | "neutral" }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-4">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 overflow-hidden">
+      <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
       <span
-        className={`num text-xl font-semibold ${
+        className={`num text-lg sm:text-xl font-semibold truncate ${
           tone === "positive" ? "text-positive-strong" : tone === "negative" ? "text-critical" : "text-foreground"
         }`}
       >

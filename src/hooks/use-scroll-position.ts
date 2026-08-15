@@ -6,18 +6,27 @@ import { useEffect, useState } from "react";
  * setState síncrono no effect — o update roda dentro do rAF).
  */
 export function useScrollPosition(threshold = 300): boolean {
-  const [scrolled, setScrolled] = useState(() => window.scrollY > threshold);
+  const [scrolled, setScrolled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const main = typeof document !== "undefined" ? document.querySelector("main") : null;
+    const top = window.scrollY || (main ? main.scrollTop : 0);
+    return top > threshold;
+  });
 
   useEffect(() => {
     let raf = 0;
     const update = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setScrolled(window.scrollY > threshold));
+      raf = requestAnimationFrame(() => {
+        const main = document.querySelector("main");
+        const top = window.scrollY || (main ? main.scrollTop : 0);
+        setScrolled(top > threshold);
+      });
     };
     update();
-    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("scroll", update, { passive: true, capture: true });
     return () => {
-      window.removeEventListener("scroll", update);
+      window.removeEventListener("scroll", update, { capture: true });
       cancelAnimationFrame(raf);
     };
   }, [threshold]);

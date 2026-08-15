@@ -177,7 +177,12 @@ export function OverviewPage() {
 
   // Donut de categorias: principais despesas do mês.
   const donutSlices = (expenseCategories.data ?? [])
-    .map((category) => ({ label: category.name, valueCents: spentByCategory.get(category.id) ?? 0 }))
+    .map((category) => ({
+      label: category.name,
+      valueCents: spentByCategory.get(category.id) ?? 0,
+      icon: category.icon,
+      color: category.color,
+    }))
     .filter((slice) => slice.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents)
     .slice(0, 5);
@@ -345,21 +350,21 @@ export function OverviewPage() {
 
           {/* Orçamentos (§3.6): progresso e lista de atenção */}
           {visual.dashboardWidgets.budgets && (
-            <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="flex size-7 shrink-0 items-center justify-center text-muted-foreground">
                     <Target className="size-3.5" aria-hidden="true" />
                   </span>
-                  <h2 className="text-sm font-semibold text-foreground">Orçamentos do mês</h2>
+                  <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Orçamentos do mês</h2>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                  <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground min-w-0">
                     <MoneyText cents={expenseCents} tone="default" className="text-xs" />
                     <span>de</span>
                     <MoneyText cents={totalLimitsCents} tone="default" className="text-xs text-muted-foreground" />
                   </span>
-                  <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[11px]">
+                  <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[11px] shrink-0">
                     {Math.round(globalPercent)}% utilizado
                   </Badge>
                 </div>

@@ -148,9 +148,10 @@ vi.mock("@/state", () => ({
   useDeleteDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePayDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReceiveDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useExpense: () => ({ data: { id: "e1", base_amount: 1000 }, isLoading: false, isError: false, error: null }),
-  useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));

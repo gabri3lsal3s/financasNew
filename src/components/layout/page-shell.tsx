@@ -27,21 +27,21 @@ export function PageShell() {
   const location = useLocation();
 
   return (
-    <div className="min-h-dvh text-foreground">
+    <div className="h-dvh flex flex-col overflow-hidden text-foreground">
       {/* Estado da sidebar vive aqui (fonte única) e a margem acompanha em tempo real. */}
       <Sidebar isCollapsed={isCollapsed} onToggle={toggle} />
       {/* Margem acompanha o estado da sidebar (F7.2): lg:pl-64 expandida ↔ lg:pl-20 compacta. */}
       <div
         className={cn(
-          "transition-[padding] duration-200 ease-out motion-reduce:transition-none",
+          "flex flex-1 flex-col overflow-hidden transition-[padding] duration-200 ease-out motion-reduce:transition-none",
           isCollapsed ? "lg:pl-20" : "lg:pl-64",
         )}
       >
-        {/* Header fluido (F7.3): sticky com backdrop-blur (DESIGN_SYSTEM §6).
+        {/* Header fluido (F7.3): fixo/sticky com backdrop-blur (DESIGN_SYSTEM §6).
             Conteúdo centralizado nos limites da página (max-w-5xl):
             a barra de busca (flex-1) toma a largura flexível e os botões
             de utilidade ficam alinhados à direita. */}
-        <header className="sticky top-0 z-sticky flex h-16 items-center border-b border-border bg-surface/80 backdrop-blur">
+        <header className="sticky top-0 z-sticky flex h-16 shrink-0 items-center border-b border-border bg-surface/80 backdrop-blur">
           <div className="mx-auto flex w-full max-w-5xl items-center gap-1.5 px-4 lg:px-8">
             <div className="flex items-center lg:hidden mr-1 shrink-0">
               <BrandLogo showWordmark={false} markClassName="size-7" />
@@ -52,12 +52,14 @@ export function PageShell() {
             <ThemeToggle />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 lg:px-8">
-          {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
-          <div key={location.pathname} className="animate-route-in">
-            <Suspense fallback={<RouteFallback />}>
-              <Outlet />
-            </Suspense>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+          <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 lg:px-8">
+            {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
+            <div key={location.pathname} className="animate-route-in">
+              <Suspense fallback={<RouteFallback />}>
+                <Outlet />
+              </Suspense>
+            </div>
           </div>
         </main>
       </div>

@@ -147,13 +147,13 @@ export function ReportsPage() {
             label: "Período custom",
             content: (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full sm:w-auto">
                   De
-                  <DatePicker value={customStart} onValueChange={setCustomStart} ariaLabel="Início do período" className="min-w-40" />
+                  <DatePicker value={customStart} onValueChange={setCustomStart} ariaLabel="Início do período" className="w-full sm:min-w-40" />
                 </label>
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full sm:w-auto">
                   Até
-                  <DatePicker value={customEnd} onValueChange={setCustomEnd} ariaLabel="Fim do período" className="min-w-40" />
+                  <DatePicker value={customEnd} onValueChange={setCustomEnd} ariaLabel="Fim do período" className="w-full sm:min-w-40" />
                 </label>
                 {mode === "custom" && !customValid ? (
                   <span className="text-xs text-critical">Período inválido (máx. 366 dias).</span>
@@ -180,7 +180,7 @@ export function ReportsPage() {
       ) : (
         <>
           {/* Resumo com merge de dívidas (§4.3) e comparativo */}
-          <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
             <SummaryCard label="Rendas" cents={merged.incomeCents} tone="positive" delta={incomeDelta} positiveIsGood />
             <SummaryCard label="Despesas" cents={merged.expenseCents} tone="negative" delta={expenseDelta} positiveIsGood={false} />
             <SummaryCard
@@ -246,7 +246,7 @@ function SummaryCard({
         ? (delta >= 0) === positiveIsGood
         : null;
   return (
-    <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface p-3.5 sm:p-4">
+    <div className="flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0">
       <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
       <MoneyText
         cents={cents}

@@ -32,7 +32,7 @@ export function Modal({
         <DialogPrimitive.Overlay className={cn("fixed inset-0 bg-overlay backdrop-blur-sm", z)} />
         <DialogPrimitive.Content
           className={cn(
-            "fixed left-1/2 top-1/2 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-6 shadow-lg focus:outline-none",
+            "fixed left-1/2 top-1/2 w-[calc(100vw-2rem)] max-w-md max-h-[90dvh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-6 shadow-lg focus:outline-none",
             z,
             className,
           )}

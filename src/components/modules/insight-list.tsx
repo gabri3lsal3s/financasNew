@@ -97,31 +97,34 @@ export function InsightList({
                 <button
                   type="button"
                   onClick={() => onRestore?.(item.key)}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="flex items-center gap-1 rounded-lg p-1.5 sm:px-2 sm:py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   aria-label={`Restaurar ${item.title}`}
+                  title={`Restaurar ${item.title}`}
                 >
                   <RotateCcw className="size-3.5" aria-hidden="true" />
-                  Restaurar
+                  <span className="hidden sm:inline">Restaurar</span>
                 </button>
               ) : (
                 <>
                   <button
                     type="button"
                     onClick={() => onIgnore?.(item.key)}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="flex items-center gap-1 rounded-lg p-1.5 sm:px-2 sm:py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     aria-label={`Ignorar ${item.title}`}
+                    title={`Ignorar ${item.title}`}
                   >
                     <X className="size-3.5" aria-hidden="true" />
-                    Ignorar
+                    <span className="hidden sm:inline">Ignorar</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onConfirm?.(item.key)}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                    className="flex items-center gap-1 rounded-lg p-1.5 sm:px-2 sm:py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
                     aria-label={`Confirmar ${item.title}`}
+                    title={`Confirmar ${item.title}`}
                   >
                     <Check className="size-3.5" aria-hidden="true" />
-                    Confirmar
+                    <span className="hidden sm:inline">Confirmar</span>
                   </button>
                 </>
               )}

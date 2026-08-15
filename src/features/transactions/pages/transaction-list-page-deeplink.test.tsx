@@ -11,6 +11,7 @@ vi.mock("react-router", () => ({
 }));
 
 vi.mock("@/state", () => ({
+  useCategories: () => ({ data: [], isLoading: false, error: null }),
   useExpenses: (month: string) => {
     requestedMonths.push(month);
     return {
@@ -32,7 +33,9 @@ vi.mock("@/state", () => ({
     };
   },
   useIncomes: () => ({ data: [], isLoading: false, error: null, refetch: vi.fn() }),
+  useCreditCards: () => ({ data: [], isLoading: false, error: null }),
   useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("TransactionListPage — deep-link da busca global (§3.9)", () => {

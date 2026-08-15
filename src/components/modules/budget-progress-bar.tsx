@@ -19,15 +19,15 @@ export function BudgetProgressBar({ spentCents, limitCents, label }: BudgetProgr
   const over = spentCents > limitCents;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {label ? <p className="text-xs font-medium text-muted-foreground">{label}</p> : null}
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1">
-          <MoneyText cents={spentCents} tone="default" />
+    <div className="flex flex-col gap-1.5 min-w-0">
+      {label ? <p className="truncate text-xs font-medium text-muted-foreground">{label}</p> : null}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 min-w-0">
+        <span className="flex flex-wrap items-center gap-1 text-xs min-w-0">
+          <MoneyText cents={spentCents} tone="default" className="text-xs font-medium" />
           <span className="text-muted-foreground">de</span>
-          <MoneyText cents={limitCents} tone="default" className="text-muted-foreground" />
+          <MoneyText cents={limitCents} tone="default" className="text-xs text-muted-foreground" />
         </span>
-        <span className={over ? "num text-xs font-semibold text-critical" : "num text-xs text-muted-foreground"}>
+        <span className={over ? "num shrink-0 text-xs font-semibold text-critical" : "num shrink-0 text-xs text-muted-foreground"}>
           {over ? "Excedido" : `${Math.round(percent)}%`}
         </span>
       </div>

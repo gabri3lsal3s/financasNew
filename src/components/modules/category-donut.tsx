@@ -1,10 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
 import { cn } from "@/lib/utils";
 import { MoneyText } from "@/components/ui/money-text";
+import { CategoryIcon } from "@/components/modules/category-icon";
 
 export interface DonutSlice {
   label: string;
   valueCents: number;
+  /** Ícone cadastrado da categoria (opcional). */
+  icon?: string | null;
+  /** Cor cadastrada da categoria (hex ou HSL, opcional). */
+  color?: string | null;
   /** Classe de cor do arco (ex.: "stroke-cat-1") — default pela posição na paleta. */
   colorClassName?: string;
 }
@@ -57,7 +62,7 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
   }
 
   // Acumula o dashoffset de cada arco sem mutação no escopo do render
-  const arcs = slices.reduce<{ key: string; dash: number; offset: number; className: string }[]>(
+  const arcs = slices.reduce<{ key: string; dash: number; offset: number; className: string; color?: string | null }[]>(
     (acc, slice, index) => {
       const dash = (slice.valueCents / total) * CIRCUMFERENCE;
       const previous = acc[acc.length - 1];
@@ -66,6 +71,7 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
         key: slice.label,
         dash,
         offset,
+        color: slice.color,
         className: slice.colorClassName ?? (CAT_DONUT_PALETTE[index % CAT_DONUT_PALETTE.length] ?? "stroke-cat-1"),
       });
       return acc;
@@ -100,7 +106,8 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
               strokeWidth={STROKE_WIDTH}
               strokeDasharray={`${arc.dash} ${CIRCUMFERENCE - arc.dash}`}
               strokeDashoffset={-arc.offset}
-              className={cn("transition-all duration-300", arc.className)}
+              style={arc.color ? { stroke: arc.color } : undefined}
+              className={cn("transition-all duration-300", !arc.color && arc.className)}
             />
           ))}
         </svg>
@@ -123,23 +130,31 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
           return (
             <li
               key={slice.label}
-              className="group flex flex-col gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface-hover/60"
+              className="group flex flex-col gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface-hover/60 min-w-0"
             >
-              <div className="flex items-center gap-2 text-xs">
-                <span
-                  aria-hidden="true"
-                  className={cn("size-2.5 shrink-0 rounded-full ring-2 ring-surface shadow-xs", bgClass)}
-                />
-                <span className="truncate font-semibold text-foreground">{slice.label}</span>
-                <span className="num ml-auto font-bold text-foreground text-xs">
+              <div className="flex items-center gap-2 text-xs min-w-0">
+                {slice.icon ? (
+                  <CategoryIcon icon={slice.icon} color={slice.color} className="size-4 shrink-0" />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    style={slice.color ? { backgroundColor: slice.color } : undefined}
+                    className={cn("size-2.5 shrink-0 rounded-full ring-2 ring-surface shadow-xs", !slice.color && bgClass)}
+                  />
+                )}
+                <span className="truncate font-semibold text-foreground min-w-0">{slice.label}</span>
+                <span className="num ml-auto font-bold text-foreground text-xs shrink-0">
                   {percent.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%
                 </span>
-                <MoneyText cents={slice.valueCents} tone="default" className="privacy-mask w-22 text-right text-xs font-semibold" />
+                <MoneyText cents={slice.valueCents} tone="default" className="privacy-mask w-22 text-right text-xs font-semibold shrink-0" />
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/50 dark:bg-border/60" aria-hidden="true">
                 <div
-                  className={cn("h-full rounded-full transition-all duration-500", bgClass)}
-                  style={{ width: `${Math.min(100, Math.max(2, percent))}%` }}
+                  className={cn("h-full rounded-full transition-all duration-500", !slice.color && bgClass)}
+                  style={{
+                    width: `${Math.min(100, Math.max(2, percent))}%`,
+                    backgroundColor: slice.color ?? undefined,
+                  }}
                 />
               </div>
             </li>

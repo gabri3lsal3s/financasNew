@@ -34,6 +34,23 @@ describe("CategoryDonut (F8)", () => {
     expect(screen.getAllByText("Sem despesas").length).toBeGreaterThan(0);
   });
 
+  it("renderiza cores customizadas e ícones quando fornecidos", () => {
+    const { container } = render(
+      <CategoryDonut
+        slices={[
+          { label: "Moradia", valueCents: 50000, color: "#e11d48", icon: "moradia" },
+          { label: "Alimentação", valueCents: 30000, color: "#10b981", icon: "mercado" },
+        ]}
+      />,
+    );
+
+    const arcs = container.querySelectorAll<SVGCircleElement>("circle[stroke-dasharray]");
+    expect(arcs[0]?.style.stroke).toMatch(/(#e11d48|rgb\(225,\s*29,\s*72\))/);
+    expect(arcs[1]?.style.stroke).toMatch(/(#10b981|rgb\(16,\s*185,\s*129\))/);
+    expect(screen.getByText("Moradia")).toBeInTheDocument();
+    expect(screen.getByText("Alimentação")).toBeInTheDocument();
+  });
+
   it("sem violações de acessibilidade (axe)", async () => {
     const { container } = render(
       <CategoryDonut

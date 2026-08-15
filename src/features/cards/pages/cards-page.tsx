@@ -21,6 +21,7 @@ import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
   useCardExpenses,
   useCardPayments,
+  useCategories,
   useCreditCards,
   useDeleteCard,
   useDeleteCardPayment,
@@ -71,9 +72,12 @@ export function CardsPage() {
   const cardId = selectedCard?.id ?? null;
   const expensesQuery = useCardExpenses(cardId);
   const paymentsQuery = useCardPayments(cardId);
+  const categoriesQuery = useCategories("expense");
 
   const loading = cardsQuery.isLoading || (cardId !== null && (expensesQuery.isLoading || paymentsQuery.isLoading));
-  const error = cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? (actionError ? new Error(actionError) : null);
+  const error = cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? categoriesQuery.error ?? (actionError ? new Error(actionError) : null);
+
+  const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
 
   // Derivação pura (domain/cards): resumos por competência + seleção automática de mês.
   const summaries = buildCompetenceSummaries(expensesQuery.data ?? [], paymentsQuery.data ?? []);
@@ -326,20 +330,25 @@ export function CardsPage() {
                 description="As compras no cartão aparecem aqui de acordo com o fechamento da fatura."
               />
             ) : (
-              competenceExpenses.map((expense) => (
-                <TransactionRow
-                  key={expense.id}
-                  title={expense.description || "Despesa sem descrição"}
-                  date={expense.date}
-                  subtitle={
-                    expense.report_weight < 1
-                      ? `${Math.round(expense.report_weight * 100)}% no relatório`
-                      : undefined
-                  }
-                  amountCents={Math.round(expense.value * expense.report_weight * 100)}
-                  kind="expense"
-                />
-              ))
+              competenceExpenses.map((expense) => {
+                const category = categoryById.get(expense.category_id);
+                return (
+                  <TransactionRow
+                    key={expense.id}
+                    title={expense.description || "Despesa sem descrição"}
+                    date={expense.date}
+                    subtitle={
+                      expense.report_weight < 1
+                        ? `${Math.round(expense.report_weight * 100)}% no relatório`
+                        : undefined
+                    }
+                    amountCents={Math.round(expense.value * expense.report_weight * 100)}
+                    kind="expense"
+                    icon={category?.icon}
+                    iconColor={category?.color}
+                  />
+                );
+              })
             )}
           </section>
 
