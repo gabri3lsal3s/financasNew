@@ -34,8 +34,10 @@ export type { AporteResultProps, AporteRouteRow } from "./aporte-result";
 export { HighlightRow } from "./highlight-row";
 export type { HighlightRowProps } from "./highlight-row";
 export { OnboardingCard } from "./onboarding-card";
-export type { OnboardingCardProps } from "./onboarding-card";
-export { PWAUpdateToast } from "./pwa-update-toast";
+export type { OnboardingCardProps } from "./onboarding-card";export { PWAUpdateToast } from "./pwa-update-toast";
+
+export { OrientationLockOverlay } from "./orientation-lock-overlay";
+
 export { InstallAppButton } from "./install-app-button";
 export { CategoryDonut } from "./category-donut";
 export type { CategoryDonutProps, DonutSlice } from "./category-donut";

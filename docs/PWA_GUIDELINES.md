@@ -76,6 +76,13 @@ Referência completa (ajustar nomes à marca final):
 
 **Campos recomendados:** `id`, `scope`, `orientation: portrait` (respeita o padrão vertical e o bloqueio de rotação do dispositivo móvel), `lang: pt-BR`, `categories`, `shortcuts` (atalhos de ações frequentes — lançamento rápido, D10).
 
+**Bloqueio estrito de orientação (HOTFIX 2026-08-15) — 3 camadas combinadas:**
+1. **Manifest** — `orientation: portrait` + `display: standalone` (PWA instalado: o sistema respeita a trava e não rotaciona);
+2. **JS** — `src/services/orientation-lock.ts` chama `screen.orientation.lock("portrait")` no bootstrap (cobre Chrome Android/desktop e navegadores com suporte à API; no-op silencioso quando não existe);
+3. **Overlay de fallback** — `src/components/modules/orientation-lock-overlay.tsx` (montado no `main.tsx`, acima de tudo via `z-orientation-lock`): quando um dispositivo de toque está em paisagem e a API não segurou (iOS Safari, Chrome não-instalado), exibe a tela "Gire o dispositivo" (ícone lucide + texto pt-BR) — impedindo o uso em landscape.
+
+**Arquivos:** `src/services/orientation-lock.ts` (+ testes) · `src/components/modules/orientation-lock-overlay.tsx` (+ testes axe) · token `--z-orientation-lock: 90` em `tokens.css`/`globals.css`.
+
 **Cores do manifesto (alinhadas ao DESIGN_SYSTEM — identidade "Guia Financeiro", F10):**
 - `background_color`: `#142531` (Azul Petróleo — fundo do ícone) — splash Android contínuo com o ícone.
 - `theme_color`: suporta `media` para light/dark:
@@ -183,3 +190,4 @@ Referência completa (ajustar nomes à marca final):
 - [ ] Atualização de versão: toast "Nova versão disponível" + "Atualizar" recarrega sem perda de estado.
 - [ ] Safe areas (notch) respeitadas no modo standalone (`viewport-fit=cover`).
 - [ ] Tema do status bar coerente com light/dark/oled.
+- [ ] Rotação bloqueada em retrato (manifest + `screen.orientation.lock`); em navegadores sem suporte, overlay "Gire o dispositivo" aparece em paisagem mobile.
