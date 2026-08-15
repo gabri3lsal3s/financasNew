@@ -200,6 +200,38 @@ export function positionPnl(valueBRL: number, totalCost: number): PositionPnl {
   return { unrealizedPnl, unrealizedPct };
 }
 
+export interface AllocationClassSlice {
+  /** Nome da classe (valor bruto do ativo; "Sem classe" quando null). */
+  className: string;
+  /** Valor de mercado em BRL. */
+  valueBRL: number;
+  /** % do patrimônio (0–100). */
+  pct: number;
+}
+
+/**
+ * Alocação por classe de ativo (§F16): agrupa as posições pela classe,
+ * soma o valor de mercado e calcula o peso no patrimônio. Função pura —
+ * alimenta o `AllocationDonut` da Home e o dashboard executivo (F17).
+ */
+export function allocationByClass(
+  rows: readonly { assetClass: string | null; valueBRL: number }[],
+): AllocationClassSlice[] {
+  const byClass = new Map<string, number>();
+  for (const row of rows) {
+    const key = row.assetClass?.trim() === "" || row.assetClass === null ? "Sem classe" : row.assetClass.trim();
+    byClass.set(key, roundMoney((byClass.get(key) ?? 0) + row.valueBRL));
+  }
+  const total = roundMoney([...byClass.values()].reduce((acc, value) => acc + value, 0));
+  return [...byClass.entries()]
+    .map(([className, valueBRL]) => ({
+      className,
+      valueBRL,
+      pct: total > 0 ? Math.round((valueBRL / total) * 10000) / 100 : 0,
+    }))
+    .sort((a, b) => b.valueBRL - a.valueBRL);
+}
+
 export interface MonthlySeriesPoint {
   /** Mês YYYY-MM (ascendente). */
   month: string;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  allocationByClass,
   allocationGap,
   applyOperation,
   computeLedger,
@@ -233,5 +234,44 @@ describe("portfolioMonthlySeries — série mensal derivada (F14)", () => {
       { month: "2026-01", valueBRL: 0 },
       { month: "2026-02", valueBRL: 0 },
     ]);
+  });
+});
+
+describe("allocationByClass — alocação por classe de ativo (§F16)", () => {
+  it("agrupa por classe somando o valor de mercado e calcula o peso", () => {
+    const slices = allocationByClass([
+      { assetClass: "Ações", valueBRL: 6000 },
+      { assetClass: "Ações", valueBRL: 2000 },
+      { assetClass: "FIIs", valueBRL: 2000 },
+    ]);
+    expect(slices).toEqual([
+      { className: "Ações", valueBRL: 8000, pct: 80 },
+      { className: "FIIs", valueBRL: 2000, pct: 20 },
+    ]);
+  });
+
+  it("ordena por valor decrescente (leitura do anel)", () => {
+    const slices = allocationByClass([
+      { assetClass: "Renda Fixa", valueBRL: 500 },
+      { assetClass: "Cripto", valueBRL: 3000 },
+      { assetClass: "Caixa", valueBRL: 1200 },
+    ]);
+    expect(slices.map((s) => s.className)).toEqual(["Cripto", "Caixa", "Renda Fixa"]);
+  });
+
+  it("classe nula ou vazia vira 'Sem classe'", () => {
+    const slices = allocationByClass([
+      { assetClass: null, valueBRL: 1000 },
+      { assetClass: "  ", valueBRL: 500 },
+      { assetClass: "Ações", valueBRL: 2500 },
+    ]);
+    expect(slices).toEqual([
+      { className: "Ações", valueBRL: 2500, pct: 62.5 },
+      { className: "Sem classe", valueBRL: 1500, pct: 37.5 },
+    ]);
+  });
+
+  it("carteira vazia → lista vazia", () => {
+    expect(allocationByClass([])).toEqual([]);
   });
 });

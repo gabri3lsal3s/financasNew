@@ -47,6 +47,8 @@ export { InstallAppButton } from "./install-app-button";
 export { CategoryDonut } from "./category-donut";
 export type { CategoryDonutProps, DonutSlice } from "./category-donut";
 export { CAT_DONUT_PALETTE } from "./category-donut";
+export { AllocationDonut } from "./allocation-donut";
+export type { AllocationDonutProps, AllocationSlice } from "./allocation-donut";
 export { DailyFlowChart } from "./daily-flow-chart";
 export type { DailyFlowChartProps } from "./daily-flow-chart";
 export { FloatingCalculator } from "./floating-calculator";

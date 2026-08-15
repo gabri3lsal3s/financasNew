@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **Status:** v1.2 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** insere formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa) e **v1.3** adiciona a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adiciona a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A) — oriundas da proposta oficial `docs/NEXT_PHASES.md` (seção §6).
+> **Status:** v1.6 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); e **v1.6** formaliza a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**.
 > **Referências:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (estrutura e convenções) · [`ESPECIFICACAO_TECNICA.md`](../ESPECIFICACAO_TECNICA.md) (regras de negócio, schema, UI/UX).
 
 ---
@@ -40,6 +40,11 @@
 | **F18** | Proventos: Extrato & Calendário (Trilha B) | Extrato mensal de proventos recebidos + calendário (escopo mínimo) | Proventos |
 | **F19** | Inteligência & Consistência dos Insights (Trilha A) | Limpeza de código morto F8, fontes únicas (normalização/tolerância/essenciais), `numberToCents` único, reuso de motores na página, tendência nos Diagnósticos, investimentos reais nas projeções | Insights refinados |
 | **F20** | Sistema de Gestos & Navegação por Swipe (Trilha A) | Engine `useSwipeNavigation` (axis-lock ±30°, thresholds/flick, isolamento), `MonthSwiper` nas 5 telas de mês, `Tabs swipeable` nas 6 telas de abas, feedback elástico | Gesture UX mobile |
+| **F21** | Inteligência de Entrada & Automações Preditivas | Inferência automática de categorias e métodos por descrição, templates de lançamentos rápidos e clonagem | Entrada preditiva |
+| **F22** | Central de Exportação, Backup & Fechamento Mensal | Exportação CSV/JSON, backup e restauração em Configurações, relatório de fechamento mensal otimizado para impressão/PDF | Exportação e Relatório |
+| **F23** | Engenharia de Performance & Code-Splitting 3D | Isolamento dinâmico de dependências 3D (Three.js), prefetching inteligente e sintonia fina de cache de queries | Otimização e Performance |
+| **F24** | Planejamento Financeiro & Simulador FIRE | Motor de independência financeira (juros compostos, regra 4%, taxa de poupança), meta de reserva de emergência e projeção multi-anual | Planejamento FIRE |
+| **F25** | Micro-interações, Feedback Visual & Ergonomia de Interface | Sidebar expand on hover com intent debounce e zero layout shift, Bottom Sheets no mobile, elevação tátil e tooltips | Micro-interações & Ergonomia |
 
 ---
 
@@ -866,6 +871,13 @@
 - Série de patrimônio (para sparkline) é função pura testada (derivada do ledger + preços).
 - Widget respeita a modulação do dashboard (Configurações > Dashboard).
 
+**Progresso — F16 concluída (2026-08-15):**
+- [x] **KPI "Investimentos" real (entrega 1)** — decisão alinhada com o dono do produto: o KPI da Visão Geral exibe **aportes líquidos do mês** (compras + subscrições − vendas, via `useAllPortfolioTransactions`), com sparkline de 6 meses e comparativo `DeltaHint` — coerente com o `investmentCents` do balanço mensal (`saldo = rendas − despesas − investimentos`); **não** é o patrimônio total (que distorceria o saldo do mês).
+- [x] **Deep-link (entrega 3)** — `KpiCard` ganhou prop `onClick` **acessível** (role button, tabIndex 0, Enter/Espaço, variante interactive — 3 testes); o KPI de investimentos navega para `/carteira` (a rota `/investments` da F17 assume o deep-link quando existir).
+- [x] **Motor puro `allocationByClass`** (`domain/portfolio`, 4 testes) — agrega a posição por classe de ativo (valor + peso no patrimônio), base do donut de alocação.
+- [x] **`AllocationDonut`** (módulo novo — contrato próprio de ativos, delega ao `CategoryDonut`/DRY, 2 testes + axe na Posição) — **decisão do produto: sem widget na Home** (o resumo permanece na Carteira); o donut foi integrado na **aba Posição** (`position-tab.tsx`, WIP do dono) e fica pronto para a F17.
+- [ ] Estados loading/vazio/erro do widget — **fora de escopo** (sem widget na Home; o KPI herda o skeleton global e o deep-link já existe).
+
 ---
 
 ### Fase 17 — Dashboard de Investimentos (`/investments`) (Trilha B)
@@ -978,13 +990,128 @@
 
 ---
 
+### Fase 21 — Inteligência de Entrada & Automações Preditivas (Smart Flow)
+
+**Objetivo:** reduzir a fricção e o tempo no registro de lançamentos por meio de heurísticas preditivas locais e atalhos rápidos baseados no histórico do usuário.
+
+**Entregas (na ordem):**
+1. **Motor preditivo de descrições (`domain/predictions/`):** funções puras testáveis para inferência de Categoria, Forma de Pagamento e Cartão a partir de similaridade de texto (tokenização, normalização e frequência ponderada por recência).
+2. **Autopreenchimento no Wizard e Diálogos de Lançamento:** ao digitar a descrição, sugestões contextuais aparecem de forma sutil e não obstrutiva, permitindo aceitação por 1 toque ou teclado.
+3. **Lançamentos Favoritos & Templates:** criação e seleção de despesas e receitas habituais com valores e categorias pré-preenchidos.
+4. **Ação de Repetição/Clonagem Rápida:** opção na listagem de transações (`TransactionRow` / menu de detalhe) para "Repetir lançamento" no mês atual com data ajustada.
+
+**Arquivos:** `src/domain/predictions/` (+ testes) · `src/features/transactions/wizard/` · `src/features/transactions/components/` · `src/features/transactions/pages/transaction-list-page.tsx`.
+
+**✅ DoD (critérios de aceite)**
+- Motor de predição puro com testes de acurácia contra descrições conhecidas e tolerância a variações.
+- Sugestões operam estritamente no cliente (zero latência e zero chamadas extras de API).
+- Atalhos de repetição preservam as invariantes financeiras e geram novos IDs/audit_events no envio.
+- Acessibilidade e suporte a teclado (Tab/Enter/Setas) mantidos no autopreenchimento.
+
+---
+
+### Fase 22 — Central de Exportação, Backup & Fechamento Mensal
+
+**Objetivo:** assegurar a portabilidade total dos dados financeiros do usuário e oferecer visões de fechamento de período prontas para conferência, arquivamento e impressão.
+
+**Entregas (na ordem):**
+1. **Motor de serialização e exportação (`domain/export/`):** conversão estruturada de transações, faturas de cartão e posições de investimento para formato CSV (padrão pt-BR com vírgula e UTF-8 BOM para compatibilidade com Excel) e backup integral JSON.
+2. **Hub de Exportação e Dados (`/configuracoes > Dados`):** interface para download de extratos filtrados por período, download de backup completo e restauração validada por Zod.
+3. **Visão de Fechamento Mensal Imprimível:** página/modal de resumo executivo do mês (balanço, despesas por categoria, faturas quitadas e taxa de poupança) com folha de estilo de impressão limpa (`@media print` sem chrome de navegação).
+4. **Compartilhamento de Comprovantes:** integração com Web Share API (`navigator.share`) para envio rápido de resumo de transações e comprovantes de quitação.
+
+**Arquivos:** `src/domain/export/` (+ testes) · `src/features/settings/pages/settings-page.tsx` · `src/features/reports/components/` · `src/styles/globals.css`.
+
+**✅ DoD (critérios de aceite)**
+- Exportação CSV validada com abertura correta em planilhas sem corrupção de caracteres pt-BR ou valores numéricos.
+- Backup JSON com validação de integridade antes da importação.
+- Layout de impressão com visual profissional sem elementos de navegação ou controles de UI.
+- Testes unitários para serializadores e componentes da tela de configurações.
+
+---
+
+### Fase 23 — Engenharia de Performance & Code-Splitting 3D
+
+**Objetivo:** otimizar o tempo de carregamento inicial (*First Contentful Paint* e *Time to Interactive*) e a fluidez de navegação em conexões móveis através de empacotamento sob demanda e sintonia fina de cache.
+
+**Entregas (na ordem):**
+1. **Code-splitting das bibliotecas 3D:** encapsulamento do Three.js e React Three Fiber em chunk lazy dinâmico, carregado exclusivamente quando a visualização 3D de cartões for ativada pelo usuário.
+2. **Sintonia fina de cache e refetch:** calibração de `staleTime` e `gcTime` no TanStack Query por tipo de dado (estático, analítico, cotações e transacional), eliminando requisições repetidas em trocas rápidas de abas.
+3. **Pre-fetching de rotas vizinhas:** pré-carregamento discreto dos chunks de código e queries das rotas adjacentes ao interagir com menus ou ao iniciar gestos de navegação.
+4. **Auditoria de Web Vitals:** validação no pipeline de métricas de performance (LCP < 1.2s, INP < 50ms, CLS = 0).
+
+**Arquivos:** `src/components/modules/credit-card-3d.tsx` · `src/app/router.tsx` · `src/data/query.ts` · `src/state/`.
+
+**✅ DoD (critérios de aceite)**
+- Redução de pelo menos 35% no tamanho do bundle inicial do shell.
+- Carregamento assíncrono e suave da carteira 3D sem layout shift ou bloqueio de thread principal.
+- Navegação entre rotas e abas com percepção instantânea em dispositivos móveis.
+- Suíte completa de testes 100% verde sem quebras de lazy load.
+
+---
+
+### Fase 24 — Planejamento Financeiro de Longo Prazo & Simulador FIRE
+
+**Objetivo:** conectar o fluxo financeiro pessoal (poupança mensal) com a carteira de investimentos em um motor integrado de projeção de independência financeira e metas de patrimônio.
+
+**Entregas (na ordem):**
+1. **Motor puro de projeção de longo prazo (`domain/fire/`):** fórmulas de juros compostos com aportes periódicos, correção inflacionária, cálculo de valor futuro e regra dos 4% (Safe Withdrawal Rate).
+2. **Simulador de Independência Financeira (FIRE):** cálculo da idade estimada de alcance do patrimônio alvo com base na taxa de poupança atual e rentabilidade histórica/projetada da carteira.
+3. **Rastreador de Reserva de Emergência:** dimensionamento automático da reserva ideal (3 a 12 meses de custo de vida essencial real, derivado dos gastos históricos do app) e progresso de cobertura.
+4. **Tela de Planejamento `/planejamento`:** visualização gráfica de curvas de projeção (conservador, moderado, arrojado) e ajuste de parâmetros com sliders acessíveis.
+
+**Arquivos:** `src/domain/fire/` (+ testes) · `src/features/planning/` (novo) · `src/app/routes.ts` · `src/components/layout/nav-items.tsx`.
+
+**✅ DoD (critérios de aceite)**
+- Funções matemáticas puras de juros compostos e FIRE validadas contra tabelas atuariais de referência.
+- Integração dinâmica consumindo média real de despesas e patrimônio consolidado.
+- Controles de ajuste (sliders, inputs) totalmente acessíveis via teclado e leitores de tela.
+- Suíte de testes 100% verde cobrindo todos os cenários de simulação.
+
+---
+
+### Fase 25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)
+
+**Objetivo:** elevar o acabamento visual, a fluidez sensorial e o conforto ergonômico da aplicação em todas as superfícies, implementando a Sidebar inteligente com expansão por hover no desktop, experiência de Bottom Sheet móvel, micro-animações de confirmação e refinamento de transições em gráficos e estados de carregamento.
+
+**Entregas (na ordem):**
+1. **Sidebar Inteligente com Expand on Hover (Desktop):**
+   - Expansão flutuante em overlay suave (`w-64`, `shadow-2xl`, `bg-surface/95 backdrop-blur-md`) quando colapsada, sem causar Layout Shift na página (`PageShell` mantém `pl-20`).
+   - Debounce de intenção: delay de `180ms` no `mouseenter` e `120ms` no `mouseleave`.
+   - Botão de trava manual no rodapé preservando a persistência no `localStorage`.
+   - Isolamento via `@media (hover: hover) and (pointer: fine)` e suporte a `:focus-within`.
+2. **Bottom Sheets & Drawers Móveis:**
+   - Evolução do primitivo `Modal` no mobile para abertura em formato de gaveta inferior (slide-up elástico, puxador tátil superior e fechamento por gesto swipe-down).
+3. **Elevação, Foco e Tooltips Contextuais (Desktop):**
+   - Micro-elevação tátil e bordas iluminadas por tom semântico nos `KpiCard`.
+   - Micro-transições Radix de abertura em `Select`, `DatePicker` e menus de contexto.
+   - Sistema padronizado de `Tooltip` nos botões utilitários e ícones da Sidebar compacta.
+4. **Feedback Sensorial & Micro-animações de Conclusão:**
+   - Micro-animação elástica de confirmação com haptic `success` ao salvar registros, quitar parcelas ou liquidar faturas.
+   - Feedback de compressão elástica (`active:scale-[0.97]`) em cards, chips e botões no mobile.
+5. **Harmonização de Estados & Transições em Gráficos:**
+   - Sincronização da fase de onda do shimmer em todos os skeletons da tela.
+   - Transição suave (*cross-fade*) ao atualizar séries de dados em `DailyFlowChart` e `CategoryDonut`.
+   - Entrada escalonada (*stagger*) de 25ms nas listas e KPIs ao carregar telas.
+
+**Arquivos:** `src/components/layout/sidebar.tsx` · `src/components/layout/page-shell.tsx` · `src/hooks/use-sidebar-state.ts` · `src/components/ui/modal.tsx` · `src/components/ui/tooltip.tsx` · `src/components/modules/kpi-card.tsx` · `src/components/modules/daily-flow-chart.tsx` · `src/components/modules/category-donut.tsx` · `src/styles/globals.css`.
+
+**✅ DoD (critérios de aceite)**
+- Sidebar expande suavemente por hover no desktop sem deslocar os elementos da página; zero disparos acidentais com mouse rápido; botão de toggle manual e persistência funcionando perfeitamente.
+- Modais no mobile comportam-se como Bottom Sheets fluidas com fechamento por arrasto.
+- Micro-interações respeitam estritamente `prefers-reduced-motion` e as configurações de `data-motion` (desligando efeitos nos modos "Econômica" e "Reduzida").
+- Auditoria de acessibilidade (`axe-core`) com 0 violações nas novas superfícies e tooltips.
+- Suíte completa de testes 100% verde (incluindo testes de integração da Sidebar e Bottom Sheets).
+
+---
+
 ## 4. ORDEM DE CONSTRUÇÃO DA BIBLIOTECA DE UI
 
 **Regra absoluta:** primitivo antes do módulo, módulo antes da tela. Se uma tela precisar de algo que não existe, **pare e extraia** — não duplique.
 
 ### 4.1 Primitivos (Fase 0 e extensões) — `components/ui`
 `Button → Input → MoneyInput → Select → Card → Badge → Skeleton → EmptyState → Progress → Modal/Dialog → ConfirmDialog → Tabs → DataList → Stepper → Command → Toast → Checkbox → RadioGroup → DatePicker → Slider → Accordion → Textarea → Dropzone`
-(+ `VirtualList`, `ScrollToTopButton`, `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10), `LivePulseBeacon` (F11). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
+(+ `VirtualList`, `ScrollToTopButton`, `NumberTicker`, `Sparkline`, `DraggableFab`, `Sheet`/Drawer, `ColorPicker`, `IconPicker` (pós-F10), `LivePulseBeacon` (F11), `Tooltip` (F25). **Regra:** nenhum elemento nativo de controle é usado cru em tela — sempre um primitivo do app, DESIGN_SYSTEM §13.)
 
 ### 4.2 Módulos de domínio (por fase) — `components/modules`
 - **F0/F2:** `MoneyInput` é primitivo de UI (Fase 0); `CategoryIcon`, `MonthPicker`, `TransactionRow`, `KpiCard`, `BudgetProgressBar`, `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge`, `WizardShell`.
@@ -992,11 +1119,15 @@
 - **F4:** `PositionTable`, `TargetEditor` (barra de soma), `AporteResult`.
 - **F5:** `GlobalSearch` (⌘K), `HighlightRow`, `OnboardingCard`.
 - **F7:** `CollapsibleSidebar`, `AdaptiveHeader`, `MobileBottomNav5Slot`.
-- **F8:** `CategoryDonut`, `DailyFlowChart`, `PrivacyToggle` — `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard` e `SavingsHealthCard` foram substituídos pelo widget `summary` (F12) e **serão removidos na F19** (código morto).
+- **F8:** `CategoryDonut`, `DailyFlowChart`, `PrivacyToggle` — `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard` e `SavingsHealthCard` foram substituídos pelo widget `summary` (F12) e removidos na F19 (código morto).
 - **F9:** `FloatingCalculator`, `CalculatorKeypad`, `ScrollToTop`.
 - **F10:** `BrandLogo`, `BrandIcon`.
 - **F16:** `AllocationDonut` (genérico de ativos — padrão `CategoryDonut`, SVG próprio).
 - **F20:** `MonthSwiper` (envolve `MonthPicker` com swipe) — primitivo `Tabs` ganha `swipeable` (navegação por gesto em sub-abas).
+- **F21:** `SmartPredictionSuggest`, `TransactionTemplateSelector`.
+- **F22:** `MonthlyClosePrintView`, `ExportDataHub`.
+- **F24:** `FireProjectionChart`, `EmergencyFundGauge`.
+- **F25:** `HoverExpandSidebar`, `BottomSheetShell`, `SuccessPulseFeedback`.
 
 ### 4.3 Telas (por fase) — `features/`
 Sempre composição fina: layout (`components/layout`) + módulos (`components/modules`) + contratos (`state/`). Sem JSX duplicado entre telas — qualquer repetição vira módulo novo.
@@ -1018,35 +1149,33 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ## 6. PRÓXIMAS FASES (PROPOSTA OFICIAL — INSERIDAS)
 
-> **Auditoria concluída (2026-08-15):** as fases F0–F13 estão implementadas. A proposta oficial (diagnóstico completo, fases F14–F18 com entregas/DoD e perguntas P1–P6) está em `docs/NEXT_PHASES.md`.
+> **Auditoria concluída (2026-08-15):** as fases F0–F15, F19 e F20 estão implementadas e testadas. A proposta oficial com o diagnóstico completo, fases da Trilha B e novas fases de evolução está registrada neste roadmap e em `docs/NEXT_PHASES.md`.
 >
-> **Fases F14–F18 inseridas formalmente neste roadmap (2026-08-15, §3)** com as decisões **default** de P1–P6 aplicadas (ver `NEXT_PHASES.md` §4); **Fase 19 (Inteligência & Consistência dos Insights, Trilha A)** adicionada em 2026-08-15 após auditoria funcional (diagnóstico em `NEXT_PHASES.md` §1.4):
+> **Decisões default aplicadas:**
 > - **P1 = (a)** cotações: edge function (F1.7/Yahoo) + preço manual como fonte primária — deploy/cron da F1.7 é pré-requisito da F16.
 > - **P2 = (a)** gráficos: SVG próprio (padrão `CategoryDonut`) — sem libs novas.
 > - **P3 = (a)** rota nova `/investments` (leitura), mantendo `/carteira` para operação.
 > - **P4 = (a)** proventos: apenas recebidos (escopo mínimo — sem migration).
 > - **P5 = (b)** proventos ficam só na carteira (fora do fluxo financeiro core — D11 preservado).
-> - **P6 = (a)** ordem: Trilha A (F14–F15, F19 e F20) antes da Trilha B (F16–F18).
->
-> **Estado atual dos pontos citados na auditoria:**
-> - Home: o KPI "Investimentos" ainda usa stub (`computeOverview(..., 0)` + hint "Carteira na Fase 4") — preenchimento previsto na **Fase 16**.
-> - Carteira: F4 concluída (ledger, valoração, metas, aporte em `/carteira`); faltam rentabilidade na Posição (F14), dashboard `/investments` (F17) e proventos (F18).
-> - Pendências operacionais vigentes: deploy/cron da edge function de cotações (F1.7), testes contra banco real (F1 DoD), QA manual final (F6.5).
->
-> As decisões default podem ser revisadas a qualquer momento (P1–P6 continuam em aberto para ajuste).
+> - **P6 = (a)** ordem: Trilha A (F14–F15, F19 e F20) antes da Trilha B (F16–F18), seguida pelas fases de inteligência, refinamento e escala (F21–F25).
 
 ### 6.1 Ordem de execução das próximas fases (status 2026-08-15)
 
-> **F14, F15, F19 e F20 concluídas (2026-08-15)** — ver progresso na seção §3. As demais fases F16, F17 e F18 (Trilha B) estão **formais e não iniciadas** (aguardando o comando de implementação). A ordem segue **P6 = (a) — Trilha A primeiro** (refinamento antes de novas superfícies), com as dependências declaradas:
+> **F14, F15, F16, F19 e F20 concluídas (2026-08-15)** — ver progresso na seção §3. As demais fases estão **formais e priorizadas sequencialmente**:
 
 | Ordem | Fase | Trilha | Depende de | Status |
 |---|---|---|---|---|
 | 1 | **F14** — Consistência de Estados & Ergonomia de Dados | A | — | ✅ Concluída (2026-08-15) |
 | 2 | **F15** — Micro-Interações & Conforto Visual | A | F14 | ✅ Concluída (2026-08-15) |
-| 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 (pode intercalar) | ✅ Concluída (2026-08-15) |
+| 3 | **F19** — Inteligência & Consistência dos Insights | A | F15 | ✅ Concluída (2026-08-15) |
 | 4 | **F20** — Swipe Navigation & Gesture UX | A | F15/F19 | ✅ Concluída (2026-08-15) |
-| 5 | **F16** — Carteira na Home (KPI real) | B | P1 (deploy/cron F1.7) · F14 | 📋 Não iniciada |
+| 5 | **F16** — Carteira na Home (KPI real + donut de alocação) | B | F14 | ✅ Concluída (2026-08-15) — KPI de aportes com deep-link; `AllocationDonut` na Posição (decisão: sem widget na Home) |
 | 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | 📋 Não iniciada |
 | 7 | **F18** — Proventos (extrato & calendário) | B | F17 | 📋 Não iniciada |
+| 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | 📋 Planejada |
+| 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | 📋 Planejada |
+| 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | 📋 Planejada |
+| 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | 📋 Planejada |
+| 12 | **F25** — Micro-interações, Feedback Visual & Ergonomia | A / Refinamento | F7/F12 | 📋 Planejada |
 
-**Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e **commitar e pushar** antes de avançar para a próxima.
+**Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.

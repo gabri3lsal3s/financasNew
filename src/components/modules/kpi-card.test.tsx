@@ -1,5 +1,5 @@
-import { act, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { KpiCard } from "./kpi-card";
 
 const waitFrames = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -26,5 +26,24 @@ describe("KpiCard (F12 — valores monetários via MoneyText)", () => {
   it("value (string) segue como fallback para valores não monetários", () => {
     render(<KpiCard label="Ativos" value="3" />);
     expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("onClick torna o card clicável e acessível (clique e teclado — F16 deep-link)", () => {
+    const onClick = vi.fn();
+    const { container } = render(<KpiCard label="Investimentos" value="R$ 0,00" onClick={onClick} />);
+    const card = container.querySelector("[role=button]");
+    expect(card).not.toBeNull();
+    expect(card).toHaveAttribute("tabindex", "0");
+    fireEvent.click(card as Element);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(card as Element, { key: "Enter" });
+    expect(onClick).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(card as Element, { key: " " });
+    expect(onClick).toHaveBeenCalledTimes(3);
+  });
+
+  it("sem onClick o card permanece informativo (sem role button)", () => {
+    const { container } = render(<KpiCard label="Receitas" cents={100} />);
+    expect(container.querySelector("[role=button]")).toBeNull();
   });
 });
