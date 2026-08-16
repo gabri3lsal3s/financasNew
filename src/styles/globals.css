@@ -502,8 +502,15 @@
    fluxo com `display: none` e o `.print-sheet` flui em posição normal — a
    única forma de paginação multi-página confiável no Chrome (elementos
    `position: fixed`/`absolute` em impressão são cortados na 1ª página, o
-   que deixava os lançamentos incompletos). Cores claras fixas p/ economia
-   de tinta.
+   que deixava os lançamentos incompletos).
+
+   Visual profissional e padronizado (v1.21): o documento NUNCA herda o tema
+   ativo do app (light/dark/oled, acentos customizados ou surface-style).
+   Dentro do `@media print` as variáveis de tema são redefinidas para a
+   paleta clara fixa (fundo branco, texto quase-preto, bordas cinza-claras e
+   acentos da identidade) e a tipografia usa UMA única família (sans) com
+   números tabulares — sem fundos escuros, sem cores despadronizadas e sem
+   mono/display misturados no PDF.
    ---------------------------------------------------------------- */
 .print-sheet {
   display: none;
@@ -511,12 +518,52 @@
 
 @media print {
   @page {
-    margin: 12mm;
+    size: A4;
+    margin: 14mm;
   }
 
   body {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  /* Paleta clara fixa — sobrepõe QUALQUER tema/accento/surface-style ativo
+     (light, dark, oled, emerald/gold/sapphire/violet/rose/mono, flat/
+     elevated). As utilitárias do documento (`bg-surface`, `text-foreground`,
+     `border-border`, `bg-muted/30`, `text-positive-strong`, …) compilam para
+     `hsl(var(--…))` em runtime — redefinir as variáveis cobre todas de uma
+     vez (e qualquer utilitária futura adicionada à folha). `!important`
+     garante a vitória sobre os seletores de tema/accento de maior
+     especificidade. */
+  :root,
+  html[data-theme="light"],
+  html[data-theme="dark"],
+  html[data-theme="oled"] {
+    --background: 204 29% 97% !important;
+    --surface: 0 0% 100% !important;
+    --surface-hover: 200 22% 94% !important;
+    --surface-active: 200 20% 90% !important;
+    --border: 200 18% 87% !important;
+    --input: 200 16% 79% !important;
+    --muted: 200 20% 95% !important;
+    --foreground: 205 42% 14% !important;
+    --muted-foreground: 215 26% 35% !important;
+    --primary: 173 58% 39% !important;
+    --primary-strong: 173 66% 26% !important;
+    --primary-foreground: 0 0% 100% !important;
+    --secondary: 174 65% 37% !important;
+    --secondary-foreground: 172 80% 8% !important;
+    --accent: 42 73% 51% !important;
+    --accent-foreground: 205 42% 14% !important;
+    --positive: 173 58% 39% !important;
+    --positive-strong: 173 66% 26% !important;
+    --negative: 12 76% 61% !important;
+    --negative-strong: 7 62% 43% !important;
+    --warning: 43 74% 66% !important;
+    --warning-strong: 23 82% 31% !important;
+    --critical: 0 84% 60% !important;
+    --critical-strong: 0 74% 42% !important;
+    --portfolio: 201 47% 20% !important;
   }
 
   body > :not(.print-sheet) {
@@ -527,18 +574,57 @@
     display: block !important;
     background: #ffffff !important;
     color: #1c1917 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
+  /* Tipografia única e padronizada: toda a folha usa a família sans (Inter)
+     — o `.num` (mono) e o `font-display` (Sora) viram sans no documento,
+     mantendo o alinhamento tabular dos valores (colunas retas no PDF). */
+  .print-sheet,
+  .print-sheet * {
+    font-family: var(--font-sans) !important;
+  }
+
+  .print-sheet .num {
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: 0 !important;
+  }
+
+  /* Reforço explícito das cores-chave (rede de segurança caso alguma
+     utilitária não derive das variáveis acima). */
   .print-sheet .text-muted-foreground {
-    color: #57534e !important;
+    color: #475569 !important;
+  }
+
+  .print-sheet .text-primary-strong,
+  .print-sheet .text-positive-strong {
+    color: #1b6b62 !important;
+  }
+
+  .print-sheet .text-negative-strong {
+    color: #b23a2a !important;
   }
 
   .print-sheet .border-border,
+  .print-sheet .border-border\/40,
   .print-sheet .border-border\/60 {
     border-color: #d6d3d1 !important;
   }
 
-  .print-sheet .bg-muted\/30 {
+  .print-sheet .bg-muted\/30,
+  .print-sheet .bg-muted\/40 {
     background-color: #f5f5f4 !important;
+  }
+
+  /* Quebra de página limpa: linhas de tabela nunca são cortadas no meio e o
+     cabeçalho das tabelas repete em cada página (comportamento nativo do
+     `<thead>` em fluxo normal — mantido pelo PrintSheet). */
+  .print-sheet tr {
+    break-inside: avoid;
+  }
+
+  .print-sheet thead {
+    display: table-header-group;
   }
 }
