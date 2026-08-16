@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listFeedback, setFeedback } from "@/data/repositories/insight-feedback";
+import { getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
 import type { FeedbackDecision } from "@/domain/insights/feedback";
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
@@ -28,6 +30,15 @@ export function useSetFeedback() {
       setFeedback(occurrenceKey, decision),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: feedbackKey });
+    },
+    // Falha não pode ser silenciosa (padrão das demais mutações): o toast
+    // avisa e a decisão pode ser tentada de novo.
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível salvar a avaliação",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
     },
   });
 }
