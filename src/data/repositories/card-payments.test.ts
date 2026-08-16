@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { createPayment, createRefundPayment, listCardPayments } from "./card-payments";
+import { createPayment, createRefundPayment, deleteCardPayment, listCardPayments } from "./card-payments";
 
 interface Builder {
   select: ReturnType<typeof vi.fn>;
@@ -29,9 +29,11 @@ vi.mock("@/data/client", () => ({
 
 const createCardPaymentMock = vi.fn();
 const createRefundMock = vi.fn();
+const deleteCardPaymentRpcMock = vi.fn();
 vi.mock("@/data/rpc", () => ({
   createCardPayment: (...args: unknown[]) => createCardPaymentMock(...args),
   createRefund: (...args: unknown[]) => createRefundMock(...args),
+  deleteCardPaymentRpc: (...args: unknown[]) => deleteCardPaymentRpcMock(...args),
 }));
 
 describe("card-payments repository (entrega 5)", () => {
@@ -82,5 +84,11 @@ describe("card-payments repository (entrega 5)", () => {
       date: "2026-08-12",
       note: null,
     });
+  });
+
+  it("exclusão de pagamento/estorno delega ao RPC transacional delete_card_payment", async () => {
+    deleteCardPaymentRpcMock.mockResolvedValue(undefined);
+    await deleteCardPayment("p1");
+    expect(deleteCardPaymentRpcMock).toHaveBeenCalledWith("p1");
   });
 });

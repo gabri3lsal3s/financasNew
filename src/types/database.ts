@@ -144,6 +144,10 @@ export interface Database {
         Args: { p_card_id: string };
         Returns: void;
       };
+      delete_card_payment: {
+        Args: { p_payment_id: string };
+        Returns: void;
+      };
       reallocate_budget: {
         Args: {
           p_from_category_id: string;

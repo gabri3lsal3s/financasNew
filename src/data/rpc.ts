@@ -252,6 +252,19 @@ export async function deleteCreditCardRpc(cardId: string): Promise<void> {
   );
 }
 
+/**
+ * Exclusão de pagamento/estorno — RPC transacional (migração 0011): remove
+ * o pagamento e a renda automática [REFUND] associada num único passo.
+ */
+export async function deleteCardPaymentRpc(paymentId: string): Promise<void> {
+  await unwrapRpc(
+    callRpc("delete_card_payment", {
+      p_payment_id: paymentId,
+    }),
+    true,
+  );
+}
+
 /** Realocação atômica de limite entre categorias (D1/§3.5.2). */
 export async function reallocateBudget(params: {
   fromCategoryId: string;

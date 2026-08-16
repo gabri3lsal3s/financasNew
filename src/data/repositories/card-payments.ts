@@ -1,6 +1,6 @@
 import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
-import { createCardPayment, createRefund } from "@/data/rpc";
+import { createCardPayment, createRefund, deleteCardPaymentRpc } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
 import type { CardPayment } from "@/types";
 
@@ -72,25 +72,11 @@ export async function createRefundPayment(input: {
   });
 }
 
-/** Exclui um pagamento de fatura ou estorno (e sua renda automática associada quando estorno). */
+/**
+ * Exclui um pagamento de fatura ou estorno — RPC transacional
+ * `delete_card_payment` (migração 0011): remove o pagamento e a renda
+ * automática [REFUND] associada num único passo atômico no servidor.
+ */
 export async function deleteCardPayment(paymentId: string): Promise<void> {
-  const supabase = getSupabase();
-  // Se for estorno, remove a renda automática correspondente
-  const { error: incomeErr } = await supabase
-    .from("incomes")
-    .delete()
-    .eq("source_ref", `[REFUND]${paymentId}`);
-  if (incomeErr) {
-    const classified = classifyError(incomeErr);
-    throw new AppError(classified.kind, classified.message, incomeErr);
-  }
-
-  const { error } = await supabase
-    .from("card_payments")
-    .delete()
-    .eq("id", paymentId);
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
+  await deleteCardPaymentRpc(paymentId);
 }
