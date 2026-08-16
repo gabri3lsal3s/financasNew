@@ -58,7 +58,7 @@ export function PageShell() {
           </div>
         </header>
         <main
-          className="flex-1 overflow-y-auto overflow-x-hidden min-h-0"
+          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain min-h-0"
           {...pullUp.pointerHandlers}
         >
           <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 lg:px-8">

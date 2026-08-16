@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard; **atualizações otimistas** em edição/exclusão de lançamentos; **edge inset do Swipe Navigation**) · suíte **1126 testes / 143 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard; **atualizações otimistas** em edição/exclusão de lançamentos; **edge inset do Swipe Navigation**; **Pull-up to Top confiável**) · suíte **1133 testes / 143 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -178,6 +178,7 @@
 
 - **Problema:** o botão flutuante "Rolar para o Topo" poluía o mobile e conflitava com cards e listas.
 - **Solução:** **gesto de pull-up no rodapé** da página: motor puro `domain/gestures/overscroll` (resistência elástica logarítmica, **barreira de inércia** — momentum nunca dispara, threshold 80 px); hook `usePullUpToTop` com FSM e **cancelamento reversível**; **sem pointer capture** (coexiste com o swipe-to-action); indicador minimalista com anel de progresso SVG; **remoção** do `ScrollToTopButton`/`useScrollPosition`.
+- **Evolução (2026-08-16, confiabilidade):** gesto instável/aleatório corrigido — **engajamento e re-âncora no meio do gesto** (atingiu o fim do scroll durante o `pointermove`, o pull conta daquele instante — não depende mais do `pointerdown` no rodapé); **fim de scroll com `Math.ceil` + tolerância 8px** (subpixel de telas DPI alto); **`overscroll-behavior-y: contain` + listener nativo `touchmove` não-passivo** (anexado no `pointerdown`, removido ao fim — `preventDefault()` só quando puxando além do rodapé); **threshold 80 → 60px** (mais confortável).
 
 ## F27 — Insights: Precisão, Deduplicação & Casos de Borda
 

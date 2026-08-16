@@ -1,7 +1,13 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, fireEvent, render, renderHook } from "@testing-library/react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { usePullUpToTop } from "./use-pull-up-to-top";
+
+/** Harness real: handlers espalhados num contêiner real (listener nativo anexado no pointerdown). */
+function Harness({ scrollToTop }: { scrollToTop?: () => void }) {
+  const pull = usePullUpToTop({ scrollToTop });
+  return <main data-testid="container" {...pull.pointerHandlers} />;
+}
 
 function fakePointer(
   y: number,
@@ -140,5 +146,96 @@ describe("usePullUpToTop (F26 — FSM pull-up to top)", () => {
     expect(result.current.state).toBe("idle"); // desarmado pela barreira
     act(() => onPointerUp(fakePointer(300, { currentTarget: container })));
     expect(scrollToTop).not.toHaveBeenCalled();
+  });
+
+  it("engaja no meio do gesto: rolar até o fim e puxar num mesmo toque (re-âncora)", () => {
+    const scrollToTop = vi.fn();
+    const { result } = renderHook(() => usePullUpToTop({ scrollToTop }));
+    const { onPointerDown, onPointerMove, onPointerUp } = result.current.pointerHandlers;
+    // Começa longe do fim — o pointerdown NÃO engaja (âncora registrada).
+    const container = makeContainer({ scrollTop: 500, clientHeight: 100, scrollHeight: 1000 });
+
+    act(() => onPointerDown(fakePointer(200, { currentTarget: container })));
+    expect(result.current.state).toBe("idle");
+
+    // O scroll atinge o fim DURANTE o toque: re-ancora em 200 e engaja.
+    container.scrollTop = 900;
+    act(() => onPointerMove(fakePointer(200, { currentTarget: container })));
+    expect(result.current.state).toBe("at_bottom");
+
+    // Pull conta da re-âncora: 240 → 40px brutos (pulling), 420 → threshold.
+    act(() => onPointerMove(fakePointer(240, { currentTarget: container })));
+    expect(result.current.state).toBe("pulling");
+    act(() => onPointerMove(fakePointer(420, { currentTarget: container })));
+    expect(result.current.state).toBe("threshold_reached");
+
+    act(() => onPointerUp(fakePointer(420, { currentTarget: container })));
+    expect(scrollToTop).toHaveBeenCalledTimes(1);
+  });
+
+  it("engaja com scrollTop fracionário no fim (subpixel de DPI alto)", () => {
+    const { result } = renderHook(() => usePullUpToTop());
+    const { onPointerDown } = result.current.pointerHandlers;
+    const container = makeContainer({ scrollTop: 899.4, clientHeight: 100, scrollHeight: 1000 });
+
+    act(() => onPointerDown(fakePointer(100, { currentTarget: container })));
+    expect(result.current.state).toBe("at_bottom");
+  });
+
+  it("touchmove nativo NÃO-passivo previne o overscroll quando engajado puxando", () => {
+    const { container } = render(<Harness />);
+    const el = container.querySelector<HTMLElement>("[data-testid=container]")!;
+    Object.defineProperty(el, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(el, "scrollHeight", { value: 1000, configurable: true });
+    el.scrollTop = 900; // no fim
+
+    act(() => {
+      fireEvent.pointerDown(el, { clientY: 100, pointerId: 1, pointerType: "touch", isPrimary: true });
+    });
+    act(() => {
+      fireEvent.pointerMove(el, { clientY: 150, pointerId: 1 });
+    });
+
+    // Dedinho em 200 (puxando além do rodapé) → o navegador NÃO pode assumir.
+    const ev = new Event("touchmove", { cancelable: true });
+    Object.defineProperty(ev, "touches", { value: [{ clientY: 200 }] });
+    act(() => el.dispatchEvent(ev));
+    expect(ev.defaultPrevented).toBe(true);
+  });
+
+  it("touchmove nativo NÃO é prevenido fora do gesto (scroll normal liberado)", () => {
+    const { container } = render(<Harness />);
+    const el = container.querySelector<HTMLElement>("[data-testid=container]")!;
+    Object.defineProperty(el, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(el, "scrollHeight", { value: 1000, configurable: true });
+    el.scrollTop = 100; // longe do fim — gesto não engajado
+
+    act(() => {
+      fireEvent.pointerDown(el, { clientY: 100, pointerId: 1, pointerType: "touch", isPrimary: true });
+    });
+
+    const ev = new Event("touchmove", { cancelable: true });
+    Object.defineProperty(ev, "touches", { value: [{ clientY: 150 }] });
+    act(() => el.dispatchEvent(ev));
+    expect(ev.defaultPrevented).toBe(false);
+  });
+
+  it("aplica overscroll-behavior-y: contain no contêiner durante o gesto", () => {
+    const { container } = render(<Harness />);
+    const el = container.querySelector<HTMLElement>("[data-testid=container]")!;
+    Object.defineProperty(el, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(el, "scrollHeight", { value: 1000, configurable: true });
+    el.scrollTop = 900;
+
+    act(() => {
+      fireEvent.pointerDown(el, { clientY: 100, pointerId: 1, pointerType: "touch", isPrimary: true });
+    });
+    expect(el.style.overscrollBehaviorY).toBe("contain");
+
+    // Fim do gesto → estilo restaurado e listener removido.
+    act(() => {
+      fireEvent.pointerUp(el, { clientY: 100, pointerId: 1 });
+    });
+    expect(el.style.overscrollBehaviorY).toBe("");
   });
 });

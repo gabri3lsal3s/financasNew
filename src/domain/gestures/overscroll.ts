@@ -11,12 +11,16 @@
  *   contêiner em repouso no rodapé (inércia de rolagem rápida NÃO dispara).
  */
 
-/** Limiar efetivo (px) de disparo do gesto — piso de segurança. */
-export const PULL_TO_TOP_THRESHOLD_PX = 80;
+/** Limiar efetivo (px) de disparo do gesto — confortável (F26 evolução). */
+export const PULL_TO_TOP_THRESHOLD_PX = 60;
 /** Teto da resistência elástica (px máximos visualizados). */
 export const PULL_TO_TOP_MAX_PULL_PX = 140;
-/** Tolerância (px) para considerar o contêiner "no fim" do scroll. */
-export const SCROLL_BOTTOM_TOLERANCE_PX = 2;
+/**
+ * Tolerância (px) para considerar o contêiner "no fim" do scroll.
+ * Absorve sub-pixels de arredondamento de telas DPI alto (Retina/Android)
+ * e a flutuação residual do momentum no rodapé.
+ */
+export const SCROLL_BOTTOM_TOLERANCE_PX = 8;
 /** Fator base da resistência logarítmica (curva suave de amortecimento). */
 export const OVERSCOLL_RESISTANCE_BASE = 1.6;
 
@@ -42,11 +46,14 @@ export function computePullDistance(
 }
 
 /**
- * O contêiner está parado no fim do scroll?
+ * O contêiner está no fim do scroll?
  *
  * Barreira de inércia (DoD): flings rápidos que "batem" no rodapé durante o
  * momentum são ignorados — só um toque estático intencional no fim acumula.
- * `tolerance` absorve sub-pixels de arredondamento do layout.
+ *
+ * `Math.ceil` + `tolerance` absorvem sub-pixels de arredondamento: em telas
+ * DPI alto o `scrollTop` chega ao fim como 1199.4 (não 1200) — `ceil` fecha
+ * a diferença fracionária e a tolerância cobre a flutuação residual.
  */
 export function isAtScrollBottom(
   scrollTop: number,
@@ -55,7 +62,7 @@ export function isAtScrollBottom(
   tolerance: number = SCROLL_BOTTOM_TOLERANCE_PX,
 ): boolean {
   if (scrollHeight <= 0) return false;
-  return scrollTop + clientHeight >= scrollHeight - tolerance;
+  return Math.ceil(scrollTop + clientHeight) >= scrollHeight - tolerance;
 }
 
 /** Resultado da avaliação de intenção do pull-up. */
