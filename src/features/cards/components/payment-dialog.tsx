@@ -54,7 +54,15 @@ function PaymentDialogContent({ cardId, competenceMonth, mode, onClose }: Paymen
   };
 
   return (
-    <div className="mt-4 flex flex-col gap-4">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (cents > 0 && !pending) {
+          void handleSubmit();
+        }
+      }}
+      className="mt-4 flex flex-col gap-4"
+    >
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
@@ -62,6 +70,7 @@ function PaymentDialogContent({ cardId, competenceMonth, mode, onClose }: Paymen
           {isRefund ? "Valor do estorno" : "Valor pago"}
         </label>
         <MoneyInput
+          autoFocus
           id="payment-amount"
           cents={cents}
           onCentsChange={setCents}
@@ -85,11 +94,11 @@ function PaymentDialogContent({ cardId, competenceMonth, mode, onClose }: Paymen
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
-        <Button type="button" disabled={cents <= 0 || pending} onClick={() => void handleSubmit()}>
+        <Button type="submit" disabled={cents <= 0 || pending}>
           {pending ? "Salvando…" : isRefund ? "Confirmar estorno" : "Confirmar pagamento"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 

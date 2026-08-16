@@ -232,7 +232,7 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 | `<select>` | `Select` (acessível, com teclado) |
 | `<input type="checkbox">` | `Checkbox` |
 | `<input type="radio">` | `RadioGroup` |
-| `<input type="date">` | `DatePicker` (pt-BR, com tokens) |
+| `<input type="date">` | `DatePicker` (pt-BR, com tokens, auto-close ao selecionar, atalhos rápidos Hoje/Ontem e haptic) |
 | `<input type="file">` | `Dropzone` (encapsula o input de arquivo; upload fica fora do escopo atual) |
 | `<input type="range">` | `Slider` |
 | `<input type="color">` | `ColorPicker` (paleta de marca + hex custom validado) |

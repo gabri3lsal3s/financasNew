@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { triggerHaptic } from "@/services/haptics";
 
 /** Largura da área de ações revelada (px). */
 export const SWIPE_ACTION_WIDTH = 96;
@@ -56,8 +57,12 @@ export function useSwipeAction({ onOpen, onClose }: UseSwipeActionOptions = {}):
       setDragging(false);
       setOpenState(next);
       setOffset(next ? -SWIPE_ACTION_WIDTH : 0);
-      if (next) onOpen?.();
-      else onClose?.();
+      if (next) {
+        triggerHaptic("light");
+        onOpen?.();
+      } else {
+        onClose?.();
+      }
     },
     [onOpen, onClose],
   );

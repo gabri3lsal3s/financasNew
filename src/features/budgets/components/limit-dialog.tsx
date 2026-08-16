@@ -69,14 +69,22 @@ function LimitDialogContent({
   };
 
   return (
-    <div className="mt-4 flex flex-col gap-4">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (cents > 0 && !pending) {
+          void handleSave();
+        }
+      }}
+      className="mt-4 flex flex-col gap-4"
+    >
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="limit-amount" className="text-sm font-medium">
           Limite mensal
         </label>
-        <MoneyInput id="limit-amount" cents={cents} onCentsChange={setCents} aria-label="Limite mensal da categoria" />
+        <MoneyInput autoFocus id="limit-amount" cents={cents} onCentsChange={setCents} aria-label="Limite mensal da categoria" />
       </div>
 
       {rule && suggestionCents > 0 ? (
@@ -110,12 +118,12 @@ function LimitDialogContent({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="button" disabled={cents <= 0 || pending} onClick={() => void handleSave()}>
+          <Button type="submit" disabled={cents <= 0 || pending}>
             {pending ? "Salvando…" : "Salvar limite"}
           </Button>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
 

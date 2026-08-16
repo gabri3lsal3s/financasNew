@@ -71,7 +71,15 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
   const categories = expenseCategories.data ?? [];
 
   return (
-    <div className="mt-4 flex flex-col gap-4">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!pending && !(withTransaction && categoryId === "")) {
+          void handleConfirm();
+        }
+      }}
+      className="mt-4 flex flex-col gap-4"
+    >
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       {integrated ? (
@@ -85,6 +93,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
               Despesa passa a contar como
             </label>
             <MoneyInput
+              autoFocus
               id="settle-result"
               cents={effectiveResultCents}
               onCentsChange={(cents) => {
@@ -150,14 +159,13 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
           Cancelar
         </Button>
         <Button
-          type="button"
+          type="submit"
           disabled={pending || (withTransaction && categoryId === "")}
-          onClick={() => void handleConfirm()}
         >
           {pending ? "Quitando…" : "Confirmar quitação"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 

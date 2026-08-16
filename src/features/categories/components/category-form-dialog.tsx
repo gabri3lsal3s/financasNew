@@ -84,7 +84,15 @@ function CategoryFormContent({
   };
 
   return (
-    <div className="mt-4 flex flex-col gap-4">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (name.trim() !== "" && !pending) {
+          void handleSubmit();
+        }
+      }}
+      className="mt-4 flex flex-col gap-4"
+    >
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       {!category ? (
@@ -105,6 +113,7 @@ function CategoryFormContent({
         </label>
         <Input
           id="category-name"
+          autoFocus
           value={name}
           onChange={(event) => {
             setName(event.target.value);
@@ -157,11 +166,11 @@ function CategoryFormContent({
         <Button type="button" variant="ghost" onClick={onClose} className="ml-auto">
           Cancelar
         </Button>
-        <Button type="button" disabled={name.trim() === "" || pending} onClick={() => void handleSubmit()}>
+        <Button type="submit" disabled={name.trim() === "" || pending}>
           {pending ? "Salvando…" : category ? "Salvar alterações" : "Criar categoria"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 

@@ -67,4 +67,23 @@ describe("ToastHost (bus de toasts imperativos)", () => {
 
     expect(screen.queryByText("Via dismissToast")).not.toBeInTheDocument();
   });
+
+  it("remove o toast ao clicar diretamente no cartão do toast", async () => {
+    const user = userEvent.setup();
+    renderHost();
+
+    act(() => {
+      pushToast({ title: "Clique para fechar", variant: "success" });
+    });
+
+    const toastCard = screen.getByText("Clique para fechar");
+    await user.click(toastCard);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+
+    expect(screen.queryByText("Clique para fechar")).not.toBeInTheDocument();
+  });
 });
+

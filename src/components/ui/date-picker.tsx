@@ -1,9 +1,11 @@
+import { useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { ptBR } from "react-day-picker/locale";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 import type { ChevronProps, DayButtonProps } from "react-day-picker";
 import { toISODate } from "@/domain/money";
+import { triggerHaptic } from "@/services/haptics";
 import { cn } from "@/lib/utils";
 
 export interface DatePickerProps {
@@ -26,6 +28,14 @@ const toISO = (date: Date | undefined): string => {
   if (!date) return "";
   // Fonte única de ISO local (DRY): domain/money/parcelar.toISODate.
   return toISODate(date);
+};
+
+const getTodayISO = (): string => toISODate(new Date());
+
+const getYesterdayISO = (): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return toISODate(d);
 };
 
 /**
@@ -75,11 +85,12 @@ export function DatePicker({
   ariaLabel,
   className,
 }: DatePickerProps) {
+  const [open, setOpen] = useState(false);
   const selected = toDate(value);
   const base = getDefaultClassNames();
   const dayPickerClassNames = {
     ...base,
-    root: cn(base.root, "p-3"),
+    root: cn(base.root, "p-3 pb-1"),
     // Header topo compacto (hotfix): `.month` é uma coluna — a linha do header
     // (seta esquerda · mês/ano centralizado · seta direita) fica no topo e a
     // grade de dias ocupa a largura total abaixo. As setas ficam posicionadas
@@ -107,8 +118,22 @@ export function DatePicker({
     disabled: cn(base.disabled, "text-muted-foreground opacity-40"),
   };
 
+  const handleSelectDay = (date: Date | undefined) => {
+    if (date) {
+      onValueChange(toISO(date));
+      triggerHaptic("light");
+      setOpen(false);
+    }
+  };
+
+  const handleShortcut = (dateIso: string) => {
+    onValueChange(dateIso);
+    triggerHaptic("light");
+    setOpen(false);
+  };
+
   return (
-    <PopoverPrimitive.Root>
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild disabled={disabled}>
         <button
           type="button"
@@ -128,6 +153,7 @@ export function DatePicker({
               onClick={(event) => {
                 event.stopPropagation();
                 onValueChange("");
+                triggerHaptic("light");
               }}
               className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -151,7 +177,7 @@ export function DatePicker({
           <DayPicker
             mode="single"
             selected={selected}
-            onSelect={(date) => onValueChange(toISO(date))}
+            onSelect={handleSelectDay}
             locale={ptBR}
             weekStartsOn={0}
             disabled={{ before: new Date("2000-01-01") }}
@@ -159,8 +185,25 @@ export function DatePicker({
             components={{ Chevron: ThemedChevron, DayButton: ThemedDayButton }}
             navLayout="around"
           />
+          <div className="mt-1 flex items-center justify-end gap-2 border-t border-border/60 px-2 pt-2">
+            <button
+              type="button"
+              onClick={() => handleShortcut(getYesterdayISO())}
+              className="rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Ontem
+            </button>
+            <button
+              type="button"
+              onClick={() => handleShortcut(getTodayISO())}
+              className="rounded-md bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Hoje
+            </button>
+          </div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
   );
 }
+

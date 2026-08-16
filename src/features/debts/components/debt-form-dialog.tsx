@@ -56,14 +56,22 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
   const valid = name.trim() !== "" && cents > 0 && dueDate !== "";
 
   return (
-    <div className="mt-4 flex flex-col gap-4">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (valid && !pending) {
+          void handleSubmit();
+        }
+      }}
+      className="mt-4 flex flex-col gap-4"
+    >
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="debt-name" className="text-sm font-medium">
           Nome
         </label>
-        <Input id="debt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Conta de luz" />
+        <Input autoFocus id="debt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Conta de luz" />
       </div>
 
       <RadioGroup
@@ -103,7 +111,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         <Button type="button" variant="ghost" onClick={onClose} className="ml-auto">
           Cancelar
         </Button>
-        <Button type="button" disabled={!valid || pending} onClick={() => void handleSubmit()}>
+        <Button type="submit" disabled={!valid || pending}>
           {pending ? "Salvando…" : debt ? "Salvar alterações" : "Criar dívida"}
         </Button>
       </div>
@@ -128,7 +136,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
           }}
         />
       ) : null}
-    </div>
+    </form>
   );
 }
 

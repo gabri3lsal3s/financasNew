@@ -80,7 +80,15 @@ function AssetFormContent({ asset = null, onClose }: AssetFormContentProps) {
 
   return (
     <>
-      <div className="mt-4 flex flex-col gap-4">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canSubmit) {
+            void submit();
+          }
+        }}
+        className="mt-4 flex flex-col gap-4"
+      >
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Ticker
           <Input
@@ -126,12 +134,12 @@ function AssetFormContent({ asset = null, onClose }: AssetFormContentProps) {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="button" onClick={() => void submit()} disabled={!canSubmit}>
+            <Button type="submit" disabled={!canSubmit}>
               {pending ? "Salvando…" : isEdit ? "Salvar" : "Adicionar"}
             </Button>
           </div>
         </div>
-      </div>
+      </form>
 
       <ConfirmDialog
         open={confirmDelete}

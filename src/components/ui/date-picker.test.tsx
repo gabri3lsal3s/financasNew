@@ -126,4 +126,48 @@ describe("DatePicker", () => {
     // Foco visível padronizado no dia (teclado/touch).
     expect(button).toHaveClass("focus-visible:ring-2", "focus-visible:ring-ring");
   });
+
+  it("fecha o popover automaticamente após selecionar um dia", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<DatePicker value="" onValueChange={onValueChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Selecione a data" }));
+    const calendar = await screen.findByRole("grid");
+    const day10 = within(calendar).getAllByRole("gridcell").find((cell) => cell.textContent?.trim() === "10");
+    if (!day10) throw new Error("Dia 10 não encontrado no calendário");
+
+    await user.click(within(day10).getByRole("button"));
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("seleciona Hoje e fecha o popover ao clicar no atalho", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<DatePicker value="" onValueChange={onValueChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Selecione a data" }));
+    const todayButton = await screen.findByRole("button", { name: "Hoje" });
+    await user.click(todayButton);
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]?.[0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("seleciona Ontem e fecha o popover ao clicar no atalho", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<DatePicker value="" onValueChange={onValueChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Selecione a data" }));
+    const yesterdayButton = await screen.findByRole("button", { name: "Ontem" });
+    await user.click(yesterdayButton);
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]?.[0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });
+

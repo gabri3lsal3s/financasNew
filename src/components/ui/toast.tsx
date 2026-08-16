@@ -61,8 +61,14 @@ export function Toast({
       open={open}
       onOpenChange={onOpenChange}
       duration={duration}
+      onClick={(event) => {
+        const target = event.target as HTMLElement;
+        if (!target.closest("button")) {
+          onOpenChange(false);
+        }
+      }}
       className={cn(
-        "pointer-events-auto flex w-full items-start gap-3 rounded-xl border bg-surface p-4 shadow-lg data-[state=open]:animate-toast-in data-[state=closed]:animate-toast-out",
+        "pointer-events-auto flex w-full cursor-pointer select-none items-start gap-3 rounded-xl border bg-surface p-4 shadow-lg transition-transform active:scale-[0.99] data-[state=open]:animate-toast-in data-[state=closed]:animate-toast-out",
         variantClass[variant],
       )}
     >

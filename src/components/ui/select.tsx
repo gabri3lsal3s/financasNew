@@ -1,5 +1,6 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
+import { triggerHaptic } from "@/services/haptics";
 import { cn } from "@/lib/utils";
 
 export interface SelectOption {
@@ -27,8 +28,14 @@ export function Select({
   ariaLabel,
   className,
 }: SelectProps) {
+  const handleValueChange = (next: string) => {
+    onValueChange(next);
+    triggerHaptic("light");
+  };
+
   return (
-    <SelectPrimitive.Root value={value} onValueChange={onValueChange} disabled={disabled}>
+    <SelectPrimitive.Root value={value} onValueChange={handleValueChange} disabled={disabled}>
+
       <SelectPrimitive.Trigger
         aria-label={ariaLabel}
         className={cn(

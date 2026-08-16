@@ -115,7 +115,15 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
 
   return (
     <>
-      <div className="mt-4 flex flex-col gap-4">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canSubmit) {
+            void submit();
+          }
+        }}
+        className="mt-4 flex flex-col gap-4"
+      >
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Tipo de operação
           <Select
@@ -195,12 +203,12 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="button" onClick={() => void submit()} disabled={!canSubmit}>
+            <Button type="submit" disabled={!canSubmit}>
               {pending ? "Salvando…" : isEdit ? "Salvar" : "Registrar"}
             </Button>
           </div>
         </div>
-      </div>
+      </form>
 
       <ConfirmDialog
         open={confirmDelete}
