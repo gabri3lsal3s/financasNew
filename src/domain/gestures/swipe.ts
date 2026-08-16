@@ -39,6 +39,44 @@ export const BOUNDARY_RESISTANCE_FACTOR = 0.35;
 export const LOCK_DISTANCE_PX = 8;
 
 /**
+ * Zona de segurança das bordas físicas (px) — gestos iniciados aqui ficam
+ * reservados ao sistema operacional (edge swipe de voltar do Android/iOS).
+ * O app só opera na área central segura (F20 evolução).
+ */
+export const EDGE_INSET_PX = 24;
+
+/**
+ * Razão de dominância do eixo X para ARMAR o gesto: o swipe lateral só
+ * inicia quando `|dx| > |dy| · 1.5` logo no início do toque — rolagem
+ * vertical com leve desvio horizontal é descartada imediatamente, sem
+ * travar o scroll nativo.
+ */
+export const AXIS_DOMINANCE_RATIO = 1.5;
+
+/**
+ * O toque começou na zona de exclusão de borda (edge inset)?
+ *
+ * `true` quando `clientX` está dentro de `insetPx` px de qualquer borda
+ * horizontal — o gesto nativo de voltar do sistema tem prioridade ali.
+ * Viewport não medido (≤ 0) nunca é borda (defensivo).
+ */
+export function isEdgeZoneTouch(clientX: number, viewportWidthPx: number, insetPx = EDGE_INSET_PX): boolean {
+  if (viewportWidthPx <= 0 || insetPx <= 0) return false;
+  return clientX <= insetPx || clientX >= viewportWidthPx - insetPx;
+}
+
+/**
+ * Dominância horizontal clara para armar o gesto: `|dx| > |dy| · ratio`.
+ * Complementa o cone ±30° (decisão final em `resolveSwipeIntent`): enquanto
+ * o cone exige rigor ao soltar, a dominância protege o início do toque —
+ * scroll vertical com leve drift lateral nunca vira navegação.
+ */
+export function isHorizontalDominant(dx: number, dy: number, ratio = AXIS_DOMINANCE_RATIO): boolean {
+  if (dx === 0) return false;
+  return Math.abs(dx) > Math.abs(dy) * ratio;
+}
+
+/**
  * Axis-lock: o gesto é horizontal quando o deslocamento Y fica dentro de
  * ±30° do eixo X (`|dy| ≤ |dx|·tan(30°)`). O parâmetro `degrees` permite
  * calibrar sem alterar o contrato (default 30).

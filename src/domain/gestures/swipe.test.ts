@@ -3,7 +3,10 @@ import {
   activationDistance,
   boundaryResistance,
   directionOf,
+  EDGE_INSET_PX,
+  isEdgeZoneTouch,
   isFlick,
+  isHorizontalDominant,
   isHorizontalLock,
   resolveSwipeIntent,
 } from "./swipe";
@@ -28,6 +31,50 @@ describe("isHorizontalLock (F20 — axis-lock ±30°)", () => {
 
   it("rejeita deslocamento nulo", () => {
     expect(isHorizontalLock(0, 0)).toBe(false);
+  });
+});
+
+describe("isEdgeZoneTouch (F20 evolução — zona de exclusão de borda)", () => {
+  it("descarta toques iniciados na borda esquerda (edge swipe do sistema)", () => {
+    expect(isEdgeZoneTouch(0, 390)).toBe(true);
+    expect(isEdgeZoneTouch(10, 390)).toBe(true);
+    expect(isEdgeZoneTouch(EDGE_INSET_PX, 390)).toBe(true); // <= inset
+  });
+
+  it("descarta toques iniciados na borda direita", () => {
+    expect(isEdgeZoneTouch(390, 390)).toBe(true);
+    expect(isEdgeZoneTouch(380, 390)).toBe(true);
+    expect(isEdgeZoneTouch(390 - EDGE_INSET_PX, 390)).toBe(true);
+  });
+
+  it("aceita toques na área central segura", () => {
+    expect(isEdgeZoneTouch(195, 390)).toBe(false);
+    expect(isEdgeZoneTouch(EDGE_INSET_PX + 1, 390)).toBe(false); // 25 > 24
+    expect(isEdgeZoneTouch(390 - EDGE_INSET_PX - 1, 390)).toBe(false);
+  });
+
+  it("aceita inset customizado e viewport não medido", () => {
+    expect(isEdgeZoneTouch(30, 390, 32)).toBe(true);
+    expect(isEdgeZoneTouch(30, 390, 24)).toBe(false);
+    expect(isEdgeZoneTouch(10, 0)).toBe(false); // viewport desconhecido
+  });
+});
+
+describe("isHorizontalDominant (F20 evolução — arming com razão 1.5)", () => {
+  it("arma quando o eixo X é claramente dominante (|dx| > 1.5·|dy|)", () => {
+    expect(isHorizontalDominant(100, 50)).toBe(true); // 100 > 75
+    expect(isHorizontalDominant(-80, -20)).toBe(true); // 80 > 30
+  });
+
+  it("rejeita rolagem vertical com leve desvio horizontal (armar exige 1.5)", () => {
+    expect(isHorizontalDominant(40, 30)).toBe(false); // 40 <= 45
+    expect(isHorizontalDominant(60, 40)).toBe(false); // 60 <= 60
+    expect(isHorizontalDominant(10, 100)).toBe(false); // dominância vertical
+  });
+
+  it("respeita a razão customizada e deslocamento nulo", () => {
+    expect(isHorizontalDominant(60, 40, 1.2)).toBe(true); // 60 > 48
+    expect(isHorizontalDominant(0, 10)).toBe(false);
   });
 });
 

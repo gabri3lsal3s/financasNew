@@ -52,6 +52,78 @@ describe("useSwipeNavigation (F20 — engine de gestos)", () => {
     expect(onNavigate).toHaveBeenCalledWith("next");
   });
 
+  it("toque iniciado na borda esquerda NÃO navega (edge swipe do sistema)", () => {
+    const onNavigate = vi.fn();
+    const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
+    const el = document.createElement("div");
+
+    // innerWidth=390, inset default 24 → x=10 está na zona do SO.
+    act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 10, 200)));
+    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 190, 205)));
+    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 190, 205)));
+
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it("toque iniciado na borda direita NÃO navega (edge swipe do sistema)", () => {
+    const onNavigate = vi.fn();
+    const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
+    const el = document.createElement("div");
+
+    // x=385 >= 390-24 → zona direita do SO.
+    act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 385, 200)));
+    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 200, 205)));
+    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 200, 205)));
+
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it("edgeInsetPx=0 desativa a zona de borda (gesto no limite navega)", () => {
+    const onNavigate = vi.fn();
+    const { result } = renderHook(() => useSwipeNavigation({ onNavigate, edgeInsetPx: 0 }));
+    const el = document.createElement("div");
+
+    act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 5, 200)));
+    clock.now = 200;
+    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 120, 205)));
+    clock.now = 500;
+    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 120, 205)));
+
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    // Arrastou para a direita (x 5 → 120) → volta o mês/aba (previous).
+    expect(onNavigate).toHaveBeenCalledWith("previous");
+  });
+
+  it("rolagem vertical com leve desvio horizontal NÃO arma (dominância 1.5)", () => {
+    const onNavigate = vi.fn();
+    const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
+    const el = document.createElement("div");
+
+    // dx=40, dy=30 → 40 <= 1.5·30 → descarte imediato, sem armar o rastreio.
+    act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 100, 100)));
+    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 140, 130)));
+    expect(result.current.dragging).toBe(false);
+    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 140, 130)));
+
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it("dominância 1.5 arma o rastreio; o cone final ±30° decide a navegação", () => {
+    const onNavigate = vi.fn();
+    const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
+    const el = document.createElement("div");
+
+    // dx=100, dy=62 → dominância OK (100 > 93), mas fora do cone (62 > 57.7):
+    // o rastreio arma (drag elástico) e a decisão final é null (spring-back).
+    act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 100, 200)));
+    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 200, 262)));
+    expect(result.current.dragging).toBe(true);
+    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 200, 262)));
+
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(result.current.offsetPx).toBe(0);
+  });
+
   it("navega para 'previous' com swipe para a direita", () => {
     const onNavigate = vi.fn();
     const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));

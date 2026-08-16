@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard; **atualizações otimistas** em edição/exclusão de lançamentos) · suíte **1114 testes / 143 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard; **atualizações otimistas** em edição/exclusão de lançamentos; **edge inset do Swipe Navigation**) · suíte **1126 testes / 143 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -143,8 +143,9 @@
 
 ## F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)
 
-- **Problema:** navegação por swipe sem rigor → riscos de falsos positivos (thumb drift, swipe-to-action de despesas, formulários, modais).
+- **Problema:** navegação por swipe sem rigor → riscos de falsos positivos (thumb drift, swipe-to-action de despesas, formulários, modais) e conflito com o **edge swipe de voltar do sistema** (Android/iOS).
 - **Solução:** motor puro `domain/gestures/swipe` (**axis-lock ±30°**, thresholds de distância/velocidade, flick); hook `useSwipeNavigation` com **`ignoreSelectors`** (inputs, diálogos, `.swipeable-item`, `data-swipe-nav-ignore`); `MonthSwiper` nas **5 telas de mês**; `Tabs` com `swipeable` nas **6 telas de abas**; `touch-action: pan-y` e mouse ignorado.
+- **Evolução (2026-08-16, edge inset):** **zona de segurança de borda** — `EDGE_INSET_PX` (24px) + `isEdgeZoneTouch(clientX, vw, inset)`: toques iniciados a menos de 24px das bordas físicas são ignorados no `onPointerDown` (opção `edgeInsetPx` no hook), reservando o edge swipe de voltar para o sistema e operando o app na área central segura; **arming com dominância 1.5** — `isHorizontalDominant(dx, dy, ratio = 1.5)` (`|dx| > 1.5·|dy|`): rolagem vertical com leve desvio horizontal é descartada imediatamente, com o cone ±30° mantido como decisão final no `resolveSwipeIntent`.
 
 ## F21 — Inteligência de Entrada & Automações Preditivas
 
