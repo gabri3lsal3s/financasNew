@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { cn } from "@/lib/utils";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
@@ -25,7 +24,7 @@ export interface CategoryDonutProps {
 }
 
 /** Paleta das 10 categorias (tokens --cat-1..10) — ordem de queda de valor. */
-export const CAT_DONUT_PALETTE = [
+const CAT_DONUT_PALETTE = [
   "stroke-cat-1",
   "stroke-cat-2",
   "stroke-cat-3",

@@ -35,13 +35,6 @@ export function getCalculatorTarget(): CalculatorTarget | null {
   return activeTarget;
 }
 
-/** Assinatura para a UI reagir ao campo ativo (ex.: FAB só quando houver alvo). */
-export function subscribeCalculatorTarget(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
 
 /**
  * Injeta o valor calculado (centavos) no campo ativo. Retorna `false` quando

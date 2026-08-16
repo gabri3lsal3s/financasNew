@@ -18,7 +18,7 @@ function readStored(): Density {
   return window.localStorage.getItem(STORAGE_KEY) === "compact" ? "compact" : "comfortable";
 }
 
-export function subscribeDensity(listener: () => void): () => void {
+function subscribeDensity(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);

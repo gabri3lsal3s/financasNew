@@ -4,9 +4,9 @@ export { useCardPayments, useCardExpenses, cardPaymentsKey, cardExpensesKey } fr
 export { useAllCardExpenses, useAllCardPayments } from "./queries/use-overview";
 export { useDebts, debtsKey } from "./queries/use-debts";
 export { useBudgets, budgetsKey } from "./queries/use-budgets";
-export { useIncomeGoals, incomeGoalsKey } from "./queries/use-income-goals";
-export { useExpenses, useExpense, useExpensesByRange, expensesKey } from "./queries/use-expenses";
-export { useIncomes, useIncomesByRange, incomesKey } from "./queries/use-incomes";
+export { useIncomeGoals } from "./queries/use-income-goals";
+export { useExpenses, useExpense, useExpensesByRange } from "./queries/use-expenses";
+export { useIncomes, useIncomesByRange } from "./queries/use-incomes";
 export { useCreateExpense, useDeleteExpense, useUpdateExpense } from "./mutations/use-expense-mutations";
 export { useCreateIncome, useDeleteIncome, useUpdateIncome } from "./mutations/use-income-mutations";
 export { useCreateCard, useUpdateCard, useDeleteCard, useCreateCardPayment, useCreateRefund, useDeleteCardPayment } from "./mutations/use-card-mutations";
@@ -30,8 +30,8 @@ export {
   useUpdateCategory,
   useDeleteCategory,
 } from "./mutations/use-category-mutations";
-export { useFeedback, useSetFeedback, feedbackKey } from "./queries/use-insight-feedback";
-export { useReminderStates, useSetReminderState, reminderStatesKey } from "./queries/use-reminder-states";
+export { useFeedback, useSetFeedback } from "./queries/use-insight-feedback";
+export { useReminderStates, useSetReminderState } from "./queries/use-reminder-states";
 export {
   usePortfolioAssets,
   useAssetPosition,
@@ -42,18 +42,10 @@ export {
   useCreatePortfolioTransaction,
   useUpdatePortfolioTransaction,
   useDeletePortfolioTransaction,
-  portfolioAssetsKey,
-  portfolioTransactionsKey,
-  allPortfolioTransactionsKey,
 } from "./queries/use-portfolio";
 export { usePortfolioPosition } from "./queries/use-portfolio-position";
 export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";
-export {
-  useAssetPrices,
-  useSetManualPrice,
-  useRemoveManualPrice,
-  assetPricesKey,
-} from "./queries/use-asset-prices";
+
 export {
   useAllocationTargets,
   useSaveAllocationTargets,
@@ -62,11 +54,8 @@ export {
   useRemoveGroupTarget,
   useSectorCaps,
   useUpdateSectorCaps,
-  allocationTargetsKey,
-  groupTargetsKey,
-  sectorCapsKey,
 } from "./queries/use-allocation";
-export { useGlobalSearchEntries, allExpensesKey, allIncomesKey } from "./queries/use-search";
+export { useGlobalSearchEntries } from "./queries/use-search";
 export { usePredictionHistory } from "./queries/use-prediction-history";
-export { useOnboardingCounts, onboardingKey } from "./queries/use-onboarding";
+export { useOnboardingCounts } from "./queries/use-onboarding";
 

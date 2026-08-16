@@ -25,7 +25,7 @@ export interface CategoryRule {
 }
 
 /** Regras por palavra-chave do nome da categoria (moradia, alimentação, transporte…). */
-export const CATEGORY_RULES: Record<string, CategoryRule> = {
+const CATEGORY_RULES: Record<string, CategoryRule> = {
   moradia: { icon: "moradia", color: "#8B5CF6", limitPercent: 30 },
   aluguel: { icon: "moradia", color: "#8B5CF6", limitPercent: 30 },
   casa: { icon: "moradia", color: "#8B5CF6", limitPercent: 30 },

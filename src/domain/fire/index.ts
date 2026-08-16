@@ -20,16 +20,13 @@
 // ---------------------------------------------------------------------------
 
 /** Múltiplo das despesas anuais para a meta de independência (1 ÷ 4%). */
-export const FIRE_TARGET_MULTIPLE = 25;
-
-/** Taxa de retirada anual considerada sustentável (4%). */
-export const FIRE_WITHDRAWAL_RATE = 0.04;
+const FIRE_TARGET_MULTIPLE = 25;
 
 /** Retorno real anual padrão (acima da inflação) — premissa editável. */
 export const DEFAULT_REAL_RETURN_RATE = 0.05;
 
 /** Horizonte máximo da simulação (anos). */
-export const FIRE_MAX_YEARS = 40;
+const FIRE_MAX_YEARS = 40;
 
 /** Meta de independência financeira = despesas anuais × 25 (regra dos 4%). */
 export function fireTargetCents(annualExpensesCents: number): number {
@@ -111,8 +108,6 @@ export const EMERGENCY_HEALTH_LABELS: Record<EmergencyHealth, string> = {
   adequado: "Adequado",
   saudavel: "Saudável",
 };
-
-export const EMERGENCY_HEALTH_ORDER: EmergencyHealth[] = ["critico", "baixo", "adequado", "saudavel"];
 
 export interface EmergencyFund {
   /** Meses de despesa cobertos (null quando não há despesa de referência). */

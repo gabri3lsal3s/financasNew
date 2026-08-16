@@ -12,6 +12,7 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import { playSound } from "@/services/audio-fx";
 import { currentMonth, monthRange } from "@/lib/date";
+import { addDaysISO } from "@/domain/debts";
 import type { RestoreSummary } from "@/domain/export";
 
 export type ExportCsvKind = "expenses" | "incomes" | "invoices" | "positions";
@@ -85,7 +86,7 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
   const resolveRange = (): ExportRange =>
     periodMode === "month"
       ? monthRange(month)
-      : { start: customStart, end: addDay(customEnd) };
+      : { start: customStart, end: customEnd ? addDaysISO(customEnd, 1) : "" };
 
   const handleExportJson = async (): Promise<void> => {
     setJsonError(null);
@@ -314,15 +315,4 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
       </ConfirmDialog>
     </div>
   );
-}
-
-/** Soma um dia a uma data ISO (range com fim exclusivo). */
-function addDay(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + 1);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }

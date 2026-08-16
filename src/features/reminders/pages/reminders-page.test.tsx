@@ -81,4 +81,24 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
       state: { kind: "read" },
     });
   });
+
+  it("adiar grava snoozeUntil = hoje + 7 dias (data válida, não a chave)", async () => {
+    const user = userEvent.setup();
+    render(<RemindersPage />);
+
+    // Fatura Nubank aparece (saldo aberto) — adiar gera a data correta.
+    await user.click(screen.getByRole("button", { name: /Adiar lembrete/ }));
+
+    expect(setStateMock).toHaveBeenCalledWith({
+      occurrenceKey: expect.stringMatching(/^bill:/),
+      state: {
+        kind: "snoozed",
+        // Antes o helper recebia a CHAVE e gerava "NaN-NaN-NaN" — o lembrete
+        // adiado nunca mais reaparecia. Agora é hoje + 7 dias (YYYY-MM-DD).
+        snoozeUntil: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      },
+    });
+    const args = setStateMock.mock.calls.find((call) => call[0]?.state?.kind === "snoozed")?.[0];
+    expect(args.state.snoozeUntil).not.toContain("NaN");
+  });
 });

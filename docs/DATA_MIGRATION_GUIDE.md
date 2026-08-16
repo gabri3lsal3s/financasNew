@@ -131,9 +131,9 @@ Execute o script de validação SQL (§6 deste guia) e compare as somas de recei
 
 ---
 
-## 5. SCRIPT EXECUTÁVEL DE MIGRAÇÃO (`scripts/migrate-legacy-data.mjs`)
+## 5. SCRIPT EXECUTÁVEL DE MIGRAÇÃO
 
-O script executável é `scripts/migrate-legacy-data.mjs` (Node ESM, sem build — usa `@supabase/supabase-js`). Abaixo está a versão de referência em TypeScript do mesmo fluxo, para consulta/manutenção. Ele utiliza `upsert` idempotente por registro para garantir alta performance e repetibilidade.
+O script executável `scripts/migrate-legacy-data.mjs` (Node ESM, sem build — usa `@supabase/supabase-js`) foi **removido do repositório** (2026-08-16): trata-se de um ETL one-off já executado na migração histórica (FinançasAPP → FinançasNew); manter o binário no repo seria código morto apontando para ambientes legados extintos. Abaixo está a **versão de referência em TypeScript do mesmo fluxo**, para consulta/manutenção e para reconstituir o script se uma nova migração for necessária. O fluxo utiliza `upsert` idempotente por registro para garantir alta performance e repetibilidade.
 
 ```typescript
 import { createClient } from '@supabase/supabase-js'
@@ -501,4 +501,4 @@ Se for identificada qualquer anomalia crítica durante a homologação:
    CASCADE;
    ```
 4. **Correção do Script e Nova Execução:**
-   - Ajuste os mapeamentos no script `scripts/migrate-legacy-data.mjs` e reexecute.
+   - Ajuste os mapeamentos na versão de referência em TypeScript da seção §5 deste guia, reconstitua o executável e reexecute.

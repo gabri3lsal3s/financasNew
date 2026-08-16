@@ -59,7 +59,7 @@ export interface CategoryTotal {
 }
 
 /** Efetivo de um lançamento no relatório (base × peso). */
-export function entryCents(entry: Pick<ReportEntry, "baseCents" | "weight">): number {
+function entryCents(entry: Pick<ReportEntry, "baseCents" | "weight">): number {
   return weightedCents(entry.baseCents, entry.weight);
 }
 

@@ -21,7 +21,7 @@ function applyPrivacyToDom(isMasked: boolean): void {
   }
 }
 
-export function subscribePrivacyMask(listener: () => void): () => void {
+function subscribePrivacyMask(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);

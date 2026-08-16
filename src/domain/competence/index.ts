@@ -23,7 +23,7 @@ export interface CompetenceOverride {
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /** YYYY-MM de uma data. */
-export function monthKey(date: Date): string {
+function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
@@ -31,11 +31,6 @@ export function monthKey(date: Date): string {
 export function clampDay(day: number, year: number, month: number): number {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   return Math.min(Math.max(Math.trunc(day), 1), daysInMonth);
-}
-
-/** Último dia de um mês (year, month 0-based). */
-export function lastDayOfMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
 }
 
 /**

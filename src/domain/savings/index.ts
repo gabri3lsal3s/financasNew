@@ -211,12 +211,12 @@ function formatCents(cents: number): string {
 }
 
 /** Motivo de aumento (estouro). */
-export function increaseReason(excessCents: number): string {
+function increaseReason(excessCents: number): string {
   return INCREASE_REASON.replace("{amount}", formatCents(excessCents));
 }
 
 /** Motivo de redução (subutilização). */
-export function reduceReason(percentUsed: number): string {
+function reduceReason(percentUsed: number): string {
   return REDUCE_REASON.replace("{percent}", String(Math.round(percentUsed)));
 }
 

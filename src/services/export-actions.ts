@@ -10,7 +10,7 @@
 export type ShareResult = "shared" | "copied" | "unsupported";
 
 /** Baixa um Blob com nome de arquivo (dispara o download nativo). */
-export function downloadBlob(filename: string, blob: Blob): void {
+function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

@@ -2,7 +2,7 @@ import { Bell } from "lucide-react";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui";
 import { ReminderItem } from "@/components/modules";
 import { buildCompetenceSummaries } from "@/domain/cards";
-import { todayISO } from "@/domain/debts";
+import { addDaysISO, todayISO } from "@/domain/debts";
 import { buildReminders } from "@/domain/reminders";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
@@ -78,8 +78,11 @@ export function RemindersPage() {
   };
 
   const snooze = (key: string) => {
-    // Snooze de 7 dias (janela padrão de adiamento).
-    const until = addDays(key);
+    // Snooze de 7 dias a partir de HOJE (janela padrão de adiamento). Usa a
+    // data atual como base — antes o helper local recebia a CHAVE da ocorrência
+    // (ex.: "debt:d1") em vez de uma data e gerava snoozeUntil "NaN-NaN-NaN",
+    // fazendo o lembrete adiado nunca mais reaparecer.
+    const until = addDaysISO(today, 7);
     handle(key, { kind: "snoozed", snoozeUntil: until });
   };
 
@@ -122,13 +125,4 @@ export function RemindersPage() {
       )}
     </div>
   );
-}
-
-/** Soma 7 dias a uma data ISO local (YYYY-MM-DD) — snooze padrão. */
-function addDays(iso: string): string {
-  const [year, month, day] = iso.split("-").map(Number);
-  const date = new Date(year ?? 0, (month ?? 1) - 1, (day ?? 1) + 7);
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${m}-${d}`;
 }

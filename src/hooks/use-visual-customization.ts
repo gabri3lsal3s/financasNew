@@ -121,7 +121,7 @@ function readStoredConfig(): VisualCustomization {
   }
 }
 
-export function subscribeVisualCustomization(listener: () => void): () => void {
+function subscribeVisualCustomization(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);

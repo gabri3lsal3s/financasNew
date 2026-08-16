@@ -15,7 +15,7 @@
 let initPromise: Promise<void> | null = null;
 
 /** DSN configurado via VITE_SENTRY_DSN (vazio = observabilidade desligada). */
-export function sentryDsn(): string {
+function sentryDsn(): string {
   return import.meta.env.VITE_SENTRY_DSN ?? "";
 }
 

@@ -12,9 +12,9 @@
 import { z } from "zod";
 
 /** Versão do formato de backup. Bump quebra compatibilidade (migração manual). */
-export const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 1;
 
-export const APP_NAME = "Finanças Pessoais";
+const APP_NAME = "Finanças Pessoais";
 
 export type BackupRow = Record<string, unknown>;
 

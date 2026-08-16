@@ -1,11 +1,4 @@
 export {
-  CSV_DELIMITER,
-  escapeCsvField,
-  toCsv,
-  csvWithBom,
-  formatCsvDecimal,
-  formatCsvFloat,
-  formatCsvDate,
   serializeExpensesCsv,
   serializeIncomesCsv,
   serializeInvoicesCsv,
@@ -19,14 +12,7 @@ export type {
   ExportCardInvoiceRow,
   ExportPositionRow,
 } from "./csv";
-export {
-  BACKUP_VERSION,
-  APP_NAME,
-  BACKUP_TABLE_KEYS,
-  buildBackupPayload,
-  parseBackupPayload,
-  validateIntegrity,
-} from "./backup";
+export { BACKUP_TABLE_KEYS, buildBackupPayload, parseBackupPayload } from "./backup";
 export type {
   BackupRow,
   BackupTableKey,
