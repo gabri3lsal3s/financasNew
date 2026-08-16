@@ -590,7 +590,7 @@ export function CardsPage() {
             onOpenChange={setPrintOpen}
             title={`Fatura — ${selectedCard.name}`}
             description={`Gastos lançados no cartão em ${monthLabel(effectiveMonth)} (competência ${effectiveMonth}), prontos para imprimir ou salvar em PDF — compare com a fatura do banco.`}
-            className="max-w-3xl"
+            size="xl"
             hideCalculator
           >
             <div className="mt-4">

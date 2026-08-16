@@ -26,7 +26,7 @@ export type { ColorPickerProps } from "./color-picker";
 export { IconPicker } from "./icon-picker";
 export type { IconPickerProps, IconPickerOption } from "./icon-picker";
 export { Modal } from "./modal";
-export type { ModalProps } from "./modal";
+export type { ModalProps, ModalSize } from "./modal";
 export { ConfirmDialog } from "./confirm-dialog";
 export type { ConfirmDialogProps } from "./confirm-dialog";
 export { Tabs } from "./tabs";

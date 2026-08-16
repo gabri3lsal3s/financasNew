@@ -8,6 +8,16 @@ import { Button } from "@/components/ui/button";
 import { setCalculatorOpen } from "@/services/calculator-open";
 import { triggerHaptic } from "@/services/haptics";
 
+export type ModalSize = "sm" | "md" | "lg" | "xl";
+
+/** Largura máxima no desktop (base + variantes — UMA classe por modal, sem conflito de cascata). */
+const SIZE_MAX_W: Record<ModalSize, string> = {
+  sm: "lg:max-w-sm",
+  md: "lg:max-w-md",
+  lg: "lg:max-w-lg",
+  xl: "lg:max-w-3xl",
+};
+
 export interface ModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -15,6 +25,8 @@ export interface ModalProps {
   description?: string;
   children?: ReactNode;
   className?: string;
+  /** Largura máxima no desktop (default "md" = 28rem). Evite `max-w-*` no className: a variante `lg:` da base vence a classe solta na cascata. */
+  size?: ModalSize;
   /** Sobe o z-index acima de outros modais (ex.: calculadora sobre formulários). */
   elevated?: boolean;
   /** Oculta o botão de calculadora no cabeçalho do modal. */
@@ -51,6 +63,7 @@ export function Modal({
   description,
   children,
   className,
+  size = "md",
   elevated = false,
   hideCalculator = false,
 }: ModalProps) {
@@ -148,7 +161,8 @@ export function Modal({
           className={cn(
             // Mobile (base): bottom sheet com slide-up e alça; lg+: diálogo centralizado.
             "fixed inset-x-0 bottom-0 w-full max-h-[90dvh] overflow-y-auto rounded-t-2xl border border-border bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] shadow-lg focus:outline-none animate-sheet-in",
-            "lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:w-[calc(100vw-2rem)] lg:max-w-md lg:rounded-2xl lg:pb-6 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:animate-none",
+            "lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:w-[calc(100vw-2rem)] lg:rounded-2xl lg:pb-6 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:animate-none",
+            SIZE_MAX_W[size],
             z,
             className,
           )}

@@ -475,7 +475,7 @@ export function ReportsPage() {
         onOpenChange={setCloseOpen}
         title="Fechamento do período"
         description={`Fechamento detalhado de ${periodLabel}: resumo executivo + cada gasto por categoria e dia, com método de pagamento — pronto para imprimir ou salvar em PDF.`}
-        className="max-w-3xl"
+        size="xl"
         hideCalculator
       >
         <div className="mt-4">
