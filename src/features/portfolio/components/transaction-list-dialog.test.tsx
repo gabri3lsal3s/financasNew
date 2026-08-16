@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { playSound } from "@/services/audio-fx";
@@ -104,5 +104,19 @@ describe("TransactionListDialog — extrato de lançamentos com CRUD", () => {
     expect(deleteTxMock).toHaveBeenCalledTimes(1);
     expect(deleteTxMock).toHaveBeenCalledWith("tx1");
     expect(triggerHaptic).toHaveBeenCalledWith("warning");
+  });
+
+  it("falha ao excluir fecha a confirmação (erro via toast do hook)", async () => {
+    transactionsMock.mockReturnValue(txs);
+    deleteTxMock.mockRejectedValue(new Error("Falha de rede"));
+    const user = userEvent.setup();
+    render(<TransactionListDialog open={true} onOpenChange={vi.fn()} asset={asset} />);
+
+    await user.click(screen.getByRole("button", { name: "Excluir Compra" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    // A confirmação fecha (não fica presa) e a lista permanece com o item.
+    await waitFor(() => expect(screen.queryByText("Excluir lançamento?")).not.toBeInTheDocument());
+    expect(screen.getByText("Compra")).toBeInTheDocument();
   });
 });

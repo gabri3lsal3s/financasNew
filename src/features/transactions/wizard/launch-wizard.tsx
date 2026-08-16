@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { CalculatorButton } from "@/components/layout";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Stepper } from "@/components/ui/stepper";
 import { getErrorMessage } from "@/services/errors";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
@@ -30,6 +31,19 @@ export function LaunchWizard() {
   const [state, setState] = useState<LaunchState>(defaultLaunchState);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  // Dados preenchidos no fluxo (valor/categoria/descrição) — fechar com o
+  // formulário em andamento pede confirmação (anti-perda acidental).
+  const isDirty = state.valueCents > 0 || state.categoryId !== "" || state.description.trim() !== "";
+
+  const requestClose = () => {
+    if (isDirty) {
+      setConfirmClose(true);
+    } else {
+      navigate("/transacoes");
+    }
+  };
 
   const categoriesQuery = useCategories(state.type);
   const cardsQuery = useActiveCreditCards();
@@ -124,7 +138,7 @@ export function LaunchWizard() {
           <div className="flex shrink-0 items-center gap-1">
             {/* Mesmo padrão dos modais (F10): calculadora acessível no wizard, que fica fora do PageShell. */}
             <CalculatorButton />
-            <Button type="button" variant="ghost" size="icon" aria-label="Fechar" onClick={() => navigate("/transacoes")}>
+            <Button type="button" variant="ghost" size="icon" aria-label="Fechar" onClick={requestClose}>
               <X aria-hidden="true" />
             </Button>
           </div>
@@ -206,6 +220,20 @@ export function LaunchWizard() {
           closingDay={selectedCard?.closing_day}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={confirmClose}
+        onOpenChange={setConfirmClose}
+        title="Descartar lançamento?"
+        description="Você preencheu dados deste lançamento. Ao sair, as informações digitadas serão perdidas."
+        confirmLabel="Descartar"
+        cancelLabel="Continuar preenchendo"
+        variant="destructive"
+        onConfirm={() => {
+          setConfirmClose(false);
+          navigate("/transacoes");
+        }}
+      />
 
       <footer className="mt-auto flex items-center justify-between gap-2 pt-4">
         <Button type="button" variant="ghost" disabled={state.step === 1 || pending} onClick={() => goTo(state.step - 1)}>

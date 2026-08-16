@@ -7,6 +7,7 @@ import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
 import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
 import { useCategories, useCreateIncome, useDeleteIncome, useUpdateIncome } from "@/state";
 import { RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { todayISO } from "@/domain/debts";
@@ -270,7 +271,14 @@ export function IncomeDetailDialog({ income, open, onOpenChange, openDeleteConfi
       `Data: ${income.date}`,
       `Categoria: ${currentCategory?.name ?? "Outra"}`,
     ].join("\n");
-    await shareText("Receita — Finanças Pessoais", text);
+    // Feedback do resultado: share nativo já dá confirmação visual; o fallback
+    // de clipboard e a falta de suporte precisam de aviso explícito.
+    const result = await shareText("Receita — Finanças Pessoais", text);
+    if (result === "copied") {
+      pushToast({ title: "Copiado para a área de transferência", variant: "default" });
+    } else if (result === "unsupported") {
+      pushToast({ title: "Compartilhamento não suportado neste navegador", variant: "default" });
+    }
   };
 
   const handleRepeat = async () => {

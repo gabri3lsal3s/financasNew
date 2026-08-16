@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Activity, DollarSign, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Alert, Badge, EmptyState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
+import { Badge, EmptyState, ErrorState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   DailyFlowChart,
@@ -193,7 +193,7 @@ export function OverviewPage() {
 
       <MonthPicker value={month} onValueChange={setMonth} />
 
-      {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
+      {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
       {!loading && !error && !onboardingComplete && onboardingQuery.data ? (
         <OnboardingCard counts={onboardingQuery.data} />

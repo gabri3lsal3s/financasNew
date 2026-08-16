@@ -40,9 +40,11 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
       await deleteTx.mutateAsync(deleting.id);
       triggerHaptic("warning");
       playSound("delete", getVisualCustomization().soundEnabled);
-      setDeleting(null);
     } catch {
-      // Erro de mutação exibido pelo gateway na UI do diálogo de confirmação.
+      // Falha: o toast do hook (useDeletePortfolioTransaction) já exibiu o erro.
+    } finally {
+      // Fecha a confirmação em sucesso E em falha — antes, falha deixava o
+      // diálogo preso com a exclusão "engolida" (sem nenhum feedback).
       setDeleting(null);
     }
   };

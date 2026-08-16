@@ -44,7 +44,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { entries, isLoading } = useGlobalSearchEntries(open);
+  const { entries, isLoading, error } = useGlobalSearchEntries(open);
 
   // Atalho global: ⌘K / Ctrl+K.
   useEffect(() => {
@@ -127,9 +127,11 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
         emptyMessage={
           query.trim().length < 2
             ? "Digite ao menos 2 caracteres para buscar."
-            : isLoading
-              ? "Carregando…"
-              : "Nenhum resultado encontrado."
+            : error
+              ? "Falha ao carregar os dados. Feche e tente novamente."
+              : isLoading
+                ? "Carregando…"
+                : "Nenhum resultado encontrado."
         }
       />
     </>

@@ -12,6 +12,8 @@ import {
 } from "@/data/repositories/portfolio";
 import { computeLedger, type LedgerTransaction } from "@/domain/portfolio";
 import { allocationTargetsKey } from "./use-allocation";
+import { getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
 import type { DbInsert, DbUpdate, PortfolioAsset, PortfolioTransaction } from "@/types";
 import { STALE_TIMES } from "@/state/cache-policy";
 
@@ -103,6 +105,13 @@ export function useDeletePortfolioAsset() {
       void queryClient.invalidateQueries({ queryKey: allPortfolioTransactionsKey });
       void queryClient.invalidateQueries({ queryKey: allocationTargetsKey });
     },
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível excluir o ativo",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
   });
 }
 
@@ -124,6 +133,13 @@ export function useDeletePortfolioTransaction() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: portfolioTransactionsKey });
       void queryClient.invalidateQueries({ queryKey: allPortfolioTransactionsKey });
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível excluir o lançamento",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
     },
   });
 }

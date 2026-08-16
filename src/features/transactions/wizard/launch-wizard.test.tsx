@@ -94,6 +94,36 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(screen.getByRole("button", { name: "Voltar" })).toBeDisabled();
   });
 
+  it("fecha sem confirmação quando o formulário está vazio", async () => {
+    const user = userEvent.setup();
+    render(<LaunchWizard />);
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(navigateMock).toHaveBeenCalledWith("/transacoes");
+  });
+
+  it("pede confirmação ao fechar com dados preenchidos (anti-perda)", async () => {
+    const user = userEvent.setup();
+    render(<LaunchWizard />);
+
+    await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "5000");
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+
+    // Confirmação aparece — navegação NÃO acontece até confirmar.
+    expect(screen.getByText("Descartar lançamento?")).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
+
+    // Cancelar mantém no fluxo com os dados.
+    await user.click(screen.getByRole("button", { name: "Continuar preenchendo" }));
+    expect(navigateMock).not.toHaveBeenCalled();
+    const valueInput = screen.getByRole("textbox", { name: "Valor do lançamento" }) as HTMLInputElement;
+    expect(valueInput.value.replace(/\u00a0/g, " ")).toBe("R$ 50,00");
+
+    // Fechar de novo e descartar navega.
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    await user.click(screen.getByRole("button", { name: "Descartar" }));
+    expect(navigateMock).toHaveBeenCalledWith("/transacoes");
+  });
+
   it("permite peso personalizado no relatório e persiste a fração resolvida a partir do valor em reais", async () => {
     const user = userEvent.setup();
     render(<LaunchWizard />);

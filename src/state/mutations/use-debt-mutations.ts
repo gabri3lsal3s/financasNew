@@ -4,6 +4,8 @@ import { payDebt, receiveDebt, settleIntegratedReceivable } from "@/data/rpc";
 import { debtsKey } from "@/state/queries/use-debts";
 import { incomesKey } from "@/state/queries/use-incomes";
 import { expensesKey } from "@/state/queries/use-expenses";
+import { getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
 import type { DbUpdate, Debt } from "@/types";
 
 /**
@@ -38,6 +40,15 @@ export function useDeleteDebt() {
   return useMutation({
     mutationFn: (id: string) => deleteDebt(id),
     onSuccess: () => invalidateFinance(queryClient),
+    // Falha de rede/banco na exclusão: feedback explícito (antes a promise
+    // rejeitada ficava sem tratamento e o usuário não via nada).
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível excluir a dívida",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
   });
 }
 

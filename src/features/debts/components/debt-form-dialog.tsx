@@ -10,8 +10,9 @@ export interface DebtFormDialogProps {
   debt: Debt | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Chamado quando o usuário confirma a exclusão (apenas em edição). */
-  onDelete?: (debt: Debt) => void;
+  /** Chamado quando o usuário confirma a exclusão (apenas em edição).
+   *  Deve rejeitar em falha — o formulário permanece aberto com o erro. */
+  onDelete?: (debt: Debt) => Promise<void>;
 }
 
 /** Formulário de dívida (CRUD §3.4) — contas a pagar e a receber. */
@@ -137,8 +138,13 @@ export function DebtFormDialog({ debt, open, onOpenChange, onDelete }: DebtFormD
             variant="destructive"
             onConfirm={() => {
               setConfirmDelete(false);
-              onOpenChange(false);
-              onDelete(debt);
+              // Exclusão com falha mantém o formulário aberto com o erro visível
+              // (o toast do hook também avisa) — o usuário não perde a edição.
+              void Promise.resolve(onDelete(debt))
+                .then(() => onOpenChange(false))
+                .catch((err: unknown) => {
+                  setError(getErrorMessage(err));
+                });
             }}
           />
         ) : null}

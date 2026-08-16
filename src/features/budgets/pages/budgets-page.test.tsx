@@ -126,7 +126,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(goalInput).toBeInTheDocument();
   });
 
-  it("salva uma nova meta de renda", async () => {
+  it("salva uma nova meta de renda com feedback de sucesso", async () => {
     setIncomeGoalMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<BudgetsPage />);
@@ -140,6 +140,8 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     const params = setIncomeGoalMock.mock.calls[0]?.[0];
     expect(params.categoryId).toBe("i1");
     expect(params.expected).toBe(6000);
+    // Feedback visual de sucesso "Salva" (não apenas silencioso).
+    expect(await screen.findByRole("button", { name: /Salva/ })).toBeInTheDocument();
   });
 
   it("falha ao salvar meta mostra erro inline (sem falha silenciosa)", async () => {

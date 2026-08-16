@@ -188,6 +188,22 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     const confirmButtons = screen.getAllByRole("button", { name: "Excluir" });
     await user.click(confirmButtons[confirmButtons.length - 1]!);
 
-    expect(deleteDebtMock).toHaveBeenCalledWith("d1");
+    await waitFor(() => expect(deleteDebtMock).toHaveBeenCalledWith("d1"));
+  });
+
+  it("falha ao excluir mantém o formulário aberto com o erro visível", async () => {
+    deleteDebtMock.mockRejectedValue(new Error("Falha de rede"));
+    const user = userEvent.setup();
+    render(<DebtsPage />);
+
+    await user.click(screen.getByRole("button", { name: "Editar Conta de luz" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    const confirmButtons = screen.getAllByRole("button", { name: "Excluir" });
+    await user.click(confirmButtons[confirmButtons.length - 1]!);
+
+    // O formulário permanece aberto (não perde a edição) com o erro inline.
+    expect(await screen.findByText("Falha de rede")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeInTheDocument();
+    deleteDebtMock.mockResolvedValue(undefined);
   });
 });

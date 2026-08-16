@@ -134,5 +134,14 @@ export function useGlobalSearchEntries(enabled: boolean) {
       debtsQuery.error ??
       cardsQuery.error ??
       categoriesQuery.error,
+    /** Refetch de todas as fontes ("Tentar novamente" da busca). */
+    refetch: () =>
+      Promise.all([
+        expensesQuery.refetch(),
+        incomesQuery.refetch(),
+        debtsQuery.refetch(),
+        cardsQuery.refetch(),
+        categoriesQuery.refetch(),
+      ]),
   };
 }

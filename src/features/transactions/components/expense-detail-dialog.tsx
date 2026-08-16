@@ -7,6 +7,7 @@ import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
 import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
 import { useCategories, useCreditCards, useCreateExpense, useDeleteExpense, useUpdateExpense } from "@/state";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
@@ -396,7 +397,14 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange, openDeleteCon
       `Categoria: ${currentCategory?.name ?? "Outra"}`,
       `Pagamento: ${PAYMENT_METHOD_LABELS[expense.payment_method] ?? expense.payment_method}`,
     ].join("\n");
-    await shareText("Despesa — Finanças Pessoais", text);
+    // Feedback do resultado: share nativo já dá confirmação visual; o fallback
+    // de clipboard e a falta de suporte precisam de aviso explícito.
+    const result = await shareText("Despesa — Finanças Pessoais", text);
+    if (result === "copied") {
+      pushToast({ title: "Copiado para a área de transferência", variant: "default" });
+    } else if (result === "unsupported") {
+      pushToast({ title: "Compartilhamento não suportado neste navegador", variant: "default" });
+    }
   };
 
   const handleRepeat = async () => {

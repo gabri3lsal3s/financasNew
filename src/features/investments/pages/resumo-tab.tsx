@@ -223,7 +223,10 @@ export function ResumoTab() {
         confirmPending={deleteAsset.isPending}
         onConfirm={() => {
           if (!assetToDelete) return;
-          void deleteAsset.mutateAsync(assetToDelete.id).then(() => setAssetToDelete(null));
+          // Fecha a confirmação em sucesso E em falha (o toast do hook exibe o
+          // erro) — antes, falha deixava o diálogo preso com rejection não tratada.
+          const assetId = assetToDelete.id;
+          void Promise.resolve(deleteAsset.mutateAsync(assetId)).finally(() => setAssetToDelete(null));
         }}
       />
     </div>

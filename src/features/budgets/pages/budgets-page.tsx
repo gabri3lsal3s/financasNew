@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowRight, Pencil, PiggyBank, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, Check, Pencil, PiggyBank, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
@@ -313,6 +313,14 @@ function IncomeGoalRow({
   const setGoal = useSetIncomeGoal();
   const removeGoal = useRemoveIncomeGoal();
 
+  // Feedback de "Salva" por 2s com limpeza do timer no unmount (sem setState
+  // após desmontagem — evita warning/fuga de memória em listas longas).
+  useEffect(() => {
+    if (!saved) return;
+    const timer = window.setTimeout(() => setSaved(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [saved]);
+
   /** Salva a meta com feedback de erro real (falha de rede não fica silenciosa). */
   const saveGoal = async () => {
     if (cents <= 0) return;
@@ -321,7 +329,6 @@ function IncomeGoalRow({
       await setGoal.mutateAsync({ categoryId: category.id, month, expected: cents / 100 });
       setCents(0);
       setSaved(true);
-      window.setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       setGoalError(getErrorMessage(err));
     }
@@ -369,10 +376,18 @@ function IncomeGoalRow({
           <Button
             type="button"
             size="sm"
+            variant={saved ? "outline" : "default"}
             disabled={cents <= 0 || setGoal.isPending}
             onClick={() => void saveGoal()}
           >
-            {saved ? "Salva" : "Salvar"}
+            {saved ? (
+              <>
+                <Check className="size-3.5" aria-hidden="true" />
+                Salva
+              </>
+            ) : (
+              "Salvar"
+            )}
           </Button>
           {expectedCents > 0 ? (
             <Button type="button" size="icon" variant="ghost" aria-label={`Remover meta de ${category.name}`} onClick={() => void removeGoalSafe()}>

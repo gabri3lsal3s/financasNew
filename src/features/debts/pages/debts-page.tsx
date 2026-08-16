@@ -175,7 +175,11 @@ export function DebtsPage() {
           setFormOpen(next);
           if (!next) setEditingDebt(null);
         }}
-        onDelete={(debt) => void deleteDebt.mutateAsync(debt.id)}
+        // Exclusão com feedback: o hook exibe toast em falha e o formulário
+        // permanece aberto com o erro (o diálogo rejeita a promise).
+        onDelete={async (debt) => {
+          await deleteDebt.mutateAsync(debt.id);
+        }}
       />
 
       {settling ? <SettleDialog debt={settling} open={settling !== null} onOpenChange={(next) => !next && setSettling(null)} /> : null}

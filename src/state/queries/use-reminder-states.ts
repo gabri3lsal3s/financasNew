@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listReminderStates, setReminderState } from "@/data/repositories/reminder-states";
 import type { ReminderState } from "@/domain/reminders";
+import { getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
 export const reminderStatesKey = ["reminder-states"] as const;
@@ -34,6 +36,15 @@ export function useSetReminderState() {
     }) => setReminderState(occurrenceKey, state),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: reminderStatesKey });
+    },
+    // Falha silenciosa em lido/snooze/restaurar deixava o lembrete sem
+    // feedback — agora o erro aparece com retry implícito (novo clique).
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível atualizar o lembrete",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
     },
   });
 }
