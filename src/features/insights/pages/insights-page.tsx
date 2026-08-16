@@ -190,8 +190,6 @@ export function InsightsPage() {
     .filter((o) => o.tier === "can_cut")
     .reduce((acc, o) => acc + (o.savingsIfCutCents ?? o.averageCents), 0);
   const canCutAnnualCents = canCutRecurringCents * 12;
-  const confirmedCount = activeOccurrences.filter((o) => o.confirmed).length;
-  const pendingCount = activeOccurrences.filter((o) => !o.confirmed).length;
 
   // Projeção & corte.
   const daily = dailyBudget({
@@ -449,37 +447,33 @@ export function InsightsPage() {
                 <div className="flex flex-col gap-4">
                   {/* Card de Resumo de Recorrências */}
                   <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:p-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-6 min-w-0">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 w-full">
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground">Total mensal recorrente</span>
+                        <div className="flex items-baseline gap-1.5 mt-0.5">
+                          <MoneyText cents={totalRecurringCents} tone="default" className="text-xl sm:text-2xl font-bold" />
+                          <span className="text-xs text-muted-foreground">/mês</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground">Total anual projetado</span>
+                        <div className="flex items-baseline gap-1.5 mt-0.5">
+                          <MoneyText cents={totalAnnualRecurringCents} tone="default" className="text-xl sm:text-2xl font-bold" />
+                          <span className="text-xs text-muted-foreground">/ano</span>
+                        </div>
+                      </div>
+                      {canCutRecurringCents > 0 ? (
                         <div>
-                          <span className="text-xs font-medium text-muted-foreground">Total mensal recorrente</span>
-                          <div className="flex items-baseline gap-1.5">
-                            <MoneyText cents={totalRecurringCents} tone="default" className="text-xl sm:text-2xl font-bold" />
+                          <span className="text-xs font-medium text-positive-strong">Economia potencial (corte)</span>
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <MoneyText cents={canCutRecurringCents} tone="positive" className="text-xl sm:text-2xl font-bold" />
                             <span className="text-xs text-muted-foreground">/mês</span>
                           </div>
+                          <p className="text-xs font-medium text-positive-strong mt-0.5">
+                            +<MoneyText cents={canCutAnnualCents} tone="positive" /> ao ano
+                          </p>
                         </div>
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground">Total anual projetado</span>
-                          <div className="flex items-baseline gap-1.5">
-                            <MoneyText cents={totalAnnualRecurringCents} tone="default" className="text-xl sm:text-2xl font-bold" />
-                            <span className="text-xs text-muted-foreground">/ano</span>
-                          </div>
-                        </div>
-                        {canCutRecurringCents > 0 ? (
-                          <div>
-                            <span className="text-xs font-medium text-positive-strong">Economia potencial (corte)</span>
-                            <div className="flex items-baseline gap-1.5">
-                              <MoneyText cents={canCutRecurringCents} tone="positive" className="text-xl sm:text-2xl font-bold" />
-                              <span className="text-xs text-muted-foreground">/mês (<MoneyText cents={canCutAnnualCents} tone="positive" />/ano)</span>
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-xs self-start sm:self-center">
-                        <Badge variant="default">{activeOccurrences.length} ativa(s)</Badge>
-                        {confirmedCount > 0 ? <Badge variant="positive">{confirmedCount} confirmada(s)</Badge> : null}
-                        {pendingCount > 0 ? <Badge variant="warning">{pendingCount} a revisar</Badge> : null}
-                      </div>
+                      ) : null}
                     </div>
                   </div>
 
