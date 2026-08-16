@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { applyFeedback, classifySubscription, confidenceScore, criticalAlerts, detectRecurrences, historyBonus, incomeConcentration, isSignificantTrend, savingsHealth, varianceOf, weekendSpendingRatio } from "./index";
+import { applyFeedback, classifySubscription, confidenceScore, criticalAlerts, detectRecurrences, historyBonus, incomeConcentration, isSignificantTrend, partitionFeedback, savingsHealth, varianceOf, weekendSpendingRatio } from "./index";
 import type { CriticalAlertInput } from "./alerts";
+
+const expense = (overrides: Partial<{ id: string; description: string | null; date: string; month: string; valueCents: number; categoryId: string; categoryIcon: string | null; installmentGroupId: string | null }>) => ({
+  id: overrides.id ?? "x",
+  description: overrides.description ?? null,
+  date: overrides.date,
+  month: overrides.month ?? "2026-08",
+  valueCents: overrides.valueCents ?? 1000,
+  categoryId: overrides.categoryId ?? "cat",
+  categoryIcon: overrides.categoryIcon ?? null,
+  installmentGroupId: overrides.installmentGroupId ?? null,
+});
 
 describe("criticalAlerts (§3.7.1 — prioridade)", () => {
   const base: CriticalAlertInput = {
@@ -121,16 +132,6 @@ describe("confiança (§3.7.4 — bônus e penalidade)", () => {
 });
 
 describe("recorrências (§3.7.3 — 3 níveis)", () => {
-  const expense = (overrides: Partial<{ id: string; description: string | null; month: string; valueCents: number; categoryId: string; categoryIcon: string | null; installmentGroupId: string | null }>) => ({
-    id: overrides.id ?? "x",
-    description: overrides.description ?? null,
-    month: overrides.month ?? "2026-08",
-    valueCents: overrides.valueCents ?? 1000,
-    categoryId: overrides.categoryId ?? "cat",
-    categoryIcon: overrides.categoryIcon ?? null,
-    installmentGroupId: overrides.installmentGroupId ?? null,
-  });
-
   it("detecta subscription (nome conhecido + valor estável)", () => {
     const occurrences = detectRecurrences([
       expense({ id: "a1", description: "Netflix", month: "2026-06", valueCents: 3990 }),
@@ -264,6 +265,70 @@ describe("aprendizado (§3.7.4 — ignorar/confirmar/restaurar)", () => {
 
   it("sem feedback, nada é filtrado", () => {
     expect(applyFeedback(occurrences, {})).toHaveLength(2);
+  });
+
+  it("partitionFeedback separa ativas e ignoradas para a UI", () => {
+    const { active, ignored } = partitionFeedback(occurrences, { a: "ignore", b: "confirm" });
+    expect(active).toHaveLength(1);
+    expect(active[0]?.name).toBe("Academia");
+    expect(active[0]?.confirmed).toBe(true);
+    expect(ignored).toHaveLength(1);
+    expect(ignored[0]?.name).toBe("Netflix");
+    expect(ignored[0]?.ignored).toBe(true);
+  });
+});
+
+describe("previsão de datas e segmentação de serviços", () => {
+  it("calcula dia típico e estima próximo vencimento", () => {
+    const occurrences = detectRecurrences(
+      [
+        expense({ id: "n1", description: "Netflix", date: "2026-06-12", month: "2026-06", valueCents: 3990 }),
+        expense({ id: "n2", description: "Netflix", date: "2026-07-12", month: "2026-07", valueCents: 3990 }),
+      ],
+      { todayISO: "2026-08-08" },
+    );
+    const sub = occurrences.find((o) => o.name === "Netflix");
+    expect(sub).toBeDefined();
+    expect(sub?.segment).toBe("streaming");
+    expect(sub?.typicalDayOfMonth).toBe(12);
+    expect(sub?.nextDueDate).toBe("2026-08-12");
+    expect(sub?.daysUntilNextDue).toBe(4);
+    expect(sub?.missingThisMonth).toBe(false);
+  });
+
+  it("detecta assinatura ausente/pendente no mês quando o dia típico já passou", () => {
+    const occurrences = detectRecurrences(
+      [
+        expense({ id: "s1", description: "Spotify", date: "2026-06-05", month: "2026-06", valueCents: 2190 }),
+        expense({ id: "s2", description: "Spotify", date: "2026-07-05", month: "2026-07", valueCents: 2190 }),
+      ],
+      { todayISO: "2026-08-15" },
+    );
+    const sub = occurrences.find((o) => o.name === "Spotify");
+    expect(sub).toBeDefined();
+    expect(sub?.typicalDayOfMonth).toBe(5);
+    expect(sub?.missingThisMonth).toBe(true);
+  });
+
+  it("classifica segmentos corretamente (fitness, cloud_ai, telecom, mobility, health)", () => {
+    const occurrences = detectRecurrences([
+      expense({ id: "f1", description: "Smart Fit", date: "2026-07-10", month: "2026-07", valueCents: 11990 }),
+      expense({ id: "f2", description: "Smart Fit", date: "2026-08-10", month: "2026-08", valueCents: 11990 }),
+      expense({ id: "c1", description: "ChatGPT Plus", date: "2026-07-20", month: "2026-07", valueCents: 10000 }),
+      expense({ id: "c2", description: "ChatGPT Plus", date: "2026-08-20", month: "2026-08", valueCents: 10000 }),
+      expense({ id: "t1", description: "Vivo Fibra", date: "2026-07-15", month: "2026-07", valueCents: 12000 }),
+      expense({ id: "t2", description: "Vivo Fibra", date: "2026-08-15", month: "2026-08", valueCents: 12000 }),
+      expense({ id: "m1", description: "Sem Parar", date: "2026-07-01", month: "2026-07", valueCents: 3500 }),
+      expense({ id: "m2", description: "Sem Parar", date: "2026-08-01", month: "2026-08", valueCents: 3500 }),
+      expense({ id: "h1", description: "Unimed", date: "2026-07-25", month: "2026-07", valueCents: 45000 }),
+      expense({ id: "h2", description: "Unimed", date: "2026-08-25", month: "2026-08", valueCents: 45000 }),
+    ]);
+
+    expect(occurrences.find((o) => o.name === "Smart Fit")?.segment).toBe("fitness");
+    expect(occurrences.find((o) => o.name === "ChatGPT Plus")?.segment).toBe("cloud_ai");
+    expect(occurrences.find((o) => o.name === "Vivo Fibra")?.segment).toBe("telecom");
+    expect(occurrences.find((o) => o.name === "Sem Parar")?.segment).toBe("mobility");
+    expect(occurrences.find((o) => o.name === "Unimed")?.segment).toBe("health");
   });
 });
 

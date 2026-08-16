@@ -108,36 +108,38 @@ export function InsightList({
                 <button
                   type="button"
                   onClick={() => onRestore?.(item.key)}
-                  className="flex items-center gap-1 rounded-lg p-1.5 sm:px-2 sm:py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary-surface/40 hover:text-primary-strong sm:size-8"
                   aria-label={`Restaurar ${item.title}`}
                   title={`Restaurar ${item.title}`}
                 >
-                  <RotateCcw className="size-3.5" aria-hidden="true" />
-                  <span className="hidden sm:inline">Restaurar</span>
+                  <RotateCcw className="size-3.5 sm:size-4" aria-hidden="true" />
                 </button>
               ) : (
-                <>
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => onIgnore?.(item.key)}
-                    className="flex items-center gap-1 rounded-lg p-1.5 sm:px-2 sm:py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-negative-surface/30 hover:text-negative-strong sm:size-8"
                     aria-label={`Ignorar ${item.title}`}
                     title={`Ignorar ${item.title}`}
                   >
-                    <X className="size-3.5" aria-hidden="true" />
-                    <span className="hidden sm:inline">Ignorar</span>
+                    <X className="size-3.5 sm:size-4" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onConfirm?.(item.key)}
-                    className="flex items-center gap-1 rounded-lg p-1.5 sm:px-2 sm:py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-lg transition-colors sm:size-8",
+                      confirmed
+                        ? "bg-positive-surface text-positive-strong hover:bg-positive-surface/80"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
                     aria-label={`Confirmar ${item.title}`}
-                    title={`Confirmar ${item.title}`}
+                    title={confirmed ? `Confirmada (${item.title})` : `Confirmar ${item.title}`}
                   >
-                    <Check className="size-3.5" aria-hidden="true" />
-                    <span className="hidden sm:inline">Confirmar</span>
+                    <Check className="size-3.5 sm:size-4" aria-hidden="true" />
                   </button>
-                </>
+                </div>
               )}
             </div>
           </li>

@@ -9,6 +9,17 @@
  */
 
 export type CutTier = "essential" | "discretionary" | "can_cut";
+export type ServiceSegment = "streaming" | "fitness" | "cloud_ai" | "telecom" | "mobility" | "health" | "other";
+
+export const SERVICE_SEGMENT_LABELS: Record<ServiceSegment, string> = {
+  streaming: "Streaming",
+  fitness: "Fitness",
+  cloud_ai: "Nuvem & IA",
+  telecom: "Telecom",
+  mobility: "Mobilidade",
+  health: "Saúde",
+  other: "Outros",
+};
 
 export interface SubscriptionCandidate {
   /** Nome da despesa (para casar com o catálogo). */
@@ -23,6 +34,7 @@ export interface SubscriptionClassification {
   /** 0.40–0.98 (árvore de decisão). */
   confidence: number;
   tier: CutTier;
+  segment: ServiceSegment;
   /** Economia mensal média se cortada (centavos). */
   savingsIfCutCents: number;
   /** Sinais presentes. */
@@ -34,111 +46,116 @@ const VALUE_TOLERANCE = 0.05;
 
 import { ESSENTIAL_CATEGORY_ICONS, matchesServiceKey, valuesWithinTolerance } from "./shared";
 
-/** Serviços de assinatura conhecidos (nome normalizado → tier de corte). */
-const KNOWN_SERVICES: Record<string, CutTier> = {
+export interface KnownServiceDef {
+  tier: CutTier;
+  segment: ServiceSegment;
+}
+
+/** Serviços de assinatura conhecidos (nome normalizado → tier e segmento). */
+export const KNOWN_SERVICES: Record<string, KnownServiceDef> = {
   // Streaming e Entretenimento (can_cut)
-  netflix: "can_cut",
-  spotify: "can_cut",
-  deezer: "can_cut",
-  tidal: "can_cut",
-  disney: "can_cut",
-  disneyplus: "can_cut",
-  starplus: "can_cut",
-  globoplay: "can_cut",
-  crunchyroll: "can_cut",
-  amazonprime: "can_cut",
-  primevideo: "can_cut",
-  hbo: "can_cut",
-  max: "can_cut",
-  paramount: "can_cut",
-  discovery: "can_cut",
-  twitch: "can_cut",
-  kindle: "can_cut",
-  audible: "can_cut",
-  duolingo: "can_cut",
-  canva: "can_cut",
-  directvgo: "can_cut",
-  mubi: "can_cut",
-  premiere: "can_cut",
-  telecine: "can_cut",
+  netflix: { tier: "can_cut", segment: "streaming" },
+  spotify: { tier: "can_cut", segment: "streaming" },
+  deezer: { tier: "can_cut", segment: "streaming" },
+  tidal: { tier: "can_cut", segment: "streaming" },
+  disney: { tier: "can_cut", segment: "streaming" },
+  disneyplus: { tier: "can_cut", segment: "streaming" },
+  starplus: { tier: "can_cut", segment: "streaming" },
+  globoplay: { tier: "can_cut", segment: "streaming" },
+  crunchyroll: { tier: "can_cut", segment: "streaming" },
+  amazonprime: { tier: "can_cut", segment: "streaming" },
+  primevideo: { tier: "can_cut", segment: "streaming" },
+  hbo: { tier: "can_cut", segment: "streaming" },
+  max: { tier: "can_cut", segment: "streaming" },
+  paramount: { tier: "can_cut", segment: "streaming" },
+  discovery: { tier: "can_cut", segment: "streaming" },
+  twitch: { tier: "can_cut", segment: "streaming" },
+  kindle: { tier: "can_cut", segment: "streaming" },
+  audible: { tier: "can_cut", segment: "streaming" },
+  duolingo: { tier: "can_cut", segment: "streaming" },
+  canva: { tier: "can_cut", segment: "cloud_ai" },
+  directvgo: { tier: "can_cut", segment: "streaming" },
+  mubi: { tier: "can_cut", segment: "streaming" },
+  premiere: { tier: "can_cut", segment: "streaming" },
+  telecine: { tier: "can_cut", segment: "streaming" },
 
   // Produtividade, IA, Cloud e Gamificação (discretionary)
-  amazon: "discretionary",
-  apple: "discretionary",
-  appletv: "discretionary",
-  icloud: "discretionary",
-  icloudplus: "discretionary",
-  googleone: "discretionary",
-  youtube: "discretionary",
-  youtubeplus: "discretionary",
-  youtubepremium: "discretionary",
-  academia: "discretionary",
-  smartfit: "discretionary",
-  bluefit: "discretionary",
-  totalpass: "discretionary",
-  gympass: "discretionary",
-  wellhub: "discretionary",
-  skyfit: "discretionary",
-  semparar: "discretionary",
-  veloe: "discretionary",
-  conectcar: "discretionary",
-  tagitau: "discretionary",
-  movemais: "discretionary",
-  zulplus: "discretionary",
-  uol: "discretionary",
-  folha: "discretionary",
-  estadao: "discretionary",
-  globo: "discretionary",
-  udemy: "discretionary",
-  coursera: "discretionary",
-  alura: "discretionary",
-  rocketseat: "discretionary",
-  rockseat: "discretionary",
-  linkedin: "discretionary",
-  notion: "discretionary",
-  figma: "discretionary",
-  adobe: "discretionary",
-  github: "discretionary",
-  chatgpt: "discretionary",
-  openai: "discretionary",
-  claude: "discretionary",
-  midjourney: "discretionary",
-  copilot: "discretionary",
-  xbox: "discretionary",
-  playstation: "discretionary",
-  psplus: "discretionary",
-  nintendo: "discretionary",
-  steam: "discretionary",
-  dropbox: "discretionary",
-  nordvpn: "discretionary",
-  surfshark: "discretionary",
-  proton: "discretionary",
-  uberone: "discretionary",
-  ifoodpass: "discretionary",
-  clubeifood: "discretionary",
+  amazon: { tier: "discretionary", segment: "other" },
+  apple: { tier: "discretionary", segment: "cloud_ai" },
+  appletv: { tier: "discretionary", segment: "streaming" },
+  icloud: { tier: "discretionary", segment: "cloud_ai" },
+  icloudplus: { tier: "discretionary", segment: "cloud_ai" },
+  googleone: { tier: "discretionary", segment: "cloud_ai" },
+  youtube: { tier: "discretionary", segment: "streaming" },
+  youtubeplus: { tier: "discretionary", segment: "streaming" },
+  youtubepremium: { tier: "discretionary", segment: "streaming" },
+  academia: { tier: "discretionary", segment: "fitness" },
+  smartfit: { tier: "discretionary", segment: "fitness" },
+  bluefit: { tier: "discretionary", segment: "fitness" },
+  totalpass: { tier: "discretionary", segment: "fitness" },
+  gympass: { tier: "discretionary", segment: "fitness" },
+  wellhub: { tier: "discretionary", segment: "fitness" },
+  skyfit: { tier: "discretionary", segment: "fitness" },
+  semparar: { tier: "discretionary", segment: "mobility" },
+  veloe: { tier: "discretionary", segment: "mobility" },
+  conectcar: { tier: "discretionary", segment: "mobility" },
+  tagitau: { tier: "discretionary", segment: "mobility" },
+  movemais: { tier: "discretionary", segment: "mobility" },
+  zulplus: { tier: "discretionary", segment: "mobility" },
+  uol: { tier: "discretionary", segment: "other" },
+  folha: { tier: "discretionary", segment: "other" },
+  estadao: { tier: "discretionary", segment: "other" },
+  globo: { tier: "discretionary", segment: "other" },
+  udemy: { tier: "discretionary", segment: "other" },
+  coursera: { tier: "discretionary", segment: "other" },
+  alura: { tier: "discretionary", segment: "other" },
+  rocketseat: { tier: "discretionary", segment: "other" },
+  rockseat: { tier: "discretionary", segment: "other" },
+  linkedin: { tier: "discretionary", segment: "other" },
+  notion: { tier: "discretionary", segment: "cloud_ai" },
+  figma: { tier: "discretionary", segment: "cloud_ai" },
+  adobe: { tier: "discretionary", segment: "cloud_ai" },
+  github: { tier: "discretionary", segment: "cloud_ai" },
+  chatgpt: { tier: "discretionary", segment: "cloud_ai" },
+  openai: { tier: "discretionary", segment: "cloud_ai" },
+  claude: { tier: "discretionary", segment: "cloud_ai" },
+  midjourney: { tier: "discretionary", segment: "cloud_ai" },
+  copilot: { tier: "discretionary", segment: "cloud_ai" },
+  xbox: { tier: "discretionary", segment: "streaming" },
+  playstation: { tier: "discretionary", segment: "streaming" },
+  psplus: { tier: "discretionary", segment: "streaming" },
+  nintendo: { tier: "discretionary", segment: "streaming" },
+  steam: { tier: "discretionary", segment: "streaming" },
+  dropbox: { tier: "discretionary", segment: "cloud_ai" },
+  nordvpn: { tier: "discretionary", segment: "cloud_ai" },
+  surfshark: { tier: "discretionary", segment: "cloud_ai" },
+  proton: { tier: "discretionary", segment: "cloud_ai" },
+  uberone: { tier: "discretionary", segment: "mobility" },
+  ifoodpass: { tier: "discretionary", segment: "other" },
+  clubeifood: { tier: "discretionary", segment: "other" },
 
   // Serviços Essenciais (essential)
-  microsoft365: "essential",
-  office365: "essential",
-  internet: "essential",
-  telefone: "essential",
-  celular: "essential",
-  vivo: "essential",
-  claro: "essential",
-  tim: "essential",
-  oi: "essential",
-  brisanet: "essential",
-  alares: "essential",
-  desktopinternet: "essential",
-  unifique: "essential",
-  algar: "essential",
-  copeltelecom: "essential",
-  unimed: "essential",
-  amil: "essential",
-  sulamerica: "essential",
-  hapvida: "essential",
-  notredame: "essential",
-  bradescosaude: "essential",
+  microsoft365: { tier: "essential", segment: "cloud_ai" },
+  office365: { tier: "essential", segment: "cloud_ai" },
+  internet: { tier: "essential", segment: "telecom" },
+  telefone: { tier: "essential", segment: "telecom" },
+  celular: { tier: "essential", segment: "telecom" },
+  vivo: { tier: "essential", segment: "telecom" },
+  claro: { tier: "essential", segment: "telecom" },
+  tim: { tier: "essential", segment: "telecom" },
+  oi: { tier: "essential", segment: "telecom" },
+  brisanet: { tier: "essential", segment: "telecom" },
+  alares: { tier: "essential", segment: "telecom" },
+  desktopinternet: { tier: "essential", segment: "telecom" },
+  unifique: { tier: "essential", segment: "telecom" },
+  algar: { tier: "essential", segment: "telecom" },
+  copeltelecom: { tier: "essential", segment: "telecom" },
+  unimed: { tier: "essential", segment: "health" },
+  amil: { tier: "essential", segment: "health" },
+  sulamerica: { tier: "essential", segment: "health" },
+  hapvida: { tier: "essential", segment: "health" },
+  notredame: { tier: "essential", segment: "health" },
+  bradescosaude: { tier: "essential", segment: "health" },
 };
 
 /** Categorias que indicam assinatura. */
@@ -162,10 +179,22 @@ function hasStableValue(monthlyValuesCents: readonly number[], tolerance = VALUE
   return valuesWithinTolerance(monthlyValuesCents, tolerance);
 }
 
+/** Segmento do serviço a partir do catálogo ou categoria. */
+export function segmentOf(name: string, categoryIcon?: string | null): ServiceSegment {
+  for (const [key, def] of Object.entries(KNOWN_SERVICES)) {
+    if (matchesServiceKey(name, key)) return def.segment;
+  }
+  if (categoryIcon === "streaming" || categoryIcon === "musica") return "streaming";
+  if (categoryIcon === "saude") return "health";
+  if (categoryIcon === "transporte") return "mobility";
+  if (categoryIcon === "software") return "cloud_ai";
+  return "other";
+}
+
 /** Tier a partir do catálogo (com fallback por categoria). */
 function tierOf(name: string, categoryIcon: string | null | undefined): CutTier {
-  for (const key of Object.keys(KNOWN_SERVICES)) {
-    if (matchesServiceKey(name, key)) return KNOWN_SERVICES[key] ?? "discretionary";
+  for (const [key, def] of Object.entries(KNOWN_SERVICES)) {
+    if (matchesServiceKey(name, key)) return def.tier;
   }
   if (categoryIcon && ESSENTIAL_CATEGORY_ICONS.has(categoryIcon)) return "essential";
   return "discretionary";
@@ -197,6 +226,7 @@ export function classifySubscription(candidate: SubscriptionCandidate): Subscrip
   return {
     confidence: Math.min(0.98, Math.max(0.4, confidence)),
     tier: tierOf(candidate.name, candidate.categoryIcon),
+    segment: segmentOf(candidate.name, candidate.categoryIcon),
     savingsIfCutCents: averageCents,
     signs,
   };

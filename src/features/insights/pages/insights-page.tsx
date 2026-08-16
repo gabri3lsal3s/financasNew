@@ -3,6 +3,9 @@ import {
   ArrowRight,
   Calendar,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  EyeOff,
   Flame,
   Lightbulb,
   PiggyBank,
@@ -13,14 +16,15 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { Alert, Badge, ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { Alert, Badge, Button, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { AlertCard, InsightList, PlanningSection, ProjectionLine } from "@/components/modules";
 import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
-import { applyFeedback, type FeedbackDecision } from "@/domain/insights/feedback";
+import { partitionFeedback, type FeedbackDecision } from "@/domain/insights/feedback";
 import {
   ESSENTIAL_CATEGORY_ICONS,
+  SERVICE_SEGMENT_LABELS,
   incomeConcentration,
   isSignificantTrend,
   savingsHealth,
@@ -67,6 +71,7 @@ import { cn } from "@/lib/utils";
  */
 export function InsightsPage() {
   const [tab, setTab] = useState("diagnostics");
+  const [showIgnored, setShowIgnored] = useState(false);
   const month = currentMonth();
 
   const month0 = useExpenses(month);
@@ -118,6 +123,7 @@ export function InsightsPage() {
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const dayOfMonth = now.getDate();
+  const todayISOStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const pace = spendingPace({ spentCents: expenseCents, monthlyBudgetCents: Math.max(1, incomeCents), dayOfMonth, daysInMonth });
   const paceRatio = pace.active ? 1 + pace.gapPoints / 100 : 1;
 
@@ -157,7 +163,7 @@ export function InsightsPage() {
     savingsRatePercent: savingsRate,
   });
 
-  // Assinaturas e recorrências: despesas dos últimos 3 meses (sem parcelas).
+  // Assinaturas e recorrências: despesas dos últimos 4 meses (sem parcelas).
   // Map de categorias pré-computado — O(n²) → O(n) (F19).
   const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
   const allExpenses: ExpenseLike[] = [month0, month1, month2, month3]
@@ -165,6 +171,7 @@ export function InsightsPage() {
       (q.data ?? []).map((e) => ({
         id: e.id,
         description: e.description,
+        date: e.date,
         month: shiftMonth(month, -index),
         valueCents: numberToCents(e.value * e.report_weight),
         categoryId: e.category_id,
@@ -172,20 +179,19 @@ export function InsightsPage() {
         installmentGroupId: e.installment_group_id,
       })),
     );
-  const occurrences = detectRecurrences(allExpenses);
+  const occurrences = detectRecurrences(allExpenses, { todayISO: todayISOStr });
   const feedbackMap = (feedbackQuery.data ?? {}) as Record<string, FeedbackDecision>;
-  const visible = applyFeedback(occurrences, feedbackMap);
+  const { active: activeOccurrences, ignored: ignoredOccurrences } = partitionFeedback(occurrences, feedbackMap);
 
-  // Totais das recorrências para o painel de resumo
-  const activeOccurrences = visible.filter((o) => feedbackMap[o.key] !== "ignore");
+  // Totais das recorrências para o painel de resumo (apenas ativas)
   const totalRecurringCents = activeOccurrences.reduce((acc, o) => acc + o.averageCents, 0);
   const totalAnnualRecurringCents = totalRecurringCents * 12;
   const canCutRecurringCents = activeOccurrences
     .filter((o) => o.tier === "can_cut")
     .reduce((acc, o) => acc + (o.savingsIfCutCents ?? o.averageCents), 0);
   const canCutAnnualCents = canCutRecurringCents * 12;
-  const confirmedCount = visible.filter((o) => feedbackMap[o.key] === "confirm").length;
-  const pendingCount = visible.filter((o) => !feedbackMap[o.key]).length;
+  const confirmedCount = activeOccurrences.filter((o) => o.confirmed).length;
+  const pendingCount = activeOccurrences.filter((o) => !o.confirmed).length;
 
   // Projeção & corte.
   const daily = dailyBudget({
@@ -477,11 +483,18 @@ export function InsightsPage() {
                     </div>
                   </div>
 
-                  {/* Lista de Recorrências */}
+                  {/* Lista de Recorrências Ativas */}
                   <section aria-label="Lista de assinaturas e recorrências" className="flex flex-col gap-2">
                     <InsightList
-                      items={visible.map((o) => {
+                      items={activeOccurrences.map((o) => {
                         const badges: { label: string; tone?: "default" | "positive" | "negative" | "warning" | "critical" | "muted" }[] = [];
+
+                        // Segmento de serviço (Streaming, Fitness, Nuvem & IA, etc.)
+                        if (o.segment && o.segment !== "other") {
+                          badges.push({ label: SERVICE_SEGMENT_LABELS[o.segment], tone: "default" });
+                        }
+
+                        // Tier de corte
                         if (o.tier === "can_cut") {
                           badges.push({ label: "Pode cortar", tone: "positive" });
                         } else if (o.tier === "discretionary") {
@@ -490,10 +503,25 @@ export function InsightsPage() {
                           badges.push({ label: "Essencial", tone: "default" });
                         }
 
+                        // Previsão de vencimento ou cobrança pendente
+                        if (o.missingThisMonth) {
+                          badges.push({ label: "Pendente no mês", tone: "warning" });
+                        } else if (o.daysUntilNextDue !== undefined) {
+                          if (o.daysUntilNextDue === 0) {
+                            badges.push({ label: "Vence hoje", tone: "warning" });
+                          } else if (o.daysUntilNextDue > 0 && o.daysUntilNextDue <= 7) {
+                            badges.push({ label: `Em ${o.daysUntilNextDue}d`, tone: "warning" });
+                          } else if (o.typicalDayOfMonth) {
+                            badges.push({ label: `Dia ~${o.typicalDayOfMonth}`, tone: "muted" });
+                          }
+                        }
+
+                        // Reajuste de preço detectado
                         if (o.priceAdjustment) {
                           badges.push({ label: `+${o.priceAdjustment.percentIncrease}% reajuste`, tone: "warning" });
                         }
 
+                        // Cobrança duplicada no mês
                         if (o.duplicateChargesThisMonth && o.duplicateChargesThisMonth > 1) {
                           badges.push({ label: `${o.duplicateChargesThisMonth}x no mês`, tone: "warning" });
                         }
@@ -512,9 +540,53 @@ export function InsightsPage() {
                       onIgnore={(key) => handleFeedback(key, "ignore")}
                       onConfirm={(key) => handleFeedback(key, "confirm")}
                       onRestore={(key) => handleFeedback(key, null)}
-                      emptyLabel="Nenhuma assinatura ou recorrência detectada nos últimos meses."
+                      emptyLabel="Nenhuma assinatura ou recorrência ativa detectada nos últimos meses."
                     />
                   </section>
+
+                  {/* Seção colapsável de Ocorrências Ignoradas */}
+                  {ignoredOccurrences.length > 0 ? (
+                    <section aria-label="Ocorrências ignoradas" className="flex flex-col gap-2 pt-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowIgnored((prev) => !prev)}
+                        className="flex items-center justify-between gap-2 self-start text-xs text-muted-foreground hover:text-foreground"
+                        aria-expanded={showIgnored}
+                      >
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <EyeOff className="size-3.5" aria-hidden="true" />
+                          Ocorrências ignoradas ({ignoredOccurrences.length})
+                        </span>
+                        {showIgnored ? (
+                          <ChevronUp className="size-3.5" aria-hidden="true" />
+                        ) : (
+                          <ChevronDown className="size-3.5" aria-hidden="true" />
+                        )}
+                      </Button>
+
+                      {showIgnored ? (
+                        <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border/80 p-3 bg-surface/40">
+                          <p className="text-xs text-muted-foreground">
+                            Ocorrências ignoradas são excluídas dos cálculos e relatórios. Clique no ícone de restaurar para devolvê-las à lista ativa.
+                          </p>
+                          <InsightList
+                            items={ignoredOccurrences.map((o) => ({
+                              key: o.key,
+                              title: o.name,
+                              subtitle: `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`,
+                              confidence: o.confidence,
+                              amountCents: o.averageCents,
+                              icon: <Repeat className="size-4" aria-hidden="true" />,
+                            }))}
+                            feedback={feedbackMap}
+                            onRestore={(key) => handleFeedback(key, null)}
+                          />
+                        </div>
+                      ) : null}
+                    </section>
+                  ) : null}
 
                   <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3.5 py-2.5 text-xs text-muted-foreground">
                     <Lightbulb className="size-4 shrink-0 text-warning-strong" aria-hidden="true" />

@@ -1,13 +1,13 @@
 export { criticalAlerts } from "./alerts";
 export type { InsightAlert, AlertSeverity, CriticalAlertInput } from "./alerts";
-export { classifySubscription } from "./subscriptions";
-export type { CutTier, SubscriptionCandidate, SubscriptionClassification } from "./subscriptions";
-export { detectRecurrences } from "./recurrences";
+export { classifySubscription, segmentOf, SERVICE_SEGMENT_LABELS } from "./subscriptions";
+export type { CutTier, ServiceSegment, SubscriptionCandidate, SubscriptionClassification } from "./subscriptions";
+export { detectRecurrences, calculateTypicalDay, estimateNextDueDate } from "./recurrences";
 export { ESSENTIAL_CATEGORY_ICONS } from "./shared";
-export type { ExpenseLike, PriceAdjustment, RecurrenceOccurrence } from "./recurrences";
+export type { ExpenseLike, PriceAdjustment, RecurrenceOccurrence, DetectRecurrencesOptions } from "./recurrences";
 export { confidenceScore, historyBonus, varianceOf } from "./confidence";
 export type { ConfidenceParams, RecurrenceKind } from "./confidence";
-export { applyFeedback } from "./feedback";
+export { applyFeedback, partitionFeedback } from "./feedback";
 export type { FeedbackDecision, FeedbackMap } from "./feedback";
 export {
   SAVINGS_HEALTH_LABELS,
@@ -18,3 +18,4 @@ export {
   weekendSpendingRatio,
 } from "./diagnostics";
 export type { IncomeConcentration, SavingsHealth } from "./diagnostics";
+

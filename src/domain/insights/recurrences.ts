@@ -12,7 +12,7 @@
  */
 
 import { confidenceScore, varianceOf, type RecurrenceKind } from "./confidence";
-import { classifySubscription, type CutTier } from "./subscriptions";
+import { classifySubscription, segmentOf, type CutTier, type ServiceSegment } from "./subscriptions";
 import { ESSENTIAL_CATEGORY_ICONS, normalizeText } from "./shared";
 
 export interface ExpenseLike {
@@ -20,6 +20,8 @@ export interface ExpenseLike {
   description: string | null;
   /** YYYY-MM */
   month: string;
+  /** YYYY-MM-DD (opcional — para cálculo do dia típico de cobrança). */
+  date?: string;
   valueCents: number;
   categoryId: string;
   /** Nome do ícone da categoria (para sinais de assinatura). */
@@ -38,6 +40,8 @@ export interface RecurrenceOccurrence {
   key: string;
   name: string;
   level: RecurrenceKind;
+  /** Segmento do serviço (streaming, fitness, cloud_ai, etc.). */
+  segment?: ServiceSegment;
   /** Meses com ocorrência. */
   months: string[];
   /** Valor médio mensal (centavos). */
@@ -48,6 +52,14 @@ export interface RecurrenceOccurrence {
   tier?: CutTier;
   /** Economia mensal estimada se cortada (centavos). */
   savingsIfCutCents?: number;
+  /** Dia típico do mês em que a despesa costuma ser cobrada (1–31). */
+  typicalDayOfMonth?: number;
+  /** Data ISO da próxima cobrança estimada (YYYY-MM-DD). */
+  nextDueDate?: string;
+  /** Dias restantes até a próxima cobrança estimada. */
+  daysUntilNextDue?: number;
+  /** Verdadeiro se a despesa era regular nos meses anteriores e ainda não foi cobrada no mês atual após o dia típico. */
+  missingThisMonth?: boolean;
   /** Reajuste de preço detectado (aumento >= 10% vs meses anteriores). */
   priceAdjustment?: PriceAdjustment | null;
   /** Quantidade de cobranças no mês mais recente se houver duplicidade (>= 2). */
@@ -65,6 +77,57 @@ export function medianOf(values: readonly number[]): number {
   return sorted.length % 2 === 0 ? Math.round((sorted[mid - 1]! + sorted[mid]!) / 2) : sorted[mid]!;
 }
 
+/** Calcula o dia do mês típico da despesa (1–31) a partir das datas históricas. */
+export function calculateTypicalDay(dates: readonly (string | undefined)[]): number {
+  const days = dates
+    .filter((d): d is string => d != null && d.length >= 10)
+    .map((d) => parseInt(d.slice(8, 10), 10))
+    .filter((n) => !Number.isNaN(n) && n >= 1 && n <= 31);
+
+  if (days.length === 0) return 1;
+  return medianOf(days);
+}
+
+/**
+ * Estima a próxima data de cobrança e a contagem de dias restantes.
+ */
+export function estimateNextDueDate(
+  typicalDay: number,
+  latestMonthCharged: string,
+  todayISO?: string,
+): { nextDueDate?: string; daysUntilNextDue?: number; missingThisMonth?: boolean } {
+  if (!todayISO || todayISO.length < 10) return {};
+  const currentMonth = todayISO.slice(0, 7);
+  const currentDay = parseInt(todayISO.slice(8, 10), 10);
+
+  let targetYearMonth = currentMonth;
+  const alreadyChargedThisMonth = latestMonthCharged >= currentMonth;
+
+  if (alreadyChargedThisMonth) {
+    // Já cobrada neste mês -> próxima cobrança é no mês seguinte
+    const [yearStr, monthStr] = currentMonth.split("-");
+    let y = parseInt(yearStr!, 10);
+    let m = parseInt(monthStr!, 10) + 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    targetYearMonth = `${y}-${String(m).padStart(2, "0")}`;
+  }
+
+  const paddedDay = String(Math.min(typicalDay, 28)).padStart(2, "0");
+  const nextDueDate = `${targetYearMonth}-${paddedDay}`;
+
+  const todayDate = new Date(`${todayISO.slice(0, 10)}T00:00:00`);
+  const nextDate = new Date(`${nextDueDate}T00:00:00`);
+  const daysUntilNextDue = Math.round((nextDate.getTime() - todayDate.getTime()) / 86_400_000);
+
+  // Considera ausente/pendente se não foi cobrada neste mês e o dia típico já passou
+  const missingThisMonth = !alreadyChargedThisMonth && currentDay > typicalDay;
+
+  return { nextDueDate, daysUntilNextDue, missingThisMonth };
+}
+
 /**
  * Tolerância relativa à MEDIANA (robusta a outliers e à ordem dos meses).
  */
@@ -76,8 +139,12 @@ export function valuesWithinToleranceOfMedian(values: readonly number[], toleran
 }
 
 /** Meses distintos de um conjunto de ocorrências. */
-function monthsWith(values: readonly string[]): number {
+export function monthsWith(values: readonly string[]): number {
   return new Set(values).size;
+}
+
+export interface DetectRecurrencesOptions {
+  todayISO?: string;
 }
 
 /**
@@ -85,7 +152,11 @@ function monthsWith(values: readonly string[]): number {
  * Agrupa por descrição normalizada (subscription/recurring) e por
  * categoria (similar), aplicando as tolerâncias da especificação.
  */
-export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceOccurrence[] {
+export function detectRecurrences(
+  expenses: readonly ExpenseLike[],
+  options: DetectRecurrencesOptions = {},
+): RecurrenceOccurrence[] {
+  const { todayISO } = options;
   const active = expenses.filter((e) => e.installmentGroupId == null);
 
   // Agrupa por descrição normalizada (níveis subscription/recurring).
@@ -137,6 +208,15 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
     const latestExpenses = latestMonth ? (monthMap.get(latestMonth) ?? []) : [];
     const duplicateChargesThisMonth = latestExpenses.length > 1 ? latestExpenses.length : undefined;
 
+    // Previsão temporal de próximo vencimento e dia típico
+    const dates = group.map((e) => e.date).filter(Boolean);
+    const typicalDayOfMonth = calculateTypicalDay(dates);
+    const { nextDueDate, daysUntilNextDue, missingThisMonth } = estimateNextDueDate(
+      typicalDayOfMonth,
+      latestMonth ?? "",
+      todayISO,
+    );
+
     // Diagnóstico de reajuste de preço (aumento >= 10% vs mediana histórica anterior).
     let priceAdjustment: PriceAdjustment | null = null;
     if (monthlyTotals.length >= 2) {
@@ -175,12 +255,17 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
         key: `sub:${key}`,
         name: first.description ?? key,
         level: "subscription",
+        segment: subscription.segment,
         months,
         averageCents: averageMonthlyCents,
         confidence,
         categoryId: first.categoryId,
         tier: subscription.tier,
         savingsIfCutCents: subscription.savingsIfCutCents,
+        typicalDayOfMonth,
+        nextDueDate,
+        daysUntilNextDue,
+        missingThisMonth,
         priceAdjustment,
         duplicateChargesThisMonth,
       });
@@ -193,14 +278,20 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
     if (stable && months.length >= 2) {
       const variance = varianceOf(monthlyTotals);
       const confidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
+      const segment = segmentOf(first.description ?? "", categoryIcons[0]);
       occurrences.push({
         key: `recurring:${key}`,
         name: first.description ?? key,
         level: "recurring",
+        segment,
         months,
         averageCents: averageMonthlyCents,
         confidence,
         categoryId: first.categoryId,
+        typicalDayOfMonth,
+        nextDueDate,
+        daysUntilNextDue,
+        missingThisMonth,
         priceAdjustment,
         duplicateChargesThisMonth,
       });

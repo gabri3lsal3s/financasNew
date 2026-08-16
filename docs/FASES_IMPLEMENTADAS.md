@@ -248,6 +248,16 @@
 
 ---
 
+## Evolução de Assinaturas, Recorrências & Feedback (2026-08-16, Insights)
+
+- **Problema:** (1) A aba de assinaturas e recorrências não informava a **previsão de datas de vencimento** (quando a conta iria cair no mês) nem contagem regressiva de dias; (2) Não havia **segmentação por tipo de serviço** (Streaming, Fitness, Nuvem & IA, Telecom, Mobilidade, Saúde); (3) Não havia diagnóstico para **assinaturas ausentes/pendentes no mês** (quando o dia previsto já passou sem lançamento identificado); (4) Os botões de feedback (*Confirmar / Ignorar / Restaurar*) continham texto longo que ocupava muito espaço horizontal e poluía visualmente os cards; (5) Ao ignorar uma ocorrência, ela sumia sem deixar um ponto de acesso rápido e organizado para restauração caso o usuário clicasse por engano.
+- **Solução:**
+  1. **Previsão de Próximo Vencimento & Dias Restantes:** `calculateTypicalDay` extrai o dia típico do mês via mediana das datas históricas; `estimateNextDueDate` deriva a próxima data de cobrança e os dias restantes (badges contextuais: *"Vence hoje"*, *"Em 4d"*, *"Dia ~12"*).
+  2. **Segmentação por Tipo de Serviço (`ServiceSegment`):** Classificação no catálogo de serviços (`streaming`, `fitness`, `cloud_ai`, `telecom`, `mobility`, `health`, `other`) com badges dedicadas.
+  3. **Diagnóstico de Cobrança Ausente no Mês (`missingThisMonth`):** Identifica se o dia típico de uma assinatura regular já transcorreu no mês de referência sem nenhum lançamento registrado (badge de alerta: *"Pendente no mês"*).
+  4. **Botões de Ação Compactos (Icon-Only):** Botões discretos de ícones (`Check`, `X`, `RotateCcw`) com tamanhos adaptados (`size-7 sm:size-8`), hover sutil e `title`/`aria-label` descritivos, mantendo a interface leve e elegante.
+  5. **Seção Colapsável de Ocorrências Ignoradas:** `partitionFeedback` separa as ocorrências ativas das ignoradas. As ignoradas ficam guardadas em um container colapsável *"Ocorrências ignoradas (N)"* ao final da página, permitindo ao usuário abrir a qualquer momento e restaurar qualquer item com 1 clique.
+  6. **Qualidade & Testes:** Suíte de testes unitários dedicada em `insight-list.test.tsx` e `domain/insights/index.test.ts` (142 arquivos / 1155 testes verdes).
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
