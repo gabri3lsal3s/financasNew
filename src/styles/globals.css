@@ -434,9 +434,17 @@
      wrapper fixed do popper herda esse valor sem estilo próprio. Em
      navegadores/versões com hit-testing inconsistente (WebKit), o dropdown
      "renderiza mas não responde a cliques" (os itens ficam inertes). Garante
-     interatividade explícita na camada do portal — o Radix já reativa a camada
-     interna (`pointer-events: auto`); esta regra cobre o wrapper intermediário. */
+     interatividade explícita em TODAS as camadas do portal — o wrapper
+     intermediário e as camadas internas (conteúdo/listbox) — além de
+     `z-index` explícito, para o dropdown nunca ficar sob o overlay do modal
+     (o Radix só injeta o z-index do wrapper via efeito, um frame depois). */
   [data-radix-popper-content-wrapper] {
+    z-index: var(--z-modal);
+    pointer-events: auto;
+  }
+  [data-radix-select-content],
+  [data-radix-popover-content],
+  [data-radix-dropdown-menu-content] {
     pointer-events: auto;
   }
 }

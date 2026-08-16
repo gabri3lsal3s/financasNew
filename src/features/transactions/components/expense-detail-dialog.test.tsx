@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ExpenseDetailDialog } from "./expense-detail-dialog";
@@ -153,6 +153,73 @@ describe("ExpenseDetailDialog", () => {
     expect(updateExpenseMock).toHaveBeenCalledTimes(1);
     const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { report_weight: number } };
     expect(payload.input.report_weight).toBe(0.75);
+  });
+
+  it("mudar a data recalcula a competência pelo fechamento do cartão (sem override manual)", async () => {
+    updateExpenseMock.mockClear();
+    updateExpenseMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+
+    // Abre o DatePicker e escolhe o dia 15 (fechamento do cartão = dia 10 →
+    // competência 2026-09). A competência NÃO foi editada manualmente.
+    await user.click(screen.getByRole("button", { name: "Data da despesa" }));
+    const calendar = await screen.findByRole("grid");
+    const day15 = within(calendar).getAllByRole("gridcell").find((cell) => cell.textContent?.trim() === "15");
+    if (!day15) throw new Error("Dia 15 não encontrado no calendário");
+    await user.click(within(day15).getByRole("button"));
+
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(updateExpenseMock).toHaveBeenCalledTimes(1);
+    const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { bill_competence: string } };
+    expect(payload.input.bill_competence).toBe("2026-09");
+  });
+
+  it("competência editada manualmente NÃO é sobrescrita ao mudar a data", async () => {
+    updateExpenseMock.mockClear();
+    updateExpenseMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+
+    const compInput = screen.getByLabelText("Competência da fatura");
+    await user.clear(compInput);
+    await user.type(compInput, "2026-11");
+
+    // Muda a data para o dia 15 — a competência manual deve ser preservada.
+    await user.click(screen.getByRole("button", { name: "Data da despesa" }));
+    const calendar = await screen.findByRole("grid");
+    const day15 = within(calendar).getAllByRole("gridcell").find((cell) => cell.textContent?.trim() === "15");
+    if (!day15) throw new Error("Dia 15 não encontrado no calendário");
+    await user.click(within(day15).getByRole("button"));
+
+    expect(compInput).toHaveValue("2026-11");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(updateExpenseMock).toHaveBeenCalledTimes(1);
+    const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { bill_competence: string } };
+    expect(payload.input.bill_competence).toBe("2026-11");
+  });
+
+  it("competência com formato inválido bloqueia o salvamento com mensagem clara", async () => {
+    updateExpenseMock.mockClear();
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+
+    const compInput = screen.getByLabelText("Competência da fatura");
+    await user.clear(compInput);
+    await user.type(compInput, "2026-8");
+
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(updateExpenseMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/Competência da fatura inválida/)).toBeInTheDocument();
   });
 
   it("permite peso personalizado no relatório no modal de edição e persiste a fração resolvida", async () => {

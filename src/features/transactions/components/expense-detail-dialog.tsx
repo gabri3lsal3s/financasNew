@@ -36,6 +36,9 @@ const PAYMENT_OPTIONS = [
   { value: "other", label: "Outro" },
 ];
 
+/** Chave de mês válida AAAA-MM (validação da competência editada manualmente). */
+const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
 interface ExpenseEditFormProps {
   expense: Expense;
   categories: Category[];
@@ -69,12 +72,29 @@ function ExpenseEditForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(expense.payment_method);
   const [cardId, setCardId] = useState<string>(expense.card_id || "");
   const [billCompetence, setBillCompetence] = useState<string>(expense.bill_competence || "");
+  // Competência digitada manualmente → data deixa de recalculá-la (override).
+  const [competenceTouched, setCompetenceTouched] = useState(false);
   const isPreset = REPORT_WEIGHT_PRESETS.includes(expense.report_weight);
   const [weightMode, setWeightMode] = useState<string>(isPreset ? String(expense.report_weight) : "custom");
   const [reportCustomAmountCents, setReportCustomAmountCents] = useState(
     Math.round(expense.value * expense.report_weight * 100),
   );
   const [formError, setFormError] = useState<string | null>(null);
+
+  /**
+   * Data mudou: mantém a competência automática em sincronia com o fechamento
+   * do cartão, a menos que o usuário a tenha editado manualmente (override
+   * explícito preservado — `competenceTouched`).
+   */
+  const handleDateChange = (next: string) => {
+    setDate(next);
+    if (!competenceTouched && paymentMethod === "credit_card" && next) {
+      const card = cards.find((c) => c.id === cardId);
+      setBillCompetence(
+        card ? resolveBillCompetence(new Date(`${next}T12:00:00`), card.closing_day) : next.slice(0, 7),
+      );
+    }
+  };
 
   const handleSubmit = async () => {
     if (valueCents <= 0) {
@@ -93,6 +113,11 @@ function ExpenseEditForm({
       setFormError("Selecione o cartão de crédito.");
       return;
     }
+    const trimmedCompetence = billCompetence.trim();
+    if (paymentMethod === "credit_card" && trimmedCompetence !== "" && !MONTH_KEY_RE.test(trimmedCompetence)) {
+      setFormError("Competência da fatura inválida — use o formato AAAA-MM (ex.: 2026-08).");
+      return;
+    }
 
     if (weightMode === "custom" && (reportCustomAmountCents < 0 || reportCustomAmountCents > valueCents)) {
       setFormError("O valor no relatório deve ser entre zero e o valor total da despesa.");
@@ -109,7 +134,7 @@ function ExpenseEditForm({
       const effectiveCard = cards.find((c) => c.id === cardId);
       const effectiveCompetence =
         paymentMethod === "credit_card"
-          ? billCompetence.trim() ||
+          ? trimmedCompetence ||
             (effectiveCard && date
               ? resolveBillCompetence(new Date(`${date}T12:00:00`), effectiveCard.closing_day)
               : date
@@ -169,7 +194,7 @@ function ExpenseEditForm({
         Data
         <DatePicker
           value={date}
-          onValueChange={setDate}
+          onValueChange={handleDateChange}
           ariaLabel="Data da despesa"
         />
       </label>
@@ -203,6 +228,9 @@ function ExpenseEditForm({
               value={cardId}
               onValueChange={(val) => {
                 setCardId(val);
+                // Trocar de cartão re-baselineia a competência (seguindo o
+                // fechamento do novo cartão) e libera o recálculo automático.
+                setCompetenceTouched(false);
                 const selectedCard = cards.find((c) => c.id === val);
                 if (selectedCard && date) {
                   setBillCompetence(resolveBillCompetence(new Date(`${date}T12:00:00`), selectedCard.closing_day));
@@ -218,10 +246,19 @@ function ExpenseEditForm({
             Fatura (Competência)
             <Input
               value={billCompetence}
-              onChange={(e) => setBillCompetence(e.target.value)}
+              onChange={(e) => {
+                setCompetenceTouched(true);
+                setBillCompetence(e.target.value);
+              }}
               placeholder="AAAA-MM (ex: 2026-08)"
               aria-label="Competência da fatura"
+              inputMode="numeric"
+              maxLength={7}
+              autoComplete="off"
             />
+            <span className="text-[11px] text-muted-foreground">
+              Calculada pelo fechamento do cartão; edite para ajustar manualmente.
+            </span>
           </label>
         </>
       ) : null}
