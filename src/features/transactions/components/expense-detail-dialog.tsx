@@ -571,7 +571,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange, openDeleteCon
                     onClick={() => setConfirmOpen(true)}
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
-                    Excluir despesa
+                    Excluir
                   </button>
                 </div>
               </div>

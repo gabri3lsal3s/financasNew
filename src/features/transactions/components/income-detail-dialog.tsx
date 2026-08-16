@@ -430,7 +430,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange, openDeleteConfi
                       onClick={() => setConfirmOpen(true)}
                     >
                       <Trash2 className="size-3.5" aria-hidden="true" />
-                      Excluir receita
+                      Excluir
                     </button>
                   </div>
                 ) : null}

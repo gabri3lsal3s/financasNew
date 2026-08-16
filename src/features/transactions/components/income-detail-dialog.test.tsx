@@ -93,10 +93,10 @@ describe("IncomeDetailDialog", () => {
     const user = userEvent.setup();
     render(<IncomeDetailDialog income={baseIncome()} open={true} onOpenChange={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: /excluir receita/i }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
     expect(screen.getByRole("heading", { name: "Excluir receita?" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    await user.click(screen.getAllByRole("button", { name: "Excluir" }).at(-1)!);
 
     expect(deleteIncomeMock).toHaveBeenCalledTimes(1);
     expect(deleteIncomeMock).toHaveBeenCalledWith("i1");
@@ -112,7 +112,7 @@ describe("IncomeDetailDialog", () => {
     );
 
     expect(screen.queryByRole("button", { name: /editar/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /excluir receita/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir" })).not.toBeInTheDocument();
     expect(screen.getByText("Renda automática — somente leitura")).toBeInTheDocument();
   });
 });

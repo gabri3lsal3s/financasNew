@@ -133,8 +133,8 @@ describe("ExpenseDetailDialog", () => {
     const user = userEvent.setup();
     render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={onOpenChange} />);
 
-    await user.click(screen.getByRole("button", { name: /excluir despesa/i }));
     await user.click(screen.getByRole("button", { name: "Excluir" }));
+    await user.click(screen.getAllByRole("button", { name: "Excluir" }).at(-1)!);
 
     expect(deleteExpenseMock).toHaveBeenCalledWith({ expenseId: "e1", mode: "single" });
     expect(onOpenChange).toHaveBeenCalledWith(false);
