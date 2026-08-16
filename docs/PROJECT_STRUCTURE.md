@@ -98,7 +98,6 @@
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   credit-card-3d + credit-card-wallet (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line,
-    │   │   │                      #   month-swiper (F20 — swipe no MonthPicker),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22 — backup/CSV/restauração em Configurações),
     │   │   │                      #   monthly-close-print-view (F22 — fechamento mensal imprimível),
@@ -314,7 +313,6 @@ src/features/transactions/
 | Motor puro de gestos (axis-lock, thresholds, flick, overscroll) | `src/domain/gestures/` (ex.: `swipe.ts` — F20 · `overscroll.ts` — F26) |
 | Hook de navegação por gesto (swipe horizontal) | `src/hooks/use-swipe-navigation.ts` (F20) |
 | Hook de pull-up / overscroll to top (FSM + barreira de inércia) | `src/hooks/use-pull-up-to-top.ts` (F26) |
-| Navegador de mês com swipe (envole o `MonthPicker`) | `src/components/modules/month-swiper.tsx` (F20) |
 | Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |
 
 ---

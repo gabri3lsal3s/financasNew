@@ -5,7 +5,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
 import {
   MonthlyClosePrintView,
-  MonthSwiper,
+  MonthPicker,
   ReportTable,
   YearPicker,
   type MonthlyCloseCategory,
@@ -286,7 +286,7 @@ export function ReportsPage() {
           {
             value: "month",
             label: "Por mês",
-            content: <MonthSwiper value={month} onValueChange={setMonth} />,
+            content: <MonthPicker value={month} onValueChange={setMonth} />,
           },
           {
             value: "year",

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { VirtualList } from "@/components/ui/virtual-list";
-import { HighlightRow, KpiCard, MonthSwiper, TransactionRow } from "@/components/modules";
+import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
 import { currentMonth, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
@@ -150,7 +150,7 @@ export function TransactionListPage() {
           assume) e o título permanece apenas para leitores de tela. */}
       <h1 className="sr-only">Transações</h1>
 
-      <MonthSwiper value={month} onValueChange={handleMonthChange} />
+      <MonthPicker value={month} onValueChange={handleMonthChange} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <KpiCard label="Receitas" cents={incomesTotalCents} tone="positive" />

@@ -7,7 +7,7 @@ import {
   DailyFlowChart,
   DeltaHint,
   KpiCard,
-  MonthSwiper,
+  MonthPicker,
   OnboardingCard,
 } from "@/components/modules";
 import { isOnboardingComplete } from "@/domain/onboarding";
@@ -192,7 +192,7 @@ export function OverviewPage() {
           Título mantido apenas para leitores de tela (ordem de heading). */}
       <h1 className="sr-only">Visão Geral</h1>
 
-      <MonthSwiper value={month} onValueChange={setMonth} />
+      <MonthPicker value={month} onValueChange={setMonth} />
 
       {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowRight, Pencil, PiggyBank, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { CategoryIcon, MonthSwiper } from "@/components/modules";
+import { CategoryIcon, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import {
   BUDGET_STATUS_LABELS,
@@ -136,7 +136,7 @@ export function BudgetsPage() {
 
       {tab === "limits" ? (
         <>
-          <MonthSwiper value={month} onValueChange={setMonth} />
+          <MonthPicker value={month} onValueChange={setMonth} />
 
           {/* KPIs (§3.5.2) */}
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
