@@ -1,6 +1,6 @@
 import { lazy } from "react";
 import type { ComponentType } from "react";
-import { Navigate } from "react-router";
+import { RedirectToInvestments } from "@/app/redirect-to-investments";
 
 type PageModule = { default: ComponentType };
 
@@ -31,15 +31,6 @@ export interface AppRoute {
   path: string;
   /** Componente lazy da página — carregado no primeiro acesso (bundle splitting, F5.5). */
   Component: ComponentType;
-}
-
-/**
- * Unificação da carteira (2026-08-15): a antiga rota `/carteira` foi absorvida
- * pela área única de investimentos (abas Resumo/Metas/Aporte). Redireciona os
- * deep-links antigos (Home, FAB, favoritos) para o hub `/investments`.
- */
-function RedirectToInvestments() {
-  return <Navigate to="/investments" replace />;
 }
 
 /** Mapa de rotas — deep-links (?card=, ?month=, ?q=) são parseados nas features (F1+). */

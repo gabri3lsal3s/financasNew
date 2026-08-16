@@ -67,7 +67,7 @@
     │   ├── providers.tsx          # AuthProvider, QueryClientProvider, ThemeProvider
     │   ├── router.tsx             # <Routes> a partir de routes.ts
     │   ├── routes.tsx             # Mapa de rotas + deep-links (?card=, ?month=, ?q=) +
-    │   │                          #   redirect /carteira → /investments (unificação 2026-08-15)
+    │   │                          #   redirect /carteira → /investments (em redirect-to-investments.tsx)
     │   ├── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
     │   │                          #   instalação/atualização (PWA_GUIDELINES §6)
     │   └── theme-provider.tsx     # ThemeProvider — aplica tema/accent do usuário (F11)
@@ -236,7 +236,7 @@
 
 | Diretório | Responsabilidade | O que NUNCA colocar | Exemplo de arquivo |
 |---|---|---|---|
-| `src/app/` | Bootstrap: providers, roteamento, registro PWA | Lógica de negócio, marcação visual extensa | `routes.tsx`, `pwa.ts` |
+| `src/app/` | Bootstrap: providers, roteamento, registro PWA | Lógica de negócio, marcação visual extensa | `routes.tsx`, `redirect-to-investments.tsx`, `pwa.ts` |
 | `src/components/ui/` | Primitivos atômicos **agnósticos de domínio** | Regra financeira, fetch, formatação de moeda | `button.tsx`, `modal.tsx`, `money-input.tsx` |
 | `src/components/modules/` | Componentes de **domínio financeiro** reutilizáveis | Fetch, lógica de cálculo (recebe props prontas) | `debt-status-badge.tsx` |
 | `src/components/layout/` | Estrutura de página (sidebar/tabs/header) | Conteúdo de tela | `sidebar.tsx` |
