@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard) · suíte **1092 testes / 139 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard; **atualizações otimistas** em edição/exclusão de lançamentos) · suíte **1114 testes / 143 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -54,6 +54,7 @@
 
 - **Problema:** CRUDs financeiros com regras complexas (parcelamento, competência de fatura, status derivado de dívida, estorno, herança de orçamentos) — sem fidelidade à spec.
 - **Solução:** **domínio puro primeiro** (centavos, parcelamento exato, competência com overrides, status de dívida nunca armazenado, peso de relatório); wizard de lançamento em 4 passos (tela cheia, navegável por teclado); parcelamento 1–60× com exclusão em 3 modos via RPC em cascata; cartões com **estorno → renda automática** e seleção automática de mês; dívidas com quitação e recebimento integrado; categorias com sugestão inteligente e migração na exclusão; orçamentos com herança e **realocação atômica**; Visão Consolidada (Overview) com KPIs, saldo líquido de contas e fluxo diário.
+- **Evolução (2026-08-16, atualizações otimistas):** editar/excluir lançamentos (Extrato, faturas de cartão, relatórios) agora reflete **na hora** — `onMutate` atualiza o cache (listas por mês/range/cartão + query singular), `onError` faz **rollback seguro com toast** (bus de toasts imperativos `services/toast.ts` + `ToastHost`) e `onSettled` sincroniza com o servidor. Modal fecha imediatamente; totais/KPIs/faturas recalculam do cache. Motor puro novo `domain/expenses` (`resolveExpenseDeleteIds` — single/all/subsequent espelhando o RPC).
 
 ## F3 — Análise, Projeção & Corte de Gastos
 

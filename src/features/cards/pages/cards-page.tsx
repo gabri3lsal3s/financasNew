@@ -171,16 +171,15 @@ export function CardsPage() {
     }
   };
 
-  const handleConfirmDeletePayment = async () => {
+  /**
+   * Exclusão otimista (F30): fecha a confirmação e remove o registro da
+   * fatura na hora; o hook faz rollback + toast se o servidor rejeitar.
+   */
+  const handleConfirmDeletePayment = () => {
     if (!deletingPayment) return;
     setActionError(null);
-    try {
-      await deleteCardPaymentMutation.mutateAsync(deletingPayment.id);
-      setDeletingPayment(null);
-    } catch (err) {
-      setDeletingPayment(null);
-      setActionError(getErrorMessage(err));
-    }
+    setDeletingPayment(null);
+    void Promise.resolve(deleteCardPaymentMutation.mutateAsync(deletingPayment.id)).catch(() => undefined);
   };
 
   const usedLimitMap: Record<string, { brutoCents: number; ponderadoCents: number }> = {};

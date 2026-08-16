@@ -10,11 +10,23 @@ import { creditCardsKey } from "@/state/queries/use-credit-cards";
 import { cardPaymentsKey, cardExpensesKey } from "@/state/queries/use-card-payments";
 import { incomesKey } from "@/state/queries/use-incomes";
 import { expensesKey } from "@/state/queries/use-expenses";
+import { getErrorMessage } from "@/services/errors";
+import { pushToast } from "@/services/toast";
+import {
+  removeCardPayments,
+  removeIncomesBySourceRef,
+  restoreQueries,
+  snapshotQueries,
+} from "./optimistic-cache";
 
 /**
  * Mutations de cartões (Online First — sem retry automático).
  * Invalidação dirigida: cartões, pagamentos, despesas do cartão e rendas
  * (estorno gera renda automática — §3.3.3).
+ *
+ * Exclusão de pagamento/estorno usa **atualização otimista**: o registro sai
+ * da lista na hora (e a renda automática do estorno, quando houver), com
+ * rollback seguro + toast em caso de falha.
  */
 
 export function useCreateCard() {
@@ -73,7 +85,27 @@ export function useDeleteCardPayment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (paymentId: string) => deleteCardPayment(paymentId),
-    onSuccess: () => {
+    onMutate: async (paymentId) => {
+      await queryClient.cancelQueries({ queryKey: cardPaymentsKey });
+      await queryClient.cancelQueries({ queryKey: incomesKey });
+      const snapshot = [
+        ...snapshotQueries(queryClient, cardPaymentsKey),
+        ...snapshotQueries(queryClient, incomesKey),
+      ];
+      removeCardPayments(queryClient, new Set([paymentId]));
+      // Estorno → remove a renda automática correspondente ([REFUND]{id}).
+      removeIncomesBySourceRef(queryClient, `[REFUND]${paymentId}`);
+      return { snapshot };
+    },
+    onError: (error, _variables, context) => {
+      if (context) restoreQueries(queryClient, context.snapshot);
+      pushToast({
+        title: "Não foi possível excluir o pagamento",
+        description: `${getErrorMessage(error)} Os dados foram restaurados.`,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
       void queryClient.invalidateQueries({ queryKey: incomesKey });
       void queryClient.invalidateQueries({ queryKey: expensesKey });

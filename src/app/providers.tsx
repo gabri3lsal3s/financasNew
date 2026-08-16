@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "@/app/theme-provider";
 import { Toaster } from "@/components/ui/toast";
+import { ToastHost } from "@/components/ui/toast-host";
 import { PWAUpdateToast } from "@/components/modules/pwa-update-toast";
 
 /**
@@ -27,6 +28,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <Toaster>
           {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}
           <PWAUpdateToast />
+          {/* Host do bus de toasts (services/toast) — rollbacks otimistas etc. */}
+          <ToastHost />
           {children}
         </Toaster>
       </ThemeProvider>

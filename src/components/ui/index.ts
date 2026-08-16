@@ -51,6 +51,7 @@ export { Command } from "./command";
 export type { CommandProps, CommandItem } from "./command";
 export { Toast, Toaster } from "./toast";
 export type { ToastProps, ToastVariant } from "./toast";
+export { ToastHost } from "./toast-host";
 export { NumberTicker } from "./number-ticker";
 export type { NumberTickerProps } from "./number-ticker";
 export { Sparkline } from "./sparkline";

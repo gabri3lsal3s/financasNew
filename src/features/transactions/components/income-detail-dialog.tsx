@@ -34,7 +34,7 @@ interface IncomeEditFormProps {
     category_id: string;
     receive_type: ReceiveType;
     report_weight: number;
-  }) => Promise<void>;
+  }) => void;
 }
 
 function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: IncomeEditFormProps) {
@@ -203,19 +203,23 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
   const currentCategory = categories.find((c) => c.id === income?.category_id);
   const isReadOnly = income?.source_ref != null;
 
-  const handleConfirmDelete = async () => {
+  /**
+   * Exclusão otimista (F30): fecha os diálogos e remove a renda da lista na
+   * hora; o hook faz rollback + toast se o servidor rejeitar.
+   */
+  const handleConfirmDelete = () => {
     if (!income) return;
     setError(null);
-    try {
-      await deleteIncome.mutateAsync(income.id);
-      setConfirmOpen(false);
-      onOpenChange(false);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
+    setConfirmOpen(false);
+    onOpenChange(false);
+    void Promise.resolve(deleteIncome.mutateAsync(income.id)).catch(() => undefined);
   };
 
-  const handleSaveEdit = async (payload: {
+  /**
+   * Edição otimista (F30): fecha o modal na hora com a renda já exibindo os
+   * dados novos (cache atualizado em onMutate); falha → rollback + toast.
+   */
+  const handleSaveEdit = (payload: {
     description: string;
     value: number;
     date: string;
@@ -225,12 +229,14 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
   }) => {
     if (!income) return;
     setError(null);
-    await updateIncome.mutateAsync({
-      id: income.id,
-      input: payload,
-    });
     setIsEditing(false);
     onOpenChange(false);
+    void Promise.resolve(
+      updateIncome.mutateAsync({
+        id: income.id,
+        input: payload,
+      }),
+    ).catch(() => undefined);
   };
 
   /**

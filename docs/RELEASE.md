@@ -95,7 +95,7 @@
 - Edge function de cotações (F1.7) deployada com cron a cada 6h.
 - ...
 ### Verificação
-- [ ] 1092+ testes verdes · typecheck · lint · build
+- [ ] 1114+ testes verdes · typecheck · lint · build
 - [ ] QA multi-dispositivo (seção 2) aprovado em desktop + mobile, 3 temas
 - [ ] Lighthouse ≥ 90
 ```

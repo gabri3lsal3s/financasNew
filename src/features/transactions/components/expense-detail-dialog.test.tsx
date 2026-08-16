@@ -96,8 +96,9 @@ describe("ExpenseDetailDialog", () => {
 
   it("permite editar despesa e alterar a fatura (bill_competence) para transitar entre meses", async () => {
     updateExpenseMock.mockResolvedValue({});
+    const onOpenChange = vi.fn();
     const user = userEvent.setup();
-    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={onOpenChange} />);
 
     await user.click(screen.getByRole("button", { name: /editar/i }));
 
@@ -118,6 +119,21 @@ describe("ExpenseDetailDialog", () => {
         bill_competence: "2026-09",
       }),
     });
+    // Edição otimista (F30): o modal fecha na hora, sem aguardar o servidor.
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("exclusão otimista (F30): confirma e fecha os diálogos na hora, disparando a mutação", async () => {
+    deleteExpenseMock.mockResolvedValue(1);
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={onOpenChange} />);
+
+    await user.click(screen.getByRole("button", { name: /excluir despesa/i }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    expect(deleteExpenseMock).toHaveBeenCalledWith({ expenseId: "e1", mode: "single" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("permite alterar o peso no relatório por preset dentro do modal de edição", async () => {

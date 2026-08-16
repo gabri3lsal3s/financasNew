@@ -51,7 +51,7 @@ interface ExpenseEditFormProps {
     card_id: string | null;
     bill_competence: string | null;
     report_weight: number;
-  }) => Promise<void>;
+  }) => void;
 }
 
 function ExpenseEditForm({
@@ -282,19 +282,23 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
 
   const isInstallment = expense != null && expense.installments_total > 1;
 
-  const handleConfirmDelete = async () => {
+  /**
+   * Exclusão otimista (F30): fecha os diálogos e remove o item da lista na
+   * hora; o hook faz rollback + toast se o servidor rejeitar.
+   */
+  const handleConfirmDelete = () => {
     if (!expense) return;
     setError(null);
-    try {
-      await deleteExpense.mutateAsync({ expenseId: expense.id, mode });
-      setConfirmOpen(false);
-      onOpenChange(false);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
+    setConfirmOpen(false);
+    onOpenChange(false);
+    void Promise.resolve(deleteExpense.mutateAsync({ expenseId: expense.id, mode })).catch(() => undefined);
   };
 
-  const handleSaveEdit = async (payload: {
+  /**
+   * Edição otimista (F30): fecha o modal na hora com o item já exibindo os
+   * dados novos (cache atualizado em onMutate); falha → rollback + toast.
+   */
+  const handleSaveEdit = (payload: {
     description: string;
     value: number;
     date: string;
@@ -306,12 +310,14 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
   }) => {
     if (!expense) return;
     setError(null);
-    await updateExpense.mutateAsync({
-      id: expense.id,
-      input: payload,
-    });
     setIsEditing(false);
     onOpenChange(false);
+    void Promise.resolve(
+      updateExpense.mutateAsync({
+        id: expense.id,
+        input: payload,
+      }),
+    ).catch(() => undefined);
   };
 
   /**

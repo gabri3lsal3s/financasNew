@@ -75,7 +75,8 @@
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
-    │   │   │                      #   virtual-list (F5.5), toast,
+    │   │   │                      #   virtual-list (F5.5), toast, toast-host (F30 —
+    │   │   │                      #     assinante do bus de toasts imperativos),
     │   │   │                      #   pull-up-to-top-indicator (F26 — substitui o
     │   │   │                      #     scroll-to-top-button F9, removido),
     │   │   │                      #   number-ticker, sparkline (F8), color-picker,
@@ -133,6 +134,9 @@
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…)
+    │   ├── expenses/              #   resolução dos modos de exclusão de despesa
+    │   │                          #     (single/all/subsequent — resolveExpenseDeleteIds,
+    │   │                          #     espelha o RPC p/ atualizações otimistas F30)
     │   ├── cards/                 #   saldo de fatura, status da fatura (closed/open/near_due/overdue)
     │   ├── budgets/               #   regras por categoria (CATEGORY_RULES), status/limites
     │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow
@@ -181,6 +185,8 @@
     │                              #     (use-expense-mutations, use-card-mutations,
     │                              #      use-budget-mutations, use-debt-mutations,
     │                              #      use-category-mutations, use-income-mutations)
+    │                              #   optimistic-cache.ts (F30 — helpers de snapshot/
+    │                              #     rollback e updaters das listas em cache)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
@@ -196,6 +202,8 @@
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
+    │   ├── toast.ts               #   F30: bus de toasts imperativos (pushToast/dismissToast
+    │   │                          #     — pub/sub module-level p/ rollbacks otimistas)
     │   ├── audio-fx.ts            #   Feedback sonoro sintetizado via Web Audio (F11)
     │   ├── export-actions.ts      #   F22: downloadBlob/Csv/Json + shareText (Web Share
     │   │                          #     API com fallback clipboard — DOM glue)
