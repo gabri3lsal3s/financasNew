@@ -85,7 +85,10 @@
     │   │   │                      #   tooltip (F25 — primitivo acessível, CSS puro),
     │   │   │                      #   number-stepper-input (pós-F25 — substitui o
     │   │   │                      #     input[type=number] nativo: botões −/+ com
-    │   │   │                      #     long-press e min/max/step)…
+    │   │   │                      #     long-press e min/max/step),
+    │   │   │                      #   error-state (v1.25 — Alert + "Tentar novamente"
+    │   │   │                      #     com refetch das queries ativas; padrão de
+    │   │   │                      #     estado de erro do AGENTS.md §5)…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,

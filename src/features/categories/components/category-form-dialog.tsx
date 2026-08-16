@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Alert, Button, ColorPicker, IconPicker, Input, Modal, RadioGroup } from "@/components/ui";
 import type { IconPickerOption } from "@/components/ui";
 import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
 import { suggestCategory } from "@/domain/budgets";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCategory, useUpdateCategory } from "@/state";
+import { DeleteCategoryDialog } from "@/features/categories/components/delete-category-dialog";
 import type { Category, CategoryType } from "@/types";
 
 /** Opções de ícone (lucide-react, sem emojis) montadas uma única vez. */
@@ -21,15 +23,20 @@ export interface CategoryFormDialogProps {
   defaultType: CategoryType;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Irmãs de mesmo tipo (destinos de migração na exclusão). Obrigatório em edição. */
+  siblings?: Category[];
+  /** Uso atual da categoria (lançamentos vinculados). Obrigatório em edição. */
+  usage?: { expenses: number; incomes: number } | null;
 }
 
 /** Formulário de categoria (CRUD §3.5.1) com sugestão inteligente por nome. */
-export function CategoryFormDialog({ category, defaultType, open, onOpenChange }: CategoryFormDialogProps) {
+export function CategoryFormDialog({ category, defaultType, open, onOpenChange, siblings, usage }: CategoryFormDialogProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<CategoryType>("expense");
   const [icon, setIcon] = useState("");
   const [color, setColor] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
@@ -80,7 +87,8 @@ export function CategoryFormDialog({ category, defaultType, open, onOpenChange }
   };
 
   return (
-    <Modal
+    <>
+      <Modal
       open={open}
       onOpenChange={(next) => {
         if (next) reset();
@@ -148,8 +156,19 @@ export function CategoryFormDialog({ category, defaultType, open, onOpenChange }
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+        <div className="flex items-center gap-2 pt-2">
+          {category && siblings !== undefined ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="mr-auto text-negative hover:bg-negative/10 hover:text-negative"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              Excluir
+            </Button>
+          ) : null}
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="ml-auto">
             Cancelar
           </Button>
           <Button type="button" disabled={name.trim() === "" || pending} onClick={() => void handleSubmit()}>
@@ -158,5 +177,20 @@ export function CategoryFormDialog({ category, defaultType, open, onOpenChange }
         </div>
       </div>
     </Modal>
+
+    {category && siblings !== undefined ? (
+      <DeleteCategoryDialog
+        category={category}
+        siblings={siblings}
+        usage={usage ?? null}
+        open={deleteOpen}
+        onOpenChange={(next) => {
+          setDeleteOpen(next);
+          // Ao fechar o diálogo de exclusão (cancelou ou confirmou), fecha o form também
+          if (!next) onOpenChange(false);
+        }}
+      />
+    ) : null}
+  </>
   );
 }

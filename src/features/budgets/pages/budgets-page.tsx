@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, Pencil, PiggyBank, Sparkles, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
@@ -132,7 +132,7 @@ export function BudgetsPage() {
         ]}
       />
 
-      {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
+      {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
       {tab === "limits" ? (
         <>
@@ -309,11 +309,37 @@ function IncomeGoalRow({
 }) {
   const [cents, setCents] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [goalError, setGoalError] = useState<string | null>(null);
   const setGoal = useSetIncomeGoal();
   const removeGoal = useRemoveIncomeGoal();
 
+  /** Salva a meta com feedback de erro real (falha de rede não fica silenciosa). */
+  const saveGoal = async () => {
+    if (cents <= 0) return;
+    setGoalError(null);
+    try {
+      await setGoal.mutateAsync({ categoryId: category.id, month, expected: cents / 100 });
+      setCents(0);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setGoalError(getErrorMessage(err));
+    }
+  };
+
+  /** Remove a meta com feedback de erro real. */
+  const removeGoalSafe = async () => {
+    setGoalError(null);
+    try {
+      await removeGoal.mutateAsync({ categoryId: category.id, month });
+    } catch (err) {
+      setGoalError(getErrorMessage(err));
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0">
+      {goalError ? <Alert variant="error">{goalError}</Alert> : null}
       <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <CategoryIcon icon={category.icon} color={category.color} />
@@ -344,19 +370,12 @@ function IncomeGoalRow({
             type="button"
             size="sm"
             disabled={cents <= 0 || setGoal.isPending}
-            onClick={() =>
-              void (async () => {
-                await setGoal.mutateAsync({ categoryId: category.id, month, expected: cents / 100 });
-                setCents(0);
-                setSaved(true);
-                window.setTimeout(() => setSaved(false), 2000);
-              })()
-            }
+            onClick={() => void saveGoal()}
           >
             {saved ? "Salva" : "Salvar"}
           </Button>
           {expectedCents > 0 ? (
-            <Button type="button" size="icon" variant="ghost" aria-label={`Remover meta de ${category.name}`} onClick={() => void removeGoal.mutateAsync({ categoryId: category.id, month })}>
+            <Button type="button" size="icon" variant="ghost" aria-label={`Remover meta de ${category.name}`} onClick={() => void removeGoalSafe()}>
               <Trash2 className="size-4" aria-hidden="true" />
             </Button>
           ) : null}

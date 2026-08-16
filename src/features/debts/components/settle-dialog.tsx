@@ -134,7 +134,21 @@ export function SettleDialog({ debt, open, onOpenChange }: SettleDialogProps) {
             {withTransaction ? (
               <div className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">Categoria</span>
-                {expenseCategories.isLoading ? (
+                {expenseCategories.isError ? (
+                  <div className="flex flex-col gap-2">
+                    <Alert variant="error">{getErrorMessage(expenseCategories.error)}</Alert>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void expenseCategories.refetch()}
+                      >
+                        Tentar novamente
+                      </Button>
+                    </div>
+                  </div>
+                ) : expenseCategories.isLoading ? (
                   <Skeleton className="h-10 w-full" />
                 ) : (
                   <Select

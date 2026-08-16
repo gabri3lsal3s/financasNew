@@ -20,6 +20,8 @@ export interface IncomeDetailDialogProps {
   income: Income | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Ao abrir, já mostra a confirmação de exclusão (swipe "Excluir" → excluir). */
+  openDeleteConfirm?: boolean;
 }
 
 interface IncomeEditFormProps {
@@ -34,7 +36,7 @@ interface IncomeEditFormProps {
     category_id: string;
     receive_type: ReceiveType;
     report_weight: number;
-  }) => void;
+  }) => Promise<void>;
 }
 
 function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: IncomeEditFormProps) {
@@ -189,10 +191,26 @@ function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: Inc
  * (source_ref, ex.: estorno [REFUND]) são somente-leitura (§3.1) — sem
  * ações de edição/exclusão.
  */
-export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailDialogProps) {
+export function IncomeDetailDialog({ income, open, onOpenChange, openDeleteConfirm = false }: IncomeDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Swipe "Excluir": a intenção de excluir chega via prop — mostra APENAS a
+  // confirmação (sem o modal de detalhes por trás: dois diálogos Radix no
+  // mesmo commit ficam ambos aria-hidden). Cancelar fecha tudo.
+  const deleteIntent = open && openDeleteConfirm;
+  const showDetails = open && !deleteIntent;
+  const showConfirm = deleteIntent || confirmOpen;
+
+  const handleConfirmOpenChange = (next: boolean) => {
+    setConfirmOpen(next);
+    // Cancelar a exclusão direta (swipe) fecha o diálogo por completo;
+    // a exclusão vinda dos detalhes só recolhe a confirmação.
+    if (!next && deleteIntent) {
+      onOpenChange(false);
+    }
+  };
 
   const categoriesQuery = useCategories("income");
   const deleteIncome = useDeleteIncome();
@@ -216,10 +234,12 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
   };
 
   /**
-   * Edição otimista (F30): fecha o modal na hora com a renda já exibindo os
-   * dados novos (cache atualizado em onMutate); falha → rollback + toast.
+   * Edição otimista (F30): o cache já reflete os dados novos em `onMutate`;
+   * o modal permanece aberto até a confirmação do servidor — em falha o
+   * formulário mostra o erro com os dados preservados (nada se perde) e o
+   * hook faz rollback + toast. Sucesso → fecha.
    */
-  const handleSaveEdit = (payload: {
+  const handleSaveEdit = async (payload: {
     description: string;
     value: number;
     date: string;
@@ -229,14 +249,12 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
   }) => {
     if (!income) return;
     setError(null);
+    await updateIncome.mutateAsync({
+      id: income.id,
+      input: payload,
+    });
     setIsEditing(false);
     onOpenChange(false);
-    void Promise.resolve(
-      updateIncome.mutateAsync({
-        id: income.id,
-        input: payload,
-      }),
-    ).catch(() => undefined);
   };
 
   /**
@@ -278,11 +296,13 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
 
   return (
     <>
+      {showDetails ? (
       <Modal
         open={open}
         onOpenChange={(next) => {
           setError(null);
           setIsEditing(false);
+          setConfirmOpen(false);
           onOpenChange(next);
         }}
         title={isEditing ? "Editar receita" : "Detalhes da receita"}
@@ -419,10 +439,11 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
           </div>
         ) : null}
       </Modal>
+      ) : null}
 
       <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={showConfirm}
+        onOpenChange={handleConfirmOpenChange}
         title="Excluir receita?"
         description="Esta ação não pode ser desfeita."
         confirmLabel={deleteIncome.isPending ? "Excluindo…" : "Excluir"}

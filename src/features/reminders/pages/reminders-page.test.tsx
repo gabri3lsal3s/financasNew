@@ -5,6 +5,15 @@ import { RemindersPage } from "./reminders-page";
 
 const setStateMock = vi.fn();
 
+// Dívidas variáveis por teste (para validar o caso de atrasadas de meses anteriores).
+const stateMocks = vi.hoisted(() => ({
+  debts: [
+    { id: "d1", name: "Prestação carro", type: "payable", amount: 500, due_date: "2026-08-12", paid_at: null },
+    { id: "d2", name: "Quitada", type: "payable", amount: 100, due_date: "2026-08-05", paid_at: "2026-08-06" },
+    { id: "d3", name: "Empréstimo", type: "payable", amount: 300, due_date: "2026-08-25", paid_at: null },
+  ],
+}));
+
 vi.mock("@/state", () => ({
   useCreditCards: () => ({
     data: [
@@ -25,11 +34,7 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useDebts: () => ({
-    data: [
-      { id: "d1", name: "Prestação carro", type: "payable", amount: 500, due_date: "2026-08-12", paid_at: null },
-      { id: "d2", name: "Quitada", type: "payable", amount: 100, due_date: "2026-08-05", paid_at: "2026-08-06" },
-      { id: "d3", name: "Empréstimo", type: "payable", amount: 300, due_date: "2026-08-25", paid_at: null },
-    ],
+    data: stateMocks.debts,
     isLoading: false,
     error: null,
   }),
@@ -50,6 +55,20 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
     expect(screen.queryByText("Prestação carro")).not.toBeInTheDocument();
     // Empréstimo vence dia 25 (fora da janela) → não aparece.
     expect(screen.queryByText("Empréstimo")).not.toBeInTheDocument();
+  });
+
+  it("inclui dívidas vencidas de meses anteriores (atrasadas)", () => {
+    stateMocks.debts = [
+      ...stateMocks.debts,
+      { id: "d4", name: "Prestação atrasada", type: "payable", amount: 400, due_date: "2026-07-25", paid_at: null },
+    ];
+    try {
+      render(<RemindersPage />);
+      // Atrasada de julho (antes do mês atual) NÃO pode sumir da central.
+      expect(screen.getByText("Prestação atrasada")).toBeInTheDocument();
+    } finally {
+      stateMocks.debts = stateMocks.debts.filter((debt) => debt.id !== "d4");
+    }
   });
 
   it("marcar como lido grava o estado", async () => {

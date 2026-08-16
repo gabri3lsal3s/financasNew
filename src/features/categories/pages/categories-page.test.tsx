@@ -73,12 +73,14 @@ describe("CategoriesPage — CRUD e migração (§3.5.1)", () => {
     expect(params.icon).toBe("transporte");
   });
 
-  it("exclui categoria sem lançamentos diretamente", async () => {
+  it("exclui categoria sem lançamentos pelo formulário de edição", async () => {
     deleteCategoryMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<CategoriesPage />);
 
-    await user.click(screen.getByRole("button", { name: "Excluir Lazer" }));
+    // A exclusão mora no formulário de edição (botão Excluir + diálogo).
+    await user.click(screen.getByRole("button", { name: "Editar Lazer" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
     expect(screen.getByText(/não tem lançamentos/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Excluir categoria" }));
 
@@ -90,7 +92,8 @@ describe("CategoriesPage — CRUD e migração (§3.5.1)", () => {
     const user = userEvent.setup();
     render(<CategoriesPage />);
 
-    await user.click(screen.getByRole("button", { name: "Excluir Alimentação" }));
+    await user.click(screen.getByRole("button", { name: "Editar Alimentação" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
     // Contagem de lançamentos (número em <strong> separado do texto)
     expect(screen.getByText("5")).toBeInTheDocument();
 

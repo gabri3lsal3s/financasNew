@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChartPie, Printer, TrendingDown, TrendingUp } from "lucide-react";
-import { Alert, Button, EmptyState, Modal, PrintSheet, Skeleton, Tabs } from "@/components/ui";
+import { Button, EmptyState, ErrorState, Modal, PrintSheet, Skeleton, Tabs } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
 import {
@@ -323,7 +323,7 @@ export function ReportsPage() {
         </Button>
       </div>
 
-      {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
+      {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
       {loading ? (
         <div className="flex flex-col gap-2">

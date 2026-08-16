@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { CheckCircle2, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, Skeleton, Tabs } from "@/components/ui";
+import { CheckCircle2, HandCoins, Pencil, Plus } from "lucide-react";
+import { Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
 import { debtStatus } from "@/domain/debts";
@@ -17,7 +17,6 @@ interface DebtRowProps {
   debt: Debt;
   onSettle: (debt: Debt) => void;
   onEdit: (debt: Debt) => void;
-  onDelete: (debt: Debt) => void;
 }
 
 /**
@@ -25,7 +24,7 @@ interface DebtRowProps {
  * o React remonte todas as linhas a cada render da página (tipo de componente
  * novo por render → perda de foco/jank com listas grandes). Callbacks via props.
  */
-function DebtRow({ debt, onSettle, onEdit, onDelete }: DebtRowProps) {
+function DebtRow({ debt, onSettle, onEdit }: DebtRowProps) {
   const status = debtStatus(debt.due_date, debt.paid_at);
   const isPaid = status === "paid";
   return (
@@ -56,9 +55,6 @@ function DebtRow({ debt, onSettle, onEdit, onDelete }: DebtRowProps) {
         )}
         <Button size="icon" variant="ghost" aria-label={`Editar ${debt.name}`} onClick={() => onEdit(debt)}>
           <Pencil className="size-4" aria-hidden="true" />
-        </Button>
-        <Button size="icon" variant="ghost" aria-label={`Excluir ${debt.name}`} onClick={() => onDelete(debt)}>
-          <Trash2 className="size-4" aria-hidden="true" />
         </Button>
       </div>
     </div>
@@ -95,24 +91,11 @@ export function DebtsPage() {
   const { open: formOpen, setOpen: setFormOpen } = useCreateDeepLink("divida");
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [settling, setSettling] = useState<Debt | null>(null);
-  const [deleting, setDeleting] = useState<Debt | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const debts = debtsQuery.data ?? [];
   const filtered = debts.filter((debt) => debt.type === tab);
 
   const error = debtsQuery.error;
-
-  const handleConfirmDelete = async () => {
-    if (!deleting) return;
-    setDeleteError(null);
-    try {
-      await deleteDebt.mutateAsync(deleting.id);
-      setDeleting(null);
-    } catch (err) {
-      setDeleteError(getErrorMessage(err));
-    }
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -132,7 +115,7 @@ export function DebtsPage() {
       </header>
 
       {error ? (
-        <Alert variant="error">{getErrorMessage(error)}</Alert>
+        <ErrorState message={getErrorMessage(error)} />
       ) : (
         <Tabs
           value={tab}
@@ -179,7 +162,6 @@ export function DebtsPage() {
                   setEditingDebt(d);
                   setFormOpen(true);
                 }}
-                onDelete={setDeleting}
               />
             </HighlightRow>
           ))}
@@ -193,28 +175,10 @@ export function DebtsPage() {
           setFormOpen(next);
           if (!next) setEditingDebt(null);
         }}
+        onDelete={(debt) => void deleteDebt.mutateAsync(debt.id)}
       />
 
       {settling ? <SettleDialog debt={settling} open={settling !== null} onOpenChange={(next) => !next && setSettling(null)} /> : null}
-
-      <ConfirmDialog
-        open={deleting !== null}
-        onOpenChange={(next) => {
-          if (!next) setDeleting(null);
-        }}
-        title="Excluir dívida?"
-        description="Esta ação não pode ser desfeita. Dívidas quitadas permanecem no histórico."
-        confirmLabel={deleteDebt.isPending ? "Excluindo…" : "Excluir"}
-        variant="destructive"
-        confirmPending={deleteDebt.isPending}
-        onConfirm={() => void handleConfirmDelete()}
-      >
-        {deleteError ? (
-          <div className="mt-4">
-            <Alert variant="error">{deleteError}</Alert>
-          </div>
-        ) : null}
-      </ConfirmDialog>
     </div>
   );
 }

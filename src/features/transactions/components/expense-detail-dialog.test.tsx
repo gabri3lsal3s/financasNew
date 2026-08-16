@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ExpenseDetailDialog } from "./expense-detail-dialog";
@@ -8,6 +8,22 @@ const updateExpenseMock = vi.fn();
 const deleteExpenseMock = vi.fn();
 const createExpenseMock = vi.fn();
 
+// Cartões variáveis por teste (para validar o caso sem cartão cadastrado).
+const stateMocks = vi.hoisted(() => ({
+  cards: [
+    {
+      id: "card1",
+      name: "Nubank",
+      brand: "Mastercard",
+      credit_limit: 5000,
+      color: "#8B5CF6",
+      closing_day: 10,
+      due_day: 15,
+      is_active: true,
+    },
+  ] as unknown[],
+}));
+
 vi.mock("@/state", () => ({
   useCategories: () => ({
     data: [
@@ -15,20 +31,7 @@ vi.mock("@/state", () => ({
       { id: "cat2", name: "Transporte", icon: "Car", color: "#3B82F6" },
     ],
   }),
-  useCreditCards: () => ({
-    data: [
-      {
-        id: "card1",
-        name: "Nubank",
-        brand: "Mastercard",
-        credit_limit: 5000,
-        color: "#8B5CF6",
-        closing_day: 10,
-        due_day: 15,
-        is_active: true,
-      },
-    ],
-  }),
+  useCreditCards: () => ({ data: stateMocks.cards }),
   useUpdateExpense: () => ({ mutateAsync: updateExpenseMock, isPending: false }),
   useDeleteExpense: () => ({ mutateAsync: deleteExpenseMock, isPending: false }),
   useCreateExpense: () => ({ mutateAsync: createExpenseMock, isPending: false }),
@@ -119,8 +122,9 @@ describe("ExpenseDetailDialog", () => {
         bill_competence: "2026-09",
       }),
     });
-    // Edição otimista (F30): o modal fecha na hora, sem aguardar o servidor.
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // Edição otimista (F30): o cache atualiza em onMutate; o modal fecha após
+    // a confirmação do servidor.
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
   it("exclusão otimista (F30): confirma e fecha os diálogos na hora, disparando a mutação", async () => {
@@ -244,5 +248,64 @@ describe("ExpenseDetailDialog", () => {
     const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { report_weight: number } };
     // fração resolvida: 4500 / 12050 = 0.3734 (4 casas, invariante do schema)
     expect(payload.input.report_weight).toBe(Number((4500 / 12050).toFixed(4)));
+  });
+
+  it("openDeleteConfirm: abre o modal já com a confirmação de exclusão", async () => {
+    deleteExpenseMock.mockClear();
+    deleteExpenseMock.mockResolvedValue(1);
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} openDeleteConfirm onOpenChange={onOpenChange} />);
+
+    // A confirmação de exclusão vem à frente, sem passar pelos detalhes.
+    expect(await screen.findByRole("heading", { name: "Excluir despesa?" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    expect(deleteExpenseMock).toHaveBeenCalledWith({ expenseId: "e1", mode: "single" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("bloqueia despesa no crédito quando não há cartão cadastrado", async () => {
+    updateExpenseMock.mockClear();
+    stateMocks.cards = [];
+    try {
+      const user = userEvent.setup();
+      render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+      await user.click(screen.getByRole("button", { name: /editar/i }));
+      await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+      expect(updateExpenseMock).not.toHaveBeenCalled();
+      expect(screen.getByText(/Nenhum cartão de crédito cadastrado/)).toBeInTheDocument();
+    } finally {
+      stateMocks.cards = [
+        {
+          id: "card1",
+          name: "Nubank",
+          brand: "Mastercard",
+          credit_limit: 5000,
+          color: "#8B5CF6",
+          closing_day: 10,
+          due_day: 15,
+          is_active: true,
+        },
+      ];
+    }
+  });
+
+  it("falha ao salvar mantém o modal aberto com o erro e os dados preservados", async () => {
+    updateExpenseMock.mockClear();
+    updateExpenseMock.mockRejectedValue(new Error("Falha ao salvar"));
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={onOpenChange} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    // Erro visível e modal continua aberto — nada se perdeu.
+    expect(await screen.findByText("Falha ao salvar")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Editar despesa" })).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 });

@@ -19,6 +19,8 @@ export interface ExpenseDetailDialogProps {
   expense: Expense | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Ao abrir, já mostra a confirmação de exclusão (swipe "Excluir" → excluir). */
+  openDeleteConfirm?: boolean;
 }
 
 const MODE_OPTIONS = [
@@ -54,7 +56,7 @@ interface ExpenseEditFormProps {
     card_id: string | null;
     bill_competence: string | null;
     report_weight: number;
-  }) => void;
+  }) => Promise<void>;
 }
 
 function ExpenseEditForm({
@@ -109,7 +111,13 @@ function ExpenseEditForm({
       setFormError("Informe a data da despesa.");
       return;
     }
-    if (paymentMethod === "credit_card" && !cardId && cards.length > 0) {
+    if (paymentMethod === "credit_card" && cards.length === 0) {
+      setFormError(
+        "Nenhum cartão de crédito cadastrado. Cadastre um cartão na página Cartões antes de registrar uma compra no crédito.",
+      );
+      return;
+    }
+    if (paymentMethod === "credit_card" && !cardId) {
       setFormError("Selecione o cartão de crédito.");
       return;
     }
@@ -301,11 +309,27 @@ function ExpenseEditForm({
 }
 
 /** Detalhe da despesa + edição completa com troca de categoria + exclusão em 3 modos. */
-export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDetailDialogProps) {
+export function ExpenseDetailDialog({ expense, open, onOpenChange, openDeleteConfirm = false }: ExpenseDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
+
+  // Swipe "Excluir": a intenção de excluir chega via prop — mostra APENAS a
+  // confirmação (sem o modal de detalhes por trás: dois diálogos Radix no
+  // mesmo commit ficam ambos aria-hidden). Cancelar fecha tudo.
+  const deleteIntent = open && openDeleteConfirm;
+  const showDetails = open && !deleteIntent;
+  const showConfirm = deleteIntent || confirmOpen;
+
+  const handleConfirmOpenChange = (next: boolean) => {
+    setConfirmOpen(next);
+    // Cancelar a exclusão direta (swipe) fecha o diálogo por completo;
+    // a exclusão vinda dos detalhes só recolhe a confirmação.
+    if (!next && deleteIntent) {
+      onOpenChange(false);
+    }
+  };
 
   const categoriesQuery = useCategories("expense");
   const cardsQuery = useCreditCards();
@@ -332,10 +356,12 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
   };
 
   /**
-   * Edição otimista (F30): fecha o modal na hora com o item já exibindo os
-   * dados novos (cache atualizado em onMutate); falha → rollback + toast.
+   * Edição otimista (F30): o cache já reflete os dados novos em `onMutate`;
+   * o modal permanece aberto até a confirmação do servidor — em falha o
+   * formulário mostra o erro com os dados preservados (nada se perde) e o
+   * hook faz rollback + toast. Sucesso → fecha.
    */
-  const handleSaveEdit = (payload: {
+  const handleSaveEdit = async (payload: {
     description: string;
     value: number;
     date: string;
@@ -347,14 +373,12 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
   }) => {
     if (!expense) return;
     setError(null);
+    await updateExpense.mutateAsync({
+      id: expense.id,
+      input: payload,
+    });
     setIsEditing(false);
     onOpenChange(false);
-    void Promise.resolve(
-      updateExpense.mutateAsync({
-        id: expense.id,
-        input: payload,
-      }),
-    ).catch(() => undefined);
   };
 
   /**
@@ -410,11 +434,13 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
 
   return (
     <>
+      {showDetails ? (
       <Modal
         open={open}
         onOpenChange={(next) => {
           setError(null);
           setIsEditing(false);
+          setConfirmOpen(false);
           onOpenChange(next);
         }}
         title={isEditing ? "Editar despesa" : "Detalhes da despesa"}
@@ -553,10 +579,11 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
           </div>
         ) : null}
       </Modal>
+      ) : null}
 
       <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={showConfirm}
+        onOpenChange={handleConfirmOpenChange}
         title="Excluir despesa?"
         description={
           isInstallment

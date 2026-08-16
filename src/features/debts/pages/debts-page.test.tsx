@@ -175,13 +175,18 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     expect(settleMock).toHaveBeenCalledWith({ debtId: "d4", result: 700 });
   });
 
-  it("exclui dívida com confirmação", async () => {
+  it("exclui dívida pelo formulário de edição com confirmação", async () => {
     deleteDebtMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<DebtsPage />);
 
-    await user.click(screen.getByRole("button", { name: "Excluir Conta de luz" }));
+    // A exclusão mora no formulário de edição (botão Excluir + confirmação).
+    await user.click(screen.getByRole("button", { name: "Editar Conta de luz" }));
     await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    // O botão da confirmação é o último "Excluir" no DOM (form fica por trás).
+    const confirmButtons = screen.getAllByRole("button", { name: "Excluir" });
+    await user.click(confirmButtons[confirmButtons.length - 1]!);
 
     expect(deleteDebtMock).toHaveBeenCalledWith("d1");
   });

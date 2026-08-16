@@ -141,5 +141,20 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(params.categoryId).toBe("i1");
     expect(params.expected).toBe(6000);
   });
+
+  it("falha ao salvar meta mostra erro inline (sem falha silenciosa)", async () => {
+    setIncomeGoalMock.mockRejectedValue(new Error("Falha de rede"));
+    const user = userEvent.setup();
+    render(<BudgetsPage />);
+    await user.click(screen.getByRole("tab", { name: "Metas de renda" }));
+
+    const goalInput = screen.getByRole("textbox", { name: "Meta de renda de Salário" });
+    await user.type(goalInput, "600000");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Falha de rede")).toBeInTheDocument();
+    // Restaura para não contaminar os demais testes.
+    setIncomeGoalMock.mockResolvedValue(undefined);
+  });
 });
 

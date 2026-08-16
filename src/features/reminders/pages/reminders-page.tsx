@@ -1,10 +1,9 @@
 import { Bell } from "lucide-react";
-import { Alert, EmptyState, Skeleton } from "@/components/ui";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui";
 import { ReminderItem } from "@/components/modules";
-import { autoSelectBillMonth, buildCompetenceSummaries } from "@/domain/cards";
+import { buildCompetenceSummaries } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
 import { buildReminders } from "@/domain/reminders";
-import { shiftMonth } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import {
@@ -36,33 +35,32 @@ export function RemindersPage() {
   const today = todayISO();
   const preferences = { enabled: true, debtDaysBefore: 3, billDaysBefore: 3 };
 
-  // Faturas: para cada cartão ativo, resumos por competência com saldo aberto.
+  // Faturas: para cada cartão ativo, TODAS as competências com saldo aberto
+  // (não só a mais recente) — o motor `billReminder` filtra janela/vencimento,
+  // então faturas vencidas antigas continuam lembradas.
   const bills = (cardsQuery.data ?? [])
     .filter((card) => card.is_active)
     .flatMap((card) => {
       const expenses = (cardExpensesQuery.data ?? []).filter((e) => e.card_id === card.id);
       const payments = (cardPaymentsQuery.data ?? []).filter((p) => p.card_id === card.id);
-      const summaries = buildCompetenceSummaries(expenses, payments);
-      const month = autoSelectBillMonth(summaries, today);
-      const summary = summaries.find((s) => s.month === month);
-      if (!summary || summary.saldoCents <= 0) return [];
-      return [
-        {
-          key: `bill:${card.id}:${month}`,
-          title: `Fatura ${card.name} · ${month}`,
+      return buildCompetenceSummaries(expenses, payments)
+        .filter((summary) => summary.saldoCents > 0)
+        .map((summary) => ({
+          key: `bill:${card.id}:${summary.month}`,
+          title: `Fatura ${card.name} · ${summary.month}`,
           subtitle: `Saldo de ${formatCentsAsBRL(summary.saldoCents)}`,
-          competenceMonth: month,
+          competenceMonth: summary.month,
           dueDay: card.due_day,
           balanceCents: summary.saldoCents,
-          link: { path: "/cartoes", params: { card: card.id, month } },
-        },
-      ];
+          link: { path: "/cartoes", params: { card: card.id, month: summary.month } },
+        }));
     });
 
-  // Dívidas pendentes do mês em diante (janela 3 dias antes já tratada no domínio).
-  const rangeStart = `${shiftMonth(today.slice(0, 7), 0)}-01`;
+  // Dívidas pendentes de QUALQUER vencimento — o motor `debtReminder` decide
+  // a janela (vence em X dias / vencida). Filtro por data aqui descartava
+  // dívidas vencidas de meses anteriores.
   const debts = (debtsQuery.data ?? [])
-    .filter((d) => d.paid_at === null && d.due_date >= rangeStart)
+    .filter((d) => d.paid_at === null)
     .map((d) => ({
       key: `debt:${d.id}`,
       title: d.name,
@@ -94,7 +92,7 @@ export function RemindersPage() {
         </div>
       </header>
 
-      {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
+      {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
       {loading ? (
         <div className="flex flex-col gap-2">

@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Pencil, Plus, Tags, Trash2 } from "lucide-react";
-import { Alert, Button, EmptyState, Skeleton, Tabs } from "@/components/ui";
+import { Pencil, Plus, Tags } from "lucide-react";
+import { Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { CategoryIcon, HighlightRow } from "@/components/modules";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useAllCategories, useCategoryUsage } from "@/state";
 import { CategoryFormDialog } from "@/features/categories/components/category-form-dialog";
-import { DeleteCategoryDialog } from "@/features/categories/components/delete-category-dialog";
 import type { Category, CategoryType } from "@/types";
 
 /** Gestão de categorias (CRUD §3.5.1) — sugestão inteligente e migração na exclusão. */
@@ -37,14 +36,13 @@ export function CategoriesPage() {
   // FAB contextual (F12): ?novo=categoria abre o formulário de criação.
   const { open: formOpen, setOpen: setFormOpen } = useCreateDeepLink("categoria");
   const [editing, setEditing] = useState<Category | null>(null);
-  const [deleting, setDeleting] = useState<Category | null>(null);
 
   const categoriesQuery = useAllCategories();
-  const usageQuery = useCategoryUsage(deleting ? deleting.id : null);
+  const usageQuery = useCategoryUsage(editing ? editing.id : null);
 
   const categories = categoriesQuery.data ?? [];
   const filtered = categories.filter((category) => category.type === tab);
-  const siblings = filtered.filter((category) => category.id !== deleting?.id);
+  const siblings = filtered.filter((category) => category.id !== editing?.id);
 
   const error = categoriesQuery.error;
 
@@ -65,7 +63,7 @@ export function CategoriesPage() {
       </header>
 
       {error ? (
-        <Alert variant="error">{getErrorMessage(error)}</Alert>
+        <ErrorState message={getErrorMessage(error)} />
       ) : (
         <Tabs
           value={tab}
@@ -105,7 +103,7 @@ export function CategoriesPage() {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
-                {!category.is_reserved ? (
+                  {!category.is_reserved ? (
                   <>
                     <Button
                       size="icon"
@@ -117,14 +115,6 @@ export function CategoriesPage() {
                       }}
                     >
                       <Pencil className="size-4" aria-hidden="true" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Excluir ${category.name}`}
-                      onClick={() => setDeleting(category)}
-                    >
-                      <Trash2 className="size-4" aria-hidden="true" />
                     </Button>
                   </>
                 ) : (
@@ -145,19 +135,9 @@ export function CategoriesPage() {
           setFormOpen(next);
           if (!next) setEditing(null);
         }}
+        siblings={editing ? siblings : undefined}
+        usage={editing ? (usageQuery.data ?? null) : undefined}
       />
-
-      {deleting ? (
-        <DeleteCategoryDialog
-          category={deleting}
-          siblings={siblings}
-          usage={usageQuery.data ?? null}
-          open={deleting !== null}
-          onOpenChange={(next) => {
-            if (!next) setDeleting(null);
-          }}
-        />
-      ) : null}
     </div>
   );
 }

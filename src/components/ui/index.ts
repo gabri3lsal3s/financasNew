@@ -40,6 +40,8 @@ export type { CommandProps, CommandItem } from "./command";
 export { PrintSheet } from "./print-sheet";
 export { Alert } from "./alert";
 export type { AlertProps, AlertVariant } from "./alert";
+export { ErrorState } from "./error-state";
+export type { ErrorStateProps } from "./error-state";
 export { LivePulseBeacon } from "./live-pulse-beacon";
 export type { LivePulseBeaconProps } from "./live-pulse-beacon";
 export { NumberStepperInput } from "./number-stepper-input";

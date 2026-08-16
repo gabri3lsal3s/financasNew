@@ -23,10 +23,13 @@ function ExpenseRow({
   expense,
   category,
   onClick,
+  onDelete,
 }: {
   expense: Expense;
   category?: Category | null;
   onClick?: () => void;
+  /** Swipe "Excluir" → abre a confirmação de exclusão (cascata e modos). */
+  onDelete?: () => void;
 }) {
   const title = expense.description || category?.name || "Despesa";
   const subtitle = expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : undefined;
@@ -41,14 +44,14 @@ function ExpenseRow({
       icon={category?.icon}
       iconColor={category?.color}
       onClick={onClick}
-      // Swipe-to-action (F8 — Decisão 2): excluir abre o diálogo de detalhe
-      // existente (exclusão com cascata e modos).
+      // Swipe-to-action (F8 — Decisão 2): excluir abre a CONFIRMAÇÃO de
+      // exclusão direto (com cascata e modos para parcelas).
       swipeActions={
         <Button
           type="button"
           variant="destructive"
           aria-label={`Excluir ${title}`}
-          onClick={onClick}
+          onClick={onDelete}
           className="h-full w-24 rounded-none"
         >
           <Trash2 aria-hidden="true" />
@@ -68,10 +71,13 @@ function IncomeRow({
   income,
   category,
   onClick,
+  onDelete,
 }: {
   income: Income;
   category?: Category | null;
   onClick?: () => void;
+  /** Swipe "Excluir" → abre a confirmação de exclusão. */
+  onDelete?: () => void;
 }) {
   const title = income.description || category?.name || "Receita";
   // Rendas automáticas (source_ref, ex.: estorno [REFUND]) são somente-leitura.
@@ -92,7 +98,7 @@ function IncomeRow({
             type="button"
             variant="destructive"
             aria-label={`Excluir ${title}`}
-            onClick={onClick}
+            onClick={onDelete}
             className="h-full w-24 rounded-none"
           >
             <Trash2 aria-hidden="true" />
@@ -108,6 +114,8 @@ export function TransactionListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
+  const [deleteExpenseOnOpen, setDeleteExpenseOnOpen] = useState(false);
+  const [deleteIncomeOnOpen, setDeleteIncomeOnOpen] = useState(false);
   const { highlightId } = useHighlightTarget("q");
 
   // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
@@ -215,6 +223,10 @@ export function TransactionListPage() {
                       income={income}
                       category={categoryById.get(income.category_id)}
                       onClick={() => setSelectedIncome(income)}
+                      onDelete={() => {
+                        setSelectedIncome(income);
+                        setDeleteIncomeOnOpen(true);
+                      }}
                     />
                   </HighlightRow>
                 )}
@@ -250,6 +262,10 @@ export function TransactionListPage() {
                       expense={expense}
                       category={categoryById.get(expense.category_id)}
                       onClick={() => setSelectedExpense(expense)}
+                      onDelete={() => {
+                        setSelectedExpense(expense);
+                        setDeleteExpenseOnOpen(true);
+                      }}
                     />
                   </HighlightRow>
                 )}
@@ -262,16 +278,24 @@ export function TransactionListPage() {
       <ExpenseDetailDialog
         expense={selectedExpense}
         open={selectedExpense !== null}
+        openDeleteConfirm={deleteExpenseOnOpen}
         onOpenChange={(open) => {
-          if (!open) setSelectedExpense(null);
+          if (!open) {
+            setSelectedExpense(null);
+            setDeleteExpenseOnOpen(false);
+          }
         }}
       />
 
       <IncomeDetailDialog
         income={selectedIncome}
         open={selectedIncome !== null}
+        openDeleteConfirm={deleteIncomeOnOpen}
         onOpenChange={(open) => {
-          if (!open) setSelectedIncome(null);
+          if (!open) {
+            setSelectedIncome(null);
+            setDeleteIncomeOnOpen(false);
+          }
         }}
       />
     </div>

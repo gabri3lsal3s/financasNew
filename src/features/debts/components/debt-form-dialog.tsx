@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, Button, DatePicker, Input, Modal, MoneyInput, RadioGroup } from "@/components/ui";
+import { Trash2 } from "lucide-react";
+import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, RadioGroup } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDebt, useUpdateDebt } from "@/state";
 import type { Debt, DebtType } from "@/types";
@@ -9,15 +10,18 @@ export interface DebtFormDialogProps {
   debt: Debt | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Chamado quando o usuário confirma a exclusão (apenas em edição). */
+  onDelete?: (debt: Debt) => void;
 }
 
 /** Formulário de dívida (CRUD §3.4) — contas a pagar e a receber. */
-export function DebtFormDialog({ debt, open, onOpenChange }: DebtFormDialogProps) {
+export function DebtFormDialog({ debt, open, onOpenChange, onDelete }: DebtFormDialogProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<DebtType>("payable");
   const [cents, setCents] = useState(0);
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const createDebt = useCreateDebt();
   const updateDebt = useUpdateDebt();
@@ -103,14 +107,41 @@ export function DebtFormDialog({ debt, open, onOpenChange }: DebtFormDialogProps
           <DatePicker value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+        <div className="flex items-center gap-2 pt-2">
+          {debt && onDelete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="mr-auto text-negative hover:bg-negative/10 hover:text-negative"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              Excluir
+            </Button>
+          ) : null}
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="ml-auto">
             Cancelar
           </Button>
           <Button type="button" disabled={!valid || pending} onClick={() => void handleSubmit()}>
             {pending ? "Salvando…" : debt ? "Salvar alterações" : "Criar dívida"}
           </Button>
         </div>
+
+        {debt && onDelete ? (
+          <ConfirmDialog
+            open={confirmDelete}
+            onOpenChange={setConfirmDelete}
+            title="Excluir dívida?"
+            description="Esta ação não pode ser desfeita. Dívidas quitadas permanecem no histórico."
+            confirmLabel="Excluir"
+            variant="destructive"
+            onConfirm={() => {
+              setConfirmDelete(false);
+              onOpenChange(false);
+              onDelete(debt);
+            }}
+          />
+        ) : null}
       </div>
     </Modal>
   );

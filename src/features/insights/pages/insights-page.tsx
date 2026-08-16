@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lightbulb, Repeat, Sparkles } from "lucide-react";
-import { Alert, Skeleton, Tabs } from "@/components/ui";
+import { Alert, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { AlertCard, InsightList, PlanningSection, ProjectionLine } from "@/components/modules";
 import { criticalAlerts } from "@/domain/insights/alerts";
@@ -246,7 +246,7 @@ export function InsightsPage() {
         <p className="text-sm text-muted-foreground">Análise do seu consumo, projeção e corte de gastos.</p>
       </header>
 
-      {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
+      {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
       {loading ? (
         <div className="flex flex-col gap-2">
