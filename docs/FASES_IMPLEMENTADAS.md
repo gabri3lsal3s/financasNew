@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-15):** fases **F0–F29 concluídas** · suíte **1087 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfix de responsividade do DatePicker) · suíte **1091 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -192,6 +192,12 @@
 - **Solução:** (1) **nome conhecido/categoria de assinatura sempre emitem a ocorrência** — a variância só reduz a confiança (penalidade no `confidenceScore`); tolerância `recurring`/`similar` relativa à **mediana**; catálogo expandido (+20 serviços: globoplay, starplus, crunchyroll, deezer, alura, xbox, nordvpn, uberone…); (2) abas unificadas em **"Alertas & Diagnósticos"** (primeira: alertas em destaque → KPIs → avisos contextuais); (3) Planejamento com cards **uma linha cada** (largura cheia), headers com subtítulo, gauge em linha com os stats em chips, inputs FIRE em 3 colunas e `FireProjectionChart` sem distorção (proporcional, máx. 460px).
 
 **Ajuste pós-F29 (2026-08-15, decisão de produto):** botões do header (tema/privacidade/calculadora) voltaram ao `title` nativo (Tooltip primitivo mantido na biblioteca); `brand-logo` com `whitespace-nowrap` + animação `fade-slide-in` (token em `globals.css`) para o colapso da sidebar.
+
+## Hotfix — DatePicker responsivo (2026-08-16, correção prioritária de layout)
+
+- **Problema:** o calendário (DatePicker) estourava a largura no mobile — a grade cortava os dias de sábado/domingo (a visualização parava na sexta); as setas de navegação renderizavam na lateral (ao lado da grade) em vez de no header; faltava ajuste à altura disponível (`max-h`), gerando rolagens desnecessárias.
+- **Causa raiz:** a CSS base do react-day-picker não é importada no app; com `navLayout="around"` e `.month` como `flex` em linha, a `<table>` da grade virava **item de linha do flex** ao lado das setas/caption → overflow horizontal.
+- **Solução:** (1) **header topo compacto** — `.month` `relative flex flex-col` (linha do header no topo, grade abaixo), setas absolutas nas extremidades (`left-1`/`right-1`, `top-1`) e Mês/Ano centralizado (`flex h-8 items-center justify-center px-12`); (2) **grade 100% responsiva** — `month_grid` `w-full table-fixed` (7 colunas iguais que cabem no viewport) e botões de dia `aspect-square w-full max-w-9` (quadrados e proporcionais à coluna); (3) **container com limite** — popover `w-[calc(100vw-1.5rem)] max-w-sm max-h-[85dvh] overflow-y-auto`. **Validação real** com Chrome headless + CDP em 320px e 390px: zero overflow horizontal, 7 colunas iguais (36,3px), botões 36×36px, setas no topo e mês centralizado exato; foco visível no dia selecionado mantido. Testes do DatePicker ampliados (4 → 8).
 
 ---
 

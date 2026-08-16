@@ -39,9 +39,12 @@ function ThemedChevron({ orientation = "left", className, ...props }: ChevronPro
 }
 
 /**
- * Botão de dia (F25): dia selecionado com fundo sólido em gradiente sutil da
- * cor primária ativa do tema + texto de alto contraste; dia atual (today) com
- * ponto indicador; disabled/outside com opacidade reduzida.
+ * Botão de dia (F25 + hotfix): célula quadrada e flexível que acompanha a
+ * largura da coluna (`w-full max-w-9 aspect-square`, centralizada) — os 7 dias
+ * (Dom a Sáb) cabem sempre na largura disponível, sem overflow horizontal no
+ * mobile. Dia selecionado com fundo sólido em gradiente sutil da cor primária
+ * ativa do tema + texto de alto contraste; dia atual (today) com ponto
+ * indicador; disabled/outside com opacidade reduzida; foco visível `ring-2`.
  */
 function ThemedDayButton({ modifiers, className, ...props }: DayButtonProps) {
   return (
@@ -49,7 +52,7 @@ function ThemedDayButton({ modifiers, className, ...props }: DayButtonProps) {
       type="button"
       {...props}
       className={cn(
-        "size-9 rounded-full text-sm font-medium text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "mx-auto flex aspect-square w-full max-w-9 items-center justify-center rounded-full text-sm font-medium text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         modifiers.selected &&
           "bg-gradient-to-b from-primary to-primary/90 font-semibold text-primary-foreground shadow-sm hover:from-primary hover:to-primary",
         modifiers.today &&
@@ -77,20 +80,27 @@ export function DatePicker({
   const dayPickerClassNames = {
     ...base,
     root: cn(base.root, "p-3"),
-    // Header centralizado (F25): `navLayout="around"` coloca as setas nas
-    // extremidades do mês e o seletor de Mês/Ano centralizado (flex-1).
-    month: cn(base.month, "flex items-center justify-between gap-1"),
-    month_caption: cn(base.month_caption, "flex-1 text-center"),
+    // Header topo compacto (hotfix): `.month` é uma coluna — a linha do header
+    // (seta esquerda · mês/ano centralizado · seta direita) fica no topo e a
+    // grade de dias ocupa a largura total abaixo. As setas ficam posicionadas
+    // de forma absoluta nas extremidades e o caption centralizado com padding
+    // lateral (px-12) para nunca colidir com elas.
+    month: cn(base.month, "relative flex flex-col"),
+    month_caption: cn(base.month_caption, "flex h-8 items-center justify-center px-12"),
     caption_label: cn(base.caption_label, "font-display text-sm font-semibold text-foreground"),
-    weekday: cn(base.weekday, "text-xs font-medium text-muted-foreground"),
-    day: cn(base.day, "h-9 w-9"),
+    // Grade 100% responsiva (hotfix): `table-fixed w-full` distribui as 7
+    // colunas igualmente na largura disponível — os dias nunca estouram o
+    // viewport (antes, o grid virava item de linha do flex e cortava sáb/dom).
+    month_grid: cn(base.month_grid, "w-full table-fixed border-collapse"),
+    weekday: cn(base.weekday, "py-1 text-center text-xs font-medium text-muted-foreground"),
+    day: cn(base.day, "p-0 text-center"),
     button_previous: cn(
       base.button_previous,
-      "flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "absolute left-1 top-1 z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     ),
     button_next: cn(
       base.button_next,
-      "flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "absolute right-1 top-1 z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     ),
     chevron: cn(base.chevron, "size-4"),
     outside: cn(base.outside, "text-muted-foreground opacity-50"),
@@ -129,10 +139,14 @@ export function DatePicker({
         </button>
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
+        {/* Container responsivo (hotfix): no mobile o calendário ocupa a largura
+            do viewport menos uma margem (`calc(100vw - 1.5rem)`) e no desktop
+            limita a `max-w-sm`; `max-h-[85dvh]` + scroll interno evitam barras
+            de rolagem da página ao abrir dentro de modais. */}
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          className="z-modal rounded-xl border border-border bg-surface p-2 shadow-lg focus:outline-none"
+          className="z-modal max-h-[85dvh] w-[calc(100vw-1.5rem)] max-w-sm overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-lg focus:outline-none"
         >
           <DayPicker
             mode="single"
