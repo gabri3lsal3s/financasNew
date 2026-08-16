@@ -138,6 +138,31 @@ export function buildCompetenceSummaries(
   return summaries.sort((a, b) => (a.month < b.month ? 1 : -1));
 }
 
+export interface InvoiceExpensePartition<T> {
+  /** Parceladas (installments_total > 1) — compras herdadas de faturamentos anteriores. */
+  installments: T[];
+  /** À vista (1 parcela) — gastos do próprio mês da fatura. */
+  regular: T[];
+}
+
+/** Mínimo necessário para particionar a fatura (data + total de parcelas). */
+type InvoiceExpensePartitionInput = { date: string; installments_total: number };
+
+/**
+ * Particiona as despesas da fatura em **parceladas × à vista**, cada grupo
+ * ORDENADO por data decrescente (mais recentes primeiro — ordem natural de
+ * extrato, igual à atual). Permite separar os gastos herdados de meses
+ * anteriores (parcelas) dos gastos do próprio mês (à vista). Motor puro.
+ */
+export function partitionInvoiceExpenses<T extends InvoiceExpensePartitionInput>(
+  expenses: readonly T[],
+): InvoiceExpensePartition<T> {
+  const byDateDesc = (a: T, b: T) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+  const installments = expenses.filter((e) => e.installments_total > 1).sort(byDateDesc);
+  const regular = expenses.filter((e) => e.installments_total <= 1).sort(byDateDesc);
+  return { installments, regular };
+}
+
 /**
  * Seleção automática do mês de fatura — ESPECIFICAÇÃO §3.3.3:
  * mês atual se tiver pendências; senão varre para trás (até APP_START_DATE)

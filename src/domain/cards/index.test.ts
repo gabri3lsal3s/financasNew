@@ -7,6 +7,7 @@ import {
   daysUntilDue,
   invoiceBalance,
   invoiceStatus,
+  partitionInvoiceExpenses,
 } from "./index";
 import { APP_START_DATE } from "@/types";
 
@@ -180,6 +181,47 @@ describe("bestPurchaseDay", () => {
 
   it("retorna dia 1 se fechamento for 31", () => {
     expect(bestPurchaseDay(31)).toBe(1);
+  });
+});
+
+describe("partitionInvoiceExpenses (fatura separada — parceladas × à vista)", () => {
+  it("separa parceladas (installments_total > 1) das à vista (1 parcela)", () => {
+    const { installments, regular } = partitionInvoiceExpenses([
+      { date: "2026-08-10", installments_total: 1 },
+      { date: "2026-08-05", installments_total: 3 },
+      { date: "2026-08-20", installments_total: 12 },
+      { date: "2026-08-01", installments_total: 1 },
+    ]);
+    expect(installments.map((e) => e.date)).toEqual(["2026-08-20", "2026-08-05"]);
+    expect(regular.map((e) => e.date)).toEqual(["2026-08-10", "2026-08-01"]);
+  });
+
+  it("ordena cada grupo por data decrescente (mais recentes primeiro)", () => {
+    const { installments, regular } = partitionInvoiceExpenses([
+      { date: "2026-07-01", installments_total: 2 },
+      { date: "2026-08-15", installments_total: 2 },
+      { date: "2026-07-20", installments_total: 2 },
+      { date: "2026-08-02", installments_total: 1 },
+      { date: "2026-08-20", installments_total: 1 },
+    ]);
+    expect(installments.map((e) => e.date)).toEqual(["2026-08-15", "2026-07-20", "2026-07-01"]);
+    expect(regular.map((e) => e.date)).toEqual(["2026-08-20", "2026-08-02"]);
+  });
+
+  it("não muta a lista de entrada", () => {
+    const input = [
+      { date: "2026-08-10", installments_total: 1 },
+      { date: "2026-08-05", installments_total: 3 },
+    ];
+    partitionInvoiceExpenses(input);
+    expect(input[0]?.date).toBe("2026-08-10");
+    expect(input[1]?.date).toBe("2026-08-05");
+  });
+
+  it("lista vazia → grupos vazios", () => {
+    const { installments, regular } = partitionInvoiceExpenses([]);
+    expect(installments).toEqual([]);
+    expect(regular).toEqual([]);
   });
 });
 

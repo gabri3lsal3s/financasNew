@@ -16,6 +16,22 @@ const updateCardMock = vi.fn();
 const deleteCardMock = vi.fn();
 const deleteCardPaymentMock = vi.fn();
 
+// Despesas da fatura variáveis por teste (para validar a separação parceladas × à vista).
+const stateMocks = vi.hoisted(() => ({
+  expenses: [
+    {
+      id: "e1",
+      description: "Supermercado",
+      date: "2026-08-05",
+      value: 150,
+      report_weight: 1,
+      bill_competence: "2026-08",
+      installments_total: 1,
+      installment_number: 1,
+    },
+  ],
+}));
+
 vi.mock("@/state", () => ({
   useCategories: () => ({
     data: [],
@@ -43,16 +59,7 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useCardExpenses: () => ({
-    data: [
-      {
-        id: "e1",
-        description: "Supermercado",
-        date: "2026-08-05",
-        value: 150,
-        report_weight: 1,
-        bill_competence: "2026-08",
-      },
-    ],
+    data: stateMocks.expenses,
     isLoading: false,
     isError: false,
     error: null,
@@ -190,6 +197,35 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     render(<CardsPage />);
     await user.click(screen.getByText("Supermercado"));
     expect(screen.getByRole("heading", { name: "Detalhes da despesa" })).toBeInTheDocument();
+  });
+
+  it("separa a fatura: parceladas no topo e à vista abaixo, ordenadas por data", () => {
+    stateMocks.expenses = [
+      ...stateMocks.expenses,
+      // Parcelada herdada (data do mês anterior à competência) e parcelada recente.
+      { id: "e2", description: "Celular 10x", date: "2026-07-20", value: 300, report_weight: 1, bill_competence: "2026-08", installments_total: 10, installment_number: 2 },
+      { id: "e3", description: "Notebook 3x", date: "2026-08-12", value: 1200, report_weight: 1, bill_competence: "2026-08", installments_total: 3, installment_number: 1 },
+    ];
+    try {
+      render(<CardsPage />);
+
+      // Os dois grupos aparecem com os títulos.
+      expect(screen.getByText("Parceladas")).toBeInTheDocument();
+      expect(screen.getByText("À vista")).toBeInTheDocument();
+      expect(screen.getByText("Celular 10x")).toBeInTheDocument();
+      expect(screen.getByText("Notebook 3x")).toBeInTheDocument();
+
+      // Parceladas exibem a parcela atual como subtítulo (2/10, 1/3).
+      expect(screen.getByText(/2\/10/)).toBeInTheDocument();
+      expect(screen.getByText(/1\/3/)).toBeInTheDocument();
+
+      // Parceladas vêm ANTES das à vista no DOM (grupo superior).
+      const parceladasTitle = screen.getByText("Parceladas");
+      const avistaTitle = screen.getByText("À vista");
+      expect(parceladasTitle.compareDocumentPosition(avistaTitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    } finally {
+      stateMocks.expenses = stateMocks.expenses.filter((e) => e.id === "e1");
+    }
   });
 
   it("abre o formulário de criação via FAB contextual (?novo=cartao)", () => {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Download, Plus, Printer, Trash2, Undo2, WalletCards } from "lucide-react";
+import { Download, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Modal, MoneyText, PrintSheet, Skeleton } from "@/components/ui";
 import {
   CardInvoicePrintView,
@@ -14,6 +14,7 @@ import {
   autoSelectBillMonth,
   buildCompetenceSummaries,
   invoiceStatus,
+  partitionInvoiceExpenses,
 } from "@/domain/cards";
 import { currentMonth, monthLabel } from "@/lib/date";
 import { serializeCardInvoiceCsv } from "@/domain/export";
@@ -95,6 +96,30 @@ export function CardsPage() {
 
   const competenceExpenses = (expensesQuery.data ?? []).filter((e) => e.bill_competence === effectiveMonth);
   const competencePayments = (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth);
+
+  // Fatura separada: parceladas (herdadas de meses anteriores) × à vista
+  // (gastos do mês), cada grupo ordenado por data — motor puro em domain/cards.
+  const { installments, regular } = partitionInvoiceExpenses(competenceExpenses);
+
+  /** Linha de despesa da fatura (mesmo layout para os dois grupos). */
+  const renderInvoiceRow = (expense: Expense) => {
+    const category = categoryById.get(expense.category_id);
+    const title = expense.description || category?.name || "Despesa";
+    return (
+      <TransactionRow
+        key={expense.id}
+        title={title}
+        date={expense.date}
+        subtitle={expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : undefined}
+        amountCents={Math.round(expense.value * 100)}
+        reportWeight={expense.report_weight}
+        kind="expense"
+        icon={category?.icon}
+        iconColor={category?.color}
+        onClick={() => setSelectedExpense(expense)}
+      />
+    );
+  };
 
   const invStatus = selectedCard
     ? invoiceStatus(effectiveMonth, selectedCard.due_day, summary?.saldoCents ?? 0)
@@ -425,23 +450,43 @@ export function CardsPage() {
                 description="As compras no cartão aparecem aqui de acordo com o fechamento da fatura."
               />
             ) : (
-              competenceExpenses.map((expense) => {
-                const category = categoryById.get(expense.category_id);
-                const title = expense.description || category?.name || "Despesa";
-                return (
-                  <TransactionRow
-                    key={expense.id}
-                    title={title}
-                    date={expense.date}
-                    amountCents={Math.round(expense.value * 100)}
-                    reportWeight={expense.report_weight}
-                    kind="expense"
-                    icon={category?.icon}
-                    iconColor={category?.color}
-                    onClick={() => setSelectedExpense(expense)}
-                  />
-                );
-              })
+              <>
+                {/* Parceladas — compras herdadas de meses anteriores (topo) */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Repeat className="size-3.5" aria-hidden="true" />
+                      Parceladas
+                    </h3>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {installments.length} {installments.length === 1 ? "item" : "itens"}
+                    </span>
+                  </div>
+                  {installments.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhuma compra parcelada nesta fatura.</p>
+                  ) : (
+                    installments.map(renderInvoiceRow)
+                  )}
+                </div>
+
+                {/* À vista — gastos do próprio mês da fatura (abaixo) */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Zap className="size-3.5" aria-hidden="true" />
+                      À vista
+                    </h3>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {regular.length} {regular.length === 1 ? "item" : "itens"}
+                    </span>
+                  </div>
+                  {regular.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhuma compra à vista nesta fatura.</p>
+                  ) : (
+                    regular.map(renderInvoiceRow)
+                  )}
+                </div>
+              </>
             )}
           </section>
 
