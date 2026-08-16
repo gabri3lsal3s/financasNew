@@ -82,7 +82,16 @@ export function InsightsPage() {
   const position = usePortfolioPosition();
 
   const loading =
-    month0.isLoading || month1.isLoading || month2.isLoading || month3.isLoading || incomesQuery.isLoading || position.isLoading;
+    month0.isLoading ||
+    month1.isLoading ||
+    month2.isLoading ||
+    month3.isLoading ||
+    incomesQuery.isLoading ||
+    budgetsQuery.isLoading ||
+    categoriesQuery.isLoading ||
+    debtsQuery.isLoading ||
+    feedbackQuery.isLoading ||
+    position.isLoading;
   const error =
     month0.error ??
     month1.error ??

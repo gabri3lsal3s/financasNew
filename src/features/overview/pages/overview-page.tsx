@@ -87,8 +87,14 @@ export function OverviewPage() {
     expensesQuery.isLoading ||
     prevIncomesQuery.isLoading ||
     prevExpensesQuery.isLoading ||
+    incomesRangeQuery.isLoading ||
+    expensesRangeQuery.isLoading ||
     debtsQuery.isLoading ||
     cardsQuery.isLoading ||
+    budgetsQuery.isLoading ||
+    expenseCategories.isLoading ||
+    cardExpensesQuery.isLoading ||
+    cardPaymentsQuery.isLoading ||
     portfolioTransactionsQuery.isLoading;
 
   const error =
@@ -96,9 +102,14 @@ export function OverviewPage() {
     expensesQuery.error ??
     prevIncomesQuery.error ??
     prevExpensesQuery.error ??
+    incomesRangeQuery.error ??
+    expensesRangeQuery.error ??
     debtsQuery.error ??
     cardsQuery.error ??
     budgetsQuery.error ??
+    expenseCategories.error ??
+    cardExpensesQuery.error ??
+    cardPaymentsQuery.error ??
     portfolioTransactionsQuery.error;
 
   const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;

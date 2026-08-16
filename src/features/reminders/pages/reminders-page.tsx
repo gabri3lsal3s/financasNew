@@ -30,7 +30,12 @@ export function RemindersPage() {
   const statesQuery = useReminderStates();
   const setState = useSetReminderState();
 
-  const loading = cardsQuery.isLoading || cardExpensesQuery.isLoading || cardPaymentsQuery.isLoading || debtsQuery.isLoading;
+  const loading =
+    cardsQuery.isLoading ||
+    cardExpensesQuery.isLoading ||
+    cardPaymentsQuery.isLoading ||
+    debtsQuery.isLoading ||
+    statesQuery.isLoading;
   const error =
     cardsQuery.error ?? cardExpensesQuery.error ?? cardPaymentsQuery.error ?? debtsQuery.error ?? statesQuery.error;
 

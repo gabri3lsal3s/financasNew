@@ -177,7 +177,15 @@ function ExpenseEditForm({
   }));
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!isPending) {
+          void handleSubmit();
+        }
+      }}
+      className="flex flex-col gap-3.5"
+    >
       {formError ? <Alert variant="error">{formError}</Alert> : null}
 
       <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
@@ -297,15 +305,14 @@ function ExpenseEditForm({
           Cancelar
         </Button>
         <Button
-          type="button"
+          type="submit"
           size="sm"
           disabled={isPending}
-          onClick={() => void handleSubmit()}
         >
           {isPending ? "Salvando…" : "Salvar alterações"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 

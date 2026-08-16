@@ -112,7 +112,15 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
 
   return (
     <>
-      <div className="mt-4 flex flex-col gap-4">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (name.trim() !== "" && !pending) {
+            void handleSubmit();
+          }
+        }}
+        className="mt-4 flex flex-col gap-4"
+      >
         {error ? (
           <div className="flex flex-col gap-2">
             <Alert variant="error">{error}</Alert>
@@ -136,6 +144,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
           </label>
           <Input
             id="card-name"
+            autoFocus
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Ex.: Nubank Ultravioleta"
@@ -234,15 +243,14 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
               Cancelar
             </Button>
             <Button
-              type="button"
+              type="submit"
               disabled={name.trim() === "" || pending}
-              onClick={() => void handleSubmit()}
             >
               {pending ? "Salvando…" : card ? "Salvar alterações" : "Criar cartão"}
             </Button>
           </div>
         </div>
-      </div>
+      </form>
 
       {card ? (
         <ConfirmDialog

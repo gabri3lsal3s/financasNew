@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Save, Shield, Trash2 } from "lucide-react";
 import { Alert, Button, EmptyState, NumberStepperInput, SkeletonList, SkeletonTable } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
@@ -44,6 +44,15 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   const [error, setError] = useState<string | null>(null);
   const [capsError, setCapsError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   const storedAssetTargets = new Map((targetsQuery.data ?? []).map((t) => [t.asset_id, t.target_percentage]));
   const storedClassTargets = new Map((classTargetsQuery.data ?? []).map((t) => [t.name, t.target_percentage]));
@@ -72,7 +81,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       // Feedback de escrita uniforme (F15) — mesmo padrão das demais ações.
       triggerHaptic("success");
       playSound("success", getVisualCustomization().soundEnabled);
-      window.setTimeout(() => setSaved(false), 2000);
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
+      timerRef.current = window.setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       setError(getErrorMessage(err));
     }

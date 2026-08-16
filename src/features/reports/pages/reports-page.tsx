@@ -116,11 +116,13 @@ export function ReportsPage() {
           : [];
 
   const loading =
-    mode === "month"
+    (mode === "month"
       ? monthlyExpenses.isLoading || monthlyIncomes.isLoading || prevExpenses.isLoading || prevIncomes.isLoading
       : mode === "year"
         ? yearExpenses.isLoading || yearIncomes.isLoading || prevYearExpenses.isLoading || prevYearIncomes.isLoading
-        : rangeExpenses.isLoading || rangeIncomes.isLoading;
+        : rangeExpenses.isLoading || rangeIncomes.isLoading) ||
+    debtsQuery.isLoading ||
+    categoriesQuery.isLoading;
   const error =
     (mode === "month"
       ? monthlyExpenses.error ?? monthlyIncomes.error ?? prevExpenses.error ?? prevIncomes.error
