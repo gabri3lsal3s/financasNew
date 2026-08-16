@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router";
 import { Bell } from "lucide-react";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui";
 import { ReminderItem } from "@/components/modules";
@@ -21,6 +22,7 @@ import {
  * persistidas em `reminder_states`.
  */
 export function RemindersPage() {
+  const navigate = useNavigate();
   const cardsQuery = useCreditCards();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
@@ -68,7 +70,8 @@ export function RemindersPage() {
       dueDate: d.due_date,
       amountCents: Math.round(d.amount * 100),
       paidAt: null,
-      link: { path: "/dividas" },
+      // Deep-link: destaca a dívida ao chegar (mesmo padrão da busca global).
+      link: { path: "/dividas", params: { q: d.id } },
     }));
 
   const items = buildReminders({ bills, debts, preferences, today }, statesQuery.data ?? []);
@@ -84,6 +87,13 @@ export function RemindersPage() {
     // fazendo o lembrete adiado nunca mais reaparecer.
     const until = addDaysISO(today, 7);
     handle(key, { kind: "snoozed", snoozeUntil: until });
+  };
+
+  /** Abre o destino do lembrete com o deep-link (destaque do item na tela). */
+  const openReminder = (item: { link?: { path: string; params?: Record<string, string> } }) => {
+    if (!item.link) return;
+    const params = new URLSearchParams(item.link.params ?? {});
+    navigate(`${item.link.path}?${params.toString()}`);
   };
 
   return (
@@ -119,6 +129,7 @@ export function RemindersPage() {
               onMarkRead={(key) => handle(key, { kind: "read" })}
               onSnooze={snooze}
               onRestore={(key) => handle(key, null)}
+              onOpen={() => openReminder(item)}
             />
           ))}
         </div>

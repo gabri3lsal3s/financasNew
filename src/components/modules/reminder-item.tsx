@@ -24,15 +24,36 @@ export interface ReminderItemProps {
   onMarkRead?: (key: string) => void;
   onSnooze?: (key: string) => void;
   onRestore?: (key: string) => void;
+  /** Abre o item na tela de destino (deep-link do lembrete). */
+  onOpen?: () => void;
   /** Estado atual (para rotular os botões). */
   stateKind?: "read" | "snoozed" | null;
 }
 
 /** Item de lembrete da central (§3.10) — status + ações lido/snooze. */
-export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, stateKind }: ReminderItemProps) {
+export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onOpen, stateKind }: ReminderItemProps) {
   const Icon = item.kind === "bill" ? CreditCard : HandCoins;
+  const clickable = onOpen !== undefined;
   return (
-    <article className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+    <article
+      className={cn(
+        "flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4",
+        clickable && "cursor-pointer transition-colors hover:bg-surface-hover",
+      )}
+      onClick={clickable ? onOpen : undefined}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onOpen?.();
+              }
+            }
+          : undefined
+      }
+    >
       <div className="flex items-start gap-3">
         <span
           className={cn(

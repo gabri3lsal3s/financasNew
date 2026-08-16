@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { RemindersPage } from "./reminders-page";
 
 const setStateMock = vi.fn();
+const navigateMock = vi.fn();
+
+vi.mock("react-router", () => ({
+  useNavigate: () => navigateMock,
+}));
 
 // Dívidas variáveis por teste (para validar o caso de atrasadas de meses anteriores).
 const stateMocks = vi.hoisted(() => ({
@@ -100,5 +105,21 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
     });
     const args = setStateMock.mock.calls.find((call) => call[0]?.state?.kind === "snoozed")?.[0];
     expect(args.state.snoozeUntil).not.toContain("NaN");
+  });
+
+  it("clicar no lembrete navega com o deep-link do item", async () => {
+    const user = userEvent.setup();
+    stateMocks.debts = [
+      ...stateMocks.debts,
+      // Vencida — sempre aparece (fora da janela) e é clicável.
+      { id: "d5", name: "Cartão atrasado", type: "payable", amount: 250, due_date: "2026-07-10", paid_at: null },
+    ];
+    try {
+      render(<RemindersPage />);
+      await user.click(screen.getByText("Cartão atrasado"));
+      expect(navigateMock).toHaveBeenCalledWith("/dividas?q=d5");
+    } finally {
+      stateMocks.debts = stateMocks.debts.filter((debt) => debt.id !== "d5");
+    }
   });
 });

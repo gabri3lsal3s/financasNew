@@ -63,6 +63,7 @@ export function useCreateCardPayment() {
     mutationFn: (input: Parameters<typeof createPayment>[0]) => createPayment(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      pushToast({ title: "Pagamento registrado", variant: "default" });
     },
   });
 }
@@ -77,6 +78,7 @@ export function useCreateRefund() {
       void queryClient.invalidateQueries({ queryKey: incomesKey });
       void queryClient.invalidateQueries({ queryKey: expensesKey });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      pushToast({ title: "Estorno registrado", variant: "default" });
     },
   });
 }
