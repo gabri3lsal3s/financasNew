@@ -119,4 +119,15 @@ describe("TransactionListDialog — extrato de lançamentos com CRUD", () => {
     await waitFor(() => expect(screen.queryByText("Excluir lançamento?")).not.toBeInTheDocument());
     expect(screen.getByText("Compra")).toBeInTheDocument();
   });
+
+  it("abre o formulário de novo lançamento ao clicar no botão Novo lançamento", async () => {
+    transactionsMock.mockReturnValue(txs);
+    const user = userEvent.setup();
+    render(<TransactionListDialog open={true} onOpenChange={vi.fn()} asset={asset} />);
+
+    await user.click(screen.getByRole("button", { name: "Novo lançamento" }));
+
+    expect(screen.getByText("Transação · PETR4")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Registrar" })).toBeInTheDocument();
+  });
 });

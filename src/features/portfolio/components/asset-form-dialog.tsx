@@ -14,45 +14,29 @@ export interface AssetFormDialogProps {
   asset?: PortfolioAsset | null;
 }
 
+interface AssetFormContentProps {
+  asset?: PortfolioAsset | null;
+  onClose: () => void;
+}
+
 const CURRENCY_OPTIONS: { value: AssetCurrency; label: string }[] = [
   { value: "BRL", label: "BRL (B3, renda fixa, cripto)" },
   { value: "USD", label: "USD (internacional)" },
 ];
 
-/**
- * Cadastro/edição de ativo da carteira (§3.11) — ticker, classe e moeda.
- * Com `asset`, opera em modo edição (update + exclusão com confirmação);
- * sem `asset`, cria um ativo novo. Feedback uniforme (F15): haptic + áudio.
- */
-export function AssetFormDialog({ open, onOpenChange, asset = null }: AssetFormDialogProps) {
+function AssetFormContent({ asset = null, onClose }: AssetFormContentProps) {
   const createAsset = useCreatePortfolioAsset();
   const updateAsset = useUpdatePortfolioAsset();
   const deleteAsset = useDeletePortfolioAsset();
-  // Estado inicial derivado das props (lazy) + re-sincronização a cada
-  // abertura via "ajuste de estado durante render" (padrão oficial React —
-  // evita setState em effect, exigência das regras do React Compiler).
-  const [ticker, setTicker] = useState(() => asset?.ticker ?? "");
-  const [assetClass, setAssetClass] = useState(() => asset?.asset_class ?? "");
-  const [currency, setCurrency] = useState<AssetCurrency>(() => asset?.currency ?? "BRL");
+
+  const [ticker, setTicker] = useState(asset?.ticker ?? "");
+  const [assetClass, setAssetClass] = useState(asset?.asset_class ?? "");
+  const [currency, setCurrency] = useState<AssetCurrency>(asset?.currency ?? "BRL");
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (open !== prevOpen) {
-    setPrevOpen(open);
-    if (open) {
-      setTicker(asset?.ticker ?? "");
-      setAssetClass(asset?.asset_class ?? "");
-      setCurrency(asset?.currency ?? "BRL");
-      setError(null);
-    }
-  }
 
   const isEdit = asset !== null;
   const pending = createAsset.isPending || updateAsset.isPending || deleteAsset.isPending;
-
-  const openDialog = (next: boolean) => {
-    onOpenChange(next);
-  };
 
   const normalizedTicker = ticker.trim().toUpperCase();
   const canSubmit = normalizedTicker.length > 0 && !pending;
@@ -73,7 +57,7 @@ export function AssetFormDialog({ open, onOpenChange, asset = null }: AssetFormD
       }
       triggerHaptic("success");
       playSound("success", getVisualCustomization().soundEnabled);
-      onOpenChange(false);
+      onClose();
     } catch (err) {
       setError(getErrorMessage(err));
     }
@@ -87,7 +71,7 @@ export function AssetFormDialog({ open, onOpenChange, asset = null }: AssetFormD
       triggerHaptic("warning");
       playSound("delete", getVisualCustomization().soundEnabled);
       setConfirmDelete(false);
-      onOpenChange(false);
+      onClose();
     } catch (err) {
       setConfirmDelete(false);
       setError(getErrorMessage(err));
@@ -96,69 +80,58 @@ export function AssetFormDialog({ open, onOpenChange, asset = null }: AssetFormD
 
   return (
     <>
-      <Modal
-        open={open}
-        onOpenChange={openDialog}
-        title={isEdit ? "Editar ativo" : "Adicionar ativo"}
-        description={
-          isEdit
-            ? "Atualize o ticker, a classe ou a moeda. O ledger e a posição são recalculados automaticamente."
-            : "Registre o ticker e a classe (ex.: Ações, FIIs, RF, caixa)."
-        }
-      >
-        <div className="mt-4 flex flex-col gap-4">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Ticker
-            <Input
-              value={ticker}
-              onChange={(event) => setTicker(event.target.value)}
-              placeholder="PETR4, BOVA11, AAPL…"
-              autoFocus
-              maxLength={20}
-              aria-label="Ticker do ativo"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Classe (opcional)
-            <Input
-              value={assetClass}
-              onChange={(event) => setAssetClass(event.target.value)}
-              placeholder="Ações, FIIs, RF, caixa…"
-              maxLength={40}
-              aria-label="Classe do ativo"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Moeda
-            <Select
-              value={currency}
-              onValueChange={(value) => setCurrency(value as AssetCurrency)}
-              options={CURRENCY_OPTIONS}
-              ariaLabel="Moeda do ativo"
-            />
-          </label>
+      <div className="mt-4 flex flex-col gap-4">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Ticker
+          <Input
+            value={ticker}
+            onChange={(event) => setTicker(event.target.value)}
+            placeholder="PETR4, BOVA11, AAPL…"
+            autoFocus
+            maxLength={20}
+            aria-label="Ticker do ativo"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Classe (opcional)
+          <Input
+            value={assetClass}
+            onChange={(event) => setAssetClass(event.target.value)}
+            placeholder="Ações, FIIs, RF, caixa…"
+            maxLength={40}
+            aria-label="Classe do ativo"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Moeda
+          <Select
+            value={currency}
+            onValueChange={(value) => setCurrency(value as AssetCurrency)}
+            options={CURRENCY_OPTIONS}
+            ariaLabel="Moeda do ativo"
+          />
+        </label>
 
-          {error ? <Alert variant="error">{error}</Alert> : null}
+        {error ? <Alert variant="error">{error}</Alert> : null}
 
-          <div className="flex items-center justify-between gap-2">
-            {isEdit ? (
-              <Button type="button" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={pending}>
-                Excluir ativo
-              </Button>
-            ) : (
-              <span />
-            )}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="button" onClick={() => void submit()} disabled={!canSubmit}>
-                {pending ? "Salvando…" : isEdit ? "Salvar" : "Adicionar"}
-              </Button>
-            </div>
+        <div className="flex items-center justify-between gap-2">
+          {isEdit ? (
+            <Button type="button" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={pending}>
+              Excluir ativo
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={() => void submit()} disabled={!canSubmit}>
+              {pending ? "Salvando…" : isEdit ? "Salvar" : "Adicionar"}
+            </Button>
           </div>
         </div>
-      </Modal>
+      </div>
 
       <ConfirmDialog
         open={confirmDelete}
@@ -171,5 +144,35 @@ export function AssetFormDialog({ open, onOpenChange, asset = null }: AssetFormD
         onConfirm={() => void confirmDeleteAsset()}
       />
     </>
+  );
+}
+
+/**
+ * Cadastro/edição de ativo da carteira (§3.11) — ticker, classe e moeda.
+ * Com `asset`, opera em modo edição (update + exclusão com confirmação);
+ * sem `asset`, cria um ativo novo. Feedback uniforme (F15): haptic + áudio.
+ */
+export function AssetFormDialog({ open, onOpenChange, asset = null }: AssetFormDialogProps) {
+  const isEdit = asset !== null;
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEdit ? "Editar ativo" : "Adicionar ativo"}
+      description={
+        isEdit
+          ? "Atualize o ticker, a classe ou a moeda. O ledger e a posição são recalculados automaticamente."
+          : "Registre o ticker e a classe (ex.: Ações, FIIs, RF, caixa)."
+      }
+    >
+      {open ? (
+        <AssetFormContent
+          key={asset?.id ?? "new-asset"}
+          asset={asset}
+          onClose={() => onOpenChange(false)}
+        />
+      ) : null}
+    </Modal>
   );
 }

@@ -106,4 +106,15 @@ describe("CategoriesPage — CRUD e migração (§3.5.1)", () => {
 
     expect(deleteCategoryMock).toHaveBeenCalledWith({ id: "c1", migrateTo: "c4" });
   });
+
+  it("abre o formulário de edição com os dados da categoria preenchidos", async () => {
+    const user = userEvent.setup();
+    render(<CategoriesPage />);
+
+    await user.click(screen.getByRole("button", { name: "Editar Alimentação" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Editar categoria" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toHaveValue("Alimentação");
+  });
 });

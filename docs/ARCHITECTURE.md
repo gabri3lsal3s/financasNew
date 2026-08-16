@@ -253,6 +253,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 4. **Módulos não tocam dados:** `components/modules` recebem props tipadas e formatam via `services/`; nunca fazem fetch nem importam `data/`.
 5. **Propagação global:** alterações em um primitivo/módulo refletem em todas as telas por construção — é o payoff da regra 1.
 6. **Layout fora do conteúdo:** `components/layout` é o único lugar com estrutura de página (sidebar/tabs/header).
+7. **Ciclo de vida de modais de formulário / edição (Modal Content with Key Pattern):** como a prop `open={true}` não dispara `onOpenChange` no Radix UI, todo formulário de edição/criação em modal deve isolar seu conteúdo interno em subcomponente montado condicionalmente com `key={item?.id ?? 'new'}` dentro de `{open ? <Content ... /> : null}`. Isso garante inicialização 100% determinística dos campos via `useState` no mount e descarte automático de rascunhos no unmount.
 
 ---
 

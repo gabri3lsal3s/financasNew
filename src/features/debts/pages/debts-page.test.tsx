@@ -206,4 +206,16 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeInTheDocument();
     deleteDebtMock.mockResolvedValue(undefined);
   });
+
+  it("abre o formulário de edição com os dados da dívida preenchidos", async () => {
+    const user = userEvent.setup();
+    render(<DebtsPage />);
+
+    await user.click(screen.getByRole("button", { name: "Editar Conta de luz" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Editar dívida" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toHaveValue("Conta de luz");
+    expect((screen.getByRole("textbox", { name: "Valor da dívida" }) as HTMLInputElement).value).toMatch(/200,00/);
+  });
 });

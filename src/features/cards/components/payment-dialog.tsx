@@ -13,8 +13,14 @@ export interface PaymentDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Pagamento ou estorno de fatura (§3.3.3). Estorno gera renda automática [REFUND]. */
-export function PaymentDialog({ cardId, competenceMonth, mode, open, onOpenChange }: PaymentDialogProps) {
+interface PaymentDialogContentProps {
+  cardId: string;
+  competenceMonth: string;
+  mode: "payment" | "refund";
+  onClose: () => void;
+}
+
+function PaymentDialogContent({ cardId, competenceMonth, mode, onClose }: PaymentDialogContentProps) {
   const [cents, setCents] = useState(0);
   const [date, setDate] = useState(toISODate(new Date()));
   const [note, setNote] = useState("");
@@ -25,13 +31,6 @@ export function PaymentDialog({ cardId, competenceMonth, mode, open, onOpenChang
   const pending = createPayment.isPending || createRefund.isPending;
 
   const isRefund = mode === "refund";
-
-  const reset = () => {
-    setCents(0);
-    setDate(toISODate(new Date()));
-    setNote("");
-    setError(null);
-  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -48,58 +47,72 @@ export function PaymentDialog({ cardId, competenceMonth, mode, open, onOpenChang
       } else {
         await createPayment.mutateAsync(input);
       }
-      onOpenChange(false);
+      onClose();
     } catch (err) {
       setError(getErrorMessage(err));
     }
   };
 
   return (
+    <div className="mt-4 flex flex-col gap-4">
+      {error ? <Alert variant="error">{error}</Alert> : null}
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="payment-amount" className="text-sm font-medium">
+          {isRefund ? "Valor do estorno" : "Valor pago"}
+        </label>
+        <MoneyInput
+          id="payment-amount"
+          cents={cents}
+          onCentsChange={setCents}
+          aria-label={isRefund ? "Valor do estorno" : "Valor do pagamento"}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium">Data</span>
+        <DatePicker value={date} onValueChange={setDate} ariaLabel={isRefund ? "Data do estorno" : "Data do pagamento"} />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="payment-note" className="text-sm font-medium">
+          Observação (opcional)
+        </label>
+        <Input id="payment-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ex.: Parcial" />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button type="button" disabled={cents <= 0 || pending} onClick={() => void handleSubmit()}>
+          {pending ? "Salvando…" : isRefund ? "Confirmar estorno" : "Confirmar pagamento"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Pagamento ou estorno de fatura (§3.3.3). Estorno gera renda automática [REFUND]. */
+export function PaymentDialog({ cardId, competenceMonth, mode, open, onOpenChange }: PaymentDialogProps) {
+  const isRefund = mode === "refund";
+
+  return (
     <Modal
       open={open}
-      onOpenChange={(next) => {
-        if (next) reset();
-        onOpenChange(next);
-      }}
+      onOpenChange={onOpenChange}
       title={isRefund ? "Registrar estorno" : "Registrar pagamento"}
       description={`Fatura de ${competenceMonth}`}
     >
-      <div className="mt-4 flex flex-col gap-4">
-        {error ? <Alert variant="error">{error}</Alert> : null}
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="payment-amount" className="text-sm font-medium">
-            {isRefund ? "Valor do estorno" : "Valor pago"}
-          </label>
-          <MoneyInput
-            id="payment-amount"
-            cents={cents}
-            onCentsChange={setCents}
-            aria-label={isRefund ? "Valor do estorno" : "Valor do pagamento"}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Data</span>
-          <DatePicker value={date} onValueChange={setDate} ariaLabel={isRefund ? "Data do estorno" : "Data do pagamento"} />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="payment-note" className="text-sm font-medium">
-            Observação (opcional)
-          </label>
-          <Input id="payment-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ex.: Parcial" />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button type="button" disabled={cents <= 0 || pending} onClick={() => void handleSubmit()}>
-            {pending ? "Salvando…" : isRefund ? "Confirmar estorno" : "Confirmar pagamento"}
-          </Button>
-        </div>
-      </div>
+      {open ? (
+        <PaymentDialogContent
+          key={`${cardId}:${competenceMonth}:${mode}`}
+          cardId={cardId}
+          competenceMonth={competenceMonth}
+          mode={mode}
+          onClose={() => onOpenChange(false)}
+        />
+      ) : null}
     </Modal>
   );
 }

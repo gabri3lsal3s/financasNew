@@ -30,6 +30,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
   const transactionsQuery = useAssetPosition(asset?.id ?? null);
   const deleteTx = useDeletePortfolioTransaction();
   const [editing, setEditing] = useState<PortfolioTransaction | null>(null);
+  const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<PortfolioTransaction | null>(null);
 
   const transactions = [...(transactionsQuery.data ?? [])].sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
@@ -63,7 +64,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
               {transactions.length} {transactions.length === 1 ? "lançamento" : "lançamentos"}
             </Badge>
             {asset ? (
-              <Button type="button" size="sm" onClick={() => setEditing(null)} disabled={editing !== null}>
+              <Button type="button" size="sm" onClick={() => setCreating(true)} disabled={editing !== null || creating}>
                 <Plus aria-hidden="true" />
                 Novo lançamento
               </Button>
@@ -81,7 +82,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
               headingLevel="h2"
               action={
                 asset ? (
-                  <Button type="button" size="sm" onClick={() => setEditing(null)}>
+                  <Button type="button" size="sm" onClick={() => setCreating(true)}>
                     <Plus aria-hidden="true" />
                     Registrar transação
                   </Button>
@@ -137,9 +138,14 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
 
       {asset ? (
         <TransactionFormDialog
-          key={editing?.id ?? "new"}
-          open={editing !== null}
-          onOpenChange={(next) => !next && setEditing(null)}
+          key={editing?.id ?? (creating ? "create-new-tx" : "none")}
+          open={editing !== null || creating}
+          onOpenChange={(next) => {
+            if (!next) {
+              setEditing(null);
+              setCreating(false);
+            }
+          }}
           asset={asset}
           transaction={editing}
         />

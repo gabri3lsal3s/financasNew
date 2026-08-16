@@ -101,6 +101,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     render(<BudgetsPage />);
 
     await user.click(screen.getAllByRole("button", { name: "Editar limite de Moradia" })[0]!);
+    expect((screen.getByRole("textbox", { name: "Limite mensal da categoria" }) as HTMLInputElement).value).toMatch(/1\.000,00/);
     // Moradia → 30% da renda R$ 5.000 = R$ 1.500
     expect(screen.getByText(/30% da renda/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Aplicar/ }));

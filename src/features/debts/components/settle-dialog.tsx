@@ -10,8 +10,12 @@ export interface SettleDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Quitação de dívida (§3.4) — RPC transacional (D1). */
-export function SettleDialog({ debt, open, onOpenChange }: SettleDialogProps) {
+interface SettleDialogContentProps {
+  debt: Debt;
+  onClose: () => void;
+}
+
+function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
   const isReceivable = debt.type === "receivable";
   const integrated = isReceivable && debt.expense_id !== null;
 
@@ -40,14 +44,6 @@ export function SettleDialog({ debt, open, onOpenChange }: SettleDialogProps) {
   // responsivo enquanto a despesa vinculada carrega).
   const effectiveResultCents = userEdited ? resultCents : (suggestedResultCents ?? Math.round(debt.amount * 100));
 
-  const reset = () => {
-    setError(null);
-    setWithTransaction(false);
-    setCategoryId("");
-    setUserEdited(false);
-    setResultCents(0);
-  };
-
   const handleConfirm = async () => {
     setError(null);
     try {
@@ -66,11 +62,109 @@ export function SettleDialog({ debt, open, onOpenChange }: SettleDialogProps) {
           expenseCategoryId: withTransaction ? categoryId : null,
         });
       }
-      onOpenChange(false);
+      onClose();
     } catch (err) {
       setError(getErrorMessage(err));
     }
   };
+
+  const categories = expenseCategories.data ?? [];
+
+  return (
+    <div className="mt-4 flex flex-col gap-4">
+      {error ? <Alert variant="error">{error}</Alert> : null}
+
+      {integrated ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Ao receber, o valor da despesa vinculada é <strong>reduzido no relatório</strong> automaticamente. Ajuste o
+            resultado final se quiser.
+          </p>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="settle-result" className="text-sm font-medium">
+              Despesa passa a contar como
+            </label>
+            <MoneyInput
+              id="settle-result"
+              cents={effectiveResultCents}
+              onCentsChange={(cents) => {
+                setUserEdited(true);
+                setResultCents(cents);
+              }}
+              aria-label="Resultado da despesa no relatório"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <RadioGroup
+            value={withTransaction ? "with" : "only"}
+            onValueChange={(value) => setWithTransaction(value === "with")}
+            name="settle-mode"
+            options={[
+              {
+                value: "only",
+                label: isReceivable ? "Apenas receber" : "Apenas pagar",
+              },
+              {
+                value: "with",
+                label: isReceivable ? "Receber e criar renda" : "Pagar e cadastrar despesa",
+              },
+            ]}
+          />
+          {withTransaction ? (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Categoria</span>
+              {expenseCategories.isError ? (
+                <div className="flex flex-col gap-2">
+                  <Alert variant="error">{getErrorMessage(expenseCategories.error)}</Alert>
+                  <div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void expenseCategories.refetch()}
+                    >
+                      Tentar novamente
+                    </Button>
+                  </div>
+                </div>
+              ) : expenseCategories.isLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select
+                  value={categoryId}
+                  onValueChange={setCategoryId}
+                  options={categories.map((category) => ({ value: category.id, label: category.name }))}
+                  placeholder="Selecione a categoria"
+                  ariaLabel={isReceivable ? "Categoria da renda" : "Categoria da despesa"}
+                />
+              )}
+            </div>
+          ) : null}
+        </>
+      )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button
+          type="button"
+          disabled={pending || (withTransaction && categoryId === "")}
+          onClick={() => void handleConfirm()}
+        >
+          {pending ? "Quitando…" : "Confirmar quitação"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Quitação de dívida (§3.4) — RPC transacional (D1). */
+export function SettleDialog({ debt, open, onOpenChange }: SettleDialogProps) {
+  const isReceivable = debt.type === "receivable";
+  const integrated = isReceivable && debt.expense_id !== null;
 
   const title = integrated
     ? "Recebimento integrado"
@@ -78,105 +172,20 @@ export function SettleDialog({ debt, open, onOpenChange }: SettleDialogProps) {
       ? "Quitar dívida a receber"
       : "Quitar dívida a pagar";
 
-  const categories = expenseCategories.data ?? [];
-
   return (
     <Modal
       open={open}
-      onOpenChange={(next) => {
-        if (next) reset();
-        onOpenChange(next);
-      }}
+      onOpenChange={onOpenChange}
       title={title}
       description={debt.name}
     >
-      <div className="mt-4 flex flex-col gap-4">
-        {error ? <Alert variant="error">{error}</Alert> : null}
-
-        {integrated ? (
-          <>
-            <p className="text-sm text-muted-foreground">
-              Ao receber, o valor da despesa vinculada é <strong>reduzido no relatório</strong> automaticamente. Ajuste o
-              resultado final se quiser.
-            </p>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="settle-result" className="text-sm font-medium">
-                Despesa passa a contar como
-              </label>
-              <MoneyInput
-                id="settle-result"
-                cents={effectiveResultCents}
-                onCentsChange={(cents) => {
-                  setUserEdited(true);
-                  setResultCents(cents);
-                }}
-                aria-label="Resultado da despesa no relatório"
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <RadioGroup
-              value={withTransaction ? "with" : "only"}
-              onValueChange={(value) => setWithTransaction(value === "with")}
-              name="settle-mode"
-              options={[
-                {
-                  value: "only",
-                  label: isReceivable ? "Apenas receber" : "Apenas pagar",
-                },
-                {
-                  value: "with",
-                  label: isReceivable ? "Receber e criar renda" : "Pagar e cadastrar despesa",
-                },
-              ]}
-            />
-            {withTransaction ? (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Categoria</span>
-                {expenseCategories.isError ? (
-                  <div className="flex flex-col gap-2">
-                    <Alert variant="error">{getErrorMessage(expenseCategories.error)}</Alert>
-                    <div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void expenseCategories.refetch()}
-                      >
-                        Tentar novamente
-                      </Button>
-                    </div>
-                  </div>
-                ) : expenseCategories.isLoading ? (
-                  <Skeleton className="h-10 w-full" />
-                ) : (
-                  <Select
-                    value={categoryId}
-                    onValueChange={setCategoryId}
-                    options={categories.map((category) => ({ value: category.id, label: category.name }))}
-                    placeholder="Selecione a categoria"
-                    ariaLabel={isReceivable ? "Categoria da renda" : "Categoria da despesa"}
-                  />
-                )}
-              </div>
-            ) : null}
-          </>
-        )}
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            disabled={pending || (withTransaction && categoryId === "")}
-            onClick={() => void handleConfirm()}
-          >
-            {pending ? "Quitando…" : "Confirmar quitação"}
-          </Button>
-        </div>
-      </div>
+      {open ? (
+        <SettleDialogContent
+          key={debt.id}
+          debt={debt}
+          onClose={() => onOpenChange(false)}
+        />
+      ) : null}
     </Modal>
   );
 }
