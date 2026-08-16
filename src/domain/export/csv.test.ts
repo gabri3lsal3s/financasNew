@@ -30,8 +30,9 @@ describe("domain/export — CSV", () => {
     expect(csvWithBom("A;B\r\n")).toBe("\uFEFFA;B\r\n");
   });
 
-  it("formata decimais pt-BR (vírgula) e datas dd/mm/aaaa", () => {
-    expect(formatCsvDecimal(123456)).toBe("1.234,56");
+  it("formata decimais pt-BR (vírgula) SEM separador de milhar (Excel lê como número)", () => {
+    expect(formatCsvDecimal(123456)).toBe("1234,56");
+    expect(formatCsvDecimal(1234567)).toBe("12345,67");
     expect(formatCsvDecimal(-500)).toBe("-5,00");
     expect(formatCsvFloat(0.5, 8)).toBe("0,5");
     expect(formatCsvFloat(1234.567, 2)).toBe("1.234,57");
@@ -65,7 +66,7 @@ describe("domain/export — CSV", () => {
     expect(csv.startsWith("\uFEFF")).toBe(true);
     expect(csv).toContain("Data;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Forma de pagamento;Cartão;Parcelas");
     expect(csv).toContain("10/08/2026;Supermercado;Alimentação;250,50;250,50;Débito;;—");
-    expect(csv).toContain('12/08/2026;"Celular; novo";Eletrônicos;1.000,00;800,00;Cartão de crédito;Nubank;1/10');
+    expect(csv).toContain('12/08/2026;"Celular; novo";Eletrônicos;1000,00;800,00;Cartão de crédito;Nubank;1/10');
   });
 
   it("serializa receitas", () => {
@@ -79,7 +80,7 @@ describe("domain/export — CSV", () => {
         receiveTypeLabel: "Pix",
       },
     ]);
-    expect(csv).toContain("05/08/2026;Salário;Trabalho;5.000,00;5.000,00;Pix");
+    expect(csv).toContain("05/08/2026;Salário;Trabalho;5000,00;5000,00;Pix");
   });
 
   it("serializa a fatura do cartão com apenas os gastos da competência", () => {
@@ -103,7 +104,7 @@ describe("domain/export — CSV", () => {
     ]);
     expect(csv.startsWith("\uFEFFData;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Parcelas\r\n")).toBe(true);
     expect(csv).toContain("03/08/2026;\"Mercado; semana\";Alimentação;180,50;180,50;—\r\n");
-    expect(csv).toContain("15/08/2026;Celular;Eletrônicos;1.000,00;800,00;1/10\r\n");
+    expect(csv).toContain("15/08/2026;Celular;Eletrônicos;1000,00;800,00;1/10\r\n");
   });
 
   it("serializa a fatura vazia apenas com o cabeçalho (BOM incluído)", () => {
@@ -147,7 +148,7 @@ describe("domain/export — CSV", () => {
         pct: 60,
       },
     ]);
-    expect(csv).toContain("ITUB4;Ações;BRL;100;34,50;40,25;4.025,00;575,00;16,67;40,25");
-    expect(csv).toContain("Caixa;;BRL;6.000;1,00;1,00;6.000,00;0,00;;60");
+    expect(csv).toContain("ITUB4;Ações;BRL;100;34,50;40,25;4025,00;575,00;16,67;40,25");
+    expect(csv).toContain("Caixa;;BRL;6.000;1,00;1,00;6000,00;0,00;;60");
   });
 });

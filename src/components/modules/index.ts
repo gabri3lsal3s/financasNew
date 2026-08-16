@@ -50,6 +50,12 @@ export type {
   MonthlyCloseCategory,
   MonthlyCloseInvoice,
 } from "./monthly-close-print-view";
+export { CardInvoicePrintView } from "./card-invoice-print-view";
+export type {
+  CardInvoicePrintViewProps,
+  CardInvoiceExpenseRow,
+  CardInvoicePaymentRow,
+} from "./card-invoice-print-view";
 export { PlanningSection } from "./planning-section";
 export type { PlanningSectionProps } from "./planning-section";
 

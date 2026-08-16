@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Download, Plus, Trash2, Undo2, WalletCards } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, MoneyText, Skeleton } from "@/components/ui";
+import { Download, Plus, Printer, Trash2, Undo2, WalletCards } from "lucide-react";
+import { Alert, Button, ConfirmDialog, EmptyState, Modal, MoneyText, PrintSheet, Skeleton } from "@/components/ui";
 import {
+  CardInvoicePrintView,
   CreditCardWallet,
   InvoiceStatusBadge,
   KpiCard,
@@ -17,6 +18,7 @@ import {
 import { currentMonth, monthLabel } from "@/lib/date";
 import { serializeCardInvoiceCsv } from "@/domain/export";
 import type { ExportCardInvoiceRow } from "@/domain/export";
+import type { CardInvoiceExpenseRow, CardInvoicePaymentRow } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
 import { downloadCsv } from "@/services/export-actions";
 import { getErrorMessage } from "@/services/errors";
@@ -70,6 +72,7 @@ export function CardsPage() {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(null);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const cards = cardsQuery.data ?? [];
   const selectedCard =
@@ -120,6 +123,22 @@ export function CardsPage() {
       .replace(/^-+|-+$/g, "");
     downloadCsv(`fatura_${slug}_${effectiveMonth}.csv`, serializeCardInvoiceCsv(rows));
   };
+
+  // Fatura imprimível (PDF) — mesmos dados do CSV, com resumo e pagamentos.
+  const printExpenseRows: CardInvoiceExpenseRow[] = competenceExpenses.map((expense) => ({
+    date: expense.date,
+    description: expense.description ?? "",
+    categoryName: categoryById.get(expense.category_id)?.name ?? "Sem categoria",
+    valueCents: numberToCents(expense.value),
+    reportValueCents: numberToCents(expense.value * expense.report_weight),
+    installments: expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : "—",
+  }));
+  const printPaymentRows: CardInvoicePaymentRow[] = competencePayments.map((payment) => ({
+    date: payment.date,
+    note: payment.note,
+    amountCents: numberToCents(Math.abs(payment.amount)),
+    isRefund: payment.amount < 0,
+  }));
 
   const selectCard = (id: string) => {
     setActionError(null);
@@ -378,12 +397,23 @@ export function CardsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  onClick={() => setPrintOpen(true)}
+                  disabled={competenceExpenses.length === 0 || !selectedCard}
+                  className="gap-1.5"
+                >
+                  <Printer className="size-3.5" aria-hidden="true" />
+                  Imprimir / Salvar PDF
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={handleExportInvoice}
                   disabled={competenceExpenses.length === 0 || !selectedCard}
                   className="gap-1.5"
                 >
                   <Download className="size-3.5" aria-hidden="true" />
-                  Exportar fatura
+                  Exportar CSV
                 </Button>
               </div>
             </div>
@@ -551,6 +581,59 @@ export function CardsPage() {
           if (!next) setSelectedExpense(null);
         }}
       />
+
+      {/* Fatura imprimível — preview no modal + portal de impressão (padrão F22) */}
+      {selectedCard && summary ? (
+        <>
+          <Modal
+            open={printOpen}
+            onOpenChange={setPrintOpen}
+            title={`Fatura — ${selectedCard.name}`}
+            description={`Gastos lançados no cartão em ${monthLabel(effectiveMonth)} (competência ${effectiveMonth}), prontos para imprimir ou salvar em PDF — compare com a fatura do banco.`}
+            className="max-w-3xl"
+            hideCalculator
+          >
+            <div className="mt-4">
+              <CardInvoicePrintView
+                cardName={selectedCard.name}
+                competenceMonth={effectiveMonth}
+                competenceLabel={monthLabel(effectiveMonth)}
+                totalBrutoCents={summary.previstoBrutoCents}
+                totalPonderadoCents={summary.previstoPonderadoCents}
+                pagoCents={summary.pagoCents}
+                saldoAbertoCents={summary.saldoBrutoCents}
+                saldoPonderadoCents={summary.saldoPonderadoCents}
+                expenses={printExpenseRows}
+                payments={printPaymentRows}
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setPrintOpen(false)}>
+                Fechar
+              </Button>
+              <Button type="button" onClick={() => window.print()} className="gap-2">
+                <Printer className="size-4" aria-hidden="true" />
+                <span>Imprimir / Salvar PDF</span>
+              </Button>
+            </div>
+          </Modal>
+
+          <PrintSheet open={printOpen}>
+            <CardInvoicePrintView
+              cardName={selectedCard.name}
+              competenceMonth={effectiveMonth}
+              competenceLabel={monthLabel(effectiveMonth)}
+              totalBrutoCents={summary.previstoBrutoCents}
+              totalPonderadoCents={summary.previstoPonderadoCents}
+              pagoCents={summary.pagoCents}
+              saldoAbertoCents={summary.saldoBrutoCents}
+              saldoPonderadoCents={summary.saldoPonderadoCents}
+              expenses={printExpenseRows}
+              payments={printPaymentRows}
+            />
+          </PrintSheet>
+        </>
+      ) : null}
     </div>
   );
 }

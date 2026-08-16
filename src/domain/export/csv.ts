@@ -28,9 +28,16 @@ export function csvWithBom(csv: string): string {
   return `\uFEFF${csv}`;
 }
 
-/** Formata centavos como moeda pt-BR com vírgula decimal (ex.: "1.234,56"). */
+/**
+ * Formata centavos como moeda pt-BR (ex.: "1234,56") SEM separador de milhar.
+ *
+ * Decisão Excel (compatibilidade): valores com agrupamento ("1.234,56") são
+ * interpretados como TEXTO em vários locais/versões — sem agrupamento o Excel
+ * lê o número de verdade (soma/formatos funcionam). Acentos e "R$" seguem
+ * via BOM UTF-8 + delimitador `;` (padrão pt-BR).
+ */
 export function formatCsvDecimal(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (cents / 100).toFixed(2).replace(".", ",");
 }
 
 /** Formata um float com até `maxDecimals` casas, vírgula decimal (ex.: "0,5"). */
