@@ -5,6 +5,8 @@ import {
   dayOfMonth,
   dayOfMonthDistance,
   jaccardTokens,
+  medianOf,
+  modeOf,
   monthWindowFactor,
   normalizeText,
   recencyFactor,
@@ -131,6 +133,161 @@ describe("predictions — motor preditivo de entrada (F21 + hotfix)", () => {
     expect(monthWindowFactor(10, 15)).toBe(1); // a 5 dias
     expect(monthWindowFactor(6, 15)).toBe(0.85); // a 9 dias (faixa ±5–±10)
     expect(monthWindowFactor(1, 15)).toBe(0.4); // fora da janela
+  });
+
+  it("medianOf e modeOf calculam valores típicos e métodos predominantes", () => {
+    // Mediana ignora outlier
+    expect(medianOf([30, 30, 30, 120])).toBe(30);
+    expect(medianOf([20, 40, 60])).toBe(40);
+    expect(medianOf([])).toBe(0);
+
+    // Moda extrai o mais frequente
+    expect(modeOf(["pix", "pix", "credit_card"])).toBe("pix");
+    expect(modeOf([])).toBeNull();
+  });
+
+  it("buildHabitualEntries suprime conta periódica mensal (1x/mês) se já lançada no targetMonth", () => {
+    const historyWithAluguel: PredictionEntry[] = [
+      // Aluguel ocorreu 1x em Junho, 1x em Julho e já foi pago em Agosto (dia 05)
+      {
+        id: "a1",
+        kind: "expense",
+        description: "Aluguel",
+        categoryId: "c-moradia",
+        categoryName: "Moradia",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 2000,
+        date: "2026-06-05",
+      },
+      {
+        id: "a2",
+        kind: "expense",
+        description: "Aluguel",
+        categoryId: "c-moradia",
+        categoryName: "Moradia",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 2000,
+        date: "2026-07-05",
+      },
+      {
+        id: "a3",
+        kind: "expense",
+        description: "Aluguel",
+        categoryId: "c-moradia",
+        categoryName: "Moradia",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 2000,
+        date: "2026-08-05",
+      },
+      // Almoço ocorre frequentemente
+      {
+        id: "alm1",
+        kind: "expense",
+        description: "Almoço",
+        categoryId: "c-alim",
+        categoryName: "Alimentação",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 30,
+        date: "2026-08-10",
+      },
+      {
+        id: "alm2",
+        kind: "expense",
+        description: "Almoço",
+        categoryId: "c-alim",
+        categoryName: "Alimentação",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 30,
+        date: "2026-08-11",
+      },
+    ];
+
+    // Para Agosto (onde o aluguel já foi pago), o Aluguel é suprimido dos atalhos
+    const habitsAugust = buildHabitualEntries(historyWithAluguel, "expense", {
+      targetMonth: "2026-08",
+      referenceDay: 5,
+    });
+    expect(habitsAugust.some((h) => h.description === "Aluguel")).toBe(false);
+    expect(habitsAugust.some((h) => h.description === "Almoço")).toBe(true);
+
+    // Para Setembro (onde o aluguel ainda NÃO foi pago), o Aluguel volta a ser sugerido
+    const habitsSeptember = buildHabitualEntries(historyWithAluguel, "expense", {
+      targetMonth: "2026-09",
+      referenceDay: 5,
+    });
+    expect(habitsSeptember.some((h) => h.description === "Aluguel")).toBe(true);
+  });
+
+  it("buildHabitualEntries consolida hábitos de diferentes pagamentos e adota o método predominante", () => {
+    const restaurantHistory: PredictionEntry[] = [
+      // 3 vezes no cartão Nubank e 1 vez no Pix
+      {
+        id: "r1",
+        kind: "expense",
+        description: "Restaurante Sabor",
+        categoryId: "c-alim",
+        categoryName: "Alimentação",
+        paymentMethod: "credit_card",
+        cardId: "card-nubank",
+        receiveType: null,
+        value: 35,
+        date: "2026-08-01",
+      },
+      {
+        id: "r2",
+        kind: "expense",
+        description: "Restaurante Sabor",
+        categoryId: "c-alim",
+        categoryName: "Alimentação",
+        paymentMethod: "credit_card",
+        cardId: "card-nubank",
+        receiveType: null,
+        value: 35,
+        date: "2026-08-02",
+      },
+      {
+        id: "r3",
+        kind: "expense",
+        description: "Restaurante Sabor",
+        categoryId: "c-alim",
+        categoryName: "Alimentação",
+        paymentMethod: "credit_card",
+        cardId: "card-nubank",
+        receiveType: null,
+        value: 35,
+        date: "2026-08-03",
+      },
+      {
+        id: "r4",
+        kind: "expense",
+        description: "Restaurante Sabor",
+        categoryId: "c-alim",
+        categoryName: "Alimentação",
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 120, // valor atípico
+        date: "2026-08-04",
+      },
+    ];
+
+    const habits = buildHabitualEntries(restaurantHistory, "expense");
+    expect(habits).toHaveLength(1); // consolida em 1 único hábito com frequency = 4
+    expect(habits[0]?.frequency).toBe(4);
+    expect(habits[0]?.paymentMethod).toBe("credit_card");
+    expect(habits[0]?.cardId).toBe("card-nubank");
+    // Valor é a mediana (R$ 35), não o valor atípico de R$ 120
+    expect(habits[0]?.value).toBe(35);
   });
 
   it("buildHabitualEntries limita estritamente a 3 itens (hotfix)", () => {

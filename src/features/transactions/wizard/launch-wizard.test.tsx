@@ -209,7 +209,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         cardId: null,
         receiveType: null,
         value: 1500,
-        date: "2026-08-01",
+        date: "2026-07-01",
       },
       {
         id: "h2",
@@ -221,7 +221,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         cardId: null,
         receiveType: null,
         value: 1500,
-        date: "2026-07-01",
+        date: "2026-06-01",
       },
     ]);
     const user = userEvent.setup();

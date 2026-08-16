@@ -57,11 +57,13 @@ export function LaunchWizard() {
   const today = todayISO();
   const selectedCategory = categoriesQuery.data?.find((category) => category.id === state.categoryId);
   // Etapa 1 — habituais: limite estrito de 3 + ranqueamento temporal (janela
-  // de ±5–±10 dias do mês da transação) × frequência × recência (hotfix).
+  // de ±5–±10 dias do mês da transação) × frequência × recência + supressão
+  // de contas mensais periódicas já cumpridas no mês da transação (targetMonth).
   const habits = buildHabitualEntries(prediction.entries, state.type, {
     limit: 3,
     referenceDay: dayOfMonth(state.date),
     todayISO: today,
+    targetMonth: state.date.slice(0, 7),
   });
   // Etapa 2 — sugestões de descrição pura: clique preenche SÓ a descrição
   // (nunca sobrescreve valor/data/forma) e exclui rótulos que sejam apenas o

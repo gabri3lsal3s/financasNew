@@ -138,6 +138,31 @@ export function monthWindowFactor(day: number, referenceDay: number): number {
   return 0.4;
 }
 
+/** Calcula a mediana de um array de números (valores). */
+export function medianOf(values: readonly number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
+}
+
+/** Calcula a moda (elemento mais frequente) de um array. */
+export function modeOf<T extends string | number>(items: readonly T[]): T | null {
+  if (items.length === 0) return null;
+  const counts = new Map<T, number>();
+  let maxCount = 0;
+  let bestItem: T = items[0]!;
+  for (const item of items) {
+    const count = (counts.get(item) ?? 0) + 1;
+    counts.set(item, count);
+    if (count > maxCount) {
+      maxCount = count;
+      bestItem = item;
+    }
+  }
+  return bestItem;
+}
+
 // ---------------------------------------------------------------------------
 // Lançamentos habituais (favoritos/templates) — Etapa 1 do wizard
 // ---------------------------------------------------------------------------
@@ -149,61 +174,130 @@ export interface HabitualEntryOptions {
   referenceDay?: number;
   /** Data de referência p/ recência (opcional — sem ela o ranque é por frequência). */
   todayISO?: string;
+  /** Mês da transação (YYYY-MM) — suprime despesas periódicas mensais já lançadas no mês. */
+  targetMonth?: string;
 }
 
 /**
  * Deriva os lançamentos habituais do histórico: agrupa por descrição
- * normalizada + categoria e ranqueia por relevância ponderada (hotfix):
+ * normalizada + categoria e ranqueia por relevância ponderada:
  *
  *   score = frequência × fatorTemporal(dia do mês ±5–±10) × recência
  *
- * Despesas mais recentes com maior volume de repetição dentro da mesma faixa
- * de dias do mês lideram o ranking. Sem `referenceDay`/`todayISO`, o ranking
- * permanece por frequência pura (desempate: mais recente). Retorna top N
- * (padrão 3) — atalhos de preenchimento em 1 toque.
+ * Consolida transações com diferentes formas de pagamento selecionando o
+ * método predominante (moda). Sugere o valor típico pela mediana histórica.
+ * Suprime despesas periódicas mensais (cadência ≤ 1.25×/mês) que já foram
+ * lançadas no mês alvo (`targetMonth`). Retorna top N (padrão 3).
  */
 export function buildHabitualEntries(
   history: readonly PredictionEntry[],
   kind: "expense" | "income",
   options: HabitualEntryOptions = {},
 ): HabitualEntry[] {
-  const { limit = 3, referenceDay, todayISO } = options;
+  const { limit = 3, referenceDay, todayISO, targetMonth } = options;
   const filtered = history.filter((entry) => entry.kind === kind && entry.description.trim() !== "");
-  const groups = new Map<string, { entry: PredictionEntry; count: number }>();
+
+  // Agrupamento primário: descrição normalizada + categoria.
+  const groups = new Map<string, { entries: PredictionEntry[]; latest: PredictionEntry }>();
   for (const entry of filtered) {
-    const key = `${normalizeText(entry.description)}|${entry.categoryId}|${entry.paymentMethod ?? ""}|${entry.cardId ?? ""}`;
+    const key = `${normalizeText(entry.description)}|${entry.categoryId}`;
     const group = groups.get(key);
     if (!group) {
-      groups.set(key, { entry, count: 1 });
+      groups.set(key, { entries: [entry], latest: entry });
       continue;
     }
-    group.count += 1;
-    // Mantém o mais recente para o valor (data mais nova vence o grupo).
-    if (entry.date > group.entry.date) group.entry = entry;
+    group.entries.push(entry);
+    if (entry.date > group.latest.date) {
+      group.latest = entry;
+    }
   }
 
-  return [...groups.values()]
-    .map((group) => {
-      const temporal = referenceDay != null ? monthWindowFactor(dayOfMonth(group.entry.date), referenceDay) : 1;
-      const recency = todayISO ? recencyFactor(group.entry.date, todayISO) : 1;
-      return { group, score: group.count * temporal * recency };
-    })
+  const eligibleGroups: Array<{
+    description: string;
+    categoryId: string;
+    categoryName: string;
+    paymentMethod: string | null;
+    cardId: string | null;
+    receiveType: string | null;
+    value: number;
+    frequency: number;
+    score: number;
+    latestDate: string;
+  }> = [];
+
+  for (const group of groups.values()) {
+    const totalCount = group.entries.length;
+    const distinctMonths = new Set(group.entries.map((e) => e.date.slice(0, 7)));
+    const monthlyCadence = distinctMonths.size > 0 ? totalCount / distinctMonths.size : 1;
+
+    // Supressão de contas mensais únicas já cumpridas no mês alvo:
+    // Se a despesa ocorre ~1 vez por mês no histórico e já foi registrada neste mês,
+    // ela não precisa ocupar um dos 3 slots de atalho.
+    if (targetMonth && monthlyCadence <= 1.25) {
+      const alreadyLoggedThisMonth = group.entries.some((e) => e.date.startsWith(targetMonth));
+      if (alreadyLoggedThisMonth) {
+        continue;
+      }
+    }
+
+    // Valor representativo pela mediana dos lançamentos do grupo.
+    const values = group.entries.map((e) => e.value);
+    const typicalValue = medianOf(values);
+
+    // Forma de pagamento predominante (moda do histórico do hábito).
+    const paymentMethods = group.entries
+      .map((e) => e.paymentMethod)
+      .filter((m): m is string => m != null && m !== "");
+    const bestPaymentMethod = modeOf(paymentMethods) ?? group.latest.paymentMethod;
+
+    // Cartão predominante.
+    const cardIds = group.entries
+      .filter((e) => e.paymentMethod === "credit_card" && e.cardId != null)
+      .map((e) => e.cardId as string);
+    const bestCardId = modeOf(cardIds) ?? group.latest.cardId;
+
+    // Tipo de recebimento predominante.
+    const receiveTypes = group.entries
+      .map((e) => e.receiveType)
+      .filter((r): r is string => r != null && r !== "");
+    const bestReceiveType = modeOf(receiveTypes) ?? group.latest.receiveType;
+
+    // Score ponderado.
+    const temporal = referenceDay != null ? monthWindowFactor(dayOfMonth(group.latest.date), referenceDay) : 1;
+    const recency = todayISO ? recencyFactor(group.latest.date, todayISO) : 1;
+    const score = totalCount * temporal * recency;
+
+    eligibleGroups.push({
+      description: group.latest.description,
+      categoryId: group.latest.categoryId,
+      categoryName: group.latest.categoryName,
+      paymentMethod: bestPaymentMethod,
+      cardId: bestCardId,
+      receiveType: bestReceiveType,
+      value: typicalValue > 0 ? typicalValue : group.latest.value,
+      frequency: totalCount,
+      score,
+      latestDate: group.latest.date,
+    });
+  }
+
+  return eligibleGroups
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      if (b.group.count !== a.group.count) return b.group.count - a.group.count;
-      return a.group.entry.date < b.group.entry.date ? 1 : -1; // mais recente primeiro
+      if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+      return a.latestDate < b.latestDate ? 1 : -1;
     })
     .slice(0, limit)
-    .map(({ group }) => ({
+    .map((item) => ({
       kind,
-      description: group.entry.description,
-      categoryId: group.entry.categoryId,
-      categoryName: group.entry.categoryName,
-      paymentMethod: group.entry.paymentMethod,
-      cardId: group.entry.cardId,
-      receiveType: group.entry.receiveType,
-      value: group.entry.value,
-      frequency: group.count,
+      description: item.description,
+      categoryId: item.categoryId,
+      categoryName: item.categoryName,
+      paymentMethod: item.paymentMethod,
+      cardId: item.cardId,
+      receiveType: item.receiveType,
+      value: item.value,
+      frequency: item.frequency,
     }));
 }
 
