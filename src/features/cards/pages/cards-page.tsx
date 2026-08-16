@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Plus, Trash2, Undo2, WalletCards } from "lucide-react";
+import { Download, Plus, Trash2, Undo2, WalletCards } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyText, Skeleton } from "@/components/ui";
 import {
   CreditCardWallet,
@@ -15,6 +15,10 @@ import {
   invoiceStatus,
 } from "@/domain/cards";
 import { currentMonth, monthLabel } from "@/lib/date";
+import { serializeCardInvoiceCsv } from "@/domain/export";
+import type { ExportCardInvoiceRow } from "@/domain/export";
+import { numberToCents } from "@/domain/money";
+import { downloadCsv } from "@/services/export-actions";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
@@ -92,6 +96,30 @@ export function CardsPage() {
   const invStatus = selectedCard
     ? invoiceStatus(effectiveMonth, selectedCard.due_day, summary?.saldoCents ?? 0)
     : "closed";
+
+  /**
+   * Exporta a fatura do cartão em CSV — APENAS os gastos lançados no cartão na
+   * competência selecionada (sem cartão/forma por coluna: redundantes aqui).
+   * Permite comparar com a fatura do banco em planilha.
+   */
+  const handleExportInvoice = () => {
+    if (!selectedCard || competenceExpenses.length === 0) return;
+    const rows: ExportCardInvoiceRow[] = competenceExpenses.map((expense) => ({
+      date: expense.date,
+      description: expense.description ?? "",
+      categoryName: categoryById.get(expense.category_id)?.name ?? "Sem categoria",
+      valueCents: numberToCents(expense.value),
+      reportValueCents: numberToCents(expense.value * expense.report_weight),
+      installments: expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : "—",
+    }));
+    const slug = selectedCard.name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    downloadCsv(`fatura_${slug}_${effectiveMonth}.csv`, serializeCardInvoiceCsv(rows));
+  };
 
   const selectCard = (id: string) => {
     setActionError(null);
@@ -338,13 +366,26 @@ export function CardsPage() {
               SEÇÃO 3: EXTRATO DISCRIMINADO (DESPESAS E PAGAMENTOS)
              ========================================================================= */}
           <section aria-label={`Despesas da fatura de ${monthLabel(effectiveMonth)}`} className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Despesas · {monthLabel(effectiveMonth)}
               </h2>
-              <span className="text-xs text-muted-foreground font-mono">
-                {competenceExpenses.length} {competenceExpenses.length === 1 ? "item" : "itens"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-mono">
+                  {competenceExpenses.length} {competenceExpenses.length === 1 ? "item" : "itens"}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportInvoice}
+                  disabled={competenceExpenses.length === 0 || !selectedCard}
+                  className="gap-1.5"
+                >
+                  <Download className="size-3.5" aria-hidden="true" />
+                  Exportar fatura
+                </Button>
+              </div>
             </div>
 
             {competenceExpenses.length === 0 ? (

@@ -5,6 +5,7 @@ import {
   formatCsvDate,
   formatCsvDecimal,
   formatCsvFloat,
+  serializeCardInvoiceCsv,
   serializeExpensesCsv,
   serializeIncomesCsv,
   serializeInvoicesCsv,
@@ -79,6 +80,35 @@ describe("domain/export — CSV", () => {
       },
     ]);
     expect(csv).toContain("05/08/2026;Salário;Trabalho;5.000,00;5.000,00;Pix");
+  });
+
+  it("serializa a fatura do cartão com apenas os gastos da competência", () => {
+    const csv = serializeCardInvoiceCsv([
+      {
+        date: "2026-08-03",
+        description: "Mercado; semana",
+        categoryName: "Alimentação",
+        valueCents: 18050,
+        reportValueCents: 18050,
+        installments: "—",
+      },
+      {
+        date: "2026-08-15",
+        description: "Celular",
+        categoryName: "Eletrônicos",
+        valueCents: 100000,
+        reportValueCents: 80000,
+        installments: "1/10",
+      },
+    ]);
+    expect(csv.startsWith("\uFEFFData;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Parcelas\r\n")).toBe(true);
+    expect(csv).toContain("03/08/2026;\"Mercado; semana\";Alimentação;180,50;180,50;—\r\n");
+    expect(csv).toContain("15/08/2026;Celular;Eletrônicos;1.000,00;800,00;1/10\r\n");
+  });
+
+  it("serializa a fatura vazia apenas com o cabeçalho (BOM incluído)", () => {
+    const csv = serializeCardInvoiceCsv([]);
+    expect(csv).toBe("\uFEFFData;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Parcelas\r\n");
   });
 
   it("serializa faturas com pagamento e estorno", () => {

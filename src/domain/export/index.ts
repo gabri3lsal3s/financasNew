@@ -9,12 +9,14 @@ export {
   serializeExpensesCsv,
   serializeIncomesCsv,
   serializeInvoicesCsv,
+  serializeCardInvoiceCsv,
   serializePositionsCsv,
 } from "./csv";
 export type {
   ExportExpenseRow,
   ExportIncomeRow,
   ExportInvoiceRow,
+  ExportCardInvoiceRow,
   ExportPositionRow,
 } from "./csv";
 export {

@@ -82,6 +82,17 @@ export interface ExportInvoiceRow {
   isRefund: boolean;
 }
 
+export interface ExportCardInvoiceRow {
+  date: string;
+  description: string;
+  categoryName: string;
+  valueCents: number;
+  /** Valor com peso de relatório aplicado (report_weight). */
+  reportValueCents: number;
+  /** Ex.: "2/3" ou "—" (à vista). */
+  installments: string;
+}
+
 export interface ExportPositionRow {
   ticker: string;
   assetClass: string | null;
@@ -157,6 +168,32 @@ export function serializeInvoicesCsv(rows: readonly ExportInvoiceRow[]): string 
     r.isRefund ? "Estorno" : "Pagamento",
   ]);
   return csvWithBom(toCsv(INVOICE_HEADERS, data));
+}
+
+const CARD_INVOICE_HEADERS = [
+  "Data",
+  "Descrição",
+  "Categoria",
+  "Valor (R$)",
+  "Valor p/ relatório (R$)",
+  "Parcelas",
+];
+
+/**
+ * Fatura do cartão em CSV — apenas os GASTOS lançados no cartão da competência
+ * (compara com a fatura do banco). Sem cartão/forma de pagamento por coluna:
+ * são redundantes aqui (todos os itens são do mesmo cartão, no crédito).
+ */
+export function serializeCardInvoiceCsv(rows: readonly ExportCardInvoiceRow[]): string {
+  const data = rows.map((r) => [
+    formatCsvDate(r.date),
+    r.description,
+    r.categoryName,
+    formatCsvDecimal(r.valueCents),
+    formatCsvDecimal(r.reportValueCents),
+    r.installments,
+  ]);
+  return csvWithBom(toCsv(CARD_INVOICE_HEADERS, data));
 }
 
 const POSITION_HEADERS = [
