@@ -12,7 +12,7 @@
  */
 
 import { confidenceScore, varianceOf, type RecurrenceKind } from "./confidence";
-import { classifySubscription } from "./subscriptions";
+import { classifySubscription, type CutTier } from "./subscriptions";
 import { ESSENTIAL_CATEGORY_ICONS, normalizeText } from "./shared";
 
 export interface ExpenseLike {
@@ -27,6 +27,12 @@ export interface ExpenseLike {
   installmentGroupId?: string | null;
 }
 
+export interface PriceAdjustment {
+  oldCents: number;
+  newCents: number;
+  percentIncrease: number;
+}
+
 export interface RecurrenceOccurrence {
   /** Chave estável para aprendizado/feedback (nome normalizado). */
   key: string;
@@ -38,22 +44,33 @@ export interface RecurrenceOccurrence {
   averageCents: number;
   confidence: number;
   categoryId?: string;
+  /** Tier de corte quando aplicável. */
+  tier?: CutTier;
+  /** Economia mensal estimada se cortada (centavos). */
+  savingsIfCutCents?: number;
+  /** Reajuste de preço detectado (aumento >= 10% vs meses anteriores). */
+  priceAdjustment?: PriceAdjustment | null;
+  /** Quantidade de cobranças no mês mais recente se houver duplicidade (>= 2). */
+  duplicateChargesThisMonth?: number;
 }
 
 const RECURRING_TOLERANCE = 0.5; // ±50% (recurring)
 const SIMILAR_TOLERANCE = 0.3; // ±30% (similar)
 
+/** Calcula a mediana de um conjunto de valores. */
+export function medianOf(values: readonly number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 === 0 ? Math.round((sorted[mid - 1]! + sorted[mid]!) / 2) : sorted[mid]!;
+}
+
 /**
  * Tolerância relativa à MEDIANA (robusta a outliers e à ordem dos meses).
- * A antiga checagem relativa ao PRIMEIRO valor descartava faturas/boletos
- * variáveis (ex.: água [80, 130, 95] — ±62% vs. primeiro, mas ±37% vs.
- * mediana 95) e perdia recorrências reais.
  */
 export function valuesWithinToleranceOfMedian(values: readonly number[], tolerance: number): boolean {
   if (values.length < 2) return false;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  const median = sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
+  const median = medianOf(values);
   if (median <= 0) return false;
   return values.every((value) => Math.abs(value - median) / median <= tolerance);
 }
@@ -96,25 +113,58 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
     const first = group[0] ?? group[1];
     if (!first) continue;
 
-    const values = group.map((e) => e.valueCents);
-    const average = Math.round(values.reduce((acc, v) => acc + v, 0) / values.length);
-    const months = [...new Set(group.map((e) => e.month))];
+    // Agregação mensal real: agrupa despesas por mês.
+    const monthMap = new Map<string, ExpenseLike[]>();
+    for (const exp of group) {
+      const list = monthMap.get(exp.month) ?? [];
+      list.push(exp);
+      monthMap.set(exp.month, list);
+    }
+
+    const months = [...monthMap.keys()].sort();
+    if (months.length < 2) continue;
+
+    const monthlyTotals = months.map((m) => {
+      const monthExpenses = monthMap.get(m) ?? [];
+      return monthExpenses.reduce((acc, e) => acc + e.valueCents, 0);
+    });
+
+    const averageMonthlyCents = Math.round(monthlyTotals.reduce((acc, v) => acc + v, 0) / monthlyTotals.length);
     const categoryIcons = [...new Set(group.map((e) => e.categoryIcon))];
+
+    // Diagnóstico de cobranças duplicadas no mês mais recente.
+    const latestMonth = months[months.length - 1];
+    const latestExpenses = latestMonth ? (monthMap.get(latestMonth) ?? []) : [];
+    const duplicateChargesThisMonth = latestExpenses.length > 1 ? latestExpenses.length : undefined;
+
+    // Diagnóstico de reajuste de preço (aumento >= 10% vs mediana histórica anterior).
+    let priceAdjustment: PriceAdjustment | null = null;
+    if (monthlyTotals.length >= 2) {
+      const previousTotals = monthlyTotals.slice(0, -1);
+      const prevMedian = medianOf(previousTotals);
+      const latestTotal = monthlyTotals[monthlyTotals.length - 1] ?? 0;
+      if (prevMedian > 0 && latestTotal > prevMedian) {
+        const increaseRatio = (latestTotal - prevMedian) / prevMedian;
+        if (increaseRatio >= 0.1) {
+          priceAdjustment = {
+            oldCents: prevMedian,
+            newCents: latestTotal,
+            percentIncrease: Math.round(increaseRatio * 100),
+          };
+        }
+      }
+    }
 
     // subscription: usa a árvore de decisão de assinaturas (nome conhecido
     // no catálogo OU categoria de assinatura são sinais fortes).
     const subscription = classifySubscription({
       name: first.description ?? "",
       categoryIcon: categoryIcons[0],
-      monthlyValuesCents: values,
+      monthlyValuesCents: monthlyTotals,
     });
 
-    // O NOME conhecido (Netflix, Spotify…) é sinal forte: mesmo com reajuste
-    // de preço/plano (variância > ±5% ou até > ±50%) a assinatura deve
-    // continuar aparecendo — a confiança é que cai (penalidade de variância
-    // no `confidenceScore`). Antes, variação > ±50% descartava a ocorrência.
     if (subscription !== null && months.length >= 2) {
-      const variance = varianceOf(values);
+      const variance = varianceOf(monthlyTotals);
       const confidence = confidenceScore({
         base: subscription.confidence,
         monthsHistory: months.length,
@@ -126,28 +176,33 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
         name: first.description ?? key,
         level: "subscription",
         months,
-        averageCents: average,
+        averageCents: averageMonthlyCents,
         confidence,
         categoryId: first.categoryId,
+        tier: subscription.tier,
+        savingsIfCutCents: subscription.savingsIfCutCents,
+        priceAdjustment,
+        duplicateChargesThisMonth,
       });
       seen.add(key);
       continue;
     }
 
-    // recurring: mesma descrição, valor ±50% relativo à MEDIANA (robusto a
-    // outliers — faturas variáveis como água/luz não somem do extrato).
-    const stable = valuesWithinToleranceOfMedian(values, RECURRING_TOLERANCE);
+    // recurring: mesma descrição, valor ±50% relativo à MEDIANA.
+    const stable = valuesWithinToleranceOfMedian(monthlyTotals, RECURRING_TOLERANCE);
     if (stable && months.length >= 2) {
-      const variance = varianceOf(values);
+      const variance = varianceOf(monthlyTotals);
       const confidence = confidenceScore({ base: 0.7, monthsHistory: months.length, kind: "recurring", variance });
       occurrences.push({
         key: `recurring:${key}`,
         name: first.description ?? key,
         level: "recurring",
         months,
-        averageCents: average,
+        averageCents: averageMonthlyCents,
         confidence,
         categoryId: first.categoryId,
+        priceAdjustment,
+        duplicateChargesThisMonth,
       });
       seen.add(key);
     }
@@ -189,3 +244,4 @@ export function detectRecurrences(expenses: readonly ExpenseLike[]): RecurrenceO
 
   return occurrences.sort((a, b) => b.confidence - a.confidence);
 }
+

@@ -43,6 +43,46 @@ export function normalizeServiceKey(name: string): string {
 }
 
 /**
+ * Divide o texto normalizado em tokens alfanuméricos (palavras).
+ */
+export function tokenizeText(name: string): string[] {
+  const normalized = normalizeText(name);
+  return normalized.split(/[^a-z0-9]+/g).filter(Boolean);
+}
+
+/**
+ * Verifica se o nome da despesa corresponde com segurança a uma chave do catálogo.
+ * Para chaves curtas (<= 3 caracteres, ex.: 'oi', 'tim', 'max', 'uol', 'sky'),
+ * exige token exato isolado para evitar falsos positivos com 'maxxi', 'biscoito', 'estimativa'.
+ * Para chaves mais longas (ex.: 'netflix', 'smartfit', 'disneyplus'), permite token ou junção de tokens.
+ */
+export function matchesServiceKey(name: string, serviceKey: string): boolean {
+  const cleanKey = normalizeServiceKey(serviceKey);
+  if (!cleanKey) return false;
+
+  const tokens = tokenizeText(name);
+  if (tokens.length === 0) return false;
+
+  // Chaves curtas (<= 3 caracteres) exigem casamento exato de token isolado.
+  if (cleanKey.length <= 3) {
+    return tokens.includes(cleanKey);
+  }
+
+  // Chave igual a algum token (ex.: 'netflix', 'spotify').
+  if (tokens.includes(cleanKey)) {
+    return true;
+  }
+
+  // Nome compacto contém a chave (ex.: 'Smart Fit' -> 'smartfit' contém 'smartfit', 'Disney+' -> 'disneyplus').
+  const compactName = normalizeServiceKey(name);
+  if (compactName.includes(cleanKey)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Todos os valores dentro da tolerância relativa ao primeiro.
  * Unifica `hasStableValue`/`hasValuesWithin` — uma única verificação.
  */
@@ -52,3 +92,4 @@ export function valuesWithinTolerance(values: readonly number[], tolerance: numb
   if (base <= 0) return false;
   return values.every((value) => Math.abs(value - base) / base <= tolerance);
 }
+

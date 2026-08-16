@@ -64,6 +64,22 @@ describe("assinaturas (§3.7.2 — 3 sinais + tiers)", () => {
 
   it("sem nenhum sinal → null (não é assinatura)", () => {
     expect(classifySubscription({ name: "Aluguel", categoryIcon: "moradia", monthlyValuesCents: [200000] })).toBeNull();
+    // Prevenção de falsos positivos com chaves curtas:
+    expect(classifySubscription({ name: "Maxxi Atacado", categoryIcon: null, monthlyValuesCents: [15000, 15000] })).toBeNull();
+    expect(classifySubscription({ name: "Biscoito Bauducco", categoryIcon: null, monthlyValuesCents: [1500, 1500] })).toBeNull();
+    expect(classifySubscription({ name: "Estimativa", categoryIcon: null, monthlyValuesCents: [2000, 2000] })).toBeNull();
+  });
+
+  it("reconhece serviços nacionais expandidos (smartfit, semparar, unimed)", () => {
+    expect(classifySubscription({ name: "Smart Fit Mensalidade", categoryIcon: null, monthlyValuesCents: [11990, 11990] })).toMatchObject({
+      tier: "discretionary",
+    });
+    expect(classifySubscription({ name: "Sem Parar", categoryIcon: null, monthlyValuesCents: [3500, 3500] })).toMatchObject({
+      tier: "discretionary",
+    });
+    expect(classifySubscription({ name: "Unimed Plano", categoryIcon: null, monthlyValuesCents: [45000, 45000] })).toMatchObject({
+      tier: "essential",
+    });
   });
 
   it("serviços essenciais nunca são cortáveis", () => {
@@ -125,6 +141,36 @@ describe("recorrências (§3.7.3 — 3 níveis)", () => {
     expect(sub).toBeDefined();
     expect(sub?.averageCents).toBe(3990);
     expect(sub?.months).toEqual(["2026-06", "2026-07", "2026-08"]);
+    expect(sub?.tier).toBe("can_cut");
+  });
+
+  it("agrega despesas múltiplas no mesmo mês corretamente", () => {
+    // 2 compras de R$ 20 em Junho (R$ 40) e 3 compras de R$ 20 em Julho (R$ 60 no mês).
+    // A média mensal real deve ser (40 + 60) / 2 = R$ 50 (5000 centavos).
+    const occurrences = detectRecurrences([
+      expense({ id: "u1", description: "Uber Viagem", month: "2026-06", valueCents: 2000 }),
+      expense({ id: "u2", description: "Uber Viagem", month: "2026-06", valueCents: 2000 }),
+      expense({ id: "u3", description: "Uber Viagem", month: "2026-07", valueCents: 2000 }),
+      expense({ id: "u4", description: "Uber Viagem", month: "2026-07", valueCents: 2000 }),
+      expense({ id: "u5", description: "Uber Viagem", month: "2026-07", valueCents: 2000 }),
+    ]);
+    const rec = occurrences.find((o) => o.name === "Uber Viagem");
+    expect(rec).toBeDefined();
+    expect(rec?.averageCents).toBe(5000);
+    expect(rec?.duplicateChargesThisMonth).toBe(3);
+  });
+
+  it("detecta reajuste de preço (aumento >= 10% vs histórico)", () => {
+    const occurrences = detectRecurrences([
+      expense({ id: "r1", description: "Spotify", month: "2026-06", valueCents: 1990 }),
+      expense({ id: "r2", description: "Spotify", month: "2026-07", valueCents: 1990 }),
+      expense({ id: "r3", description: "Spotify", month: "2026-08", valueCents: 2790 }), // +40%
+    ]);
+    const sub = occurrences.find((o) => o.name === "Spotify");
+    expect(sub?.priceAdjustment).toBeDefined();
+    expect(sub?.priceAdjustment?.percentIncrease).toBe(40);
+    expect(sub?.priceAdjustment?.oldCents).toBe(1990);
+    expect(sub?.priceAdjustment?.newCents).toBe(2790);
   });
 
   it("detecta recurring (mesma descrição, valor ±50%)", () => {
@@ -138,9 +184,6 @@ describe("recorrências (§3.7.3 — 3 níveis)", () => {
   });
 
   it("mantém serviço conhecido com REAJUSTE grande (variância > ±50%) como assinatura", () => {
-    // Netflix 21,90 → 55,90 (plano/reajuste): antes caía fora da tolerância
-    // e sumia do extrato; agora o NOME é sinal forte — a assinatura continua,
-    // com a confiança reduzida pela penalidade de variância.
     const occurrences = detectRecurrences([
       expense({ id: "c1", description: "Netflix", month: "2026-06", valueCents: 2190 }),
       expense({ id: "c2", description: "Netflix", month: "2026-07", valueCents: 5590 }),
@@ -149,13 +192,11 @@ describe("recorrências (§3.7.3 — 3 níveis)", () => {
     expect(sub).toBeDefined();
     expect(sub?.name).toBe("Netflix");
     expect(sub?.averageCents).toBe((2190 + 5590) / 2);
-    // confiança penalizada pela variância (não fica em 0.98)
     expect(sub!.confidence).toBeLessThan(0.98);
     expect(sub!.confidence).toBeGreaterThan(0);
   });
 
   it("detecta recurring com fatura VARIÁVEL (tolerância relativa à mediana)", () => {
-    // Água [80, 130, 95]: vs. primeiro (±62%) passaria, vs. mediana 95 (±37%) passa.
     const occurrences = detectRecurrences([
       expense({ id: "d1", description: "Água", month: "2026-06", valueCents: 8000 }),
       expense({ id: "d2", description: "Água", month: "2026-07", valueCents: 13000 }),
@@ -206,6 +247,7 @@ describe("recorrências (§3.7.3 — 3 níveis)", () => {
     expect(sim?.averageCents).toBe(4500);
   });
 });
+
 
 describe("aprendizado (§3.7.4 — ignorar/confirmar/restaurar)", () => {
   const occurrences = [

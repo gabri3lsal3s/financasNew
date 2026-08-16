@@ -4,6 +4,11 @@ import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { formatCentsAsBRL } from "@/services/masks/money";
 
+export interface InsightListItemBadge {
+  label: string;
+  tone?: "default" | "positive" | "negative" | "warning" | "critical" | "muted";
+}
+
 export interface InsightListItemData {
   /** Chave estável da ocorrência (feedback). */
   key: string;
@@ -15,6 +20,8 @@ export interface InsightListItemData {
   tag?: string;
   /** Cor do badge extra. */
   tagTone?: "default" | "positive" | "negative" | "warning" | "critical" | "muted";
+  /** Lista de badges (ex.: tier, reajuste, duplicidade). */
+  badges?: readonly InsightListItemBadge[];
   /** Valor monetário à direita (ex.: economia mensal). */
   amountCents?: number;
   icon?: ReactNode;
@@ -72,6 +79,9 @@ export function InsightList({
               <div className="flex min-w-0 flex-col gap-0.5">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <h3 className="text-sm font-medium text-foreground">{item.title}</h3>
+                  {item.badges?.map((b) => (
+                    <Badge key={b.label} variant={b.tone ?? "default"}>{b.label}</Badge>
+                  ))}
                   {item.tag ? <Badge variant={item.tagTone ?? "default"}>{item.tag}</Badge> : null}
                   {confirmed ? <Badge variant="positive">Confirmada</Badge> : null}
                   {ignored ? <Badge variant="muted">Ignorada</Badge> : null}

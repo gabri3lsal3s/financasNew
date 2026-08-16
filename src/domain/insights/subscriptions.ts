@@ -32,8 +32,11 @@ export interface SubscriptionClassification {
 /** Tolerância do sinal de valor exato (default ±5%). */
 const VALUE_TOLERANCE = 0.05;
 
+import { ESSENTIAL_CATEGORY_ICONS, matchesServiceKey, valuesWithinTolerance } from "./shared";
+
 /** Serviços de assinatura conhecidos (nome normalizado → tier de corte). */
 export const KNOWN_SERVICES: Record<string, CutTier> = {
+  // Streaming e Entretenimento (can_cut)
   netflix: "can_cut",
   spotify: "can_cut",
   deezer: "can_cut",
@@ -45,11 +48,22 @@ export const KNOWN_SERVICES: Record<string, CutTier> = {
   crunchyroll: "can_cut",
   amazonprime: "can_cut",
   primevideo: "can_cut",
-  amazon: "discretionary",
   hbo: "can_cut",
   max: "can_cut",
   paramount: "can_cut",
   discovery: "can_cut",
+  twitch: "can_cut",
+  kindle: "can_cut",
+  audible: "can_cut",
+  duolingo: "can_cut",
+  canva: "can_cut",
+  directvgo: "can_cut",
+  mubi: "can_cut",
+  premiere: "can_cut",
+  telecine: "can_cut",
+
+  // Produtividade, IA, Cloud e Gamificação (discretionary)
+  amazon: "discretionary",
   apple: "discretionary",
   appletv: "discretionary",
   icloud: "discretionary",
@@ -57,30 +71,53 @@ export const KNOWN_SERVICES: Record<string, CutTier> = {
   googleone: "discretionary",
   youtube: "discretionary",
   youtubeplus: "discretionary",
-  twitch: "can_cut",
-  kindle: "can_cut",
-  audible: "can_cut",
-  duolingo: "can_cut",
+  youtubepremium: "discretionary",
   academia: "discretionary",
+  smartfit: "discretionary",
+  bluefit: "discretionary",
+  totalpass: "discretionary",
+  gympass: "discretionary",
+  wellhub: "discretionary",
+  skyfit: "discretionary",
+  semparar: "discretionary",
+  veloe: "discretionary",
+  conectcar: "discretionary",
+  tagitau: "discretionary",
+  movemais: "discretionary",
+  zulplus: "discretionary",
+  uol: "discretionary",
+  folha: "discretionary",
+  estadao: "discretionary",
+  globo: "discretionary",
   udemy: "discretionary",
   coursera: "discretionary",
   alura: "discretionary",
+  rocketseat: "discretionary",
   rockseat: "discretionary",
   linkedin: "discretionary",
   notion: "discretionary",
   figma: "discretionary",
   adobe: "discretionary",
-  canva: "can_cut",
   github: "discretionary",
   chatgpt: "discretionary",
+  openai: "discretionary",
+  claude: "discretionary",
+  midjourney: "discretionary",
+  copilot: "discretionary",
   xbox: "discretionary",
   playstation: "discretionary",
+  psplus: "discretionary",
   nintendo: "discretionary",
   steam: "discretionary",
   dropbox: "discretionary",
   nordvpn: "discretionary",
   surfshark: "discretionary",
+  proton: "discretionary",
   uberone: "discretionary",
+  ifoodpass: "discretionary",
+  clubeifood: "discretionary",
+
+  // Serviços Essenciais (essential)
   microsoft365: "essential",
   office365: "essential",
   internet: "essential",
@@ -90,18 +127,27 @@ export const KNOWN_SERVICES: Record<string, CutTier> = {
   claro: "essential",
   tim: "essential",
   oi: "essential",
+  brisanet: "essential",
+  alares: "essential",
+  desktopinternet: "essential",
+  unifique: "essential",
+  algar: "essential",
+  copeltelecom: "essential",
+  unimed: "essential",
+  amil: "essential",
+  sulamerica: "essential",
+  hapvida: "essential",
+  notredame: "essential",
+  bradescosaude: "essential",
 };
 
 /** Categorias que indicam assinatura. */
 const SUBSCRIPTION_CATEGORIES = new Set(["assinaturas", "streaming", "musica", "software"]);
 
-import { ESSENTIAL_CATEGORY_ICONS, normalizeServiceKey, valuesWithinTolerance } from "./shared";
-
-/** Sinal 1 — nome conhecido no catálogo de serviços. */
+/** Sinal 1 — nome conhecido no catálogo de serviços (com correspondência segura por token). */
 export function isKnownService(name: string): boolean {
-  const normalized = normalizeServiceKey(name);
   for (const key of Object.keys(KNOWN_SERVICES)) {
-    if (normalized.includes(key)) return true;
+    if (matchesServiceKey(name, key)) return true;
   }
   return false;
 }
@@ -112,16 +158,14 @@ export function isSubscriptionCategory(categoryIcon: string | null | undefined):
 }
 
 /** Sinal 3 — valores estáveis entre meses (tolerância ±5%). */
-/** Sinal 3 — valores estáveis entre meses (delega para a fonte única). */
 export function hasStableValue(monthlyValuesCents: readonly number[], tolerance = VALUE_TOLERANCE): boolean {
   return valuesWithinTolerance(monthlyValuesCents, tolerance);
 }
 
 /** Tier a partir do catálogo (com fallback por categoria). */
 export function tierOf(name: string, categoryIcon: string | null | undefined): CutTier {
-  const normalized = normalizeServiceKey(name);
   for (const key of Object.keys(KNOWN_SERVICES)) {
-    if (normalized.includes(key)) return KNOWN_SERVICES[key] ?? "discretionary";
+    if (matchesServiceKey(name, key)) return KNOWN_SERVICES[key] ?? "discretionary";
   }
   if (categoryIcon && ESSENTIAL_CATEGORY_ICONS.has(categoryIcon)) return "essential";
   return "discretionary";
@@ -136,9 +180,12 @@ export function classifySubscription(candidate: SubscriptionCandidate): Subscrip
   const subscriptionCategory = isSubscriptionCategory(candidate.categoryIcon);
   const stableValue = hasStableValue(candidate.monthlyValuesCents);
   const signs = { knownName, subscriptionCategory, stableValue };
-  const count = Number(knownName) + Number(subscriptionCategory) + Number(stableValue);
 
-  if (count === 0) return null;
+  // Para ser classificada como assinatura, é obrigatório ter nome conhecido ou categoria de assinatura.
+  // Valor estável sozinho indica recorrência geral (recurring), mas não qualifica como assinatura.
+  if (!knownName && !subscriptionCategory) return null;
+
+  const count = Number(knownName) + Number(subscriptionCategory) + Number(stableValue);
 
   // Árvore: 3 sinais → 0.98 · 2 sinais → 0.80 · 1 sinal → 0.60 (mín. 0.40).
   const confidence = count === 3 ? 0.98 : count === 2 ? 0.8 : 0.6;
@@ -154,3 +201,4 @@ export function classifySubscription(candidate: SubscriptionCandidate): Subscrip
     signs,
   };
 }
+
