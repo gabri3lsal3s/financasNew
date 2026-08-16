@@ -11,8 +11,8 @@ import { getUserPreferences, updateSectorCaps, type SectorCaps } from "@/data/re
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
 export const allocationTargetsKey = ["allocation_targets"] as const;
-export const groupTargetsKey = (groupType: "class" | "sector") => ["group_targets", groupType] as const;
-export const sectorCapsKey = ["sector_caps"] as const;
+const groupTargetsKey = (groupType: "class" | "sector") => ["group_targets", groupType] as const;
+const sectorCapsKey = ["sector_caps"] as const;
 
 /** Metas por ativo (soma ≤ 100% — validada na UI e no banco). */
 export function useAllocationTargets() {

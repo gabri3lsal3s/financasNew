@@ -18,22 +18,21 @@ export type SwipeDirection = "previous" | "next";
 export type SwipeIntent = SwipeDirection | null;
 
 /** Tangente de 30° — limite do axis-lock (±30° em torno do eixo X). */
-export const AXIS_LOCK_TANGENT = Math.tan((30 * Math.PI) / 180);
 
 /** Velocidade mínima de arremesso (flick) em px/ms. */
-export const FLICK_VELOCITY_PX_PER_MS = 0.3;
+const FLICK_VELOCITY_PX_PER_MS = 0.3;
 
 /** Distância mínima (px) para um arremesso ser considerado flick. */
-export const FLICK_MIN_DISTANCE_PX = 30;
+const FLICK_MIN_DISTANCE_PX = 30;
 
 /** Distância mínima de ativação absoluta (px) quando o viewport é pequeno. */
-export const ACTIVATION_MIN_PX = 60;
+const ACTIVATION_MIN_PX = 60;
 
 /** Fração do viewport para a distância de ativação relativa (15%). */
-export const ACTIVATION_VIEWPORT_RATIO = 0.15;
+const ACTIVATION_VIEWPORT_RATIO = 0.15;
 
 /** Fator de resistência da borda (elastic drag). */
-export const BOUNDARY_RESISTANCE_FACTOR = 0.35;
+const BOUNDARY_RESISTANCE_FACTOR = 0.35;
 
 /** Distância (px) após o lock em que o ponteiro vira dono do gesto. */
 export const LOCK_DISTANCE_PX = 8;

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { listAssetPrices } from "@/data/repositories/asset-prices";
 import { STALE_TIMES } from "@/state/cache-policy";
 
-export const assetPricesKey = ["asset_prices"] as const;
+const assetPricesKey = ["asset_prices"] as const;
 
 /** Preços de mercado (cache global + overrides manuais) — §1.6. */
 export function useAssetPrices() {

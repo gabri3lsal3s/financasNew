@@ -23,7 +23,7 @@ export interface OnboardingStep {
 }
 
 /** Ordem canônica do checklist (a UI mapeia id → rótulo/ícone/rota). */
-export const ONBOARDING_STEP_IDS: readonly OnboardingStepId[] = [
+const ONBOARDING_STEP_IDS: readonly OnboardingStepId[] = [
   "expense-category",
   "income-category",
   "card",

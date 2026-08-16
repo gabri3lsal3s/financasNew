@@ -115,7 +115,7 @@ export interface SpendingPace {
 /** Ritmo ativo apenas a partir do 8º dia. */
 export const PACE_MIN_DAY = 8;
 /** Ritmo ativo apenas quando a fração decorrida do mês ≥ 30%. */
-export const PACE_MIN_ELAPSED_PERCENT = 0.3;
+const PACE_MIN_ELAPSED_PERCENT = 0.3;
 
 /**
  * Compara o acumulado do mês com a fração esperada (dia decorrido).

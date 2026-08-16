@@ -3,7 +3,7 @@ import { listFeedback, setFeedback } from "@/data/repositories/insight-feedback"
 import type { FeedbackDecision } from "@/domain/insights/feedback";
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
-export const feedbackKey = ["insight-feedback"] as const;
+const feedbackKey = ["insight-feedback"] as const;
 
 /** Mapa occurrence_key → decisão persistida (aprendizado do usuário). */
 export function useFeedback() {

@@ -17,9 +17,9 @@ import { pushToast } from "@/services/toast";
 import type { DbInsert, DbUpdate, PortfolioAsset, PortfolioTransaction } from "@/types";
 import { STALE_TIMES } from "@/state/cache-policy";
 
-export const portfolioAssetsKey = ["portfolio_assets"] as const;
-export const portfolioTransactionsKey = ["portfolio_transactions"] as const;
-export const allPortfolioTransactionsKey = [...portfolioTransactionsKey, "all"] as const;
+const portfolioAssetsKey = ["portfolio_assets"] as const;
+const portfolioTransactionsKey = ["portfolio_transactions"] as const;
+const allPortfolioTransactionsKey = [...portfolioTransactionsKey, "all"] as const;
 
 /** Ativos da carteira. */
 export function usePortfolioAssets() {

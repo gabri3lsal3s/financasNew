@@ -61,7 +61,7 @@ export interface ChallengeOption {
 }
 
 /** Categoria é de "alto gasto" quando a média mensal ≥ 10% da renda. */
-export const HIGH_SPEND_THRESHOLD_PERCENT = 0.1;
+const HIGH_SPEND_THRESHOLD_PERCENT = 0.1;
 
 /** Máximo de desafios simultâneos. */
 export const MAX_ACTIVE_CHALLENGES = 4;
@@ -221,11 +221,11 @@ function reduceReason(percentUsed: number): string {
 }
 
 /** Folga mínima para sugerir redução: > R$ 50. */
-export const REDUCE_SLACK_FLOOR_CENTS = 5000;
+const REDUCE_SLACK_FLOOR_CENTS = 5000;
 /** Uso abaixo de 50% do limite habilita sugestão de redução. */
-export const REDUCE_USAGE_PERCENT = 0.5;
+const REDUCE_USAGE_PERCENT = 0.5;
 /** Margem mantida na redução: 30% do limite. */
-export const REDUCE_MARGIN_PERCENT = 0.3;
+const REDUCE_MARGIN_PERCENT = 0.3;
 /** Máximo de sugestões por mês. */
 export const MAX_LIMIT_SUGGESTIONS = 3;
 

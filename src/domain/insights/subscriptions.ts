@@ -35,7 +35,7 @@ const VALUE_TOLERANCE = 0.05;
 import { ESSENTIAL_CATEGORY_ICONS, matchesServiceKey, valuesWithinTolerance } from "./shared";
 
 /** Serviços de assinatura conhecidos (nome normalizado → tier de corte). */
-export const KNOWN_SERVICES: Record<string, CutTier> = {
+const KNOWN_SERVICES: Record<string, CutTier> = {
   // Streaming e Entretenimento (can_cut)
   netflix: "can_cut",
   spotify: "can_cut",
@@ -145,7 +145,7 @@ export const KNOWN_SERVICES: Record<string, CutTier> = {
 const SUBSCRIPTION_CATEGORIES = new Set(["assinaturas", "streaming", "musica", "software"]);
 
 /** Sinal 1 — nome conhecido no catálogo de serviços (com correspondência segura por token). */
-export function isKnownService(name: string): boolean {
+function isKnownService(name: string): boolean {
   for (const key of Object.keys(KNOWN_SERVICES)) {
     if (matchesServiceKey(name, key)) return true;
   }
@@ -153,17 +153,17 @@ export function isKnownService(name: string): boolean {
 }
 
 /** Sinal 2 — categoria de assinatura. */
-export function isSubscriptionCategory(categoryIcon: string | null | undefined): boolean {
+function isSubscriptionCategory(categoryIcon: string | null | undefined): boolean {
   return categoryIcon != null && SUBSCRIPTION_CATEGORIES.has(categoryIcon);
 }
 
 /** Sinal 3 — valores estáveis entre meses (tolerância ±5%). */
-export function hasStableValue(monthlyValuesCents: readonly number[], tolerance = VALUE_TOLERANCE): boolean {
+function hasStableValue(monthlyValuesCents: readonly number[], tolerance = VALUE_TOLERANCE): boolean {
   return valuesWithinTolerance(monthlyValuesCents, tolerance);
 }
 
 /** Tier a partir do catálogo (com fallback por categoria). */
-export function tierOf(name: string, categoryIcon: string | null | undefined): CutTier {
+function tierOf(name: string, categoryIcon: string | null | undefined): CutTier {
   for (const key of Object.keys(KNOWN_SERVICES)) {
     if (matchesServiceKey(name, key)) return KNOWN_SERVICES[key] ?? "discretionary";
   }

@@ -5,7 +5,7 @@ import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 
-export const reminderStatesKey = ["reminder-states"] as const;
+const reminderStatesKey = ["reminder-states"] as const;
 
 /** Mapa occurrence_key → estado persistido (lido/snooze). */
 export function useReminderStates() {

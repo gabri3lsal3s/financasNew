@@ -7,7 +7,7 @@
  * em planilhas. Motor 100% puro — sem DOM/Supabase.
  */
 
-export const CSV_DELIMITER = ";";
+const CSV_DELIMITER = ";";
 
 /** Escapa um campo: aspas duplas quando necessário, dobrando aspas internas. */
 export function escapeCsvField(value: string): string {
