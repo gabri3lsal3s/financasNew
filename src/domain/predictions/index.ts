@@ -1,10 +1,12 @@
 /**
  * Motor preditivo de entrada — FASE 21 (Inteligência de Entrada & Smart Flow).
  *
- * Heurísticas PURAS e locais (zero API extra, zero latência) que inferem os
- * campos de um lançamento a partir da descrição digitada e do HISTÓRICO do
- * usuário: categoria, forma de pagamento, cartão e valor. Também deriva os
- * "lançamentos habituais" (favoritos/templates) para preenchimento em 1 toque.
+ * Heurísticas PURAS e locais (zero API extra, zero latência) que derivam, a
+ * partir do HISTÓRICO do usuário: os **lançamentos habituais** (favoritos/
+ * templates para preenchimento em 1 toque — passo 1 do wizard) e as
+ * **sugestões de descrição** (chips de autocomplete rápido — passo de
+ * detalhes). O clique em uma sugestão de descrição atualiza APENAS o campo
+ * de descrição (hotfix — nunca sobrescreve valor/data/forma já preenchidos).
  *
  * Motor puro — testável isoladamente; a UI só formata e aplica os resultados.
  */
@@ -23,21 +25,8 @@ export interface PredictionEntry {
   receiveType: string | null;
   /** Valor em reais. */
   value: number;
-  /** Data ISO (YYYY-MM-DD) — usada para ponderação por recência. */
+  /** Data ISO (YYYY-MM-DD) — usada para ponderação por recência e janela do mês. */
   date: string;
-}
-
-/** Sugestão preditiva de um lançamento a partir da descrição. */
-export interface PredictionSuggestion {
-  categoryId: string;
-  categoryName: string;
-  paymentMethod: string | null;
-  cardId: string | null;
-  receiveType: string | null;
-  /** Valor médio ponderado por recência (reais). */
-  value: number;
-  /** Confiança 0–1 (similaridade × recência). */
-  confidence: number;
 }
 
 /** Lançamento habitual (favorito/template) derivado do histórico. */
@@ -54,6 +43,16 @@ export interface HabitualEntry {
   value: number;
   /** Quantas vezes apareceu no histórico. */
   frequency: number;
+}
+
+/** Sugestão de descrição (chip de autocomplete rápido — hotfix). */
+export interface DescriptionSuggestion {
+  /** Descrição real do histórico (nunca o rótulo da categoria selecionada). */
+  description: string;
+  /** Quantas vezes apareceu no histórico. */
+  frequency: number;
+  /** Recência do lançamento mais recente do grupo (0–1). */
+  recency: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -103,90 +102,72 @@ export function recencyFactor(dateISO: string, todayISO: string, windowDays = 90
   return Math.max(0, 1 - diffDays / windowDays);
 }
 
-// ---------------------------------------------------------------------------
-// Predição por descrição
-// ---------------------------------------------------------------------------
-
-/**
- * Prediz os campos de um lançamento a partir da descrição digitada.
- *
- * Estratégia: agrupa o histórico por (categoria, forma, cartão), calcula a
- * similaridade máxima de tokens entre a query e as descrições do grupo e
- * pondera pela recência — o grupo mais parecido vence. Retorna os grupos
- * ordenados por confiança (top 3). Valor = média ponderada por recência.
- */
-export function predictFromHistory(
-  history: readonly PredictionEntry[],
-  query: string,
-  kind: "expense" | "income",
-  todayISO: string,
-): PredictionSuggestion[] {
-  const queryTokens = tokenize(query);
-  if (queryTokens.length === 0) return [];
-
-  const filtered = history.filter((entry) => entry.kind === kind && entry.description.trim() !== "");
-  if (filtered.length === 0) return [];
-
-  // Agrupa por (categoria, forma, cartão).
-  const groups = new Map<string, { entry: PredictionEntry; count: number; bestSimilarity: number; weightedValue: number; weightSum: number }>();
-  for (const entry of filtered) {
-    const key = `${entry.categoryId}|${entry.paymentMethod ?? ""}|${entry.cardId ?? ""}|${entry.receiveType ?? ""}`;
-    const similarity = jaccardTokens(queryTokens, tokenize(entry.description));
-    const recency = recencyFactor(entry.date, todayISO);
-    const group = groups.get(key);
-    if (!group) {
-      groups.set(key, {
-        entry,
-        count: 1,
-        bestSimilarity: similarity,
-        weightedValue: entry.value * recency,
-        weightSum: recency,
-      });
-      continue;
-    }
-    group.count += 1;
-    group.bestSimilarity = Math.max(group.bestSimilarity, similarity);
-    group.weightedValue += entry.value * recency;
-    group.weightSum += recency;
-  }
-
-  const suggestions = [...groups.values()]
-    .filter((group) => group.bestSimilarity > 0)
-    .map((group) => {
-      // Confiança = similaridade × log1p(frequência) × recência média (0–1).
-      const avgRecency = group.weightSum > 0 ? group.weightSum / group.count : 0;
-      const frequencyBonus = Math.min(1, Math.log1p(group.count) / Math.log1p(10));
-      const confidence = group.bestSimilarity * (0.6 + 0.4 * frequencyBonus) * (0.7 + 0.3 * avgRecency);
-      return {
-        categoryId: group.entry.categoryId,
-        categoryName: group.entry.categoryName,
-        paymentMethod: group.entry.paymentMethod,
-        cardId: group.entry.cardId,
-        receiveType: group.entry.receiveType,
-        value: group.weightSum > 0 ? group.weightedValue / group.weightSum : group.entry.value,
-        confidence: Math.min(1, Math.round(confidence * 100) / 100),
-      };
-    })
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 3);
-
-  return suggestions;
+/** Dia do mês (1–31) de uma data ISO. */
+export function dayOfMonth(iso: string): number {
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return 1;
+  return date.getDate();
 }
 
 // ---------------------------------------------------------------------------
-// Lançamentos habituais (favoritos/templates)
+// Janela temporal de dias do mês (hotfix — Smart Matching)
 // ---------------------------------------------------------------------------
 
 /**
+ * Distância circular entre dois dias do mês (mês comercial de 30 dias):
+ * dia 1 e dia 30 distam 1 (fim de um mês = início do próximo, ex.: contas
+ * recorrentes); o máximo é 15 (meio do mês).
+ */
+export function dayOfMonthDistance(a: number, b: number): number {
+  const days = 30;
+  const diff = Math.abs(((a - b) % days) + days) % days;
+  return Math.min(diff, days - diff);
+}
+
+/**
+ * Fator temporal 0–1 da janela de dias do mês (hotfix — Etapa 1):
+ * registros históricos que costumam ocorrer a ±5 dias do dia de referência
+ * da transação recebem peso máximo; a faixa ±5–±10 também recebe peso alto
+ * (contas de início de mês, faturas na metade, despesas de fim de mês);
+ * fora dessa janela o peso cai. Usado no ranqueamento dos habituais.
+ */
+export function monthWindowFactor(day: number, referenceDay: number): number {
+  const distance = dayOfMonthDistance(day, referenceDay);
+  if (distance <= 5) return 1;
+  if (distance <= 10) return 0.85;
+  return 0.4;
+}
+
+// ---------------------------------------------------------------------------
+// Lançamentos habituais (favoritos/templates) — Etapa 1 do wizard
+// ---------------------------------------------------------------------------
+
+export interface HabitualEntryOptions {
+  /** Máximo de sugestões retornadas (hotfix: padrão 3). */
+  limit?: number;
+  /** Dia do mês de referência (1–31) da transação — janela temporal ±5–±10. */
+  referenceDay?: number;
+  /** Data de referência p/ recência (opcional — sem ela o ranque é por frequência). */
+  todayISO?: string;
+}
+
+/**
  * Deriva os lançamentos habituais do histórico: agrupa por descrição
- * normalizada + categoria e ordena por frequência (desempate: mais recente).
- * Retorna os top N — atalhos de preenchimento em 1 toque.
+ * normalizada + categoria e ranqueia por relevância ponderada (hotfix):
+ *
+ *   score = frequência × fatorTemporal(dia do mês ±5–±10) × recência
+ *
+ * Despesas mais recentes com maior volume de repetição dentro da mesma faixa
+ * de dias do mês lideram o ranking. Sem `referenceDay`/`todayISO`, o ranking
+ * permanece por frequência pura (desempate: mais recente). Retorna top N
+ * (padrão 3) — atalhos de preenchimento em 1 toque.
  */
 export function buildHabitualEntries(
   history: readonly PredictionEntry[],
   kind: "expense" | "income",
-  limit = 5,
+  options: HabitualEntryOptions = {},
 ): HabitualEntry[] {
+  const { limit = 3, referenceDay, todayISO } = options;
   const filtered = history.filter((entry) => entry.kind === kind && entry.description.trim() !== "");
   const groups = new Map<string, { entry: PredictionEntry; count: number }>();
   for (const entry of filtered) {
@@ -202,9 +183,18 @@ export function buildHabitualEntries(
   }
 
   return [...groups.values()]
-    .sort((a, b) => b.count - a.count || (a.entry.date < b.entry.date ? 1 : -1))
+    .map((group) => {
+      const temporal = referenceDay != null ? monthWindowFactor(dayOfMonth(group.entry.date), referenceDay) : 1;
+      const recency = todayISO ? recencyFactor(group.entry.date, todayISO) : 1;
+      return { group, score: group.count * temporal * recency };
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.group.count !== a.group.count) return b.group.count - a.group.count;
+      return a.group.entry.date < b.group.entry.date ? 1 : -1; // mais recente primeiro
+    })
     .slice(0, limit)
-    .map((group) => ({
+    .map(({ group }) => ({
       kind,
       description: group.entry.description,
       categoryId: group.entry.categoryId,
@@ -215,4 +205,78 @@ export function buildHabitualEntries(
       value: group.entry.value,
       frequency: group.count,
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Sugestões de descrição pura — Etapa 2 (detalhes) do wizard (hotfix)
+// ---------------------------------------------------------------------------
+
+export interface DescriptionSuggestionOptions {
+  /** Máximo de chips retornados (hotfix: padrão 3). */
+  limit?: number;
+  /** Nome da categoria selecionada — descrições redundantes (só o nome) saem. */
+  categoryName?: string | null;
+  /** Texto digitado — filtra descrições cujos tokens contêm todos os do texto. */
+  query?: string;
+  /** Data de referência p/ recência (opcional — sem ela o ranque é por frequência). */
+  todayISO?: string;
+}
+
+/**
+ * Sugestões de descrição reais e semânticas do histórico (hotfix — Etapa 2):
+ * agrupa por descrição normalizada, **elimina rótulos redundantes** que sejam
+ * apenas o nome da categoria selecionada (ex.: "Alimentação") e ranqueia por
+ * frequência × recência. Retorna até `limit` chips (padrão 3). O clique no
+ * chip preenche APENAS a descrição — nunca toca em valor/data/forma (bug de
+ * sobrescrita corrigido).
+ */
+export function buildDescriptionSuggestions(
+  history: readonly PredictionEntry[],
+  kind: "expense" | "income",
+  options: DescriptionSuggestionOptions = {},
+): DescriptionSuggestion[] {
+  const { limit = 3, categoryName, query, todayISO } = options;
+  const filtered = history.filter((entry) => entry.kind === kind && entry.description.trim() !== "");
+  if (filtered.length === 0) return [];
+
+  const categoryTokens = categoryName ? new Set(tokenize(categoryName)) : null;
+  const normalizedQuery = query ? normalizeText(query) : "";
+  const queryTokens = normalizedQuery ? new Set(tokenize(normalizedQuery)) : null;
+
+  const groups = new Map<string, { entry: PredictionEntry; count: number }>();
+  for (const entry of filtered) {
+    // Filtro de relevância: descrições que são apenas o nome da categoria
+    // selecionada (ex.: categoria "Alimentação" não gera o chip "Alimentação").
+    if (categoryTokens && categoryTokens.size > 0) {
+      const tokens = tokenize(entry.description);
+      if (tokens.length > 0 && tokens.every((token) => categoryTokens.has(token))) continue;
+    }
+    const key = normalizeText(entry.description);
+    const group = groups.get(key);
+    if (!group) {
+      groups.set(key, { entry, count: 1 });
+      continue;
+    }
+    group.count += 1;
+    if (entry.date > group.entry.date) group.entry = entry;
+  }
+
+  return [...groups.values()]
+    .filter((group) => {
+      if (!normalizedQuery) return true;
+      const description = normalizeText(group.entry.description);
+      // Autocomplete amigável: substring ("mercado" casa com "Supermercado…")
+      // OU todos os tokens digitados contidos na descrição.
+      if (description.includes(normalizedQuery)) return true;
+      const descriptionTokens = new Set(tokenize(description));
+      if (descriptionTokens.size === 0) return false;
+      return queryTokens ? [...queryTokens].every((token) => descriptionTokens.has(token)) : true;
+    })
+    .map((group) => ({
+      description: group.entry.description,
+      frequency: group.count,
+      recency: todayISO ? recencyFactor(group.entry.date, todayISO) : 0,
+    }))
+    .sort((a, b) => b.frequency - a.frequency || b.recency - a.recency)
+    .slice(0, limit);
 }

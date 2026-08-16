@@ -122,7 +122,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(createExpenseMock.mock.calls[0]?.[0].reportWeight).toBe(0.375);
   });
 
-  it("autopreenche categoria/forma por descrição com 1 toque (F21)", async () => {
+  it("sugestão de descrição na etapa de detalhes preenche SÓ a descrição (hotfix)", async () => {
     predictionHistoryMock.mockReturnValue([
       {
         id: "h1",
@@ -140,20 +140,31 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     const user = userEvent.setup();
     render(<LaunchWizard />);
 
+    // Passo 1 — valor R$ 100,00 (10000 centavos) — NÃO pode ser sobrescrito.
     await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "10000");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    // Passo 2 — seleciona a categoria (necessária para avançar ao passo 3)
+    // Passo 2 — seleciona a categoria "Alimentação"
     await user.click(screen.getByRole("button", { name: /alimentação/i }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    // Passo 3 — digita a descrição → sugestão aparece → aplica em 1 toque
-    await user.type(screen.getByPlaceholderText(/Supermercado do mês/), "mercado pao de acucar");
-    const option = await screen.findByRole("option", { name: /Alimentação/ });
-    await user.click(option);
+    // Passo 3 — digita parte da descrição → chip de sugestão aparece
+    const descriptionInput = screen.getByPlaceholderText(/Supermercado do mês/);
+    await user.type(descriptionInput, "mercado");
+    const chip = await screen.findByRole("option", { name: /Supermercado Pão de Açúcar/ });
+    await user.click(chip);
 
-    // Passo 4 — revisão alcançável: a sugestão aplicou a forma (pix) e valor.
+    // O clique preenche APENAS a descrição (valor/data/forma preservados).
+    expect(descriptionInput).toHaveValue("Supermercado Pão de Açúcar");
+
+    // Passo 4 — confirma: valor original mantido (R$ 100,00) e descrição da sugestão.
     await user.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByRole("button", { name: "Confirmar lançamento" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Confirmar lançamento" }));
+
+    expect(createExpenseMock).toHaveBeenCalledTimes(1);
+    const params = createExpenseMock.mock.calls[0]?.[0];
+    // A sugestão histórica tinha valor 200 — o valor da Etapa 1 (100) prevalece.
+    expect(params.value).toBe(100);
+    expect(params.description).toBe("Supermercado Pão de Açúcar");
   });
 
   it("exibe lançamentos habituais no passo 1 e preenche em 1 toque (F21)", async () => {

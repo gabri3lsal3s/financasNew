@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDescriptionSuggestions,
   buildHabitualEntries,
+  dayOfMonth,
+  dayOfMonthDistance,
   jaccardTokens,
+  monthWindowFactor,
   normalizeText,
-  predictFromHistory,
   recencyFactor,
   tokenize,
   type PredictionEntry,
@@ -86,7 +89,7 @@ const history: PredictionEntry[] = [
   },
 ];
 
-describe("predictions — motor preditivo de entrada (F21)", () => {
+describe("predictions — motor preditivo de entrada (F21 + hotfix)", () => {
   it("normalizeText remove acentos e minúsculas", () => {
     expect(normalizeText("  Supermercado Pão de Açúcar ")).toBe("supermercado pao de acucar");
   });
@@ -110,56 +113,54 @@ describe("predictions — motor preditivo de entrada (F21)", () => {
     expect(recencyFactor("2026-09-01", TODAY)).toBe(1); // futura
   });
 
-  it("prediz categoria/forma/cartão por descrição similar (Mercado)", () => {
-    const suggestions = predictFromHistory(history, "mercado pao de acucar", "expense", TODAY);
-    expect(suggestions.length).toBeGreaterThan(0);
-    const top = suggestions[0];
-    expect(top?.categoryId).toBe("c-mercado");
-    expect(top?.categoryName).toBe("Mercado");
-    expect(top?.paymentMethod).toBe("credit_card");
-    expect(top?.cardId).toBe("card-nubank");
+  it("dayOfMonth extrai o dia da data ISO", () => {
+    expect(dayOfMonth("2026-08-15")).toBe(15);
+    expect(dayOfMonth("2026-08-01")).toBe(1);
+    expect(dayOfMonth("2026-08-31")).toBe(31);
   });
 
-  it("prediz transporte para descrição diferente do grupo dominante", () => {
-    const suggestions = predictFromHistory(history, "uber", "expense", TODAY);
-    expect(suggestions[0]?.categoryId).toBe("c-transporte");
-    expect(suggestions[0]?.paymentMethod).toBe("pix");
+  it("dayOfMonthDistance é circular (fim ↔ início do mês distam pouco)", () => {
+    expect(dayOfMonthDistance(15, 15)).toBe(0);
+    expect(dayOfMonthDistance(10, 15)).toBe(5);
+    expect(dayOfMonthDistance(1, 30)).toBe(1); // circular: fim do mês = início do próximo
+    expect(dayOfMonthDistance(1, 16)).toBe(15); // máximo = meio do mês
   });
 
-  it("predição separa despesas de receitas (Salário)", () => {
-    const expenseHits = predictFromHistory(history, "salario", "expense", TODAY);
-    const incomeHits = predictFromHistory(history, "salario", "income", TODAY);
-    expect(expenseHits.length).toBe(0);
-    expect(incomeHits[0]?.categoryId).toBe("c-salario");
-    expect(incomeHits[0]?.receiveType).toBe("pix");
+  it("monthWindowFactor dá peso máximo a ±5 dias e peso alto até ±10 (hotfix)", () => {
+    expect(monthWindowFactor(15, 15)).toBe(1); // mesmo dia
+    expect(monthWindowFactor(10, 15)).toBe(1); // a 5 dias
+    expect(monthWindowFactor(6, 15)).toBe(0.85); // a 9 dias (faixa ±5–±10)
+    expect(monthWindowFactor(1, 15)).toBe(0.4); // fora da janela
   });
 
-  it("valor sugerido é a média ponderada por recência", () => {
-    const suggestions = predictFromHistory(history, "mercado", "expense", TODAY);
-    const top = suggestions[0];
-    expect(top?.value).toBeGreaterThan(0);
-    // Recência: 320 (10/08, recente) pesa mais que 150 (12/07) → a média
-    // ponderada fica entre 235 (média simples) e 320 (valor mais recente).
-    expect(top?.value).toBeGreaterThan(235);
-    expect(top?.value).toBeLessThan(320);
+  it("buildHabitualEntries limita estritamente a 3 itens (hotfix)", () => {
+    const many = [history[0]!, history[1]!, history[2]!, history[5]!];
+    const habits = buildHabitualEntries(many, "expense");
+    expect(habits).toHaveLength(3);
+    // Limite explícito menor também respeitado.
+    expect(buildHabitualEntries(many, "expense", { limit: 2 })).toHaveLength(2);
   });
 
-  it("query vazia ou sem tokens não gera sugestões", () => {
-    expect(predictFromHistory(history, "", "expense", TODAY)).toEqual([]);
-    expect(predictFromHistory(history, "a", "expense", TODAY)).toEqual([]);
-    expect(predictFromHistory([], "mercado", "expense", TODAY)).toEqual([]);
+  it("buildHabitualEntries ranqueia pela janela de dias do mês × frequência × recência (hotfix)", () => {
+    // Próximo do dia de referência (dia 14, a ±1 do dia 15) com 1 ocorrência.
+    const near: PredictionEntry = { ...history[2]!, id: "n1", date: "2026-08-14" }; // Uber
+    // Longe do dia de referência (dia 1) com 2 ocorrências.
+    const far: PredictionEntry = { ...history[5]!, id: "f1", date: "2026-08-01" }; // Padaria
+    const repeated: PredictionEntry[] = [near, far, { ...far, id: "f2", date: "2026-07-01" }];
+    const habits = buildHabitualEntries(repeated, "expense", { referenceDay: 15, todayISO: TODAY });
+    // Sem a janela temporal, "Padaria" (2×) venceria por frequência bruta; com a
+    // janela ±5–±10, "Uber" (dia 14) lidera apesar da menor frequência.
+    expect(habits[0]?.description).toBe("Uber para o trabalho");
+    expect(habits[0]?.frequency).toBe(1);
   });
 
-  it("buildHabitualEntries deriva favoritos por frequência (top 5)", () => {
-    const repeated: PredictionEntry[] = [
-      ...history,
-      { ...history[0]!, id: "7", date: "2026-06-10" },
-      { ...history[0]!, id: "8", date: "2026-05-10" },
-    ];
-    const habits = buildHabitualEntries(repeated, "expense", 5);
-    expect(habits[0]?.description).toBe("Supermercado Pão de Açúcar");
-    expect(habits[0]?.frequency).toBe(3);
-    expect(habits[0]?.categoryId).toBe("c-mercado");
+  it("buildHabitualEntries sem opções mantém o ranking por frequência (mais recente desempata)", () => {
+    const near: PredictionEntry = { ...history[2]!, id: "n1", date: "2026-08-14" };
+    const far: PredictionEntry = { ...history[5]!, id: "f1", date: "2026-08-01" };
+    const repeated: PredictionEntry[] = [near, far, { ...far, id: "f2", date: "2026-07-01" }];
+    const habits = buildHabitualEntries(repeated, "expense");
+    expect(habits[0]?.description).toBe("Padaria da esquina");
+    expect(habits[0]?.frequency).toBe(2);
   });
 
   it("buildHabitualEntries ignora lançamentos sem descrição", () => {
@@ -168,5 +169,35 @@ describe("predictions — motor preditivo de entrada (F21)", () => {
       { ...history[0]!, id: "n2", description: "  " },
     ];
     expect(buildHabitualEntries(noDescription, "expense")).toEqual([]);
+  });
+
+  it("buildDescriptionSuggestions sugere descrições reais (top 3) e separa por tipo", () => {
+    const expenseSuggestions = buildDescriptionSuggestions(history, "expense", { todayISO: TODAY });
+    expect(expenseSuggestions.length).toBeLessThanOrEqual(3);
+    expect(expenseSuggestions.every((s) => s.frequency >= 1)).toBe(true);
+    // Descrições reais do histórico — nunca o nome genérico da categoria.
+    const descriptions = expenseSuggestions.map((s) => s.description);
+    expect(descriptions).toContain("Supermercado Pão de Açúcar");
+    expect(descriptions).not.toContain("Salário"); // renda não entra em despesa
+  });
+
+  it("buildDescriptionSuggestions elimina rótulos que são apenas o nome da categoria selecionada", () => {
+    const redundant: PredictionEntry[] = [
+      { ...history[0]!, id: "r1", description: "Alimentação", categoryId: "c-alim", categoryName: "Alimentação" },
+      { ...history[0]!, id: "r2", description: "Almoço Restaurante X", categoryId: "c-alim", categoryName: "Alimentação" },
+    ];
+    const suggestions = buildDescriptionSuggestions(redundant, "expense", { categoryName: "Alimentação" });
+    expect(suggestions.map((s) => s.description)).toEqual(["Almoço Restaurante X"]);
+  });
+
+  it("buildDescriptionSuggestions filtra pela query digitada (substring e tokens)", () => {
+    // "mercado" casa por substring com "Supermercado Pão de Açúcar"
+    const bySubstring = buildDescriptionSuggestions(history, "expense", { query: "mercado" });
+    expect(bySubstring.some((s) => s.description.includes("mercado") || s.description.includes("Mercado"))).toBe(true);
+    // "uber" casa por token com "Uber para o trabalho"
+    const byToken = buildDescriptionSuggestions(history, "expense", { query: "uber" });
+    expect(byToken.some((s) => /uber/i.test(s.description))).toBe(true);
+    // Query sem casamento → vazio
+    expect(buildDescriptionSuggestions(history, "expense", { query: "zzzqqq" })).toEqual([]);
   });
 });

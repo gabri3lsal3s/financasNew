@@ -6,7 +6,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
 import { getErrorMessage } from "@/services/errors";
-import { buildHabitualEntries, predictFromHistory } from "@/domain/predictions";
+import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
 import { todayISO } from "@/domain/debts";
 import { useActiveCreditCards, useCategories, useCreateExpense, useCreateIncome, usePredictionHistory } from "@/state";
 import type { DbInsert, Income, PaymentMethod, ReceiveType } from "@/types";
@@ -40,8 +40,24 @@ export function LaunchWizard() {
   // zero custo nos demais (Online First — sugestões 100% locais).
   const predictionActive = state.step === 1 || state.step === 3;
   const prediction = usePredictionHistory(predictionActive);
-  const suggestions = predictFromHistory(prediction.entries, state.description, state.type, todayISO());
-  const habits = buildHabitualEntries(prediction.entries, state.type, 5);
+  const today = todayISO();
+  const selectedCategory = categoriesQuery.data?.find((category) => category.id === state.categoryId);
+  // Etapa 1 — habituais: limite estrito de 3 + ranqueamento temporal (janela
+  // de ±5–±10 dias do mês da transação) × frequência × recência (hotfix).
+  const habits = buildHabitualEntries(prediction.entries, state.type, {
+    limit: 3,
+    referenceDay: dayOfMonth(state.date),
+    todayISO: today,
+  });
+  // Etapa 2 — sugestões de descrição pura: clique preenche SÓ a descrição
+  // (nunca sobrescreve valor/data/forma) e exclui rótulos que sejam apenas o
+  // nome da categoria selecionada (hotfix).
+  const descriptionSuggestions = buildDescriptionSuggestions(prediction.entries, state.type, {
+    limit: 3,
+    categoryName: selectedCategory?.name ?? null,
+    query: state.description,
+    todayISO: today,
+  });
 
   const set = <K extends keyof LaunchState>(key: K, value: LaunchState[K]) =>
     setState((prev) => ({ ...prev, [key]: value }));
@@ -51,7 +67,6 @@ export function LaunchWizard() {
     setState((prev) => ({ ...prev, step }));
   };
 
-  const selectedCategory = categoriesQuery.data?.find((category) => category.id === state.categoryId);
   const selectedCard = state.paymentMethod === "credit_card"
     ? cardsQuery.data?.find((card) => card.id === state.cardId)
     : undefined;
@@ -167,17 +182,7 @@ export function LaunchWizard() {
           onCardChange={(cardId) => set("cardId", cardId)}
           onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
           onDescriptionChange={(description) => set("description", description)}
-          onApplySuggestion={(suggestion) => {
-            set("categoryId", suggestion.categoryId);
-            if (suggestion.paymentMethod) {
-              set("paymentMethod", suggestion.paymentMethod as PaymentMethod);
-              set("cardId", suggestion.cardId);
-            } else if (suggestion.receiveType) {
-              set("receiveType", suggestion.receiveType as ReceiveType);
-            }
-            if (suggestion.value > 0) set("valueCents", Math.round(suggestion.value * 100));
-          }}
-          suggestions={suggestions}
+          descriptionSuggestions={descriptionSuggestions}
           onReportWeightChange={(weight) => {
             set("reportWeight", weight);
             if (!isPresetWeight(weight) && state.reportCustomAmountCents === 0) {

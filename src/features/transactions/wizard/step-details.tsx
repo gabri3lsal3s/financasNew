@@ -1,3 +1,4 @@
+import { Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -5,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PredictionSuggestions } from "@/components/modules";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks";
-import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
+import type { DescriptionSuggestion } from "@/domain/predictions";
 import type { PaymentMethod, ReceiveType } from "@/types";
 import { REPORT_WEIGHT_OPTIONS } from "../components/report-weight-constants";
 import { CUSTOM_WEIGHT_VALUE, effectiveReportWeight, isPresetWeight } from "./wizard-state";
@@ -26,24 +26,8 @@ export interface StepDetailsProps {
   onDebtToggle: (enabled: boolean) => void;
   onDebtAmountChange: (cents: number) => void;
   onDebtDueDateChange: (date: string) => void;
-  /** Aplica uma sugestão preditiva (F21) — preenche categoria/forma/cartão/valor. */
-  onApplySuggestion: (suggestion: {
-    categoryId: string;
-    paymentMethod: string | null;
-    cardId: string | null;
-    receiveType: string | null;
-    value: number;
-  }) => void;
-  /** Sugestões derivadas do histórico (F21) — vazio oculta o bloco. */
-  suggestions: {
-    categoryId: string;
-    categoryName: string;
-    paymentMethod: string | null;
-    cardId: string | null;
-    receiveType: string | null;
-    value: number;
-    confidence: number;
-  }[];
+  /** Sugestões de descrição do histórico (hotfix) — clique preenche SÓ a descrição. */
+  descriptionSuggestions: DescriptionSuggestion[];
   cards: { id: string; name: string }[] | undefined;
   cardsLoading: boolean;
   cardsError: unknown;
@@ -78,15 +62,12 @@ export function StepDetails({
   onDebtToggle,
   onDebtAmountChange,
   onDebtDueDateChange,
-  onApplySuggestion,
-  suggestions,
+  descriptionSuggestions,
   cards,
   cardsLoading,
   cardsError,
 }: StepDetailsProps) {
   const isExpense = state.type === "expense";
-
-  const cardLabels = Object.fromEntries((cards ?? []).map((card) => [card.id, card.name]));
 
   return (
     <div className="flex flex-col gap-5">
@@ -145,22 +126,35 @@ export function StepDetails({
           onChange={(event) => onDescriptionChange(event.target.value)}
           placeholder={isExpense ? "Ex.: Supermercado do mês" : "Ex.: Salário"}
         />
-        {state.description.trim().length >= 3 ? (
-          <PredictionSuggestions
-            suggestions={suggestions}
-            paymentLabels={PAYMENT_METHOD_LABELS}
-            cardLabels={cardLabels}
-            receiveLabels={RECEIVE_TYPE_LABELS}
-            onApply={(suggestion) =>
-              onApplySuggestion({
-                categoryId: suggestion.categoryId,
-                paymentMethod: suggestion.paymentMethod,
-                cardId: suggestion.cardId,
-                receiveType: suggestion.receiveType,
-                value: suggestion.value,
-              })
-            }
-          />
+        {/* Sugestões de descrição pura (hotfix): o clique preenche APENAS o campo
+            de descrição — valor, data e forma já preenchidos nas etapas
+            anteriores são preservados integralmente (nunca sobrescritos). */}
+        {state.description.trim().length >= 2 && descriptionSuggestions.length > 0 ? (
+          <div className="flex flex-col gap-1.5">
+            <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <Sparkles className="size-3" aria-hidden="true" />
+              Sugestões de descrição
+            </p>
+            <div role="listbox" aria-label="Sugestões de descrição" className="flex flex-wrap gap-1.5">
+              {descriptionSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.description}
+                  type="button"
+                  role="option"
+                  aria-selected={false}
+                  onClick={() => onDescriptionChange(suggestion.description)}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="truncate">{suggestion.description}</span>
+                  {suggestion.frequency > 1 ? (
+                    <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {suggestion.frequency}×
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
       </div>
 

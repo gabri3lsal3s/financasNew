@@ -58,8 +58,6 @@ export { CreditCard3D } from "./credit-card-3d";
 export type { CreditCard3DProps } from "./credit-card-3d";
 export { CreditCardWallet } from "./credit-card-wallet";
 export type { CreditCardWalletProps } from "./credit-card-wallet";
-export { PredictionSuggestions } from "./prediction-suggestions";
-export type { PredictionSuggestionsProps } from "./prediction-suggestions";
 export { ExportDataHub } from "./export-data-hub";
 export type { ExportDataHubProps, ExportCsvKind, ExportRange } from "./export-data-hub";
 export { MonthlyClosePrintView } from "./monthly-close-print-view";

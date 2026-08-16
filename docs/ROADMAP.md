@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **Status:** v1.7 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); **v1.6** formalizou a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**; **v1.7** formalizou a **F26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)**; **v1.8** registra a **conclusão da F27 — Insights: Precisão, Deduplicação & Casos de Borda** (2026-08-15); e **v1.9** registra a **conclusão da F28 — Investimentos: Mobile Responsive & Organização** (2026-08-15); **v1.10** registra a **conclusão da F29 — Insights: Inteligência de Recorrências, Alertas & Diagnósticos unificados e Polish do Planejamento** (2026-08-15); **v1.11** registra o **hotfix de responsividade do DatePicker** (2026-08-16 — ver §3, F25); **v1.12** registra o **hotfix do Seletor de Pesos (Select dentro de modais)** (2026-08-16 — ver §3, F25).
+> **Status:** v1.7 — **plano de execução canônico** do projeto (o `ESPECIFICACAO_TECNICA.md` §6 o referencia como resumo executivo). Foco em **ordem de execução**, **ordem de construção da UI (Design System primeiro)** e **Definition of Done (DoD)** por fase. **v1.2** inseriu formalmente as fases **F14–F18** (Trilha A — UI/UX prioritária · Trilha B — carteira de investimentos completa); **v1.3** adicionou a **F19 — Inteligência & Consistência dos Insights** (Trilha A); **v1.4** adicionou a **F20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX)** (Trilha A); **v1.5** inseriu as fases **F21–F24** (Inteligência de Entrada, Exportação/Fechamento, Engenharia de Performance e Planejamento FIRE); **v1.6** formalizou a **F25 — Micro-interações, Feedback Visual & Ergonomia de Interface (Desktop & Mobile)**; **v1.7** formalizou a **F26 — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX)**; **v1.8** registra a **conclusão da F27 — Insights: Precisão, Deduplicação & Casos de Borda** (2026-08-15); e **v1.9** registra a **conclusão da F28 — Investimentos: Mobile Responsive & Organização** (2026-08-15); **v1.10** registra a **conclusão da F29 — Insights: Inteligência de Recorrências, Alertas & Diagnósticos unificados e Polish do Planejamento** (2026-08-15); **v1.11** registra o **hotfix de responsividade do DatePicker** (2026-08-16 — ver §3, F25); **v1.12** registra o **hotfix do Seletor de Pesos (Select dentro de modais)** (2026-08-16 — ver §3, F25); **v1.13** registra a **refatoração do motor de sugestões preditivas do Wizard** (2026-08-16 — ver §3, F21): ranking temporal ±5–10 dias com limite estrito de 3 sugestões na Etapa 1 e chips de descrição pura na Etapa 2 sem sobrescrever o valor preenchido.
 > **Referências:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (estrutura e convenções) · [`ESPECIFICACAO_TECNICA.md`](../ESPECIFICACAO_TECNICA.md) (regras de negócio, schema, UI/UX).
 
 ---
@@ -1043,6 +1043,7 @@
 
 **Progresso — F21 concluída (2026-08-15):**
 - [x] **Motor preditivo puro (entrega 1)** — `src/domain/predictions/` (novo, 11 testes): `normalizeText`/`tokenize` (acentos, tokens ≥ 2 chars), `jaccardTokens` (similaridade 0–1), `recencyFactor` (janela de ~90 dias), `predictFromHistory` (agrupa histórico por categoria+forma+cartão, similaridade × frequência × recência, top 3) e `buildHabitualEntries` (favoritos por frequência com valor mais recente, top 5).
+- [x] **Refatoração do motor de sugestões (2026-08-16)** — `domain/predictions` reescrito: `buildHabitualEntries` agora aplica **ranking temporal ponderado** (janela de ±5–10 dias do mês — `dayWindowWeight`), **limite estrito de 3 itens** (era 5) e ordena por **relevância temporal × frequência × recência** (não mais contagem bruta); novo `buildDescriptionSuggestions` — **sugestões de descrição pura** (agrupa por descrição normalizada, **filtra nomes de categoria** e derivações do tipo "Alimentação"/"Supermercado", aplica score por recência/frequência/afinidade com o texto digitado, top 2–3 chips). `predictFromHistory`/`PredictionSuggestion` e o módulo `PredictionSuggestions` (código morto) foram **removidos** — a Etapa 2 passou a usar chips que atualizam **apenas `description`**, preservando 100% do `amount`/`date` preenchidos na Etapa 1 (bug de sobrescrita corrigido).
 - [x] **Histórico preditivo no state (entrega 2)** — `usePredictionHistory` (`src/state/queries/use-prediction-history.ts`): despesas + rendas + categorias no contrato do motor, queries habilitadas sob demanda (`enabled` — zero custo fora do wizard).
 - [x] **`PredictionSuggestions`** (novo módulo `components/modules/`, 4 testes): listbox acessível (role listbox/option, foco + clique, sem emojis), rótulos por valor (forma/cartão/recebimento), aplicação por 1 toque.
 - [x] **Autopreenchimento no wizard (entrega 2)** — `StepDetails` exibe sugestões ao digitar descrição (≥ 3 chars) e `onApplySuggestion` preenche categoria/forma/cartão/valor; `StepValue` mostra **Lançamentos Habituais** (entrega 3 — templates derivados do histórico, 1 toque). 2 testes de fluxo no wizard.
@@ -1360,7 +1361,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 5 | **F16** — Carteira na Home (KPI real + donut de alocação) | B | F14 | ✅ Concluída (2026-08-15) — KPI de aportes com deep-link; `AllocationDonut` na Posição (decisão: sem widget na Home) |
 | 6 | **F17** — Dashboard `/investments` | B | F16 · F14 | ✅ Concluída (2026-08-15) — **unificada em área única** (decisão 2026-08-15): `/carteira` virou redirect e `/investments` é o hub de abas Resumo/Metas/Aporte |
 | 7 | **F18** — Proventos (extrato & calendário) | B | F17 | ✅ Concluída (2026-08-15) — motor `dividends.ts` + aba Proventos no hub `/investments` (extrato mensal + calendário anual) |
-| 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | ✅ Concluída (2026-08-15) — motor `domain/predictions`, autopreenchimento no wizard + habituals + repetição nos diálogos |
+| 8 | **F21** — Inteligência de Entrada & Automações Preditivas | C (Inteligência) | F2 | ✅ Concluída (2026-08-15) — motor `domain/predictions`, autopreenchimento no wizard + habituals + repetição nos diálogos; refatorado 2026-08-16 (ranking temporal ±5–10 dias, limite 3, chips de descrição pura sem sobrescrita de valor) |
 | 9 | **F22** — Central de Exportação, Backup & Fechamento Mensal | C (Dados & Relatórios) | F3 | ✅ Concluída (2026-08-15) — `domain/export` (CSV pt-BR + backup versionado Zod), hub em `/configuracoes > Dados` (JSON + CSVs por período + restauração 2 etapas via RPC `restore_backup`), Fechamento Mensal imprimível em Relatórios e Web Share nos comprovantes |
 | 10 | **F23** — Engenharia de Performance & Code-Splitting 3D | C (Infra & Performance) | F7/F13 | ✅ Concluída (2026-08-15) — política de cache centralizada `state/cache-policy.ts` (estático 5 min + gcTime 30 min / analítico / cotações / transacional), pre-fetching de chunks das rotas vizinhas (`prefetchPageChunks` + `useRoutePrefetch`) e decisão: 3D CSS sem Three.js (code-splitting WebGL N/A — lazy por rota já existente) |
 | 11 | **F24** — Planejamento Financeiro & Simulador FIRE | C (Estratégia) | F16/F17 | ✅ Concluída (2026-08-15) — motor puro `domain/fire` (regra 4%, projeção anual, fundo de emergência), `PlanningSection` com gauge + simulador na aba Planejamento do Insights (inputs editáveis, gráfico SVG sem libs) |
@@ -1368,7 +1369,46 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | ✅ Concluída (2026-08-15) — motor puro `domain/gestures/overscroll` (resistência elástica + barreira de inércia + threshold), hook `usePullUpToTop` (FSM com cancelamento reversível, decisão por ref, sem pointer capture para coexistir com swipe-to-action), primitivo `PullUpToTopIndicator` (anel SVG `stroke-primary`), integração no PageShell e remoção do `ScrollToTopButton`/`useScrollPosition` do roteador + regra CSS de diálogos |
 | 14 | **F27** — Insights: Precisão, Deduplicação & Casos de Borda | A / Inteligência | F19 | ✅ Concluída (2026-08-15) — média mensal real nos desafios (`typicalMonthlySpendCents`), `categoryCount` no discricionário (linha "30% em não essenciais" oculta com 1 categoria — sem repetição) e guarda de `weekendRatio` incomparável ("—" sem alerta absurdo) |
 | 15 | **F28** — Investimentos: Mobile Responsive & Organização | A / Mobile Polish | F17 | ✅ Concluída (2026-08-15) — cards de posição no mobile (sem scroll horizontal) com `PositionRowActions` compartilhado, KPIs 2×2 (padrão do app), metas por classe empilháveis e remoção do código morto pós-F17 (`portfolio-page`/`position-tab`) |
-| 16 | **F29** — Insights: Inteligência de Recorrências, Alertas & Diagnósticos e Polish do Planejamento | A / Inteligência + Polish | F19/F24/F27 | ✅ Concluída (2026-08-15) — nome conhecido/categoria sempre emitem assinatura (variância só reduz confiança), `recurring`/`similar` com tolerância relativa à mediana e catálogo expandido (+20 serviços); abas "Alertas"+"Diagnósticos" unificadas em **"Alertas & Diagnósticos"** (primeira); Planejamento com cards em linha cheia (um por linha), gauge em linha com stats, inputs 3 colunas e `FireProjectionChart` sem distorção |
+| 17 | **F30** — Importação e Reconciliação Inteligente de Faturas de Cartão | A / Cartões & Inteligência | F2/F21/F22 | 📋 Pronta para Execução |
+
+### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
+
+**Objetivo (Trilha A / Cartões & Inteligência):** permitir a importação de faturas de cartão de crédito de qualquer instituição financeira (CSV com auto-encoding Latin-1/UTF-8, XLSX/XLS sob demanda, OFX SGML/XML bancário nativo ou Quick-Paste de texto copiado), processando 100% no cliente (privacidade absoluta), com reconciliação heurística contra despesas existentes, autopreenchimento preditivo de categorias e gravação transacional idempotente no Supabase.
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 30.1 — Motores Puros de Domínio (`src/domain/reconciliation/`):**
+   - Tipos e esquemas Zod (`types.ts`).
+   - Sanitização de ruído de adquirentes e extração de parcelas embutidas (`clean.ts`, `installments.ts`).
+   - Geração de hash SHA-256 ordinal anti-colisão (`hash.ts`).
+   - Motor de scoring multidimensional 0–100 (50% valor centesimal + 25% proximidade temporal + 25% similaridade textual Jaccard reusando `src/domain/predictions/`) em `scorer.ts`.
+   - Hub de parsers resilientes: `csv-parser.ts` (`PapaParse` com fallback de encoding), `ofx-parser.ts` (SGML/XML nativo em TS), `excel-parser.ts` (import dinâmico de `exceljs`), `text-parser.ts` (Quick-Paste de texto corrido) e `type-sniffer.ts` (inferência orientada ao conteúdo).
+   - Testes unitários puros com Vitest (`reconciliation.test.ts`).
+2. **Etapa 30.2 — Infraestrutura de Dados & RPC Transacional:**
+   - Migration `supabase/migrations/20260101000011_statement_import.sql`: colunas `statement_hash` e `imported_from_statement` na tabela `expenses` + índice condicional único `idx_expenses_user_card_statement_hash`.
+   - RPC PostgreSQL `import_statement_expenses`: validação de `APP_START_DATE` (`>= 2026-01-01`), valor estritamente positivo, inserção atômica em lote com idempotência e registro em `audit_events`.
+   - Wrapper em `src/data/rpc.ts` e atualização de tipos em `src/types/schema.ts`.
+3. **Etapa 30.3 — Componentes de Interface & Diálogo de Reconciliação:**
+   - `StatementImportDialog` em `src/features/cards/components/` com stepper de 3 passos:
+     - *Passo 1 (Upload):* Tabs com `Dropzone` de arquivos e `Textarea` para Quick-Paste.
+     - *Passo 2 (Mapeamento):* Prévia das 5 primeiras linhas e seletores assistidos (quando houver ambiguidade).
+     - *Passo 3 (Reconciliação):* Tabela de conferência com filtros rápidos (Todos / Novos / Sugestões / Conciliados), seleção em lote, badges semânticos Obsidian Glass, `MoneyText` e seletor de categorias com sugestão preditiva.
+4. **Etapa 30.4 — Integração na Tela de Cartões & Validação de Qualidade:**
+   - Botão de ação primário "Importar Fatura" na `CardsPage` (`src/features/cards/pages/cards-page.tsx`).
+   - Invalidação seletiva de cache no TanStack Query (`useCardExpenses`, `useCards`).
+   - Testes de integração de UI e auditoria de acessibilidade (`vitest-axe`).
+
+**Arquivos:** `src/domain/reconciliation/*` (+ testes) · `supabase/migrations/20260101000011_statement_import.sql` · `src/data/rpc.ts` · `src/types/schema.ts` · `src/features/cards/components/statement-import-dialog.tsx` · `src/features/cards/components/statement-*-step.tsx` · `src/features/cards/pages/cards-page.tsx`.
+
+**✅ DoD (critérios de aceite):**
+- Motores puros com cobertura de testes unitários para múltiplos layouts bancários (Nubank, Itaú, Bradesco, Inter, OFX SGML/XML e Quick-Paste).
+- Parsing e deduplicação ocorrem 100% no cliente sem envio de extratos bancários para servidores externos.
+- Idempotência verificada: reimportar o mesmo extrato resulta em 0 duplicatas no banco; compras legítimas de mesmo valor/data no mesmo dia são preservadas pelo índice ordinal.
+- Parcelas embutidas (`01/10`) extraídas e despesas com status de conciliado identificadas automaticamente.
+- Categorias dos novos lançamentos pré-preenchidas pelo motor preditivo de histórico (`domain/predictions`).
+- Interface 100% responsiva (Desktop e Mobile), sem emojis e com auditoria axe sem violações.
+- Suíte completa de testes (`npm run test`, `npm run typecheck`, `npm run lint`) 100% verde.
+
+---
 
 **Auditoria de limpeza de código (2026-08-15):**
 - **Dead code removido:** `hooks/use-draggable.ts` (+teste) — órfão desde a remoção do FAB flutuante; `layout/placeholder-page.tsx` — página placeholder de versões antigas sem uso; `layout/density-toggle.tsx` — toggle não montado (a densidade vive em `/configuracoes` via `useDensity`); `centsToBRL` de `domain/money/parse.ts` — duplicata exata de `services/masks/money.formatCentsAsBRL` (DRY).
@@ -1376,7 +1416,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - **DRY — `toISODate`:** cópias locais removidas de `wizard-state.ts` e `payment-dialog.tsx`; fonte única `domain/money/parcelar.toISODate`.
 - **DRY — `formatPercent`:** consolidadas 2 cópias idênticas (`delta-hint.tsx`, `overview-page.tsx`) no canônico `services/masks/percent.ts` (+teste).
 - **Barrels criados:** `domain/money/index.ts`, `domain/gestures/index.ts`, `services/masks/index.ts` (padrão AGENTS.md §7) — 36+ arquivos migrados de imports profundos para `@/` (barrel).
-- **Verificação:** 1050 testes / 138 arquivos · lint 0 erros · typecheck e build limpos.
+- **Verificação:** 1092 testes / 139 arquivos · lint 0 erros · typecheck e build limpos.
 
 **Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.
 

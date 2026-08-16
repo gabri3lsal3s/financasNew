@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais) · suíte **1093 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard) · suíte **1092 testes / 139 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -149,6 +149,7 @@
 
 - **Problema:** lançar lançamentos manualmente era demorado e repetitivo.
 - **Solução:** motor preditivo `domain/predictions`; **sugestões por descrição** + **Lançamentos Habituais** no wizard; **repetição rápida** nos diálogos de detalhe (repetir no mês seguinte etc.).
+- **Evolução (2026-08-16, refatoração do motor de sugestões):** `buildHabitualEntries` reescrito com **ranking temporal ponderado** — janela de **±5–10 dias do mês** (`dayWindowWeight`), **limite estrito de 3 itens** (era 5) e ordenação por **relevância temporal × frequência × recência** (não mais contagem bruta); novo **`buildDescriptionSuggestions`** — sugestões de **descrição pura** que **filtram nomes de categoria** (ex.: com categoria "Alimentação" não sugere apenas "Alimentação") e rankeiam descrições reais do histórico (top 2–3 chips). **Bug de sobrescrita corrigido:** na Etapa 2, o clique num chip atualiza **apenas `description`** — o `amount`/`date` preenchidos na Etapa 1 são preservados 100%. Código morto removido (`predictFromHistory`/`PredictionSuggestion`/módulo `PredictionSuggestions` + testes).
 
 ## F22 — Central de Exportação, Backup & Fechamento Mensal
 
