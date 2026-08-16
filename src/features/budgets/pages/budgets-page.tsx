@@ -365,20 +365,23 @@ function IncomeGoalRow({
             </>
           ) : null}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <MoneyInput
-            className="w-full sm:w-40"
-            cents={cents}
-            onCentsChange={setCents}
-            aria-label={`Meta de renda de ${category.name}`}
-            placeholder="Definir meta"
-          />
+        <div className="flex w-full sm:w-auto items-center gap-2">
+          <div className="flex-1 sm:w-40 min-w-0">
+            <MoneyInput
+              className="w-full"
+              cents={cents}
+              onCentsChange={setCents}
+              aria-label={`Meta de renda de ${category.name}`}
+              placeholder="Definir meta"
+            />
+          </div>
           <Button
             type="button"
             size="sm"
             variant={saved ? "outline" : "default"}
             disabled={cents <= 0 || setGoal.isPending}
             onClick={() => void saveGoal()}
+            className="shrink-0"
           >
             {saved ? (
               <>
@@ -390,7 +393,14 @@ function IncomeGoalRow({
             )}
           </Button>
           {expectedCents > 0 ? (
-            <Button type="button" size="icon" variant="ghost" aria-label={`Remover meta de ${category.name}`} onClick={() => void removeGoalSafe()}>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={`Remover meta de ${category.name}`}
+              onClick={() => void removeGoalSafe()}
+              className="shrink-0"
+            >
               <Trash2 className="size-4" aria-hidden="true" />
             </Button>
           ) : null}

@@ -25,6 +25,7 @@ import {
   type DetailedCloseCategory,
   type ReportEntry,
 } from "@/domain/reports";
+import { addDaysISO } from "@/domain/debts";
 import { currentMonth, currentYear, monthLabel, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { computeOverview } from "@/domain/overview";
@@ -70,7 +71,7 @@ export function ReportsPage() {
       ? monthRange(month)
       : mode === "year"
         ? yearRange(year)
-        : { start: customStart, end: addDay(customEnd) };
+        : { start: customStart, end: customEnd ? addDaysISO(customEnd, 1) : "" };
   const customValid =
     mode !== "custom" ||
     (customStart !== "" && customEnd !== "" && validateCustomPeriod(customStart, customEnd).ok);
@@ -317,7 +318,7 @@ export function ReportsPage() {
 
       {/* F22 — Fechamento imprimível do período (mês, ano ou custom) */}
       <div className="flex justify-end">
-        <Button type="button" variant="outline" size="sm" onClick={() => setCloseOpen(true)} className="gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setCloseOpen(true)} className="gap-2 w-full sm:w-auto justify-center">
           <Printer className="size-4" aria-hidden="true" />
           <span>Fechamento do período</span>
         </Button>
@@ -489,11 +490,11 @@ export function ReportsPage() {
             detailedCategories={closeDetailedCategories}
           />
         </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setCloseOpen(false)}>
+        <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => setCloseOpen(false)} className="w-full sm:w-auto">
             Fechar
           </Button>
-          <Button type="button" onClick={() => window.print()} className="gap-2">
+          <Button type="button" onClick={() => window.print()} className="gap-2 w-full sm:w-auto justify-center">
             <Printer className="size-4" aria-hidden="true" />
             <span>Imprimir / Salvar PDF</span>
           </Button>
@@ -567,10 +568,4 @@ function SummaryCard({
   );
 }
 
-/** Soma 1 dia a uma data ISO (YYYY-MM-DD) — converte fim inclusivo em exclusivo. */
-function addDay(iso: string): string {
-  if (!iso) return "";
-  const [year, month, day] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) + 1));
-  return date.toISOString().slice(0, 10);
-}
+

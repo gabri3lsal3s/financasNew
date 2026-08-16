@@ -388,8 +388,8 @@ export function CardsPage() {
                   <InvoiceStatusBadge status={invStatus} />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setPaymentMode("refund")} className="gap-1.5">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button variant="outline" size="sm" onClick={() => setPaymentMode("refund")} className="gap-1.5 flex-1 sm:flex-none justify-center">
                     <Undo2 className="size-3.5" aria-hidden="true" />
                     Estorno
                   </Button>
@@ -397,7 +397,7 @@ export function CardsPage() {
                     size="sm"
                     onClick={() => setPaymentMode("payment")}
                     disabled={(summary?.saldoCents ?? 0) <= 0}
-                    className="gap-1.5"
+                    className="gap-1.5 flex-1 sm:flex-none justify-center"
                   >
                     Registrar pagamento
                   </Button>
@@ -410,12 +410,17 @@ export function CardsPage() {
               SEÇÃO 3: EXTRATO DISCRIMINADO (DESPESAS E PAGAMENTOS)
              ========================================================================= */}
           <section aria-label={`Despesas da fatura de ${monthLabel(effectiveMonth)}`} className="flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Despesas · {monthLabel(effectiveMonth)}
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground font-mono">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Despesas · {monthLabel(effectiveMonth)}
+                </h2>
+                <span className="text-xs text-muted-foreground font-mono sm:hidden">
+                  {competenceExpenses.length} {competenceExpenses.length === 1 ? "item" : "itens"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <span className="hidden sm:inline text-xs text-muted-foreground font-mono">
                   {competenceExpenses.length} {competenceExpenses.length === 1 ? "item" : "itens"}
                 </span>
                 <Button
@@ -424,10 +429,10 @@ export function CardsPage() {
                   size="sm"
                   onClick={() => setPrintOpen(true)}
                   disabled={competenceExpenses.length === 0 || !selectedCard}
-                  className="gap-1.5"
+                  className="gap-1.5 flex-1 sm:flex-none justify-center"
                 >
                   <Printer className="size-3.5" aria-hidden="true" />
-                  Imprimir / Salvar PDF
+                  <span className="hidden sm:inline">Imprimir / Salvar </span>PDF
                 </Button>
                 <Button
                   type="button"
@@ -435,10 +440,10 @@ export function CardsPage() {
                   size="sm"
                   onClick={handleExportInvoice}
                   disabled={competenceExpenses.length === 0 || !selectedCard}
-                  className="gap-1.5"
+                  className="gap-1.5 flex-1 sm:flex-none justify-center"
                 >
                   <Download className="size-3.5" aria-hidden="true" />
-                  Exportar CSV
+                  <span className="hidden sm:inline">Exportar </span>CSV
                 </Button>
               </div>
             </div>
@@ -652,11 +657,11 @@ export function CardsPage() {
                 payments={printPaymentRows}
               />
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setPrintOpen(false)}>
+            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setPrintOpen(false)} className="w-full sm:w-auto">
                 Fechar
               </Button>
-              <Button type="button" onClick={() => window.print()} className="gap-2">
+              <Button type="button" onClick={() => window.print()} className="gap-2 w-full sm:w-auto justify-center">
                 <Printer className="size-4" aria-hidden="true" />
                 <span>Imprimir / Salvar PDF</span>
               </Button>
