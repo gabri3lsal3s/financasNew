@@ -193,15 +193,6 @@ export async function setIncomeGoal(categoryId: string, month: string, expected:
   );
 }
 
-/** Recálculo controlado das competências de fatura de um cartão (D3/§1.5). */
-export async function recalculateBillCompetences(cardId: string): Promise<number> {
-  return unwrapRpc(
-    callRpc("recalculate_bill_competences", {
-      p_card_id: cardId,
-    }),
-  );
-}
-
 export interface CreateCardPaymentParams {
   cardId: string;
   competenceMonth: string;

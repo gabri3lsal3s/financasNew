@@ -30,7 +30,6 @@ import {
 } from "@/domain/overview";
 import { numberToCents } from "@/domain/money";
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
-import { formatCentsAsBRL } from "@/services/masks";
 import { formatPercent } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import {
@@ -217,8 +216,7 @@ export function OverviewPage() {
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <KpiCard
                 label="Receitas"
-                value={formatCentsAsBRL(totals.incomeCents)}
-                valueCents={totals.incomeCents}
+                cents={totals.incomeCents}
                 tone="positive"
                 icon={<TrendingUp className="size-4" aria-hidden="true" />}
                 hint={<DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />}
@@ -226,8 +224,7 @@ export function OverviewPage() {
               />
               <KpiCard
                 label="Despesas"
-                value={formatCentsAsBRL(totals.expenseCents)}
-                valueCents={totals.expenseCents}
+                cents={totals.expenseCents}
                 tone="negative"
                 icon={<TrendingDown className="size-4" aria-hidden="true" />}
                 hint={<DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />}
@@ -236,8 +233,7 @@ export function OverviewPage() {
               {/* F16 — deep-link: KPI da carteira navega para /carteira (operação/metas). */}
               <KpiCard
                 label="Investimentos"
-                value={formatCentsAsBRL(totals.investmentCents)}
-                valueCents={totals.investmentCents}
+                cents={totals.investmentCents}
                 tone="portfolio"
                 icon={<TrendingUp className="size-4" aria-hidden="true" />}
                 hint={<DeltaHint currentCents={totals.investmentCents} previousCents={prevTotals.investmentCents} />}
@@ -246,8 +242,7 @@ export function OverviewPage() {
               />
               <KpiCard
                 label="Saldo do mês"
-                value={formatCentsAsBRL(totals.balanceCents)}
-                valueCents={totals.balanceCents}
+                cents={totals.balanceCents}
                 tone={totals.balanceCents >= 0 ? "positive" : "negative"}
                 icon={<DollarSign className="size-4" aria-hidden="true" />}
               />

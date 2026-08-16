@@ -1,19 +1,16 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { MoneyText } from "@/components/ui/money-text";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Sparkline } from "@/components/ui/sparkline";
 import { formatCentsAsBRL } from "@/services/masks";
 
 export interface KpiCardProps {
   label: string;
-  /** Valor já formatado — usado quando `cents`/`valueCents` não são informados. */
+  /** Valor já formatado (não monetário — ex.: contagem) — quando `cents` não é informado. */
   value?: string;
-  /** Valor em centavos — renderiza MoneyText hero (padrão F12 de hierarquia tipográfica). */
+  /** Valor em centavos — renderiza o NumberTicker animado com formatação pt-BR (F8/F12). */
   cents?: number;
-  /** Valor em centavos — quando presente, renderiza NumberTicker animado (F8). */
-  valueCents?: number;
   tone?: "default" | "positive" | "negative" | "portfolio";
   /** Dica ou comparativo (ex.: variação vs mês anterior). */
   hint?: ReactNode;
@@ -49,7 +46,7 @@ const sparkTone: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   portfolio: "stroke-portfolio",
 };
 
-export function KpiCard({ label, value, cents, valueCents, tone = "default", hint, icon, spark, onClick }: KpiCardProps) {
+export function KpiCard({ label, value, cents, tone = "default", hint, icon, spark, onClick }: KpiCardProps) {
   return (
     <Card
       variant={onClick ? "interactive" : "default"}
@@ -77,9 +74,12 @@ export function KpiCard({ label, value, cents, valueCents, tone = "default", hin
         {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
         <p className={cn("num mt-1.5 sm:mt-2 truncate text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl", toneValue[tone])}>
           {cents !== undefined ? (
-            <MoneyText cents={cents} variant="hero" tone={tone} className="truncate" />
-          ) : valueCents !== undefined ? (
-            <NumberTicker value={valueCents} format={formatCentsAsBRL} />
+            <>
+              {/* `formatCentsAsBRL` zera valores negativos — o sinal é prefixado
+                  aqui (mesma convenção do MoneyText: “−” U+2212). */}
+              {cents < 0 ? <span aria-hidden="true">−</span> : null}
+              <NumberTicker value={Math.abs(cents)} format={formatCentsAsBRL} />
+            </>
           ) : (
             value
           )}

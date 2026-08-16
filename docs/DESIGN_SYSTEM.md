@@ -242,7 +242,7 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 | `<details>/<summary>` | `Accordion` |
 | Scrollbars padrão | **Ocultas** (pós-F10): `scrollbar-width: none` + `::-webkit-scrollbar{display:none}` — o scroll permanece funcional (wheel/toque/teclado); tokens `--scrollbar-*` mantidos como reserva |
 
-**Exceção permitida:** inputs de texto base (`<input type="text">`, textarea) — desde que **sempre encapsulados** em primitivos do app (`Input`, `MoneyInput`, `Textarea`), nunca usados crus em telas.
+**Exceção permitida:** inputs de texto base (`<input type="text">`, textarea) — desde que **sempre encapsulados** em primitivos do app (`Input`, `MoneyInput`), nunca usados crus em telas.
 
 **Regra de criação:** qualquer novo controle nativo que precise ser usado deve primeiro virar um primitivo em `components/ui/` (ver `docs/PROJECT_STRUCTURE.md` §8) — proibido ad-hoc em tela.
 

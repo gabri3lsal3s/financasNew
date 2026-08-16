@@ -109,16 +109,3 @@ export async function getCategoryUsage(categoryId: string): Promise<{ expenses: 
   }
   return { expenses: expenses.count ?? 0, incomes: incomes.count ?? 0 };
 }
-
-/** Categoria reservada de estorno (renda automática) — se existir. */
-export async function findReservedCategory(type: CategoryType, name: string): Promise<Category | null> {
-  const { data, error } = await resolveQuery<Category | null>(
-    getSupabase().from("categories").select("*").eq("type", type).eq("name", name).eq("is_reserved", true).maybeSingle(),
-  );
-
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return data ? mapCategory(data) : null;
-}

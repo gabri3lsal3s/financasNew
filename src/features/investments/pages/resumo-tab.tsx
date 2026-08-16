@@ -133,7 +133,7 @@ export function ResumoTab() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <KpiCard
               label="Patrimônio total"
-              valueCents={numberToCents(position.totalBRL)}
+              cents={numberToCents(position.totalBRL)}
               tone="portfolio"
               hint={<DeltaHint currentCents={numberToCents(position.totalBRL)} previousCents={previousCents} />}
             />

@@ -13,6 +13,58 @@ import { DebtFormDialog } from "@/features/debts/components/debt-form-dialog";
 import { SettleDialog } from "@/features/debts/components/settle-dialog";
 import type { Debt } from "@/types";
 
+interface DebtRowProps {
+  debt: Debt;
+  onSettle: (debt: Debt) => void;
+  onEdit: (debt: Debt) => void;
+  onDelete: (debt: Debt) => void;
+}
+
+/**
+ * Linha de dívida — nível de módulo (nunca aninhada em `DebtsPage`): evita que
+ * o React remonte todas as linhas a cada render da página (tipo de componente
+ * novo por render → perda de foco/jank com listas grandes). Callbacks via props.
+ */
+function DebtRow({ debt, onSettle, onEdit, onDelete }: DebtRowProps) {
+  const status = debtStatus(debt.due_date, debt.paid_at);
+  const isPaid = status === "paid";
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-medium text-foreground">{debt.name}</p>
+          <DebtStatusBadge status={status} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Vence em {debt.due_date}
+          {debt.paid_at ? ` · quitada em ${debt.paid_at.slice(0, 10)}` : ""}
+          {debt.expense_id ? " · vinculada a despesa" : ""}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <MoneyText
+          cents={Math.round(debt.amount * 100)}
+          variant="value"
+          tone={debt.type === "receivable" ? "positive" : "negative"}
+        />
+        {isPaid ? (
+          <CheckCircle2 className="size-5 text-positive-strong" aria-label="Quitada" />
+        ) : (
+          <Button size="sm" variant="outline" aria-label={`Quitar ${debt.name}`} onClick={() => onSettle(debt)}>
+            Quitar
+          </Button>
+        )}
+        <Button size="icon" variant="ghost" aria-label={`Editar ${debt.name}`} onClick={() => onEdit(debt)}>
+          <Pencil className="size-4" aria-hidden="true" />
+        </Button>
+        <Button size="icon" variant="ghost" aria-label={`Excluir ${debt.name}`} onClick={() => onDelete(debt)}>
+          <Trash2 className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** Dívidas / contas a pagar e receber (§3.4) — status derivado + quitação integrada. */
 export function DebtsPage() {
   const debtsQuery = useDebts();
@@ -60,54 +112,6 @@ export function DebtsPage() {
     } catch (err) {
       setDeleteError(getErrorMessage(err));
     }
-  };
-
-  const DebtRow = ({ debt }: { debt: Debt }) => {
-    const status = debtStatus(debt.due_date, debt.paid_at);
-    const isPaid = status === "paid";
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-medium text-foreground">{debt.name}</p>
-            <DebtStatusBadge status={status} />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Vence em {debt.due_date}
-            {debt.paid_at ? ` · quitada em ${debt.paid_at.slice(0, 10)}` : ""}
-            {debt.expense_id ? " · vinculada a despesa" : ""}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <MoneyText
-            cents={Math.round(debt.amount * 100)}
-            variant="value"
-            tone={debt.type === "receivable" ? "positive" : "negative"}
-          />
-          {isPaid ? (
-            <CheckCircle2 className="size-5 text-positive-strong" aria-label="Quitada" />
-          ) : (
-            <Button size="sm" variant="outline" aria-label={`Quitar ${debt.name}`} onClick={() => setSettling(debt)}>
-              Quitar
-            </Button>
-          )}
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={`Editar ${debt.name}`}
-            onClick={() => {
-              setEditingDebt(debt);
-              setFormOpen(true);
-            }}
-          >
-            <Pencil className="size-4" aria-hidden="true" />
-          </Button>
-          <Button size="icon" variant="ghost" aria-label={`Excluir ${debt.name}`} onClick={() => setDeleting(debt)}>
-            <Trash2 className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -168,7 +172,15 @@ export function DebtsPage() {
         <div className="flex flex-col gap-2">
           {filtered.map((debt) => (
             <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
-              <DebtRow debt={debt} />
+              <DebtRow
+                debt={debt}
+                onSettle={setSettling}
+                onEdit={(d) => {
+                  setEditingDebt(d);
+                  setFormOpen(true);
+                }}
+                onDelete={setDeleting}
+              />
             </HighlightRow>
           ))}
         </div>

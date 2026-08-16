@@ -2,7 +2,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { DebtStatusBadge } from "./debt-status-badge";
 import { InvoiceStatusBadge } from "./invoice-status-badge";
-import { InstallmentBadge } from "./installment-badge";
 
 describe("DebtStatusBadge", () => {
   it("exibe o rótulo correto por status", () => {
@@ -24,9 +23,3 @@ describe("InvoiceStatusBadge", () => {
   });
 });
 
-describe("InstallmentBadge", () => {
-  it("exibe parcela atual/total", () => {
-    render(<InstallmentBadge current={3} total={12} />);
-    expect(screen.getByText("3/12")).toBeInTheDocument();
-  });
-});

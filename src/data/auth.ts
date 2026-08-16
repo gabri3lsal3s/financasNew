@@ -45,10 +45,3 @@ export async function resetPasswordForEmail(email: string): Promise<void> {
   }
 }
 
-export async function signOut(): Promise<void> {
-  const { error } = await getSupabase().auth.signOut();
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-}

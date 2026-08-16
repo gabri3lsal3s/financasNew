@@ -49,6 +49,5 @@ export const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
 };
 
 /** Opções para os formulários de seleção de ícone (mesmo map, sem duplicação). */
-export const CATEGORY_ICON_OPTIONS = Object.keys(CATEGORY_ICON_MAP).sort();
 
 export type { LucideIcon };
