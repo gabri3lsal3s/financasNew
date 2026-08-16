@@ -48,6 +48,7 @@ export function usePredictionHistory(enabled: boolean) {
       receiveType: null,
       value: expense.value,
       date: expense.date,
+      createdAt: expense.created_at,
     })),
     ...(incomesQuery.data ?? []).map((income) => ({
       id: income.id,
@@ -60,6 +61,7 @@ export function usePredictionHistory(enabled: boolean) {
       receiveType: income.receive_type,
       value: income.value,
       date: income.date,
+      createdAt: income.created_at,
     })),
   ];
 

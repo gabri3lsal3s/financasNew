@@ -4,13 +4,19 @@ import {
   buildHabitualEntries,
   dayOfMonth,
   dayOfMonthDistance,
+  dayOfWeek,
+  hourDistance,
+  hourOfDay,
+  isWeekend,
   jaccardTokens,
   medianOf,
   modeOf,
   monthWindowFactor,
   normalizeText,
   recencyFactor,
+  timeOfDayFactor,
   tokenize,
+  weekdayFactor,
   type PredictionEntry,
 } from "./index";
 
@@ -135,15 +141,139 @@ describe("predictions — motor preditivo de entrada (F21 + hotfix)", () => {
     expect(monthWindowFactor(1, 15)).toBe(0.4); // fora da janela
   });
 
-  it("medianOf e modeOf calculam valores típicos e métodos predominantes", () => {
-    // Mediana ignora outlier
-    expect(medianOf([30, 30, 30, 120])).toBe(30);
-    expect(medianOf([20, 40, 60])).toBe(40);
-    expect(medianOf([])).toBe(0);
+  it("dayOfWeek e isWeekend identificam dias úteis e fins de semana", () => {
+    // 2026-08-15 é Sábado (dayOfWeek = 6, isWeekend = true)
+    expect(dayOfWeek("2026-08-15")).toBe(6);
+    expect(isWeekend("2026-08-15")).toBe(true);
 
-    // Moda extrai o mais frequente
-    expect(modeOf(["pix", "pix", "credit_card"])).toBe("pix");
-    expect(modeOf([])).toBeNull();
+    // 2026-08-17 é Segunda-feira (dayOfWeek = 1, isWeekend = false)
+    expect(dayOfWeek("2026-08-17")).toBe(1);
+    expect(isWeekend("2026-08-17")).toBe(false);
+
+    // Afinidade semanal:
+    // Hábito de dia útil (seg-sex) em referência de dia útil -> 1.0
+    expect(weekdayFactor(["2026-08-17", "2026-08-18"], "2026-08-19")).toBe(1);
+    // Hábito de dia útil em referência de fim de semana -> 0.85
+    expect(weekdayFactor(["2026-08-17", "2026-08-18"], "2026-08-15")).toBe(0.85);
+  });
+
+  it("hourOfDay, hourDistance e timeOfDayFactor calculam afinidade horária e reforço semântico", () => {
+    expect(hourOfDay("2026-08-15T14:30:00")).toBe(14);
+    expect(hourOfDay(undefined)).toBeNull();
+    expect(hourOfDay("invalido")).toBeNull();
+
+    expect(hourDistance(12, 13)).toBe(1);
+    expect(hourDistance(23, 1)).toBe(2); // circular: 23h e 01h distam 2 horas
+    expect(hourDistance(12, 0)).toBe(12);
+
+    expect(medianOf([10, 20, 30])).toBe(20);
+    expect(modeOf(["a", "a", "b"])).toBe("a");
+
+    // Horário local próximo (12h vs 13h) -> 1.0 (usa timestamp local sem fuso Z)
+    expect(timeOfDayFactor(["2026-08-15T12:30:00"], 13, "Gasto avulso")).toBe(1);
+    // Horário distante (12h vs 22h) sem semântica -> 0.65
+    expect(timeOfDayFactor(["2026-08-15T12:30:00"], 22, "Gasto avulso")).toBe(0.65);
+    // Reforço semântico: "Almoço" às 12h ganha 1.0 mesmo se o timestamp histórico foi à noite (perfil em lote)
+    expect(timeOfDayFactor(["2026-08-15T22:00:00"], 12, "Almoço Restaurante")).toBe(1);
+    // Sem timestamps ou sem hora atual -> 1.0 (neutro)
+    expect(timeOfDayFactor([], 12, "Gasto")).toBe(1);
+    expect(timeOfDayFactor(["2026-08-15T12:00:00"], undefined, "Gasto")).toBe(1);
+  });
+
+  it("buildHabitualEntries prioriza almoço no horário do almoço e jantar à noite", () => {
+    const lunch: PredictionEntry = {
+      id: "l1",
+      kind: "expense",
+      description: "Almoço no Quilo",
+      categoryId: "c-alim",
+      categoryName: "Alimentação",
+      paymentMethod: "pix",
+      cardId: null,
+      receiveType: null,
+      value: 32,
+      date: "2026-08-14",
+      createdAt: "2026-08-14T12:30:00",
+    };
+    const dinner: PredictionEntry = {
+      id: "d1",
+      kind: "expense",
+      description: "Ifood Pizza",
+      categoryId: "c-alim",
+      categoryName: "Alimentação",
+      paymentMethod: "pix",
+      cardId: null,
+      receiveType: null,
+      value: 75,
+      date: "2026-08-14",
+      createdAt: "2026-08-14T20:45:00",
+    };
+
+    const sameFreqHistory = [
+      lunch,
+      { ...lunch, id: "l2", date: "2026-08-13" },
+      dinner,
+      { ...dinner, id: "d2", date: "2026-08-13" },
+    ];
+
+    // Às 12h (meio-dia): Almoço lidera
+    const habitsLunchTime = buildHabitualEntries(sameFreqHistory, "expense", {
+      referenceDay: 14,
+      currentHour: 12,
+    });
+    expect(habitsLunchTime[0]?.description).toBe("Almoço no Quilo");
+
+    // Às 21h (noite): Ifood Pizza lidera
+    const habitsDinnerTime = buildHabitualEntries(sameFreqHistory, "expense", {
+      referenceDay: 14,
+      currentHour: 21,
+    });
+    expect(habitsDinnerTime[0]?.description).toBe("Ifood Pizza");
+  });
+
+  it("buildHabitualEntries prioriza hábitos de fim de semana no sábado/domingo", () => {
+    const weekdayExpense: PredictionEntry = {
+      id: "w1",
+      kind: "expense",
+      description: "Estacionamento Trabalho",
+      categoryId: "c-transp",
+      categoryName: "Transporte",
+      paymentMethod: "pix",
+      cardId: null,
+      receiveType: null,
+      value: 20,
+      date: "2026-08-10", // Segunda-feira
+    };
+    const weekendExpense: PredictionEntry = {
+      id: "we1",
+      kind: "expense",
+      description: "Barzinho com Amigos",
+      categoryId: "c-lazer",
+      categoryName: "Lazer",
+      paymentMethod: "credit_card",
+      cardId: "card-1",
+      receiveType: null,
+      value: 90,
+      date: "2026-08-09", // Domingo
+    };
+
+    const mixedHistory = [
+      weekdayExpense,
+      { ...weekdayExpense, id: "w2", date: "2026-08-11" }, // Terça
+      weekendExpense,
+      { ...weekendExpense, id: "we2", date: "2026-08-08" }, // Sábado
+    ];
+
+    // No Sábado (2026-08-15): Barzinho com Amigos lidera por afinidade de fim de semana
+    const saturdayHabits = buildHabitualEntries(mixedHistory, "expense", {
+      referenceDate: "2026-08-15",
+    });
+    expect(saturdayHabits[0]?.description).toBe("Barzinho com Amigos");
+
+    // Na Quarta-feira (2026-08-12): Estacionamento Trabalho lidera por afinidade de dia útil
+    const wednesdayHabits = buildHabitualEntries(mixedHistory, "expense", {
+      referenceDate: "2026-08-12",
+    });
+    expect(wednesdayHabits[0]?.description).toBe("Estacionamento Trabalho");
   });
 
   it("buildHabitualEntries suprime conta periódica mensal (1x/mês) se já lançada no targetMonth", () => {

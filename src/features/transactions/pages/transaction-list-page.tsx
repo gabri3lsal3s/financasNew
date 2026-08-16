@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router";
 import { useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Plus, Trash2 } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Plus, Repeat, Trash2, Zap } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,6 +11,7 @@ import { currentMonth, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useCategories, useExpenses, useIncomes } from "@/state";
+import { partitionInvoiceExpenses } from "@/domain/cards";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
 import type { Category, Expense, Income } from "@/types";
@@ -151,6 +152,11 @@ export function TransactionListPage() {
   const expensesTotalCents = sumCents(expensesQuery.data ?? []);
   const balanceCents = incomesTotalCents - expensesTotalCents;
 
+  // Partição de despesas: parceladas (installments_total > 1) × à vista
+  // — mesmo motor puro usado na página de cartões (domain/cards).
+  const { installments: expenseInstallments, regular: expenseRegular } =
+    partitionInvoiceExpenses(expensesQuery.data ?? []);
+
   return (
     <div className="flex flex-col gap-6">
       {/* F12 — sem header visual: seletor de mês direto; o botão de novo
@@ -234,7 +240,7 @@ export function TransactionListPage() {
             )}
           </section>
 
-          <section aria-label="Despesas do mês" className="flex flex-col gap-2">
+          <section aria-label="Despesas do mês" className="flex flex-col gap-3">
             <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               <ArrowUpRight className="size-4 text-negative-strong" aria-hidden="true" />
               Despesas
@@ -247,29 +253,87 @@ export function TransactionListPage() {
                 tone="negative"
               />
             ) : (
-              <VirtualList
-                key={month}
-                rows={expensesQuery.data ?? []}
-                rowKey={(expense) => expense.id}
-                itemHeight={ROW_HEIGHT}
-                plainThreshold={PLAIN_THRESHOLD}
-                maxHeight={560}
-                gap={8}
-                aria-label="Despesas do mês"
-                renderRow={(expense) => (
-                  <HighlightRow highlightId={highlightId} id={expense.id}>
-                    <ExpenseRow
-                      expense={expense}
-                      category={categoryById.get(expense.category_id)}
-                      onClick={() => setSelectedExpense(expense)}
-                      onDelete={() => {
-                        setSelectedExpense(expense);
-                        setDeleteExpenseOnOpen(true);
-                      }}
+              <div className="flex flex-col gap-4">
+                {/* Parceladas — compras com mais de 1 parcela (topo) */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Repeat className="size-3.5" aria-hidden="true" />
+                      Parceladas
+                    </h3>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {expenseInstallments.length} {expenseInstallments.length === 1 ? "item" : "itens"}
+                    </span>
+                  </div>
+                  {expenseInstallments.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhuma despesa parcelada no mês.</p>
+                  ) : (
+                    <VirtualList
+                      key={`${month}-installments`}
+                      rows={expenseInstallments}
+                      rowKey={(expense) => expense.id}
+                      itemHeight={ROW_HEIGHT}
+                      plainThreshold={PLAIN_THRESHOLD}
+                      maxHeight={560}
+                      gap={8}
+                      aria-label="Despesas parceladas do mês"
+                      renderRow={(expense) => (
+                        <HighlightRow highlightId={highlightId} id={expense.id}>
+                          <ExpenseRow
+                            expense={expense}
+                            category={categoryById.get(expense.category_id)}
+                            onClick={() => setSelectedExpense(expense)}
+                            onDelete={() => {
+                              setSelectedExpense(expense);
+                              setDeleteExpenseOnOpen(true);
+                            }}
+                          />
+                        </HighlightRow>
+                      )}
                     />
-                  </HighlightRow>
-                )}
-              />
+                  )}
+                </div>
+
+                {/* À vista — gastos sem parcelamento (abaixo) */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Zap className="size-3.5" aria-hidden="true" />
+                      À vista
+                    </h3>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {expenseRegular.length} {expenseRegular.length === 1 ? "item" : "itens"}
+                    </span>
+                  </div>
+                  {expenseRegular.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhuma despesa à vista no mês.</p>
+                  ) : (
+                    <VirtualList
+                      key={`${month}-regular`}
+                      rows={expenseRegular}
+                      rowKey={(expense) => expense.id}
+                      itemHeight={ROW_HEIGHT}
+                      plainThreshold={PLAIN_THRESHOLD}
+                      maxHeight={560}
+                      gap={8}
+                      aria-label="Despesas à vista do mês"
+                      renderRow={(expense) => (
+                        <HighlightRow highlightId={highlightId} id={expense.id}>
+                          <ExpenseRow
+                            expense={expense}
+                            category={categoryById.get(expense.category_id)}
+                            onClick={() => setSelectedExpense(expense)}
+                            onDelete={() => {
+                              setSelectedExpense(expense);
+                              setDeleteExpenseOnOpen(true);
+                            }}
+                          />
+                        </HighlightRow>
+                      )}
+                    />
+                  )}
+                </div>
+              </div>
             )}
           </section>
         </div>

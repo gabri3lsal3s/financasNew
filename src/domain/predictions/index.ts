@@ -27,6 +27,8 @@ export interface PredictionEntry {
   value: number;
   /** Data ISO (YYYY-MM-DD) — usada para ponderação por recência e janela do mês. */
   date: string;
+  /** Timestamp ISO de criação (opcional — para calibragem contextual por horário do dia). */
+  createdAt?: string;
 }
 
 /** Lançamento habitual (favorito/template) derivado do histórico. */
@@ -104,9 +106,115 @@ export function recencyFactor(dateISO: string, todayISO: string, windowDays = 90
 
 /** Dia do mês (1–31) de uma data ISO. */
 export function dayOfMonth(iso: string): number {
-  const date = new Date(`${iso}T00:00:00`);
+  const date = new Date(`${iso.slice(0, 10)}T00:00:00`);
   if (Number.isNaN(date.getTime())) return 1;
   return date.getDate();
+}
+
+/** Dia da semana (0 = domingo, 1 = segunda, ..., 6 = sábado). */
+export function dayOfWeek(iso: string): number {
+  const date = new Date(`${iso.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return 0;
+  return date.getDay();
+}
+
+/** Verifica se a data é fim de semana (sábado ou domingo). */
+export function isWeekend(iso: string): boolean {
+  const day = dayOfWeek(iso);
+  return day === 0 || day === 6;
+}
+
+/**
+ * Fator de afinidade com o ciclo semanal (dia útil vs fim de semana).
+ * Se o hábito é predominantemente de dia útil e a data de referência é dia útil,
+ * ou se é de fim de semana e a referência é fim de semana, retorna 1.0.
+ * Se os ciclos forem opostos, retorna 0.85 (calibragem suave).
+ */
+export function weekdayFactor(entryDates: readonly string[], referenceDateISO?: string): number {
+  if (!referenceDateISO || entryDates.length === 0) return 1;
+  const refIsWeekend = isWeekend(referenceDateISO);
+  let weekendCount = 0;
+  for (const date of entryDates) {
+    if (isWeekend(date)) weekendCount += 1;
+  }
+  const habitIsWeekend = weekendCount / entryDates.length >= 0.5;
+  return habitIsWeekend === refIsWeekend ? 1 : 0.85;
+}
+
+/** Extrai a hora local (0–23) de um timestamp ISO. Retorna null se inválido. */
+export function hourOfDay(iso?: string): number | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.getHours();
+}
+
+/** Distância circular em horas (0–12). */
+export function hourDistance(a: number, b: number): number {
+  const diff = Math.abs(a - b) % 24;
+  return Math.min(diff, 24 - diff);
+}
+
+/** Palavras-chave semânticas associadas aos períodos do dia. */
+const TIME_SLOT_KEYWORDS: Record<string, { start: number; end: number; keywords: string[] }> = {
+  morning: {
+    start: 6,
+    end: 11,
+    keywords: ["cafe", "padaria", "pao", "combustivel", "posto", "transporte", "metro", "uber", "onibus"],
+  },
+  lunch: {
+    start: 11,
+    end: 15,
+    keywords: ["almoco", "restaurante", "quilo", "marmita", "refeicao", "buffet", "self service", "comida"],
+  },
+  afternoon: {
+    start: 14,
+    end: 18,
+    keywords: ["lanche", "cafeteria", "farmacia", "drogaria"],
+  },
+  night: {
+    start: 18,
+    end: 24,
+    keywords: ["jantar", "ifood", "delivery", "pizza", "bar", "cerveja", "hamburguer", "sushi", "cinema", "show", "pub"],
+  },
+};
+
+/**
+ * Fator horário suave (0.65–1.0):
+ * 1. Avalia os horários históricos em que o hábito foi criado (`createdAt`).
+ * 2. Aplica reforço semântico se a descrição casar com palavras-chave do período atual.
+ * 3. Se não houver timestamps ou for perfil de lote neutro, mantém 1.0.
+ */
+export function timeOfDayFactor(
+  entryTimestamps: readonly (string | undefined)[],
+  currentHour: number | undefined,
+  description: string,
+): number {
+  if (currentHour == null) return 1;
+
+  const validHours = entryTimestamps
+    .map(hourOfDay)
+    .filter((h): h is number => h !== null);
+
+  const normalizedDesc = normalizeText(description);
+
+  // Checagem de reforço semântico
+  for (const slot of Object.values(TIME_SLOT_KEYWORDS)) {
+    const isCurrentInSlot = currentHour >= slot.start && currentHour <= slot.end;
+    if (isCurrentInSlot && slot.keywords.some((kw) => normalizedDesc.includes(kw))) {
+      return 1;
+    }
+  }
+
+  if (validHours.length === 0) return 1;
+
+  // Hora típica do hábito (mediana dos horários)
+  const medianHour = Math.round(medianOf(validHours));
+  const distance = hourDistance(currentHour, medianHour);
+
+  if (distance <= 2) return 1;
+  if (distance <= 4) return 0.85;
+  return 0.65;
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +284,10 @@ export interface HabitualEntryOptions {
   todayISO?: string;
   /** Mês da transação (YYYY-MM) — suprime despesas periódicas mensais já lançadas no mês. */
   targetMonth?: string;
+  /** Data de referência (YYYY-MM-DD) para afinidade de dia da semana. */
+  referenceDate?: string;
+  /** Hora atual do dispositivo (0–23) para calibragem horária suave. */
+  currentHour?: number;
 }
 
 /**
@@ -194,7 +306,7 @@ export function buildHabitualEntries(
   kind: "expense" | "income",
   options: HabitualEntryOptions = {},
 ): HabitualEntry[] {
-  const { limit = 3, referenceDay, todayISO, targetMonth } = options;
+  const { limit = 3, referenceDay, todayISO, targetMonth, referenceDate, currentHour } = options;
   const filtered = history.filter((entry) => entry.kind === kind && entry.description.trim() !== "");
 
   // Agrupamento primário: descrição normalizada + categoria.
@@ -262,10 +374,20 @@ export function buildHabitualEntries(
       .filter((r): r is string => r != null && r !== "");
     const bestReceiveType = modeOf(receiveTypes) ?? group.latest.receiveType;
 
-    // Score ponderado.
+    // Score ponderado contextual 5D:
+    // Volume × Janela Dia do Mês × Afinidade Dia da Semana × Afinidade Horária × Recência
     const temporal = referenceDay != null ? monthWindowFactor(dayOfMonth(group.latest.date), referenceDay) : 1;
     const recency = todayISO ? recencyFactor(group.latest.date, todayISO) : 1;
-    const score = totalCount * temporal * recency;
+    const weekday = referenceDate ? weekdayFactor(group.entries.map((e) => e.date), referenceDate) : 1;
+    const timeOfDay = currentHour != null
+      ? timeOfDayFactor(
+          group.entries.map((e) => e.createdAt),
+          currentHour,
+          group.latest.description,
+        )
+      : 1;
+
+    const score = totalCount * temporal * weekday * timeOfDay * recency;
 
     eligibleGroups.push({
       description: group.latest.description,
