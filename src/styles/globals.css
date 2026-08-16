@@ -490,10 +490,21 @@
    ---------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
-   Impressão — F22 (Fechamento Mensal imprimível)
-   Esconde todo o chrome da UI e exibe apenas o documento `.print-area`
-   (modal de fechamento), com cores claras fixas para economia de tinta.
+   Impressão — F22 (Fechamento do período imprimível)
+
+   O documento é renderizado num portal de nível `body` (`PrintSheet` com a
+   classe `.print-sheet` — irmão do `#root`), invisível na tela (`display:
+   none`). Na impressão, TODO o resto (app + portais do modal/toasts) sai do
+   fluxo com `display: none` e o `.print-sheet` flui em posição normal — a
+   única forma de paginação multi-página confiável no Chrome (elementos
+   `position: fixed`/`absolute` em impressão são cortados na 1ª página, o
+   que deixava os lançamentos incompletos). Cores claras fixas p/ economia
+   de tinta.
    ---------------------------------------------------------------- */
+.print-sheet {
+  display: none;
+}
+
 @media print {
   @page {
     margin: 12mm;
@@ -504,38 +515,26 @@
     -webkit-print-color-adjust: exact;
   }
 
-  body * {
-    visibility: hidden;
+  body > :not(.print-sheet) {
+    display: none !important;
   }
 
-  .print-area,
-  .print-area * {
-    visibility: visible;
-  }
-
-  .print-area {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    box-shadow: none !important;
+  .print-sheet {
+    display: block !important;
     background: #ffffff !important;
     color: #1c1917 !important;
   }
 
-  .print-area .text-muted-foreground {
+  .print-sheet .text-muted-foreground {
     color: #57534e !important;
   }
 
-  .print-area .border-border,
-  .print-area .border-border\/60 {
+  .print-sheet .border-border,
+  .print-sheet .border-border\/60 {
     border-color: #d6d3d1 !important;
   }
 
-  .print-area .bg-muted\/30 {
+  .print-sheet .bg-muted\/30 {
     background-color: #f5f5f4 !important;
   }
 }

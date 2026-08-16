@@ -15,7 +15,7 @@ describe("MonthlyClosePrintView (F22)", () => {
   it("renderiza cabeçalho, KPIs e taxas com valores em centavos", () => {
     render(
       <MonthlyClosePrintView
-        month="2026-08"
+        periodLabel="Agosto de 2026"
         totals={totals}
         expenseCount={5}
         incomeCount={2}
@@ -28,7 +28,7 @@ describe("MonthlyClosePrintView (F22)", () => {
     );
 
     expect(screen.getByText("Finanças Pessoais")).toBeInTheDocument();
-    expect(screen.getByText("Fechamento Mensal")).toBeInTheDocument();
+    expect(screen.getByText("Fechamento do período")).toBeInTheDocument();
     expect(screen.getByText("Rendas")).toBeInTheDocument();
     expect(screen.getByText("Despesas")).toBeInTheDocument();
     expect(screen.getByText("Saldo do mês")).toBeInTheDocument();
@@ -41,7 +41,7 @@ describe("MonthlyClosePrintView (F22)", () => {
   it("lista faturas quitadas com competência e data", () => {
     render(
       <MonthlyClosePrintView
-        month="2026-08"
+        periodLabel="Agosto de 2026"
         totals={totals}
         expenseCount={0}
         incomeCount={0}
@@ -61,7 +61,7 @@ describe("MonthlyClosePrintView (F22)", () => {
   it("mostra estados vazios sem dados", () => {
     render(
       <MonthlyClosePrintView
-        month="2026-08"
+        periodLabel="Agosto de 2026"
         totals={totals}
         expenseCount={0}
         incomeCount={0}
@@ -70,13 +70,13 @@ describe("MonthlyClosePrintView (F22)", () => {
       />,
     );
 
-    expect(screen.getByText("Nenhuma despesa registrada no mês.")).toBeInTheDocument();
-    expect(screen.getByText("Nenhum pagamento de fatura no mês.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma despesa registrada no período.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum pagamento de fatura no período.")).toBeInTheDocument();
   });
 
   it("marca o contêiner com a classe print-area", () => {
     const { container } = render(
-      <MonthlyClosePrintView month="2026-08" totals={totals} expenseCount={0} incomeCount={0} categories={[]} paidInvoices={[]} />,
+      <MonthlyClosePrintView periodLabel="Agosto de 2026" totals={totals} expenseCount={0} incomeCount={0} categories={[]} paidInvoices={[]} />,
     );
     expect(container.querySelector(".print-area")).not.toBeNull();
   });
@@ -84,7 +84,7 @@ describe("MonthlyClosePrintView (F22)", () => {
   it("F22 evolução — renderiza despesas em detalhe por categoria e dia", () => {
     render(
       <MonthlyClosePrintView
-        month="2026-08"
+        periodLabel="Agosto de 2026"
         totals={totals}
         expenseCount={2}
         incomeCount={0}
@@ -128,7 +128,7 @@ describe("MonthlyClosePrintView (F22)", () => {
   });
 
   it("F22 evolução — sem dados detalhados a seção não aparece", () => {
-    render(<MonthlyClosePrintView month="2026-08" totals={totals} expenseCount={1} incomeCount={0} categories={[]} paidInvoices={[]} />);
+    render(<MonthlyClosePrintView periodLabel="Agosto de 2026" totals={totals} expenseCount={1} incomeCount={0} categories={[]} paidInvoices={[]} />);
     expect(screen.queryByText("Despesas em detalhe")).not.toBeInTheDocument();
   });
 });

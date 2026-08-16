@@ -1,8 +1,9 @@
 /**
- * Fechamento mensal DETALHADO — evolução da F22.
+ * Fechamento do período DETALHADO — evolução da F22 (mês, ano ou período
+ * personalizado).
  *
- * Agrupa as despesas do mês em **categoria → dia → gasto**, cada gasto com
- * descrição, método de pagamento, cartão e parcela — a base do documento
+ * Agrupa as despesas do período em **categoria → dia → gasto**, cada gasto
+ * com descrição, método de pagamento, cartão e parcela — a base do documento
  * imprimível "Despesas em detalhe".
  *
  * Motor puro: recebe os insumos crus (em centavos) e resolvers de rótulo
@@ -81,10 +82,11 @@ function installmentLabel(input: DetailedCloseExpenseInput): string | null {
 }
 
 /**
- * Monta o fechamento detalhado do mês. Ordenação determinística:
+ * Monta o fechamento detalhado do período (mês/ano/custom — o período é
+ * definido pela lista de despesas recebida). Ordenação determinística:
  * categorias por total desc → dias por data asc → gastos por valor desc.
  */
-export function buildDetailedMonthlyClose(
+export function buildDetailedClose(
   expenses: readonly DetailedCloseExpenseInput[],
   resolvers: DetailedCloseResolvers,
 ): DetailedCloseCategory[] {

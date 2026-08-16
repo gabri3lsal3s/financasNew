@@ -79,6 +79,9 @@
     │   │   │                      #     assinante do bus de toasts imperativos),
     │   │   │                      #   pull-up-to-top-indicator (F26 — substitui o
     │   │   │                      #     scroll-to-top-button F9, removido),
+    │   │   │                      #   print-sheet (F22 evolução — portal de impressão
+    │   │   │                      #     em nível body: no @media print esconde o app e
+    │   │   │                      #     imprime o documento completo em várias páginas),
     │   │   │                      #   number-ticker, sparkline (F8), color-picker,
     │   │   │                      #   icon-picker (pós-F10), live-pulse-beacon (F11),
     │   │   │                      #   tooltip (F25 — primitivo acessível, CSS puro),

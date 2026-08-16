@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDetailedMonthlyClose, type DetailedCloseExpenseInput } from "./detailed-close";
+import { buildDetailedClose, type DetailedCloseExpenseInput } from "./detailed-close";
 
 const resolvers = {
   categoryName: (id: string) => (id === "c1" ? "Alimentação" : id === "c2" ? "Lazer" : "Outra"),
@@ -24,9 +24,9 @@ function expense(overrides: Partial<DetailedCloseExpenseInput> = {}): DetailedCl
   };
 }
 
-describe("buildDetailedMonthlyClose (F22 evolução — fechamento detalhado)", () => {
+describe("buildDetailedClose (F22 evolução — fechamento detalhado do período)", () => {
   it("agrupa por categoria com total desc e por dia com data asc", () => {
-    const result = buildDetailedMonthlyClose(
+    const result = buildDetailedClose(
       [
         expense({ id: "a", categoryId: "c2", date: "2026-08-05", valueCents: 5000 }),
         expense({ id: "b", categoryId: "c1", date: "2026-08-20", valueCents: 3000 }),
@@ -45,7 +45,7 @@ describe("buildDetailedMonthlyClose (F22 evolução — fechamento detalhado)", 
   });
 
   it("resolve rótulos de método, cartão e parcela por entrada", () => {
-    const result = buildDetailedMonthlyClose(
+    const result = buildDetailedClose(
       [
         expense({ id: "e1", paymentMethod: "credit", cardId: "card1", installmentGroupId: "g1", installmentsTotal: 3, installmentNumber: 2 }),
         expense({ id: "e2", paymentMethod: "pix", cardId: null, description: null }),
@@ -66,7 +66,7 @@ describe("buildDetailedMonthlyClose (F22 evolução — fechamento detalhado)", 
   });
 
   it("dia expõe label curto, dia da semana e subtotal", () => {
-    const result = buildDetailedMonthlyClose(
+    const result = buildDetailedClose(
       [expense({ valueCents: 4000 }), expense({ valueCents: 6000 })],
       resolvers,
     );
@@ -77,6 +77,6 @@ describe("buildDetailedMonthlyClose (F22 evolução — fechamento detalhado)", 
   });
 
   it("retorna lista vazia sem despesas", () => {
-    expect(buildDetailedMonthlyClose([], resolvers)).toEqual([]);
+    expect(buildDetailedClose([], resolvers)).toEqual([]);
   });
 });

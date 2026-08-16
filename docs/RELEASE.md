@@ -31,7 +31,7 @@
 | 6 | Dívidas: quitação com lançamento, recebimento integrado | ☐ | ☐ | Status derivado correto |
 | 7 | Orçamentos: limites, metas de renda, realocação (RPC) | ☐ | ☐ | Faixas 85/90/95/excedido |
 | 8 | Insights: alertas, assinaturas, projeção, diagnósticos | ☐ | ☐ | Confiança + ignorar/confirmar |
-| 9 | Relatórios: mês/custom ≤ 366d, merge de dívidas pagas | ☐ | ☐ | Comparativo |
+| 9 | Relatórios: mês/ano/custom ≤ 366d, merge de dívidas pagas | ☐ | ☐ | Comparativo; fechamento completo (mês/ano/custom) com impressão multi-página (PrintSheet) |
 | 10 | Carteira: posição (preço manual marcado), metas, calculadora de aporte | ☐ | ☐ | Barra de soma ≤ 100% |
 | 11 | Busca global (Ctrl+K) com deep-link + highlight | ☐ | ☐ | — |
 | 12 | Lembretes: lido/snooze(7d)/restaurar | ☐ | ☐ | Snooze expira |
@@ -95,7 +95,7 @@
 - Edge function de cotações (F1.7) deployada com cron a cada 6h.
 - ...
 ### Verificação
-- [ ] 1133+ testes verdes · typecheck · lint · build
+- [ ] 1135+ testes verdes · typecheck · lint · build
 - [ ] QA multi-dispositivo (seção 2) aprovado em desktop + mobile, 3 temas
 - [ ] Lighthouse ≥ 90
 ```

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChartPie, Printer, TrendingDown, TrendingUp } from "lucide-react";
-import { Alert, Button, EmptyState, Modal, Skeleton, Tabs } from "@/components/ui";
+import { Alert, Button, EmptyState, Modal, PrintSheet, Skeleton, Tabs } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
 import {
@@ -16,7 +16,7 @@ import {
   aggregateByCategory,
   aggregateByPaymentMethod,
   aggregateByWeekday,
-  buildDetailedMonthlyClose,
+  buildDetailedClose,
   mergePaidDebts,
   mondayFirstWeekday,
   percentChange,
@@ -227,7 +227,8 @@ export function ReportsPage() {
 
   const periodLabel = mode === "month" ? monthLabel(month) : mode === "year" ? String(year) : `${customStart} a ${customEnd}`;
 
-  // F22 — Fechamento mensal imprimível (valores REAIS, sem peso de relatório).
+  // F22 — Fechamento imprimível do período (valores REAIS, sem peso de relatório).
+  // Mês, ano e período custom: as listas `incomes`/`expenses` já são as do modo.
   const closeIncomeCents = incomes.reduce((acc, i) => acc + numberToCents(i.value), 0);
   const closeExpenseCents = expenses.reduce((acc, e) => acc + numberToCents(e.value), 0);
   const closeTotals = computeOverview(closeIncomeCents, closeExpenseCents, 0);
@@ -239,9 +240,9 @@ export function ReportsPage() {
     }))
     .sort((a, b) => b.totalCents - a.totalCents);
   const activeCardName = new Map((activeCardsQuery.data ?? []).map((card) => [card.id, card.name]));
-  const closeRange = monthRange(month);
+  // Pagamentos de fatura pelo mês da DATA do pagamento dentro do período ativo.
   const closeInvoices: MonthlyCloseInvoice[] = (allPaymentsQuery.data ?? [])
-    .filter((payment) => payment.date >= closeRange.start && payment.date < closeRange.end)
+    .filter((payment) => payment.date >= range.start && payment.date < range.end)
     .map((payment) => ({
       cardName: activeCardName.get(payment.card_id) ?? "Cartão",
       competenceMonth: payment.competence_month,
@@ -250,31 +251,28 @@ export function ReportsPage() {
     }));
 
   // F22 evolução — fechamento DETALHADO: categoria → dia → cada gasto com
-  // descrição, método de pagamento, cartão e parcela (somente no modo mês).
-  const closeDetailedCategories: DetailedCloseCategory[] =
-    mode === "month"
-      ? buildDetailedMonthlyClose(
-          expenses.map((e) => ({
-            id: e.id,
-            date: e.date,
-            description: e.description,
-            paymentMethod: e.payment_method,
-            cardId: e.card_id,
-            installmentsTotal: e.installments_total,
-            installmentNumber: e.installment_number,
-            installmentGroupId: e.installment_group_id,
-            categoryId: e.category_id,
-            valueCents: numberToCents(e.value),
-          })),
-          {
-            categoryName: (id) => categoryById.get(id)?.name ?? "Outra",
-            cardName: (id) => activeCardName.get(id) ?? null,
-            paymentMethodLabel: (method) =>
-              PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS] ?? method,
-            weekdayLabel: (date) => WEEKDAY_LABELS[mondayFirstWeekday(date)] ?? "",
-          },
-        )
-      : [];
+  // descrição, método de pagamento, cartão e parcela (mês, ano ou custom).
+  const closeDetailedCategories: DetailedCloseCategory[] = buildDetailedClose(
+    expenses.map((e) => ({
+      id: e.id,
+      date: e.date,
+      description: e.description,
+      paymentMethod: e.payment_method,
+      cardId: e.card_id,
+      installmentsTotal: e.installments_total,
+      installmentNumber: e.installment_number,
+      installmentGroupId: e.installment_group_id,
+      categoryId: e.category_id,
+      valueCents: numberToCents(e.value),
+    })),
+    {
+      categoryName: (id) => categoryById.get(id)?.name ?? "Outra",
+      cardName: (id) => activeCardName.get(id) ?? null,
+      paymentMethodLabel: (method) =>
+        PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS] ?? method,
+      weekdayLabel: (date) => WEEKDAY_LABELS[mondayFirstWeekday(date)] ?? "",
+    },
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -317,15 +315,13 @@ export function ReportsPage() {
         ]}
       />
 
-      {/* F22 — Fechamento mensal imprimível (somente no modo mês) */}
-      {mode === "month" ? (
-        <div className="flex justify-end">
-          <Button type="button" variant="outline" size="sm" onClick={() => setCloseOpen(true)} className="gap-2">
-            <Printer className="size-4" aria-hidden="true" />
-            <span>Fechamento do mês</span>
-          </Button>
-        </div>
-      ) : null}
+      {/* F22 — Fechamento imprimível do período (mês, ano ou custom) */}
+      <div className="flex justify-end">
+        <Button type="button" variant="outline" size="sm" onClick={() => setCloseOpen(true)} className="gap-2">
+          <Printer className="size-4" aria-hidden="true" />
+          <span>Fechamento do período</span>
+        </Button>
+      </div>
 
       {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
 
@@ -473,18 +469,18 @@ export function ReportsPage() {
         }}
       />
 
-      {/* F22 — Fechamento mensal imprimível (folha de estilo @media print) */}
+      {/* F22 — Fechamento do período imprimível (folha de estilo @media print) */}
       <Modal
         open={closeOpen}
         onOpenChange={setCloseOpen}
-        title="Fechamento Mensal"
-        description={`Fechamento detalhado de ${monthLabel(month)}: resumo executivo + cada gasto por categoria e dia, com método de pagamento — pronto para imprimir ou salvar em PDF.`}
-        className="max-w-3xl print:max-w-none print:shadow-none print:border-0"
+        title="Fechamento do período"
+        description={`Fechamento detalhado de ${periodLabel}: resumo executivo + cada gasto por categoria e dia, com método de pagamento — pronto para imprimir ou salvar em PDF.`}
+        className="max-w-3xl"
         hideCalculator
       >
         <div className="mt-4">
           <MonthlyClosePrintView
-            month={month}
+            periodLabel={periodLabel}
             totals={closeTotals}
             expenseCount={expenses.length}
             incomeCount={incomes.length}
@@ -493,7 +489,7 @@ export function ReportsPage() {
             detailedCategories={closeDetailedCategories}
           />
         </div>
-        <div className="mt-6 flex justify-end gap-2 print:hidden">
+        <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => setCloseOpen(false)}>
             Fechar
           </Button>
@@ -503,6 +499,21 @@ export function ReportsPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* Portal de impressão (F22 evolução): o documento sai do modal e vai
+          para o body como `.print-sheet` — na impressão só ele aparece, em
+          fluxo normal, paginando por TODAS as páginas (sem cortar lançamentos). */}
+      <PrintSheet open={closeOpen}>
+        <MonthlyClosePrintView
+          periodLabel={periodLabel}
+          totals={closeTotals}
+          expenseCount={expenses.length}
+          incomeCount={incomes.length}
+          categories={closeCategories}
+          paidInvoices={closeInvoices}
+          detailedCategories={closeDetailedCategories}
+        />
+      </PrintSheet>
     </div>
   );
 }

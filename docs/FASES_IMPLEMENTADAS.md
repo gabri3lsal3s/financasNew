@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard; **atualizações otimistas** em edição/exclusão de lançamentos; **edge inset do Swipe Navigation**; **Pull-up to Top confiável**) · suíte **1133 testes / 143 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais; refatoração do motor de sugestões preditivas do wizard; **atualizações otimistas** em edição/exclusão de lançamentos; **edge inset do Swipe Navigation**; **Pull-up to Top confiável**; **Fechamento completo por mês/ano/período customizado com impressão multi-página**) · suíte **1135 testes / 144 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -158,6 +158,7 @@
 - **Problema:** dados presos no app — sem portabilidade, backup ou fechamento imprimível.
 - **Solução:** `domain/export` (**CSV pt-BR** + backup JSON versionado com Zod e integridade referencial); `fetchAllUserData`/`restoreBackup` via **RPC transacional** (wipe + insert com IDs originais); hub **Configurações > Dados** (JSON completo + CSVs por mês/custom + restauração em 2 etapas); **Fechamento Mensal imprimível** nos Relatórios (`@media print`) e **Web Share** nos comprovantes.
 - **Evolução (a pedido do usuário):** o fechamento virou **detalhado** — além do resumo executivo, o documento agora lista **cada gasto do mês** separado por **categoria → dia → gasto**, com descrição, método de pagamento, cartão e parcela (motor puro `domain/reports/detailed-close.ts` + seção "Despesas em detalhe" no `MonthlyClosePrintView`).
+- **Evolução (2026-08-16, exportação completa + períodos flexíveis):** o fechamento imprimia **somente a 1ª página** (o Chrome corta a folha `position: absolute` na impressão) — corrigido com o primitivo **`PrintSheet`** (portal em nível `body`, fluxo normal; `@media print` esconde o app por `display: none`), validado com **9 páginas / 186 lançamentos** em Chrome real; e o relatório passou a aceitar **mês, ano e período personalizado** (motor `buildDetailedClose` período-agnóstico + prop `periodLabel` no documento).
 
 ## F23 — Engenharia de Performance & Code-Splitting 3D
 

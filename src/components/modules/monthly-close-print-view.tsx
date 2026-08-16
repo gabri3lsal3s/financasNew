@@ -1,7 +1,6 @@
 import { Fragment } from "react";
 import { Banknote, Landmark, PiggyBank, ReceiptText, TrendingUp } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
-import { monthLabel } from "@/lib/date";
 import type { OverviewTotals } from "@/domain/overview";
 import type { DetailedCloseCategory } from "@/domain/reports";
 
@@ -21,8 +20,8 @@ export interface MonthlyCloseInvoice {
 }
 
 export interface MonthlyClosePrintViewProps {
-  /** YYYY-MM */
-  month: string;
+  /** Rótulo do período (ex.: "Agosto de 2026", "2026", "01/01/2026 a 31/01/2026"). */
+  periodLabel: string;
   totals: OverviewTotals;
   expenseCount: number;
   incomeCount: number;
@@ -45,13 +44,14 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Fechamento mensal imprimível (F22) — documento executivo do mês com
- * folha de estilo de impressão própria (classe `.print-area` + @media print
- * em globals.css). Valores SEMPRE em centavos (entrada) e REAIS (não
- * ponderados pelo peso de relatório — é um fechamento financeiro).
+ * Fechamento do período imprimível (F22) — documento executivo do mês, ano
+ * ou período personalizado com folha de estilo de impressão própria (é
+ * renderizado dentro do portal `PrintSheet` com a classe `.print-sheet` +
+ * @media print em globals.css). Valores SEMPRE em centavos (entrada) e REAIS
+ * (não ponderados pelo peso de relatório — é um fechamento financeiro).
  */
 export function MonthlyClosePrintView({
-  month,
+  periodLabel,
   totals,
   expenseCount,
   incomeCount,
@@ -94,11 +94,11 @@ export function MonthlyClosePrintView({
           <TrendingUp className="size-5 text-primary-strong" aria-hidden="true" />
           <div className="flex flex-col">
             <span className="font-display text-base font-bold tracking-tight">{appName}</span>
-            <span className="text-xs text-muted-foreground">Fechamento Mensal</span>
+            <span className="text-xs text-muted-foreground">Fechamento do período</span>
           </div>
         </div>
         <div className="flex flex-col items-end text-right text-xs text-muted-foreground">
-          <span className="font-semibold text-sm text-foreground">{monthLabel(month)}</span>
+          <span className="font-semibold text-sm text-foreground">{periodLabel}</span>
           <span>Gerado em {generatedAt}</span>
         </div>
       </header>
@@ -126,7 +126,7 @@ export function MonthlyClosePrintView({
       <section aria-label="Despesas por categoria">
         <h2 className="text-sm font-semibold text-foreground">Despesas por categoria</h2>
         {categories.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Nenhuma despesa registrada no mês.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Nenhuma despesa registrada no período.</p>
         ) : (
           <table className="mt-2 w-full border-collapse text-sm">
             <thead>
@@ -159,12 +159,12 @@ export function MonthlyClosePrintView({
       </section>
 
       {/* Despesas em detalhe (F22 evolução) — categoria → dia → gasto com
-          descrição, método de pagamento, cartão e parcela. */}
+          descrição, método de pagamento, cartão e parcela (mês, ano ou custom). */}
       {detailedCategories.length > 0 ? (
         <section aria-label="Despesas em detalhe">
           <h2 className="text-sm font-semibold text-foreground">Despesas em detalhe</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Cada gasto do mês separado por categoria e dia, com método de pagamento.
+            Cada gasto do período separado por categoria e dia, com método de pagamento.
           </p>
           <div className="mt-3 flex flex-col gap-4">
             {detailedCategories.map((category) => (
@@ -216,7 +216,7 @@ export function MonthlyClosePrintView({
       <section aria-label="Faturas quitadas">
         <h2 className="text-sm font-semibold text-foreground">Faturas quitadas</h2>
         {paidInvoices.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Nenhum pagamento de fatura no mês.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Nenhum pagamento de fatura no período.</p>
         ) : (
           <table className="mt-2 w-full border-collapse text-sm">
             <thead>

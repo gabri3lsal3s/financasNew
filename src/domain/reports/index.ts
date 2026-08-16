@@ -284,7 +284,7 @@ export { percentChange } from "@/domain/overview";
 // ---------------------------------------------------------------------------
 
 export {
-  buildDetailedMonthlyClose,
+  buildDetailedClose,
   type DetailedCloseCategory,
   type DetailedCloseDay,
   type DetailedCloseEntry,
