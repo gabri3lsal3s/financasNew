@@ -119,4 +119,47 @@ describe("ExpenseDetailDialog", () => {
       }),
     });
   });
+
+  it("permite alterar o peso no relatório por preset dentro do modal de edição", async () => {
+    updateExpenseMock.mockClear();
+    updateExpenseMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+
+    // Abre o seletor de pesos (dentro do modal) e escolhe o preset 75%
+    await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
+    await user.click(screen.getByRole("option", { name: "75%" }));
+
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(updateExpenseMock).toHaveBeenCalledTimes(1);
+    const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { report_weight: number } };
+    expect(payload.input.report_weight).toBe(0.75);
+  });
+
+  it("permite peso personalizado no relatório no modal de edição e persiste a fração resolvida", async () => {
+    updateExpenseMock.mockClear();
+    updateExpenseMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+
+    await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
+    await user.click(screen.getByRole("option", { name: /personalizado/i }));
+
+    // baseExpense.value = 120,50 → R$ 45,00 = 4500 centavos
+    const customInput = screen.getByRole("textbox", { name: "Valor considerado no relatório" });
+    await user.clear(customInput);
+    await user.type(customInput, "4500");
+
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(updateExpenseMock).toHaveBeenCalledTimes(1);
+    const payload = updateExpenseMock.mock.calls[0]?.[0] as { input: { report_weight: number } };
+    // fração resolvida: 4500 / 12050 = 0.3734 (4 casas, invariante do schema)
+    expect(payload.input.report_weight).toBe(Number((4500 / 12050).toFixed(4)));
+  });
 });

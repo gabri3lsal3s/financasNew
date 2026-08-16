@@ -42,7 +42,16 @@ export function Select({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content className="z-modal overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-lg">
+        {/* `position="popper"` (hotfix): configuração recomendada para Select
+            dentro de Dialogs/containers roláveis — mede com colisão de viewport
+            e não depende do alinhamento com o item selecionado (item-aligned
+            falha dentro do bottom sheet do Modal com transform/overflow). */}
+        <SelectPrimitive.Content
+          position="popper"
+          sideOffset={4}
+          align="start"
+          className="z-modal max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-lg"
+        >
           <SelectPrimitive.Viewport>
             {options.map((option) => (
               <SelectPrimitive.Item

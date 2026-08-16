@@ -2,7 +2,7 @@
 
 > **Objetivo deste documento:** registro resumido de **cada fase de implementação** do projeto — o **problema** que motivou a fase e a **solução** implementada. Detalhe completo (entregas, DoD, arquivos) em `docs/ROADMAP.md` (§3); a ordem de execução e o status estão em `ROADMAP.md` §6.1.
 >
-> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfix de responsividade do DatePicker) · suíte **1091 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
+> **Status atual (2026-08-16):** fases **F0–F29 concluídas** (+ hotfixes de responsividade do DatePicker e do Seletor de Pesos em modais) · suíte **1093 testes / 140 arquivos** · typecheck/lint/build limpos · deploy funcional (Vercel + Supabase).
 
 ## Visão geral
 
@@ -192,6 +192,12 @@
 - **Solução:** (1) **nome conhecido/categoria de assinatura sempre emitem a ocorrência** — a variância só reduz a confiança (penalidade no `confidenceScore`); tolerância `recurring`/`similar` relativa à **mediana**; catálogo expandido (+20 serviços: globoplay, starplus, crunchyroll, deezer, alura, xbox, nordvpn, uberone…); (2) abas unificadas em **"Alertas & Diagnósticos"** (primeira: alertas em destaque → KPIs → avisos contextuais); (3) Planejamento com cards **uma linha cada** (largura cheia), headers com subtítulo, gauge em linha com os stats em chips, inputs FIRE em 3 colunas e `FireProjectionChart` sem distorção (proporcional, máx. 460px).
 
 **Ajuste pós-F29 (2026-08-15, decisão de produto):** botões do header (tema/privacidade/calculadora) voltaram ao `title` nativo (Tooltip primitivo mantido na biblioteca); `brand-logo` com `whitespace-nowrap` + animação `fade-slide-in` (token em `globals.css`) para o colapso da sidebar.
+
+## Hotfix — Seletor de Pesos (Select dentro de modais) (2026-08-16, interação)
+
+- **Problema:** o seletor de peso no relatório funcionava no **wizard** (tela cheia), mas nos **modais de edição** (despesa/receita — e no relatório, com `ReportDetailDialog` → `ExpenseDetailDialog` aninhados) o dropdown **renderizava sem responder aos cliques**; o valor personalizado (MoneyInput) também ficava inerte.
+- **Causa raiz:** o `Modal` é um **Dialog Radix modal** — aplica `pointer-events: none` no `<body>` e reativa só a camada interna do portal; o **wrapper `position: fixed` do popper** (`[data-radix-popper-content-wrapper]`) fica entre o body e a camada do Select **herdando `none` sem estilo próprio** (padrão frágil em WebKit: "renderiza mas não clica"). O Select ainda usava `position="item-aligned"`, frágil dentro do bottom sheet com `transform`/`overflow`.
+- **Solução:** (1) `select.tsx` — `position="popper"` + `sideOffset={4}` + `align="start"` (config shadcn p/ dialogs: colisão de viewport), `min-w-[var(--radix-select-trigger-width)]` e `max-h-72 overflow-y-auto`; (2) `globals.css` — regra `[data-radix-popper-content-wrapper] { pointer-events: auto }` reativando a camada intermediária do portal. **Validação real** (Chrome headless + CDP, mouse/touch): fluxo completo de edição com cliques reais registrando (trigger atualiza para 75%/Personalizado e MoneyInput aceita digitação). Testes novos no `expense-detail-dialog.test.tsx` (preset 75% e Personalizado → fração resolvida no payload de salvar).
 
 ## Hotfix — DatePicker responsivo (2026-08-16, correção prioritária de layout)
 
