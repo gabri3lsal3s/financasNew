@@ -425,10 +425,6 @@
     z-index: var(--z-tooltip);
   }
 
-  /* F26 — o indicador de pull-up é decorativo (pointer-events-none) e nunca
-     intercepta interação; por isso não precisa da trava de diálogos que o
-     antigo botão ScrollToTop (F9) exigia. */
-
   /* Hotfix — portais de popovers dentro de modais (Radix Select/Popover/
      DropdownMenu): o Dialog modal aplica `pointer-events: none` no <body> e o
      wrapper fixed do popper herda esse valor sem estilo próprio. Em

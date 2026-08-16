@@ -1,5 +1,5 @@
 /**
- * Barrels de domínio de gestos — swipe (AGENTS.md §7).
+ * Barrel de domínio de gestos — swipe de abas/navegação (AGENTS.md §7).
  * Importe via `@/domain/gestures` (nunca caminhos profundos).
  */
 export {

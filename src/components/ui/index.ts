@@ -57,8 +57,6 @@ export { NumberTicker } from "./number-ticker";
 export type { NumberTickerProps } from "./number-ticker";
 export { Sparkline } from "./sparkline";
 export type { SparklineProps } from "./sparkline";
-export { PullUpToTopIndicator } from "./pull-up-to-top-indicator";
-export type { PullUpToTopIndicatorProps } from "./pull-up-to-top-indicator";
 export { Alert } from "./alert";
 export type { AlertProps, AlertVariant } from "./alert";
 export { LivePulseBeacon } from "./live-pulse-beacon";

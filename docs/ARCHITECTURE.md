@@ -134,7 +134,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── accessibility/         #   F15: contraste AA (relativeLuminance/contrastRatio)
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
-    │   ├── gestures/              #   F20/F26: swipe + overscroll (axis-lock, thresholds)
+    │   ├── gestures/              #   F20: swipe (axis-lock, thresholds); overscroll removido (F26, 2026-08-16)
     │   ├── export/                #   F22: CSV pt-BR + backup versionado com Zod
     │   ├── fire/                  #   F24: regra dos 4%, projeção e faixas de emergência
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,

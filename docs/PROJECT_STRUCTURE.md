@@ -77,8 +77,6 @@
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
     │   │   │                      #   virtual-list (F5.5), toast, toast-host (F30 —
     │   │   │                      #     assinante do bus de toasts imperativos),
-    │   │   │                      #   pull-up-to-top-indicator (F26 — substitui o
-    │   │   │                      #     scroll-to-top-button F9, removido),
     │   │   │                      #   print-sheet (F22 evolução — portal de impressão
     │   │   │                      #     em nível body: no @media print esconde o app e
     │   │   │                      #     imprime o documento completo em várias páginas),
@@ -102,8 +100,7 @@
     │   │   │                      #   export-data-hub (F22 — backup/CSV/restauração em Configurações),
     │   │   │                      #   monthly-close-print-view (F22 — fechamento mensal imprimível),
     │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section
-    │   │   │                      #     (F24 — fundo de emergência e simulador FIRE no Insights),
-    │   │   │                      #   pull-up-indicator (F26 — micro-indicador overscroll)…
+    │   │   │                      #     (F24 — fundo de emergência e simulador FIRE no Insights)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10),
@@ -156,7 +153,7 @@
     │   ├── calculator/            #   motor puro de operações e divisão de parcelas (F9)
     │   ├── predictions/           #   predição de entrada (F21): similaridade de descrição,
     │   │                          #     inferência de categoria/forma/cartão e habituais
-    │   ├── gestures/              #   gestos puros: swipe.ts (F20), overscroll.ts (F26)
+    │   ├── gestures/              #   gestos puros: swipe.ts (F20)
     │   ├── export/                #   F22: serialização CSV pt-BR (`;`/`,`/BOM — csv.ts)
     │   │                          #     e backup versionado com Zod + integridade
     │   │                          #     referencial (backup.ts, BACKUP_TABLE_KEYS)
@@ -195,8 +192,7 @@
     │                              #   use-sidebar-state, use-swipe-action,
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
-    │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas),
-    │                              #   use-pull-up-to-top (F26 — overscroll vertical)…)
+    │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
     ├── services/                  # Apresentação + integrações
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
@@ -310,9 +306,8 @@ src/features/transactions/
 | SQL de operação manual (cron da edge function de cotações) | `supabase/quotes-cron.sql` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
 | Proposta oficial de próximas fases (F14–F20) | `docs/NEXT_PHASES.md` (Trilha A: UI/UX · Trilha B: Investimentos) |
-| Motor puro de gestos (axis-lock, thresholds, flick, overscroll) | `src/domain/gestures/` (ex.: `swipe.ts` — F20 · `overscroll.ts` — F26) |
+| Motor puro de gestos (axis-lock, thresholds, flick, resistência de borda) | `src/domain/gestures/` (ex.: `swipe.ts` — F20) |
 | Hook de navegação por gesto (swipe horizontal) | `src/hooks/use-swipe-navigation.ts` (F20) |
-| Hook de pull-up / overscroll to top (FSM + barreira de inércia) | `src/hooks/use-pull-up-to-top.ts` (F26) |
 | Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |
 
 ---
