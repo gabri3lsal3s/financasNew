@@ -27,6 +27,21 @@ function readPreference(): ThemePreference {
     : "system";
 }
 
+const THEME_COLORS: Record<Theme, string> = {
+  light: "#F4F7F9",
+  dark: "#0C1923",
+  oled: "#000000",
+};
+
+function updateMetaThemeColor(theme: Theme) {
+  if (typeof document === "undefined") return;
+  const color = THEME_COLORS[theme];
+  const metas = document.querySelectorAll('meta[name="theme-color"]');
+  metas.forEach((meta) => {
+    meta.setAttribute("content", color);
+  });
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>(readPreference);
   const [system, setSystem] = useState<Theme>(systemTheme);
@@ -43,6 +58,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Aplica o tema nos tokens (tokens.css) — fallback CSS evita flash sem JS.
     document.documentElement.dataset.theme = theme;
+    // Sincroniza a cor da barra de título do SO/PWA e barra de status mobile
+    updateMetaThemeColor(theme);
   }, [theme]);
 
   const setPreference = useCallback((next: ThemePreference) => {

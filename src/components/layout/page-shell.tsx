@@ -43,8 +43,8 @@ export function PageShell() {
             Conteúdo centralizado nos limites da página (max-w-5xl):
             a barra de busca (flex-1) toma a largura flexível e os botões
             de utilidade ficam alinhados à direita. */}
-        <header className="sticky top-0 z-sticky flex h-16 shrink-0 items-center border-b border-border bg-surface/80 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-5xl items-center gap-1.5 px-4 lg:px-8">
+        <header className="sticky top-0 z-sticky flex h-16 shrink-0 items-center border-b border-border bg-surface/80 backdrop-blur app-region-drag">
+          <div className="mx-auto flex w-full max-w-5xl items-center gap-1.5 px-4 lg:px-8 app-region-no-drag">
             <div className="flex items-center lg:hidden mr-1 shrink-0">
               <BrandLogo showWordmark={false} markClassName="size-7" />
             </div>

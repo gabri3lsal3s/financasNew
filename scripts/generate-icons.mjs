@@ -253,25 +253,7 @@ function sampleImage(normX, normY) {
   return out;
 }
 
-// 1. Renderiza ícones PWA com composição direta sobre fundo 100% branco (#FFFFFF puro e uniforme)
-function renderPwaWhiteIcon(size, scale = 0.90) {
-  return encodePngRgba(size, size, (x, y) => {
-    const normX = ((x + 0.5) / size - 0.5) / scale;
-    const normY = ((y + 0.5) / size - 0.5) / scale;
-
-    const [r, g, b, a] = sampleImage(normX, normY);
-    if (a <= 0) return [255, 255, 255, 255]; // Branco puro
-
-    const alphaNorm = a / 255;
-    const outR = Math.round(r * alphaNorm + 255 * (1 - alphaNorm));
-    const outG = Math.round(g * alphaNorm + 255 * (1 - alphaNorm));
-    const outB = Math.round(b * alphaNorm + 255 * (1 - alphaNorm));
-
-    return [outR, outG, outB, 255];
-  });
-}
-
-// 2. Renderiza assets transparentes (brand logos)
+// 2. Renderiza assets transparentes (brand logos e PWA icons)
 function renderTransparentIcon(size, scale = 0.96) {
   return encodePngRgba(size, size, (x, y) => {
     const normX = ((x + 0.5) / size - 0.5) / scale;
@@ -299,20 +281,20 @@ for (const { name, size, scale } of pwaTransparentTargets) {
   console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo 100% transparente — icon-only / purpose: any)`);
 }
 
-// Gera Ícones PWA Adaptativos/Mascaráveis com Fundo (purpose: "maskable" — fallback seguro com safe zone 80%)
+// Gera Ícones PWA Adaptativos/Mascaráveis (purpose: "maskable" — safe zone transparente de alta fidelidade)
 const pwaMaskableTargets = [
-  { name: "maskable-192.png", size: 192, scale: 0.72 },
-  { name: "maskable-512.png", size: 512, scale: 0.72 },
-  { name: "icon-maskable-192.png", size: 192, scale: 0.72 },
-  { name: "icon-maskable-512.png", size: 512, scale: 0.72 },
-  { name: "pwa-maskable-192x192.png", size: 192, scale: 0.72 },
-  { name: "pwa-maskable-512x512.png", size: 512, scale: 0.72 },
+  { name: "maskable-192.png", size: 192, scale: 0.80 },
+  { name: "maskable-512.png", size: 512, scale: 0.80 },
+  { name: "icon-maskable-192.png", size: 192, scale: 0.80 },
+  { name: "icon-maskable-512.png", size: 512, scale: 0.80 },
+  { name: "pwa-maskable-192x192.png", size: 192, scale: 0.80 },
+  { name: "pwa-maskable-512x512.png", size: 512, scale: 0.80 },
 ];
 
 for (const { name, size, scale } of pwaMaskableTargets) {
-  const buf = renderPwaWhiteIcon(size, scale);
+  const buf = renderTransparentIcon(size, scale);
   writeFileSync(join(pwaIconsDir, name), buf);
-  console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo branco uniforme — safe zone 80% / purpose: maskable)`);
+  console.log(`✓ public/pwa/icons/${name} (${size}x${size}, fundo 100% transparente — safe zone 80% / purpose: maskable)`);
 }
 
 // Gera Assets transparentes da marca (`public/brand/`)
