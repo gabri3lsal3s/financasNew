@@ -17,7 +17,7 @@
 -- ----------------------------------------------------------------
 -- Recurrences (template)
 -- ----------------------------------------------------------------
-create table public.recurrences (
+create table if not exists public.recurrences (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
   kind text not null check (kind in ('expense', 'income')),
@@ -45,7 +45,7 @@ create table public.recurrences (
 );
 
 -- Ocorrência excluída individualmente (não regenera na materialização).
-create table public.recurrence_skips (
+create table if not exists public.recurrence_skips (
   recurrence_id uuid not null references public.recurrences (id) on delete cascade,
   occurrence_date date not null,
   primary key (recurrence_id, occurrence_date)
@@ -54,32 +54,37 @@ create table public.recurrence_skips (
 -- ----------------------------------------------------------------
 -- Expenses += recorrência
 -- ----------------------------------------------------------------
-alter table public.expenses add column recurrence_id uuid references public.recurrences (id) on delete cascade;
-alter table public.expenses add column occurrence_number integer check (occurrence_number is null or occurrence_number >= 1);
+alter table public.expenses add column if not exists recurrence_id uuid references public.recurrences (id) on delete cascade;
+alter table public.expenses add column if not exists occurrence_number integer check (occurrence_number is null or occurrence_number >= 1);
+alter table public.expenses drop constraint if exists expenses_recurrence_pair;
 alter table public.expenses add constraint expenses_recurrence_pair check ((recurrence_id is null) = (occurrence_number is null));
+alter table public.expenses drop constraint if exists expenses_group_exclusive;
 alter table public.expenses add constraint expenses_group_exclusive check (
   (installment_group_id is null and recurrence_id is null)
   or (installment_group_id is not null and recurrence_id is null)
   or (installment_group_id is null and recurrence_id is not null)
 );
-create unique index idx_expenses_recurrence_date on public.expenses (recurrence_id, date) where recurrence_id is not null;
+create unique index if not exists idx_expenses_recurrence_date on public.expenses (recurrence_id, date) where recurrence_id is not null;
 
 -- ----------------------------------------------------------------
 -- Incomes += parcelamento + recorrência (espelho de expenses)
 -- ----------------------------------------------------------------
-alter table public.incomes add column installments_total integer not null default 1 check (installments_total between 1 and 60);
-alter table public.incomes add column installment_number integer not null default 1 check (installment_number between 1 and installments_total);
-alter table public.incomes add column installment_group_id uuid;
-alter table public.incomes add column recurrence_id uuid references public.recurrences (id) on delete cascade;
-alter table public.incomes add column occurrence_number integer check (occurrence_number is null or occurrence_number >= 1);
+alter table public.incomes add column if not exists installments_total integer not null default 1 check (installments_total between 1 and 60);
+alter table public.incomes add column if not exists installment_number integer not null default 1 check (installment_number between 1 and installments_total);
+alter table public.incomes add column if not exists installment_group_id uuid;
+alter table public.incomes add column if not exists recurrence_id uuid references public.recurrences (id) on delete cascade;
+alter table public.incomes add column if not exists occurrence_number integer check (occurrence_number is null or occurrence_number >= 1);
+alter table public.incomes drop constraint if exists incomes_group_present;
 alter table public.incomes add constraint incomes_group_present check ((installments_total > 1) = (installment_group_id is not null));
+alter table public.incomes drop constraint if exists incomes_recurrence_pair;
 alter table public.incomes add constraint incomes_recurrence_pair check ((recurrence_id is null) = (occurrence_number is null));
+alter table public.incomes drop constraint if exists incomes_group_exclusive;
 alter table public.incomes add constraint incomes_group_exclusive check (
   (installment_group_id is null and recurrence_id is null)
   or (installment_group_id is not null and recurrence_id is null)
   or (installment_group_id is null and recurrence_id is not null)
 );
-create unique index idx_incomes_recurrence_date on public.incomes (recurrence_id, date) where recurrence_id is not null;
+create unique index if not exists idx_incomes_recurrence_date on public.incomes (recurrence_id, date) where recurrence_id is not null;
 
 -- ----------------------------------------------------------------
 -- RLS
@@ -87,9 +92,11 @@ create unique index idx_incomes_recurrence_date on public.incomes (recurrence_id
 alter table public.recurrences enable row level security;
 alter table public.recurrence_skips enable row level security;
 
+drop policy if exists "recurrences_all_own" on public.recurrences;
 create policy "recurrences_all_own" on public.recurrences
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "recurrence_skips_all_own" on public.recurrence_skips;
 create policy "recurrence_skips_all_own" on public.recurrence_skips
   for all using (
     exists (select 1 from public.recurrences r where r.id = recurrence_id and r.user_id = auth.uid())
