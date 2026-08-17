@@ -136,11 +136,13 @@
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
-    │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…)
+    │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…) + penalty (mora/multa/desconto)
     │   ├── expenses/              #   resolução dos modos de exclusão de despesa
     │   │                          #     (single/all/subsequent — resolveExpenseDeleteIds,
     │   │                          #     espelha o RPC p/ atualizações otimistas F30)
-    │   ├── cards/                 #   saldo de fatura, status da fatura (closed/open/near_due/overdue)
+    │   ├── cards/                 #   saldo/status de fatura + refinancing (parcelamento sem double-counting)
+    │   ├── charges/               #   agregação por natureza (regular/juros/multas/impostos/taxas) e Dinheiro Queimado
+    │   ├── loans/                 #   cronogramas Price/SAC, saldo devedor e amortização extraordinária a valor presente
     │   ├── recurrences/           #   F32: geração de ocorrências por frequência
     │   │                          #     (monthly/weekly/quarterly/yearly, fim por data ou
     │   │                          #     por contagem) + modos de exclusão em grupo

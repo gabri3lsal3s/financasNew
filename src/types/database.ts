@@ -15,6 +15,7 @@ import type {
   Income,
   IncomeGoal,
   InsightFeedback,
+  Loan,
   PortfolioAsset,
   ReminderState,
   PortfolioTransaction,
@@ -46,6 +47,7 @@ export interface Database {
       card_competence_overrides: Table<CardCompetenceOverride>;
       card_payments: Table<CardPayment>;
       debts: Table<Debt>;
+      loans: Table<Loan>;
       recurrences: Table<Recurrence>;
       recurrence_skips: Table<RecurrenceSkip>;
       budgets: Table<Budget>;
@@ -148,8 +150,50 @@ export interface Database {
         Returns: number;
       };
       pay_debt: {
-        Args: { p_debt_id: string; p_create_expense: boolean; p_expense_category_id: string | null };
+        Args: {
+          p_debt_id: string;
+          p_create_expense: boolean;
+          p_expense_category_id: string | null;
+          p_fine_amount?: number;
+          p_interest_amount?: number;
+          p_discount_amount?: number;
+          p_total_paid?: number | null;
+        };
         Returns: string;
+      };
+      create_loan_contract: {
+        Args: {
+          p_name: string;
+          p_loan_type: string;
+          p_principal_amount: number;
+          p_interest_rate_monthly: number;
+          p_amortization_system: string;
+          p_total_installments: number;
+          p_start_date: string;
+          p_installments: unknown;
+        };
+        Returns: string;
+      };
+      early_amortize_loan: {
+        Args: {
+          p_loan_id: string;
+          p_debt_ids: string[];
+          p_create_expense: boolean;
+          p_expense_category_id: string | null;
+          p_total_paid: number;
+          p_discount_total: number;
+        };
+        Returns: boolean;
+      };
+      refinance_credit_card_bill: {
+        Args: {
+          p_card_id: string;
+          p_competence_month: string;
+          p_initial_payment_amount: number;
+          p_interest_installments: unknown;
+          p_expense_category_id: string;
+        };
+        Returns: boolean;
       };
       receive_debt: {
         Args: { p_debt_id: string; p_create_income: boolean; p_income_category_id: string | null };

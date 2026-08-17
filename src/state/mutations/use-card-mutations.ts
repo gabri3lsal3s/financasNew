@@ -116,3 +116,19 @@ export function useDeleteCardPayment() {
     },
   });
 }
+
+export function useRefinanceCreditCardBill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Parameters<typeof import("@/data/rpc").refinanceCreditCardBill>[0]) =>
+      import("@/data/rpc").then((m) => m.refinanceCreditCardBill(input)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: cardPaymentsKey });
+      void queryClient.invalidateQueries({ queryKey: cardExpensesKey });
+      void queryClient.invalidateQueries({ queryKey: expensesKey });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
+      pushToast({ title: "Parcelamento de fatura registrado", variant: "default" });
+    },
+  });
+}

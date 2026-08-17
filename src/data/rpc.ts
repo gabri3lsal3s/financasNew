@@ -319,13 +319,95 @@ export async function updateExpenseInstallmentsGroup(
 /** Quitação de dívida a pagar (+ criar despesa opcional — §3.4). */
 export async function payDebt(
   debtId: string,
-  options: { createExpense: boolean; expenseCategoryId?: string | null },
+  options: {
+    createExpense: boolean;
+    expenseCategoryId?: string | null;
+    fineAmount?: number;
+    interestAmount?: number;
+    discountAmount?: number;
+    totalPaid?: number | null;
+  },
 ): Promise<string> {
   return unwrapRpc(
     callRpc("pay_debt", {
       p_debt_id: debtId,
       p_create_expense: options.createExpense,
       p_expense_category_id: options.expenseCategoryId ?? null,
+      p_fine_amount: options.fineAmount ?? 0,
+      p_interest_amount: options.interestAmount ?? 0,
+      p_discount_amount: options.discountAmount ?? 0,
+      p_total_paid: options.totalPaid ?? null,
+    }),
+  );
+}
+
+/** Criação atômica de contrato de empréstimo/financiamento com parcelas geradas em lote. */
+export async function createLoanContract(input: {
+  name: string;
+  loanType: string;
+  principalAmount: number;
+  interestRateMonthly: number;
+  amortizationSystem: string;
+  totalInstallments: number;
+  startDate: string;
+  installments: Array<{ installment_number: number; due_date: string; amount: number }>;
+}): Promise<string> {
+  return unwrapRpc(
+    callRpc("create_loan_contract", {
+      p_name: input.name,
+      p_loan_type: input.loanType,
+      p_principal_amount: input.principalAmount,
+      p_interest_rate_monthly: input.interestRateMonthly,
+      p_amortization_system: input.amortizationSystem,
+      p_total_installments: input.totalInstallments,
+      p_start_date: input.startDate,
+      p_installments: input.installments,
+    }),
+  );
+}
+
+/** Amortização extraordinária de parcelas de empréstimo com desconto transacional. */
+export async function earlyAmortizeLoan(input: {
+  loanId: string;
+  debtIds: string[];
+  createExpense: boolean;
+  expenseCategoryId?: string | null;
+  totalPaid: number;
+  discountTotal: number;
+}): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("early_amortize_loan", {
+      p_loan_id: input.loanId,
+      p_debt_ids: input.debtIds,
+      p_create_expense: input.createExpense,
+      p_expense_category_id: input.expenseCategoryId ?? null,
+      p_total_paid: input.totalPaid,
+      p_discount_total: input.discountTotal,
+    }),
+  );
+}
+
+/** Refinanciamento e parcelamento de saldo devedor de fatura de cartão. */
+export async function refinanceCreditCardBill(input: {
+  cardId: string;
+  competenceMonth: string;
+  initialPaymentAmount: number;
+  interestInstallments: Array<{
+    amount: number;
+    date: string;
+    installments_total: number;
+    installment_number: number;
+    bill_competence: string;
+  }>;
+  expenseCategoryId: string;
+}): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("refinance_credit_card_bill", {
+      p_card_id: input.cardId,
+      p_competence_month: input.competenceMonth,
+      p_initial_payment_amount: input.initialPaymentAmount,
+      p_interest_installments: input.interestInstallments,
+      p_expense_category_id: input.expenseCategoryId,
     }),
   );
 }

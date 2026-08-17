@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Check, HandCoins, Plus } from "lucide-react";
+import { Check, Coins, HandCoins, Plus } from "lucide-react";
 import { Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
@@ -9,9 +9,11 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useDebts, useDeleteDebt, useUpdateDebt } from "@/state";
+import { useDebts, useDeleteDebt, useLoans, useUpdateDebt } from "@/state";
 import { DebtFormDialog } from "@/features/debts/components/debt-form-dialog";
 import { SettleDialog } from "@/features/debts/components/settle-dialog";
+import { LoanCard } from "@/features/debts/components/loan-card";
+import { LoanFormDialog } from "@/features/debts/components/loan-form-dialog";
 import type { Debt } from "@/types";
 
 interface DebtRowProps {
@@ -102,6 +104,7 @@ function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
 /** Dívidas / contas a pagar e receber (§3.4) — status derivado + quitação integrada. */
 export function DebtsPage() {
   const debtsQuery = useDebts();
+  const loansQuery = useLoans();
   const deleteDebt = useDeleteDebt();
   const updateDebt = useUpdateDebt();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -141,28 +144,63 @@ export function DebtsPage() {
   const { open: formOpen, setOpen: setFormOpen } = useCreateDeepLink("divida");
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [settling, setSettling] = useState<Debt | null>(null);
+  const [loanFormOpen, setLoanFormOpen] = useState(false);
 
   const debts = debtsQuery.data ?? [];
+  const loans = loansQuery.data ?? [];
   const filtered = debts.filter((debt) => debt.type === tab);
 
-  const error = debtsQuery.error;
+  const error = debtsQuery.error || loansQuery.error;
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex items-center justify-between gap-2">
-        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Dívidas</h1>
-        {/* Novo registro só no desktop — no mobile o FAB da BottomNav assume (F12). */}
-        <Button
-          className="hidden sm:inline-flex"
-          onClick={() => {
-            setEditingDebt(null);
-            setFormOpen(true);
-          }}
-        >
-          <Plus aria-hidden="true" />
-          Nova dívida
-        </Button>
+        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Dívidas & Financiamentos</h1>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="hidden sm:inline-flex"
+            onClick={() => setLoanFormOpen(true)}
+          >
+            <Coins aria-hidden="true" className="size-4" />
+            Financiamento
+          </Button>
+          <Button
+            className="hidden sm:inline-flex"
+            onClick={() => {
+              setEditingDebt(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus aria-hidden="true" />
+            Nova dívida
+          </Button>
+        </div>
       </header>
+
+      {loans.length > 0 && tab === "payable" && (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Contratos & Financiamentos ({loans.length})
+            </h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setLoanFormOpen(true)}
+              className="text-xs sm:hidden"
+            >
+              Novo contrato
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {loans.map((loan) => (
+              <LoanCard key={loan.id} loan={loan} debts={debts} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {error ? (
         <ErrorState message={getErrorMessage(error)} />
@@ -231,6 +269,11 @@ export function DebtsPage() {
         onDelete={async (debt) => {
           await deleteDebt.mutateAsync(debt.id);
         }}
+      />
+
+      <LoanFormDialog
+        open={loanFormOpen}
+        onOpenChange={setLoanFormOpen}
       />
 
       {settling ? <SettleDialog debt={settling} open={settling !== null} onOpenChange={(next) => !next && setSettling(null)} /> : null}

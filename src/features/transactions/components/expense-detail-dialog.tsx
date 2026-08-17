@@ -22,9 +22,10 @@ import type { RecurrenceGroupFields } from "@/data/rpc";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
 import { todayISO } from "@/domain/debts";
+import { CHARGE_KIND_LABELS } from "@/domain/charges";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
-import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod } from "@/types";
+import type { Category, ChargeKind, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod } from "@/types";
 
 export interface ExpenseDetailDialogProps {
   expense: Expense | null;
@@ -84,6 +85,7 @@ interface ExpenseEditFormProps {
     card_id: string | null;
     bill_competence: string | null;
     report_weight: number;
+    charge_kind: ChargeKind;
   }) => Promise<void>;
 }
 
@@ -104,6 +106,7 @@ function ExpenseEditForm({
   const [date, setDate] = useState(expense.date);
   const [categoryId, setCategoryId] = useState(expense.category_id);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(expense.payment_method);
+  const [chargeKind, setChargeKind] = useState<ChargeKind>(expense.charge_kind || "regular");
   const [cardId, setCardId] = useState<string>(expense.card_id || "");
   const [billCompetence, setBillCompetence] = useState<string>(expense.bill_competence || "");
   // Competência digitada manualmente → data deixa de recalculá-la (override).
@@ -191,6 +194,7 @@ function ExpenseEditForm({
         card_id: paymentMethod === "credit_card" ? cardId || null : null,
         bill_competence: effectiveCompetence,
         report_weight: calculatedWeight,
+        charge_kind: chargeKind,
       });
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -288,6 +292,16 @@ function ExpenseEditForm({
           onValueChange={(val) => setPaymentMethod(val as PaymentMethod)}
           options={PAYMENT_OPTIONS}
           ariaLabel="Forma de pagamento"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        Natureza da despesa
+        <Select
+          value={chargeKind}
+          onValueChange={(val) => setChargeKind(val as ChargeKind)}
+          options={Object.entries(CHARGE_KIND_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+          ariaLabel="Natureza da despesa"
         />
       </label>
 
@@ -429,6 +443,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
     card_id: string | null;
     bill_competence: string | null;
     report_weight: number;
+    charge_kind: ChargeKind;
   }) => {
     if (!expense) return;
     setError(null);
@@ -607,6 +622,14 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                       {PAYMENT_METHOD_LABELS[expense.payment_method] ?? expense.payment_method}
                     </dd>
                   </div>
+                  {expense.charge_kind && expense.charge_kind !== "regular" ? (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-xs text-muted-foreground">Natureza</dt>
+                      <dd className="font-medium text-warning text-xs">
+                        {CHARGE_KIND_LABELS[expense.charge_kind]}
+                      </dd>
+                    </div>
+                  ) : null}
                   {expense.report_weight < 1 ? (
                     <div className="flex items-center justify-between">
                       <dt className="text-xs text-muted-foreground">Valor no relatório</dt>

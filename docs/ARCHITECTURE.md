@@ -138,6 +138,9 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── gestures/              #   F20: swipe (axis-lock, thresholds); overscroll removido (F26, 2026-08-16)
     │   ├── export/                #   F22: CSV pt-BR + backup versionado com Zod
+    │   ├── charges/               #   agregação de natureza (juros, multas, impostos, taxas)
+    │   ├── loans/                 #   sistemas de amortização (Price/SAC), saldo devedor e valor presente
+    │   ├── cards/                 #   faturas, fechamento e refinanciamento sem double-counting
     │   ├── fire/                  #   F24: regra dos 4%, projeção e faixas de emergência
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │                              #   summary (rentabilidade/alocação) + dividends (F18)
@@ -147,7 +150,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── query.ts               #   QueryResult<T> — contrato base data|error
     │   ├── auth.ts                #   Operações de autenticação
     │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS)
-    │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
+    │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts, loans.ts,
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
     │   │                          #   recurrences.ts (F32: templates + materialização lazy)
     │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)

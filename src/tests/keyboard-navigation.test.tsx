@@ -120,6 +120,10 @@ vi.mock("@/state", () => ({
   useReceiveDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useExpense: () => ({ data: { id: "e1", base_amount: 1000 }, isLoading: false, isError: false, error: null }),
+  useLoans: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useCreateLoanContract: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useEarlyAmortizeLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 /** Foco inicial é o primeiro campo (auth) — ordem de tabulação natural. */

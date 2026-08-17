@@ -60,11 +60,27 @@ export function usePayDebt() {
       debtId,
       createExpense,
       expenseCategoryId,
+      fineAmount,
+      interestAmount,
+      discountAmount,
+      totalPaid,
     }: {
       debtId: string;
       createExpense: boolean;
       expenseCategoryId?: string | null;
-    }) => payDebt(debtId, { createExpense, expenseCategoryId }),
+      fineAmount?: number;
+      interestAmount?: number;
+      discountAmount?: number;
+      totalPaid?: number | null;
+    }) =>
+      payDebt(debtId, {
+        createExpense,
+        expenseCategoryId,
+        fineAmount,
+        interestAmount,
+        discountAmount,
+        totalPaid,
+      }),
     onSuccess: () => invalidateFinance(queryClient),
   });
 }

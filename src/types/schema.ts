@@ -51,6 +51,15 @@ export type InsightDecision = (typeof INSIGHT_DECISIONS)[number];
 export const THEME_PREFERENCES = ["light", "dark", "oled", "system"] as const;
 export type ThemePreference = (typeof THEME_PREFERENCES)[number];
 
+export const CHARGE_KINDS = ["regular", "interest", "fine", "tax", "bank_fee"] as const;
+export type ChargeKind = (typeof CHARGE_KINDS)[number];
+
+export const LOAN_TYPES = ["personal", "financing", "payroll", "other"] as const;
+export type LoanType = (typeof LOAN_TYPES)[number];
+
+export const AMORTIZATION_SYSTEMS = ["price", "sac", "fixed_installment"] as const;
+export type AmortizationSystem = (typeof AMORTIZATION_SYSTEMS)[number];
+
 export const INSTALLMENT_DELETE_MODES = ["single", "all", "subsequent"] as const;
 export type InstallmentDeleteMode = (typeof INSTALLMENT_DELETE_MODES)[number];
 
@@ -135,6 +144,8 @@ export type Expense = {
   /** Valor original da parcela (auditoria de pesos de relatório). */
   base_amount: number;
   description: string | null;
+  /** Natureza da despesa / encargo (regular, juros, multa, imposto, taxa) — default 'regular'. */
+  charge_kind?: ChargeKind;
   /** Grupo de recorrência (template `recurrences`) — avulso XOR parcela XOR recorrência. */
   recurrence_id?: string | null;
   /** 1-based dentro da recorrência (espelho do `occurrence_number` do motor). */
@@ -159,6 +170,7 @@ export type Recurrence = {
   receive_type: ReceiveType | null;
   description: string | null;
   report_weight: number;
+  charge_kind?: ChargeKind;
   is_active: boolean;
   created_at: string;
 };
@@ -214,6 +226,21 @@ export type Debt = {
   paid_at: string | null;
   expense_id: string | null;
   installment_group_id: string | null;
+  charge_kind?: ChargeKind;
+  created_at: string;
+};
+
+export type Loan = {
+  id: string;
+  user_id: string;
+  name: string;
+  loan_type: LoanType;
+  principal_amount: number;
+  interest_rate_monthly: number;
+  amortization_system: AmortizationSystem;
+  total_installments: number;
+  start_date: string;
+  installment_group_id: string;
   created_at: string;
 };
 

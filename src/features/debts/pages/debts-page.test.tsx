@@ -77,6 +77,15 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useLoans: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCreateLoanContract: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useEarlyAmortizeLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
@@ -148,6 +157,10 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
       debtId: "d1",
       createExpense: false,
       expenseCategoryId: null,
+      fineAmount: 0,
+      interestAmount: 0,
+      discountAmount: 0,
+      totalPaid: 200,
     });
   });
 

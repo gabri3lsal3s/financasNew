@@ -47,3 +47,5 @@ export const DEBT_STATUS_LABELS: Record<DebtStatus, string> = {
   due_soon: "Vence em breve",
   pending: "Pendente",
 };
+
+export * from "./penalty";

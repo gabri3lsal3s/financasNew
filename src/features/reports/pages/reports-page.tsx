@@ -41,14 +41,15 @@ import {
 } from "@/state";
 import { cn } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
+import { calculateChargesBreakdown, CHARGE_KIND_LABELS } from "@/domain/charges";
 import { ExpenseDetailDialog } from "@/features/transactions";
 import { ReportDetailDialog } from "../components/report-detail-dialog";
-import type { Expense } from "@/types";
+import type { ChargeKind, Expense } from "@/types";
 
 import { numberToCents } from "@/domain/money";
 
 type PeriodMode = "month" | "year" | "custom";
-type AggregationTab = "category" | "method" | "weekday";
+type AggregationTab = "category" | "method" | "weekday" | "charges";
 
 /** Relatórios (§3.6) — agregações por categoria/forma/dia da semana, comparativo, visão dupla (Bruto vs. Ponderado) e merge de dívidas pagas. */
 export function ReportsPage() {
@@ -228,6 +229,50 @@ export function ReportsPage() {
     percent: totalSpentPonderado > 0 ? (w.ponderadoCents / totalSpentPonderado) * 100 : 0,
   }));
 
+  const chargesBreakdown = calculateChargesBreakdown(expenses);
+  const chargesRows: ReportRow[] = [
+    {
+      key: "interest",
+      label: CHARGE_KIND_LABELS.interest,
+      brutoCents: chargesBreakdown.interestGrossCents,
+      ponderadoCents: chargesBreakdown.interestWeightedCents,
+      valueCents: chargesBreakdown.interestWeightedCents,
+      percent: totalSpentPonderado > 0 ? (chargesBreakdown.interestWeightedCents / totalSpentPonderado) * 100 : 0,
+    },
+    {
+      key: "fine",
+      label: CHARGE_KIND_LABELS.fine,
+      brutoCents: chargesBreakdown.fineGrossCents,
+      ponderadoCents: chargesBreakdown.fineWeightedCents,
+      valueCents: chargesBreakdown.fineWeightedCents,
+      percent: totalSpentPonderado > 0 ? (chargesBreakdown.fineWeightedCents / totalSpentPonderado) * 100 : 0,
+    },
+    {
+      key: "tax",
+      label: CHARGE_KIND_LABELS.tax,
+      brutoCents: chargesBreakdown.taxGrossCents,
+      ponderadoCents: chargesBreakdown.taxWeightedCents,
+      valueCents: chargesBreakdown.taxWeightedCents,
+      percent: totalSpentPonderado > 0 ? (chargesBreakdown.taxWeightedCents / totalSpentPonderado) * 100 : 0,
+    },
+    {
+      key: "bank_fee",
+      label: CHARGE_KIND_LABELS.bank_fee,
+      brutoCents: chargesBreakdown.feeGrossCents,
+      ponderadoCents: chargesBreakdown.feeWeightedCents,
+      valueCents: chargesBreakdown.feeWeightedCents,
+      percent: totalSpentPonderado > 0 ? (chargesBreakdown.feeWeightedCents / totalSpentPonderado) * 100 : 0,
+    },
+    {
+      key: "regular",
+      label: CHARGE_KIND_LABELS.regular,
+      brutoCents: chargesBreakdown.regularGrossCents,
+      ponderadoCents: chargesBreakdown.regularWeightedCents,
+      valueCents: chargesBreakdown.regularWeightedCents,
+      percent: totalSpentPonderado > 0 ? (chargesBreakdown.regularWeightedCents / totalSpentPonderado) * 100 : 0,
+    },
+  ].filter((r) => r.brutoCents > 0 || r.key === "regular");
+
   const periodLabel = mode === "month" ? monthLabel(month) : mode === "year" ? String(year) : `${customStart} a ${customEnd}`;
 
   // F22 — Fechamento imprimível do período (valores REAIS, sem peso de relatório).
@@ -368,6 +413,30 @@ export function ReportsPage() {
             <SummaryCard label="Dívidas pagas" cents={paidDebts.reduce((a, d) => a + d.valueCents, 0)} />
           </section>
 
+          {chargesBreakdown.wastedGrossCents > 0 && (
+            <div className="flex items-center justify-between rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-xs text-warning-strong">
+              <span className="font-medium">
+                Custo de fricção (Juros e Multas):{" "}
+                <strong>
+                  {(chargesBreakdown.wastedGrossCents / 100).toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  })}
+                </strong>{" "}
+                gastos no período.
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setAggregationTab("charges")}
+              >
+                Ver detalhes
+              </Button>
+            </div>
+          )}
+
           {paidDebts.length > 0 ? (
             <p className="text-xs text-muted-foreground">
               {paidDebts.length} dívida(s) paga(s) somada(s) ao período pelo mês do vencimento.
@@ -441,6 +510,28 @@ export function ReportsPage() {
                       setDetailModal({
                         open: true,
                         title: `Despesas — ${weekdayName}`,
+                        expenses: filtered,
+                      });
+                    }}
+                  />
+                ),
+              },
+              {
+                value: "charges",
+                label: "Por natureza / encargos",
+                content: (
+                  <ReportTable
+                    title="Natureza do gasto"
+                    rows={chargesRows}
+                    totalBrutoCents={totalSpentBruto}
+                    totalPonderadoCents={totalSpentPonderado}
+                    totalCents={totalSpentPonderado}
+                    onRowClick={(row) => {
+                      const filtered = expenses.filter((e) => (e.charge_kind ?? "regular") === row.key);
+                      const kindLabel = CHARGE_KIND_LABELS[row.key as ChargeKind] ?? row.key;
+                      setDetailModal({
+                        open: true,
+                        title: `Despesas — ${kindLabel}`,
                         expenses: filtered,
                       });
                     }}

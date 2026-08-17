@@ -22,7 +22,21 @@ export {
   useDeleteRecurrenceOccurrences,
   useUpdateRecurrenceOccurrences,
 } from "./mutations/use-recurrence-mutations";
-export { useCreateCard, useUpdateCard, useDeleteCard, useCreateCardPayment, useCreateRefund, useDeleteCardPayment } from "./mutations/use-card-mutations";
+export {
+  useCreateCard,
+  useUpdateCard,
+  useDeleteCard,
+  useCreateCardPayment,
+  useCreateRefund,
+  useDeleteCardPayment,
+  useRefinanceCreditCardBill,
+} from "./mutations/use-card-mutations";
+export { useLoans } from "./queries/use-loans";
+export {
+  useCreateLoanContract,
+  useEarlyAmortizeLoan,
+  useDeleteLoan,
+} from "./mutations/use-loan-mutations";
 export {
   useCreateDebt,
   useUpdateDebt,

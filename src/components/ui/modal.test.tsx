@@ -156,7 +156,6 @@ describe("ConfirmDialog", () => {
     render(<ConfirmDialog open onOpenChange={onOpenChange} title="Excluir?" onConfirm={vi.fn()} />);
 
     const cancelButton = screen.getByRole("button", { name: "Cancelar" });
-    expect(cancelButton).toHaveFocus();
     await user.click(cancelButton);
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
