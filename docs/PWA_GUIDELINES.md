@@ -1,7 +1,8 @@
 # 📱 PWA_GUIDELINES.md — Requisitos de Progressive Web App
 
-> **Status:** v1.1 — O app é um **PWA moderno** (instalável em mobile/desktop).
+> **Status:** v1.2 — O app é um **PWA moderno** (instalável em mobile/desktop).
 > **F5.6 implementado:** prompt de instalação (`beforeinstallprompt`), atualização automática com toast e auditoria automatizada de instalabilidade — ver §6.
+> **v1.2 (2026-08-17):** **(1) HTML Splash Screen** — `<div id="app-splash">` inline no `index.html` com suporte aos 3 temas (`data-theme`), ícone 120px, animação pulse + barra de progresso teal; some automaticamente via `#root:not(:empty)`; **(2) Window Controls Overlay** — barra de título do PWA customizada (fundo no tom do tema, borda inferior, sem ícone/texto, arrastável) via `display_override: ["window-controls-overlay"]` + CSS `env(titlebar-area-*)` em `index.html`; **(3) `background_color` corrigido** — `#FFFFFF` → `#0C1923` (elimina o flash branco ao abrir em tema escuro); **(4) `offline.html` redesenhado** — Inter, ícone 96px, botão discreto no tom do design system, suporte aos 3 temas, fade-in.
 > **Regra-mestra:** o app é **100% Online First** nos dados — o Service Worker **jamais cacheia dados de negócio ou respostas de API**. O PWA garante apenas o **carregamento instantâneo do App Shell** (casca visual) e de assets estáticos.
 > Implementação recomendada: **vite-plugin-pwa** (gera manifest + service worker a partir de config, com Workbox).
 
@@ -86,7 +87,7 @@ Referência completa (ajustar nomes à marca final):
 **Arquivos:** `src/services/orientation-lock.ts` (+ testes em `src/services/orientation-lock.test.ts`).
 
 **Cores do manifesto (alinhadas ao DESIGN_SYSTEM — identidade "Guia Financeiro", F10):**
-- `background_color`: `#FFFFFF` — splash padrão contínuo e neutro.
+- `background_color`: `#0C1923` — fundo do splash nativo (Android/iOS) no tom Abissal dark; elimina o flash branco para usuários de tema escuro. Em light o HTML splash cobre imediatamente.
 - `theme_color`: suporta `media` para light/dark:
   ```json
   "theme_color": [
@@ -94,6 +95,7 @@ Referência completa (ajustar nomes à marca final):
     { "color": "#0C1923", "media": "(prefers-color-scheme: dark)" }
   ]
   ```
+- `display_override`: `["window-controls-overlay", "standalone"]` — ativa a **Window Controls Overlay** (WCO) em Chrome/Edge, permitindo pintar a barra de título da janela do PWA com o tema do app (ver §4.1). Fallback `standalone` para browsers sem suporte a WCO.
 
 ---
 
@@ -134,9 +136,44 @@ Referência completa (ajustar nomes à marca final):
 ```
 
 **Splash screens:**
-- **Android:** o splash é automático (ícone + `background_color` do manifest) — manter `background_color` consistente com o tema para evitar "flash" branco.
-- **iOS:** usar `apple-touch-startup-image` (tamanhos por device — opcional); sem isso, o iOS compõe da `apple-touch-icon` + fundo. Validar em device real.
+- **Android:** o splash é automático (ícone + `background_color` do manifest) — `background_color: #0C1923` (Abissal) minimiza o flash ao abrir em tema escuro; em light, o HTML splash cobre o fundo imediatamente.
+- **HTML Splash Screen (`index.html`):** a `<div id="app-splash">` renderiza imediatamente dentro do `#root` antes do React montar, exibindo o ícone do app em 120px com animação pulse e barra de progresso teal. Usa os mesmos valores dos tokens dos 3 temas via seletores `[data-theme]` (aplicados pelo script inline antes do render — sem flash). Some automaticamente via CSS `#root:not(:empty) #app-splash { opacity: 0 }` assim que o React monta qualquer conteúdo. Animações desativadas em `prefers-reduced-motion: reduce` e `data-motion="reduced"`/`"eco"`.
+- **iOS:** `apple-touch-startup-image` (tamanhos por device — opcional); sem isso, o iOS compõe da `apple-touch-icon` + fundo. Validar em device real.
 - `viewport-fit=cover` garante respeito às "safe areas" (notch) no modo standalone.
+
+---
+
+## 4.1 WINDOW CONTROLS OVERLAY (WCO)
+
+> Suportado em **Chrome e Edge** para PWAs instalados. Não afeta o comportamento no browser comum.
+
+**O que é:** a WCO permite ao app "pintar" a área da barra de título da janela nativa do OS, substituindo o título genérico + ícone pelo design do próprio app.
+
+**Ativação:** `display_override: ["window-controls-overlay", "standalone"]` no manifest — o browser testa as opções em ordem; se suportar WCO usa-a, senão cai em `standalone`.
+
+**Implementação no `index.html`:**
+- `<div id="app-titlebar">` posicionada com `position: fixed` e dimensionada pelas variáveis de ambiente CSS:
+  ```css
+  left: env(titlebar-area-x, 0);
+  top: env(titlebar-area-y, 0);
+  width: env(titlebar-area-width, 100%);
+  height: env(titlebar-area-height, 33px);
+  ```
+- Toda a área é `-webkit-app-region: drag` (mover a janela ao arrastar).
+- Sem ícone, sem texto — apenas a cor de fundo no tom do tema ativo + borda inferior:
+
+  | Tema | Fundo | Borda |
+  |---|---|---|
+  | Light | `#F4F7F9` | `#D7E1E6` |
+  | Dark | `#0C1923` | `#23384A` |
+  | OLED | `#000000` | `#2E2E2E` |
+
+- Valores hard-coded (mesmos dos tokens) para funcionar **antes** do Tailwind/React — sem flash de cor incorreta.
+- Seleção de tema via `[data-theme]` que o script inline aplica antes do render.
+- O `#root` recebe `padding-top: env(titlebar-area-height, 33px)` para o conteúdo não ficar obscurecido pela barra.
+- A `<div>` tem `display: none` por padrão; só aparece dentro de `@media (display-mode: window-controls-overlay)`.
+
+**Para ver o efeito:** desinstale e reinstale o PWA (o manifest atualizado é lido na reinstalação). Chrome → menu `⋮` → "Instalar Guia Financeiro".
 
 ---
 

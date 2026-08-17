@@ -23,7 +23,7 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <title>Guia Financeiro — Gestão Financeira Pessoal</title>
+    <title>Guia Financeiro</title>
     <script>
       (function() {
         try {
@@ -203,9 +203,69 @@
         opacity: 0;
         pointer-events: none;
       }
+
+      /* ====================================================================
+         Window Controls Overlay — barra de título customizada do PWA
+         Ativa apenas quando display-mode: window-controls-overlay está ativo
+         (Chrome/Edge com PWA instalado + display_override no manifest).
+         Fora desse contexto a div fica com display:none (não afeta o app).
+         ==================================================================== */
+      #app-titlebar {
+        display: none;
+      }
+
+      @media (display-mode: window-controls-overlay) {
+        #app-titlebar {
+          display: block;
+          position: fixed;
+          /* Posição e tamanho definidos pelo browser via env() */
+          left: env(titlebar-area-x, 0);
+          top: env(titlebar-area-y, 0);
+          width: env(titlebar-area-width, 100%);
+          height: env(titlebar-area-height, 33px);
+          z-index: 99999;
+
+          /* Área arrastável — move a janela ao clicar e arrastar */
+          -webkit-app-region: drag;
+          app-region: drag;
+
+          /* Cor de fundo: light (padrão) */
+          background-color: #F4F7F9;
+
+          /* Borda inferior sutil (divisor com o conteúdo do app) */
+          border-bottom: 1px solid #D7E1E6;
+        }
+
+        html[data-theme="dark"] #app-titlebar {
+          background-color: #0C1923;
+          border-bottom-color: #23384A;
+        }
+
+        html[data-theme="oled"] #app-titlebar {
+          background-color: #000000;
+          border-bottom-color: #2E2E2E;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          html:not([data-theme]) #app-titlebar {
+            background-color: #0C1923;
+            border-bottom-color: #23384A;
+          }
+        }
+
+        /* Compensa o espaço ocupado pela barra de título no layout da página */
+        #root {
+          padding-top: env(titlebar-area-height, 33px);
+        }
+      }
     </style>
   </head>
   <body>
+    <!-- Barra de título customizada do PWA (Window Controls Overlay).
+         Visível apenas quando o app roda como PWA instalado com WCO ativo.
+         Sem ícone nem texto — área limpa e arrastável no tom do tema. -->
+    <div id="app-titlebar" aria-hidden="true"></div>
+
     <div id="root">
       <!-- Splash screen — some automaticamente quando o React monta (#root:not(:empty)) -->
       <div id="app-splash" aria-hidden="true" role="presentation">
