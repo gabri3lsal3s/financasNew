@@ -68,11 +68,11 @@ vi.mock("@/state", () => ({
 }));
 
 describe("InsightsPage (motor de insights §3.7)", () => {
-  it("renderiza a aba unificada 'Alertas & Diagnósticos' como primeira", () => {
+  it("renderiza a aba unificada 'Avisos & Diagnósticos' como primeira", () => {
     render(<InsightsPage />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs[0]).toHaveAccessibleName("Alertas & Diagnósticos");
-    // Alertas (fixture: elogio por poupança) + KPIs de diagnóstico na mesma aba.
+    expect(tabs[0]).toHaveAccessibleName("Avisos & Diagnósticos");
+    // Alertas convertidos em avisos + KPIs de diagnóstico na mesma aba.
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
   });
@@ -118,7 +118,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("renderiza diagnósticos com tendência de gastos (F19 — motor §3.7.6)", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Alertas & Diagnósticos" }));
+    await user.click(screen.getByRole("tab", { name: "Avisos & Diagnósticos" }));
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
     // Mês atual igual ao anterior (fixture) → variação 0.0% (não significativa).
@@ -128,7 +128,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("diagnósticos: gastos de fim de semana comparáveis exibem a razão e sem alerta absurdo (F27)", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Alertas & Diagnósticos" }));
+    await user.click(screen.getByRole("tab", { name: "Avisos & Diagnósticos" }));
     // Fixture: despesas só em dias úteis → razão 0.0× (comparável, sem alerta).
     expect(screen.getByText("0.0×")).toBeInTheDocument();
     expect(screen.queryByText(/gastos de fim de semana.*maiores/i)).not.toBeInTheDocument();
@@ -157,6 +157,24 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     render(<InsightsPage />);
     await user.click(screen.getByRole("tab", { name: "Projeção & corte" }));
     expect(screen.getByText("30% em não essenciais")).toBeInTheDocument();
+  });
+
+  it("exibe avisos convertidos na seção de Avisos & Recomendações", () => {
+    // Renda R$ 5.000, despesas R$ 118,90 -> poupança > 90%
+    fixture.monthlyExpenses = (month) => [
+      { id: `${month}-1`, description: "Streaming", category_id: "c2", value: 19.9, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+      { id: `${month}-2`, description: "Academia", category_id: "c2", value: 99, report_weight: 1, date: `${month}-10`, installment_group_id: null },
+    ];
+    render(<InsightsPage />);
+    expect(screen.getByRole("region", { name: "Avisos e recomendações" })).toBeInTheDocument();
+    expect(screen.getByText(/Poupança saudável:/)).toBeInTheDocument();
+  });
+
+  it("exibe aviso de saldo negativo quando as despesas superam receitas", () => {
+    // Renda R$ 50, despesas R$ 11.890
+    fixture.incomeCents = 5_000;
+    render(<InsightsPage />);
+    expect(screen.getByText(/Saldo negativo:/)).toBeInTheDocument();
   });
 
   afterEach(() => {

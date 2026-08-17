@@ -270,6 +270,17 @@
   4. **Micro-interações & Estilo:** Estados de interação padronizados com `cursor-pointer`, `hover:bg-surface-hover/60` e `active:scale-[0.99]`.
   5. **Qualidade & Testes:** Suíte completa com 143 arquivos e 1164 testes 100% aprovados, typecheck e lint limpos.
 
+---
+
+## Evolução — Insights: Remoção de Alertas Críticos e Unificação de Avisos & Diagnósticos (2026-08-17)
+
+- **Problema:** A tela de Insights possuía uma seção pesada e redundante de "Alertas Críticos" com cards volumosos e numeração de prioridade (`#1..#6`), gerando poluição visual e separação desnecessária em relação aos diagnósticos e avisos contextuais.
+- **Solução:**
+  1. **Remoção de Alertas Críticos Visuais:** Eliminado o bloco exclusivo de cartões de alerta crítico (`AlertCard`) e badges numéricas.
+  2. **Conversão para Avisos Unificados:** Alertas financeiros essenciais (saldo negativo, ritmo acelerado, orçamentos estourados, burn rate elevado, déficit projetado e poupança saudável) foram convertidos em avisos (`Alert`) e consolidados na seção **Avisos & Recomendações** ao lado dos diagnósticos de concentração de renda, fim de semana e tendências.
+  3. **Aba Avisos & Diagnósticos:** Apresenta a grade 3x2 de indicadores de diagnóstico no topo e a lista de avisos contextuais logo abaixo.
+  4. **Qualidade & Testes:** 145 arquivos e 1204 testes 100% verdes, typecheck e lint limpos.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

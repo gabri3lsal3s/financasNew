@@ -16,9 +16,9 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { Alert, Badge, Button, ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { Alert, Button, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { AlertCard, InsightList, PlanningSection, ProjectionLine } from "@/components/modules";
+import { InsightList, PlanningSection, ProjectionLine } from "@/components/modules";
 import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
 import { partitionFeedback, type FeedbackDecision } from "@/domain/insights/feedback";
@@ -278,8 +278,45 @@ export function InsightsPage() {
     setFeedback.mutate({ occurrenceKey, decision });
   };
 
-  const hasDiagnosticAlerts =
-    concentration.alert || (weekendComparable && weekendRatio > WEEKEND_RATIO_LIMIT) || trendSignificant;
+  // Avisos consolidados (alertas convertidos + diagnósticos contextuais)
+  const warnings = [
+    ...alerts.map((a) => ({
+      id: a.id,
+      variant: a.severity === "praise" ? ("success" as const) : ("warning" as const),
+      message: `${a.title}: ${a.description}`,
+    })),
+    ...(concentration.alert
+      ? [
+          {
+            id: "concentration",
+            variant: "warning" as const,
+            message:
+              "Concentração de renda: uma única fonte representa mais de 60% da sua renda — diversifique suas fontes para maior segurança.",
+          },
+        ]
+      : []),
+    ...(weekendComparable && weekendRatio > WEEKEND_RATIO_LIMIT
+      ? [
+          {
+            id: "weekend",
+            variant: "warning" as const,
+            message: `Gastos no fim de semana: seus gastos de fim de semana estão ${weekendRatio.toFixed(1)}× maiores que os de dias úteis.`,
+          },
+        ]
+      : []),
+    ...(trendSignificant
+      ? [
+          {
+            id: "trend",
+            variant: trendPercent > 0 ? ("warning" as const) : ("success" as const),
+            message:
+              trendPercent > 0
+                ? `Tendência de alta: gastos ${trendPercent.toFixed(1)}% acima do mês anterior.`
+                : `Tendência de redução: gastos ${Math.abs(trendPercent).toFixed(1)}% abaixo do mês anterior.`,
+          },
+        ]
+      : []),
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -300,7 +337,6 @@ export function InsightsPage() {
 
       {loading ? (
         <div className="flex flex-col gap-3">
-          <Skeleton className="h-24 w-full" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
@@ -309,6 +345,7 @@ export function InsightsPage() {
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
           </div>
+          <Skeleton className="h-24 w-full" />
           <Skeleton className="h-40 w-full" />
         </div>
       ) : (
@@ -319,47 +356,10 @@ export function InsightsPage() {
           items={[
             {
               value: "diagnostics",
-              label: "Alertas & Diagnósticos",
+              label: "Avisos & Diagnósticos",
               content: (
                 <div className="flex flex-col gap-6 min-w-0">
-                  {/* Bloco 1: Alertas Críticos */}
-                  <section aria-label="Alertas críticos" className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Alertas Críticos
-                      </h2>
-                      {alerts.length > 0 ? (
-                        <Badge variant="warning">{alerts.length} ativo(s)</Badge>
-                      ) : (
-                        <Badge variant="positive">Tudo em dia</Badge>
-                      )}
-                    </div>
-
-                    {alerts.length === 0 ? (
-                      <div className="flex items-center gap-3 rounded-xl border border-positive/30 bg-positive/5 p-4 text-xs">
-                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong">
-                          <CheckCircle2 className="size-4" aria-hidden="true" />
-                        </span>
-                        <div className="flex flex-col gap-0.5">
-                          <p className="font-medium text-foreground">Nenhum alerta crítico ativo no momento.</p>
-                          <p className="text-muted-foreground">Seu ritmo de gastos e limites estão sob controle neste mês.</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2.5">
-                        {alerts.map((alert) => (
-                          <AlertCard
-                            key={alert.id}
-                            priority={alert.priority as 1 | 2 | 3 | 4 | 5 | 6}
-                            title={alert.title}
-                            description={alert.description}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-
-                  {/* Bloco 2: Diagnóstico Financeiro (Grid 3x2 equilibrado) */}
+                  {/* Bloco 1: Diagnóstico Financeiro (Grid 3x2 equilibrado) */}
                   <section aria-label="Diagnóstico financeiro" className="flex flex-col gap-3">
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Diagnóstico de Hábitos & Indicadores
@@ -411,33 +411,31 @@ export function InsightsPage() {
                     </div>
                   </section>
 
-                  {/* Bloco 3: Avisos e Oportunidades Contextuais */}
-                  {hasDiagnosticAlerts ? (
-                    <section aria-label="Avisos e oportunidades" className="flex flex-col gap-2.5">
-                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Avisos & Recomendações
-                      </h2>
-                      <div className="flex flex-col gap-2">
-                        {concentration.alert ? (
-                          <Alert variant="warning">
-                            Uma única fonte representa mais de 60% da sua renda — diversifique suas fontes para maior segurança.
-                          </Alert>
-                        ) : null}
-                        {weekendComparable && weekendRatio > WEEKEND_RATIO_LIMIT ? (
-                          <Alert variant="warning">
-                            Seus gastos de fim de semana estão {weekendRatio.toFixed(1)}× maiores que os de dias úteis.
-                          </Alert>
-                        ) : null}
-                        {trendSignificant ? (
-                          <Alert variant={trendPercent > 0 ? "warning" : "success"}>
-                            {trendPercent > 0
-                              ? `Gastos ${trendPercent.toFixed(1)}% acima do mês anterior — tendência significativa de alta.`
-                              : `Gastos ${Math.abs(trendPercent).toFixed(1)}% abaixo do mês anterior — tendência de redução.`}
-                          </Alert>
-                        ) : null}
+                  {/* Bloco 2: Avisos e Recomendações */}
+                  <section aria-label="Avisos e recomendações" className="flex flex-col gap-2.5">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Avisos & Recomendações
+                    </h2>
+                    {warnings.length === 0 ? (
+                      <div className="flex items-center gap-3 rounded-xl border border-positive/30 bg-positive/5 p-4 text-xs">
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong">
+                          <CheckCircle2 className="size-4" aria-hidden="true" />
+                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <p className="font-medium text-foreground">Nenhum aviso no momento.</p>
+                          <p className="text-muted-foreground">Seu ritmo de gastos e orçamentos estão equilibrados neste mês.</p>
+                        </div>
                       </div>
-                    </section>
-                  ) : null}
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {warnings.map((w) => (
+                          <Alert key={w.id} variant={w.variant}>
+                            {w.message}
+                          </Alert>
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 </div>
               ),
             },

@@ -1508,5 +1508,14 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - **Barrels criados:** `domain/money/index.ts`, `domain/gestures/index.ts`, `services/masks/index.ts` (padrão AGENTS.md §7) — 36+ arquivos migrados de imports profundos para `@/` (barrel).
 - **Verificação:** 1135 testes / 144 arquivos · lint 0 erros · typecheck e build limpos.
 
+---
+
+**Evolução — Insights: Remoção de Alertas Críticos e Unificação de Avisos & Diagnósticos (2026-08-17):**
+- **Remoção de Alertas Críticos:** bloco visual exclusivo de alertas críticos e cards com badges numéricas removidos da página de Insights.
+- **Conversão de Alertas em Avisos:** alertas financeiros de saldo negativo, ritmo acelerado, orçamentos estourados, burn rate elevado, déficit projetado e poupança saudável foram convertidos e unificados na seção **Avisos & Recomendações** ao lado dos diagnósticos contextuais (concentração de renda, fim de semana e tendências).
+- **Aba unificada Avisos & Diagnósticos:** layout limpo com grid 3x2 de diagnóstico no topo e lista de avisos contextuais abaixo.
+- **Verificação:** 1204 testes / 145 arquivos 100% verdes · lint e typecheck limpos.
+
 **Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.
+
 

@@ -288,7 +288,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 **Entrada:** totais, savings rate, resumos por categoria (atual + anteriores), totais por dia da semana, limites estourados, renda por categoria, ritmo e projeção de gastos, saldo, despesas (mês atual + 3 anteriores).
 
-#### 3.7.1 Alertas críticos (prioridade)
+#### 3.7.1 Alertas e avisos (prioridade)
 
 1. Saldo negativo;
 2. Ritmo de gastos > 5% acima do esperado;
@@ -296,6 +296,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 4. Burn rate > 85% da renda;
 5. Déficit projetado para o fim do mês (dia ≥ 10 e fora do trilho);
 6. Elogio automático quando poupança ≥ 20% da renda.
+
+*Nota de UI:* os alertas são apresentados como avisos unificados na aba **Avisos & Diagnósticos** integrados às notificações de contexto e diagnósticos (§3.7.6).
 
 #### 3.7.2 Detecção de assinaturas
 
