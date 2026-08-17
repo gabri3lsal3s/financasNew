@@ -70,17 +70,17 @@ export function CardInvoicePrintView({
   const generatedAt = formatDate(new Date().toISOString().slice(0, 10));
 
   return (
-    <div className="print-area flex flex-col gap-6 bg-surface text-foreground">
+    <div className="print-area flex flex-col gap-6 bg-surface text-foreground w-full max-w-full overflow-hidden print:overflow-visible">
       {/* Cabeçalho do documento */}
-      <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 border-b border-border pb-4 print:flex-row print:items-start">
         <div className="flex items-center gap-2.5">
-          <CreditCard className="size-5 text-primary-strong" aria-hidden="true" />
+          <CreditCard className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
           <div className="flex flex-col">
             <span className="font-display text-base font-bold tracking-tight">{appName}</span>
             <span className="text-xs text-muted-foreground">Fatura de cartão de crédito</span>
           </div>
         </div>
-        <div className="flex flex-col items-end text-right text-xs text-muted-foreground">
+        <div className="flex flex-col items-start sm:items-end text-left sm:text-right text-xs text-muted-foreground print:items-end print:text-right">
           <span className="font-semibold text-sm text-foreground">
             {cardName} · {competenceLabel}
           </span>
@@ -137,48 +137,50 @@ export function CardInvoicePrintView({
         {expenses.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">Nenhum gasto lançado nesta competência.</p>
         ) : (
-          <table className="mt-2 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="py-1.5 pr-2 font-medium">Data</th>
-                <th className="py-1.5 pr-2 font-medium">Descrição</th>
-                <th className="py-1.5 pr-2 font-medium">Categoria</th>
-                <th className="py-1.5 pr-2 text-right font-medium">Valor (R$)</th>
-                <th className="py-1.5 pr-2 text-right font-medium">Valor p/ relatório</th>
-                <th className="py-1.5 text-right font-medium">Parcelas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((expense, index) => (
-                <Fragment key={`${expense.date}-${expense.description}-${index}`}>
-                  <tr className="border-b border-border/60">
-                    <td className="py-1.5 pr-2 tabular-nums">{formatDate(expense.date)}</td>
-                    <td className="py-1.5 pr-2">{expense.description}</td>
-                    <td className="py-1.5 pr-2 text-xs text-muted-foreground">{expense.categoryName}</td>
-                    <td className="py-1.5 pr-2 text-right tabular-nums">
-                      <MoneyText cents={expense.valueCents} tone="negative" />
-                    </td>
-                    <td className="py-1.5 pr-2 text-right tabular-nums">
-                      <MoneyText cents={expense.reportValueCents} tone="default" />
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums">{expense.installments}</td>
-                  </tr>
-                </Fragment>
-              ))}
-              <tr className="font-semibold">
-                <td className="py-2 pr-2" colSpan={3}>
-                  Total ({expenses.length} {expenses.length === 1 ? "gasto" : "gastos"})
-                </td>
-                <td className="py-2 pr-2 text-right tabular-nums">
-                  <MoneyText cents={totalBrutoCents} tone="negative" />
-                </td>
-                <td className="py-2 pr-2 text-right tabular-nums">
-                  <MoneyText cents={totalPonderadoCents} tone="default" />
-                </td>
-                <td className="py-2 text-right" />
-              </tr>
-            </tbody>
-          </table>
+          <div className="mt-2 w-full overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[540px] sm:min-w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-1.5 pr-2 font-medium">Data</th>
+                  <th className="py-1.5 pr-2 font-medium">Descrição</th>
+                  <th className="py-1.5 pr-2 font-medium">Categoria</th>
+                  <th className="py-1.5 pr-2 text-right font-medium">Valor (R$)</th>
+                  <th className="py-1.5 pr-2 text-right font-medium">Valor p/ relatório</th>
+                  <th className="py-1.5 text-right font-medium">Parcelas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses.map((expense, index) => (
+                  <Fragment key={`${expense.date}-${expense.description}-${index}`}>
+                    <tr className="border-b border-border/60">
+                      <td className="py-1.5 pr-2 tabular-nums">{formatDate(expense.date)}</td>
+                      <td className="py-1.5 pr-2">{expense.description}</td>
+                      <td className="py-1.5 pr-2 text-xs text-muted-foreground">{expense.categoryName}</td>
+                      <td className="py-1.5 pr-2 text-right tabular-nums">
+                        <MoneyText cents={expense.valueCents} tone="negative" />
+                      </td>
+                      <td className="py-1.5 pr-2 text-right tabular-nums">
+                        <MoneyText cents={expense.reportValueCents} tone="default" />
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums">{expense.installments}</td>
+                    </tr>
+                  </Fragment>
+                ))}
+                <tr className="font-semibold">
+                  <td className="py-2 pr-2" colSpan={3}>
+                    Total ({expenses.length} {expenses.length === 1 ? "gasto" : "gastos"})
+                  </td>
+                  <td className="py-2 pr-2 text-right tabular-nums">
+                    <MoneyText cents={totalBrutoCents} tone="negative" />
+                  </td>
+                  <td className="py-2 pr-2 text-right tabular-nums">
+                    <MoneyText cents={totalPonderadoCents} tone="default" />
+                  </td>
+                  <td className="py-2 text-right" />
+                </tr>
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -186,30 +188,32 @@ export function CardInvoicePrintView({
       {payments.length > 0 ? (
         <section aria-label="Pagamentos e estornos">
           <h2 className="text-sm font-semibold text-foreground">Pagamentos e estornos</h2>
-          <table className="mt-2 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="py-1.5 pr-2 font-medium">Data</th>
-                <th className="py-1.5 pr-2 font-medium">Descrição</th>
-                <th className="py-1.5 pr-2 text-right font-medium">Valor (R$)</th>
-                <th className="py-1.5 text-right font-medium">Tipo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((payment, index) => (
-                <tr key={`${payment.date}-${payment.note}-${index}`} className="border-b border-border/60">
-                  <td className="py-1.5 pr-2 tabular-nums">{formatDate(payment.date)}</td>
-                  <td className="py-1.5 pr-2">{payment.note || (payment.isRefund ? "Estorno" : "Pagamento de fatura")}</td>
-                  <td className="py-1.5 pr-2 text-right tabular-nums">
-                    <MoneyText cents={payment.amountCents} tone={payment.isRefund ? "positive" : "negative"} />
-                  </td>
-                  <td className="py-1.5 text-right text-xs text-muted-foreground">
-                    {payment.isRefund ? "Estorno" : "Pagamento"}
-                  </td>
+          <div className="mt-2 w-full overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[440px] sm:min-w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-1.5 pr-2 font-medium">Data</th>
+                  <th className="py-1.5 pr-2 font-medium">Descrição</th>
+                  <th className="py-1.5 pr-2 text-right font-medium">Valor (R$)</th>
+                  <th className="py-1.5 text-right font-medium">Tipo</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {payments.map((payment, index) => (
+                  <tr key={`${payment.date}-${payment.note}-${index}`} className="border-b border-border/60">
+                    <td className="py-1.5 pr-2 tabular-nums">{formatDate(payment.date)}</td>
+                    <td className="py-1.5 pr-2">{payment.note || (payment.isRefund ? "Estorno" : "Pagamento de fatura")}</td>
+                    <td className="py-1.5 pr-2 text-right tabular-nums">
+                      <MoneyText cents={payment.amountCents} tone={payment.isRefund ? "positive" : "negative"} />
+                    </td>
+                    <td className="py-1.5 text-right text-xs text-muted-foreground">
+                      {payment.isRefund ? "Estorno" : "Pagamento"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
 

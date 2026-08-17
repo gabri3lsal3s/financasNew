@@ -30,7 +30,6 @@ import {
   useCardPayments,
   useCategories,
   useCreditCards,
-  useDeleteCard,
   useDeleteCardPayment,
   useUpdateCard,
 } from "@/state";
@@ -52,7 +51,6 @@ type PaymentMode = "payment" | "refund" | null;
  */
 export function CardsPage() {
   const cardsQuery = useCreditCards();
-  const deleteCardMutation = useDeleteCard();
   const updateCardMutation = useUpdateCard();
   const deleteCardPaymentMutation = useDeleteCardPayment();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -65,10 +63,9 @@ export function CardsPage() {
   const selectedCardId = paramCard ?? pickedCardId;
 
   const [month, setMonth] = useState<string | null>(null);
-  // FAB contextual (F12): ?novo=cartao abre o formulário de criação.
+  // Deep link direto (F12): ?novo=cartao abre o formulário de criação.
   const { open: formOpen, setOpen: setFormOpen, fromUrl } = useCreateDeepLink("cartao");
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
-  const [deletingCard, setDeletingCard] = useState<CreditCard | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<CardPayment | null>(null);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -185,11 +182,6 @@ export function CardsPage() {
     setFormOpen(true);
   };
 
-  const handleRequestDelete = (card: CreditCard) => {
-    setActionError(null);
-    setDeletingCard(card);
-  };
-
   const handleDeactivateCard = async (card: CreditCard) => {
     setActionError(null);
     try {
@@ -205,41 +197,8 @@ export function CardsPage() {
           is_active: false,
         },
       });
-      setDeletingCard(null);
     } catch (err) {
       setActionError(getErrorMessage(err));
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deletingCard) return;
-    setActionError(null);
-    try {
-      await deleteCardMutation.mutateAsync(deletingCard.id);
-      const remainingCards = cards.filter((c) => c.id !== deletingCard.id);
-      setDeletingCard(null);
-      if (selectedCard?.id === deletingCard.id) {
-        if (remainingCards.length > 0 && remainingCards[0]) {
-          selectCard(remainingCards[0].id);
-        } else {
-          setPickedCardId(null);
-        }
-      }
-    } catch (err) {
-      setDeletingCard(null);
-      const msg = getErrorMessage(err);
-      if (
-        msg.toLowerCase().includes("foreign key") ||
-        msg.toLowerCase().includes("histórico") ||
-        msg.toLowerCase().includes("vinculad") ||
-        msg.toLowerCase().includes("desativá-lo")
-      ) {
-        setActionError(
-          "Não é possível excluir um cartão que possui despesas ou pagamentos registrados. Você pode desativá-lo para mantê-lo no histórico.",
-        );
-      } else {
-        setActionError(msg);
-      }
     }
   };
 
@@ -337,7 +296,6 @@ export function CardsPage() {
               selectedCardId={selectedCard?.id ?? null}
               onSelectCard={selectCard}
               onEditCard={openForm}
-              onDeleteCard={handleRequestDelete}
               onNewCard={() => openForm(null)}
               usedLimitMap={usedLimitMap}
               competenceMonth={effectiveMonth}
@@ -577,21 +535,6 @@ export function CardsPage() {
           }
         }}
       />
-
-      {/* Diálogo de confirmação para exclusão direta do cartão */}
-      {deletingCard && (
-        <ConfirmDialog
-          open={deletingCard !== null}
-          onOpenChange={(next) => {
-            if (!next) setDeletingCard(null);
-          }}
-          title="Excluir cartão"
-          description={`Tem certeza que deseja excluir o cartão "${deletingCard.name}"? Se houver histórico de compras ou pagamentos, você deve desativá-lo em vez de excluí-lo.`}
-          confirmLabel="Excluir cartão"
-          variant="destructive"
-          onConfirm={() => void handleConfirmDelete()}
-        />
-      )}
 
       {/* Diálogo de confirmação para exclusão de pagamento ou estorno */}
       {deletingPayment && (

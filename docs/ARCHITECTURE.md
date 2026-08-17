@@ -124,6 +124,8 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…)
+    │   ├── recurrences/           #   F32: ocorrências por frequência (cliente calcula,
+    │   │                          #     RPC valida) + modos de exclusão em grupo
     │   ├── cards/                 #   saldo de fatura, status da fatura
     │   ├── budgets/               #   regras por categoria, status/limites
     │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow

@@ -138,12 +138,16 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(screen.getByLabelText("Nome")).toHaveValue("Nubank");
   });
 
-  it("permite excluir o cartão com diálogo de confirmação", async () => {
+  it("permite excluir o cartão através do modal de edição", async () => {
     deleteCardMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<CardsPage />);
 
-    const deleteBtn = screen.getByRole("button", { name: /excluir cartão nubank/i });
+    const cardBtn = screen.getByRole("button", { name: /^cartão nubank/i });
+    await user.click(cardBtn);
+
+    expect(screen.getByRole("heading", { name: "Editar cartão" })).toBeInTheDocument();
+    const deleteBtn = screen.getByRole("button", { name: "Excluir" });
     await user.click(deleteBtn);
 
     expect(screen.getByRole("heading", { name: "Excluir cartão" })).toBeInTheDocument();
@@ -228,7 +232,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     }
   });
 
-  it("abre o formulário de criação via FAB contextual (?novo=cartao)", () => {
+  it("abre o formulário de criação via deep link direto (?novo=cartao)", () => {
     searchParamsMock.mockReturnValue([new URLSearchParams("novo=cartao"), vi.fn()]);
     render(<CardsPage />);
     expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();

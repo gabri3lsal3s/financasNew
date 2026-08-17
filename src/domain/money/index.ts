@@ -4,5 +4,5 @@
  */
 export { CURRENCY_INPUT_MAX_DIGITS, centsFromDigits, digitsFromCents, extractDigits } from "./currency-input";
 export { numberToCents } from "./parse";
-export { parcelar, splitCents, toISODate } from "./parcelar";
+export { addMonthsClamped, parcelar, splitCents, toISODate } from "./parcelar";
 export type { Parcela } from "./parcelar";

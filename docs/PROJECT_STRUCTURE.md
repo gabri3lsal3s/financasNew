@@ -141,6 +141,9 @@
     │   │                          #     (single/all/subsequent — resolveExpenseDeleteIds,
     │   │                          #     espelha o RPC p/ atualizações otimistas F30)
     │   ├── cards/                 #   saldo de fatura, status da fatura (closed/open/near_due/overdue)
+    │   ├── recurrences/           #   F32: geração de ocorrências por frequência
+    │   │                          #     (monthly/weekly/quarterly/yearly, fim por data ou
+    │   │                          #     por contagem) + modos de exclusão em grupo
     │   ├── budgets/               #   regras por categoria (CATEGORY_RULES), status/limites
     │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow
     │   ├── reports/               #   peso de relatório (base × weight) + detailed-close.ts

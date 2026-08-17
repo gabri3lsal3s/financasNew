@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type TouchEvent } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, WalletCards } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui";
 import { CreditCard3D } from "./credit-card-3d";
 import { triggerHaptic } from "@/services/haptics";
@@ -17,7 +17,6 @@ export interface CreditCardWalletProps {
   selectedCardId: string | null;
   onSelectCard: (id: string) => void;
   onEditCard?: (card: CreditCard) => void;
-  onDeleteCard?: (card: CreditCard) => void;
   onNewCard?: () => void;
   /** Mapeamento de limite utilizado em centavos ou objeto { brutoCents, ponderadoCents } por ID do cartão. */
   usedLimitMap?: Record<string, number | CardLimitUsageEntry>;
@@ -37,7 +36,6 @@ export function CreditCardWallet({
   selectedCardId,
   onSelectCard,
   onEditCard,
-  onDeleteCard,
   onNewCard,
   usedLimitMap = {},
   competenceMonth,
@@ -131,35 +129,19 @@ export function CreditCardWallet({
         </div>
 
         {/* Ações contextuais discretas */}
-        <div className="flex items-center gap-1">
-          {currentCard && onDeleteCard && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onDeleteCard(currentCard)}
-              aria-label={`Excluir cartão ${currentCard.name}`}
-              className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-critical"
-            >
-              <Trash2 className="size-3" aria-hidden="true" />
-              <span className="hidden sm:inline">Excluir</span>
-            </Button>
-          )}
-
-          {onNewCard && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onNewCard}
-              aria-label="Adicionar novo cartão"
-              className="h-7 px-2 text-xs gap-1"
-            >
-              <Plus className="size-3" aria-hidden="true" />
-              <span className="hidden sm:inline">Novo</span>
-            </Button>
-          )}
-        </div>
+        {onNewCard && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onNewCard}
+            aria-label="Adicionar novo cartão"
+            className="h-7 px-2 text-xs gap-1"
+          >
+            <Plus className="size-3" aria-hidden="true" />
+            <span className="hidden sm:inline">Novo</span>
+          </Button>
+        )}
       </div>
 
       {/* Palco 3D do Cartão com navegação externa nas laterais (sem sobreposição) */}

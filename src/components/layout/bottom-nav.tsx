@@ -27,7 +27,7 @@ const cartoes = requiredSlot("/cartoes");
 const createActions: Record<string, { to: string; label: string }> = {
   "/": { to: "/transacoes/novo", label: "Nova transação" },
   "/transacoes": { to: "/transacoes/novo", label: "Nova transação" },
-  "/cartoes": { to: "/cartoes?novo=cartao", label: "Novo cartão" },
+  "/cartoes": { to: "/transacoes/novo", label: "Nova transação" },
   "/dividas": { to: "/dividas?novo=divida", label: "Nova dívida" },
   "/categorias": { to: "/categorias?novo=categoria", label: "Nova categoria" },
 };
