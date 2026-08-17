@@ -1394,7 +1394,36 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | ✅ Concluída (2026-08-15) — motor puro `domain/gestures/overscroll` (resistência elástica + barreira de inércia + threshold), hook `usePullUpToTop` (FSM com cancelamento reversível, decisão por ref, sem pointer capture para coexistir com swipe-to-action), primitivo `PullUpToTopIndicator` (anel SVG `stroke-primary`), integração no PageShell e remoção do `ScrollToTopButton`/`useScrollPosition` do roteador + regra CSS de diálogos · **removida em 2026-08-16** (gesto instável em dispositivos reais mesmo após as correções; rolagem nativa mantida) |
 | 14 | **F27** — Insights: Precisão, Deduplicação & Casos de Borda | A / Inteligência | F19 | ✅ Concluída (2026-08-15) — média mensal real nos desafios (`typicalMonthlySpendCents`), `categoryCount` no discricionário (linha "30% em não essenciais" oculta com 1 categoria — sem repetição) e guarda de `weekendRatio` incomparável ("—" sem alerta absurdo) |
 | 15 | **F28** — Investimentos: Mobile Responsive & Organização | A / Mobile Polish | F17 | ✅ Concluída (2026-08-15) — cards de posição no mobile (sem scroll horizontal) com `PositionRowActions` compartilhado, KPIs 2×2 (padrão do app), metas por classe empilháveis e remoção do código morto pós-F17 (`portfolio-page`/`position-tab`) |
-| 17 | **F30** — Importação e Reconciliação Inteligente de Faturas de Cartão | A / Cartões & Inteligência | F2/F21/F22 | 📋 Pronta para Execução |
+| 16 | **F30** — Importação e Reconciliação Inteligente de Faturas de Cartão | A / Cartões & Inteligência | F2/F21/F22 | 📋 Pronta para Execução |
+| 17 | **F31** — Modernização de Micro-Interações "Obsidian Glass" & Feedback Tátil | A / UI & Micro-Interações | F8/F11/F15 | ✅ Concluída (2026-08-17) — morphing action buttons, checklist de aportes, alertas pulsantes de orçamento e transições suaves nos controles globais |
+
+### Fase 31 — Modernização de Micro-Interações "Obsidian Glass" & Feedback Tátil
+
+**Objetivo:** modernizar e enriquecer a experiência do usuário com micro-interações táteis e visuais elegantes, consistentes e respeitosas das preferências de movimento (`fluid`, `eco`, `reduced`), seguindo o padrão Obsidian Glass e os princípios DRY.
+
+**Entregas Realizadas (2026-08-17):**
+1. **Morphing Action Buttons em Assinaturas & Recorrências (`InsightList`):**
+   - Unificação das ações de confirmação e ignorar com transição imediata e remoção de badges duplicados.
+   - Animação física `animate-spring-pop` ao confirmar e feedback háptico imediato.
+2. **Micro-interações no Módulo de Dívidas (`DebtsPage` & `SettleDialog`):**
+   - Transição visual no status de quitação de dívidas com ícone `CheckCircle2` animado (`animate-spring-pop`).
+   - Feedback háptico tátil (`triggerHaptic("light")`) em botões de ação e `triggerHaptic("success")` na conclusão de quitação via `SettleDialog`.
+3. **Alerta Reativo e Transição Contínua em Orçamentos (`BudgetProgressBar` & `Progress`):**
+   - Barra de progresso com transição CSS suave de preenchimento (`transition-[width,background-color] duration-300 ease-out`).
+   - Micro-pulso `animate-live-pulse` no indicador "Excedido" para destaque visual claro e elegante.
+4. **Transições Suaves nos Controles Globais (`PrivacyToggle` & `MonthPicker`):**
+   - Micro-rotação elástica no ícone de privacidade com disparo háptico calibrado por estado.
+   - Transição deslizante suave `animate-fade-slide-in` no label do seletor mensal e feedback háptico na navegação.
+5. **Checklist Interativo de Aportes (`AporteResult`):**
+   - Botão de alternância de execução ("Pendente" ↔ "Feito") por ativo sugerido com feedback háptico e animação elástica.
+   - Contagem dinâmica de ativos executados no KPI "Alocado em ativos" e esmaecimento suave de linhas concluídas.
+   - Cobertura completa de testes unitários (`aporte-result.test.tsx`).
+
+**✅ DoD (critérios de aceite):**
+- Micro-interações respeitam os 3 níveis de movimento configurados pelo usuário (`fluid`, `eco`, `reduced`).
+- Zero dependências externas de animação adicionadas (utilitários CSS centralizados e nativos).
+- Feedback sensorial calibrado via `triggerHaptic` em ações táteis.
+- Suíte completa de testes (143 arquivos / 1.160 testes) e build de produção 100% verdes.
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 

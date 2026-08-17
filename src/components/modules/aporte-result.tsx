@@ -1,7 +1,9 @@
-import { ArrowDownToLine, PiggyBank, Wallet } from "lucide-react";
+import { useState } from "react";
+import { ArrowDownToLine, Check, PiggyBank, Wallet } from "lucide-react";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
+import { triggerHaptic } from "@/services/haptics";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -35,6 +37,24 @@ const MODE_LABEL: Record<AporteResultProps["mode"], string> = {
  * quantidade e preço; sobra final (→ caixa/reserva).
  */
 export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }: AporteResultProps) {
+  const [completedTickers, setCompletedTickers] = useState<Set<string>>(new Set());
+
+  const toggleTicker = (ticker: string) => {
+    setCompletedTickers((prev) => {
+      const next = new Set(prev);
+      if (next.has(ticker)) {
+        next.delete(ticker);
+        triggerHaptic("light");
+      } else {
+        next.add(ticker);
+        triggerHaptic("success");
+      }
+      return next;
+    });
+  };
+
+  const completedCount = completedTickers.size;
+
   const columns: {
     key: string;
     header: ReactNode;
@@ -44,12 +64,15 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
     {
       key: "ticker",
       header: "Ativo",
-      cell: (row) => (
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
-          {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
-        </div>
-      ),
+      cell: (row) => {
+        const isDone = completedTickers.has(row.ticker);
+        return (
+          <div className={cn("flex min-w-0 flex-col gap-0.5 transition-opacity duration-150", isDone && "opacity-60")}>
+            <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+            {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
+          </div>
+        );
+      },
     },
     {
       key: "target",
@@ -81,6 +104,36 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
       align: "right",
       cell: (row) => <MoneyText cents={numberToCents(row.priceBRL)} tone="default" className="text-muted-foreground" />,
     },
+    {
+      key: "status",
+      header: "Execução",
+      align: "right",
+      cell: (row) => {
+        const isDone = completedTickers.has(row.ticker);
+        return (
+          <button
+            type="button"
+            onClick={() => toggleTicker(row.ticker)}
+            aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer",
+              isDone
+                ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
+                : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-95",
+            )}
+          >
+            {isDone ? (
+              <>
+                <Check className="size-3.5" aria-hidden="true" />
+                <span>Feito</span>
+              </>
+            ) : (
+              <span>Pendente</span>
+            )}
+          </button>
+        );
+      },
+    },
   ];
 
   return (
@@ -89,7 +142,7 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
         <ResultStat icon={<PiggyBank className="size-4" aria-hidden="true" />} label="Aporte informado" cents={numberToCents(aporte)} />
         <ResultStat
           icon={<ArrowDownToLine className="size-4" aria-hidden="true" />}
-          label="Alocado em ativos"
+          label={completedCount > 0 ? `Alocado (${completedCount}/${routes.length} feitos)` : "Alocado em ativos"}
           cents={numberToCents(totalAllocated)}
           accent
         />

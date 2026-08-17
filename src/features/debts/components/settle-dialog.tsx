@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Modal, MoneyInput, RadioGroup, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
+import { triggerHaptic } from "@/services/haptics";
 import { useCategories, useExpense, usePayDebt, useReceiveDebt, useSettleIntegratedReceivable } from "@/state";
 import type { Debt } from "@/types";
 
@@ -62,6 +63,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
           expenseCategoryId: withTransaction ? categoryId : null,
         });
       }
+      triggerHaptic("success");
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));

@@ -37,7 +37,7 @@ export function Progress({ value, tone = "auto", className, ...props }: Progress
       {...props}
     >
       <div
-        className={cn("h-full rounded-full transition-all", toneBg[resolved])}
+        className={cn("h-full rounded-full transition-[width,background-color] duration-300 ease-out", toneBg[resolved])}
         style={{ width: `${clamped}%` }}
       />
     </div>

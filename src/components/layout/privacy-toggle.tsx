@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { triggerHaptic } from "@/services/haptics";
 import { togglePrivacyMask, usePrivacyMask } from "@/hooks/use-privacy-mask";
 
 /**
@@ -13,6 +14,11 @@ export function PrivacyToggle() {
   // A máscara GLOBAL (html[data-privacy="masked"] → ofusca `.num`/`.privacy-mask`
   // em globals.css) é aplicada pelo PRÓPRIO store (use-privacy-mask), não aqui.
 
+  const handleToggle = () => {
+    triggerHaptic(masked ? "light" : "medium");
+    togglePrivacyMask();
+  };
+
   // Atalho global: P alterna a máscara (DESIGN_SYSTEM §8 — modo privacidade).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -22,12 +28,13 @@ export function PrivacyToggle() {
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
       if (event.key.toLowerCase() === "p") {
         event.preventDefault();
+        triggerHaptic(masked ? "light" : "medium");
         togglePrivacyMask();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [masked]);
 
   const label = masked ? "Mostrar valores (P)" : "Ocultar valores (P)";
 
@@ -39,9 +46,11 @@ export function PrivacyToggle() {
       aria-label={label}
       title={label}
       aria-pressed={masked}
-      onClick={() => togglePrivacyMask()}
+      onClick={handleToggle}
     >
-      {masked ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+      <span className="flex items-center justify-center transition-transform duration-200 animate-spring-pop">
+        {masked ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+      </span>
     </Button>
   );
 }

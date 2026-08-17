@@ -103,7 +103,8 @@
     │   │   │                      #   export-data-hub (F22 — backup/CSV/restauração em Configurações),
     │   │   │                      #   monthly-close-print-view (F22 — fechamento mensal imprimível),
     │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section
-    │   │   │                      #     (F24 — fundo de emergência e simulador FIRE no Insights)…
+    │   │   │                      #     (F24 — fundo de emergência e simulador FIRE no Insights),
+    │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10),

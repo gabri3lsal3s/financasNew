@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { triggerHaptic } from "@/services/haptics";
 import { isValidMonthKey } from "@/domain/competence";
 
 export interface MonthPickerProps {
@@ -34,6 +35,11 @@ export function MonthPicker({ value, onValueChange, disabled, className }: Month
     throw new Error(`MonthPicker: mês inválido "${value}" (esperado YYYY-MM).`);
   }
 
+  const handleChange = (delta: number) => {
+    triggerHaptic("light");
+    onValueChange(addMonths(value, delta));
+  };
+
   return (
     <div className={className}>
       <div className="flex items-center justify-between gap-2" role="group" aria-label="Selecionar mês">
@@ -43,11 +49,11 @@ export function MonthPicker({ value, onValueChange, disabled, className }: Month
           size="icon"
           aria-label="Mês anterior"
           disabled={disabled}
-          onClick={() => onValueChange(addMonths(value, -1))}
+          onClick={() => handleChange(-1)}
         >
           <ChevronLeft aria-hidden="true" />
         </Button>
-        <span className="min-w-32 text-center text-sm font-medium capitalize text-foreground">
+        <span key={value} className="min-w-32 text-center text-sm font-medium capitalize text-foreground animate-fade-slide-in">
           {monthLabel(value)}
         </span>
         <Button
@@ -56,7 +62,7 @@ export function MonthPicker({ value, onValueChange, disabled, className }: Month
           size="icon"
           aria-label="Próximo mês"
           disabled={disabled}
-          onClick={() => onValueChange(addMonths(value, 1))}
+          onClick={() => handleChange(1)}
         >
           <ChevronRight aria-hidden="true" />
         </Button>

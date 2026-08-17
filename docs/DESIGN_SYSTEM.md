@@ -360,3 +360,10 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Herança & Tokens Semânticos:** Ícones herdam a cor semântica do tema ativo (`text-primary`, `text-primary-strong`, `text-muted-foreground`, `text-positive-strong`, `text-critical-strong`, `text-portfolio`) ou cores diretas da categoria quando aplicável (`CategoryIcon`). Cores estáticas hardcoded (ex.: `text-blue-500`, `text-purple-600`) são expressamente proibidas.
 - **Dimensões & Stroke Padronizados:** Ícones utilizam tamanhos da escala (`size-3.5`, `size-4`, `size-5`, `size-6` em empty states) com stroke uniforme (`lucide-react`), garantindo coerência visual e alinhamento impecável em todos os módulos e dispositivos.
 
+### 14.12 Micro-Interações "Obsidian Glass" & Indicadores Reativos de Ação
+- **Morphing Action Buttons (`InsightList`):** Em Assinaturas & Recorrências, a ação de ignorar ou confirmar é unificada em botões de ação que transmitem transição imediata de estado com micro-animação física (`animate-spring-pop`) e remoção de badges redundantes.
+- **Checklist Interativo de Aportes (`AporteResult`):** As rotas de aporte sugeridas suportam marcação de execução em lote ("Pendente" ↔ "Feito") com contagem dinâmica de execução nos KPIs e disparo háptico imediato (`light` / `success`).
+- **Alerta Reativo de Orçamento (`BudgetProgressBar`):** Indicador visual de progresso com transição CSS contínua (`transition-[width,background-color] duration-300`) e micro-pulso (`animate-live-pulse`) no rótulo "Excedido" quando o limite da categoria é ultrapassado.
+- **Controles Globais Responsivos (`PrivacyToggle`, `MonthPicker`):** Navegação mensal por slide suave com `animate-fade-slide-in` e alternância do modo privacidade com micro-rotação `animate-spring-pop` e disparo háptico calibrado.
+- **Respeito a Níveis de Movimento:** Todas as animações são suprimidas ou simplificadas automaticamente nos modos `eco` e `reduced` via `data-motion` no root.
+

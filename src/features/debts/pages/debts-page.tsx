@@ -6,6 +6,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
 import { debtStatus } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
+import { triggerHaptic } from "@/services/haptics";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useDebts, useDeleteDebt } from "@/state";
@@ -28,7 +29,7 @@ function DebtRow({ debt, onSettle, onEdit }: DebtRowProps) {
   const status = debtStatus(debt.due_date, debt.paid_at);
   const isPaid = status === "paid";
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 transition-[border-color,background-color] duration-150 hover:border-primary/30">
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-medium text-foreground">{debt.name}</p>
@@ -47,13 +48,31 @@ function DebtRow({ debt, onSettle, onEdit }: DebtRowProps) {
           tone={debt.type === "receivable" ? "positive" : "negative"}
         />
         {isPaid ? (
-          <CheckCircle2 className="size-5 text-positive-strong" aria-label="Quitada" />
+          <span className="flex size-8 items-center justify-center rounded-full bg-positive/10 text-positive-strong animate-spring-pop">
+            <CheckCircle2 className="size-5" aria-label="Quitada" />
+          </span>
         ) : (
-          <Button size="sm" variant="outline" aria-label={`Quitar ${debt.name}`} onClick={() => onSettle(debt)}>
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label={`Quitar ${debt.name}`}
+            onClick={() => {
+              triggerHaptic("light");
+              onSettle(debt);
+            }}
+          >
             Quitar
           </Button>
         )}
-        <Button size="icon" variant="ghost" aria-label={`Editar ${debt.name}`} onClick={() => onEdit(debt)}>
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label={`Editar ${debt.name}`}
+          onClick={() => {
+            triggerHaptic("light");
+            onEdit(debt);
+          }}
+        >
           <Pencil className="size-4" aria-hidden="true" />
         </Button>
       </div>
