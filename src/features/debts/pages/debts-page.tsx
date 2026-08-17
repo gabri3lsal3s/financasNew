@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { CheckCircle2, HandCoins, Pencil, Plus } from "lucide-react";
+import { Check, HandCoins, Pencil, Plus } from "lucide-react";
 import { Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useDebts, useDeleteDebt } from "@/state";
+import { useDebts, useDeleteDebt, useUpdateDebt } from "@/state";
 import { DebtFormDialog } from "@/features/debts/components/debt-form-dialog";
 import { SettleDialog } from "@/features/debts/components/settle-dialog";
 import type { Debt } from "@/types";
@@ -17,6 +17,7 @@ import type { Debt } from "@/types";
 interface DebtRowProps {
   debt: Debt;
   onSettle: (debt: Debt) => void;
+  onUnsettle: (debt: Debt) => void;
   onEdit: (debt: Debt) => void;
 }
 
@@ -25,7 +26,7 @@ interface DebtRowProps {
  * o React remonte todas as linhas a cada render da página (tipo de componente
  * novo por render → perda de foco/jank com listas grandes). Callbacks via props.
  */
-function DebtRow({ debt, onSettle, onEdit }: DebtRowProps) {
+function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
   const status = debtStatus(debt.due_date, debt.paid_at);
   const isPaid = status === "paid";
   return (
@@ -33,7 +34,7 @@ function DebtRow({ debt, onSettle, onEdit }: DebtRowProps) {
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-medium text-foreground">{debt.name}</p>
-          <DebtStatusBadge status={status} />
+          {!isPaid ? <DebtStatusBadge status={status} /> : null}
         </div>
         <p className="text-xs text-muted-foreground">
           Vence em {debt.due_date}
@@ -48,9 +49,25 @@ function DebtRow({ debt, onSettle, onEdit }: DebtRowProps) {
           tone={debt.type === "receivable" ? "positive" : "negative"}
         />
         {isPaid ? (
-          <span className="flex size-8 items-center justify-center rounded-full bg-positive/10 text-positive-strong animate-spring-pop">
-            <CheckCircle2 className="size-5" aria-label="Quitada" />
-          </span>
+          <div
+            className="inline-flex items-center rounded-lg border border-positive/40 bg-positive/10 p-0.5 shadow-sm transition-all duration-200"
+            role="group"
+            aria-label={`Ações para ${debt.name}`}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                onUnsettle(debt);
+              }}
+              className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-positive-strong transition-all duration-200 hover:bg-positive/20 active:scale-95 sm:h-8"
+              aria-label={`Quitada (${debt.name}) — clique para desmarcar`}
+              title={`Quitada (${debt.name}) — clique para desmarcar`}
+            >
+              <Check className="size-3.5 animate-spring-pop sm:size-4" aria-hidden="true" />
+              <span>Quitada</span>
+            </button>
+          </div>
         ) : (
           <Button
             size="sm"
@@ -84,6 +101,7 @@ function DebtRow({ debt, onSettle, onEdit }: DebtRowProps) {
 export function DebtsPage() {
   const debtsQuery = useDebts();
   const deleteDebt = useDeleteDebt();
+  const updateDebt = useUpdateDebt();
   const [searchParams, setSearchParams] = useSearchParams();
   const { highlightId } = useHighlightTarget("q");
 
@@ -104,6 +122,17 @@ export function DebtsPage() {
       },
       { replace: true },
     );
+  };
+
+  const handleUnsettle = async (debt: Debt) => {
+    try {
+      await updateDebt.mutateAsync({
+        id: debt.id,
+        input: { paid_at: null },
+      });
+    } catch {
+      // Erro tratado pela infraestrutura de mutação
+    }
   };
 
   // FAB contextual (F12): ?novo=divida abre o formulário de criação.
@@ -177,6 +206,7 @@ export function DebtsPage() {
               <DebtRow
                 debt={debt}
                 onSettle={setSettling}
+                onUnsettle={handleUnsettle}
                 onEdit={(d) => {
                   setEditingDebt(d);
                   setFormOpen(true);

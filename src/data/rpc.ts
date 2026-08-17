@@ -1,7 +1,7 @@
 import { getSupabase } from "@/data/client";
 import { AppError, classifyError } from "@/services/errors";
 import type { Database } from "@/types/database";
-import type { InstallmentDeleteMode } from "@/types";
+import type { DebtType, InstallmentDeleteMode } from "@/types";
 
 /**
  * Wrappers tipados dos RPCs transacionais (D1).
@@ -63,6 +63,7 @@ export interface CreateExpenseWithDebtParams {
   debtName?: string | null;
   debtAmount?: number | null;
   debtDueDate?: string | null;
+  debtType?: DebtType | null;
 }
 
 /** Despesa + cobrança vinculada em uma única transação (D1/§3.2.4). */
@@ -84,6 +85,7 @@ export async function createExpenseWithDebt(params: CreateExpenseWithDebtParams)
       p_debt_name: params.debtName ?? null,
       p_debt_amount: params.debtAmount ?? null,
       p_debt_due_date: params.debtDueDate ?? null,
+      p_debt_type: params.debtType ?? null,
     }),
   );
 }

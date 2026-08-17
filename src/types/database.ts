@@ -72,6 +72,7 @@ export interface Database {
           p_debt_name: string | null;
           p_debt_amount: number | null;
           p_debt_due_date: string | null;
+          p_debt_type?: string | null;
         };
         Returns: string;
       };

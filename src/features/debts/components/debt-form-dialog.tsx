@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Check, RotateCcw, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, RadioGroup } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDebt, useUpdateDebt } from "@/state";
@@ -26,6 +26,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
   const [type, setType] = useState<DebtType>(debt?.type ?? "payable");
   const [cents, setCents] = useState(debt ? Math.round(debt.amount * 100) : 0);
   const [dueDate, setDueDate] = useState(debt?.due_date ?? "");
+  const [isPaid, setIsPaid] = useState(debt?.paid_at !== null && debt?.paid_at !== undefined);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -40,6 +41,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
       type,
       amount: cents / 100,
       due_date: dueDate,
+      ...(debt?.paid_at ? { paid_at: isPaid ? debt.paid_at : null } : {}),
     };
     try {
       if (debt) {
@@ -95,6 +97,40 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         <span className="text-sm font-medium">Vencimento</span>
         <DatePicker value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
       </div>
+
+      {debt?.paid_at ? (
+        isPaid ? (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-positive/30 bg-positive/5 p-3 text-xs text-positive-strong">
+            <div className="flex items-center gap-2">
+              <Check className="size-4" aria-hidden="true" />
+              <span>Quitada em {debt.paid_at.slice(0, 10)}</span>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs border-positive/40 hover:bg-positive/10"
+              onClick={() => setIsPaid(false)}
+            >
+              <RotateCcw className="size-3.5" aria-hidden="true" />
+              Reabrir dívida
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+            <span>A dívida será reaberta como pendente ao salvar.</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={() => setIsPaid(true)}
+            >
+              Desfazer
+            </Button>
+          </div>
+        )
+      ) : null}
 
       <div className="flex items-center gap-2 pt-2">
         {debt && onDelete ? (

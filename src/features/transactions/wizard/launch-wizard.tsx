@@ -110,6 +110,7 @@ export function LaunchWizard() {
           }),
           debtAmount: state.debtEnabled ? state.debtAmountCents / 100 : null,
           debtDueDate: state.debtEnabled && state.debtDueDate ? state.debtDueDate : null,
+          debtType: state.debtEnabled ? state.debtType : null,
         });
       } else {
         const input = {
@@ -160,6 +161,7 @@ export function LaunchWizard() {
             set("categoryId", "");
             set("cardId", null);
             set("debtEnabled", false);
+            set("debtType", "payable");
           }}
           onValueChange={(cents) => set("valueCents", cents)}
           onInstallmentsChange={(count) => set("installments", count)}
@@ -209,6 +211,7 @@ export function LaunchWizard() {
           }}
           onReportCustomAmountChange={(cents) => set("reportCustomAmountCents", cents)}
           onDebtToggle={(enabled) => set("debtEnabled", enabled)}
+          onDebtTypeChange={(debtType) => set("debtType", debtType)}
           onDebtAmountChange={(cents) => set("debtAmountCents", cents)}
           onDebtDueDateChange={(date) => set("debtDueDate", date)}
           cards={cardsQuery.data}

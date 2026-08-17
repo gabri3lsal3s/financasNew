@@ -9,17 +9,21 @@ export interface CheckboxProps {
   label?: string;
   id?: string;
   className?: string;
+  "aria-label"?: string;
 }
 
 /** Checkbox próprio do app (Radix) — substitui o `<input type="checkbox">` nativo (DESIGN_SYSTEM §13). */
-export function Checkbox({ checked, onCheckedChange, disabled, label, id, className }: CheckboxProps) {
+export function Checkbox({ checked, onCheckedChange, disabled, label, id, className, "aria-label": ariaLabel }: CheckboxProps) {
+  const inputId = id ?? (label ? `checkbox-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : undefined);
+
   return (
     <div className="flex items-center gap-2">
       <CheckboxPrimitive.Root
-        id={id}
+        id={inputId}
         checked={checked}
         onCheckedChange={(state) => onCheckedChange(state === true)}
         disabled={disabled}
+        aria-label={ariaLabel}
         className={cn(
           "flex size-4 shrink-0 items-center justify-center rounded border border-input bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary-strong data-[state=checked]:bg-primary-strong",
           className,
@@ -30,7 +34,7 @@ export function Checkbox({ checked, onCheckedChange, disabled, label, id, classN
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
       {label ? (
-        <label htmlFor={id} className="text-sm text-foreground">
+        <label htmlFor={inputId} className="cursor-pointer text-sm text-foreground">
           {label}
         </label>
       ) : null}

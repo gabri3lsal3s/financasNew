@@ -38,7 +38,17 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
               <Row label="Parcelas" value={`${state.installments}×`} />
             ) : null}
             {state.debtEnabled ? (
-              <Row label="Cobrança vinculada" value={<MoneyText cents={state.debtAmountCents} tone="default" />} />
+              <Row
+                label="Cobrança vinculada"
+                value={
+                  <span className="flex items-center gap-1.5">
+                    <MoneyText cents={state.debtAmountCents} tone="default" />
+                    <span className="text-xs text-muted-foreground">
+                      ({state.debtType === "receivable" ? "A receber" : "A pagar"})
+                    </span>
+                  </span>
+                }
+              />
             ) : null}
           </>
         ) : null}

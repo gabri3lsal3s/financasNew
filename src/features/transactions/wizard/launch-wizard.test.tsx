@@ -238,4 +238,73 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     // Categoria já selecionada pela aplicação do habitual.
     expect(screen.getByRole("button", { name: "Continuar" })).toBeEnabled();
   });
+
+  it("permite criar cobrança a pagar vinculada e envia debtType payable", async () => {
+    const user = userEvent.setup();
+    render(<LaunchWizard />);
+
+    // Passo 1 — valor
+    await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "20000");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 2 — categoria
+    await user.click(screen.getByRole("button", { name: /alimentação/i }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 3 — ativa cobrança vinculada (default: payable)
+    const debtCheckbox = screen.getByRole("checkbox", { name: "Criar cobrança vinculada" });
+    await user.click(debtCheckbox);
+
+    // Digita o valor da cobrança
+    const debtAmountInput = screen.getByRole("textbox", { name: "Valor da cobrança vinculada" });
+    await user.type(debtAmountInput, "10000");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 4 — revisão exibe cobrança a pagar
+    expect(screen.getByText("(A pagar)")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar lançamento" }));
+
+    expect(createExpenseMock).toHaveBeenCalledTimes(1);
+    const params = createExpenseMock.mock.calls[0]?.[0];
+    expect(params.value).toBe(200);
+    expect(params.debtAmount).toBe(100);
+    expect(params.debtType).toBe("payable");
+    expect(navigateMock).toHaveBeenCalledWith("/transacoes", { replace: true });
+  });
+
+  it("permite criar cobrança a receber vinculada e envia debtType receivable", async () => {
+    const user = userEvent.setup();
+    render(<LaunchWizard />);
+
+    // Passo 1 — valor
+    await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "30000");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 2 — categoria
+    await user.click(screen.getByRole("button", { name: /alimentação/i }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 3 — ativa cobrança vinculada e seleciona "A receber"
+    const debtCheckbox = screen.getByRole("checkbox", { name: "Criar cobrança vinculada" });
+    await user.click(debtCheckbox);
+
+    const receivableRadio = screen.getByRole("radio", { name: /A receber/i });
+    await user.click(receivableRadio);
+
+    // Digita o valor da cobrança
+    const debtAmountInput = screen.getByRole("textbox", { name: "Valor da cobrança vinculada" });
+    await user.type(debtAmountInput, "15000");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 4 — revisão exibe cobrança a receber
+    expect(screen.getByText("(A receber)")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar lançamento" }));
+
+    expect(createExpenseMock).toHaveBeenCalledTimes(1);
+    const params = createExpenseMock.mock.calls[0]?.[0];
+    expect(params.value).toBe(300);
+    expect(params.debtAmount).toBe(150);
+    expect(params.debtType).toBe("receivable");
+    expect(navigateMock).toHaveBeenCalledWith("/transacoes", { replace: true });
+  });
 });

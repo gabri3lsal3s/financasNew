@@ -4,12 +4,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
+import { RadioGroup } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks";
 import type { DescriptionSuggestion } from "@/domain/predictions";
-import type { PaymentMethod, ReceiveType } from "@/types";
+import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
 import { REPORT_WEIGHT_OPTIONS } from "../components/report-weight-constants";
 import { CUSTOM_WEIGHT_VALUE, effectiveReportWeight, isPresetWeight } from "./wizard-state";
 import type { LaunchState } from "./wizard-state";
@@ -24,6 +25,7 @@ export interface StepDetailsProps {
   onReportWeightChange: (weight: number) => void;
   onReportCustomAmountChange: (cents: number) => void;
   onDebtToggle: (enabled: boolean) => void;
+  onDebtTypeChange: (type: DebtType) => void;
   onDebtAmountChange: (cents: number) => void;
   onDebtDueDateChange: (date: string) => void;
   /** Sugestões de descrição do histórico (hotfix) — clique preenche SÓ a descrição. */
@@ -49,6 +51,11 @@ const RECEIVE_TYPE_OPTIONS: { value: ReceiveType; label: string }[] = [
   { value: "other", label: "Outro" },
 ];
 
+const DEBT_TYPE_OPTIONS: { value: DebtType; label: string }[] = [
+  { value: "payable", label: "A pagar (minha dívida pendente)" },
+  { value: "receivable", label: "A receber (reembolso / alguém me deve)" },
+];
+
 /** Passo 3 — detalhes do lançamento. */
 export function StepDetails({
   state,
@@ -60,6 +67,7 @@ export function StepDetails({
   onReportWeightChange,
   onReportCustomAmountChange,
   onDebtToggle,
+  onDebtTypeChange,
   onDebtAmountChange,
   onDebtDueDateChange,
   descriptionSuggestions,
@@ -190,10 +198,19 @@ export function StepDetails({
           <Checkbox
             checked={state.debtEnabled}
             onCheckedChange={onDebtToggle}
-            label="Criar cobrança vinculada (dívida a pagar)"
+            label="Criar cobrança vinculada"
           />
           {state.debtEnabled ? (
             <>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Tipo de cobrança</span>
+                <RadioGroup
+                  value={state.debtType}
+                  onValueChange={(val) => onDebtTypeChange(val as DebtType)}
+                  name="debt-type"
+                  options={DEBT_TYPE_OPTIONS}
+                />
+              </div>
               <div className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">Valor da cobrança</span>
                 <MoneyInput

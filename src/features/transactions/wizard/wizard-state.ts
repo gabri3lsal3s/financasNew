@@ -6,7 +6,7 @@
 import { parcelar, toISODate } from "@/domain/money";
 import { resolveBillCompetence } from "@/domain/competence";
 import type { InstallmentInput } from "@/data/rpc";
-import type { PaymentMethod, ReceiveType } from "@/types";
+import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
 
 export type EntryType = "expense" | "income";
 
@@ -27,6 +27,7 @@ export interface LaunchState {
   /** Valor em centavos considerado no relatório quando personalizado. */
   reportCustomAmountCents: number;
   debtEnabled: boolean;
+  debtType: DebtType;
   debtAmountCents: number;
   /** YYYY-MM-DD */
   debtDueDate: string;
@@ -49,6 +50,7 @@ export function defaultLaunchState(): LaunchState {
     reportWeight: 1,
     reportCustomAmountCents: 0,
     debtEnabled: false,
+    debtType: "payable",
     debtAmountCents: 0,
     debtDueDate: "",
   };

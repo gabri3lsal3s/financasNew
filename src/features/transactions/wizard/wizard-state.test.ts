@@ -38,6 +38,13 @@ describe("buildExpenseInstallments (D12 — parcelas no cliente)", () => {
 });
 
 describe("canProceed — validação por passo", () => {
+  it("defaultLaunchState inicializa com debtType payable e debtEnabled falso", () => {
+    const base = defaultLaunchState();
+    expect(base.debtEnabled).toBe(false);
+    expect(base.debtType).toBe("payable");
+    expect(base.debtAmountCents).toBe(0);
+  });
+
   it("passo 1 exige valor maior que zero", () => {
     const base = defaultLaunchState();
     expect(canProceed({ ...base, valueCents: 0 })).toBe(false);
@@ -56,7 +63,8 @@ describe("canProceed — validação por passo", () => {
     expect(canProceed({ ...base, paymentMethod: "credit_card", cardId: null })).toBe(false);
     expect(canProceed({ ...base, paymentMethod: "credit_card", cardId: "card-1" })).toBe(true);
     expect(canProceed({ ...base, debtEnabled: true, debtAmountCents: 0 })).toBe(false);
-    expect(canProceed({ ...base, debtEnabled: true, debtAmountCents: 500 })).toBe(true);
+    expect(canProceed({ ...base, debtEnabled: true, debtAmountCents: 500, debtType: "payable" })).toBe(true);
+    expect(canProceed({ ...base, debtEnabled: true, debtAmountCents: 500, debtType: "receivable" })).toBe(true);
   });
 
   it("passo 3 exige valor considerado válido no peso personalizado", () => {

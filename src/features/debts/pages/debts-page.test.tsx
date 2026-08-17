@@ -9,6 +9,7 @@ vi.mock("react-router", () => ({
 
 const createDebtMock = vi.fn();
 const deleteDebtMock = vi.fn();
+const updateDebtMock = vi.fn();
 const payDebtMock = vi.fn();
 const receiveDebtMock = vi.fn();
 const settleMock = vi.fn();
@@ -60,7 +61,7 @@ vi.mock("@/state", () => ({
   }),
   useDeleteDebt: () => ({ mutateAsync: deleteDebtMock, isPending: false }),
   useCreateDebt: () => ({ mutateAsync: createDebtMock, isPending: false }),
-  useUpdateDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateDebt: () => ({ mutateAsync: updateDebtMock, isPending: false }),
   usePayDebt: () => ({ mutateAsync: payDebtMock, isPending: false }),
   useReceiveDebt: () => ({ mutateAsync: receiveDebtMock, isPending: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: settleMock, isPending: false }),
@@ -84,6 +85,20 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     expect(screen.getByText("Conta de luz")).toBeInTheDocument();
     expect(screen.getByText("Pendente")).toBeInTheDocument();
     expect(screen.getByText("Quitada")).toBeInTheDocument();
+  });
+
+  it("permite desmarcar quitação de dívida reabrindo-a como pendente", async () => {
+    updateDebtMock.mockResolvedValue({ id: "d3", paid_at: null });
+    const user = userEvent.setup();
+    render(<DebtsPage />);
+
+    const unsettleBtn = screen.getByRole("button", { name: /Quitada \(Conta paga\)/i });
+    await user.click(unsettleBtn);
+
+    expect(updateDebtMock).toHaveBeenCalledWith({
+      id: "d3",
+      input: { paid_at: null },
+    });
   });
 
   it("alterna entre as abas a pagar / a receber", async () => {
