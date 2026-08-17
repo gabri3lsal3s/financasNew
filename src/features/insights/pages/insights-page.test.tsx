@@ -93,6 +93,20 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     });
   });
 
+  it("permite confirmar assinatura via botão animado", async () => {
+    const user = userEvent.setup();
+    render(<InsightsPage />);
+    await user.click(screen.getByRole("tab", { name: "Assinaturas & recorrências" }));
+
+    const confirmButtons = screen.getAllByRole("button", { name: /Confirmar/ });
+    expect(confirmButtons.length).toBeGreaterThan(0);
+    await user.click(confirmButtons[0]!);
+    expect(setFeedbackMock).toHaveBeenCalledWith({
+      occurrenceKey: expect.any(String),
+      decision: "confirm",
+    });
+  });
+
   it("renderiza projeção e corte com pendências", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);

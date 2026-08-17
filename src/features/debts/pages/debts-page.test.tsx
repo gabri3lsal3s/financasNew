@@ -21,7 +21,7 @@ vi.mock("@/state", () => ({
         name: "Conta de luz",
         type: "payable",
         amount: 200,
-        due_date: "2026-08-20",
+        due_date: "2026-08-30",
         paid_at: null,
         expense_id: null,
       },
