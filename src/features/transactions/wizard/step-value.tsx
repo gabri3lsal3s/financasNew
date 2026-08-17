@@ -18,6 +18,9 @@ export interface StepValueProps {
 /** Passo 1 — tipo, valor e parcelas (defaults inteligentes: focar no valor). */
 export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsChange, onApplyHabitual, habits }: StepValueProps) {
   const isExpense = state.type === "expense";
+  // Fase 32 — parcelamento e recorrência são mutuamente exclusivos; o stepper
+  // de parcelas vale para despesas E rendas parceladas.
+  const showInstallments = !state.recurring;
 
   return (
     <div className="flex flex-col gap-6">
@@ -73,7 +76,7 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
         />
       </div>
 
-      {isExpense ? (
+      {showInstallments ? (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Parcelas</span>

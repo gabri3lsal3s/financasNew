@@ -3,6 +3,7 @@ import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
 import { monthRange } from "@/lib/date";
+import { materializeRecurrencesForMonth, materializeRecurrencesForRange } from "./recurrences";
 import type { DbInsert, DbUpdate, Income } from "@/types";
 
 /**
@@ -15,6 +16,9 @@ function mapIncome(row: Income): Income {
 }
 
 export async function listIncomesByMonth(month: string): Promise<Income[]> {
+  // Fase 32 — recorrência formal: materializa as ocorrências do mês antes de
+  // listar (idempotente; sob demanda, ver repositories/recurrences).
+  await materializeRecurrencesForMonth(month, "income");
   const range = monthRange(month);
   const { data, error } = await resolveQuery<Income[]>(
     getSupabase()
@@ -35,6 +39,7 @@ export async function listIncomesByMonth(month: string): Promise<Income[]> {
 
 /** Rendas num período custom [start, end) — relatórios custom (≤ 366 dias). */
 export async function listIncomesByRange(start: string, end: string): Promise<Income[]> {
+  await materializeRecurrencesForRange(start, end, "income");
   const { data, error } = await resolveQuery<Income[]>(
     getSupabase()
       .from("incomes")
@@ -65,8 +70,22 @@ export async function listAllIncomes(): Promise<Income[]> {
 /** Rendas automáticas ([REFUND], etc.) são somente-leitura — excluídas do CRUD. */
 export async function createIncome(input: Omit<DbInsert<Income>, "user_id">): Promise<Income> {
   const user_id = await currentUserId();
+  // Parcelamento/recorrência têm default no banco (Fase 32) — preenchidos aqui
+  // para o contrato TS (avulsa = 1 parcela, sem grupo).
   const { data, error } = await resolveQuery<Income>(
-    getSupabase().from("incomes").insert({ ...input, user_id }).select().single(),
+    getSupabase()
+      .from("incomes")
+      .insert({
+        ...input,
+        user_id,
+        installments_total: input.installments_total ?? 1,
+        installment_number: input.installment_number ?? 1,
+        installment_group_id: input.installment_group_id ?? null,
+        recurrence_id: input.recurrence_id ?? null,
+        occurrence_number: input.occurrence_number ?? null,
+      })
+      .select()
+      .single(),
   );
 
   if (error) {

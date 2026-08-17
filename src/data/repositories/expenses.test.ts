@@ -3,6 +3,7 @@ import { listAllExpenses, listExpensesByMonth } from "./expenses";
 
 interface Builder {
   select: ReturnType<typeof vi.fn>;
+  eq: ReturnType<typeof vi.fn>;
   gte: ReturnType<typeof vi.fn>;
   lt: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
@@ -12,6 +13,7 @@ interface Builder {
 function makeBuilder(result: unknown): Builder {
   const builder = {
     select: vi.fn(),
+    eq: vi.fn(),
     gte: vi.fn(),
     lt: vi.fn(),
     order: vi.fn(),
@@ -19,6 +21,7 @@ function makeBuilder(result: unknown): Builder {
   } as Builder;
   // Encadeamento: cada método retorna o próprio builder.
   builder.select.mockReturnValue(builder);
+  builder.eq.mockReturnValue(builder);
   builder.gte.mockReturnValue(builder);
   builder.lt.mockReturnValue(builder);
   builder.order.mockReturnValue(builder);
@@ -26,13 +29,19 @@ function makeBuilder(result: unknown): Builder {
 }
 
 let builder: Builder;
+let recurrenceBuilder: Builder;
 
 vi.mock("@/data/client", () => ({
-  getSupabase: () => ({ from: () => builder }),
+  // Fase 32: a listagem por mês materializa recorrências primeiro (consulta
+  // `recurrences`/`credit_cards`) e só então busca as despesas.
+  getSupabase: () => ({
+    from: (table: string) => (table === "recurrences" || table === "credit_cards" ? recurrenceBuilder : builder),
+  }),
 }));
 
 describe("listExpensesByMonth (repository — conversão de borda)", () => {
   beforeEach(() => {
+    recurrenceBuilder = makeBuilder({ data: [], error: null });
     builder = makeBuilder({
       data: [
         {

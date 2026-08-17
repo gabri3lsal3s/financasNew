@@ -10,7 +10,8 @@ import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components
 import { currentMonth, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useCategories, useExpenses, useIncomes } from "@/state";
+import { useCategories, useExpenses, useIncomes, useRecurrences } from "@/state";
+import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { partitionInvoiceExpenses } from "@/domain/cards";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
@@ -23,14 +24,18 @@ function sumCents(items: readonly { value: number }[]): number {
 function ExpenseRow({
   expense,
   category,
+  recurrenceLabel,
   onClick,
 }: {
   expense: Expense;
   category?: Category | null;
+  /** Rótulo de frequência quando recorrente (Fase 32). */
+  recurrenceLabel?: string;
   onClick?: () => void;
 }) {
   const title = expense.description || category?.name || "Despesa";
-  const subtitle = expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : undefined;
+  const subtitle =
+    recurrenceLabel ?? (expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : undefined);
   return (
     <TransactionRow
       title={title}
@@ -54,10 +59,13 @@ const PLAIN_THRESHOLD = 60;
 function IncomeRow({
   income,
   category,
+  recurrenceLabel,
   onClick,
 }: {
   income: Income;
   category?: Category | null;
+  /** Rótulo de frequência quando recorrente (Fase 32). */
+  recurrenceLabel?: string;
   onClick?: () => void;
 }) {
   const title = income.description || category?.name || "Receita";
@@ -65,6 +73,7 @@ function IncomeRow({
     <TransactionRow
       title={title}
       date={income.date}
+      subtitle={recurrenceLabel}
       amountCents={Math.round(income.value * 100)}
       reportWeight={income.report_weight}
       kind="income"
@@ -104,9 +113,11 @@ export function TransactionListPage() {
   const expensesQuery = useExpenses(month);
   const incomesQuery = useIncomes(month);
   const categoriesQuery = useCategories();
+  const recurrencesQuery = useRecurrences();
 
-  const loading = expensesQuery.isLoading || incomesQuery.isLoading || categoriesQuery.isLoading;
-  const error = expensesQuery.error ?? incomesQuery.error ?? categoriesQuery.error;
+  const loading =
+    expensesQuery.isLoading || incomesQuery.isLoading || categoriesQuery.isLoading || recurrencesQuery.isLoading;
+  const error = expensesQuery.error ?? incomesQuery.error ?? categoriesQuery.error ?? recurrencesQuery.error;
 
   const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
 
@@ -114,10 +125,23 @@ export function TransactionListPage() {
   const expensesTotalCents = sumCents(expensesQuery.data ?? []);
   const balanceCents = incomesTotalCents - expensesTotalCents;
 
-  // Partição de despesas: parceladas (installments_total > 1) × à vista
+  // Partição de despesas: recorrentes (recurrence_id) × parceladas × à vista
   // — mesmo motor puro usado na página de cartões (domain/cards).
-  const { installments: expenseInstallments, regular: expenseRegular } =
-    partitionInvoiceExpenses(expensesQuery.data ?? []);
+  const expenseRecurring = (expensesQuery.data ?? []).filter((expense) => expense.recurrence_id != null);
+  const { installments: expenseInstallments, regular: expenseRegular } = partitionInvoiceExpenses(
+    (expensesQuery.data ?? []).filter((expense) => expense.recurrence_id == null),
+  );
+  const incomeRecurring = (incomesQuery.data ?? []).filter((income) => income.recurrence_id != null);
+  const incomeRegular = (incomesQuery.data ?? []).filter((income) => income.recurrence_id == null);
+
+  // Frequência por template (Fase 32) — subtítulo "Mensal", "Semanal", etc.
+  const frequencyById = new Map(
+    (recurrencesQuery.data ?? []).map((recurrence) => [recurrence.id, recurrence.frequency]),
+  );
+  const recurrenceLabel = (recurrenceId: string | null | undefined): string | undefined => {
+    const frequency = recurrenceId ? frequencyById.get(recurrenceId) : undefined;
+    return frequency ? RECURRENCE_FREQUENCY_LABELS[frequency] : undefined;
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -176,25 +200,62 @@ export function TransactionListPage() {
                 tone="positive"
               />
             ) : (
-              <VirtualList
-                key={month}
-                rows={incomesQuery.data ?? []}
-                rowKey={(income) => income.id}
-                itemHeight={ROW_HEIGHT}
-                plainThreshold={PLAIN_THRESHOLD}
-                maxHeight={560}
-                gap={8}
-                aria-label="Receitas do mês"
-                renderRow={(income) => (
-                  <HighlightRow highlightId={highlightId} id={income.id}>
-                    <IncomeRow
-                      income={income}
-                      category={categoryById.get(income.category_id)}
-                      onClick={() => setSelectedIncome(income)}
+              <div className="flex flex-col gap-4">
+                {incomeRecurring.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <Repeat className="size-3.5" aria-hidden="true" />
+                        Recorrentes
+                      </h3>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {incomeRecurring.length} {incomeRecurring.length === 1 ? "item" : "itens"}
+                      </span>
+                    </div>
+                    <VirtualList
+                      key={`${month}-income-recurring`}
+                      rows={incomeRecurring}
+                      rowKey={(income) => income.id}
+                      itemHeight={ROW_HEIGHT}
+                      plainThreshold={PLAIN_THRESHOLD}
+                      maxHeight={560}
+                      gap={8}
+                      aria-label="Rendas recorrentes do mês"
+                      renderRow={(income) => (
+                        <HighlightRow highlightId={highlightId} id={income.id}>
+                          <IncomeRow
+                            income={income}
+                            category={categoryById.get(income.category_id)}
+                            recurrenceLabel={recurrenceLabel(income.recurrence_id)}
+                            onClick={() => setSelectedIncome(income)}
+                          />
+                        </HighlightRow>
+                      )}
                     />
-                  </HighlightRow>
-                )}
-              />
+                  </div>
+                ) : null}
+                {incomeRegular.length > 0 ? (
+                  <VirtualList
+                    key={`${month}-income-regular`}
+                    rows={incomeRegular}
+                    rowKey={(income) => income.id}
+                    itemHeight={ROW_HEIGHT}
+                    plainThreshold={PLAIN_THRESHOLD}
+                    maxHeight={560}
+                    gap={8}
+                    aria-label="Receitas avulsas do mês"
+                    renderRow={(income) => (
+                      <HighlightRow highlightId={highlightId} id={income.id}>
+                        <IncomeRow
+                          income={income}
+                          category={categoryById.get(income.category_id)}
+                          onClick={() => setSelectedIncome(income)}
+                        />
+                      </HighlightRow>
+                    )}
+                  />
+                ) : null}
+              </div>
             )}
           </section>
 
@@ -212,7 +273,42 @@ export function TransactionListPage() {
               />
             ) : (
               <div className="flex flex-col gap-4">
-                {/* Parceladas — compras com mais de 1 parcela (topo) */}
+                {/* Recorrentes — recorrência formal (Fase 32, topo) */}
+                {expenseRecurring.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <Repeat className="size-3.5" aria-hidden="true" />
+                        Recorrentes
+                      </h3>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {expenseRecurring.length} {expenseRecurring.length === 1 ? "item" : "itens"}
+                      </span>
+                    </div>
+                    <VirtualList
+                      key={`${month}-expense-recurring`}
+                      rows={expenseRecurring}
+                      rowKey={(expense) => expense.id}
+                      itemHeight={ROW_HEIGHT}
+                      plainThreshold={PLAIN_THRESHOLD}
+                      maxHeight={560}
+                      gap={8}
+                      aria-label="Despesas recorrentes do mês"
+                      renderRow={(expense) => (
+                        <HighlightRow highlightId={highlightId} id={expense.id}>
+                          <ExpenseRow
+                            expense={expense}
+                            category={categoryById.get(expense.category_id)}
+                            recurrenceLabel={recurrenceLabel(expense.recurrence_id)}
+                            onClick={() => setSelectedExpense(expense)}
+                          />
+                        </HighlightRow>
+                      )}
+                    />
+                  </div>
+                ) : null}
+
+                {/* Parceladas — compras com mais de 1 parcela */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

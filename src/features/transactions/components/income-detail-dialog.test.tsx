@@ -18,6 +18,10 @@ vi.mock("@/state", () => ({
   useUpdateIncome: () => ({ mutateAsync: updateIncomeMock, isPending: false }),
   useDeleteIncome: () => ({ mutateAsync: deleteIncomeMock, isPending: false }),
   useCreateIncome: () => ({ mutateAsync: createIncomeMock, isPending: false }),
+  useDeleteIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 function baseIncome(overrides: Partial<Income> = {}): Income {

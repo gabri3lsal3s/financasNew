@@ -35,6 +35,9 @@ vi.mock("@/state", () => ({
   useUpdateExpense: () => ({ mutateAsync: updateExpenseMock, isPending: false }),
   useDeleteExpense: () => ({ mutateAsync: deleteExpenseMock, isPending: false }),
   useCreateExpense: () => ({ mutateAsync: createExpenseMock, isPending: false }),
+  useDeleteRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 const baseExpense: Expense = {

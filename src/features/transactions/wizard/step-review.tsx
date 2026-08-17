@@ -1,7 +1,14 @@
 import type { ReactNode } from "react";
 import { MoneyText } from "@/components/ui/money-text";
-import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
-import { buildExpenseInstallments, effectiveReportWeight, reportWeightLabel } from "./wizard-state";
+import { PAYMENT_METHOD_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
+import { buildRecurrenceOccurrences } from "@/domain/recurrences";
+import {
+  buildExpenseInstallments,
+  buildIncomeInstallments,
+  effectiveReportWeight,
+  recurrenceRuleFromLaunchState,
+  reportWeightLabel,
+} from "./wizard-state";
 import type { LaunchState } from "./wizard-state";
 
 export interface StepReviewProps {
@@ -14,14 +21,24 @@ export interface StepReviewProps {
 export function StepReview({ state, categoryName, closingDay }: StepReviewProps) {
   const isExpense = state.type === "expense";
   const installments =
-    isExpense && state.installments > 1
-      ? buildExpenseInstallments({
-          totalCents: state.valueCents,
-          count: state.installments,
-          startDate: state.date,
-          closingDay: state.paymentMethod === "credit_card" ? closingDay : null,
-        })
+    !state.recurring && state.installments > 1
+      ? isExpense
+        ? buildExpenseInstallments({
+            totalCents: state.valueCents,
+            count: state.installments,
+            startDate: state.date,
+            closingDay: state.paymentMethod === "credit_card" ? closingDay : null,
+          })
+        : buildIncomeInstallments({
+            totalCents: state.valueCents,
+            count: state.installments,
+            startDate: state.date,
+          })
       : [];
+  // Fase 32 — prévia das ocorrências da recorrência (motor puro, D12).
+  const recurrenceRule = recurrenceRuleFromLaunchState(state);
+  const recurrenceOccurrences = recurrenceRule ? buildRecurrenceOccurrences(recurrenceRule) : [];
+  const recurrencePreview = recurrenceOccurrences.slice(0, 12);
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,6 +48,21 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
         <Row label="Peso no relatório" value={reportWeightLabel(effectiveReportWeight(state), state.valueCents)} />
         <Row label="Categoria" value={categoryName ?? "—"} />
         <Row label="Data" value={state.date} />
+        {state.recurring ? (
+          <Row
+            label="Recorrência"
+            value={(() => {
+              const rule = recurrenceRule;
+              if (!rule) return "—";
+              const frequency = RECURRENCE_FREQUENCY_LABELS[rule.frequency];
+              const end =
+                rule.endDate != null
+                  ? `até ${rule.endDate}`
+                  : `${rule.occurrencesTotal ?? 0} ocorrências`;
+              return `${frequency} · ${end}`;
+            })()}
+          />
+        ) : null}
         {isExpense ? (
           <>
             <Row label="Pagamento" value={PAYMENT_METHOD_LABELS[state.paymentMethod] ?? state.paymentMethod} />
@@ -68,6 +100,27 @@ export function StepReview({ state, categoryName, closingDay }: StepReviewProps)
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {recurrencePreview.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium">Ocorrências da recorrência</p>
+          <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+            {recurrencePreview.map((occurrence) => (
+              <li key={occurrence.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">
+                  {occurrence.occurrenceNumber}/{recurrenceOccurrences.length} · {occurrence.date}
+                </span>
+                <MoneyText cents={occurrence.valueCents} tone="default" />
+              </li>
+            ))}
+          </ul>
+          {recurrenceOccurrences.length > recurrencePreview.length ? (
+            <p className="text-xs text-muted-foreground">
+              +{recurrenceOccurrences.length - recurrencePreview.length} ocorrências serão geradas ao longo do tempo.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

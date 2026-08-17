@@ -6,6 +6,7 @@
 import { parcelar, toISODate } from "@/domain/money";
 import { resolveBillCompetence } from "@/domain/competence";
 import type { InstallmentInput } from "@/data/rpc";
+import type { RecurrenceFrequency, RecurrenceRule } from "@/domain/recurrences";
 import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
 
 export type EntryType = "expense" | "income";
@@ -31,6 +32,14 @@ export interface LaunchState {
   debtAmountCents: number;
   /** YYYY-MM-DD */
   debtDueDate: string;
+  /** Recorrência formal (Fase 32) — avulsa/parcelada XOR recorrente. */
+  recurring: boolean;
+  recurrenceFrequency: RecurrenceFrequency;
+  recurrenceEndMode: "date" | "count";
+  /** YYYY-MM-DD — fim por data (quando `recurrenceEndMode === "date"`). */
+  recurrenceEndDate: string;
+  /** Nº de ocorrências (quando `recurrenceEndMode === "count"`). */
+  recurrenceCount: number;
 }
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
@@ -53,6 +62,11 @@ export function defaultLaunchState(): LaunchState {
     debtType: "payable",
     debtAmountCents: 0,
     debtDueDate: "",
+    recurring: false,
+    recurrenceFrequency: "monthly",
+    recurrenceEndMode: "date",
+    recurrenceEndDate: "",
+    recurrenceCount: 12,
   };
 }
 
@@ -113,6 +127,11 @@ export function canProceed(state: LaunchState): boolean {
     if (!state.date) return false;
     if (state.type === "expense" && state.paymentMethod === "credit_card" && !state.cardId) return false;
     if (state.debtEnabled && state.debtAmountCents <= 0) return false;
+    // Recorrência formal exige fim definido (data ou nº de ocorrências).
+    if (state.recurring) {
+      if (state.recurrenceEndMode === "date" && !state.recurrenceEndDate) return false;
+      if (state.recurrenceEndMode === "count" && state.recurrenceCount < 1) return false;
+    }
     // Peso personalizado: exige valor válido maior ou igual a zero e menor/igual ao valor total.
     if (!isPresetWeight(state.reportWeight)) {
       if (state.reportCustomAmountCents < 0 || state.reportCustomAmountCents > state.valueCents) return false;
@@ -123,6 +142,37 @@ export function canProceed(state: LaunchState): boolean {
 }
 
 const parseISO = (iso: string): Date => new Date(`${iso}T00:00:00`);
+
+/** Parcelas de renda (D12) — mesmas regras das despesas, sem competência. */
+export function buildIncomeInstallments(params: {
+  totalCents: number;
+  count: number;
+  startDate: string;
+}): InstallmentInput[] {
+  const plano = parcelar(params.totalCents, params.count, parseISO(params.startDate));
+  return plano.map((parcela) => ({ date: parcela.date, value: parcela.valueCents / 100 }));
+}
+
+/**
+ * Regra de recorrência derivada do estado do wizard (Fase 32) — usada na
+ * prévia (revisão) e no envio ao RPC `create_recurrence`. Retorna null quando
+ * o lançamento não é recorrente ou o fim por data ainda não foi informado.
+ */
+export function recurrenceRuleFromLaunchState(state: LaunchState, id = "preview"): RecurrenceRule | null {
+  if (!state.recurring) return null;
+  if (state.recurrenceEndMode === "date" && !state.recurrenceEndDate) return null;
+  return {
+    id,
+    kind: state.type,
+    frequency: state.recurrenceFrequency,
+    valueCents: state.valueCents,
+    startDate: state.date,
+    endDate: state.recurrenceEndMode === "date" ? state.recurrenceEndDate : null,
+    occurrencesTotal: state.recurrenceEndMode === "count" ? state.recurrenceCount : null,
+    reportWeight: effectiveReportWeight(state),
+    isActive: true,
+  };
+}
 
 /**
  * Parcelas calculadas no cliente (D12): valor exato em centavos, uma por mês,

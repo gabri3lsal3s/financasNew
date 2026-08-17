@@ -9,7 +9,16 @@ import { Stepper } from "@/components/ui/stepper";
 import { getErrorMessage } from "@/services/errors";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
 import { todayISO } from "@/domain/debts";
-import { useActiveCreditCards, useCategories, useCreateExpense, useCreateIncome, usePredictionHistory } from "@/state";
+import {
+  useActiveCreditCards,
+  useCategories,
+  useCreateExpense,
+  useCreateIncome,
+  useCreateIncomeInstallments,
+  useCreateRecurrence,
+  usePredictionHistory,
+} from "@/state";
+import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DbInsert, Income, PaymentMethod, ReceiveType } from "@/types";
 import { StepCategory } from "./step-category";
 import { StepDetails } from "./step-details";
@@ -17,10 +26,12 @@ import { StepReview } from "./step-review";
 import { StepValue } from "./step-value";
 import {
   buildExpenseInstallments,
+  buildIncomeInstallments,
   canProceed,
   defaultLaunchState,
   effectiveReportWeight,
   isPresetWeight,
+  recurrenceRuleFromLaunchState,
   WIZARD_STEPS,
 } from "./wizard-state";
 import type { EntryType, LaunchState } from "./wizard-state";
@@ -49,6 +60,8 @@ export function LaunchWizard() {
   const cardsQuery = useActiveCreditCards();
   const createExpense = useCreateExpense();
   const createIncome = useCreateIncome();
+  const createIncomeInstallments = useCreateIncomeInstallments();
+  const createRecurrence = useCreateRecurrence();
 
   // F21 — histórico preditivo: ativo apenas nos passos de entrada (1 e 3),
   // zero custo nos demais (Online First — sugestões 100% locais).
@@ -93,7 +106,26 @@ export function LaunchWizard() {
     setError(null);
     setPending(true);
     try {
-      if (state.type === "expense") {
+      if (state.recurring) {
+        const rule = recurrenceRuleFromLaunchState(state);
+        if (!rule) {
+          throw new Error("Defina o fim da recorrência (data ou número de ocorrências).");
+        }
+        await createRecurrence.mutateAsync({
+          kind: rule.kind,
+          frequency: rule.frequency,
+          value: rule.valueCents / 100,
+          categoryId: state.categoryId,
+          startDate: rule.startDate,
+          endDate: rule.endDate,
+          occurrencesTotal: rule.occurrencesTotal,
+          paymentMethod: state.type === "expense" ? state.paymentMethod : null,
+          cardId: state.type === "expense" && state.paymentMethod === "credit_card" ? state.cardId : null,
+          receiveType: state.type === "income" ? state.receiveType : null,
+          description: state.description || null,
+          reportWeight: effectiveReportWeight(state),
+        });
+      } else if (state.type === "expense") {
         await createExpense.mutateAsync({
           value: state.valueCents / 100,
           date: state.date,
@@ -111,6 +143,20 @@ export function LaunchWizard() {
           debtAmount: state.debtEnabled ? state.debtAmountCents / 100 : null,
           debtDueDate: state.debtEnabled && state.debtDueDate ? state.debtDueDate : null,
           debtType: state.debtEnabled ? state.debtType : null,
+        });
+      } else if (state.installments > 1) {
+        await createIncomeInstallments.mutateAsync({
+          value: state.valueCents / 100,
+          date: state.date,
+          categoryId: state.categoryId,
+          receiveType: state.receiveType,
+          description: state.description || null,
+          reportWeight: effectiveReportWeight(state),
+          installments: buildIncomeInstallments({
+            totalCents: state.valueCents,
+            count: state.installments,
+            startDate: state.date,
+          }),
         });
       } else {
         const input = {
@@ -162,6 +208,8 @@ export function LaunchWizard() {
             set("cardId", null);
             set("debtEnabled", false);
             set("debtType", "payable");
+            set("recurring", false);
+            set("recurrenceEndDate", "");
           }}
           onValueChange={(cents) => set("valueCents", cents)}
           onInstallmentsChange={(count) => set("installments", count)}
@@ -214,6 +262,15 @@ export function LaunchWizard() {
           onDebtTypeChange={(debtType) => set("debtType", debtType)}
           onDebtAmountChange={(cents) => set("debtAmountCents", cents)}
           onDebtDueDateChange={(date) => set("debtDueDate", date)}
+          onRecurringToggle={(enabled) => {
+            set("recurring", enabled);
+            // Parcelamento e recorrência são mutuamente exclusivos.
+            if (enabled) set("installments", 1);
+          }}
+          onRecurrenceFrequencyChange={(frequency: RecurrenceFrequency) => set("recurrenceFrequency", frequency)}
+          onRecurrenceEndModeChange={(mode: "date" | "count") => set("recurrenceEndMode", mode)}
+          onRecurrenceEndDateChange={(date) => set("recurrenceEndDate", date)}
+          onRecurrenceCountChange={(count) => set("recurrenceCount", count)}
           cards={cardsQuery.data}
           cardsLoading={cardsQuery.isLoading}
           cardsError={cardsQuery.error}

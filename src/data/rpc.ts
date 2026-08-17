@@ -1,7 +1,14 @@
 import { getSupabase } from "@/data/client";
 import { AppError, classifyError } from "@/services/errors";
 import type { Database } from "@/types/database";
-import type { DebtType, InstallmentDeleteMode } from "@/types";
+import type {
+  DebtType,
+  InstallmentDeleteMode,
+  PaymentMethod,
+  ReceiveType,
+  RecurrenceFrequency,
+  RecurrenceKind,
+} from "@/types";
 
 /**
  * Wrappers tipados dos RPCs transacionais (D1).
@@ -117,6 +124,194 @@ export async function deleteExpenseInstallments(expenseId: string, mode: Install
     callRpc("delete_expense_installments", {
       p_expense_id: expenseId,
       p_mode: mode,
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recorrências (Fase 32 — migration 0013)
+// ---------------------------------------------------------------------------
+
+/** Campos editáveis em grupo (single/all/subsequent) de parcelas e recorrências. */
+export type RecurrenceGroupFields = {
+  value?: number | null;
+  category_id?: string | null;
+  description?: string | null;
+  report_weight?: number | null;
+  payment_method?: string | null;
+  card_id?: string | null;
+  receive_type?: string | null;
+  bill_competence?: string | null;
+};
+
+export interface CreateRecurrenceParams {
+  kind: RecurrenceKind;
+  frequency: RecurrenceFrequency;
+  value: number;
+  categoryId: string;
+  startDate: string;
+  /** Fim sempre definido: exatamente um entre `endDate` e `occurrencesTotal`. */
+  endDate?: string | null;
+  occurrencesTotal?: number | null;
+  paymentMethod?: PaymentMethod | null;
+  cardId?: string | null;
+  receiveType?: ReceiveType | null;
+  description?: string | null;
+  reportWeight?: number;
+}
+
+/** Ocorrência a materializar (D12 — datas calculadas no cliente). */
+export interface RecurrenceMaterializeItem {
+  recurrenceId: string;
+  /** YYYY-MM-DD. */
+  date: string;
+  occurrenceNumber: number;
+  value: number;
+  /** Competência de fatura (snapshot) quando cartão. */
+  billCompetence?: string | null;
+}
+
+/** Cria o template de recorrência (não materializa — sob demanda, §3.2.5). */
+export async function createRecurrence(params: CreateRecurrenceParams): Promise<string> {
+  return unwrapRpc(
+    callRpc("create_recurrence", {
+      p_kind: params.kind,
+      p_frequency: params.frequency,
+      p_value: params.value,
+      p_category_id: params.categoryId,
+      p_start_date: params.startDate,
+      p_end_date: params.endDate ?? null,
+      p_occurrences_total: params.occurrencesTotal ?? null,
+      p_payment_method: params.paymentMethod ?? null,
+      p_card_id: params.cardId ?? null,
+      p_receive_type: params.receiveType ?? null,
+      p_description: params.description ?? null,
+      p_report_weight: params.reportWeight ?? 1,
+    }),
+  );
+}
+
+/**
+ * Materialização idempotente de ocorrências de um mês/range (D12): o cliente
+ * calcula as datas com `domain/recurrences` e o servidor insere as faltantes,
+ * respeitando `recurrence_skips` e o unique (recurrence_id, date).
+ */
+export async function materializeRecurrences(items: RecurrenceMaterializeItem[]): Promise<number> {
+  return unwrapRpc(
+    callRpc("materialize_recurrences", {
+      p_items: items.map((item) => ({
+        recurrence_id: item.recurrenceId,
+        date: item.date,
+        occurrence_number: item.occurrenceNumber,
+        value: item.value,
+        bill_competence: item.billCompetence ?? null,
+      })),
+    }),
+  );
+}
+
+/** Exclusão de ocorrência(s) em 3 modos + truncamento do template (Fase 32). */
+export async function deleteRecurrenceOccurrences(
+  occurrenceId: string,
+  mode: InstallmentDeleteMode,
+): Promise<number> {
+  return unwrapRpc(
+    callRpc("delete_recurrence_occurrences", {
+      p_occurrence_id: occurrenceId,
+      p_mode: mode,
+    }),
+  );
+}
+
+/** Edição em grupo de ocorrências + sincronização do template (Fase 32). */
+export async function updateRecurrenceOccurrences(
+  occurrenceId: string,
+  mode: InstallmentDeleteMode,
+  fields: RecurrenceGroupFields,
+): Promise<number> {
+  return unwrapRpc(
+    callRpc("update_recurrence_occurrences", {
+      p_occurrence_id: occurrenceId,
+      p_mode: mode,
+      p_fields: fields,
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Rendas parceladas (Fase 32 — migration 0013)
+// ---------------------------------------------------------------------------
+
+export interface CreateIncomeInstallmentsParams {
+  value: number;
+  date: string;
+  categoryId: string;
+  receiveType: ReceiveType;
+  description?: string | null;
+  reportWeight?: number;
+  installments: InstallmentInput[];
+}
+
+/** Renda parcelada (1–60) numa única transação — invariantes D12. */
+export async function createIncomeInstallments(params: CreateIncomeInstallmentsParams): Promise<string> {
+  return unwrapRpc(
+    callRpc("create_income_installments", {
+      p_value: params.value,
+      p_date: params.date,
+      p_category_id: params.categoryId,
+      p_receive_type: params.receiveType,
+      p_description: params.description ?? null,
+      p_report_weight: params.reportWeight ?? 1,
+      p_installments: params.installments.map((item) => ({
+        date: item.date,
+        value: item.value,
+      })),
+    }),
+  );
+}
+
+/** Exclusão de parcela(s) de renda em 3 modos (source_ref é somente-leitura). */
+export async function deleteIncomeInstallments(
+  incomeId: string,
+  mode: InstallmentDeleteMode,
+): Promise<number> {
+  return unwrapRpc(
+    callRpc("delete_income_installments", {
+      p_income_id: incomeId,
+      p_mode: mode,
+    }),
+  );
+}
+
+/** Edição em grupo de renda parcelada (single/all/subsequent). */
+export async function updateIncomeInstallmentsGroup(
+  incomeId: string,
+  mode: InstallmentDeleteMode,
+  fields: RecurrenceGroupFields,
+): Promise<number> {
+  return unwrapRpc(
+    callRpc("update_income_installments_group", {
+      p_income_id: incomeId,
+      p_mode: mode,
+      p_fields: fields,
+    }),
+  );
+}
+
+/**
+ * Edição em grupo de despesa parcelada (single/all/subsequent) — `value`
+ * atualiza `base_amount` junto (auditoria de pesos consistente).
+ */
+export async function updateExpenseInstallmentsGroup(
+  expenseId: string,
+  mode: InstallmentDeleteMode,
+  fields: RecurrenceGroupFields,
+): Promise<number> {
+  return unwrapRpc(
+    callRpc("update_expense_installments_group", {
+      p_expense_id: expenseId,
+      p_mode: mode,
+      p_fields: fields,
     }),
   );
 }

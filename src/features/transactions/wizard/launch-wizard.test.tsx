@@ -23,6 +23,8 @@ vi.mock("@/state", () => ({
   useActiveCreditCards: () => ({ data: [], isLoading: false, isError: false, error: null }),
   useCreateExpense: () => ({ mutateAsync: createExpenseMock, isPending: false }),
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateIncomeInstallments: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateRecurrence: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePredictionHistory: () => ({ entries: predictionHistoryMock(), isLoading: false, error: null, refetch: vi.fn() }),
 }));
 

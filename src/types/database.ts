@@ -19,6 +19,8 @@ import type {
   ReminderState,
   PortfolioTransaction,
   Profile,
+  Recurrence,
+  RecurrenceSkip,
   UserPreferences,
 } from "./schema";
 
@@ -44,6 +46,8 @@ export interface Database {
       card_competence_overrides: Table<CardCompetenceOverride>;
       card_payments: Table<CardPayment>;
       debts: Table<Debt>;
+      recurrences: Table<Recurrence>;
+      recurrence_skips: Table<RecurrenceSkip>;
       budgets: Table<Budget>;
       income_goals: Table<IncomeGoal>;
       insight_feedback: Table<InsightFeedback>;
@@ -88,6 +92,59 @@ export interface Database {
       };
       delete_expense_installments: {
         Args: { p_expense_id: string; p_mode: "single" | "all" | "subsequent" };
+        Returns: number;
+      };
+      update_expense_installments_group: {
+        Args: { p_expense_id: string; p_mode: "single" | "all" | "subsequent"; p_fields: unknown };
+        Returns: number;
+      };
+      create_recurrence: {
+        Args: {
+          p_kind: string;
+          p_frequency: string;
+          p_value: number;
+          p_category_id: string;
+          p_start_date: string;
+          p_end_date: string | null;
+          p_occurrences_total: number | null;
+          p_payment_method: string | null;
+          p_card_id: string | null;
+          p_receive_type: string | null;
+          p_description: string | null;
+          p_report_weight: number;
+        };
+        Returns: string;
+      };
+      materialize_recurrences: {
+        Args: { p_items: unknown };
+        Returns: number;
+      };
+      delete_recurrence_occurrences: {
+        Args: { p_occurrence_id: string; p_mode: "single" | "all" | "subsequent" };
+        Returns: number;
+      };
+      update_recurrence_occurrences: {
+        Args: { p_occurrence_id: string; p_mode: "single" | "all" | "subsequent"; p_fields: unknown };
+        Returns: number;
+      };
+      create_income_installments: {
+        Args: {
+          p_value: number;
+          p_date: string;
+          p_category_id: string;
+          p_receive_type: string;
+          p_description: string | null;
+          p_report_weight: number;
+          p_installments: unknown;
+        };
+        Returns: string;
+      };
+      delete_income_installments: {
+        Args: { p_income_id: string; p_mode: "single" | "all" | "subsequent" };
+        Returns: number;
+      };
+      update_income_installments_group: {
+        Args: { p_income_id: string; p_mode: "single" | "all" | "subsequent"; p_fields: unknown };
         Returns: number;
       };
       pay_debt: {

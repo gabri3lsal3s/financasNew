@@ -1,8 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { expensesKey } from "@/state/queries/use-expenses";
 import { incomesKey } from "@/state/queries/use-incomes";
+import { recurrencesKey } from "@/state/queries/use-recurrences";
 import { cardExpensesKey, cardPaymentsKey } from "@/state/queries/use-card-payments";
-import type { CardPayment, Expense, Income } from "@/types";
+import type { CardPayment, Expense, Income, Recurrence } from "@/types";
 
 /**
  * Helpers de atualização otimista do cache (AGENTS §5 / docs/ARCHITECTURE §5):
@@ -97,6 +98,27 @@ export function removeIncomes(
   ids: ReadonlySet<string>,
 ): void {
   applyToListCaches(queryClient, incomesKey, (list) =>
+    (list ?? []).filter((item) => !ids.has(item.id)),
+  );
+}
+
+/** Mescla um patch otimista no template de recorrência (Fase 32). */
+export function applyRecurrenceUpdate(
+  queryClient: QueryClient,
+  id: string,
+  patch: Partial<Recurrence>,
+): void {
+  applyToListCaches(queryClient, recurrencesKey, (list) =>
+    (list ?? []).map((item) => (item.id === id ? { ...item, ...patch } : item)),
+  );
+}
+
+/** Remove os templates informados de todas as listas de recorrências. */
+export function removeRecurrences(
+  queryClient: QueryClient,
+  ids: ReadonlySet<string>,
+): void {
+  applyToListCaches(queryClient, recurrencesKey, (list) =>
     (list ?? []).filter((item) => !ids.has(item.id)),
   );
 }

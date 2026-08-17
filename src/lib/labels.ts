@@ -1,5 +1,5 @@
 import type { RecurrenceKind } from "@/domain/insights";
-import type { PaymentMethod, PortfolioTransactionType, ReceiveType } from "@/types";
+import type { PaymentMethod, PortfolioTransactionType, ReceiveType, RecurrenceFrequency } from "@/types";
 
 /**
  * Labels pt-BR compartilhados (DRY) — formas de pagamento, tipos de
@@ -11,6 +11,14 @@ export const RECURRENCE_LEVEL_LABELS: Record<RecurrenceKind, string> = {
   subscription: "Assinatura",
   recurring: "Recorrente",
   similar: "Similar",
+};
+
+/** Rótulos das frequências de recorrência formal (Fase 32). */
+export const RECURRENCE_FREQUENCY_LABELS: Record<RecurrenceFrequency, string> = {
+  monthly: "Mensal",
+  weekly: "Semanal",
+  quarterly: "Trimestral",
+  yearly: "Anual",
 };
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cash: "Dinheiro",

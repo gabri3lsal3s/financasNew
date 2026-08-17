@@ -62,6 +62,9 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAllCardPayments: () => ({
     data: [],
     isLoading: false,

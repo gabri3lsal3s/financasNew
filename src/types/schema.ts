@@ -18,6 +18,12 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const RECEIVE_TYPES = ["cash", "pix", "transfer", "other"] as const;
 export type ReceiveType = (typeof RECEIVE_TYPES)[number];
 
+export const RECURRENCE_FREQUENCIES = ["monthly", "weekly", "quarterly", "yearly"] as const;
+export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number];
+
+export const RECURRENCE_KINDS = ["expense", "income"] as const;
+export type RecurrenceKind = (typeof RECURRENCE_KINDS)[number];
+
 export const CATEGORY_TYPES = ["expense", "income"] as const;
 export type CategoryType = (typeof CATEGORY_TYPES)[number];
 
@@ -101,6 +107,14 @@ export type Income = {
   report_weight: number;
   /** Presente apenas em rendas automáticas (ex.: `[REFUND]{id}`) — somente-leitura. */
   source_ref: string | null;
+  /** Parcelamento (Fase 32) — colunas com default no banco; opcionais no contrato TS. */
+  installments_total?: number;
+  installment_number?: number;
+  installment_group_id?: string | null;
+  /** Grupo de recorrência (template `recurrences`) — avulso XOR parcela XOR recorrência. */
+  recurrence_id?: string | null;
+  /** 1-based dentro da recorrência (espelho do `occurrence_number` do motor). */
+  occurrence_number?: number | null;
   created_at: string;
 };
 
@@ -121,7 +135,38 @@ export type Expense = {
   /** Valor original da parcela (auditoria de pesos de relatório). */
   base_amount: number;
   description: string | null;
+  /** Grupo de recorrência (template `recurrences`) — avulso XOR parcela XOR recorrência. */
+  recurrence_id?: string | null;
+  /** 1-based dentro da recorrência (espelho do `occurrence_number` do motor). */
+  occurrence_number?: number | null;
   created_at: string;
+};
+
+export type Recurrence = {
+  id: string;
+  user_id: string;
+  kind: RecurrenceKind;
+  frequency: RecurrenceFrequency;
+  value: number;
+  category_id: string;
+  /** YYYY-MM-DD — primeira ocorrência. */
+  start_date: string;
+  /** Fim sempre definido: exatamente um entre `end_date` e `occurrences_total`. */
+  end_date: string | null;
+  occurrences_total: number | null;
+  payment_method: PaymentMethod | null;
+  card_id: string | null;
+  receive_type: ReceiveType | null;
+  description: string | null;
+  report_weight: number;
+  is_active: boolean;
+  created_at: string;
+};
+
+/** Ocorrência excluída individualmente — não regenera na materialização. */
+export type RecurrenceSkip = {
+  recurrence_id: string;
+  occurrence_date: string;
 };
 
 export type CreditCard = {

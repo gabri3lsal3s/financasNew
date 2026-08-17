@@ -26,6 +26,17 @@ export const MAX_RECURRENCE_OCCURRENCES = 600;
 const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Validação de calendário: rejeita datas inexistentes (ex.: 2026-13-01). */
+function isValidISODate(value: string): boolean {
+  if (!DATE_RE.test(value)) return false;
+  const [yearPart, monthPart, dayPart] = value.split("-");
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  const day = Number(dayPart);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
 function parseISO(iso: string): Date {
   return new Date(`${iso}T00:00:00`);
 }
@@ -48,7 +59,7 @@ function resolveLimits(rule: RecurrenceRule): { lastDate: string | null; maxCoun
   if (!Number.isInteger(rule.valueCents) || rule.valueCents <= 0) {
     throw new Error("Valor da recorrência deve ser um inteiro positivo (centavos).");
   }
-  if (!DATE_RE.test(rule.startDate)) {
+  if (!isValidISODate(rule.startDate)) {
     throw new Error("Data de início da recorrência inválida (use AAAA-MM-DD).");
   }
   if (rule.startDate < APP_START_DATE) {
@@ -62,7 +73,7 @@ function resolveLimits(rule: RecurrenceRule): { lastDate: string | null; maxCoun
   }
 
   if (hasEndDate) {
-    if (!DATE_RE.test(rule.endDate ?? "")) {
+    if (!isValidISODate(rule.endDate ?? "")) {
       throw new Error("Data de fim da recorrência inválida (use AAAA-MM-DD).");
     }
     if ((rule.endDate ?? "") < rule.startDate) {
@@ -118,4 +129,21 @@ export function occurrencesForMonth(rule: RecurrenceRule, month: string): Recurr
     throw new Error("Mês inválido — use o formato AAAA-MM.");
   }
   return buildRecurrenceOccurrences(rule).filter((occurrence) => occurrence.date.startsWith(`${month}-`));
+}
+
+/** Ocorrências da regra num período [start, end) — relatórios custom (≤ 366 dias). */
+export function occurrencesForRange(
+  rule: RecurrenceRule,
+  start: string,
+  end: string,
+): RecurrenceOccurrence[] {
+  if (!isValidISODate(start) || !isValidISODate(end)) {
+    throw new Error("Período inválido — use datas AAAA-MM-DD.");
+  }
+  if (end <= start) {
+    throw new Error("Período inválido — a data final deve ser posterior à inicial.");
+  }
+  return buildRecurrenceOccurrences(rule).filter(
+    (occurrence) => occurrence.date >= start && occurrence.date < end,
+  );
 }

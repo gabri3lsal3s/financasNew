@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { updateExpense } from "@/data/repositories/expenses";
-import { createExpenseWithDebt, deleteExpenseInstallments } from "@/data/rpc";
-import type { CreateExpenseWithDebtParams } from "@/data/rpc";
+import { createExpenseWithDebt, deleteExpenseInstallments, updateExpenseInstallmentsGroup } from "@/data/rpc";
+import type { CreateExpenseWithDebtParams, RecurrenceGroupFields } from "@/data/rpc";
 import { expensesKey } from "@/state/queries/use-expenses";
 import { incomesKey } from "@/state/queries/use-incomes";
 import { cardExpensesKey } from "@/state/queries/use-card-payments";
@@ -94,6 +94,46 @@ export function useDeleteExpense() {
   });
 }
 
+/**
+ * Edição em grupo de despesa parcelada (single/all/subsequent, Fase 32) —
+ * `value` atualiza `base_amount` junto (auditoria de pesos consistente).
+ * Despesas avulsas caem em `single` (apenas a linha informada).
+ */
+export function useUpdateExpenseGrouped() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, mode, fields }: { id: string; mode: InstallmentDeleteMode; fields: RecurrenceGroupFields }) =>
+      updateExpenseInstallmentsGroup(id, mode, fields),
+    onMutate: async ({ id, mode, fields }) => {
+      await queryClient.cancelQueries({ queryKey: expensesKey });
+      await queryClient.cancelQueries({ queryKey: cardExpensesKey });
+      const snapshot = snapshotExpenseCaches(queryClient);
+
+      let affected: string[] = [id];
+      for (const [, data] of snapshotQueries(queryClient, expensesKey)) {
+        if (Array.isArray(data) && data.length > 0) {
+          affected = resolveExpenseDeleteIds(data as Expense[], id, mode);
+          break;
+        }
+      }
+      const patch = compactGroupFields(fields);
+      for (const expenseId of affected) {
+        applyExpenseUpdate(queryClient, expenseId, patch as Partial<Expense>);
+      }
+      return { snapshot };
+    },
+    onError: (error, _variables, context) => {
+      if (context) restoreQueries(queryClient, context.snapshot);
+      pushToast({
+        title: "Não foi possível salvar a despesa",
+        description: `${getErrorMessage(error)} Os dados foram restaurados.`,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => invalidateFinanceAggregates(queryClient),
+  });
+}
+
 /** Edição de uma despesa (sem troca de grupo de parcelas neste fluxo). */
 export function useUpdateExpense() {
   const queryClient = useQueryClient();
@@ -116,4 +156,13 @@ export function useUpdateExpense() {
     },
     onSettled: () => invalidateFinanceAggregates(queryClient),
   });
+}
+
+/** Remove nulos/undefined do patch de edição em grupo (ausentes não sobrescrevem). */
+function compactGroupFields(fields: RecurrenceGroupFields): Partial<Expense> {
+  const patch: Partial<Expense> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== undefined && value !== null) patch[key as keyof Expense] = value as never;
+  }
+  return patch;
 }

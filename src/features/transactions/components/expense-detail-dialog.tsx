@@ -8,7 +8,17 @@ import { shareText } from "@/services/export-actions";
 import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
-import { useCategories, useCreditCards, useCreateExpense, useDeleteExpense, useUpdateExpense } from "@/state";
+import {
+  useCategories,
+  useCreditCards,
+  useCreateExpense,
+  useDeleteExpense,
+  useDeleteRecurrenceOccurrences,
+  useUpdateExpense,
+  useUpdateExpenseGrouped,
+  useUpdateRecurrenceOccurrences,
+} from "@/state";
+import type { RecurrenceGroupFields } from "@/data/rpc";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
 import { todayISO } from "@/domain/debts";
@@ -28,6 +38,20 @@ const MODE_OPTIONS = [
   { value: "subsequent", label: "Esta parcela e as seguintes" },
 ];
 
+/** Modos de exclusão para recorrências (Fase 32) — ocorrências, não parcelas. */
+const RECURRENCE_MODE_OPTIONS = [
+  { value: "single", label: "Apenas esta ocorrência" },
+  { value: "all", label: "Todas as ocorrências" },
+  { value: "subsequent", label: "Esta ocorrência e as seguintes" },
+];
+
+/** Escopo da edição em grupo (Fase 32) — rótulos genéricos (parcela/ocorrência). */
+const EDIT_SCOPE_OPTIONS = [
+  { value: "single", label: "Apenas este lançamento" },
+  { value: "all", label: "Todos do grupo" },
+  { value: "subsequent", label: "Este e os seguintes" },
+];
+
 const PAYMENT_OPTIONS = [
   { value: "pix", label: "Pix" },
   { value: "credit_card", label: "Cartão de Crédito" },
@@ -45,6 +69,11 @@ interface ExpenseEditFormProps {
   categories: Category[];
   cards: CreditCard[];
   isPending: boolean;
+  /** Parcelada ou recorrente — mostra o seletor de escopo (Fase 32). */
+  grouped: boolean;
+  isRecurring: boolean;
+  scope: InstallmentDeleteMode;
+  onScopeChange: (scope: InstallmentDeleteMode) => void;
   onCancel: () => void;
   onSave: (payload: {
     description: string;
@@ -63,6 +92,10 @@ function ExpenseEditForm({
   categories,
   cards,
   isPending,
+  grouped,
+  isRecurring,
+  scope,
+  onScopeChange,
   onCancel,
   onSave,
 }: ExpenseEditFormProps) {
@@ -174,6 +207,11 @@ function ExpenseEditForm({
     label: `${card.name} (fechamento dia ${card.closing_day})`,
   }));
 
+  // Parcelada: o valor é editável apenas por lançamento (invariante de soma do
+  // parcelamento — mudar o total = excluir e refazer). Recorrência: sem
+  // invariante de soma, valor editável em grupo.
+  const valueDisabled = grouped && scope !== "single" && !isRecurring;
+
   return (
     <form
       onSubmit={(event) => {
@@ -185,6 +223,23 @@ function ExpenseEditForm({
       className="flex flex-col gap-3.5"
     >
       {formError ? <Alert variant="error">{formError}</Alert> : null}
+
+      {grouped ? (
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Aplicar a
+          <Select
+            value={scope}
+            onValueChange={(value) => onScopeChange(value as InstallmentDeleteMode)}
+            options={EDIT_SCOPE_OPTIONS}
+            ariaLabel="Escopo da edição"
+          />
+          {grouped && !isRecurring && scope !== "single" ? (
+            <span className="text-[11px] text-muted-foreground">
+              O valor é editado por lançamento para preservar o total do parcelamento. Para mudar o total, exclua e refaça.
+            </span>
+          ) : null}
+        </label>
+      ) : null}
 
       <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
         Descrição
@@ -202,6 +257,7 @@ function ExpenseEditForm({
           cents={valueCents}
           onCentsChange={setValueCents}
           aria-label="Valor da despesa"
+          disabled={valueDisabled}
         />
       </label>
 
@@ -257,24 +313,26 @@ function ExpenseEditForm({
             />
           </label>
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Fatura (Competência)
-            <Input
-              value={billCompetence}
-              onChange={(e) => {
-                setCompetenceTouched(true);
-                setBillCompetence(e.target.value);
-              }}
-              placeholder="AAAA-MM (ex: 2026-08)"
-              aria-label="Competência da fatura"
-              inputMode="numeric"
-              maxLength={7}
-              autoComplete="off"
-            />
-            <span className="text-[11px] text-muted-foreground">
-              Calculada pelo fechamento do cartão; edite para ajustar manualmente.
-            </span>
-          </label>
+          {scope === "single" ? (
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+              Fatura (Competência)
+              <Input
+                value={billCompetence}
+                onChange={(e) => {
+                  setCompetenceTouched(true);
+                  setBillCompetence(e.target.value);
+                }}
+                placeholder="AAAA-MM (ex: 2026-08)"
+                aria-label="Competência da fatura"
+                inputMode="numeric"
+                maxLength={7}
+                autoComplete="off"
+              />
+              <span className="text-[11px] text-muted-foreground">
+                Calculada pelo fechamento do cartão; edite para ajustar manualmente.
+              </span>
+            </label>
+          ) : null}
         </>
       ) : null}
 
@@ -319,12 +377,16 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
   const [isEditing, setIsEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
+  const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
 
   const categoriesQuery = useCategories("expense");
   const cardsQuery = useCreditCards();
   const deleteExpense = useDeleteExpense();
+  const deleteRecurrence = useDeleteRecurrenceOccurrences();
   const updateExpense = useUpdateExpense();
+  const updateExpenseGrouped = useUpdateExpenseGrouped();
+  const updateRecurrence = useUpdateRecurrenceOccurrences();
   const createExpense = useCreateExpense();
 
   const categories = categoriesQuery.data ?? [];
@@ -332,6 +394,9 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
   const currentCategory = categories.find((c) => c.id === expense?.category_id);
 
   const isInstallment = expense != null && expense.installments_total > 1;
+  const isRecurring = expense?.recurrence_id != null;
+  const isGrouped = isInstallment || isRecurring;
+  const editPending = updateExpense.isPending || updateExpenseGrouped.isPending || updateRecurrence.isPending;
 
   /**
    * Exclusão otimista (F30): fecha os diálogos e remove o item da lista na
@@ -342,7 +407,11 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
     setError(null);
     setConfirmOpen(false);
     onOpenChange(false);
-    void Promise.resolve(deleteExpense.mutateAsync({ expenseId: expense.id, mode })).catch(() => undefined);
+    if (isRecurring) {
+      void Promise.resolve(deleteRecurrence.mutateAsync({ occurrenceId: expense.id, mode })).catch(() => undefined);
+    } else {
+      void Promise.resolve(deleteExpense.mutateAsync({ expenseId: expense.id, mode })).catch(() => undefined);
+    }
   };
 
   /**
@@ -363,10 +432,29 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
   }) => {
     if (!expense) return;
     setError(null);
-    await updateExpense.mutateAsync({
-      id: expense.id,
-      input: payload,
-    });
+    if (isGrouped) {
+      // Fase 32 — edição em grupo (single/all/subsequent): competência é
+      // enviada apenas no escopo single; em grupo o RPC preserva/limpa.
+      const fields: RecurrenceGroupFields = {
+        description: payload.description,
+        value: payload.value,
+        category_id: payload.category_id,
+        payment_method: payload.payment_method,
+        card_id: payload.card_id,
+        report_weight: payload.report_weight,
+        ...(editScope === "single" ? { bill_competence: payload.bill_competence } : {}),
+      };
+      if (isRecurring) {
+        await updateRecurrence.mutateAsync({ occurrenceId: expense.id, mode: editScope, fields });
+      } else {
+        await updateExpenseGrouped.mutateAsync({ id: expense.id, mode: editScope, fields });
+      }
+    } else {
+      await updateExpense.mutateAsync({
+        id: expense.id,
+        input: payload,
+      });
+    }
     setIsEditing(false);
     onOpenChange(false);
   };
@@ -437,6 +525,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
           setError(null);
           setIsEditing(false);
           setConfirmOpen(false);
+          setEditScope("single");
           onOpenChange(next);
         }}
         title={isEditing ? "Editar despesa" : "Detalhes da despesa"}
@@ -451,10 +540,15 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                 expense={expense}
                 categories={categories}
                 cards={cards}
-                isPending={updateExpense.isPending}
+                isPending={editPending}
+                grouped={isGrouped}
+                isRecurring={isRecurring}
+                scope={editScope}
+                onScopeChange={setEditScope}
                 onCancel={() => {
                   setIsEditing(false);
                   setError(null);
+                  setEditScope("single");
                 }}
                 onSave={handleSaveEdit}
               />
@@ -581,19 +675,24 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
         onOpenChange={setConfirmOpen}
         title="Excluir despesa?"
         description={
-          isInstallment
+          isGrouped
             ? "A exclusão remove também as dívidas pendentes vinculadas. Dívidas quitadas não são alteradas."
             : "Esta ação não pode ser desfeita. Dívidas pendentes vinculadas também serão removidas."
         }
-        confirmLabel={deleteExpense.isPending ? "Excluindo…" : "Excluir"}
+        confirmLabel={deleteExpense.isPending || deleteRecurrence.isPending ? "Excluindo…" : "Excluir"}
         variant="destructive"
-        confirmPending={deleteExpense.isPending}
+        confirmPending={deleteExpense.isPending || deleteRecurrence.isPending}
         onConfirm={() => void handleConfirmDelete()}
       >
-        {isInstallment ? (
+        {isGrouped ? (
           <div className="mt-4 flex flex-col gap-1.5">
             <span className="text-sm font-medium">O que excluir?</span>
-            <Select value={mode} onValueChange={(value) => setMode(value as InstallmentDeleteMode)} options={MODE_OPTIONS} ariaLabel="Modo de exclusão" />
+            <Select
+              value={mode}
+              onValueChange={(value) => setMode(value as InstallmentDeleteMode)}
+              options={isRecurring ? RECURRENCE_MODE_OPTIONS : MODE_OPTIONS}
+              ariaLabel="Modo de exclusão"
+            />
           </div>
         ) : null}
       </ConfirmDialog>

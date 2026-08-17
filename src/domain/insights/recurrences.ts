@@ -27,6 +27,8 @@ export interface ExpenseLike {
   /** Nome do ícone da categoria (para sinais de assinatura). */
   categoryIcon?: string | null;
   installmentGroupId?: string | null;
+  /** Recorrência formal (Fase 32) — nunca é "detecção" (já é conhecida). */
+  recurrenceId?: string | null;
 }
 
 export interface PriceAdjustment {
@@ -157,7 +159,10 @@ export function detectRecurrences(
   options: DetectRecurrencesOptions = {},
 ): RecurrenceOccurrence[] {
   const { todayISO } = options;
-  const active = expenses.filter((e) => e.installmentGroupId == null);
+  // Parcelamento e recorrência formal são filtrados — não são repetições
+  // "aprendidas": parcelas não são recorrência (§3.7.3) e recorrências
+  // formais já são conhecidas do usuário (Fase 32).
+  const active = expenses.filter((e) => e.installmentGroupId == null && e.recurrenceId == null);
 
   // Agrupa por descrição normalizada (níveis subscription/recurring).
   const byName = new Map<string, ExpenseLike[]>();

@@ -180,7 +180,8 @@
     │   │                          #   budgets.ts, portfolio.ts, categories.ts,
     │   │                          #   export.ts (F22: fetchAllUserData + restoreBackup),
     │   │                          #   onboarding.ts (contagens do primeiro uso),
-    │   │                          #   profiles.ts (auto-cura de perfis órfãos)
+    │   │                          #   profiles.ts (auto-cura de perfis órfãos),
+    │   │                          #   recurrences.ts (F32: templates + materialização lazy)
     │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
     │
     ├── state/                     # CONTRATOS DE ESTADO para a UI
@@ -190,7 +191,8 @@
     │   └── mutations/             #   useCreateExpense(), useDeleteInstallment()…
     │                              #     (use-expense-mutations, use-card-mutations,
     │                              #      use-budget-mutations, use-debt-mutations,
-    │                              #      use-category-mutations, use-income-mutations)
+    │                              #      use-category-mutations, use-income-mutations,
+    │                              #      use-recurrence-mutations — F32: grupo/recorrência)
     │                              #   optimistic-cache.ts (F30 — helpers de snapshot/
     │                              #     rollback e updaters das listas em cache)
     │

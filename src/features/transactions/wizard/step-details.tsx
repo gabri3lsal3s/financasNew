@@ -4,11 +4,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
-import { RadioGroup } from "@/components/ui/radio-group";
-import { Select } from "@/components/ui/select";
+import { NumberStepper, RadioGroup, Select } from "@/components/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks";
+import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
+import { MAX_RECURRENCE_OCCURRENCES, RECURRENCE_FREQUENCIES } from "@/domain/recurrences";
+import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DescriptionSuggestion } from "@/domain/predictions";
 import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
 import { REPORT_WEIGHT_OPTIONS } from "../components/report-weight-constants";
@@ -28,6 +30,11 @@ export interface StepDetailsProps {
   onDebtTypeChange: (type: DebtType) => void;
   onDebtAmountChange: (cents: number) => void;
   onDebtDueDateChange: (date: string) => void;
+  onRecurringToggle: (enabled: boolean) => void;
+  onRecurrenceFrequencyChange: (frequency: RecurrenceFrequency) => void;
+  onRecurrenceEndModeChange: (mode: "date" | "count") => void;
+  onRecurrenceEndDateChange: (date: string) => void;
+  onRecurrenceCountChange: (count: number) => void;
   /** Sugestões de descrição do histórico (hotfix) — clique preenche SÓ a descrição. */
   descriptionSuggestions: DescriptionSuggestion[];
   cards: { id: string; name: string }[] | undefined;
@@ -70,6 +77,11 @@ export function StepDetails({
   onDebtTypeChange,
   onDebtAmountChange,
   onDebtDueDateChange,
+  onRecurringToggle,
+  onRecurrenceFrequencyChange,
+  onRecurrenceEndModeChange,
+  onRecurrenceEndDateChange,
+  onRecurrenceCountChange,
   descriptionSuggestions,
   cards,
   cardsLoading,
@@ -193,7 +205,64 @@ export function StepDetails({
         ) : null}
       </div>
 
-      {isExpense ? (
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+        <Checkbox
+          checked={state.recurring}
+          onCheckedChange={onRecurringToggle}
+          label="Lançamento recorrente"
+        />
+        {state.recurring ? (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Frequência</span>
+              <Select
+                value={state.recurrenceFrequency}
+                onValueChange={(value) => onRecurrenceFrequencyChange(value as RecurrenceFrequency)}
+                options={RECURRENCE_FREQUENCIES.map((frequency) => ({
+                  value: frequency,
+                  label: RECURRENCE_FREQUENCY_LABELS[frequency],
+                }))}
+                ariaLabel="Frequência da recorrência"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Quando termina</span>
+              <RadioGroup
+                value={state.recurrenceEndMode}
+                onValueChange={(val) => onRecurrenceEndModeChange(val as "date" | "count")}
+                name="recurrence-end"
+                options={[
+                  { value: "date", label: "Data de fim" },
+                  { value: "count", label: "Número de ocorrências" },
+                ]}
+              />
+            </div>
+            {state.recurrenceEndMode === "date" ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Data de fim</span>
+                <DatePicker value={state.recurrenceEndDate} onValueChange={onRecurrenceEndDateChange} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Número de ocorrências</span>
+                <NumberStepper
+                  value={state.recurrenceCount}
+                  onValueChange={onRecurrenceCountChange}
+                  min={1}
+                  max={MAX_RECURRENCE_OCCURRENCES}
+                  decreaseLabel="Diminuir ocorrências"
+                  increaseLabel="Aumentar ocorrências"
+                />
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              A primeira ocorrência será lançada na data informada acima; as demais seguem a frequência escolhida.
+            </p>
+          </>
+        ) : null}
+      </div>
+
+      {isExpense && !state.recurring ? (
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
           <Checkbox
             checked={state.debtEnabled}

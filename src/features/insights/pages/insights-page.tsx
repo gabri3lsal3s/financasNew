@@ -177,6 +177,7 @@ export function InsightsPage() {
         categoryId: e.category_id,
         categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
         installmentGroupId: e.installment_group_id,
+        recurrenceId: e.recurrence_id,
       })),
     );
   const occurrences = detectRecurrences(allExpenses, { todayISO: todayISOStr });

@@ -151,6 +151,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Validações:** categoria e valor obrigatórios; data ≥ **APP_START_DATE (2026-01-01)**; valor numérico finito > 0.
 - **Fluxo:** CRUD completo; listagem agrupada por mês; edição preserva todos os campos; exclusão definitiva com `audit_events` (D2).
 - **Rendas automáticas** (estornos, `source_ref` presente) são **somente-leitura**: não editáveis, não excluíveis, não recategorizáveis nos fluxos normais — manutenção exclusiva pela tela de cartões.
+- **Parcelamento (1–60x):** mesmo contrato das despesas (§3.2.2) — divisão exata em centavos no cliente (`domain/money`), gravação transacional via RPC `create_income_installments` (D12: soma = valor original, parcelas 1–60, datas ≥ APP_START_DATE); linhas compartilham `installment_group_id` com `installment_number`/`installments_total`; exclusão e edição em grupo nos 3 modos (ver §3.2.7).
+- **Recorrência:** rendas podem nascer de um template de recorrência (ver §3.2.5) — linhas materializadas com `recurrence_id`/`occurrence_number`.
 - **Ordenação:** data desc; empate por `created_at` desc.
 
 ### 3.2 Despesas
@@ -185,9 +187,14 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - Herda o grupo de parcelas (uma cobrança por parcela); descrição padrão `Cobrança integrada à despesa: {descrição}`.
 - Quitação com fluxo integrado (ver §3.4).
 
-#### 3.2.5 Despesas fixas e recorrentes
+#### 3.2.5 Despesas fixas e recorrentes (cadastro formal — Fase 32)
 
-- Não há cadastro formal de recorrência: o motor de insights (§3.8) **aprende do histórico** e detecta repetições mensais.
+- **Modelo template + materialização sob demanda:** o usuário cadastra uma recorrência (`recurrences` — fonte da verdade) e as linhas (`expenses`/`incomes`) são **materializadas por mês** pelo RPC `materialize_recurrences`, idempotente e **respeitando skips** — o cliente calcula as datas (D12, `domain/recurrences`) e o servidor valida invariantes e insere apenas as linhas faltantes. Nenhuma escrita em massa no cadastro.
+- **Frequências:** `monthly | weekly | quarterly | yearly`, com clamp de dia de fim de mês (31 → 28/29/30 conforme o mês destino).
+- **Fim sempre definido:** `end_date` (inclusivo) **XOR** `occurrences_total` (1-based, inclui a primeira) — CHECK no banco; recorrência sempre finita (guarda defensiva de 600 ocorrências no motor).
+- **Campos:** `kind` (`expense | income`), valor > 0, categoria, data de início (≥ APP_START_DATE), descrição, `report_weight` e campos por tipo (forma/cartão p/ despesa; `receive_type` p/ renda).
+- **Exclusão individual** de uma ocorrência grava `recurrence_skips` — a data não regenera na materialização; edição/exclusão em grupo por ocorrência (ver §3.2.7).
+- **Insights:** linhas com `recurrence_id` são recorrências **formais** e ficam **fora** da detecção histórica (§3.8) — sem duplicidade entre cadastro e aprendizado.
 
 #### 3.2.6 Valor Real vs. Valor no Relatório (Rateio e Ponderação)
 
@@ -195,6 +202,14 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Listas e Linhas de Transação:** quando uma despesa/receita possui `report_weight < 1`, o componente `TransactionRow` exibe o valor real/nominal em destaque com a indicação secundária `Relat.: R$ X,XX`.
 - **Detalhamento e Edição (`ExpenseDetailDialog`):** exibe o valor nominal e o valor no relatório correspondente tanto no cabeçalho quanto na lista de metadados, e permite editar o peso e o valor considerado no relatório.
 - **Cartões e Relatórios:** totalização e gráficos segregam e exibem simultaneamente os valores nominais brutos e os valores ponderados.
+
+#### 3.2.7 Operações em grupo (parcelas e recorrências — Fase 32)
+
+- **Escopo (`single | all | subsequent`):** aplicado por RPC transacional (D1) sobre parcelas de despesa/renda e ocorrências de recorrência — `single` age só na linha-alvo; `all` age no grupo/template inteiro; `subsequent` age da linha-alvo em diante (por `installment_number`/`occurrence_number`).
+- **Valor em grupo — parcelas:** editável **apenas na parcela individual** (`single`), via RPC que atualiza `value` **e** `base_amount` juntos (invariante de auditoria §3.2.2 preservado). Mudar o total da compra = excluir o grupo e refazer. No modo grupo (all/subsequent) o campo de valor fica **desabilitado** na UI, com hint "editar o total = excluir e refazer".
+- **Valor em grupo — recorrências:** sem invariante de soma — `all`/`subsequent` atualizam template + linhas (a competência snapshot da fatura é recalculada na materialização); `single` atualiza só a linha. Metadados (categoria, descrição, forma/cartão, peso, competência) são sempre editáveis em grupo.
+- **Exclusão em grupo — recorrências:** `single` remove a linha e grava skip; `all` remove template + linhas (cascata de dívidas pendentes) + skips; `subsequent` remove da ocorrência em diante e **trunca o template** (fim antecipado ou contagem reduzida), preservando o CHECK de limite único.
+- **Rendas automáticas** (`source_ref`) permanecem **somente-leitura** em todos os modos.
 
 ### 3.3 Cartões de Crédito
 

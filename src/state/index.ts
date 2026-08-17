@@ -7,8 +7,21 @@ export { useBudgets } from "./queries/use-budgets";
 export { useIncomeGoals } from "./queries/use-income-goals";
 export { useExpenses, useExpense, useExpensesByRange } from "./queries/use-expenses";
 export { useIncomes, useIncomesByRange } from "./queries/use-incomes";
-export { useCreateExpense, useDeleteExpense, useUpdateExpense } from "./mutations/use-expense-mutations";
-export { useCreateIncome, useDeleteIncome, useUpdateIncome } from "./mutations/use-income-mutations";
+export { useRecurrences } from "./queries/use-recurrences";
+export { useCreateExpense, useDeleteExpense, useUpdateExpense, useUpdateExpenseGrouped } from "./mutations/use-expense-mutations";
+export {
+  useCreateIncome,
+  useCreateIncomeInstallments,
+  useDeleteIncome,
+  useUpdateIncome,
+  useDeleteIncomeGrouped,
+  useUpdateIncomeGrouped,
+} from "./mutations/use-income-mutations";
+export {
+  useCreateRecurrence,
+  useDeleteRecurrenceOccurrences,
+  useUpdateRecurrenceOccurrences,
+} from "./mutations/use-recurrence-mutations";
 export { useCreateCard, useUpdateCard, useDeleteCard, useCreateCardPayment, useCreateRefund, useDeleteCardPayment } from "./mutations/use-card-mutations";
 export {
   useCreateDebt,

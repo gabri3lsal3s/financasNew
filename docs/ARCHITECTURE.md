@@ -148,7 +148,8 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── auth.ts                #   Operações de autenticação
     │   ├── session.ts             #   currentUserId() — usuário autenticado (RLS)
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts,
-    │   │                          #   budgets.ts, portfolio.ts, categories.ts
+    │   │                          #   budgets.ts, portfolio.ts, categories.ts,
+    │   │                          #   recurrences.ts (F32: templates + materialização lazy)
     │   └── rpc.ts                 #   Wrappers tipados dos RPCs transacionais (D1)
     │
     ├── state/                     # CONTRATOS DE ESTADO

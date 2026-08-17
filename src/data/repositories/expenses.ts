@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
 import { monthRange } from "@/lib/date";
+import { materializeRecurrencesForMonth, materializeRecurrencesForRange } from "./recurrences";
 import type { DbUpdate, Expense } from "@/types";
 
 /**
@@ -19,6 +20,9 @@ function mapExpense(row: Expense): Expense {
 }
 
 export async function listExpensesByMonth(month: string): Promise<Expense[]> {
+  // Fase 32 — recorrência formal: materializa as ocorrências do mês antes de
+  // listar (idempotente; sob demanda, ver repositories/recurrences).
+  await materializeRecurrencesForMonth(month, "expense");
   const range = monthRange(month);
   const { data, error } = await resolveQuery<Expense[]>(
     getSupabase()
@@ -39,6 +43,7 @@ export async function listExpensesByMonth(month: string): Promise<Expense[]> {
 
 /** Despesas num período custom [start, end) — relatórios custom (≤ 366 dias). */
 export async function listExpensesByRange(start: string, end: string): Promise<Expense[]> {
+  await materializeRecurrencesForRange(start, end, "expense");
   const { data, error } = await resolveQuery<Expense[]>(
     getSupabase()
       .from("expenses")

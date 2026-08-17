@@ -1,18 +1,15 @@
 /**
  * Tipos do domínio de recorrências — Fase 32 (proposta aprovada 2026-08-17).
  *
- * Contrato local do motor puro. Na Etapa 2 (migration 0013), a camada de
- * dados espelha/estende estes tipos em `src/types/schema.ts` junto com as
- * tabelas `recurrences`/`recurrence_skips` e as colunas novas de
- * `expenses`/`incomes` — até lá eles não devem ser tratados como espelho do
- * banco (a tabela ainda não existe).
+ * Contrato local do motor puro. Enums canônicos (`RECURRENCE_FREQUENCIES`,
+ * `RECURRENCE_KINDS`, …) vivem em `src/types/schema.ts` (espelho das
+ * constraints da migration 0013) — este módulo apenas os reexporta.
  */
 
-export const RECURRENCE_FREQUENCIES = ["monthly", "weekly", "quarterly", "yearly"] as const;
-export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number];
+import type { RecurrenceFrequency, RecurrenceKind } from "@/types";
 
-export const RECURRENCE_KINDS = ["expense", "income"] as const;
-export type RecurrenceKind = (typeof RECURRENCE_KINDS)[number];
+export { RECURRENCE_FREQUENCIES, RECURRENCE_KINDS } from "@/types";
+export type { RecurrenceFrequency, RecurrenceKind } from "@/types";
 
 /**
  * Regra de recorrência (template) — fonte da verdade (Fase 32).

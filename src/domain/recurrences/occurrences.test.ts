@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildRecurrenceOccurrences, occurrencesForMonth, MAX_RECURRENCE_OCCURRENCES } from "./occurrences";
+import {
+  buildRecurrenceOccurrences,
+  occurrencesForMonth,
+  occurrencesForRange,
+  MAX_RECURRENCE_OCCURRENCES,
+} from "./occurrences";
 import type { RecurrenceRule } from "./types";
 
 function makeRule(overrides: Partial<RecurrenceRule>): RecurrenceRule {
@@ -124,6 +129,30 @@ describe("buildRecurrenceOccurrences", () => {
     const rule = makeRule({ frequency: "weekly", startDate: "2026-01-01", endDate: null, occurrencesTotal: null });
     rule.endDate = "2100-01-01";
     expect(() => buildRecurrenceOccurrences(rule)).toThrow(String(MAX_RECURRENCE_OCCURRENCES));
+  });
+});
+
+describe("occurrencesForRange", () => {
+  it("retorna as ocorrências do período [start, end) — relatórios custom", () => {
+    const rule = makeRule({ startDate: "2026-01-10", occurrencesTotal: 5 });
+    expect(occurrencesForRange(rule, "2026-02-01", "2026-04-01").map((o) => o.date)).toEqual([
+      "2026-02-10",
+      "2026-03-10",
+    ]);
+  });
+
+  it("inclui a data inicial e exclui a data final", () => {
+    const rule = makeRule({ startDate: "2026-01-10", occurrencesTotal: 3 });
+    expect(occurrencesForRange(rule, "2026-01-10", "2026-02-10").map((o) => o.date)).toEqual(["2026-01-10"]);
+  });
+
+  it("retorna vazio quando o período não contém ocorrências", () => {
+    expect(occurrencesForRange(makeRule({ occurrencesTotal: 1 }), "2026-09-01", "2026-10-01")).toEqual([]);
+  });
+
+  it("lança com datas malformadas ou período invertido", () => {
+    expect(() => occurrencesForRange(makeRule({}), "2026-13-01", "2026-04-01")).toThrow("AAAA-MM-DD");
+    expect(() => occurrencesForRange(makeRule({}), "2026-04-01", "2026-04-01")).toThrow("posterior");
   });
 });
 

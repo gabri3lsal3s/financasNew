@@ -40,12 +40,18 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useCreditCards: () => ({ data: [], isLoading: false, error: null }),
+  useRecurrences: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useDeleteExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateIncome: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateRecurrenceOccurrences: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateExpenseGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("TransactionListPage — listagem por mês", () => {

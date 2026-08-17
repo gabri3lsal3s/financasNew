@@ -8,14 +8,45 @@ import { shareText } from "@/services/export-actions";
 import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
-import { useCategories, useCreateIncome, useDeleteIncome, useUpdateIncome } from "@/state";
+import {
+  useCategories,
+  useCreateIncome,
+  useDeleteIncome,
+  useDeleteIncomeGrouped,
+  useDeleteRecurrenceOccurrences,
+  useUpdateIncome,
+  useUpdateIncomeGrouped,
+  useUpdateRecurrenceOccurrences,
+} from "@/state";
+import type { RecurrenceGroupFields } from "@/data/rpc";
 import { RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { todayISO } from "@/domain/debts";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
-import type { Category, DbInsert, Income, ReceiveType } from "@/types";
+import type { Category, DbInsert, Income, InstallmentDeleteMode, ReceiveType } from "@/types";
 
 const RECEIVE_OPTIONS = Object.entries(RECEIVE_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+
+/** Modos de exclusão para rendas parceladas (Fase 32). */
+const MODE_OPTIONS = [
+  { value: "single", label: "Apenas esta parcela" },
+  { value: "all", label: "Todas as parcelas" },
+  { value: "subsequent", label: "Esta parcela e as seguintes" },
+];
+
+/** Escopo da edição em grupo (Fase 32) — rótulos genéricos (parcela/ocorrência). */
+const EDIT_SCOPE_OPTIONS = [
+  { value: "single", label: "Apenas este lançamento" },
+  { value: "all", label: "Todos do grupo" },
+  { value: "subsequent", label: "Este e os seguintes" },
+];
+
+/** Modos de exclusão para recorrências (Fase 32). */
+const RECURRENCE_MODE_OPTIONS = [
+  { value: "single", label: "Apenas esta ocorrência" },
+  { value: "all", label: "Todas as ocorrências" },
+  { value: "subsequent", label: "Esta ocorrência e as seguintes" },
+];
 
 export interface IncomeDetailDialogProps {
   income: Income | null;
@@ -27,6 +58,11 @@ interface IncomeEditFormProps {
   income: Income;
   categories: Category[];
   isPending: boolean;
+  /** Parcelada ou recorrente — mostra o seletor de escopo (Fase 32). */
+  grouped: boolean;
+  isRecurring: boolean;
+  scope: InstallmentDeleteMode;
+  onScopeChange: (scope: InstallmentDeleteMode) => void;
   onCancel: () => void;
   onSave: (payload: {
     description: string;
@@ -38,7 +74,17 @@ interface IncomeEditFormProps {
   }) => Promise<void>;
 }
 
-function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: IncomeEditFormProps) {
+function IncomeEditForm({
+  income,
+  categories,
+  isPending,
+  grouped,
+  isRecurring,
+  scope,
+  onScopeChange,
+  onCancel,
+  onSave,
+}: IncomeEditFormProps) {
   const [description, setDescription] = useState(income.description || "");
   const [valueCents, setValueCents] = useState(Math.round(income.value * 100));
   const [date, setDate] = useState(income.date);
@@ -95,6 +141,10 @@ function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: Inc
     label: c.name,
   }));
 
+  // Parcelada: o valor é editável apenas por lançamento (invariante de soma do
+  // parcelamento). Recorrência: sem invariante de soma, valor editável em grupo.
+  const valueDisabled = grouped && scope !== "single" && !isRecurring;
+
   return (
     <form
       onSubmit={(event) => {
@@ -106,6 +156,23 @@ function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: Inc
       className="flex flex-col gap-3.5"
     >
       {formError ? <Alert variant="error">{formError}</Alert> : null}
+
+      {grouped ? (
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Aplicar a
+          <Select
+            value={scope}
+            onValueChange={(value) => onScopeChange(value as InstallmentDeleteMode)}
+            options={EDIT_SCOPE_OPTIONS}
+            ariaLabel="Escopo da edição"
+          />
+          {grouped && !isRecurring && scope !== "single" ? (
+            <span className="text-[11px] text-muted-foreground">
+              O valor é editado por lançamento para preservar o total do parcelamento. Para mudar o total, exclua e refaça.
+            </span>
+          ) : null}
+        </label>
+      ) : null}
 
       <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
         Descrição
@@ -123,6 +190,7 @@ function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: Inc
           cents={valueCents}
           onCentsChange={setValueCents}
           aria-label="Valor da receita"
+          disabled={valueDisabled}
         />
       </label>
 
@@ -200,16 +268,26 @@ function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: Inc
 export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [mode, setMode] = useState<InstallmentDeleteMode>("single");
+  const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
 
   const categoriesQuery = useCategories("income");
   const deleteIncome = useDeleteIncome();
+  const deleteIncomeGrouped = useDeleteIncomeGrouped();
+  const deleteRecurrence = useDeleteRecurrenceOccurrences();
   const updateIncome = useUpdateIncome();
+  const updateIncomeGrouped = useUpdateIncomeGrouped();
+  const updateRecurrence = useUpdateRecurrenceOccurrences();
   const createIncome = useCreateIncome();
 
   const categories = categoriesQuery.data ?? [];
   const currentCategory = categories.find((c) => c.id === income?.category_id);
   const isReadOnly = income?.source_ref != null;
+  const isInstallment = income != null && (income.installments_total ?? 1) > 1;
+  const isRecurring = income?.recurrence_id != null;
+  const isGrouped = isInstallment || isRecurring;
+  const editPending = updateIncome.isPending || updateIncomeGrouped.isPending || updateRecurrence.isPending;
 
   /**
    * Exclusão otimista (F30): fecha os diálogos e remove a renda da lista na
@@ -220,7 +298,13 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
     setError(null);
     setConfirmOpen(false);
     onOpenChange(false);
-    void Promise.resolve(deleteIncome.mutateAsync(income.id)).catch(() => undefined);
+    if (isRecurring) {
+      void Promise.resolve(deleteRecurrence.mutateAsync({ occurrenceId: income.id, mode })).catch(() => undefined);
+    } else if (isGrouped) {
+      void Promise.resolve(deleteIncomeGrouped.mutateAsync({ id: income.id, mode })).catch(() => undefined);
+    } else {
+      void Promise.resolve(deleteIncome.mutateAsync(income.id)).catch(() => undefined);
+    }
   };
 
   /**
@@ -239,10 +323,26 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
   }) => {
     if (!income) return;
     setError(null);
-    await updateIncome.mutateAsync({
-      id: income.id,
-      input: payload,
-    });
+    if (isGrouped) {
+      // Fase 32 — edição em grupo (single/all/subsequent).
+      const fields: RecurrenceGroupFields = {
+        description: payload.description,
+        value: payload.value,
+        category_id: payload.category_id,
+        receive_type: payload.receive_type,
+        report_weight: payload.report_weight,
+      };
+      if (isRecurring) {
+        await updateRecurrence.mutateAsync({ occurrenceId: income.id, mode: editScope, fields });
+      } else {
+        await updateIncomeGrouped.mutateAsync({ id: income.id, mode: editScope, fields });
+      }
+    } else {
+      await updateIncome.mutateAsync({
+        id: income.id,
+        input: payload,
+      });
+    }
     setIsEditing(false);
     onOpenChange(false);
   };
@@ -299,6 +399,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
           setError(null);
           setIsEditing(false);
           setConfirmOpen(false);
+          setEditScope("single");
           onOpenChange(next);
         }}
         title={isEditing ? "Editar receita" : "Detalhes da receita"}
@@ -312,10 +413,15 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
                 key={income.id}
                 income={income}
                 categories={categories}
-                isPending={updateIncome.isPending}
+                isPending={editPending}
+                grouped={isGrouped}
+                isRecurring={isRecurring}
+                scope={editScope}
+                onScopeChange={setEditScope}
                 onCancel={() => {
                   setIsEditing(false);
                   setError(null);
+                  setEditScope("single");
                 }}
                 onSave={handleSaveEdit}
               />
@@ -441,11 +547,25 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
         onOpenChange={setConfirmOpen}
         title="Excluir receita?"
         description="Esta ação não pode ser desfeita."
-        confirmLabel={deleteIncome.isPending ? "Excluindo…" : "Excluir"}
+        confirmLabel={
+          deleteIncome.isPending || deleteIncomeGrouped.isPending || deleteRecurrence.isPending ? "Excluindo…" : "Excluir"
+        }
         variant="destructive"
-        confirmPending={deleteIncome.isPending}
+        confirmPending={deleteIncome.isPending || deleteIncomeGrouped.isPending || deleteRecurrence.isPending}
         onConfirm={() => void handleConfirmDelete()}
-      />
+      >
+        {isGrouped ? (
+          <div className="mt-4 flex flex-col gap-1.5">
+            <span className="text-sm font-medium">O que excluir?</span>
+            <Select
+              value={mode}
+              onValueChange={(value) => setMode(value as InstallmentDeleteMode)}
+              options={isRecurring ? RECURRENCE_MODE_OPTIONS : MODE_OPTIONS}
+              ariaLabel="Modo de exclusão"
+            />
+          </div>
+        ) : null}
+      </ConfirmDialog>
     </>
   );
 }
