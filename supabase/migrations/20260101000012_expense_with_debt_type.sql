@@ -139,12 +139,12 @@ begin
     end if;
   end loop;
 
-  insert into public.audit_events (user_id, action, target_type, target_id, payload)
+  insert into public.audit_events (user_id, entity_type, entity_id, action, payload)
   values (
     v_user_id,
+    'expense',
+    v_expense_id::text,
     'create',
-    'expenses',
-    v_expense_id,
     jsonb_build_object(
       'installments_count', v_count,
       'has_debt', p_debt_amount is not null,

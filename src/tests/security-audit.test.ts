@@ -73,6 +73,20 @@ describe("F6.2 — audit_events imutável (D2)", () => {
       expect(policy).not.toMatch(/for delete/i);
     }
   });
+
+  it("todos os inserts em audit_events utilizam as colunas canônicas do schema", () => {
+    const auditInserts = [...ALL_SQL.matchAll(/insert into public\.audit_events\s*\(([^)]+)\)/gi)];
+    expect(auditInserts.length).toBeGreaterThan(0);
+    const validColumns = new Set(["id", "user_id", "entity_type", "entity_id", "action", "payload", "created_at"]);
+    for (const match of auditInserts) {
+      const columnList = match[1];
+      if (!columnList) continue;
+      const cols = columnList.split(",").map((c) => c.trim().toLowerCase());
+      for (const col of cols) {
+        expect(validColumns.has(col)).toBe(true);
+      }
+    }
+  });
 });
 
 describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
