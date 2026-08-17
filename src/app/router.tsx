@@ -4,7 +4,6 @@ import { Skeleton } from "@/components/ui";
 import { MoreMenu, PageShell } from "@/components/layout";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
-import { LaunchWizard } from "@/features/transactions";
 import { useAuth } from "@/hooks/use-auth";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 
@@ -41,7 +40,7 @@ function RequireAuth() {
   return (
     <>
       {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas,
-          incluindo o wizard de tela cheia (fora do PageShell). */}
+          incluindo modais e drawers em overlay. */}
       <FloatingCalculator />
       <Outlet />
     </>
@@ -59,8 +58,8 @@ export function AppRouter() {
 
         {/* Áreas autenticadas */}
         <Route element={<RequireAuth />}>
-          {/* Tela cheia guiada (D10) — fora do shell de navegação */}
-          <Route path="/transacoes/novo" element={<LaunchWizard />} />
+          {/* Redirecionamento de compatibilidade para atalhos PWA / links legados */}
+          <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
           <Route element={<PageShell />}>
             {appRoutes.map((route) => (
               <Route key={route.path} path={route.path} element={<route.Component />} />

@@ -30,7 +30,7 @@ const STEP_META: Record<
   "first-transaction": {
     label: "Registre o primeiro lançamento",
     description: "Despesas e rendas alimentam os relatórios e insights.",
-    href: "/transacoes/novo",
+    href: "/transacoes?novo=transacao",
     icon: Receipt,
   },
 };

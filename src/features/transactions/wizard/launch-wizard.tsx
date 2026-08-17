@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { X } from "lucide-react";
-import { CalculatorButton } from "@/components/layout";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
 import { Stepper } from "@/components/ui/stepper";
 import { getErrorMessage } from "@/services/errors";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
@@ -36,8 +35,24 @@ import {
 } from "./wizard-state";
 import type { EntryType, LaunchState } from "./wizard-state";
 
-/** Wizard de lançamento em tela cheia (D10) — 4 passos navegáveis. */
-export function LaunchWizard() {
+export interface LaunchWizardProps {
+  /** Controla a exibição em modal/overlay (padrão true). */
+  open?: boolean;
+  /** Notificação de alteração de abertura. */
+  onOpenChange?: (open: boolean) => void;
+  /** Callback executado ao fechar/cancelar. */
+  onClose?: () => void;
+  /** Callback executado após a criação bem-sucedida. */
+  onSuccess?: () => void;
+}
+
+/** Wizard de lançamento guiado (D10) — modal contextual de 4 passos com preservação de rota. */
+export function LaunchWizard({
+  open = true,
+  onOpenChange,
+  onClose,
+  onSuccess,
+}: LaunchWizardProps = {}) {
   const navigate = useNavigate();
   const [state, setState] = useState<LaunchState>(defaultLaunchState);
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +63,22 @@ export function LaunchWizard() {
   // formulário em andamento pede confirmação (anti-perda acidental).
   const isDirty = state.valueCents > 0 || state.categoryId !== "" || state.description.trim() !== "";
 
+  const handleClose = () => {
+    setState(defaultLaunchState);
+    setError(null);
+    setPending(false);
+    onClose?.();
+    onOpenChange?.(false);
+    if (!onClose && !onOpenChange) {
+      navigate(-1);
+    }
+  };
+
   const requestClose = () => {
     if (isDirty) {
       setConfirmClose(true);
     } else {
-      navigate("/transacoes");
+      handleClose();
     }
   };
 
@@ -170,7 +196,14 @@ export function LaunchWizard() {
         } satisfies Omit<DbInsert<Income>, "user_id">;
         await createIncome.mutateAsync(input);
       }
-      navigate("/transacoes", { replace: true });
+
+      setState(defaultLaunchState);
+      setPending(false);
+      onSuccess?.();
+      onOpenChange?.(false);
+      if (!onSuccess && !onOpenChange) {
+        navigate(-1);
+      }
     } catch (err) {
       setError(getErrorMessage(err));
       setPending(false);
@@ -180,140 +213,136 @@ export function LaunchWizard() {
   const isLastStep = state.step === WIZARD_STEPS.length;
 
   return (
-    // Mobile (D10): fluxo em tela cheia, alinhado ao topo, sem bordas.
-    // Desktop: painel centralizado (vertical e horizontal) com tratamento de modal.
-    <div className="flex min-h-dvh w-full items-start justify-center p-4 md:items-center md:bg-muted/30 md:p-6">
-      <div className="flex w-full max-w-lg flex-col gap-6 md:max-h-[calc(100dvh-3rem)] md:overflow-y-auto md:rounded-2xl md:border md:border-border md:bg-surface md:p-6 md:shadow-lg">
-        <header className="flex items-center justify-between">
-          <h1 className="font-display text-xl font-bold">Novo lançamento</h1>
-          <div className="flex shrink-0 items-center gap-1">
-            {/* Mesmo padrão dos modais (F10): calculadora acessível no wizard, que fica fora do PageShell. */}
-            <CalculatorButton />
-            <Button type="button" variant="ghost" size="icon" aria-label="Fechar" onClick={requestClose}>
-              <X aria-hidden="true" />
-            </Button>
-          </div>
-        </header>
-
+    <Modal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          requestClose();
+        }
+      }}
+      title="Novo lançamento"
+      size="lg"
+    >
+      <div className="flex flex-col gap-6 pt-2">
         <Stepper steps={[...WIZARD_STEPS]} current={state.step} />
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+        {error ? <Alert variant="error">{error}</Alert> : null}
 
-      {state.step === 1 ? (
-        <StepValue
-          state={state}
-          onTypeChange={(type: EntryType) => {
-            set("type", type);
-            set("categoryId", "");
-            set("cardId", null);
-            set("debtEnabled", false);
-            set("debtType", "payable");
-            set("recurring", false);
-            set("recurrenceEndDate", "");
+        {state.step === 1 ? (
+          <StepValue
+            state={state}
+            onTypeChange={(type: EntryType) => {
+              set("type", type);
+              set("categoryId", "");
+              set("cardId", null);
+              set("debtEnabled", false);
+              set("debtType", "payable");
+              set("recurring", false);
+              set("recurrenceEndDate", "");
+            }}
+            onValueChange={(cents) => set("valueCents", cents)}
+            onInstallmentsChange={(count) => set("installments", count)}
+            onApplyHabitual={(habit) => {
+              set("valueCents", Math.round(habit.value * 100));
+              set("categoryId", habit.categoryId);
+              set("description", habit.description);
+              if (habit.paymentMethod) {
+                set("paymentMethod", habit.paymentMethod as PaymentMethod);
+                set("cardId", habit.cardId);
+              } else if (habit.receiveType) {
+                set("receiveType", habit.receiveType as ReceiveType);
+              }
+            }}
+            habits={habits}
+          />
+        ) : null}
+
+        {state.step === 2 ? (
+          <StepCategory
+            categories={categoriesQuery.data}
+            isLoading={categoriesQuery.isLoading}
+            isError={categoriesQuery.isError}
+            error={categoriesQuery.error}
+            selectedId={state.categoryId}
+            onSelect={(categoryId) => set("categoryId", categoryId)}
+          />
+        ) : null}
+
+        {state.step === 3 ? (
+          <StepDetails
+            state={state}
+            onDateChange={(date) => set("date", date)}
+            onPaymentMethodChange={(method: PaymentMethod) => {
+              set("paymentMethod", method);
+              if (method !== "credit_card") set("cardId", null);
+            }}
+            onCardChange={(cardId) => set("cardId", cardId)}
+            onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
+            onDescriptionChange={(description) => set("description", description)}
+            descriptionSuggestions={descriptionSuggestions}
+            onReportWeightChange={(weight) => {
+              set("reportWeight", weight);
+              if (!isPresetWeight(weight) && state.reportCustomAmountCents === 0) {
+                set("reportCustomAmountCents", state.valueCents);
+              }
+            }}
+            onReportCustomAmountChange={(cents) => set("reportCustomAmountCents", cents)}
+            onDebtToggle={(enabled) => set("debtEnabled", enabled)}
+            onDebtTypeChange={(debtType) => set("debtType", debtType)}
+            onDebtAmountChange={(cents) => set("debtAmountCents", cents)}
+            onDebtDueDateChange={(date) => set("debtDueDate", date)}
+            onRecurringToggle={(enabled) => {
+              set("recurring", enabled);
+              // Parcelamento e recorrência são mutuamente exclusivos.
+              if (enabled) set("installments", 1);
+            }}
+            onRecurrenceFrequencyChange={(frequency: RecurrenceFrequency) => set("recurrenceFrequency", frequency)}
+            onRecurrenceEndModeChange={(mode: "date" | "count") => set("recurrenceEndMode", mode)}
+            onRecurrenceEndDateChange={(date) => set("recurrenceEndDate", date)}
+            onRecurrenceCountChange={(count) => set("recurrenceCount", count)}
+            cards={cardsQuery.data}
+            cardsLoading={cardsQuery.isLoading}
+            cardsError={cardsQuery.error}
+          />
+        ) : null}
+
+        {state.step === 4 ? (
+          <StepReview
+            state={state}
+            categoryName={selectedCategory?.name}
+            closingDay={selectedCard?.closing_day}
+          />
+        ) : null}
+
+        <ConfirmDialog
+          open={confirmClose}
+          onOpenChange={setConfirmClose}
+          title="Descartar lançamento?"
+          description="Você preencheu dados deste lançamento. Ao sair, as informações digitadas serão perdidas."
+          confirmLabel="Descartar"
+          cancelLabel="Continuar preenchendo"
+          variant="destructive"
+          onConfirm={() => {
+            setConfirmClose(false);
+            handleClose();
           }}
-          onValueChange={(cents) => set("valueCents", cents)}
-          onInstallmentsChange={(count) => set("installments", count)}
-          onApplyHabitual={(habit) => {
-            set("valueCents", Math.round(habit.value * 100));
-            set("categoryId", habit.categoryId);
-            set("description", habit.description);
-            if (habit.paymentMethod) {
-              set("paymentMethod", habit.paymentMethod as PaymentMethod);
-              set("cardId", habit.cardId);
-            } else if (habit.receiveType) {
-              set("receiveType", habit.receiveType as ReceiveType);
-            }
-          }}
-          habits={habits}
         />
-      ) : null}
 
-      {state.step === 2 ? (
-        <StepCategory
-          categories={categoriesQuery.data}
-          isLoading={categoriesQuery.isLoading}
-          isError={categoriesQuery.isError}
-          error={categoriesQuery.error}
-          selectedId={state.categoryId}
-          onSelect={(categoryId) => set("categoryId", categoryId)}
-        />
-      ) : null}
-
-      {state.step === 3 ? (
-        <StepDetails
-          state={state}
-          onDateChange={(date) => set("date", date)}
-          onPaymentMethodChange={(method: PaymentMethod) => {
-            set("paymentMethod", method);
-            if (method !== "credit_card") set("cardId", null);
-          }}
-          onCardChange={(cardId) => set("cardId", cardId)}
-          onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
-          onDescriptionChange={(description) => set("description", description)}
-          descriptionSuggestions={descriptionSuggestions}
-          onReportWeightChange={(weight) => {
-            set("reportWeight", weight);
-            if (!isPresetWeight(weight) && state.reportCustomAmountCents === 0) {
-              set("reportCustomAmountCents", state.valueCents);
-            }
-          }}
-          onReportCustomAmountChange={(cents) => set("reportCustomAmountCents", cents)}
-          onDebtToggle={(enabled) => set("debtEnabled", enabled)}
-          onDebtTypeChange={(debtType) => set("debtType", debtType)}
-          onDebtAmountChange={(cents) => set("debtAmountCents", cents)}
-          onDebtDueDateChange={(date) => set("debtDueDate", date)}
-          onRecurringToggle={(enabled) => {
-            set("recurring", enabled);
-            // Parcelamento e recorrência são mutuamente exclusivos.
-            if (enabled) set("installments", 1);
-          }}
-          onRecurrenceFrequencyChange={(frequency: RecurrenceFrequency) => set("recurrenceFrequency", frequency)}
-          onRecurrenceEndModeChange={(mode: "date" | "count") => set("recurrenceEndMode", mode)}
-          onRecurrenceEndDateChange={(date) => set("recurrenceEndDate", date)}
-          onRecurrenceCountChange={(count) => set("recurrenceCount", count)}
-          cards={cardsQuery.data}
-          cardsLoading={cardsQuery.isLoading}
-          cardsError={cardsQuery.error}
-        />
-      ) : null}
-
-      {state.step === 4 ? (
-        <StepReview
-          state={state}
-          categoryName={selectedCategory?.name}
-          closingDay={selectedCard?.closing_day}
-        />
-      ) : null}
-
-      <ConfirmDialog
-        open={confirmClose}
-        onOpenChange={setConfirmClose}
-        title="Descartar lançamento?"
-        description="Você preencheu dados deste lançamento. Ao sair, as informações digitadas serão perdidas."
-        confirmLabel="Descartar"
-        cancelLabel="Continuar preenchendo"
-        variant="destructive"
-        onConfirm={() => {
-          setConfirmClose(false);
-          navigate("/transacoes");
-        }}
-      />
-
-      <footer className="mt-auto flex items-center justify-between gap-2 pt-4">
-        <Button type="button" variant="ghost" disabled={state.step === 1 || pending} onClick={() => goTo(state.step - 1)}>
-          Voltar
-        </Button>
-        {isLastStep ? (
-          <Button type="button" disabled={!canProceed(state) || pending} onClick={() => void handleSubmit()}>
-            {pending ? "Confirmando…" : "Confirmar lançamento"}
+        <footer className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-4">
+          <Button type="button" variant="ghost" disabled={state.step === 1 || pending} onClick={() => goTo(state.step - 1)}>
+            Voltar
           </Button>
-        ) : (
-          <Button type="button" disabled={!canProceed(state)} onClick={() => goTo(state.step + 1)}>
-            Continuar
-          </Button>
-        )}
-      </footer>
+          {isLastStep ? (
+            <Button type="button" disabled={!canProceed(state) || pending} onClick={() => void handleSubmit()}>
+              {pending ? "Confirmando…" : "Confirmar lançamento"}
+            </Button>
+          ) : (
+            <Button type="button" disabled={!canProceed(state)} onClick={() => goTo(state.step + 1)}>
+              Continuar
+            </Button>
+          )}
+        </footer>
       </div>
-    </div>
+    </Modal>
   );
 }

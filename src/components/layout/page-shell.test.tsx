@@ -10,6 +10,10 @@ vi.mock("@/app/theme-provider", () => ({
   useTheme: () => ({ theme: "light", preference: "light", setPreference: vi.fn() }),
 }));
 
+vi.mock("@/features/transactions", () => ({
+  LaunchWizard: ({ open }: { open?: boolean }) => (open ? <div data-testid="launch-wizard-overlay" /> : null),
+}));
+
 vi.mock("@/state", () => ({
   useGlobalSearchEntries: () => ({
     entries: [],
@@ -76,5 +80,20 @@ describe("PageShell (F7.2/F7.3)", () => {
 
     expect(contentWrapper().className).toContain("lg:pl-64");
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe("0");
+  });
+
+  it("renderiza o LaunchWizard overlay quando ?novo=transacao está presente", () => {
+    render(
+      <MemoryRouter initialEntries={["/?novo=transacao"]}>
+        <Routes>
+          <Route element={<PageShell />}>
+            <Route path="/" element={<div data-testid="page-content">Conteúdo</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("launch-wizard-overlay")).toBeInTheDocument();
+    expect(screen.getByTestId("page-content")).toBeInTheDocument();
   });
 });

@@ -54,7 +54,9 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
 
   it("avança pelos passos e confirma a despesa com parcelamento", async () => {
     const user = userEvent.setup();
-    render(<LaunchWizard />);
+    const onOpenChange = vi.fn();
+    const onSuccess = vi.fn();
+    render(<LaunchWizard onOpenChange={onOpenChange} onSuccess={onSuccess} />);
 
     // Passo 1 — digita 150000 centavos e parcela em 2x (MoneyInput é um textbox)
     const input = screen.getByRole("textbox", { name: "Valor do lançamento" });
@@ -85,7 +87,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(params.installments).toHaveLength(2);
     const sum = params.installments.reduce((acc: number, item: { value: number }) => acc + item.value, 0);
     expect(sum).toBe(1500);
-    expect(navigateMock).toHaveBeenCalledWith("/transacoes", { replace: true });
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("mantém Continuar desabilitado sem valor", async () => {
@@ -98,32 +101,38 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
 
   it("fecha sem confirmação quando o formulário está vazio", async () => {
     const user = userEvent.setup();
-    render(<LaunchWizard />);
+    const onOpenChange = vi.fn();
+    const onClose = vi.fn();
+    render(<LaunchWizard onOpenChange={onOpenChange} onClose={onClose} />);
     await user.click(screen.getByRole("button", { name: "Fechar" }));
-    expect(navigateMock).toHaveBeenCalledWith("/transacoes");
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("pede confirmação ao fechar com dados preenchidos (anti-perda)", async () => {
     const user = userEvent.setup();
-    render(<LaunchWizard />);
+    const onOpenChange = vi.fn();
+    const onClose = vi.fn();
+    render(<LaunchWizard onOpenChange={onOpenChange} onClose={onClose} />);
 
     await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "5000");
     await user.click(screen.getByRole("button", { name: "Fechar" }));
 
-    // Confirmação aparece — navegação NÃO acontece até confirmar.
+    // Confirmação aparece — fechamento NÃO acontece até confirmar.
     expect(screen.getByText("Descartar lançamento?")).toBeInTheDocument();
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
 
     // Cancelar mantém no fluxo com os dados.
     await user.click(screen.getByRole("button", { name: "Continuar preenchendo" }));
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
     const valueInput = screen.getByRole("textbox", { name: "Valor do lançamento" }) as HTMLInputElement;
     expect(valueInput.value.replace(/\u00a0/g, " ")).toBe("R$ 50,00");
 
-    // Fechar de novo e descartar navega.
+    // Fechar de novo e descartar fecha o modal.
     await user.click(screen.getByRole("button", { name: "Fechar" }));
     await user.click(screen.getByRole("button", { name: "Descartar" }));
-    expect(navigateMock).toHaveBeenCalledWith("/transacoes");
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("permite peso personalizado no relatório e persiste a fração resolvida a partir do valor em reais", async () => {
@@ -243,7 +252,9 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
 
   it("permite criar cobrança a pagar vinculada e envia debtType payable", async () => {
     const user = userEvent.setup();
-    render(<LaunchWizard />);
+    const onOpenChange = vi.fn();
+    const onSuccess = vi.fn();
+    render(<LaunchWizard onOpenChange={onOpenChange} onSuccess={onSuccess} />);
 
     // Passo 1 — valor
     await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "20000");
@@ -271,12 +282,15 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(params.value).toBe(200);
     expect(params.debtAmount).toBe(100);
     expect(params.debtType).toBe("payable");
-    expect(navigateMock).toHaveBeenCalledWith("/transacoes", { replace: true });
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("permite criar cobrança a receber vinculada e envia debtType receivable", async () => {
     const user = userEvent.setup();
-    render(<LaunchWizard />);
+    const onOpenChange = vi.fn();
+    const onSuccess = vi.fn();
+    render(<LaunchWizard onOpenChange={onOpenChange} onSuccess={onSuccess} />);
 
     // Passo 1 — valor
     await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "30000");
@@ -307,6 +321,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(params.value).toBe(300);
     expect(params.debtAmount).toBe(150);
     expect(params.debtType).toBe("receivable");
-    expect(navigateMock).toHaveBeenCalledWith("/transacoes", { replace: true });
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

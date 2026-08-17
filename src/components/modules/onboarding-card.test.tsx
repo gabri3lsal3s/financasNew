@@ -42,7 +42,7 @@ describe("OnboardingCard — checklist de primeiro uso (§5.7)", () => {
       "/categorias?type=expense",
       "/categorias?type=income",
       "/cartoes",
-      "/transacoes/novo",
+      "/transacoes?novo=transacao",
     ]);
   });
 

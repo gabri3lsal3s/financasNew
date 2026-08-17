@@ -150,8 +150,8 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     await user.tab();
     expect(screen.getByRole("button", { name: "Mês anterior" })).toHaveFocus();
 
-    // Link de novo lançamento permanece alcançável (desktop)
-    const novo = screen.getByRole("link", { name: "Nova transação" });
+    // Botão de novo lançamento permanece alcançável (desktop)
+    const novo = screen.getByRole("button", { name: "Nova transação" });
     novo.focus();
     expect(novo).toHaveFocus();
 

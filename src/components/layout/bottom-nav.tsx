@@ -20,19 +20,30 @@ const transacoes = requiredSlot("/transacoes");
 const cartoes = requiredSlot("/cartoes");
 
 /**
- * Ação do FAB por página (F12): o + abre a criação do contexto atual.
- * Páginas sem fluxo de criação próprio caem no wizard de lançamento
- * (o deep-link `?novo=<tipo>` abre o diálogo de criação na página-alvo).
+ * Ação do FAB por página (F12): o + abre a criação do contexto atual em overlay
+ * (sem desviar de rota ou perder o contexto da tela ativa).
+ * - /dividas -> ?novo=divida
+ * - /categorias -> ?novo=categoria
+ * - /cartoes -> ?novo=cartao
+ * - Demais páginas (/, /transacoes, /orcamentos, /relatorios, /insights, /investments, /lembretes, /configuracoes) -> ?novo=transacao
  */
-const createActions: Record<string, { to: string; label: string }> = {
-  "/": { to: "/transacoes/novo", label: "Nova transação" },
-  "/transacoes": { to: "/transacoes/novo", label: "Nova transação" },
-  "/cartoes": { to: "/transacoes/novo", label: "Nova transação" },
-  "/dividas": { to: "/dividas?novo=divida", label: "Nova dívida" },
-  "/categorias": { to: "/categorias?novo=categoria", label: "Nova categoria" },
-};
-
-const defaultCreate = { to: "/transacoes/novo", label: "Nova transação" };
+function getFabAction(pathname: string, search = ""): { to: string; label: string } {
+  const params = new URLSearchParams(search);
+  if (pathname === "/dividas") {
+    params.set("novo", "divida");
+    return { to: `${pathname}?${params.toString()}`, label: "Nova dívida" };
+  }
+  if (pathname === "/categorias") {
+    params.set("novo", "categoria");
+    return { to: `${pathname}?${params.toString()}`, label: "Nova categoria" };
+  }
+  if (pathname === "/cartoes") {
+    params.set("novo", "cartao");
+    return { to: `${pathname}?${params.toString()}`, label: "Novo cartão" };
+  }
+  params.set("novo", "transacao");
+  return { to: `${pathname}?${params.toString()}`, label: "Nova transação" };
+}
 
 function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
   return (
@@ -56,7 +67,7 @@ function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
 
 export function BottomNav() {
   const location = useLocation();
-  const create = createActions[location.pathname] ?? defaultCreate;
+  const create = getFabAction(location.pathname, location.search);
 
   return (
     <nav

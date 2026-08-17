@@ -91,4 +91,9 @@ describe("TransactionListPage — listagem por mês", () => {
     await user.click(screen.getByText("Salário"));
     expect(screen.getByRole("heading", { name: "Detalhes da receita" })).toBeInTheDocument();
   });
+
+  it("exibe o botão de Nova transação acessível", () => {
+    render(<TransactionListPage />);
+    expect(screen.getByRole("button", { name: "Nova transação" })).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Plus, Repeat, Zap } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -9,6 +9,7 @@ import { VirtualList } from "@/components/ui/virtual-list";
 import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
 import { currentMonth, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
+import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useCategories, useExpenses, useIncomes, useRecurrences } from "@/state";
 import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
@@ -143,6 +144,8 @@ export function TransactionListPage() {
     return frequency ? RECURRENCE_FREQUENCY_LABELS[frequency] : undefined;
   };
 
+  const { setOpen: setWizardOpen } = useCreateDeepLink("transacao");
+
   return (
     <div className="flex flex-col gap-6">
       {/* F12 — sem header visual: seletor de mês direto; o botão de novo
@@ -162,12 +165,10 @@ export function TransactionListPage() {
         />
       </div>
 
-      <Link to="/transacoes/novo" className="w-full">
-        <Button className="w-full">
-          <Plus aria-hidden="true" />
-          Nova transação
-        </Button>
-      </Link>
+      <Button className="w-full" onClick={() => setWizardOpen(true)}>
+        <Plus aria-hidden="true" />
+        Nova transação
+      </Button>
 
       {error ? (
         <div className="flex flex-col gap-3">

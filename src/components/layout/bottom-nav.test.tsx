@@ -26,15 +26,19 @@ describe("BottomNav 5 slots (F7.1)", () => {
     ]);
   });
 
-  it("FAB central é contextual: na Início/Transações abre o wizard de lançamento", () => {
-    renderNav("/");
-    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/transacoes/novo");
+  it("FAB central é contextual e preserva a rota ativa: na Início/Transações abre o wizard de lançamento", () => {
+    const { unmount } = renderNav("/");
+    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/?novo=transacao");
+    unmount();
+
+    renderNav("/transacoes");
+    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/transacoes?novo=transacao");
   });
 
-  it("FAB central em Cartões abre o wizard de lançamento (/transacoes/novo)", () => {
+  it("FAB central em Cartões abre a criação de cartão preservando a rota (/cartoes?novo=cartao)", () => {
     renderNav("/cartoes");
-    const fab = screen.getByRole("link", { name: "Nova transação" });
-    expect(fab).toHaveAttribute("href", "/transacoes/novo");
+    const fab = screen.getByRole("link", { name: "Novo cartão" });
+    expect(fab).toHaveAttribute("href", "/cartoes?novo=cartao");
   });
 
   it("FAB central é contextual: em Dívidas/Categorias abre o formulário correspondente", () => {
@@ -46,9 +50,13 @@ describe("BottomNav 5 slots (F7.1)", () => {
     expect(screen.getByRole("link", { name: "Nova categoria" })).toHaveAttribute("href", "/categorias?novo=categoria");
   });
 
-  it("FAB central cai no wizard de lançamento em páginas sem criação própria", () => {
-    renderNav("/orcamentos");
-    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/transacoes/novo");
+  it("FAB central cai no wizard de lançamento mantendo a rota ativa em páginas sem criação própria", () => {
+    const { unmount } = renderNav("/orcamentos");
+    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/orcamentos?novo=transacao");
+    unmount();
+
+    renderNav("/transacoes?month=2026-08");
+    expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/transacoes?month=2026-08&novo=transacao");
   });
 
   it("Relatórios não ocupa slot da BottomNav (migrou para o menu Mais)", () => {

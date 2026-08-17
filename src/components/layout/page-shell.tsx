@@ -9,6 +9,8 @@ import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Skeleton } from "@/components/ui";
+import { LaunchWizard } from "@/features/transactions";
+import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 
@@ -27,9 +29,12 @@ export function PageShell() {
   useVisualCustomization();
   const { isCollapsed, toggle } = useSidebarState();
   const location = useLocation();
+  const { open: wizardOpen, setOpen: setWizardOpen } = useCreateDeepLink("transacao");
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
+      {/* Wizard contextual em overlay (preserva rota ativa e contexto em qualquer página) */}
+      <LaunchWizard open={wizardOpen} onOpenChange={setWizardOpen} />
       {/* Estado da sidebar vive aqui (fonte única) e a margem acompanha em tempo real. */}
       <Sidebar isCollapsed={isCollapsed} onToggle={toggle} />
       {/* Margem acompanha o estado da sidebar (F7.2): lg:pl-64 expandida ↔ lg:pl-20 compacta. */}
