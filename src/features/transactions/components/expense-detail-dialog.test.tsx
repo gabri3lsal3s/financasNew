@@ -250,20 +250,6 @@ describe("ExpenseDetailDialog", () => {
     expect(payload.input.report_weight).toBe(Number((4500 / 12050).toFixed(4)));
   });
 
-  it("openDeleteConfirm: abre o modal já com a confirmação de exclusão", async () => {
-    deleteExpenseMock.mockClear();
-    deleteExpenseMock.mockResolvedValue(1);
-    const onOpenChange = vi.fn();
-    const user = userEvent.setup();
-    render(<ExpenseDetailDialog expense={baseExpense} open={true} openDeleteConfirm onOpenChange={onOpenChange} />);
-
-    // A confirmação de exclusão vem à frente, sem passar pelos detalhes.
-    expect(await screen.findByRole("heading", { name: "Excluir despesa?" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Excluir" }));
-
-    expect(deleteExpenseMock).toHaveBeenCalledWith({ expenseId: "e1", mode: "single" });
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
 
   it("bloqueia despesa no crédito quando não há cartão cadastrado", async () => {
     updateExpenseMock.mockClear();

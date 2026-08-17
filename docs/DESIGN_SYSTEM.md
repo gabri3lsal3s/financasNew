@@ -321,9 +321,9 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - `warning` / `error` (dois pulsos de 20ms) → exclusões e alertas críticos.
 - **Compatibilidade:** Degradação graciosa (ignora silenciosamente se o navegador/hardware não suportar `navigator.vibrate`).
 
-### 14.3 Gestos Mobile (Swipe-to-Action)
-- **Hook & Integração:** `src/hooks/use-swipe-action.ts` integrado em `TransactionRow`.
-- **Mecânica:** Deslizar linha para a esquerda revela atalhos rápidos com feedback visual suave e disparo háptico leve ao atingir o limiar de ativação (threshold de 72px).
+### 14.3 Interação Direta de Linhas (Direct Click Interaction)
+- **Componente:** `src/components/modules/transaction-row.tsx`.
+- **Mecânica:** As linhas de transação utilizam o modelo de interação integral direta por clique/toque (Whole-Element Interaction). Clicar na linha abre o diálogo de detalhes/edição com disparo háptico suave (`triggerHaptic("light")`). Ações destrutivas (exclusão) são concentradas com segurança dentro dos diálogos de detalhes com confirmação explícita (`ConfirmDialog`), eliminando estados ocultos e colisões de gestos.
 
 ### 14.4 Controle de Densidade (Compacto vs. Confortável)
 - **Confortável (Padrão):** Linhas com altura de 48px a 52px (py 12px), ideal para uso tátil mobile.

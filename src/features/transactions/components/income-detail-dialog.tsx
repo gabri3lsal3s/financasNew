@@ -21,8 +21,6 @@ export interface IncomeDetailDialogProps {
   income: Income | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Ao abrir, já mostra a confirmação de exclusão (swipe "Excluir" → excluir). */
-  openDeleteConfirm?: boolean;
 }
 
 interface IncomeEditFormProps {
@@ -199,26 +197,10 @@ function IncomeEditForm({ income, categories, isPending, onCancel, onSave }: Inc
  * (source_ref, ex.: estorno [REFUND]) são somente-leitura (§3.1) — sem
  * ações de edição/exclusão.
  */
-export function IncomeDetailDialog({ income, open, onOpenChange, openDeleteConfirm = false }: IncomeDetailDialogProps) {
+export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Swipe "Excluir": a intenção de excluir chega via prop — mostra APENAS a
-  // confirmação (sem o modal de detalhes por trás: dois diálogos Radix no
-  // mesmo commit ficam ambos aria-hidden). Cancelar fecha tudo.
-  const deleteIntent = open && openDeleteConfirm;
-  const showDetails = open && !deleteIntent;
-  const showConfirm = deleteIntent || confirmOpen;
-
-  const handleConfirmOpenChange = (next: boolean) => {
-    setConfirmOpen(next);
-    // Cancelar a exclusão direta (swipe) fecha o diálogo por completo;
-    // a exclusão vinda dos detalhes só recolhe a confirmação.
-    if (!next && deleteIntent) {
-      onOpenChange(false);
-    }
-  };
 
   const categoriesQuery = useCategories("income");
   const deleteIncome = useDeleteIncome();
@@ -311,7 +293,6 @@ export function IncomeDetailDialog({ income, open, onOpenChange, openDeleteConfi
 
   return (
     <>
-      {showDetails ? (
       <Modal
         open={open}
         onOpenChange={(next) => {
@@ -454,11 +435,10 @@ export function IncomeDetailDialog({ income, open, onOpenChange, openDeleteConfi
           </div>
         ) : null}
       </Modal>
-      ) : null}
 
       <ConfirmDialog
-        open={showConfirm}
-        onOpenChange={handleConfirmOpenChange}
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
         title="Excluir receita?"
         description="Esta ação não pode ser desfeita."
         confirmLabel={deleteIncome.isPending ? "Excluindo…" : "Excluir"}

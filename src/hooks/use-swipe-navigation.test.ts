@@ -163,7 +163,7 @@ describe("useSwipeNavigation (F20 — engine de gestos)", () => {
     expect(onNavigate).not.toHaveBeenCalled();
   });
 
-  it("swipe iniciado em .swipeable-item (TransactionRow) NÃO navega", () => {
+  it("swipe iniciado em .swipeable-item NÃO navega", () => {
     const onNavigate = vi.fn();
     const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
     const el = document.createElement("div");

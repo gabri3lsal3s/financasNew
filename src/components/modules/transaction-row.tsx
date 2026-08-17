@@ -3,10 +3,8 @@ import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
 import { formatCentsAsBRL } from "@/services/masks";
-import { triggerHaptic } from "@/services/haptics";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
 import { useDensity } from "@/hooks/use-density";
-import { useSwipeAction } from "@/hooks/use-swipe-action";
 
 export interface TransactionRowProps {
   title: string;
@@ -24,8 +22,6 @@ export interface TransactionRowProps {
   badges?: ReactNode;
   onClick?: () => void;
   className?: string;
-  /** Ações rápidas reveladas por swipe (F8 — Decisão 2). */
-  swipeActions?: ReactNode;
 }
 
 const kindTone: Record<TransactionRowProps["kind"], MoneyTextProps["tone"]> = {
@@ -54,13 +50,10 @@ export function TransactionRow({
   badges,
   onClick,
   className,
-  swipeActions,
 }: TransactionRowProps) {
   const masked = usePrivacyMask();
   const density = useDensity();
   const compact = density === "compact";
-  const swipe = useSwipeAction({ onOpen: () => triggerHaptic("light") });
-  const hasSwipe = swipeActions !== undefined;
 
   const effectiveWeightedCents =
     weightedAmountCents !== undefined
@@ -77,7 +70,6 @@ export function TransactionRow({
     <div
       className={cn(
         // Superfície consistente (F12): toda linha é um card de superfície
-        // (receitas/despesas iguais — antes só as com swipe tinham bg-surface).
         "flex w-full items-center gap-3 rounded-xl bg-surface px-2 transition-colors",
         compact ? "py-1.5" : "py-2.5",
         onClick && "cursor-pointer hover:bg-surface-hover",
@@ -116,42 +108,13 @@ export function TransactionRow({
     </div>
   );
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (swipe.open) {
-      e.stopPropagation();
-      swipe.close();
-      return;
-    }
-    if (swipe.dragging) {
-      return;
-    }
-    onClick?.();
-  };
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="w-full text-left focus-visible:outline-none">
+        {content}
+      </button>
+    );
+  }
 
-  const row = onClick ? (
-    <button type="button" onClick={handleClick} className="w-full text-left focus-visible:outline-none">
-      {content}
-    </button>
-  ) : (
-    content
-  );
-
-  if (!hasSwipe) return row;
-
-  return (
-    <div className="relative overflow-hidden rounded-xl">
-      {/* Camada de ações revelada atrás da linha (à direita). Fechada: inert
-          (não-focável e fora da árvore acessível) — sem violação aria-hidden. */}
-      <div className="absolute inset-y-0 right-0 flex w-24 items-stretch" inert={!swipe.open || undefined}>
-        {swipeActions}
-      </div>
-      <div
-        {...swipe.pointerHandlers}
-        style={{ transform: `translateX(${swipe.offset}px)`, transition: swipe.dragging ? "none" : "transform 0.2s ease-out" }}
-        className={cn("relative touch-pan-y rounded-xl bg-surface", !swipe.open && "shadow-none")}
-      >
-        {row}
-      </div>
-    </div>
-  );
+  return content;
 }

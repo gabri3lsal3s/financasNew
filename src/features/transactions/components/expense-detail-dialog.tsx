@@ -20,8 +20,6 @@ export interface ExpenseDetailDialogProps {
   expense: Expense | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Ao abrir, já mostra a confirmação de exclusão (swipe "Excluir" → excluir). */
-  openDeleteConfirm?: boolean;
 }
 
 const MODE_OPTIONS = [
@@ -317,27 +315,11 @@ function ExpenseEditForm({
 }
 
 /** Detalhe da despesa + edição completa com troca de categoria + exclusão em 3 modos. */
-export function ExpenseDetailDialog({ expense, open, onOpenChange, openDeleteConfirm = false }: ExpenseDetailDialogProps) {
+export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
-
-  // Swipe "Excluir": a intenção de excluir chega via prop — mostra APENAS a
-  // confirmação (sem o modal de detalhes por trás: dois diálogos Radix no
-  // mesmo commit ficam ambos aria-hidden). Cancelar fecha tudo.
-  const deleteIntent = open && openDeleteConfirm;
-  const showDetails = open && !deleteIntent;
-  const showConfirm = deleteIntent || confirmOpen;
-
-  const handleConfirmOpenChange = (next: boolean) => {
-    setConfirmOpen(next);
-    // Cancelar a exclusão direta (swipe) fecha o diálogo por completo;
-    // a exclusão vinda dos detalhes só recolhe a confirmação.
-    if (!next && deleteIntent) {
-      onOpenChange(false);
-    }
-  };
 
   const categoriesQuery = useCategories("expense");
   const cardsQuery = useCreditCards();
@@ -449,7 +431,6 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange, openDeleteCon
 
   return (
     <>
-      {showDetails ? (
       <Modal
         open={open}
         onOpenChange={(next) => {
@@ -594,11 +575,10 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange, openDeleteCon
           </div>
         ) : null}
       </Modal>
-      ) : null}
 
       <ConfirmDialog
-        open={showConfirm}
-        onOpenChange={handleConfirmOpenChange}
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
         title="Excluir despesa?"
         description={
           isInstallment

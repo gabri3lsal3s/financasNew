@@ -193,7 +193,7 @@
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
-    │                              #   use-sidebar-state, use-swipe-action,
+    │                              #   use-sidebar-state,
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
