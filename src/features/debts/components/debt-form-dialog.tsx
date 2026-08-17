@@ -73,7 +73,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         <label htmlFor="debt-name" className="text-sm font-medium">
           Nome
         </label>
-        <Input autoFocus id="debt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Conta de luz" />
+        <Input id="debt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Conta de luz" />
       </div>
 
       <RadioGroup

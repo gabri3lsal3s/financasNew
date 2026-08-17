@@ -95,7 +95,6 @@ function AssetFormContent({ asset = null, onClose }: AssetFormContentProps) {
             value={ticker}
             onChange={(event) => setTicker(event.target.value)}
             placeholder="PETR4, BOVA11, AAPL…"
-            autoFocus
             maxLength={20}
             aria-label="Ticker do ativo"
           />

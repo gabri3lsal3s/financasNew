@@ -1516,6 +1516,27 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - **Aba unificada Avisos & Diagnósticos:** layout limpo com grid 3x2 de diagnóstico no topo e lista de avisos contextuais abaixo.
 - **Verificação:** 1204 testes / 145 arquivos 100% verdes · lint e typecheck limpos.
 
+---
+
+### Fase 33 — Módulos de Encargos, Parcelamento de Faturas, Financiamentos e Amortizações (2026-08-17)
+
+**Objetivo:** fornecer motor e interface completos para gestão de juros, multas, taxas bancárias, tributos, parcelamento de faturas sem double-counting e contratos de empréstimos/financiamentos com amortização antecipada a valor presente.
+
+**Entregas:**
+1. **Módulo 1 (Quitação com Encargos & Descontos):** motor puro `src/domain/debts/penalty.ts` (+testes) + `SettleDialog` com painel retrátil de mora, multa diária e desconto + RPC transacional `pay_debt` com registro em `audit_events`.
+2. **Módulo 2 (Parcelamento de Fatura de Cartão sem Double-Counting):** motor puro `src/domain/cards/refinancing.ts` (Tabela Price) + `BillRefinanceDialog` integrado ao pagamento de faturas + RPC `refinance_credit_card_bill` gerando apenas a despesa do juro excedente nas competências futuras.
+3. **Módulo 3 (Natureza da Despesa & Relatório de Desperdício):** tipagem canônica `charge_kind` (`regular`, `interest`, `fine`, `tax`, `bank_fee`) + visualização/edição no `ExpenseDetailDialog` + motor `src/domain/charges/` + aba "Por natureza / encargos" e banner de *Dinheiro Queimado* na `ReportsPage`.
+4. **Módulos 4 e 5 (Empréstimos, Financiamentos e Amortização Antecipada):** tabela `loans` no Supabase + motor puro `src/domain/loans/` (cronogramas Price/SAC e amortização com desconto) + RPCs `create_loan_contract` e `early_amortize_loan` + `LoanCard`, `LoanFormDialog` e `EarlyAmortizationDialog` integrados à `DebtsPage`.
+5. **Qualidade & Blindagens:** 0 erros no typecheck (`tsc -b`), 0 erros no ESLint, e suíte de testes unitários/integração com **149 arquivos de teste e 1.217 testes 100% verdes**.
+
 **Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.
 
+---
+
+**Refinamento de Ergonomia Mobile — Supressão de Autofocus Agressivo em Modais (2026-08-17):**
+- **Problema corrigido:** ao abrir modais e drawers (bottom sheet) no mobile, o teclado virtual era acionado automaticamente antes de qualquer interação do usuário, bloqueando metade do viewport. Causa raiz dupla: (1) `@radix-ui/react-dialog` foca o primeiro elemento interativo por padrão ao abrir o `DialogContent`; (2) 10 componentes de formulário usavam a prop `autoFocus` explicitamente em campos `Input` e `MoneyInput`.
+- **Correção na raiz (`modal.tsx`):** adicionado `onOpenAutoFocus={(e) => e.preventDefault()}` no `<DialogPrimitive.Content>` — suprime o comportamento padrão do Radix para **todos** os modais do app de uma só vez, sem quebrar a navegação por Tab (desktop) nem o fechamento por Esc/backdrop.
+- **Remoção de `autoFocus` explícito em 10 arquivos:** `confirm-dialog.tsx` (Button Cancelar), `limit-dialog.tsx`, `card-form-dialog.tsx`, `payment-dialog.tsx`, `category-form-dialog.tsx`, `debt-form-dialog.tsx`, `early-amortization-dialog.tsx`, `loan-form-dialog.tsx`, `settle-dialog.tsx`, `asset-form-dialog.tsx` e `step-value.tsx` (Wizard passo 1).
+- **Sem regressão de acessibilidade:** o foco vai para o container do modal (já tem `focus:outline-none`); teclado físico navega por Tab normalmente; o usuário ativa o teclado virtual tocando deliberadamente no campo desejado.
+- **Verificação:** typecheck (`tsc -b`) e lint (ESLint 0 erros) limpos; 147/149 arquivos de teste com 1.213 testes passando (2 arquivos com timeouts flaky de paralelismo em suíte completa, passam 100% isoladamente — não relacionados à mudança).
 

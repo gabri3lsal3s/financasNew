@@ -24,8 +24,17 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
   const [categoryId, setCategoryId] = useState("");
   const [resultCents, setResultCents] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  // O usuário editou o resultado? Antes disso, segue a sugestão automática.
   const [userEdited, setUserEdited] = useState(false);
+
+  // Encargos e descontos (dívidas a pagar)
+  const isOverdue = debt.due_date < new Date().toISOString().slice(0, 10);
+  const [showPenalties, setShowPenalties] = useState(isOverdue);
+  const [fineCents, setFineCents] = useState(0);
+  const [interestCents, setInterestCents] = useState(0);
+  const [discountCents, setDiscountCents] = useState(0);
+
+  const originalCents = Math.round(debt.amount * 100);
+  const effectivePayableCents = Math.max(0, originalCents + fineCents + interestCents - discountCents);
 
   const expenseCategories = useCategories(isReceivable ? "income" : "expense");
   const linkedExpense = useExpense(integrated ? debt.expense_id : null);
@@ -41,9 +50,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
       ? Math.max(0, Math.round(linkedExpense.data.base_amount * 100) - Math.round(debt.amount * 100))
       : null;
 
-  // Valor efetivo: sugestão automática até o usuário editar (mantém o diálogo
-  // responsivo enquanto a despesa vinculada carrega).
-  const effectiveResultCents = userEdited ? resultCents : (suggestedResultCents ?? Math.round(debt.amount * 100));
+  const effectiveResultCents = userEdited ? resultCents : (suggestedResultCents ?? originalCents);
 
   const handleConfirm = async () => {
     setError(null);
@@ -61,6 +68,10 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
           debtId: debt.id,
           createExpense: withTransaction,
           expenseCategoryId: withTransaction ? categoryId : null,
+          fineAmount: fineCents / 100,
+          interestAmount: interestCents / 100,
+          discountAmount: discountCents / 100,
+          totalPaid: effectivePayableCents / 100,
         });
       }
       triggerHaptic("success");
@@ -95,7 +106,6 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
               Despesa passa a contar como
             </label>
             <MoneyInput
-              autoFocus
               id="settle-result"
               cents={effectiveResultCents}
               onCentsChange={(cents) => {
@@ -108,6 +118,73 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
         </>
       ) : (
         <>
+          {!isReceivable ? (
+            <div className="rounded-md border border-border/70 p-3 bg-muted/20 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Acréscimos e Descontos
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPenalties((prev) => !prev)}
+                >
+                  {showPenalties ? "Ocultar" : "Informar multa/juros/desconto"}
+                </Button>
+              </div>
+
+              {showPenalties ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="fine-cents" className="text-xs text-muted-foreground">
+                      Multa por atraso
+                    </label>
+                    <MoneyInput
+                      id="fine-cents"
+                      cents={fineCents}
+                      onCentsChange={setFineCents}
+                      aria-label="Multa por atraso"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="interest-cents" className="text-xs text-muted-foreground">
+                      Juros / Mora
+                    </label>
+                    <MoneyInput
+                      id="interest-cents"
+                      cents={interestCents}
+                      onCentsChange={setInterestCents}
+                      aria-label="Juros de mora"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="discount-cents" className="text-xs text-muted-foreground">
+                      Desconto
+                    </label>
+                    <MoneyInput
+                      id="discount-cents"
+                      cents={discountCents}
+                      onCentsChange={setDiscountCents}
+                      aria-label="Desconto obtido"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {(fineCents > 0 || interestCents > 0 || discountCents > 0) && (
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50 text-foreground font-medium">
+                  <span>Valor efetivo pago:</span>
+                  <span className="text-sm font-semibold">
+                    {(effectivePayableCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : null}
+
           <RadioGroup
             value={withTransaction ? "with" : "only"}
             onValueChange={(value) => setWithTransaction(value === "with")}

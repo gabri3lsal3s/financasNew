@@ -71,7 +71,6 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
           id="wizard-value"
           cents={state.valueCents}
           onCentsChange={onValueChange}
-          autoFocus
           aria-label="Valor do lançamento"
         />
       </div>

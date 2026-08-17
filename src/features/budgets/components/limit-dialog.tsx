@@ -84,7 +84,7 @@ function LimitDialogContent({
         <label htmlFor="limit-amount" className="text-sm font-medium">
           Limite mensal
         </label>
-        <MoneyInput autoFocus id="limit-amount" cents={cents} onCentsChange={setCents} aria-label="Limite mensal da categoria" />
+        <MoneyInput id="limit-amount" cents={cents} onCentsChange={setCents} aria-label="Limite mensal da categoria" />
       </div>
 
       {rule && suggestionCents > 0 ? (

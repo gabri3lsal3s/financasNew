@@ -113,7 +113,6 @@ function CategoryFormContent({
         </label>
         <Input
           id="category-name"
-          autoFocus
           value={name}
           onChange={(event) => {
             setName(event.target.value);

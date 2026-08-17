@@ -3,6 +3,7 @@ import { Alert, Button, DatePicker, Input, Modal, MoneyInput } from "@/component
 import { getErrorMessage } from "@/services/errors";
 import { toISODate } from "@/domain/money";
 import { useCreateCardPayment, useCreateRefund } from "@/state";
+import { BillRefinanceDialog } from "./bill-refinance-dialog";
 
 export interface PaymentDialogProps {
   cardId: string;
@@ -11,6 +12,7 @@ export interface PaymentDialogProps {
   mode: "payment" | "refund";
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  openBalanceCents?: number;
 }
 
 interface PaymentDialogContentProps {
@@ -18,9 +20,16 @@ interface PaymentDialogContentProps {
   competenceMonth: string;
   mode: "payment" | "refund";
   onClose: () => void;
+  onOpenRefinance?: () => void;
 }
 
-function PaymentDialogContent({ cardId, competenceMonth, mode, onClose }: PaymentDialogContentProps) {
+function PaymentDialogContent({
+  cardId,
+  competenceMonth,
+  mode,
+  onClose,
+  onOpenRefinance,
+}: PaymentDialogContentProps) {
   const [cents, setCents] = useState(0);
   const [date, setDate] = useState(toISODate(new Date()));
   const [note, setNote] = useState("");
@@ -70,7 +79,6 @@ function PaymentDialogContent({ cardId, competenceMonth, mode, onClose }: Paymen
           {isRefund ? "Valor do estorno" : "Valor pago"}
         </label>
         <MoneyInput
-          autoFocus
           id="payment-amount"
           cents={cents}
           onCentsChange={setCents}
@@ -90,6 +98,20 @@ function PaymentDialogContent({ cardId, competenceMonth, mode, onClose }: Paymen
         <Input id="payment-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ex.: Parcial" />
       </div>
 
+      {!isRefund && onOpenRefinance ? (
+        <div className="pt-1 flex justify-start">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onOpenRefinance}
+            className="text-xs text-primary"
+          >
+            Simular / Registrar parcelamento de fatura
+          </Button>
+        </div>
+      ) : null}
+
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
@@ -103,25 +125,47 @@ function PaymentDialogContent({ cardId, competenceMonth, mode, onClose }: Paymen
 }
 
 /** Pagamento ou estorno de fatura (§3.3.3). Estorno gera renda automática [REFUND]. */
-export function PaymentDialog({ cardId, competenceMonth, mode, open, onOpenChange }: PaymentDialogProps) {
+export function PaymentDialog({
+  cardId,
+  competenceMonth,
+  mode,
+  open,
+  onOpenChange,
+  openBalanceCents = 0,
+}: PaymentDialogProps) {
   const isRefund = mode === "refund";
+  const [refinanceOpen, setRefinanceOpen] = useState(false);
 
   return (
-    <Modal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={isRefund ? "Registrar estorno" : "Registrar pagamento"}
-      description={`Fatura de ${competenceMonth}`}
-    >
-      {open ? (
-        <PaymentDialogContent
-          key={`${cardId}:${competenceMonth}:${mode}`}
-          cardId={cardId}
-          competenceMonth={competenceMonth}
-          mode={mode}
-          onClose={() => onOpenChange(false)}
-        />
-      ) : null}
-    </Modal>
+    <>
+      <Modal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={isRefund ? "Registrar estorno" : "Registrar pagamento"}
+        description={`Fatura de ${competenceMonth}`}
+      >
+        {open ? (
+          <PaymentDialogContent
+            key={`${cardId}:${competenceMonth}:${mode}`}
+            cardId={cardId}
+            competenceMonth={competenceMonth}
+            mode={mode}
+            onClose={() => onOpenChange(false)}
+            onOpenRefinance={() => {
+              onOpenChange(false);
+              setRefinanceOpen(true);
+            }}
+          />
+        ) : null}
+      </Modal>
+
+      <BillRefinanceDialog
+        cardId={cardId}
+        competenceMonth={competenceMonth}
+        remainingBalanceCents={openBalanceCents}
+        open={refinanceOpen}
+        onOpenChange={setRefinanceOpen}
+      />
+    </>
   );
 }

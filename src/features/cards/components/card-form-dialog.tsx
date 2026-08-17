@@ -144,7 +144,6 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
           </label>
           <Input
             id="card-name"
-            autoFocus
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Ex.: Nubank Ultravioleta"

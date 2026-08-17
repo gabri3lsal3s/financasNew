@@ -157,6 +157,7 @@ export function Modal({
           onPointerMove={onPointerMove}
           onPointerUp={finishDrag}
           onPointerCancel={cancelDrag}
+          onOpenAutoFocus={(e) => e.preventDefault()}
           style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
           className={cn(
             // Mobile (base): bottom sheet com slide-up e alça; lg+: diálogo centralizado.
