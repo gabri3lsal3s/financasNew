@@ -8,7 +8,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#FFFFFF",
+  "background_color": "#0C1923",
   "theme_color": [
     { "color": "#F4F7F9", "media": "(prefers-color-scheme: light)" },
     { "color": "#0C1923", "media": "(prefers-color-scheme: dark)" }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type TouchEvent } from "react";
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, WalletCards } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui";
 import { CreditCard3D } from "./credit-card-3d";
 import { triggerHaptic } from "@/services/haptics";
@@ -30,7 +30,7 @@ export interface CreditCardWalletProps {
 
 /**
  * Carteira / Carrossel 3D de Cartões de Crédito com navegação por swipe,
- * teclado, botões anterior/próximo externos e atalhos rápidos de edição/exclusão.
+ * teclado, botões anterior/próximo externos e interação direta de edição/exclusão.
  */
 export function CreditCardWallet({
   cards,
@@ -132,20 +132,6 @@ export function CreditCardWallet({
 
         {/* Ações contextuais discretas */}
         <div className="flex items-center gap-1">
-          {currentCard && onEditCard && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onEditCard(currentCard)}
-              aria-label={`Editar cartão ${currentCard.name}`}
-              className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
-            >
-              <Pencil className="size-3" aria-hidden="true" />
-              <span className="hidden sm:inline">Editar</span>
-            </Button>
-          )}
-
           {currentCard && onDeleteCard && (
             <Button
               type="button"
@@ -205,7 +191,14 @@ export function CreditCardWallet({
                 competenceMonth={competenceMonth}
                 isSelected={true}
                 isInteractive={true}
-                onClick={() => onSelectCard(currentCard.id)}
+                onClick={() => {
+                  triggerHaptic("light");
+                  if (onEditCard) {
+                    onEditCard(currentCard);
+                  } else {
+                    onSelectCard(currentCard.id);
+                  }
+                }}
               />
             </div>
           );

@@ -47,9 +47,183 @@
         } catch (e) {}
       })();
     </script>
+    <style>
+      /* ---- Splash Screen — valores hard-coded para funcionar antes do Tailwind/tokens ---- */
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        /* Fundo light padrão */
+        background-color: #F4F7F9;
+        transition: opacity 0.25s ease-out;
+        z-index: 9999;
+        /* Safe areas para notch/barra do sistema */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      /* Tema escuro */
+      html[data-theme="dark"] #app-splash {
+        background-color: #0C1923;
+      }
+
+      /* Tema OLED */
+      html[data-theme="oled"] #app-splash {
+        background-color: #000000;
+      }
+
+      /* Fallback sem JS: segue preferência do sistema */
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme]) #app-splash {
+          background-color: #0C1923;
+        }
+      }
+
+      /* ---- Wrapper do ícone ---- */
+      #app-splash-icon-wrap {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        margin-bottom: 48px;
+      }
+
+      /* Halo de brilho pulsante atrás do ícone */
+      #app-splash-icon-wrap::before {
+        content: '';
+        position: absolute;
+        inset: -16px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(42, 157, 143, 0.18) 0%, transparent 70%);
+        animation: splash-glow 2s ease-in-out infinite;
+      }
+
+      html[data-theme="dark"] #app-splash-icon-wrap::before,
+      html[data-theme="oled"] #app-splash-icon-wrap::before {
+        background: radial-gradient(circle, rgba(45, 212, 191, 0.22) 0%, transparent 70%);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme]) #app-splash-icon-wrap::before {
+          background: radial-gradient(circle, rgba(45, 212, 191, 0.22) 0%, transparent 70%);
+        }
+      }
+
+      /* ---- Ícone principal ---- */
+      #app-splash-icon {
+        width: 120px;
+        height: 120px;
+        border-radius: 26px;
+        display: block;
+        position: relative;
+        z-index: 1;
+        animation: splash-pulse 2s ease-in-out infinite;
+      }
+
+      /* ---- Barra de progresso na base da tela ---- */
+      #app-splash-bar-track {
+        position: fixed;
+        bottom: calc(env(safe-area-inset-bottom) + 0px);
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-color: rgba(42, 157, 143, 0.15);
+        overflow: hidden;
+      }
+
+      html[data-theme="dark"] #app-splash-bar-track,
+      html[data-theme="oled"] #app-splash-bar-track {
+        background-color: rgba(45, 212, 191, 0.12);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme]) #app-splash-bar-track {
+          background-color: rgba(45, 212, 191, 0.12);
+        }
+      }
+
+      #app-splash-bar-fill {
+        height: 100%;
+        width: 40%;
+        background: linear-gradient(90deg, transparent, #2A9D8F, transparent);
+        animation: splash-bar 1.6s ease-in-out infinite;
+      }
+
+      html[data-theme="dark"] #app-splash-bar-fill,
+      html[data-theme="oled"] #app-splash-bar-fill {
+        background: linear-gradient(90deg, transparent, #2DD4BF, transparent);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme]) #app-splash-bar-fill {
+          background: linear-gradient(90deg, transparent, #2DD4BF, transparent);
+        }
+      }
+
+      /* ---- Animações ---- */
+      @keyframes splash-pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50%       { opacity: 0.88; transform: scale(0.97); }
+      }
+
+      @keyframes splash-glow {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50%       { transform: scale(1.15); opacity: 0.6; }
+      }
+
+      @keyframes splash-bar {
+        0%   { transform: translateX(-120%); }
+        100% { transform: translateX(300%); }
+      }
+
+      /* Desligar animações em modo reduzido */
+      @media (prefers-reduced-motion: reduce) {
+        #app-splash-icon,
+        #app-splash-icon-wrap::before,
+        #app-splash-bar-fill {
+          animation: none;
+        }
+      }
+
+      html[data-motion="reduced"] #app-splash-icon,
+      html[data-motion="reduced"] #app-splash-icon-wrap::before,
+      html[data-motion="reduced"] #app-splash-bar-fill {
+        animation: none;
+      }
+
+      /* Desligar shimmer em modo eco (mantém fade) */
+      html[data-motion="eco"] #app-splash-bar-fill {
+        animation: none;
+      }
+
+      /* Ocultar o splash assim que o React montar conteúdo real no #root */
+      #root:not(:empty) #app-splash {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Splash screen — some automaticamente quando o React monta (#root:not(:empty)) -->
+      <div id="app-splash" aria-hidden="true" role="presentation">
+        <div id="app-splash-icon-wrap">
+          <img
+            id="app-splash-icon"
+            src="/pwa/icons/icon-512.png"
+            alt=""
+            width="120"
+            height="120"
+            decoding="async"
+          />
+        </div>
+        <div id="app-splash-bar-track">
+          <div id="app-splash-bar-fill"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

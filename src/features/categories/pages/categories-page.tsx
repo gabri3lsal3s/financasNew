@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Pencil, Plus, Tags } from "lucide-react";
-import { Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { Plus, Tags } from "lucide-react";
+import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { CategoryIcon, HighlightRow } from "@/components/modules";
+import { cn } from "@/lib/utils";
+import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
@@ -90,40 +92,60 @@ export function CategoriesPage() {
         />
       ) : (
         <div className="flex flex-col gap-2">
-          {filtered.map((category) => (
-            <HighlightRow key={category.id} highlightId={highlightId} id={category.id} className="border border-border bg-surface">
-            <div className="flex items-center justify-between gap-3 p-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <CategoryIcon icon={category.icon} color={category.color} />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{category.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {category.is_reserved ? "Reservada" : category.is_active ? "Ativa" : "Inativa"}
-                  </p>
+          {filtered.map((category) => {
+            const isClickable = !category.is_reserved;
+            return (
+              <HighlightRow key={category.id} highlightId={highlightId} id={category.id} className="border border-border bg-surface overflow-hidden">
+                <div
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                  aria-label={isClickable ? `Editar ${category.name}` : undefined}
+                  onClick={
+                    isClickable
+                      ? () => {
+                          triggerHaptic("light");
+                          setEditing(category);
+                          setFormOpen(true);
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    isClickable
+                      ? (event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            triggerHaptic("light");
+                            setEditing(category);
+                            setFormOpen(true);
+                          }
+                        }
+                      : undefined
+                  }
+                  className={cn(
+                    "flex items-center justify-between gap-3 p-4 transition-colors",
+                    isClickable
+                      ? "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      : "opacity-80",
+                  )}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <CategoryIcon icon={category.icon} color={category.color} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{category.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {category.is_reserved ? "Reservada" : category.is_active ? "Ativa" : "Inativa"}
+                      </p>
+                    </div>
+                  </div>
+                  {category.is_reserved ? (
+                    <Badge variant="muted" className="text-[11px]">
+                      Reservada
+                    </Badge>
+                  ) : null}
                 </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                  {!category.is_reserved ? (
-                  <>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Editar ${category.name}`}
-                      onClick={() => {
-                        setEditing(category);
-                        setFormOpen(true);
-                      }}
-                    >
-                      <Pencil className="size-4" aria-hidden="true" />
-                    </Button>
-                  </>
-                ) : (
-                  <span className="text-xs text-muted-foreground">—</span>
-                )}
-              </div>
-            </div>
-            </HighlightRow>
-          ))}
+              </HighlightRow>
+            );
+          })}
         </div>
       )}
 

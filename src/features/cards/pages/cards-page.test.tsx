@@ -131,8 +131,8 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     const user = userEvent.setup();
     render(<CardsPage />);
 
-    const editBtn = screen.getByRole("button", { name: /editar cartão nubank/i });
-    await user.click(editBtn);
+    const cardBtn = screen.getByRole("button", { name: /^cartão nubank/i });
+    await user.click(cardBtn);
 
     expect(screen.getByRole("heading", { name: "Editar cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toHaveValue("Nubank");

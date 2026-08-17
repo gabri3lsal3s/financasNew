@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Check, HandCoins, Pencil, Plus } from "lucide-react";
+import { Check, HandCoins, Plus } from "lucide-react";
 import { Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
@@ -30,24 +30,37 @@ function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
   const status = debtStatus(debt.due_date, debt.paid_at);
   const isPaid = status === "paid";
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 transition-[border-color,background-color] duration-150 hover:border-primary/30">
-      <div className="flex min-w-0 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium text-foreground">{debt.name}</p>
-          {!isPaid ? <DebtStatusBadge status={status} /> : null}
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:bg-surface-hover/60">
+      <button
+        type="button"
+        aria-label={`Editar ${debt.name}`}
+        onClick={() => {
+          triggerHaptic("light");
+          onEdit(debt);
+        }}
+        className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg cursor-pointer py-0.5 active:scale-[0.99]"
+      >
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-medium text-foreground">{debt.name}</p>
+            {!isPaid ? <DebtStatusBadge status={status} /> : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Vence em {debt.due_date}
+            {debt.paid_at ? ` · quitada em ${debt.paid_at.slice(0, 10)}` : ""}
+            {debt.expense_id ? " · vinculada a despesa" : ""}
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Vence em {debt.due_date}
-          {debt.paid_at ? ` · quitada em ${debt.paid_at.slice(0, 10)}` : ""}
-          {debt.expense_id ? " · vinculada a despesa" : ""}
-        </p>
-      </div>
+        <div className="shrink-0 text-right pr-1">
+          <MoneyText
+            cents={Math.round(debt.amount * 100)}
+            variant="value"
+            tone={debt.type === "receivable" ? "positive" : "negative"}
+          />
+        </div>
+      </button>
+
       <div className="flex shrink-0 items-center gap-2">
-        <MoneyText
-          cents={Math.round(debt.amount * 100)}
-          variant="value"
-          tone={debt.type === "receivable" ? "positive" : "negative"}
-        />
         {isPaid ? (
           <div
             className="inline-flex items-center rounded-lg border border-positive/40 bg-positive/10 p-0.5 shadow-sm transition-all duration-200"
@@ -81,17 +94,6 @@ function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
             Quitar
           </Button>
         )}
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label={`Editar ${debt.name}`}
-          onClick={() => {
-            triggerHaptic("light");
-            onEdit(debt);
-          }}
-        >
-          <Pencil className="size-4" aria-hidden="true" />
-        </Button>
       </div>
     </div>
   );

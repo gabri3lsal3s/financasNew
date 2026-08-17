@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Badge, Button, ConfirmDialog, EmptyState, Modal, SkeletonTable } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { useAssetPosition, useDeletePortfolioTransaction } from "@/state";
@@ -90,40 +90,46 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
               }
             />
           ) : (
-            <ul className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/80">
+            <ul className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/80 overflow-hidden">
               {transactions.map((tx) => {
                 const isDividend = tx.type === "dividend" || tx.type === "jcp" || tx.type === "fii_yield";
                 const isSplit = tx.type === "split" || tx.type === "reverse_split";
                 return (
-                  <li key={tx.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="truncate text-sm font-medium text-foreground">{PORTFOLIO_TX_LABELS[tx.type]}</span>
-                      <span className="num text-[11px] text-muted-foreground">
-                        {formatDateBR(tx.date)}
-                        {isSplit ? ` · fator ${formatQty(tx.quantity)}` : !isDividend && tx.quantity > 0 ? ` · ${formatQty(tx.quantity)} qtd` : ""}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="num text-sm font-semibold text-foreground">
+                  <li
+                    key={tx.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-surface-hover/60"
+                  >
+                    <button
+                      type="button"
+                      aria-label={`Editar ${PORTFOLIO_TX_LABELS[tx.type]}`}
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setEditing(tx);
+                      }}
+                      className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg cursor-pointer py-0.5 active:scale-[0.99]"
+                    >
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="truncate text-sm font-medium text-foreground">{PORTFOLIO_TX_LABELS[tx.type]}</span>
+                        <span className="num text-[11px] text-muted-foreground">
+                          {formatDateBR(tx.date)}
+                          {isSplit ? ` · fator ${formatQty(tx.quantity)}` : !isDividend && tx.quantity > 0 ? ` · ${formatQty(tx.quantity)} qtd` : ""}
+                        </span>
+                      </div>
+                      <span className="num text-sm font-semibold text-foreground shrink-0">
                         {isDividend ? <MoneyText cents={numberToCents(tx.total)} tone="positive" /> : isSplit ? "—" : <MoneyText cents={numberToCents(tx.total)} tone="default" />}
                       </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="min-h-9 px-2"
-                        aria-label={`Editar ${PORTFOLIO_TX_LABELS[tx.type]}`}
-                        onClick={() => setEditing(tx)}
-                      >
-                        <Pencil className="size-3.5" aria-hidden="true" />
-                      </Button>
+                    </button>
+                    <div className="flex shrink-0 items-center">
                       <Button
                         type="button"
                         size="sm"
                         variant="ghost"
                         className="min-h-9 px-2 text-negative-strong hover:text-negative-strong"
                         aria-label={`Excluir ${PORTFOLIO_TX_LABELS[tx.type]}`}
-                        onClick={() => setDeleting(tx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleting(tx);
+                        }}
                       >
                         <Trash2 className="size-3.5" aria-hidden="true" />
                       </Button>

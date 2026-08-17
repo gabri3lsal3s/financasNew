@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, Pencil, PiggyBank, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, Check, PiggyBank, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
@@ -19,6 +19,7 @@ import {
 } from "@/domain/budgets";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
+import { triggerHaptic } from "@/services/haptics";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { useBudgets, useCategories, useExpenses, useIncomeGoals, useIncomes, useReallocateBudget, useSetIncomeGoal, useRemoveIncomeGoal } from "@/state";
@@ -166,7 +167,24 @@ export function BudgetsPage() {
               {rows.map((row) => {
                 const status = budgetStatus(row.spentCents, row.limitCents);
                 return (
-                  <div key={row.category.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0">
+                  <div
+                    key={row.category.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Editar limite de ${row.category.name}`}
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setLimitFor(row.category);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        triggerHaptic("light");
+                        setLimitFor(row.category);
+                      }
+                    }}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 cursor-pointer transition-colors hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                         <CategoryIcon icon={row.category.icon} color={row.category.color} />
@@ -182,16 +200,6 @@ export function BudgetsPage() {
                       </div>
                       <BudgetProgressBar spentCents={row.spentCents} limitCents={row.limitCents} />
                     </div>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="shrink-0"
-                      aria-label={`Editar limite de ${row.category.name}`}
-                      onClick={() => setLimitFor(row.category)}
-                    >
-                      <Pencil className="size-4" aria-hidden="true" />
-                    </Button>
                   </div>
                 );
               })}

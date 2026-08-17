@@ -4,63 +4,198 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Sem conexão — Guia Financeiro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <style>
+      /* ---- Tokens: mesmos valores de tokens.css ---- */
       :root {
         color-scheme: light dark;
+        /* Light */
+        --bg: #F4F7F9;
+        --fg: #142531;
+        --fg-muted: #475569;
+        --surface: #FFFFFF;
+        --border: #D7E1E6;
+        --primary: #1B6B62;
+        --primary-soft: rgba(42, 157, 143, 0.10);
       }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0C1923;
+          --fg: #E8F1F5;
+          --fg-muted: #9DB2C0;
+          --surface: #162836;
+          --border: #23384A;
+          --primary: #2DD4BF;
+          --primary-soft: rgba(45, 212, 191, 0.12);
+        }
+      }
+
+      /* OLED via media — não há JS aqui para ler localStorage */
+      @media (prefers-color-scheme: dark) and (dynamic-range: high) {
+        /* best-effort OLED: não há forma perfeita sem JS */
+      }
+
       * {
         box-sizing: border-box;
         margin: 0;
+        padding: 0;
       }
+
       body {
-        font-family: system-ui, sans-serif;
-        background: #f4f7f9;
-        color: #142531;
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        background-color: var(--bg);
+        color: var(--fg);
         display: grid;
         place-items: center;
         min-height: 100dvh;
         padding: 24px;
+        padding-top: calc(24px + env(safe-area-inset-top));
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
+        animation: page-fade-in 0.3s ease-out both;
       }
-      @media (prefers-color-scheme: dark) {
-        body {
-          background: #0c1923;
-          color: #e8f1f5;
-        }
+
+      @keyframes page-fade-in {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
+
+      @media (prefers-reduced-motion: reduce) {
+        body { animation: none; }
+      }
+
+      /* ---- Card central ---- */
       .card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         text-align: center;
         max-width: 320px;
+        gap: 0;
       }
+
+      /* ---- Ícone ---- */
+      .icon-wrap {
+        position: relative;
+        margin-bottom: 32px;
+      }
+
+      .icon-wrap::before {
+        content: '';
+        position: absolute;
+        inset: -20px;
+        border-radius: 50%;
+        background: radial-gradient(circle, var(--primary-soft) 0%, transparent 70%);
+        pointer-events: none;
+      }
+
+      .icon {
+        display: block;
+        width: 96px;
+        height: 96px;
+        border-radius: 22px;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ---- Textos ---- */
       h1 {
         font-size: 20px;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
         margin-bottom: 8px;
+        color: var(--fg);
       }
+
       p {
         font-size: 14px;
-        opacity: 0.8;
-        margin-bottom: 20px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--fg-muted);
+        margin-bottom: 28px;
       }
+
+      /* ---- Botão — estilo discreto (borda + texto, sem fundo sólido) ---- */
       button {
-        border: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1.5px solid color-mix(in srgb, var(--primary) 40%, transparent);
         border-radius: 12px;
-        background: #1b6b62;
-        color: #fff;
-        padding: 12px 20px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        padding: 11px 24px;
+        font-family: inherit;
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
+        transition: background 150ms ease, border-color 150ms ease, transform 100ms ease;
+        -webkit-tap-highlight-color: transparent;
+        outline-offset: 3px;
       }
+
       button:hover {
-        background: #175c55;
+        background: color-mix(in srgb, var(--primary) 14%, transparent);
+        border-color: color-mix(in srgb, var(--primary) 60%, transparent);
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      button:focus-visible {
+        outline: 2px solid var(--primary);
+      }
+
+      /* ---- Ícone SVG de wifi-off inline ---- */
+      .btn-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
       }
     </style>
   </head>
   <body>
     <main class="card">
-      <img src="/brand/logo-128.png" width="64" height="64" alt="Guia Financeiro" style="margin-bottom: 16px; border-radius: 12px;" />
+      <div class="icon-wrap">
+        <img
+          class="icon"
+          src="/pwa/icons/icon-512.png"
+          alt="Guia Financeiro"
+          width="96"
+          height="96"
+          decoding="async"
+        />
+      </div>
+
       <h1>Sem conexão</h1>
-      <p>O app é Online First: os dados ficam na nuvem. Reconecte-se e tente novamente.</p>
-      <button type="button" onclick="location.reload()">Tentar novamente</button>
+      <p>Verifique sua rede e tente novamente.</p>
+
+      <button type="button" onclick="location.reload()">
+        <!-- lucide: rotate-ccw — inline SVG (sem dependência JS) -->
+        <svg
+          class="btn-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        Tentar novamente
+      </button>
     </main>
   </body>
 </html>

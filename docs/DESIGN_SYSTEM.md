@@ -367,3 +367,11 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Controles Globais Responsivos (`PrivacyToggle`, `MonthPicker`):** Navegação mensal por slide suave com `animate-fade-slide-in` e alternância do modo privacidade com micro-rotação `animate-spring-pop` e disparo háptico calibrado.
 - **Respeito a Níveis de Movimento:** Todas as animações são suprimidas ou simplificadas automaticamente nos modos `eco` e `reduced` via `data-motion` no root.
 
+### 14.13 Interação Integral do Elemento (Whole-Element Interaction & Remoção de Lápis)
+- **Diretriz de Usabilidade:** Eliminação de botões de edição redundantes ("lápis") em listas e cartões de domínio (Categorias, Dívidas, Orçamentos, Posições da Carteira, Lançamentos e Cartões de Crédito). O próprio container ou linha torna-se o acionador primário da edição.
+- **Hierarquia Visual Limpa:** Telas ficam despoluídas e minimalistas, aumentando a área útil de toque (*touch target*) no mobile e a ergonomia no desktop.
+- **Acessibilidade Estrita & Prevenção de Controles Aninhados (WCAG / axe):**
+  - O elemento interativo principal possui semântica de botão (`<button>` ou `<div role="button">` com `tabIndex={0}`, `aria-label` descritivo e suporte a `Enter`/`Space`).
+  - Ações secundárias (ex.: botão "Quitar", exclusão) são organizadas como elementos irmãos (*siblings*) dentro do layout flex, prevenindo violações de *nested-interactive controls*.
+- **Feedback Tátil & Visual:** Cada clique de edição dispara `triggerHaptic("light")` e aplica estados visuais de `cursor-pointer`, `hover:bg-surface-hover/60` e `active:scale-[0.99]`.
+

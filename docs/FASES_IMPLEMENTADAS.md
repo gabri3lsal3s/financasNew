@@ -258,6 +258,18 @@
   4. **Botões de Ação Compactos (Icon-Only):** Botões discretos de ícones (`Check`, `X`, `RotateCcw`) com tamanhos adaptados (`size-7 sm:size-8`), hover sutil e `title`/`aria-label` descritivos, mantendo a interface leve e elegante.
   5. **Seção Colapsável de Ocorrências Ignoradas:** `partitionFeedback` separa as ocorrências ativas das ignoradas. As ignoradas ficam guardadas em um container colapsável *"Ocorrências ignoradas (N)"* ao final da página, permitindo ao usuário abrir a qualquer momento e restaurar qualquer item com 1 clique.
   6. **Qualidade & Testes:** Suíte de testes unitários dedicada em `insight-list.test.tsx` e `domain/insights/index.test.ts` (142 arquivos / 1155 testes verdes).
+---
+
+## Refatoração de UI/UX — Interação Integral do Elemento & Remoção de Lápis (2026-08-17)
+
+- **Problema:** A aplicação utilizava botões redundantes de edição ("ícone de lápis") ao lado de vários elementos da interface (categorias, dívidas, orçamentos, lançamentos do ativo e carteira de cartões). Isso causava poluição visual, reduzia a área clicável no mobile e tornava a interação menos fluida e moderna.
+- **Solução:**
+  1. **Interação no Nível do Container:** O próprio cartão/linha torna-se clicável (`onClick` + teclado `Enter`/`Space`) para acionar o modal/diálogo de edição com feedback háptico (`triggerHaptic("light")`).
+  2. **Eliminação de Botões de Lápis:** Removidos todos os botões de edição dedicados com ícone de lápis nas páginas de **Categorias** (`categories-page.tsx`), **Dívidas** (`debts-page.tsx`), **Orçamentos** (`budgets-page.tsx`), **Lançamentos da Carteira** (`transaction-list-dialog.tsx`), **Posições da Carteira** (`position-table.tsx`) e **Carteira de Cartões** (`credit-card-wallet.tsx`).
+  3. **Acessibilidade Estrita & Prevenção de Controles Aninhados:** Ações secundárias (ex.: botão "Quitar/Quitada" em dívidas, exclusão em lançamentos) foram estruturadas como irmãos flexíveis (*siblings*), eliminando violações de controles interativos aninhados (*nested-interactive*) e garantindo 100% de conformidade com auditorias axe (WCAG 2.1 AA).
+  4. **Micro-interações & Estilo:** Estados de interação padronizados com `cursor-pointer`, `hover:bg-surface-hover/60` e `active:scale-[0.99]`.
+  5. **Qualidade & Testes:** Suíte completa com 143 arquivos e 1164 testes 100% aprovados, typecheck e lint limpos.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

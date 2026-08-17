@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, List, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, List, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
@@ -48,85 +48,103 @@ export interface PositionTableProps {
   sortable?: boolean;
 }
 
-type SortKey =
-  | "ticker"
-  | "quantity"
-  | "price"
-  | "averageCost"
-  | "value"
-  | "unrealizedPct"
-  | "pct";
+type SortKey = "ticker" | "quantity" | "price" | "averageCost" | "value" | "unrealizedPct" | "pct";
+type SortDirection = "asc" | "desc";
 
-const SORT_ACCESSOR: Record<SortKey, (row: PositionRow) => number | string> = {
-  ticker: (row) => row.ticker,
-  quantity: (row) => row.quantity,
-  price: (row) => row.priceBRL,
-  averageCost: (row) => row.averageCost,
-  value: (row) => row.valueBRL,
-  unrealizedPct: (row) => row.unrealizedPct ?? Number.NEGATIVE_INFINITY,
-  pct: (row) => row.pct,
-};
-
-const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> = {
-  manual: { label: "manual", title: "Preço informado manualmente (prevalece sobre API/fallback)" },
-  api: { label: "cotação", title: "Preço do cache de cotações" },
-  fallback: { label: "referência", title: "Preço de referência estático (sem cotação atualizada)" },
-};
-
-/** Quantidade formatada (inteiro sem casas; fracionário até 4). */
-function formatQuantity(quantity: number): string {
-  return Number.isInteger(quantity) ? String(quantity) : quantity.toFixed(4);
+interface SortState {
+  key: SortKey;
+  direction: SortDirection;
 }
 
-/** Cabeçalho clicável com direção (F17 — ordenação acessível). */
-function SortableHeader({ label, active, direction, onClick }: { label: string; active: boolean; direction: "asc" | "desc"; onClick: () => void }) {
+const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> = {
+  manual: { label: "manual", title: "Preço definido manualmente pelo usuário" },
+  api: { label: "cotação", title: "Cotação de fechamento atualizada via API" },
+  fallback: { label: "fallback", title: "Preço estimado por fallback estático" },
+};
+
+const formatQuantity = (quantity: number): string =>
+  Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+
+function SortableHeader({
+  label,
+  active,
+  direction,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  direction: SortDirection;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
-      className="inline-flex items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
+      className={cn(
+        "inline-flex items-center gap-1 font-semibold text-foreground transition-colors hover:text-primary",
+        active && "text-primary",
+      )}
+      aria-label={`Ordenar por ${label} (${active ? (direction === "asc" ? "crescente" : "decrescente") : "clique para ordenar"})`}
     >
-      {label}
+      <span>{label}</span>
       {active ? (
         direction === "asc" ? (
-          <ArrowUp className="size-3" aria-hidden="true" />
+          <ArrowUp className="size-3.5" aria-hidden="true" />
         ) : (
-          <ArrowDown className="size-3" aria-hidden="true" />
+          <ArrowDown className="size-3.5" aria-hidden="true" />
         )
       ) : (
-        <ArrowUpDown className="size-3 opacity-50" aria-hidden="true" />
+        <ArrowUpDown className="size-3.5 text-muted-foreground/60" aria-hidden="true" />
       )}
     </button>
   );
 }
 
 /**
- * Posição da carteira — módulo de domínio reutilizável (F4 + F14).
- * Recebe linhas prontas (posição derivada no state); marca a fonte do preço,
- * destacando o override manual ("informado manualmente" — DoD F4), e exibe a
- * rentabilidade não realizada com tom semântico (F14 — valores calculados no
- * domínio, a UI só formata). Respeita o toggle global de densidade (F8).
- * `sortable` (F17) habilita ordenação por coluna clicável (aria-sort).
+ * Tabela de posições (§3.11.1 / §F17) — ledger derivado:
+ * - Desktop (sm+): tabela completa com ordenação opcional por coluna.
+ * - Mobile (<sm): lista de cards empilhados sem scroll horizontal (F28).
+ * - Ações contextuais: registrar transação (compra/venda), extrato de lançamentos,
+ *   edição cadastral e exclusão em cascata.
  */
-export function PositionTable({ rows, onRegisterTransaction, onListTransactions, onEditAsset, onDeleteAsset, emptyMessage, sortable = false }: PositionTableProps) {
+export function PositionTable({
+  rows,
+  onRegisterTransaction,
+  onListTransactions,
+  onEditAsset,
+  onDeleteAsset,
+  emptyMessage,
+  sortable = false,
+}: PositionTableProps) {
   const density = useDensity();
-  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" } | null>(null);
+  const [sort, setSort] = useState<SortState | null>(null);
 
   const toggleSort = (key: SortKey) => {
     setSort((current) => {
-      if (current === null || current.key !== key) return { key, direction: "asc" };
+      if (!current || current.key !== key) return { key, direction: "asc" };
       if (current.direction === "asc") return { key, direction: "desc" };
       return null;
     });
   };
 
-  const sortedRows = sortable && sort ? [...rows].sort((a, b) => {
-    const av = SORT_ACCESSOR[sort.key](a);
-    const bv = SORT_ACCESSOR[sort.key](b);
-    const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
-    return sort.direction === "asc" ? cmp : -cmp;
-  }) : rows;
+  const sortedRows = [...rows].sort((a, b) => {
+    if (!sort) return 0;
+    const { key, direction } = sort;
+    let cmp = 0;
+    if (key === "ticker") cmp = a.ticker.localeCompare(b.ticker);
+    else if (key === "quantity") cmp = a.quantity - b.quantity;
+    else if (key === "price") cmp = a.priceBRL - b.priceBRL;
+    else if (key === "averageCost") cmp = a.averageCost - b.averageCost;
+    else if (key === "value") cmp = a.valueBRL - b.valueBRL;
+    else if (key === "pct") cmp = a.pct - b.pct;
+    else if (key === "unrealizedPct") {
+      const aVal = a.unrealizedPct ?? -Infinity;
+      const bVal = b.unrealizedPct ?? -Infinity;
+      cmp = aVal - bVal;
+    }
+    return direction === "asc" ? cmp : -cmp;
+  });
 
   const headerFor = (key: SortKey, label: string): ReactNode =>
     sortable ? (
@@ -149,12 +167,23 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
     {
       key: "ticker",
       header: headerFor("ticker", "Ativo"),
-      cell: (row) => (
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
-          {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
-        </div>
-      ),
+      cell: (row) =>
+        onEditAsset ? (
+          <button
+            type="button"
+            onClick={() => onEditAsset(row.assetId, row.ticker)}
+            className="flex min-w-0 flex-col gap-0.5 text-left group hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:underline"
+            aria-label={`Editar ${row.ticker}`}
+          >
+            <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{row.ticker}</span>
+            {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+            {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
+          </div>
+        ),
     },
     {
       key: "quantity",
@@ -162,7 +191,7 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
       align: "right",
       cell: (row) => (
         <span className="num text-sm text-muted-foreground">
-          {row.isCash ? "—" : Number.isInteger(row.quantity) ? row.quantity : row.quantity.toFixed(4)}
+          {row.isCash ? "—" : formatQuantity(row.quantity)}
         </span>
       ),
     },
@@ -218,12 +247,12 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
       header: headerFor("unrealizedPct", "Rentab."),
       align: "right",
       cell: (row) => {
-        if (row.isCash || row.unrealizedPct === null) {
-          return <span className="num text-sm text-muted-foreground">—</span>;
-        }
+        if (row.isCash || row.unrealizedPct === null) return <span className="num text-sm text-muted-foreground">—</span>;
+        const text = formatSignedPct(row.unrealizedPct);
+        const tone = row.unrealizedPct >= 0 ? "positive" : "negative";
         return (
-          <span className={cn("num text-sm font-semibold", row.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong")}>
-            {formatSignedPct(row.unrealizedPct)}
+          <span className={cn("num text-sm font-semibold", tone === "positive" ? "text-positive-strong" : "text-negative-strong")}>
+            {text}
           </span>
         );
       },
@@ -236,7 +265,7 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
     },
   ];
 
-  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onEditAsset || onDeleteAsset);
+  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onDeleteAsset);
 
   if (hasRowActions) {
     columns.push({
@@ -248,7 +277,6 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
           row={row}
           onRegisterTransaction={onRegisterTransaction}
           onListTransactions={onListTransactions}
-          onEditAsset={onEditAsset}
           onDeleteAsset={onDeleteAsset}
         />
       ),
@@ -257,8 +285,6 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
 
   return (
     <>
-      {/* F28 — mobile: cards empilhados (legíveis, sem scroll horizontal).
-          A tabela completa fica para sm+ (a mesma ordenação vale nos dois). */}
       <ul aria-label="Posições (visão móvel)" className="flex flex-col gap-2 sm:hidden">
         {sortedRows.length === 0 ? (
           <li className="rounded-xl border border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
@@ -276,8 +302,29 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
                 : row.unrealizedPct >= 0
                   ? "text-positive-strong"
                   : "text-negative-strong";
+            const isClickable = Boolean(onEditAsset);
             return (
-              <li key={row.assetId} className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3.5 shadow-sm">
+              <li
+                key={row.assetId}
+                role={isClickable ? "button" : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                aria-label={isClickable ? `Editar ${row.ticker}` : undefined}
+                onClick={isClickable ? () => onEditAsset?.(row.assetId, row.ticker) : undefined}
+                onKeyDown={
+                  isClickable
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onEditAsset?.(row.assetId, row.ticker);
+                        }
+                      }
+                    : undefined
+                }
+                className={cn(
+                  "flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3.5 shadow-sm transition-colors",
+                  isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                )}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
@@ -328,7 +375,6 @@ export function PositionTable({ rows, onRegisterTransaction, onListTransactions,
                       row={row}
                       onRegisterTransaction={onRegisterTransaction}
                       onListTransactions={onListTransactions}
-                      onEditAsset={onEditAsset}
                       onDeleteAsset={onDeleteAsset}
                     />
                   </div>
@@ -356,12 +402,11 @@ interface PositionRowActionsProps {
   row: PositionRow;
   onRegisterTransaction?: (assetId: string, ticker: string) => void;
   onListTransactions?: (assetId: string, ticker: string) => void;
-  onEditAsset?: (assetId: string, ticker: string) => void;
   onDeleteAsset?: (assetId: string, ticker: string) => void;
 }
 
 /** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28). */
-function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onEditAsset, onDeleteAsset }: PositionRowActionsProps) {
+function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onDeleteAsset }: PositionRowActionsProps) {
   return (
     <div className="flex items-center justify-end gap-1">
       {onRegisterTransaction ? (
@@ -371,7 +416,10 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
           variant="ghost"
           className="min-h-11"
           aria-label={`Registrar transação de ${row.ticker}`}
-          onClick={() => onRegisterTransaction(row.assetId, row.ticker)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRegisterTransaction(row.assetId, row.ticker);
+          }}
         >
           Movimentar
         </Button>
@@ -383,21 +431,12 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
           variant="ghost"
           className="min-h-9 px-2"
           aria-label={`Lançamentos de ${row.ticker}`}
-          onClick={() => onListTransactions(row.assetId, row.ticker)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onListTransactions(row.assetId, row.ticker);
+          }}
         >
           <List className="size-4" aria-hidden="true" />
-        </Button>
-      ) : null}
-      {onEditAsset ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="min-h-9 px-2"
-          aria-label={`Editar ${row.ticker}`}
-          onClick={() => onEditAsset(row.assetId, row.ticker)}
-        >
-          <Pencil className="size-4" aria-hidden="true" />
         </Button>
       ) : null}
       {onDeleteAsset ? (
@@ -407,7 +446,10 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
           variant="ghost"
           className="min-h-9 px-2 text-negative-strong hover:text-negative-strong"
           aria-label={`Excluir ${row.ticker}`}
-          onClick={() => onDeleteAsset(row.assetId, row.ticker)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeleteAsset(row.assetId, row.ticker);
+          }}
         >
           <Trash2 className="size-4" aria-hidden="true" />
         </Button>
