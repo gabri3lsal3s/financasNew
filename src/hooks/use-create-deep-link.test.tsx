@@ -34,15 +34,24 @@ describe("useCreateDeepLink (F12 — FAB contextual)", () => {
     expect(result.current.open).toBe(false);
   });
 
-  it("abre e fecha pelo estado local (botão da página) sem tocar na URL", () => {
+  it("abre e fecha sincronizando com a URL por replace", () => {
     const { result } = renderHook(() => useCreateDeepLink("cartao"));
 
     act(() => result.current.setOpen(true));
     expect(result.current.open).toBe(true);
+    expect(setSearchParamsMock).toHaveBeenCalledTimes(1);
+    const openUpdater = setSearchParamsMock.mock.calls[0]?.[0];
+    const openNext = typeof openUpdater === "function" ? openUpdater(new URLSearchParams()) : undefined;
+    expect(openNext?.get("novo")).toBe("cartao");
+
+    setSearchParamsMock.mockReset();
 
     act(() => result.current.setOpen(false));
     expect(result.current.open).toBe(false);
-    expect(setSearchParamsMock).not.toHaveBeenCalled();
+    expect(setSearchParamsMock).toHaveBeenCalledTimes(1);
+    const closeUpdater = setSearchParamsMock.mock.calls[0]?.[0];
+    const closeNext = typeof closeUpdater === "function" ? closeUpdater(new URLSearchParams("novo=cartao")) : undefined;
+    expect(closeNext?.get("novo")).toBeNull();
   });
 
   it("fechar um diálogo aberto por deep-link limpa o parâmetro (replace)", () => {

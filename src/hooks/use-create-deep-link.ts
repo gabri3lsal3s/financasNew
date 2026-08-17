@@ -23,16 +23,18 @@ export function useCreateDeepLink(key: string, param = "novo"): {
 
   const setOpen = (next: boolean) => {
     setLocalOpen(next);
-    if (!next && fromUrl) {
-      setSearchParams(
-        (prev) => {
-          const updated = new URLSearchParams(prev);
+    setSearchParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        if (next) {
+          updated.set(param, key);
+        } else if (updated.get(param) === key) {
           updated.delete(param);
-          return updated;
-        },
-        { replace: true },
-      );
-    }
+        }
+        return updated;
+      },
+      { replace: true },
+    );
   };
 
   return { open, setOpen, fromUrl };
