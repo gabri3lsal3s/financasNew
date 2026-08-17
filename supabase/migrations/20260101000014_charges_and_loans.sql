@@ -36,6 +36,7 @@ create table if not exists public.loans (
 
 alter table public.loans enable row level security;
 
+drop policy if exists "loans_owner_all" on public.loans;
 create policy "loans_owner_all"
   on public.loans
   for all
