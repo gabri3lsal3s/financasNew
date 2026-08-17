@@ -59,17 +59,12 @@
       html, body {
         margin: 0;
         padding: 0;
-        background-color: #0C1923;
-        color: #E6EFF5;
+        background-color: #F4F7F9;
+        color: #142531;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow-x: hidden;
-      }
-
-      html[data-theme="light"], html[data-theme="light"] body {
-        background-color: #F4F7F9;
-        color: #142531;
       }
 
       html[data-theme="dark"], html[data-theme="dark"] body {
@@ -82,107 +77,43 @@
         color: #FFFFFF;
       }
 
-      /* ---- Splash Screen Inline — Azul Petróleo Abissal (#0C1923) padronizado com a marca ---- */
+      /* ---- Splash Screen Inline — Fundo branco puro com somente o ícone ---- */
       #app-splash {
         position: fixed;
         inset: 0;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 36px;
-        background-color: #0C1923;
+        background-color: #FFFFFF;
         transition: opacity 0.22s ease-out;
         z-index: 9999;
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
       }
 
-      html[data-theme="oled"] #app-splash {
-        background-color: #000000;
-      }
-
-      /* Wrapper e Halo do Ícone (ampliado para destaque visual) */
-      #app-splash-icon-wrap {
-        position: relative;
-        width: 144px;
-        height: 144px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #app-splash-glow {
-        position: absolute;
-        inset: -32px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(45, 212, 191, 0.28) 0%, transparent 70%);
-        animation: splash-glow 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-      }
-
       #app-splash-icon {
         width: 144px;
         height: 144px;
         display: block;
-        position: relative;
-        z-index: 1;
-        animation: splash-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation: splash-pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         user-select: none;
         -webkit-user-drag: none;
-      }
-
-      /* Barra de progresso sutil */
-      #app-splash-progress {
-        width: 160px;
-        height: 3.5px;
-        border-radius: 9999px;
-        background-color: rgba(45, 212, 191, 0.15);
-        overflow: hidden;
-        position: relative;
-      }
-
-      #app-splash-progress-bar {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 45%;
-        border-radius: 9999px;
-        background: linear-gradient(90deg, transparent, #2DD4BF, transparent);
-        animation: splash-progress 1.5s ease-in-out infinite;
       }
 
       /* Keyframes */
       @keyframes splash-pulse {
         0%, 100% { opacity: 1; transform: scale(1); }
-        50%       { opacity: 0.90; transform: scale(0.97); }
-      }
-
-      @keyframes splash-glow {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50%       { transform: scale(1.18); opacity: 0.6; }
-      }
-
-      @keyframes splash-progress {
-        0%   { transform: translateX(-120%); }
-        100% { transform: translateX(280%); }
+        50%       { opacity: 0.92; transform: scale(0.97); }
       }
 
       /* Redução de movimento */
       @media (prefers-reduced-motion: reduce) {
-        #app-splash-icon,
-        #app-splash-glow,
-        #app-splash-progress-bar {
+        #app-splash-icon {
           animation: none;
         }
       }
 
-      html[data-motion="reduced"] #app-splash-icon,
-      html[data-motion="reduced"] #app-splash-glow,
-      html[data-motion="reduced"] #app-splash-progress-bar {
-        animation: none;
-      }
-
-      html[data-motion="eco"] #app-splash-progress-bar {
+      html[data-motion="reduced"] #app-splash-icon {
         animation: none;
       }
 
@@ -195,22 +126,16 @@
   </head>
   <body>
     <div id="root">
-      <!-- Splash screen inline (sem texto, ícone 144px aumentado, azul petróleo padronizado) -->
+      <!-- Splash screen inline (fundo branco puro, somente o ícone) -->
       <div id="app-splash" aria-hidden="true" role="presentation">
-        <div id="app-splash-icon-wrap">
-          <div id="app-splash-glow"></div>
-          <img
-            id="app-splash-icon"
-            src="/brand/logo.png"
-            alt=""
-            width="144"
-            height="144"
-            decoding="async"
-          />
-        </div>
-        <div id="app-splash-progress">
-          <div id="app-splash-progress-bar"></div>
-        </div>
+        <img
+          id="app-splash-icon"
+          src="/brand/logo.png"
+          alt=""
+          width="144"
+          height="144"
+          decoding="async"
+        />
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
