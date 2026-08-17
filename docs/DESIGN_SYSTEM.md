@@ -363,7 +363,7 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 ### 14.12 Micro-Interações "Obsidian Glass" & Indicadores Reativos de Ação
 - **Morphing Action Buttons (`InsightList`):** Em Assinaturas & Recorrências, a ação de ignorar ou confirmar é unificada em botões de ação que transmitem transição imediata de estado com micro-animação física (`animate-spring-pop`) e remoção de badges redundantes.
 - **Checklist Interativo de Aportes (`AporteResult`):** As rotas de aporte sugeridas suportam marcação de execução em lote ("Pendente" ↔ "Feito") com contagem dinâmica de execução nos KPIs e disparo háptico imediato (`light` / `success`).
-- **Alerta Reativo de Orçamento (`BudgetProgressBar`):** Indicador visual de progresso com transição CSS contínua (`transition-[width,background-color] duration-300`) e micro-pulso (`animate-live-pulse`) no rótulo "Excedido" quando o limite da categoria é ultrapassado.
+- **Barra de Progresso de Orçamento (`BudgetProgressBar` & `Progress`):** Indicador visual de progresso com transição CSS contínua (`transition-[width,background-color] duration-300`) e destaque tipográfico semântico (`text-critical`) para o estado "Excedido".
 - **Controles Globais Responsivos (`PrivacyToggle`, `MonthPicker`):** Navegação mensal por slide suave com `animate-fade-slide-in` e alternância do modo privacidade com micro-rotação `animate-spring-pop` e disparo háptico calibrado.
 - **Respeito a Níveis de Movimento:** Todas as animações são suprimidas ou simplificadas automaticamente nos modos `eco` e `reduced` via `data-motion` no root.
 

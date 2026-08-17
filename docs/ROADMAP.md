@@ -1408,9 +1408,9 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 2. **Micro-interações no Módulo de Dívidas (`DebtsPage` & `SettleDialog`):**
    - Transição visual no status de quitação de dívidas com ícone `CheckCircle2` animado (`animate-spring-pop`).
    - Feedback háptico tátil (`triggerHaptic("light")`) em botões de ação e `triggerHaptic("success")` na conclusão de quitação via `SettleDialog`.
-3. **Alerta Reativo e Transição Contínua em Orçamentos (`BudgetProgressBar` & `Progress`):**
+3. **Transição Contínua em Orçamentos (`BudgetProgressBar` & `Progress`):**
    - Barra de progresso com transição CSS suave de preenchimento (`transition-[width,background-color] duration-300 ease-out`).
-   - Micro-pulso `animate-live-pulse` no indicador "Excedido" para destaque visual claro e elegante.
+   - Destaque semântico nítido com `text-critical` para o indicador "Excedido".
 4. **Transições Suaves nos Controles Globais (`PrivacyToggle` & `MonthPicker`):**
    - Micro-rotação elástica no ícone de privacidade com disparo háptico calibrado por estado.
    - Transição deslizante suave `animate-fade-slide-in` no label do seletor mensal e feedback háptico na navegação.

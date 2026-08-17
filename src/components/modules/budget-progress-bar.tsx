@@ -27,7 +27,7 @@ export function BudgetProgressBar({ spentCents, limitCents, label }: BudgetProgr
           <span className="text-muted-foreground">de</span>
           <MoneyText cents={limitCents} tone="default" className="text-xs text-muted-foreground" />
         </span>
-        <span className={over ? "num shrink-0 text-xs font-semibold text-critical animate-live-pulse" : "num shrink-0 text-xs text-muted-foreground"}>
+        <span className={over ? "num shrink-0 text-xs font-semibold text-critical" : "num shrink-0 text-xs text-muted-foreground"}>
           {over ? "Excedido" : `${Math.round(percent)}%`}
         </span>
       </div>
