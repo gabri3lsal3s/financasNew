@@ -103,7 +103,7 @@ export function calculateLoanSchedule(input: LoanScheduleInput): LoanScheduleRes
 
       schedule.push({
         installmentNumber: i,
-        dueDate: addMonthsToDate(input.startDate, i),
+        dueDate: addMonthsToDate(input.startDate, i - 1),
         amountCents: installmentTotal,
         principalCents: amortization,
         interestCents: interest,
@@ -127,7 +127,7 @@ export function calculateLoanSchedule(input: LoanScheduleInput): LoanScheduleRes
 
       schedule.push({
         installmentNumber: i,
-        dueDate: addMonthsToDate(input.startDate, i),
+        dueDate: addMonthsToDate(input.startDate, i - 1),
         amountCents: actualPmt,
         principalCents: principal,
         interestCents: interest,
@@ -155,7 +155,7 @@ export function calculateLoanSchedule(input: LoanScheduleInput): LoanScheduleRes
 
       schedule.push({
         installmentNumber: i,
-        dueDate: addMonthsToDate(input.startDate, i),
+        dueDate: addMonthsToDate(input.startDate, i - 1),
         amountCents: actualPmt,
         principalCents: principal,
         interestCents: interest,

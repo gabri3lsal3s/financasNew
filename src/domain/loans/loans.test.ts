@@ -13,6 +13,9 @@ describe("calculateLoanSchedule", () => {
 
     expect(res.principalCents).toBe(100000);
     expect(res.schedule).toHaveLength(5);
+    expect(res.schedule[0]?.dueDate).toBe("2026-01-10");
+    expect(res.schedule[1]?.dueDate).toBe("2026-02-10");
+    expect(res.schedule[4]?.dueDate).toBe("2026-05-10");
     expect(res.totalInterestCents).toBeGreaterThan(0);
     expect(res.schedule[4]?.remainingBalanceCents).toBe(0);
   });

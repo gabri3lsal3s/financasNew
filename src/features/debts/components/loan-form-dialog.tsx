@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
+import { Alert, Button, DatePicker, Input, Modal, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import { toISODate } from "@/domain/money";
@@ -138,13 +138,13 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
             <label htmlFor="loan-installments" className="text-sm font-medium">
               Número de parcelas
             </label>
-            <Input
-              id="loan-installments"
-              type="number"
+            <NumberStepperInput
               min={1}
               max={420}
-              value={String(installmentsCount)}
-              onChange={(e) => setInstallmentsCount(Math.max(1, parseInt(e.target.value) || 1))}
+              step={1}
+              value={installmentsCount}
+              onValueChange={(val) => setInstallmentsCount(Math.max(1, parseInt(val) || 1))}
+              ariaLabel="Número de parcelas"
             />
           </div>
         </div>
