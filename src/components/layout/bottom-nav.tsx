@@ -24,8 +24,7 @@ const cartoes = requiredSlot("/cartoes");
  * (sem desviar de rota ou perder o contexto da tela ativa).
  * - /dividas -> ?novo=divida
  * - /categorias -> ?novo=categoria
- * - /cartoes -> ?novo=cartao
- * - Demais páginas (/, /transacoes, /orcamentos, /relatorios, /insights, /investments, /lembretes, /configuracoes) -> ?novo=transacao
+ * - Demais páginas (/, /cartoes, /transacoes, /orcamentos, /relatorios, /insights, /investments, /lembretes, /configuracoes) -> ?novo=transacao
  */
 function getFabAction(pathname: string, search = ""): { to: string; label: string } {
   const params = new URLSearchParams(search);
@@ -36,10 +35,6 @@ function getFabAction(pathname: string, search = ""): { to: string; label: strin
   if (pathname === "/categorias") {
     params.set("novo", "categoria");
     return { to: `${pathname}?${params.toString()}`, label: "Nova categoria" };
-  }
-  if (pathname === "/cartoes") {
-    params.set("novo", "cartao");
-    return { to: `${pathname}?${params.toString()}`, label: "Novo cartão" };
   }
   params.set("novo", "transacao");
   return { to: `${pathname}?${params.toString()}`, label: "Nova transação" };

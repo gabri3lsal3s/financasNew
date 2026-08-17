@@ -35,10 +35,10 @@ describe("BottomNav 5 slots (F7.1)", () => {
     expect(screen.getByRole("link", { name: "Nova transação" })).toHaveAttribute("href", "/transacoes?novo=transacao");
   });
 
-  it("FAB central em Cartões abre a criação de cartão preservando a rota (/cartoes?novo=cartao)", () => {
+  it("FAB central em Cartões abre o wizard de lançamento preservando a rota (/cartoes?novo=transacao)", () => {
     renderNav("/cartoes");
-    const fab = screen.getByRole("link", { name: "Novo cartão" });
-    expect(fab).toHaveAttribute("href", "/cartoes?novo=cartao");
+    const fab = screen.getByRole("link", { name: "Nova transação" });
+    expect(fab).toHaveAttribute("href", "/cartoes?novo=transacao");
   });
 
   it("FAB central é contextual: em Dívidas/Categorias abre o formulário correspondente", () => {
