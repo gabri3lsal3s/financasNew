@@ -165,19 +165,30 @@ export function NumberStepperInput({
       </button>
 
       <input
-        type="number"
+        type="text"
         inputMode="decimal"
         value={value}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        min={min}
-        max={max}
-        step={step}
         disabled={disabled}
-        onChange={(event) => onValueChange(event.target.value)}
+        onChange={(event) => {
+          // Aceita apenas dígitos, vírgula e ponto
+          const raw = event.target.value.replace(/[^0-9.,]/g, "");
+          onValueChange(raw);
+        }}
+        onBlur={(event) => {
+          // Ao sair do campo, normaliza e clampeia o valor
+          const parsed = parseFloat(event.target.value.replace(",", "."));
+          if (Number.isFinite(parsed)) {
+            let clamped = parsed;
+            if (min !== undefined) clamped = Math.max(min, clamped);
+            if (max !== undefined) clamped = Math.min(max, clamped);
+            onValueChange(String(clamped));
+          }
+        }}
         className={cn(
           "h-10 min-w-0 flex-1 rounded-md border border-input bg-surface px-2 text-center font-mono text-base tabular-nums text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          // Estado visual do long-press nos botões (aria-pressed).
+          // Estado visual do long-press nos botões.
           holding && "select-none",
         )}
       />

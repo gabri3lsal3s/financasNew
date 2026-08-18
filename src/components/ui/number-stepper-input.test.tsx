@@ -73,7 +73,7 @@ describe("NumberStepperInput (F25/pós-F13)", () => {
   it("digitação manual continua livre (decimal)", () => {
     const { onValueChange } = renderStepper();
 
-    const input = screen.getByRole("spinbutton", { name: "quantidade" });
+    const input = screen.getByRole("textbox", { name: "quantidade" });
     fireEvent.change(input, { target: { value: "42" } });
     expect(onValueChange).toHaveBeenLastCalledWith("42");
   });
