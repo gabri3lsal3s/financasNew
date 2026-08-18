@@ -104,15 +104,15 @@ const MOTION_OPTIONS: { id: MotionLevel; label: string; desc: string }[] = [
 ];
 
 const REMINDER_DAYS_OPTIONS: SelectOption[] = [
-  { value: "0", label: "No dia do vencimento (0 dias)" },
+  { value: "0", label: "No vencimento" },
   { value: "1", label: "1 dia antes" },
   { value: "2", label: "2 dias antes" },
-  { value: "3", label: "3 dias antes (Padrão recomendado)" },
+  { value: "3", label: "3 dias antes (padrão)" },
   { value: "5", label: "5 dias antes" },
-  { value: "7", label: "7 dias antes (1 semana)" },
+  { value: "7", label: "7 dias antes" },
   { value: "10", label: "10 dias antes" },
-  { value: "15", label: "15 dias antes (2 semanas)" },
-  { value: "30", label: "30 dias antes (1 mês)" },
+  { value: "15", label: "15 dias antes" },
+  { value: "30", label: "30 dias antes" },
 ];
 
 export function SettingsPage() {
