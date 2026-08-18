@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink } from "react-router";
+import { NavLink, useLocation } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { navItems } from "@/components/layout/nav-items";
+import { scrollToTop } from "@/services/scroll";
 import { useReminders } from "@/state";
 
 /** Atraso do hover-expand: evita disparos acidentais com mouse rápido (F25). */
@@ -27,6 +28,7 @@ export interface SidebarProps {
  * persistência (`useSidebarState`).
  */
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+  const location = useLocation();
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,6 +83,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         {navItems.map((item) => {
           const isReminders = item.path === "/lembretes";
           const showBadge = isReminders && totalCount > 0;
+          const isCurrent =
+            item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
 
           return (
             <NavLink
@@ -89,6 +93,14 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               end={item.path === "/"}
               aria-label={expanded ? undefined : item.label}
               title={expanded ? undefined : item.label}
+              onClick={(e) => {
+                if (isCurrent) {
+                  const scrolled = scrollToTop();
+                  if (scrolled) {
+                    e.preventDefault();
+                  }
+                }
+              }}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap relative",

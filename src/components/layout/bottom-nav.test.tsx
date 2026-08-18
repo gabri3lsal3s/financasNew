@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { BottomNav } from "./bottom-nav";
@@ -88,5 +88,19 @@ describe("BottomNav 5 slots (F7.1)", () => {
     expect(screen.getByRole("link", { name: "Início" }).className).not.toContain(
       "text-primary-strong",
     );
+  });
+
+  it("ao clicar na aba já ativa, dispara scrollToTop", () => {
+    const main = document.createElement("main");
+    main.id = "main-content";
+    main.scrollTop = 300;
+    main.scrollTo = vi.fn();
+    document.body.appendChild(main);
+
+    renderNav("/transacoes");
+    const link = screen.getByRole("link", { name: "Transações" });
+    fireEvent.click(link);
+
+    expect(main.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
   });
 });

@@ -376,7 +376,16 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Controles Globais Responsivos (`PrivacyToggle`, `MonthPicker`):** Navegação mensal por slide suave com `animate-fade-slide-in` e alternância do modo privacidade com micro-rotação `animate-spring-pop` e disparo háptico calibrado.
 - **Respeito a Níveis de Movimento:** Todas as animações são suprimidas ou simplificadas automaticamente nos modos `eco` e `reduced` via `data-motion` no root.
 
-### 14.13 Interação Integral do Elemento (Whole-Element Interaction & Remoção de Lápis)
+### 14.13 Rolagem ao Topo na Aba Ativa ("Tap-Active-Tab to Scroll to Top")
+- **Serviço Central:** `src/services/scroll.ts` (`scrollToTop`).
+- **Componentes:** `src/components/layout/bottom-nav.tsx` e `src/components/layout/sidebar.tsx`.
+- **Mecânica:**
+  - Ao clicar ou tocar em um item de navegação (BottomNav ou Sidebar) cuja rota **já é a rota ativa atual**, a aplicação não recarrega a página nem desvia o histórico: intercepta o evento e executa a rolagem suave até o topo (`#main-content` / `window`).
+  - **Feedback Sensorial:** No mobile, ao disparar a subida de uma página rolada (`scrollTop > 0`), emite um pulso háptico suave (`triggerSensory("selection", { skipSound: true })`), sem emissão sonora para preservar o silêncio e evitar fadiga auditiva na navegação.
+  - **Acessibilidade (`prefers-reduced-motion`):** Em ambientes com redução de movimento ativada, a rolagem ocorre instantaneamente (`behavior: "auto"`).
+  - **No-op Elegante:** Se a página já estiver no topo (`scrollTop === 0`), nenhum scroll ou vibração redundante é disparado.
+
+### 14.14 Interação Integral do Elemento (Whole-Element Interaction & Remoção de Lápis)
 - **Diretriz de Usabilidade:** Eliminação de botões de edição redundantes ("lápis") em listas e cartões de domínio (Categorias, Dívidas, Orçamentos, Posições da Carteira, Lançamentos e Cartões de Crédito). O próprio container ou linha torna-se o acionador primário da edição.
 - **Hierarquia Visual Limpa:** Telas ficam despoluídas e minimalistas, aumentando a área útil de toque (*touch target*) no mobile e a ergonomia no desktop.
 - **Acessibilidade Estrita & Prevenção de Controles Aninhados (WCAG / axe):**

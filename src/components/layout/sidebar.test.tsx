@@ -99,4 +99,18 @@ describe("Sidebar colapsável (F7.2)", () => {
     expect(screen.queryByText("Transações")).not.toBeInTheDocument();
     vi.useRealTimers();
   });
+
+  it("ao clicar no link da rota já ativa, dispara scrollToTop", () => {
+    const main = document.createElement("main");
+    main.id = "main-content";
+    main.scrollTop = 250;
+    main.scrollTo = vi.fn();
+    document.body.appendChild(main);
+
+    renderSidebar(false);
+    const link = screen.getByRole("link", { name: "Início" });
+    fireEvent.click(link);
+
+    expect(main.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+  });
 });

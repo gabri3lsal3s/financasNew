@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
 import { triggerSensory } from "@/services/sensory";
+import { scrollToTop } from "@/services/scroll";
 import { useReminders } from "@/state";
 
 /** Resolve um slot obrigatório da BottomNav a partir da fonte única de navegação. */
@@ -42,11 +43,24 @@ function getFabAction(pathname: string, search = ""): { to: string; label: strin
 }
 
 function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
+  const location = useLocation();
+  const isCurrent = end ? location.pathname === item.path : location.pathname.startsWith(item.path);
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isCurrent) {
+      const scrolled = scrollToTop({ sensoryFeedback: true });
+      if (scrolled) {
+        e.preventDefault();
+      }
+    }
+  };
+
   return (
     <NavLink
       to={item.path}
       end={end}
       aria-label={item.label}
+      onClick={handleClick}
       className={({ isActive }) =>
         cn(
           // Área de toque mínima 44×44px e destaque semântico (DESIGN_SYSTEM §13).
@@ -95,6 +109,14 @@ export function BottomNav() {
 
         <NavLink
           to="/mais"
+          onClick={(e) => {
+            if (location.pathname === "/mais") {
+              const scrolled = scrollToTop({ sensoryFeedback: true });
+              if (scrolled) {
+                e.preventDefault();
+              }
+            }
+          }}
           className={({ isActive }) =>
             cn(
               "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors relative",
