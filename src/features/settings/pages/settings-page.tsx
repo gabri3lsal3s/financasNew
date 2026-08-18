@@ -818,9 +818,9 @@ export function SettingsPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                <span>Lembretes & Notificações Automáticas</span>
-                <Badge variant={remindersEnabled ? "positive" : "muted"}>
+              <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
+                <span className="min-w-0">Lembretes & Notificações Automáticas</span>
+                <Badge variant={remindersEnabled ? "positive" : "muted"} className="shrink-0">
                   {remindersEnabled ? "Ativado" : "Desativado"}
                 </Badge>
               </CardTitle>
@@ -860,7 +860,8 @@ export function SettingsPage() {
 
               {remindersEnabled && (
                 <div className="grid gap-4 pt-2 sm:grid-cols-2">
-                  <div className="p-4 rounded-xl border border-border bg-surface space-y-3">
+                  {/* Card: Antecedência para Faturas */}
+                  <div className="p-4 rounded-xl border border-border bg-surface space-y-4">
                     <div>
                       <div className="font-semibold text-sm text-foreground">
                         Antecedência para Faturas de Cartão
@@ -870,7 +871,7 @@ export function SettingsPage() {
                       </p>
                     </div>
 
-                    <div className="space-y-2 pt-1">
+                    <div className="space-y-3">
                       <Select
                         value={
                           REMINDER_DAYS_OPTIONS.some((o) => o.value === String(billDaysBefore))
@@ -889,9 +890,9 @@ export function SettingsPage() {
                         }
                         ariaLabel="Seletor de dias de antecedência para faturas"
                       />
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-xs text-muted-foreground">Ajuste fino (dias):</span>
-                        <div className="w-36">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="text-xs text-muted-foreground shrink-0">Ajuste fino (dias):</span>
+                        <div className="w-full sm:w-40">
                           <NumberStepperInput
                             value={billDaysBefore}
                             onValueChange={handleUpdateBillDays}
@@ -905,7 +906,8 @@ export function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-xl border border-border bg-surface space-y-3">
+                  {/* Card: Antecedência para Dívidas */}
+                  <div className="p-4 rounded-xl border border-border bg-surface space-y-4">
                     <div>
                       <div className="font-semibold text-sm text-foreground">
                         Antecedência para Dívidas
@@ -915,7 +917,7 @@ export function SettingsPage() {
                       </p>
                     </div>
 
-                    <div className="space-y-2 pt-1">
+                    <div className="space-y-3">
                       <Select
                         value={
                           REMINDER_DAYS_OPTIONS.some((o) => o.value === String(debtDaysBefore))
@@ -934,9 +936,9 @@ export function SettingsPage() {
                         }
                         ariaLabel="Seletor de dias de antecedência para dívidas"
                       />
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-xs text-muted-foreground">Ajuste fino (dias):</span>
-                        <div className="w-36">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="text-xs text-muted-foreground shrink-0">Ajuste fino (dias):</span>
+                        <div className="w-full sm:w-40">
                           <NumberStepperInput
                             value={debtDaysBefore}
                             onValueChange={handleUpdateDebtDays}
