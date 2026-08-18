@@ -1,16 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { playSound } from "@/services/audio-fx";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { AssetFormDialog } from "./asset-form-dialog";
 
 const createAssetMock = vi.fn();
 const updateAssetMock = vi.fn();
 const deleteAssetMock = vi.fn();
 
-vi.mock("@/services/haptics", () => ({ triggerHaptic: vi.fn() }));
-vi.mock("@/services/audio-fx", () => ({ playSound: vi.fn() }));
+vi.mock("@/services/sensory", () => ({ triggerSensory: vi.fn() }));
 
 vi.mock("@/state", () => ({
   useCreatePortfolioAsset: () => ({ mutateAsync: createAssetMock, isPending: false }),
@@ -31,8 +29,7 @@ describe("AssetFormDialog — feedback de escrita (F15)", () => {
     createAssetMock.mockReset();
     updateAssetMock.mockReset();
     deleteAssetMock.mockReset();
-    vi.mocked(triggerHaptic).mockClear();
-    vi.mocked(playSound).mockClear();
+    vi.mocked(triggerSensory).mockClear();
   });
 
   it("dispara haptic success e áudio de confirmação ao adicionar um ativo", async () => {
@@ -48,8 +45,7 @@ describe("AssetFormDialog — feedback de escrita (F15)", () => {
     expect(createAssetMock).toHaveBeenCalledWith(
       expect.objectContaining({ ticker: "PETR4" }),
     );
-    expect(triggerHaptic).toHaveBeenCalledWith("success");
-    expect(playSound).toHaveBeenCalledWith("success", expect.any(Boolean));
+    expect(triggerSensory).toHaveBeenCalledWith("success");
   });
 
   it("não dispara feedback sem ticker preenchido", async () => {
@@ -60,8 +56,7 @@ describe("AssetFormDialog — feedback de escrita (F15)", () => {
     await user.click(screen.getByRole("button", { name: "Adicionar" }));
 
     expect(createAssetMock).not.toHaveBeenCalled();
-    expect(triggerHaptic).not.toHaveBeenCalled();
-    expect(playSound).not.toHaveBeenCalled();
+    expect(triggerSensory).not.toHaveBeenCalled();
   });
 
   it("modo edição: salva via update com os dados do ativo (CRUD completo)", async () => {
@@ -93,5 +88,6 @@ describe("AssetFormDialog — feedback de escrita (F15)", () => {
 
     expect(deleteAssetMock).toHaveBeenCalledTimes(1);
     expect(deleteAssetMock).toHaveBeenCalledWith("a1");
+    expect(triggerSensory).toHaveBeenCalledWith("destructive");
   });
 });

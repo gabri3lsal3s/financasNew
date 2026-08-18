@@ -1,16 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { playSound } from "@/services/audio-fx";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { TransactionFormDialog } from "./transaction-form-dialog";
 
 const createTxMock = vi.fn();
 const updateTxMock = vi.fn();
 const deleteTxMock = vi.fn();
 
-vi.mock("@/services/haptics", () => ({ triggerHaptic: vi.fn() }));
-vi.mock("@/services/audio-fx", () => ({ playSound: vi.fn() }));
+vi.mock("@/services/sensory", () => ({ triggerSensory: vi.fn() }));
 
 vi.mock("@/state", () => ({
   useCreatePortfolioTransaction: () => ({ mutateAsync: createTxMock, isPending: false }),
@@ -42,8 +40,7 @@ describe("TransactionFormDialog — feedback de escrita (F15)", () => {
     createTxMock.mockReset();
     updateTxMock.mockReset();
     deleteTxMock.mockReset();
-    vi.mocked(triggerHaptic).mockClear();
-    vi.mocked(playSound).mockClear();
+    vi.mocked(triggerSensory).mockClear();
   });
 
   it("dispara haptic success e áudio de confirmação ao registrar uma compra", async () => {
@@ -56,8 +53,7 @@ describe("TransactionFormDialog — feedback de escrita (F15)", () => {
     await user.click(screen.getByRole("button", { name: "Registrar" }));
 
     expect(createTxMock).toHaveBeenCalledTimes(1);
-    expect(triggerHaptic).toHaveBeenCalledWith("success");
-    expect(playSound).toHaveBeenCalledWith("success", expect.any(Boolean));
+    expect(triggerSensory).toHaveBeenCalledWith("success");
   });
 
   it("não dispara feedback quando o formulário está inválido", () => {
@@ -65,8 +61,7 @@ describe("TransactionFormDialog — feedback de escrita (F15)", () => {
 
     // Quantidade e preço zerados → botão desabilitado.
     expect(screen.getByRole("button", { name: "Registrar" })).toBeDisabled();
-    expect(triggerHaptic).not.toHaveBeenCalled();
-    expect(playSound).not.toHaveBeenCalled();
+    expect(triggerSensory).not.toHaveBeenCalled();
   });
 
   it("modo edição: salva via update com os dados da transação (CRUD completo)", async () => {
@@ -98,5 +93,6 @@ describe("TransactionFormDialog — feedback de escrita (F15)", () => {
 
     expect(deleteTxMock).toHaveBeenCalledTimes(1);
     expect(deleteTxMock).toHaveBeenCalledWith("tx1");
+    expect(triggerSensory).toHaveBeenCalledWith("destructive");
   });
 });

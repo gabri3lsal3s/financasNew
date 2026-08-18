@@ -103,7 +103,7 @@ describe("TransactionListDialog — extrato de lançamentos com CRUD", () => {
 
     expect(deleteTxMock).toHaveBeenCalledTimes(1);
     expect(deleteTxMock).toHaveBeenCalledWith("tx1");
-    expect(triggerHaptic).toHaveBeenCalledWith("warning");
+    expect(triggerHaptic).toHaveBeenCalledWith("destructive");
   });
 
   it("falha ao excluir fecha a confirmação (erro via toast do hook)", async () => {

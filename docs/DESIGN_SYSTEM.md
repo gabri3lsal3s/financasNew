@@ -312,18 +312,27 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Comportamento:** Ao alternar de mês ou atualizar valores de KPIs, os dígitos realizam interpolação suave em ~300ms via `requestAnimationFrame` em vez de um salto brusco.
 - **Acessibilidade:** Mantém fonte mono (`IBM Plex Mono`) e `tabular-nums` com largura fixa; respeita estritamente `prefers-reduced-motion: reduce` (exibição imediata sem transição).
 
-### 14.2 Feedback Háptico Tátil (Haptic Touch)
-- **Serviço:** `src/services/haptics.ts`.
-- **Intensidades padronizadas:**
-  - `light` (8ms) → toques em botões de filtro, tabs e teclas da calculadora.
-  - `medium` (14ms) → abertura do FAB central (`+ Novo`) e injeção de valor da calculadora.
-  - `success` (dois pulsos: 10ms + 40ms pausa + 12ms) → conclusão de lançamentos e pagamentos.
-  - `warning` / `error` (dois pulsos de 20ms) → exclusões e alertas críticos.
-- **Compatibilidade:** Degradação graciosa (ignora silenciosamente se o navegador/hardware não suportar `navigator.vibrate`).
+### 14.2 Feedback Sensorial Unificado (Sound & Haptic Feedback)
+- **Gateway Central:** `src/services/sensory.ts` (`triggerSensory`, `sensory.*`).
+- **Serviços Subjacentes:**
+  - Áudio: `src/services/audio-fx.ts` (Sintetizador Web Audio API de 6 efeitos: `click`, `pop`, `success`, `delete`, `warning`, `error`).
+  - Háptico: `src/services/haptics.ts` (`navigator.vibrate` com 6 padrões calibrados: `light`, `medium`, `success`, `warning`, `destructive`, `error`).
+- **Taxonomia de Intenções Semânticas:**
+  - `selection` → Toque suave (`light` / `click`) em tabs, datepickers, selects, toggles de filtro.
+  - `action` → Disparo de botões de comando primário/secundário e FAB (`light` / `click`).
+  - `toggle` → Alternância de switches e atalhos de exibição/privacidade (`light` / `pop`).
+  - `success` → Confirmações de persistência, criação e importação de lançamentos (`success` [12, 40, 24]ms / acorde harmônico `success`).
+  - `warning` → Avisos e atenções (`warning` [30, 40, 30]ms / bitom `warning`).
+  - `destructive` → Exclusões e operações destrutivas (`destructive` [40, 60, 40]ms / tom descendente `delete`).
+  - `error` → Falhas de validação e impedimentos (`error` [50, 40, 50, 40]ms / tom dissonante `error`).
+- **Governança de Preferências e Acessibilidade:**
+  - Switches independentes nas Configurações: `soundEnabled` (padrão: `false`) e `hapticEnabled` (padrão: `true`).
+  - Degradação graciosa: sem falhas em SSR, JSDOM ou navegadores/dispositivos sem suporte a `AudioContext` ou `navigator.vibrate`.
+  - Respeito a `prefers-reduced-motion` e governança centralizada sem chamadas soltas ou duplicadas nas telas.
 
 ### 14.3 Interação Direta de Linhas (Direct Click Interaction)
 - **Componente:** `src/components/modules/transaction-row.tsx`.
-- **Mecânica:** As linhas de transação utilizam o modelo de interação integral direta por clique/toque (Whole-Element Interaction). Clicar na linha abre o diálogo de detalhes/edição com disparo háptico suave (`triggerHaptic("light")`). Ações destrutivas (exclusão) são concentradas com segurança dentro dos diálogos de detalhes com confirmação explícita (`ConfirmDialog`), eliminando estados ocultos e colisões de gestos.
+- **Mecânica:** As linhas de transação utilizam o modelo de interação integral direta por clique/toque (Whole-Element Interaction). Clicar na linha abre o diálogo de detalhes/edição com disparo sensorial suave (`sensory.selection()`). Ações destrutivas (exclusão) são concentradas com segurança dentro dos diálogos de detalhes com confirmação explícita (`ConfirmDialog`), eliminando estados ocultos e colisões de gestos.
 
 ### 14.4 Controle de Densidade (Compacto vs. Confortável)
 - **Confortável (Padrão):** Linhas com altura de 48px a 52px (py 12px), ideal para uso tátil mobile.

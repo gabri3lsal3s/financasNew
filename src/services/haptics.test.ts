@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isHapticsSupported, triggerHaptic } from "./haptics";
 
 const vibrateMock = vi.fn();
@@ -10,6 +10,10 @@ function stubVibrate(): void {
     writable: true,
   });
 }
+
+beforeEach(() => {
+  vibrateMock.mockReset();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

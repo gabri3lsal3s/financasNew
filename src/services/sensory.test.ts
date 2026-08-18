@@ -1,15 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { updateVisualCustomization } from "@/hooks/use-visual-customization";
-import * as audioFx from "./audio-fx";
-import * as haptics from "./haptics";
+import { playSound } from "./audio-fx";
+import { triggerHaptic } from "./haptics";
 import { sensory, triggerSensory } from "./sensory";
 
-describe("sensory service", () => {
-  const triggerHapticSpy = vi.spyOn(haptics, "triggerHaptic");
-  const playSoundSpy = vi.spyOn(audioFx, "playSound");
+vi.mock("./haptics", () => ({
+  triggerHaptic: vi.fn(),
+  isHapticsSupported: vi.fn(() => true),
+}));
 
+vi.mock("./audio-fx", () => ({
+  playSound: vi.fn(),
+}));
+
+describe("sensory service", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.mocked(triggerHaptic).mockReset();
+    vi.mocked(playSound).mockReset();
     window.localStorage.clear();
     updateVisualCustomization({
       soundEnabled: false,
@@ -18,14 +25,14 @@ describe("sensory service", () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("dispara haptic mas não som quando soundEnabled = false e hapticEnabled = true", () => {
     triggerSensory("action");
 
-    expect(triggerHapticSpy).toHaveBeenCalledWith("light");
-    expect(playSoundSpy).not.toHaveBeenCalled();
+    expect(triggerHaptic).toHaveBeenCalledWith("light");
+    expect(playSound).not.toHaveBeenCalled();
   });
 
   it("dispara som quando soundEnabled = true", () => {
@@ -33,8 +40,8 @@ describe("sensory service", () => {
 
     triggerSensory("success");
 
-    expect(triggerHapticSpy).toHaveBeenCalledWith("success");
-    expect(playSoundSpy).toHaveBeenCalledWith("success", true);
+    expect(triggerHaptic).toHaveBeenCalledWith("success");
+    expect(playSound).toHaveBeenCalledWith("success", true);
   });
 
   it("não dispara haptic quando hapticEnabled = false", () => {
@@ -42,36 +49,38 @@ describe("sensory service", () => {
 
     triggerSensory("destructive");
 
-    expect(triggerHapticSpy).not.toHaveBeenCalled();
-    expect(playSoundSpy).toHaveBeenCalledWith("delete", true);
+    expect(triggerHaptic).not.toHaveBeenCalled();
+    expect(playSound).toHaveBeenCalledWith("delete", true);
   });
 
   it("respeita opções skipHaptic e skipSound", () => {
     updateVisualCustomization({ soundEnabled: true, hapticEnabled: true });
 
     triggerSensory("warning", { skipHaptic: true });
-    expect(triggerHapticSpy).not.toHaveBeenCalled();
-    expect(playSoundSpy).toHaveBeenCalledWith("warning", true);
+    expect(triggerHaptic).not.toHaveBeenCalled();
+    expect(playSound).toHaveBeenCalledWith("warning", true);
 
-    vi.clearAllMocks();
+    vi.mocked(triggerHaptic).mockClear();
+    vi.mocked(playSound).mockClear();
+
     triggerSensory("warning", { skipSound: true });
-    expect(triggerHapticSpy).toHaveBeenCalledWith("warning");
-    expect(playSoundSpy).not.toHaveBeenCalled();
+    expect(triggerHaptic).toHaveBeenCalledWith("warning");
+    expect(playSound).not.toHaveBeenCalled();
   });
 
   it("provê helpers utilitários convenientes (sensory.*)", () => {
     updateVisualCustomization({ soundEnabled: true, hapticEnabled: true });
 
     sensory.selection();
-    expect(triggerHapticSpy).toHaveBeenLastCalledWith("light");
-    expect(playSoundSpy).toHaveBeenLastCalledWith("click", true);
+    expect(triggerHaptic).toHaveBeenLastCalledWith("light");
+    expect(playSound).toHaveBeenLastCalledWith("click", true);
 
     sensory.toggle();
-    expect(triggerHapticSpy).toHaveBeenLastCalledWith("light");
-    expect(playSoundSpy).toHaveBeenLastCalledWith("pop", true);
+    expect(triggerHaptic).toHaveBeenLastCalledWith("light");
+    expect(playSound).toHaveBeenLastCalledWith("pop", true);
 
     sensory.error();
-    expect(triggerHapticSpy).toHaveBeenLastCalledWith("error");
-    expect(playSoundSpy).toHaveBeenLastCalledWith("error", true);
+    expect(triggerHaptic).toHaveBeenLastCalledWith("error");
+    expect(playSound).toHaveBeenLastCalledWith("error", true);
   });
 });

@@ -1,15 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { playSound } from "@/services/audio-fx";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { ManualPriceDialog } from "./manual-price-dialog";
 
 const setManualMock = vi.fn();
 const removeManualMock = vi.fn();
 
-vi.mock("@/services/haptics", () => ({ triggerHaptic: vi.fn() }));
-vi.mock("@/services/audio-fx", () => ({ playSound: vi.fn() }));
+vi.mock("@/services/sensory", () => ({ triggerSensory: vi.fn() }));
 
 vi.mock("@/state", () => ({
   useSetManualPrice: () => ({ mutateAsync: setManualMock, isPending: false }),
@@ -36,8 +34,7 @@ describe("ManualPriceDialog", () => {
   beforeEach(() => {
     setManualMock.mockReset();
     removeManualMock.mockReset();
-    vi.mocked(triggerHaptic).mockClear();
-    vi.mocked(playSound).mockClear();
+    vi.mocked(triggerSensory).mockClear();
   });
 
   it("permite salvar preço manual para um ativo com cotação de api", async () => {
@@ -56,8 +53,7 @@ describe("ManualPriceDialog", () => {
       ticker: "PETR4",
       price: 40.5,
     });
-    expect(triggerHaptic).toHaveBeenCalledWith("success");
-    expect(playSound).toHaveBeenCalledWith("success", expect.any(Boolean));
+    expect(triggerSensory).toHaveBeenCalledWith("success");
   });
 
   it("permite restaurar cotação automática em um ativo com preço manual", async () => {
@@ -74,7 +70,6 @@ describe("ManualPriceDialog", () => {
 
     expect(removeManualMock).toHaveBeenCalledTimes(1);
     expect(removeManualMock).toHaveBeenCalledWith("VALE3");
-    expect(triggerHaptic).toHaveBeenCalledWith("success");
-    expect(playSound).toHaveBeenCalledWith("success", expect.any(Boolean));
+    expect(triggerSensory).toHaveBeenCalledWith("success");
   });
 });
