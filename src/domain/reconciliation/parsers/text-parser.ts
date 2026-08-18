@@ -190,13 +190,14 @@ function extractAmountEntity(text: string): { amountStr: string; remainingText: 
 
 /**
  * Limpa palavras de preenchimento e conectivos de linguagem natural da descrição.
+ * Retorna string vazia se nada restar (o chamador define o fallback contextual).
  */
 function sanitizeNaturalDescription(desc: string): string {
   let cleaned = desc.trim();
 
-  // Remove verbos introdutórios comuns
+  // Remove verbos introdutórios de despesa e de renda
   cleaned = cleaned
-    .replace(/^(?:gastei|comprei|paguei|fiz uma compra|compra|despesa|lançamento)\s+(?:de\s+|em\s+|no\s+|na\s+)?/i, "")
+    .replace(/^(?:gastei|comprei|paguei|fiz uma compra|compra|despesa|lançamento|recebi(?:\s+de)?(?:\s+via)?|recebimento(?:\s+de)?|ganhei|entrou(?:\s+na\s+conta)?|creditado(?:\s+em\s+conta)?)\s+(?:de\s+|em\s+|no\s+|na\s+|via\s+)?/i, "")
     .replace(/\b(?:no\s+valor\s+de|pelo\s+valor\s+de|no\s+total\s+de|valor)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -205,11 +206,11 @@ function sanitizeNaturalDescription(desc: string): string {
   cleaned = cleaned
     .replace(/^[-–—:;,|./\s]+/, "")
     .replace(/[-–—:;,|./\s]+$/, "")
-    .replace(/^(?:no|na|em|de|por|com|para)\s+/i, "")
-    .replace(/\s+(?:por|de|no|na|em)\s*$/i, "")
+    .replace(/^(?:no|na|em|de|por|com|para|via)\s+/i, "")
+    .replace(/\s+(?:por|de|no|na|em|via)\s*$/i, "")
     .trim();
 
-  return cleaned || "Despesa";
+  return cleaned;
 }
 
 /**
@@ -249,7 +250,7 @@ export function parseNaturalLanguageLine(
   }
 
   // 3. Sanitiza a descrição
-  const description = sanitizeNaturalDescription(descCandidate);
+  const description = sanitizeNaturalDescription(descCandidate) || descCandidate.trim() || "Transação";
 
   return {
     date: dateStr,

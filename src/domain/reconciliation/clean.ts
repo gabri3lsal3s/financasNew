@@ -115,14 +115,22 @@ const INVESTMENT_OR_TRANSFER_KEYWORDS = [
 ];
 
 const INFLOW_KEYWORDS = [
+  // Movimentos bancários padrão
   "pix recebido",
   "pix recebid",
+  "recebimento pix",
   "ted recebida",
+  "ted recebido",
   "doc recebido",
+  "transferencia recebida",
+  "transferência recebida",
   "credito em conta",
   "crédito em conta",
+  "crédito recebido",
+  "creditado",
   "deposito",
   "depósito",
+  // Remuneração / trabalho
   "salario",
   "salário",
   "folha de pagto",
@@ -133,12 +141,24 @@ const INFLOW_KEYWORDS = [
   "remuneracao",
   "remuneração",
   "holerite",
+  // Rendimentos financeiros
   "rendimento",
   "dividendos",
   "juros sobre capital",
   "jcp",
   "provento",
   "proventos",
+  // Frases de linguagem natural (Quick-Paste)
+  "recebi",
+  "recebi de",
+  "recebi via",
+  "recebimento",
+  "recebimento de",
+  "ganhei",
+  "entrou",
+  "renda de",
+  "pagamento recebido",
+  "pagamento recebido de",
 ];
 
 /**
@@ -196,10 +216,10 @@ export function inferReceiveTypeFromDescription(raw: string): string {
   if (/\b(salario|salário|folha|pro-labore|pro labore|remuneracao|remuneração|holerite)\b/i.test(lower)) {
     return "salario";
   }
-  if (/\b(pix)\b/i.test(lower)) {
+  if (/\b(pix|pix recebido|recebimento pix)\b/i.test(lower)) {
     return "pix";
   }
-  if (/\b(ted|doc|transf|transferencia|transferência)\b/i.test(lower)) {
+  if (/\b(ted|doc|transf|transferencia|transferência|transferencia recebida|transferência recebida)\b/i.test(lower)) {
     return "ted";
   }
   if (/\b(rendimento|dividendo|dividendos|juros|jcp|provento|proventos)\b/i.test(lower)) {

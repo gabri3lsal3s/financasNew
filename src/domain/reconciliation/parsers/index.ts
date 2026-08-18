@@ -1,5 +1,5 @@
 import type { ColumnMapping, RawParsedRow, StatementTransaction } from "../types";
-import { cleanDescription, isPaymentOrSettlement } from "../clean";
+import { cleanDescription, isLikelyIncomeDescription, isPaymentOrSettlement } from "../clean";
 import { extractInstallmentInfo } from "../installments";
 import { generateStatementHash } from "../hash";
 import { normalizeDateToISO, parseAmountToCents, sniffColumnMapping } from "./type-sniffer";
@@ -41,6 +41,11 @@ export function buildTransactionsFromRows(
     }
 
     const { amountCents, isNegative } = parsedAmt;
+
+    // Determina se é crédito (entrada):
+    // 1. Coluna D/C explícita (maior precisão)
+    // 2. Valor negativo no texto (ex.: -150,00)
+    // 3. Fallback heurístico: texto original contém palavras-chave de renda
     let isCredit = isNegative;
 
     if (mapping.typeColIndex !== undefined) {
@@ -63,12 +68,18 @@ export function buildTransactionsFromRows(
       ) {
         isCredit = false;
       }
+    } else if (!isNegative) {
+      // Sem coluna D/C e valor positivo: tenta inferir pelo texto completo da linha
+      isCredit = isLikelyIncomeDescription(row.rawText);
     }
 
     const isPayment = isPaymentOrSettlement(rawDesc);
     const isRefund = isCredit && !isPayment;
 
-    const cleanDesc = cleanDescription(rawDesc) || "Despesa";
+    // rawDescription preserva o texto original da linha para que as palavras-chave
+    // de renda estejam disponíveis ao motor de classificação no reconciliador.
+    const rawDescForTx = row.rawText || rawDesc;
+    const cleanDesc = cleanDescription(rawDesc) || rawDesc.trim() || "Transação";
     const installment = extractInstallmentInfo(rawDesc);
 
     const occKey = `${date}|${amountCents}|${cleanDesc.toLowerCase()}`;
@@ -89,7 +100,7 @@ export function buildTransactionsFromRows(
       index: index++,
       occurrenceIndex: occIndex,
       date,
-      rawDescription: rawDesc,
+      rawDescription: rawDescForTx,
       cleanDescription: cleanDesc,
       amountCents,
       isRefund,

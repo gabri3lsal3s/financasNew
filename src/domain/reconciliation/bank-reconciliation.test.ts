@@ -252,3 +252,117 @@ describe("domain/reconciliation - Bank Account Reconciliation", () => {
     expect(txs[1]?.isRefund).toBe(true); // C -> Entrada / Receita
   });
 });
+
+describe("domain/reconciliation - Quick-Paste — detecção de renda em linguagem natural", () => {
+  const params = { cardId: "account-1", competenceMonth: "2026-08" };
+
+  it("detecta renda em linha tabular com 'Pix Recebido' sem coluna D/C", () => {
+    const rows: RawParsedRow[] = [
+      {
+        rowIndex: 0,
+        rawText: "16/08/2026  Pix Recebido Joao Silva  150,00",
+        cells: ["16/08/2026", "Pix Recebido Joao Silva", "150,00"],
+      },
+    ];
+    const mapping = sniffColumnMapping(rows);
+    const txs = buildTransactionsFromRows(rows, mapping, params);
+
+    expect(txs).toHaveLength(1);
+    expect(txs[0]?.isRefund).toBe(true);
+    // rawDescription deve preservar texto original da linha
+    expect(txs[0]?.rawDescription).toContain("Pix Recebido");
+  });
+
+  it("detecta renda em linha tabular com 'salario' sem coluna D/C", () => {
+    const rows: RawParsedRow[] = [
+      {
+        rowIndex: 0,
+        rawText: "05/08/2026  Salario Empresa XPTO  8500,00",
+        cells: ["05/08/2026", "Salario Empresa XPTO", "8500,00"],
+      },
+    ];
+    const mapping = sniffColumnMapping(rows);
+    const txs = buildTransactionsFromRows(rows, mapping, params);
+
+    expect(txs).toHaveLength(1);
+    expect(txs[0]?.isRefund).toBe(true);
+  });
+
+  it("não confunde despesa comum com renda (sem falso-positivo)", () => {
+    const rows: RawParsedRow[] = [
+      {
+        rowIndex: 0,
+        rawText: "17/08/2026  Mercado Extra  125,00",
+        cells: ["17/08/2026", "Mercado Extra", "125,00"],
+      },
+      {
+        rowIndex: 1,
+        rawText: "17/08/2026  Uber  32,50",
+        cells: ["17/08/2026", "Uber", "32,50"],
+      },
+    ];
+    const mapping = sniffColumnMapping(rows);
+    const txs = buildTransactionsFromRows(rows, mapping, params);
+
+    expect(txs).toHaveLength(2);
+    expect(txs[0]?.isRefund).toBe(false);
+    expect(txs[1]?.isRefund).toBe(false);
+  });
+
+  it("reconciliador classifica como income via rawDescription com 'pix recebido' (cenário bug antigo)", () => {
+    const txs: StatementTransaction[] = [
+      {
+        id: "tx-nl-1",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-08-18",
+        rawDescription: "Pix Recebido Joao Silva 150,00",
+        cleanDescription: "Pix Recebido Joao Silva",
+        amountCents: 15000,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-nl-1",
+      },
+    ];
+
+    const result = reconcileBankTransactions({
+      statementTransactions: txs,
+      existingExpenses: [],
+      existingIncomes: [],
+      categoryPredictionHistory: [],
+      defaultCategoryId: "cat-other",
+    });
+
+    expect(result.items[0]?.kind).toBe("income");
+    expect(result.items[0]?.selected).toBe(true);
+    expect(result.items[0]?.selectedReceiveType).toBe("pix");
+  });
+
+  it("reconciliador classifica 'recebi de' como income", () => {
+    const txs: StatementTransaction[] = [
+      {
+        id: "tx-nl-2",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-08-18",
+        rawDescription: "recebi de Maria 200 reais",
+        cleanDescription: "Maria",
+        amountCents: 20000,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-nl-2",
+      },
+    ];
+
+    const result = reconcileBankTransactions({
+      statementTransactions: txs,
+      existingExpenses: [],
+      existingIncomes: [],
+      categoryPredictionHistory: [],
+      defaultCategoryId: "cat-other",
+    });
+
+    expect(result.items[0]?.kind).toBe("income");
+    expect(result.items[0]?.selected).toBe(true);
+  });
+});
