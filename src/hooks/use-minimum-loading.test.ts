@@ -37,6 +37,11 @@ describe("useMinimumLoading", () => {
     });
     rerender({ loading: false });
 
+    // Flush do setTimeout(fn, 0) que sinaliza a fase de closing
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+
     // Ainda deve permanecer showing (anti-flicker) e marcar isClosing=true
     expect(result.current.isShowing).toBe(true);
     expect(result.current.isClosing).toBe(true);
