@@ -96,29 +96,29 @@ export function BankStatementReconcileStep({
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Barra de Filtros Segmentados */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-        <Tabs
-          value={filter}
-          onValueChange={(val) => setFilter(val as FilterTab)}
-          items={tabsList}
-        />
-
-        <div className="flex items-center gap-2 text-xs text-muted-foreground self-end sm:flex-none">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleAll(!allFilteredSelected)}
-          >
-            {allFilteredSelected ? "Desmarcar visíveis" : "Marcar todos visíveis"}
-          </Button>
+    <div className="space-y-3">
+      {/* Barra de Filtros + Selecionar todos */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <Tabs
+            value={filter}
+            onValueChange={(val) => setFilter(val as FilterTab)}
+            items={tabsList}
+          />
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="shrink-0 text-xs"
+          onClick={() => onToggleAll(!allFilteredSelected)}
+        >
+          {allFilteredSelected ? "Desmarcar" : "Marcar todos"}
+        </Button>
       </div>
 
       {/* Tabela de Itens */}
-      <div className="max-h-[380px] overflow-y-auto rounded-lg border border-border/70 bg-surface/40 divide-y divide-border/40">
+      <div className="max-h-[min(380px,45dvh)] overflow-y-auto rounded-lg border border-border/70 bg-surface/40 divide-y divide-border/40">
         {filteredItems.length === 0 ? (
           <div className="p-8 text-center text-xs text-muted-foreground">
             Nenhuma transação encontrada nesta categoria de filtro.
@@ -254,49 +254,43 @@ export function BankStatementReconcileStep({
       </div>
 
       {/* Rodapé e Ações */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border/40">
-        <div className="space-y-0.5 text-xs">
-          <p className="text-muted-foreground">
-            Selecionados: <strong className="text-foreground">{selectedCount}</strong> de {items.length} itens
-          </p>
-          <div className="flex items-center gap-3 font-mono text-[11px]">
-            {selectedExpensesTotalCents > 0 && (
-              <span className="text-rose-500 font-medium">
-                Despesas: -<MoneyText cents={selectedExpensesTotalCents} />
-              </span>
-            )}
-            {selectedIncomesTotalCents > 0 && (
-              <span className="text-emerald-500 font-medium">
-                Receitas: +<MoneyText cents={selectedIncomesTotalCents} />
-              </span>
-            )}
-          </div>
-        </div>
+      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/40">
+        <p className="text-xs text-muted-foreground min-w-0">
+          <span className="font-medium text-foreground">{selectedCount}</span> de {items.length} selecionados
+          {selectedExpensesTotalCents > 0 && (
+            <span className="text-rose-500 font-medium"> · -<MoneyText cents={selectedExpensesTotalCents} /></span>
+          )}
+          {selectedIncomesTotalCents > 0 && (
+            <span className="text-emerald-500 font-medium"> · +<MoneyText cents={selectedIncomesTotalCents} /></span>
+          )}
+        </p>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             type="button"
             variant="ghost"
+            size="sm"
             onClick={onBack}
             disabled={isPending}
             className="gap-1.5"
           >
-            <RotateCcw className="size-4" aria-hidden />
+            <RotateCcw className="size-3.5" aria-hidden />
             Voltar
           </Button>
 
           <Button
             type="button"
+            size="sm"
             onClick={onConfirm}
             disabled={isPending || selectedCount === 0}
-            className="gap-1.5 min-w-[170px]"
+            className="gap-1.5"
           >
             {isPending ? (
               "Importando..."
             ) : (
               <>
-                <Check className="size-4" aria-hidden />
-                Importar ({selectedCount})
+                <Check className="size-3.5" aria-hidden />
+                Importar {selectedCount > 0 ? `(${selectedCount})` : ""}
               </>
             )}
           </Button>

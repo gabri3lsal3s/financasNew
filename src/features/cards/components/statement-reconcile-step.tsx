@@ -84,19 +84,16 @@ export function StatementReconcileStep({
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Alerta de Despesas do App Não Encontradas na Fatura */}
       {countAppOnly > 0 && filter !== "app_only" ? (
-        <Alert variant="warning" className="text-xs py-2 px-3">
+        <Alert variant="warning" className="py-2 px-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="size-4 shrink-0" aria-hidden />
-              <span>
-                {countAppOnly === 1
-                  ? "Existe 1 despesa cadastrada no app que não consta neste extrato."
-                  : `Existem ${countAppOnly} despesas cadastradas no app que não constam neste extrato.`}
-              </span>
-            </div>
+            <span className="text-xs leading-snug">
+              {countAppOnly === 1
+                ? "1 despesa do app não consta neste extrato."
+                : `${countAppOnly} despesas do app não constam neste extrato.`}
+            </span>
             <button
               type="button"
               onClick={() => setFilter("app_only")}
@@ -108,30 +105,30 @@ export function StatementReconcileStep({
         </Alert>
       ) : null}
 
-      {/* Barra de Filtros Segmentados */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-        <Tabs
-          value={filter}
-          onValueChange={(val) => setFilter(val as FilterTab)}
-          items={tabsList}
-        />
-
+      {/* Barra de Filtros + Selecionar todos */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <Tabs
+            value={filter}
+            onValueChange={(val) => setFilter(val as FilterTab)}
+            items={tabsList}
+          />
+        </div>
         {filter !== "app_only" ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground self-end sm:flex-none">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onToggleAll(!allFilteredSelected)}
-            >
-              {allFilteredSelected ? "Desmarcar visíveis" : "Marcar todos visíveis"}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-xs"
+            onClick={() => onToggleAll(!allFilteredSelected)}
+          >
+            {allFilteredSelected ? "Desmarcar" : "Marcar todos"}
+          </Button>
         ) : null}
       </div>
 
       {/* Tabela de Itens */}
-      <div className="max-h-[380px] overflow-y-auto rounded-lg border border-border/70 bg-surface/40 divide-y divide-border/40">
+      <div className="max-h-[min(380px,45dvh)] overflow-y-auto rounded-lg border border-border/70 bg-surface/40 divide-y divide-border/40">
         {filter === "app_only" ? (
           unmatchedAppExpenses.length === 0 ? (
             <div className="p-8 text-center text-xs text-muted-foreground">
@@ -246,13 +243,8 @@ export function StatementReconcileStep({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="font-mono">{tx.date}</span>
-                      {tx.rawDescription !== tx.cleanDescription ? (
-                        <span className="truncate max-w-[200px]" title={tx.rawDescription}>
-                          · {tx.rawDescription}
-                        </span>
-                      ) : null}
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span className="font-mono tabular-nums">{tx.date}</span>
                     </div>
 
                     {item.matchedExpenseDescription ? (
@@ -290,33 +282,37 @@ export function StatementReconcileStep({
       </div>
 
       {/* Sumário e Rodapé de Ações */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-border/40">
-        <div className="text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{selectedCount}</span> de {items.length} itens selecionados (
-          <MoneyText cents={selectedTotalCents} className="font-medium text-foreground" />)
-        </div>
+      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/40">
+        <p className="text-xs text-muted-foreground min-w-0">
+          <span className="font-medium text-foreground">{selectedCount}</span> de {items.length} selecionados
+          {selectedCount > 0 ? (
+            <> · <MoneyText cents={selectedTotalCents} className="font-medium text-foreground" /></>
+          ) : null}
+        </p>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             type="button"
             variant="ghost"
+            size="sm"
             onClick={onBack}
             disabled={isPending}
             className="gap-1.5"
           >
-            <RotateCcw className="size-4" aria-hidden />
+            <RotateCcw className="size-3.5" aria-hidden />
             Voltar
           </Button>
 
           <Button
             type="button"
+            size="sm"
             disabled={selectedCount === 0 || isPending}
             loading={isPending}
             onClick={onConfirm}
             className="gap-1.5"
           >
-            <Check className="size-4" aria-hidden />
-            Importar {selectedCount} {selectedCount === 1 ? "Lançamento" : "Lançamentos"}
+            <Check className="size-3.5" aria-hidden />
+            Importar {selectedCount > 0 ? selectedCount : ""} {selectedCount === 1 ? "Lançamento" : "Lançamentos"}
           </Button>
         </div>
       </div>
