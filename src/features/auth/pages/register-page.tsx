@@ -95,12 +95,17 @@ export function RegisterPage() {
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
-          Já tem conta?{" "}
-          <Link to="/entrar" className="text-primary-strong hover:underline">
-            Entrar
+        <div className="flex flex-col items-center gap-1.5 text-sm">
+          <p className="text-muted-foreground">
+            Já tem conta?{" "}
+            <Link to="/entrar" className="text-primary-strong hover:underline">
+              Entrar
+            </Link>
+          </p>
+          <Link to="/apresentacao" className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-2">
+            ← Conhecer o Guia Financeiro & Planos
           </Link>
-        </p>
+        </div>
       </div>
     </AuthShell>
   );

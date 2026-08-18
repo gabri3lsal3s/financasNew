@@ -8,7 +8,7 @@ import { triggerHaptic } from "@/services/haptics";
 import { playSound } from "@/services/audio-fx";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 
-const buttonVariants = cva(
+export const buttonVariants = cva(
   "relative inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-lg text-sm font-medium transition-[color,background-color,box-shadow,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer",
   {
     variants: {

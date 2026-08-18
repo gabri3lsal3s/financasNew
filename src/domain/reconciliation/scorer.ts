@@ -21,27 +21,35 @@ export function calculateMatchScore(
   }
   const scoreValue = 50;
 
-  // 2. Componente Temporal (25%)
+  // 2. Componente Temporal (35%)
   const stmtTime = new Date(`${statement.date}T00:00:00`).getTime();
   const existTime = new Date(`${existing.date}T00:00:00`).getTime();
   const diffDays = Math.abs((stmtTime - existTime) / 86_400_000);
 
   let scoreDate = 0;
   if (diffDays === 0) {
-    scoreDate = 25;
+    scoreDate = 35; // Mesmo dia: totaliza 85 pontos com o valor (exact_match imediato)
   } else if (diffDays === 1) {
-    scoreDate = 20;
+    scoreDate = 25; // 1 dia de diferença (D+1 do processamento do cartão): 75 pontos
   } else if (diffDays <= 3) {
-    scoreDate = 12;
+    scoreDate = 15;
   } else if (diffDays <= 7) {
-    scoreDate = 5;
+    scoreDate = 10;
+  } else {
+    // Se a data for mais distante (ex.: compra parcelada de mês anterior ou virada de fatura),
+    // mas for o mesmo dia do mês (ex.: dia 15 em meses diferentes):
+    const stmtDay = statement.date.slice(8, 10);
+    const existDay = existing.date.slice(8, 10);
+    if (stmtDay === existDay) {
+      scoreDate = 10;
+    }
   }
 
-  // 3. Componente Textual (25%)
+  // 3. Componente Textual (15%)
   const tokensStmt = tokenize(statement.cleanDescription);
   const tokensExist = tokenize(existing.description);
   const similarity = jaccardTokens(tokensStmt, tokensExist);
-  const scoreText = Math.round(similarity * 25);
+  const scoreText = Math.round(similarity * 15);
 
   return Math.min(100, scoreValue + scoreDate + scoreText);
 }
@@ -128,7 +136,7 @@ export function reconcileStatementTransactions(params: {
     }
 
     // Classificação
-    if (bestMatch && bestScore >= 85) {
+    if (bestMatch && bestScore >= 75) {
       matchedExistingIds.add(bestMatch.id);
       return {
         transaction: tx,
@@ -140,12 +148,12 @@ export function reconcileStatementTransactions(params: {
         matchedExpenseValueCents: bestMatch.valueCents,
         suggestedCategoryId: bestMatch.categoryId,
         selectedCategoryId: bestMatch.categoryId,
-        // Já conciliado: fica desmarcado por padrão para não duplicar
+        // Já conciliado: fica desmarcado por padrão para não duplicar despesa
         selected: false,
       };
     }
 
-    if (bestMatch && bestScore >= 50) {
+    if (bestMatch && bestScore >= 40) {
       matchedExistingIds.add(bestMatch.id);
       return {
         transaction: tx,
@@ -157,8 +165,8 @@ export function reconcileStatementTransactions(params: {
         matchedExpenseValueCents: bestMatch.valueCents,
         suggestedCategoryId: bestMatch.categoryId,
         selectedCategoryId: bestMatch.categoryId,
-        // Sugestão: marcado para revisão do usuário
-        selected: true,
+        // Sugestão vinculada a item existente: fica DESMARCADO por padrão para não duplicar despesa
+        selected: false,
       };
     }
 

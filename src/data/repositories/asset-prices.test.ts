@@ -5,13 +5,12 @@ interface Builder {
   select: ReturnType<typeof vi.fn>;
   or: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
-  upsert: ReturnType<typeof vi.fn>;
+  insert: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
 
-let lastUpsertInput: unknown = null;
-let lastUpsertOptions: unknown = null;
+let lastInsertInput: unknown = null;
 let lastDeleteCalls: string[] = [];
 
 function makeBuilder(result: unknown): Builder {
@@ -19,7 +18,7 @@ function makeBuilder(result: unknown): Builder {
     select: vi.fn(),
     or: vi.fn(),
     eq: vi.fn(),
-    upsert: vi.fn(),
+    insert: vi.fn(),
     delete: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
@@ -29,9 +28,8 @@ function makeBuilder(result: unknown): Builder {
     lastDeleteCalls.push(`${col}=${val}`);
     return builder;
   });
-  builder.upsert.mockImplementation((input: unknown, options: unknown) => {
-    lastUpsertInput = input;
-    lastUpsertOptions = options;
+  builder.insert.mockImplementation((input: unknown) => {
+    lastInsertInput = input;
     return { then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) };
   });
   builder.delete.mockReturnValue(builder);
@@ -50,8 +48,7 @@ vi.mock("@/data/session", () => ({
 
 describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
   beforeEach(() => {
-    lastUpsertInput = null;
-    lastUpsertOptions = null;
+    lastInsertInput = null;
     lastDeleteCalls = [];
   });
 
@@ -72,7 +69,7 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
   it("setManualPrice grava override com moeda inferida pelo ticker (USD)", async () => {
     builder = makeBuilder({ data: null });
     await setManualPrice({ ticker: "AAPL", price: 210.5 });
-    expect(lastUpsertInput).toMatchObject({
+    expect(lastInsertInput).toMatchObject({
       user_id: "u1",
       ticker: "AAPL",
       price: 210.5,
@@ -80,13 +77,13 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
       source: "manual",
       manual_price: 210.5,
     });
-    expect(lastUpsertOptions).toEqual({ onConflict: "ticker,user_id" });
+    expect(lastDeleteCalls).toEqual(["user_id=u1", "ticker=AAPL"]);
   });
 
   it("setManualPrice infere BRL para ticker B3", async () => {
     builder = makeBuilder({ data: null });
     await setManualPrice({ ticker: "PETR4", price: 43 });
-    expect(lastUpsertInput).toMatchObject({ currency: "BRL" });
+    expect(lastInsertInput).toMatchObject({ currency: "BRL" });
   });
 
   it("removeManualPrice apaga apenas o override do usuário", async () => {

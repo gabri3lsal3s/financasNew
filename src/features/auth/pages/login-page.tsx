@@ -75,7 +75,7 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <div className="flex flex-col items-center gap-1 text-sm">
+        <div className="flex flex-col items-center gap-1.5 text-sm">
           <Link to="/recuperar-senha" className="text-primary-strong hover:underline">
             Esqueci minha senha
           </Link>
@@ -85,6 +85,9 @@ export function LoginPage() {
               Cadastre-se
             </Link>
           </p>
+          <Link to="/apresentacao" className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-2">
+            ← Conhecer o Guia Financeiro & Planos
+          </Link>
         </div>
       </div>
     </AuthShell>

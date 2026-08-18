@@ -126,7 +126,7 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
   const amountScores = new Array(maxCols).fill(0);
   const textScores = new Array(maxCols).fill(0);
 
-  // Determina se a primeira linha é cabeçalho
+  // Determina se a primeira linha é cabeçalho e aplica boost pelos nomes das colunas
   let hasHeader = false;
   const firstRow = rows[0];
   if (firstRow && firstRow.cells.length > 0) {
@@ -138,19 +138,79 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
       firstRowText.includes("amount") ||
       firstRowText.includes("desc") ||
       firstRowText.includes("lançamento") ||
-      firstRowText.includes("estabelecimento");
+      firstRowText.includes("lancamento") ||
+      firstRowText.includes("estabelecimento") ||
+      firstRowText.includes("titular");
 
     if (hasHeaderKeywords) {
       hasHeader = true;
+
+      for (let c = 0; c < firstRow.cells.length; c++) {
+        const headerCell = (firstRow.cells[c] ?? "").trim().toLowerCase();
+        if (!headerCell) continue;
+
+        // Cabeçalho de data
+        if (headerCell.includes("data") || headerCell.includes("date") || headerCell === "dt") {
+          dateScores[c] = (dateScores[c] ?? 0) + 100;
+        }
+
+        // Cabeçalho de valor
+        if (
+          headerCell.includes("valor") ||
+          headerCell.includes("amount") ||
+          headerCell.includes("total") ||
+          headerCell.includes("preço") ||
+          headerCell.includes("preco")
+        ) {
+          amountScores[c] = (amountScores[c] ?? 0) + 100;
+        }
+
+        // Cabeçalho de descrição/estabelecimento
+        if (
+          headerCell.includes("desc") ||
+          headerCell.includes("estabelecimento") ||
+          headerCell.includes("histórico") ||
+          headerCell.includes("historico") ||
+          headerCell.includes("detalhe") ||
+          headerCell.includes("lançamento") ||
+          headerCell.includes("lancamento") ||
+          headerCell.includes("transação") ||
+          headerCell.includes("transacao") ||
+          headerCell.includes("title") ||
+          headerCell.includes("memo") ||
+          headerCell.includes("origem")
+        ) {
+          textScores[c] = (textScores[c] ?? 0) + 100;
+        }
+
+        // Cabeçalho de titular/portador/cartão/conta (não é descrição da compra)
+        if (
+          headerCell.includes("titular") ||
+          headerCell.includes("portador") ||
+          headerCell.includes("cartão") ||
+          headerCell.includes("cartao") ||
+          headerCell.includes("card") ||
+          headerCell.includes("conta") ||
+          headerCell.includes("cpf") ||
+          headerCell.includes("usuário") ||
+          headerCell.includes("usuario")
+        ) {
+          textScores[c] = (textScores[c] ?? 0) - 100;
+        }
+      }
     }
   }
 
   const sampleRows = rows.slice(hasHeader ? 1 : 0, 30);
+  const columnValues: Array<Set<string>> = Array.from({ length: maxCols }, () => new Set<string>());
 
   for (const row of sampleRows) {
     for (let c = 0; c < row.cells.length; c++) {
       const cell = (row.cells[c] ?? "").trim();
       if (!cell) continue;
+
+      // Armazena valores únicos para checagem de diversidade/cardinalidade
+      columnValues[c]?.add(cell.toLowerCase());
 
       // Testa Data
       if (DATE_PATTERNS.some((p) => p.test(cell)) || normalizeDateToISO(cell) !== null) {
@@ -165,6 +225,21 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
       // Testa Texto descritivo
       if (cell.length >= 3 && !DATE_PATTERNS.some((p) => p.test(cell)) && parseAmountToCents(cell) === null) {
         textScores[c] = (textScores[c] ?? 0) + 2;
+      }
+    }
+  }
+
+  // Ajuste por cardinalidade (colunas com valores repetitivos como nome fixo do titular
+  // têm diversidade baixa; descrições de compras reais têm alta cardinalidade de valores distintos)
+  if (sampleRows.length >= 3) {
+    for (let c = 0; c < maxCols; c++) {
+      const uniqueCount = columnValues[c]?.size ?? 0;
+      const diversityRatio = uniqueCount / sampleRows.length;
+      if (diversityRatio > 0.4) {
+        textScores[c] = (textScores[c] ?? 0) + Math.round(diversityRatio * 15);
+      } else if (diversityRatio <= 0.2 && uniqueCount <= 2) {
+        // Coluna com valor constante (ex.: nome de titular repetido em toda linha)
+        textScores[c] = (textScores[c] ?? 0) - 50;
       }
     }
   }
@@ -192,7 +267,7 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
 
   // Encontra a melhor coluna de descrição (diferente de data e valor)
   let bestDescCol = 0;
-  let maxTextScore = -1;
+  let maxTextScore = -Infinity;
   for (let i = 0; i < maxCols; i++) {
     if (i === bestDateCol || i === bestAmountCol) continue;
     if ((textScores[i] ?? 0) > maxTextScore) {

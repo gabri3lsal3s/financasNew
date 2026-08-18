@@ -3,6 +3,7 @@ import { appRoutes } from "@/app/routes";
 import { LoadingScreen, MoreMenu, PageShell } from "@/components/layout";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
+import { LandingPage } from "@/features/landing";
 import { useAuth } from "@/hooks/use-auth";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 
@@ -50,6 +51,11 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Páginas públicas de apresentação & planos */}
+        <Route path="/apresentacao" element={<LandingPage />} />
+        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/precos" element={<LandingPage />} />
+
         {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
         <Route path="/entrar" element={<LoginPage />} />
         <Route path="/cadastro" element={<RegisterPage />} />

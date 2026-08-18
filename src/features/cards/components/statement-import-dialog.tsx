@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { Alert, Modal } from "@/components/ui";
 import {
+  buildTransactionsFromRows,
   parseStatementInput,
   reconcileStatementTransactions,
   type ColumnMapping,
@@ -155,14 +156,14 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
   const handleConfirmMapping = (mapping: ColumnMapping) => {
     setColumnMapping(mapping);
     try {
-      // Reconstrói as transações com o mapeamento escolhido
-      const result = parseStatementInput(parsedRows.map((r) => r.rawText).join("\n"), "remap.csv", {
+      // Reconstrói as transações com o mapeamento escolhido pelo usuário
+      const transactions = buildTransactionsFromRows(parsedRows, mapping, {
         cardId: card.id,
         competenceMonth,
       });
 
       const items = reconcileStatementTransactions({
-        statementTransactions: result.transactions,
+        statementTransactions: transactions,
         existingExpenses: existingExpensesForReconciliation,
         history: historyQuery.entries ?? [],
         defaultCategoryId,

@@ -301,6 +301,90 @@ DATA:OFXSGML
       expect(reconciled[1]?.suggestedCategoryId).toBe("cat-transport");
       expect(reconciled[1]?.selected).toBe(true);
     });
+
+    it("desmarca por padrão itens que casam como sugestão provável (probable_match)", () => {
+      const existingExpense: ExistingExpenseForReconciliation = {
+        id: "exp-old",
+        date: "2026-08-01",
+        description: "Assinatura Antiga",
+        valueCents: 9699,
+        categoryId: "cat-sub",
+        installmentNumber: null,
+        installmentsTotal: null,
+      };
+
+      const stmt: StatementTransaction = {
+        id: "stmt-match-diff-date",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-08-07", // Diferença de 6 dias
+        rawDescription: "Google AI Pro",
+        cleanDescription: "Google AI Pro",
+        amountCents: 9699, // Mesmo valor
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-diff",
+      };
+
+      const reconciled = reconcileStatementTransactions({
+        statementTransactions: [stmt],
+        existingExpenses: [existingExpense],
+        history: [],
+        defaultCategoryId: "cat-outros",
+      });
+
+      expect(reconciled[0]?.status).toBe("probable_match");
+      expect(reconciled[0]?.matchedExpenseId).toBe("exp-old");
+      // CRÍTICO: Não deve vir selecionado por padrão para evitar despesas duplicadas
+      expect(reconciled[0]?.selected).toBe(false);
+    });
+
+    it("classifica como exact_match quando valor e data coincidem exatamente, mesmo com texto divergente", () => {
+      const stmt: StatementTransaction = {
+        id: "stmt-exact",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-08-15",
+        rawDescription: "GABRIEL I S SALES",
+        cleanDescription: "GABRIEL I S SALES",
+        amountCents: 15000,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-exact",
+      };
+
+      const score = calculateMatchScore(stmt, existing[0]!);
+      expect(score).toBe(85); // 50 (valor) + 35 (data)
+
+      const reconciled = reconcileStatementTransactions({
+        statementTransactions: [stmt],
+        existingExpenses: existing,
+        history: [],
+        defaultCategoryId: "cat-outros",
+      });
+
+      expect(reconciled[0]?.status).toBe("exact_match");
+      expect(reconciled[0]?.selected).toBe(false);
+    });
+  });
+
+  describe("type-sniffer com coluna de titular", () => {
+    it("ignora coluna de titular constante e seleciona o estabelecimento real", () => {
+      const csv = `
+Titular;Data;Estabelecimento;Valor
+GABRIEL I S SALES;06/08/2026;Gasolina;100,00
+GABRIEL I S SALES;07/08/2026;Saúde Drogaria;25,00
+GABRIEL I S SALES;07/08/2026;Google AI Pro;96,99
+GABRIEL I S SALES;10/08/2026;Seguro Corolla;222,34
+`;
+      const rows = parseCsvToRows(csv);
+      const mapping = sniffColumnMapping(rows);
+
+      expect(mapping.hasHeader).toBe(true);
+      expect(mapping.dateColIndex).toBe(1);
+      expect(mapping.descriptionColIndex).toBe(2); // Deve ser Estabelecimento (col 2), NÃO Titular (col 0)
+      expect(mapping.amountColIndex).toBe(3);
+    });
   });
 
   describe("parseStatementInput (Hub Universal)", () => {

@@ -33,7 +33,7 @@ function mapRow(row: {
   manual_price: string | number | null;
 }): AssetPriceRow {
   return {
-    ticker: row.ticker,
+    ticker: row.ticker.trim().toUpperCase(),
     price: Number(row.price),
     currency: row.currency,
     source: row.source,
@@ -64,36 +64,50 @@ export async function listAssetPrices(): Promise<AssetPriceRow[]> {
 /**
  * Grava o override manual de preço (prevalece sobre cache/fallback).
  * A moeda é inferida pelo padrão do ticker (mesma regra do domínio — DRY).
+ * Usa delete prévio + insert para garantir idempotência sem depender de constraint parcial no Postgres.
  */
 export async function setManualPrice(input: ManualPriceInput): Promise<void> {
   const user_id = await currentUserId();
-  const currency: AssetCurrency = inferCurrencyFromTicker(input.ticker);
+  const normalizedTicker = input.ticker.trim().toUpperCase();
+  const currency: AssetCurrency = inferCurrencyFromTicker(normalizedTicker);
   const row = {
     user_id,
-    ticker: input.ticker,
+    ticker: normalizedTicker,
     price: input.price,
     currency,
     source: "manual" as const,
     manual_price: input.price,
     updated_at: new Date().toISOString(),
   };
-  // `id` é preenchido pelo default do banco; o unique parcial
-  // (ticker, user_id) com user_id IS NOT NULL permite o upsert.
-  const { error } = await getSupabase().from("asset_prices").upsert(row, { onConflict: "ticker,user_id" });
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
+
+  // Remove qualquer override prévio para este usuário e ticker antes de inserir
+  const { error: deleteError } = await getSupabase()
+    .from("asset_prices")
+    .delete()
+    .eq("user_id", user_id)
+    .eq("ticker", normalizedTicker);
+
+  if (deleteError) {
+    const classified = classifyError(deleteError);
+    throw new AppError(classified.kind, classified.message, deleteError);
+  }
+
+  const { error: insertError } = await getSupabase().from("asset_prices").insert(row);
+  if (insertError) {
+    const classified = classifyError(insertError);
+    throw new AppError(classified.kind, classified.message, insertError);
   }
 }
 
 /** Remove o override manual — o preço volta a seguir cache/fallback. */
 export async function removeManualPrice(ticker: string): Promise<void> {
   const user_id = await currentUserId();
+  const normalizedTicker = ticker.trim().toUpperCase();
   const { error } = await getSupabase()
     .from("asset_prices")
     .delete()
     .eq("user_id", user_id)
-    .eq("ticker", ticker)
+    .eq("ticker", normalizedTicker)
     .eq("source", "manual");
   if (error) {
     const classified = classifyError(error);

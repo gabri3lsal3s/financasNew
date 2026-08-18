@@ -83,7 +83,7 @@ export function usePortfolioPosition(): PortfolioPosition {
 
   const prices = pricesQuery.data ?? [];
   const usdRate = usdRateFromPrices(prices);
-  const priceByTicker = new Map(prices.map((p) => [p.ticker, p]));
+  const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
 
   const transactionsByAsset = new Map<string, PortfolioTransaction[]>();
   for (const tx of transactionsQuery.data ?? []) {
@@ -121,11 +121,14 @@ export function usePortfolioPosition(): PortfolioPosition {
       priceBRL = 1;
       valueBRL = ledger.quantity;
     } else {
-      const priceRow = priceByTicker.get(asset.ticker);
+      const normalizedTicker = asset.ticker.trim().toUpperCase();
+      const priceRow = priceByTicker.get(normalizedTicker);
+      const defaultFallback = fallbackPriceFor(asset.currency);
+      const effectiveFallback = ledger.averageCost > 0 ? ledger.averageCost : defaultFallback;
       const resolved = resolvePrice({
         manualPrice: priceRow?.manual_price ?? null,
         cachePrice: priceRow?.price ?? null,
-        fallbackPrice: fallbackPriceFor(asset.currency),
+        fallbackPrice: effectiveFallback,
       });
       priceBRL = asset.currency === "USD" ? round2(resolved.price * usdRate) : resolved.price;
       valueBRL = valueAssetPosition(ledger.quantity, resolved, asset.currency, usdRate).valueBRL;
