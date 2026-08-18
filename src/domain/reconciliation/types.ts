@@ -65,6 +65,16 @@ export interface ReconciliationItem {
 }
 
 /**
+ * Resultado consolidado da reconciliação bidirecional de fatura.
+ */
+export interface ReconciliationResult {
+  /** Itens lidos do extrato com classificação de correspondência. */
+  items: ReconciliationItem[];
+  /** Despesas cadastradas no app na competência que NÃO foram encontradas no extrato. */
+  unmatchedExistingExpenses: ExistingExpenseForReconciliation[];
+}
+
+/**
  * Projeção leve de uma despesa existente para o motor de scoring.
  */
 export interface ExistingExpenseForReconciliation {

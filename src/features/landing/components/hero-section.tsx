@@ -68,7 +68,7 @@ export function HeroSection() {
           {/* Trust points */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="size-4 text-emerald-500" aria-hidden="true" />
+              <ShieldCheck className="size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
               Segurança e criptografia de ponta
             </span>
             <span className="inline-flex items-center gap-1.5">
@@ -76,7 +76,7 @@ export function HeroSection() {
               Sem necessidade de cartão para testar
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <TrendingUp className="size-4 text-amber-500" aria-hidden="true" />
+              <TrendingUp className="size-4 text-warning-strong dark:text-warning" aria-hidden="true" />
               Baseado na regra determinística FIRE
             </span>
           </div>
@@ -114,7 +114,7 @@ export function HeroSection() {
                   </div>
                   <div className="mt-2 text-[11px] text-muted-foreground flex items-center justify-between">
                     <span>Taxa de Poupança:</span>
-                    <span className="font-mono font-semibold text-emerald-500">32.8%</span>
+                    <span className="font-mono font-semibold text-positive-strong dark:text-positive">32.8%</span>
                   </div>
                 </Card>
 

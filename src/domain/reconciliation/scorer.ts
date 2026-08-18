@@ -1,6 +1,11 @@
 import { jaccardTokens, tokenize } from "@/domain/predictions";
 import type { PredictionEntry } from "@/domain/predictions";
-import type { ExistingExpenseForReconciliation, ReconciliationItem, StatementTransaction } from "./types";
+import type {
+  ExistingExpenseForReconciliation,
+  ReconciliationItem,
+  ReconciliationResult,
+  StatementTransaction,
+} from "./types";
 
 /**
  * Calcula o score de similaridade multidimensional (0 a 100) entre um item
@@ -8,8 +13,8 @@ import type { ExistingExpenseForReconciliation, ReconciliationItem, StatementTra
  *
  * Pesos:
  * - 50% Componente Monetário (exige exatidão de centavos).
- * - 25% Componente Temporal (proximidade de data).
- * - 25% Componente Textual (similaridade de Jaccard entre descrições).
+ * - 35% Componente Temporal (proximidade de data).
+ * - 15% Componente Textual (similaridade de Jaccard entre descrições).
  */
 export function calculateMatchScore(
   statement: StatementTransaction,
@@ -88,19 +93,20 @@ export function predictCategoryForDescription(
 /**
  * Processa a reconciliação completa de uma lista de transações de extrato
  * contra a lista de despesas já existentes na competência.
+ * Retorna os itens reconciliados e as despesas do app que não constam no extrato.
  */
 export function reconcileStatementTransactions(params: {
   statementTransactions: StatementTransaction[];
   existingExpenses: ExistingExpenseForReconciliation[];
   history: PredictionEntry[];
   defaultCategoryId: string;
-}): ReconciliationItem[] {
+}): ReconciliationResult {
   const { statementTransactions, existingExpenses, history, defaultCategoryId } = params;
 
   // Mapa de despesas existentes que já receberam match para evitar duplo match
   const matchedExistingIds = new Set<string>();
 
-  return statementTransactions.map((tx) => {
+  const items: ReconciliationItem[] = statementTransactions.map((tx) => {
     // Pagamento de fatura: ignorado por padrão
     if (tx.isPayment) {
       return {
@@ -183,4 +189,12 @@ export function reconcileStatementTransactions(params: {
       selected: !tx.isRefund,
     };
   });
+
+  // Despesas cadastradas no app que NÃO tiveram nenhuma correspondência na fatura
+  const unmatchedExistingExpenses = existingExpenses.filter((e) => !matchedExistingIds.has(e.id));
+
+  return {
+    items,
+    unmatchedExistingExpenses,
+  };
 }

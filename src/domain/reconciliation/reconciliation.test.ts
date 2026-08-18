@@ -289,17 +289,20 @@ DATA:OFXSGML
         defaultCategoryId: "cat-outros",
       });
 
-      expect(reconciled).toHaveLength(2);
+      expect(reconciled.items).toHaveLength(2);
 
       // 1. Deve ser exact_match e desmarcado por padrão
-      expect(reconciled[0]?.status).toBe("exact_match");
-      expect(reconciled[0]?.matchedExpenseId).toBe("exp-1");
-      expect(reconciled[0]?.selected).toBe(false);
+      expect(reconciled.items[0]?.status).toBe("exact_match");
+      expect(reconciled.items[0]?.matchedExpenseId).toBe("exp-1");
+      expect(reconciled.items[0]?.selected).toBe(false);
 
       // 2. Deve ser unmatched_new com categoria predita 'cat-transport' e marcado
-      expect(reconciled[1]?.status).toBe("unmatched_new");
-      expect(reconciled[1]?.suggestedCategoryId).toBe("cat-transport");
-      expect(reconciled[1]?.selected).toBe(true);
+      expect(reconciled.items[1]?.status).toBe("unmatched_new");
+      expect(reconciled.items[1]?.suggestedCategoryId).toBe("cat-transport");
+      expect(reconciled.items[1]?.selected).toBe(true);
+
+      // 3. Todas as despesas existentes foram encontradas (sobras = 0)
+      expect(reconciled.unmatchedExistingExpenses).toHaveLength(0);
     });
 
     it("desmarca por padrão itens que casam como sugestão provável (probable_match)", () => {
@@ -333,10 +336,63 @@ DATA:OFXSGML
         defaultCategoryId: "cat-outros",
       });
 
-      expect(reconciled[0]?.status).toBe("probable_match");
-      expect(reconciled[0]?.matchedExpenseId).toBe("exp-old");
+      expect(reconciled.items[0]?.status).toBe("probable_match");
+      expect(reconciled.items[0]?.matchedExpenseId).toBe("exp-old");
       // CRÍTICO: Não deve vir selecionado por padrão para evitar despesas duplicadas
-      expect(reconciled[0]?.selected).toBe(false);
+      expect(reconciled.items[0]?.selected).toBe(false);
+      expect(reconciled.unmatchedExistingExpenses).toHaveLength(0);
+    });
+
+    it("identifica despesas cadastradas no app que não foram encontradas na fatura", () => {
+      const existingExpenses: ExistingExpenseForReconciliation[] = [
+        {
+          id: "exp-found",
+          date: "2026-08-15",
+          description: "Supermercado",
+          valueCents: 15000,
+          categoryId: "cat-groceries",
+          installmentNumber: null,
+          installmentsTotal: null,
+        },
+        {
+          id: "exp-orphan",
+          date: "2026-08-20",
+          description: "Compra Cancelada / Inexistente",
+          valueCents: 8500,
+          categoryId: "cat-outros",
+          installmentNumber: null,
+          installmentsTotal: null,
+        },
+      ];
+
+      const stmt: StatementTransaction = {
+        id: "stmt-1",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-08-15",
+        rawDescription: "Supermercado",
+        cleanDescription: "Supermercado",
+        amountCents: 15000,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-1",
+      };
+
+      const reconciled = reconcileStatementTransactions({
+        statementTransactions: [stmt],
+        existingExpenses,
+        history: [],
+        defaultCategoryId: "cat-outros",
+      });
+
+      expect(reconciled.items).toHaveLength(1);
+      expect(reconciled.items[0]?.status).toBe("exact_match");
+      expect(reconciled.items[0]?.matchedExpenseId).toBe("exp-found");
+
+      // Deve listar a despesa órfã cadastrada no app que não veio na fatura
+      expect(reconciled.unmatchedExistingExpenses).toHaveLength(1);
+      expect(reconciled.unmatchedExistingExpenses[0]?.id).toBe("exp-orphan");
+      expect(reconciled.unmatchedExistingExpenses[0]?.description).toBe("Compra Cancelada / Inexistente");
     });
 
     it("classifica como exact_match quando valor e data coincidem exatamente, mesmo com texto divergente", () => {
@@ -363,8 +419,8 @@ DATA:OFXSGML
         defaultCategoryId: "cat-outros",
       });
 
-      expect(reconciled[0]?.status).toBe("exact_match");
-      expect(reconciled[0]?.selected).toBe(false);
+      expect(reconciled.items[0]?.status).toBe("exact_match");
+      expect(reconciled.items[0]?.selected).toBe(false);
     });
   });
 

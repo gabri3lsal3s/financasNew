@@ -303,7 +303,13 @@
      - *Passo 2 (Mapeamento):* Tabela de prévia e seletores de coluna assistidos.
      - *Passo 3 (Conferência):* Tabela de conciliação com filtros rápidos (*Todos*, *Novos*, *Sugestões*, *Conciliados*), seleção em lote, badges semânticos, `MoneyText` e seletor de categorias.
   4. **Integração na Tela de Cartões:** Botão "Importar fatura" integrado à barra de ações da fatura da `CardsPage`.
-  5. **Qualidade & Testes:** Suíte completa com 151 arquivos e 1.237 testes (100% verde) + typecheck, lint e build de produção limpos.
+  5. **Refinamento de UX, Prevenção de Duplicatas e Reconciliação Bidirecional (2026-08-18):**
+     - **Prevenção de Duplicatas:** Lançamentos com correspondência identificada (*Conciliados* e *Sugestões*) vêm desmarcados por padrão (`selected: false`), protegendo o usuário contra reimportações acidentais; apenas compras faltantes (*Novos*) vêm selecionadas.
+     - **Reconciliação Bidirecional:** O motor passa a identificar e listar despesas cadastradas no app na competência que não constam no extrato bancário oficial (`unmatchedExistingExpenses`), com alerta contextual no topo do diálogo e aba dedicada `No App apenas (X)` para auditoria de lançamentos manuais órfãos ou incorretos.
+     - **Calibração de Scoring:** Mesmo valor e mesma data pontuam 85% $\rightarrow$ classificado como *Conciliado* (`exact_match`) direto.
+     - **Sniffer Estatístico Inteligente:** Colunas com valores constantes de titular/portador (`GABRIEL I S SALES`) são penalizadas e descartadas em favor da coluna real de estabelecimentos por análise de cardinalidade e palavras-chave de cabeçalho.
+     - **Mapeamento Manual Direto:** O Passo 2 aplica diretamente a seleção de colunas do usuário sem reexecutar o sniffer automático.
+  6. **Qualidade & Testes:** Suíte completa com 154 arquivos e 1.254 testes (100% verde) + typecheck, lint e build de produção limpos.
 
 ## Notas finais
 

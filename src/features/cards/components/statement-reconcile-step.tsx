@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Check, CheckCheck, RotateCcw, Sparkles } from "lucide-react";
-import { Badge, Button, Checkbox, MoneyText, Select, Tabs } from "@/components/ui";
+import { AlertTriangle, Check, CheckCheck, RotateCcw, Sparkles } from "lucide-react";
+import { Alert, Badge, Button, Checkbox, MoneyText, Select, Tabs } from "@/components/ui";
 import type { Category } from "@/types";
-import type { ReconciliationItem } from "@/domain/reconciliation";
+import type { ExistingExpenseForReconciliation, ReconciliationItem } from "@/domain/reconciliation";
 
 interface StatementReconcileStepProps {
   items: ReconciliationItem[];
+  unmatchedAppExpenses?: ExistingExpenseForReconciliation[];
   categories: Category[];
   onToggleItem: (id: string) => void;
   onToggleAll: (selected: boolean) => void;
@@ -15,15 +16,17 @@ interface StatementReconcileStepProps {
   isPending: boolean;
 }
 
-type FilterTab = "all" | "new" | "suggested" | "matched";
+type FilterTab = "all" | "new" | "suggested" | "matched" | "app_only";
 
 /**
  * Passo 3 do Diálogo de Importação de Fatura:
- * Tabela de conferência e classificação com filtros rápidos (Todos, Novos, Sugestões, Conciliados),
- * seleção individual ou em lote, badges de status e seletor de categoria preditiva.
+ * Tabela de conferência e classificação bidirecional com filtros rápidos
+ * (Todos, Novos, Sugestões, Conciliados, No App apenas), seleção em lote,
+ * badges de status e seletor de categoria preditiva.
  */
 export function StatementReconcileStep({
   items,
+  unmatchedAppExpenses = [],
   categories,
   onToggleItem,
   onToggleAll,
@@ -33,6 +36,8 @@ export function StatementReconcileStep({
   isPending,
 }: StatementReconcileStepProps) {
   const [filter, setFilter] = useState<FilterTab>("all");
+
+  const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
 
   const categoryOptions = useMemo(
     () =>
@@ -47,6 +52,7 @@ export function StatementReconcileStep({
   const countExact = items.filter((it) => it.status === "exact_match").length;
   const countProbable = items.filter((it) => it.status === "probable_match").length;
   const countNew = items.filter((it) => it.status === "unmatched_new" && !it.ignoredByDefault).length;
+  const countAppOnly = unmatchedAppExpenses.length;
 
   const filteredItems = useMemo(() => {
     switch (filter) {
@@ -67,36 +73,122 @@ export function StatementReconcileStep({
 
   const allFilteredSelected = filteredItems.length > 0 && filteredItems.every((it) => it.selected);
 
+  const tabsList = [
+    { value: "all", label: `Todos (${items.length})`, content: null },
+    { value: "new", label: `Novos (${countNew})`, content: null },
+    { value: "suggested", label: `Sugestões (${countProbable})`, content: null },
+    { value: "matched", label: `Conciliados (${countExact})`, content: null },
+    ...(countAppOnly > 0
+      ? [{ value: "app_only", label: `No App apenas (${countAppOnly})`, content: null }]
+      : []),
+  ];
+
   return (
     <div className="space-y-4">
+      {/* Alerta de Despesas do App Não Encontradas na Fatura */}
+      {countAppOnly > 0 && filter !== "app_only" ? (
+        <Alert variant="warning" className="text-xs py-2 px-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden />
+              <span>
+                {countAppOnly === 1
+                  ? "Existe 1 despesa cadastrada no app que não consta neste extrato."
+                  : `Existem ${countAppOnly} despesas cadastradas no app que não constam neste extrato.`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFilter("app_only")}
+              className="text-[11px] font-medium underline hover:opacity-80 shrink-0"
+            >
+              Ver detalhes
+            </button>
+          </div>
+        </Alert>
+      ) : null}
+
       {/* Barra de Filtros Segmentados */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <Tabs
           value={filter}
           onValueChange={(val) => setFilter(val as FilterTab)}
-          items={[
-            { value: "all", label: `Todos (${items.length})`, content: null },
-            { value: "new", label: `Novos (${countNew})`, content: null },
-            { value: "suggested", label: `Sugestões (${countProbable})`, content: null },
-            { value: "matched", label: `Conciliados (${countExact})`, content: null },
-          ]}
+          items={tabsList}
         />
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground self-end sm:flex-none">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleAll(!allFilteredSelected)}
-          >
-            {allFilteredSelected ? "Desmarcar visíveis" : "Marcar todos visíveis"}
-          </Button>
-        </div>
+        {filter !== "app_only" ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground self-end sm:flex-none">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onToggleAll(!allFilteredSelected)}
+            >
+              {allFilteredSelected ? "Desmarcar visíveis" : "Marcar todos visíveis"}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {/* Tabela de Itens */}
       <div className="max-h-[380px] overflow-y-auto rounded-lg border border-border/70 bg-surface/40 divide-y divide-border/40">
-        {filteredItems.length === 0 ? (
+        {filter === "app_only" ? (
+          unmatchedAppExpenses.length === 0 ? (
+            <div className="p-8 text-center text-xs text-muted-foreground">
+              Todas as despesas cadastradas no app foram encontradas no extrato.
+            </div>
+          ) : (
+            unmatchedAppExpenses.map((exp) => (
+              <div
+                key={exp.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-2 bg-warning-subtle/10"
+              >
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="pt-0.5 text-warning">
+                    <AlertTriangle className="size-4 shrink-0" aria-hidden />
+                  </div>
+
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-xs text-foreground truncate">
+                        {exp.description || "Despesa sem descrição"}
+                      </span>
+
+                      {exp.installmentNumber && exp.installmentsTotal ? (
+                        <Badge variant="muted" className="text-[10px] py-0 px-1 font-mono">
+                          {exp.installmentNumber}/{exp.installmentsTotal}
+                        </Badge>
+                      ) : null}
+
+                      <Badge variant="warning" className="text-[10px] py-0 px-1">
+                        Ausente no Extrato
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="font-mono">{exp.date}</span>
+                      <span>· Lançamento manual cadastrado no app</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pl-7 sm:pl-0">
+                  <span className="text-xs text-muted-foreground">
+                    {categoryMap.get(exp.categoryId) ?? "Sem categoria"}
+                  </span>
+
+                  <div className="text-right min-w-[80px]">
+                    <MoneyText
+                      cents={exp.valueCents}
+                      tone="negative"
+                      className="font-medium text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
+          )
+        ) : filteredItems.length === 0 ? (
           <div className="p-8 text-center text-xs text-muted-foreground">
             Nenhum lançamento nesta categoria de filtro.
           </div>

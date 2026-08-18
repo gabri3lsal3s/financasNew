@@ -136,27 +136,27 @@ export function PricingSection() {
 
               <div className="mt-8 flex flex-col gap-3.5 text-sm">
                 <div className="flex items-center gap-2.5 font-medium text-foreground">
-                  <Check className="size-4 text-emerald-500 shrink-0" aria-hidden="true" />
+                  <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                   <span>Tudo incluído no Plano Gratuito</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Check className="size-4 text-emerald-500 shrink-0" aria-hidden="true" />
+                  <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                   <span><strong>Cartões ilimitados</strong> & gestão de faturas</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Check className="size-4 text-emerald-500 shrink-0" aria-hidden="true" />
+                  <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                   <span><strong>Motor de Rebalanceamento</strong> de carteira</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Check className="size-4 text-emerald-500 shrink-0" aria-hidden="true" />
+                  <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                   <span><strong>Histórico vitalício</strong> e relatórios ilimitados</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Check className="size-4 text-emerald-500 shrink-0" aria-hidden="true" />
+                  <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                   <span>Fechamento Mensal Executivo em <strong>PDF/Impressão</strong></span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Check className="size-4 text-emerald-500 shrink-0" aria-hidden="true" />
+                  <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                   <span>Detecção de assinaturas ocultas & cortes inteligentes</span>
                 </div>
               </div>
@@ -174,7 +174,7 @@ export function PricingSection() {
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
               <div className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                <ShieldCheck className="size-3.5 text-emerald-500" aria-hidden="true" />
+                <ShieldCheck className="size-3.5 text-positive-strong dark:text-positive" aria-hidden="true" />
                 <span>Garantia de 7 dias ou seu dinheiro de volta</span>
               </div>
             </div>

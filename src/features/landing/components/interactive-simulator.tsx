@@ -48,7 +48,7 @@ export function InteractiveSimulator() {
     <section id="simulador" className="py-16 md:py-24 relative overflow-hidden">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-semibold text-amber-500">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3.5 py-1 text-xs font-semibold text-warning-strong dark:text-warning">
             <Flame className="size-3.5" aria-hidden="true" />
             <span>Simulador de Independência FIRE</span>
           </div>
@@ -152,7 +152,7 @@ export function InteractiveSimulator() {
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center text-sm font-medium">
                   <span className="text-muted-foreground">Rentabilidade Média Estimada:</span>
-                  <span className="font-mono font-bold text-emerald-500">{annualRate}% a.a.</span>
+                  <span className="font-mono font-bold text-positive-strong dark:text-positive">{annualRate}% a.a.</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[8, 10, 12].map((val) => (
@@ -195,12 +195,12 @@ export function InteractiveSimulator() {
               </div>
 
               {/* Renda Passiva Mensal */}
-              <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <div className="mt-6 rounded-xl border border-positive/30 bg-positive/10 p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-emerald-500">
+                  <span className="text-xs font-semibold text-positive-strong dark:text-positive">
                     Renda Passiva Mensal Vitalícia (FIRE):
                   </span>
-                  <Sparkles className="size-4 text-emerald-500" aria-hidden="true" />
+                  <Sparkles className="size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
                 </div>
                 <div className="mt-1 font-mono text-2xl font-bold text-foreground">
                   {formatBRL(simulation.monthlyPassiveIncome)} <span className="text-xs font-normal text-muted-foreground">/ mês</span>
@@ -217,7 +217,7 @@ export function InteractiveSimulator() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Juros Compostos Ganhos:</span>
-                  <div className="mt-0.5 font-mono font-bold text-emerald-500">
+                  <div className="mt-0.5 font-mono font-bold text-positive-strong dark:text-positive">
                     +{formatBRL(simulation.totalInterest)}
                   </div>
                 </div>

@@ -74,6 +74,7 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
   const [parsedRows, setParsedRows] = useState<RawParsedRow[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
   const [reconciledItems, setReconciledItems] = useState<ReconciliationItem[]>([]);
+  const [unmatchedAppExpenses, setUnmatchedAppExpenses] = useState<ExistingExpenseForReconciliation[]>([]);
 
   const categoriesQuery = useCategories("expense");
   const expensesQuery = useCardExpenses(card.id);
@@ -120,13 +121,14 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
 
       // Se for OFX, vai direto para reconciliação (OFX já tem campos sem ambiguidade)
       if (result.isOfx || result.rows.length === 0) {
-        const items = reconcileStatementTransactions({
+        const reconciliation = reconcileStatementTransactions({
           statementTransactions: result.transactions,
           existingExpenses: existingExpensesForReconciliation,
           history: historyQuery.entries ?? [],
           defaultCategoryId,
         });
-        setReconciledItems(items);
+        setReconciledItems(reconciliation.items);
+        setUnmatchedAppExpenses(reconciliation.unmatchedExistingExpenses);
         setStep("reconcile");
       } else {
         // Se for CSV/Texto com linhas, passa pelo passo 2 de mapeamento/prévia
@@ -162,14 +164,15 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
         competenceMonth,
       });
 
-      const items = reconcileStatementTransactions({
+      const reconciliation = reconcileStatementTransactions({
         statementTransactions: transactions,
         existingExpenses: existingExpensesForReconciliation,
         history: historyQuery.entries ?? [],
         defaultCategoryId,
       });
 
-      setReconciledItems(items);
+      setReconciledItems(reconciliation.items);
+      setUnmatchedAppExpenses(reconciliation.unmatchedExistingExpenses);
       setStep("reconcile");
     } catch (err) {
       setError(getErrorMessage(err));
@@ -266,6 +269,7 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
       ) : step === "reconcile" ? (
         <StatementReconcileStep
           items={reconciledItems}
+          unmatchedAppExpenses={unmatchedAppExpenses}
           categories={categories}
           onToggleItem={handleToggleItem}
           onToggleAll={handleToggleAll}

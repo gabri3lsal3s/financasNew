@@ -191,4 +191,65 @@ describe("StatementImportDialog", () => {
       ],
     });
   });
+
+  it("exibe alerta e aba 'No App apenas' para despesas cadastradas no app que não constam no extrato", async () => {
+    const user = userEvent.setup();
+
+    // Despesa no app que NÃO veio no extrato
+    const orphanExpense: Expense = {
+      id: "exp-orphan-1",
+      user_id: "user-test",
+      date: "2026-08-20",
+      description: "Gasto Manual Cancelado",
+      value: 120.0,
+      base_amount: 120.0,
+      category_id: "cat-1",
+      payment_method: "credit_card",
+      card_id: "card-test",
+      bill_competence: "2026-08",
+      installments_total: 1,
+      installment_number: 1,
+      installment_group_id: null,
+      report_weight: 1.0,
+      created_at: "2026-08-20T00:00:00Z",
+    };
+
+    vi.spyOn(await import("@/state"), "useCardExpenses").mockReturnValue({
+      data: [orphanExpense],
+    } as unknown as UseQueryResult<Expense[], Error>);
+
+    render(
+      <StatementImportDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        card={mockCard}
+        competenceMonth="2026-08"
+      />,
+    );
+
+    // 1. Aba Colar
+    await user.click(screen.getByRole("tab", { name: /Colar Extrato/i }));
+
+    // 2. Cola um extrato que contém apenas outra compra
+    const textarea = screen.getByPlaceholderText(/Cole aqui as linhas/i);
+    await user.type(textarea, "10/08/2026\tCompra da Fatura\t75,00");
+
+    // 3. Processa e avança
+    await user.click(screen.getByRole("button", { name: /Processar Texto/i }));
+    await user.click(screen.getByRole("button", { name: /Avançar para Conferência/i }));
+
+    // 4. Deve exibir o alerta informativo de despesa no app ausente no extrato
+    expect(
+      screen.getByText(/Existe 1 despesa cadastrada no app que não consta neste extrato/i),
+    ).toBeInTheDocument();
+
+    // 5. Deve existir a aba "No App apenas (1)"
+    const appOnlyTab = screen.getByRole("tab", { name: /No App apenas \(1\)/i });
+    expect(appOnlyTab).toBeInTheDocument();
+
+    // 6. Clica na aba e verifica que o gasto ausente é listado com seu badge
+    await user.click(appOnlyTab);
+    expect(screen.getByText(/Gasto Manual Cancelado/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ausente no Extrato/i)).toBeInTheDocument();
+  });
 });

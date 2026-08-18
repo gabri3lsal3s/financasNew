@@ -17,7 +17,7 @@ export function LandingFooter() {
               de carteira focado na independência financeira.
             </p>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-              <ShieldCheck className="size-4 text-emerald-500" aria-hidden="true" />
+              <ShieldCheck className="size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
               <span>Ambiente criptografado com Row Level Security</span>
             </div>
           </div>
