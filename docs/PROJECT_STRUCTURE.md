@@ -73,7 +73,7 @@
     │   └── theme-provider.tsx     # ThemeProvider — aplica tema/accent do usuário (F11)
     │
     ├── components/
-    │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
+    │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button (+ button-variants), input,
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
     │   │   │                      #   virtual-list (F5.5), toast, toast-host (F30),
     │   │   │                      #   print-sheet (F22 evolução — portal de impressão),
