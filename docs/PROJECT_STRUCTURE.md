@@ -212,7 +212,7 @@
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
     │   ├── toast.ts               #   F30: bus de toasts imperativos (pushToast/dismissToast
-    │   │                          #     — pub/sub module-level p/ rollbacks otimistas)
+    │   │                          #     — pub/sub com Single Toast Mode, auto-dismiss garantido)
     │   ├── audio-fx.ts            #   Feedback sonoro sintetizado via Web Audio (F11)
     │   ├── export-actions.ts      #   F22: downloadBlob/Csv/Json + shareText (Web Share
     │   │                          #     API com fallback clipboard — DOM glue)
