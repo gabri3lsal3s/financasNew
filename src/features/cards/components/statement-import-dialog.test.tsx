@@ -240,7 +240,7 @@ describe("StatementImportDialog", () => {
 
     // 4. Deve exibir o alerta informativo de despesa no app ausente no extrato
     expect(
-      screen.getByText(/Existe 1 despesa cadastrada no app que não consta neste extrato/i),
+      screen.getByText(/1 despesa do app não consta neste extrato/i),
     ).toBeInTheDocument();
 
     // 5. Deve existir a aba "No App apenas (1)"
