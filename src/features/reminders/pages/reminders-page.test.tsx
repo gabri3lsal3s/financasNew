@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RemindersPage } from "./reminders-page";
 
 const setStateMock = vi.fn();
+const markAllMock = vi.fn();
 const navigateMock = vi.fn();
 
 vi.mock("react-router", () => ({
@@ -43,12 +44,63 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useUserPreferences: () => ({
+    data: {
+      reminders_enabled: true,
+      reminder_days_before_debt: 3,
+      reminder_days_before_bill: 3,
+    },
+    isLoading: false,
+    error: null,
+  }),
   useReminderStates: () => ({
     data: [{ key: "debt:d1", kind: "read", snoozeUntil: undefined }],
     isLoading: false,
     error: null,
   }),
   useSetReminderState: () => ({ mutate: setStateMock }),
+  useMarkAllRemindersAsRead: () => ({ mutate: markAllMock, isPending: false }),
+  useReminders: () => {
+    // Implementação direta do mock baseada no state atual
+    const bills = [
+      {
+        key: "bill:c1:2026-08",
+        kind: "bill" as const,
+        title: "Fatura Nubank · 2026-08",
+        subtitle: "Saldo de R$ 2.000,00",
+        dueDate: "2026-08-10",
+        amountCents: 200000,
+        status: "due_soon" as const,
+        link: { path: "/cartoes", params: { card: "c1", month: "2026-08" } },
+      },
+    ];
+
+    const debts = stateMocks.debts
+      .filter((d) => d.paid_at === null && d.id !== "d1" && d.id !== "d3")
+      .map((d) => ({
+        key: `debt:${d.id}`,
+        kind: "debt" as const,
+        title: d.name,
+        subtitle: d.type === "payable" ? "A pagar" : "A receber",
+        dueDate: d.due_date,
+        amountCents: Math.round(d.amount * 100),
+        status: (d.due_date < "2026-08-01" ? "overdue" : "due_soon") as "overdue" | "due_soon",
+        link: { path: "/dividas", params: { q: d.id } },
+      }));
+
+    const items = [...bills, ...debts];
+    return {
+      items,
+      totalCount: items.length,
+      overdueCount: items.filter((i) => i.status === "overdue").length,
+      dueTodayCount: 0,
+      dueSoonCount: items.filter((i) => i.status === "due_soon").length,
+      urgentCount: items.filter((i) => i.status === "overdue").length,
+      preferences: { enabled: true, debtDaysBefore: 3, billDaysBefore: 3 },
+      isLoading: false,
+      error: null,
+    };
+  },
 }));
 
 describe("RemindersPage (central de lembretes §3.10)", () => {
@@ -69,7 +121,6 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
     ];
     try {
       render(<RemindersPage />);
-      // Atrasada de julho (antes do mês atual) NÃO pode sumir da central.
       expect(screen.getByText("Prestação atrasada")).toBeInTheDocument();
     } finally {
       stateMocks.debts = stateMocks.debts.filter((debt) => debt.id !== "d4");
@@ -87,31 +138,35 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
     });
   });
 
-  it("adiar grava snoozeUntil = hoje + 7 dias (data válida, não a chave)", async () => {
+  it("adiar grava snoozeUntil = hoje + 7 dias", async () => {
     const user = userEvent.setup();
     render(<RemindersPage />);
 
-    // Fatura Nubank aparece (saldo aberto) — adiar gera a data correta.
     await user.click(screen.getByRole("button", { name: /Adiar lembrete/ }));
 
     expect(setStateMock).toHaveBeenCalledWith({
       occurrenceKey: expect.stringMatching(/^bill:/),
       state: {
         kind: "snoozed",
-        // Antes o helper recebia a CHAVE e gerava "NaN-NaN-NaN" — o lembrete
-        // adiado nunca mais reaparecia. Agora é hoje + 7 dias (YYYY-MM-DD).
         snoozeUntil: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       },
     });
-    const args = setStateMock.mock.calls.find((call) => call[0]?.state?.kind === "snoozed")?.[0];
-    expect(args.state.snoozeUntil).not.toContain("NaN");
+  });
+
+  it("permite marcar todas como lidas via ação em lote", async () => {
+    const user = userEvent.setup();
+    render(<RemindersPage />);
+
+    const markAllBtn = screen.getByRole("button", { name: /Marcar todas como lidas/ });
+    await user.click(markAllBtn);
+
+    expect(markAllMock).toHaveBeenCalledWith(["bill:c1:2026-08"]);
   });
 
   it("clicar no lembrete navega com o deep-link do item", async () => {
     const user = userEvent.setup();
     stateMocks.debts = [
       ...stateMocks.debts,
-      // Vencida — sempre aparece (fora da janela) e é clicável.
       { id: "d5", name: "Cartão atrasado", type: "payable", amount: 250, due_date: "2026-07-10", paid_at: null },
     ];
     try {

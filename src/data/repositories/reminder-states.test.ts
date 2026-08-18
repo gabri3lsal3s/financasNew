@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { listReminderStates, setReminderState } from "./reminder-states";
+import { listReminderStates, setReminderState, markAllRemindersAsRead } from "./reminder-states";
 
 interface Builder {
   select: ReturnType<typeof vi.fn>;
@@ -82,5 +82,23 @@ describe("reminder-states (repository — §3.10)", () => {
     builder = makeBuilder({ error: null });
     lastError = { message: "network down", code: "NETWORK_ERROR" };
     await expect(setReminderState("k", { kind: "read" })).rejects.toThrow();
+  });
+
+  it("markAllRemindersAsRead grava lote de ocorrências como read", async () => {
+    builder = makeBuilder({ error: null });
+    await markAllRemindersAsRead(["debt:d1", "bill:c1:2026-08"]);
+    expect(Array.isArray(lastUpsertInput)).toBe(true);
+    expect(lastUpsertInput).toHaveLength(2);
+    expect((lastUpsertInput as unknown[])[0]).toMatchObject({
+      user_id: "u1",
+      occurrence_key: "debt:d1",
+      kind: "read",
+    });
+  });
+
+  it("markAllRemindersAsRead ignora array vazio", async () => {
+    builder = makeBuilder({ error: null });
+    await markAllRemindersAsRead([]);
+    expect(lastUpsertInput).toBeNull();
   });
 });

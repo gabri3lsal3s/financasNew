@@ -75,40 +75,34 @@
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button, input,
     │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
-    │   │   │                      #   virtual-list (F5.5), toast, toast-host (F30 —
-    │   │   │                      #     assinante do bus de toasts imperativos),
-    │   │   │                      #   print-sheet (F22 evolução — portal de impressão
-    │   │   │                      #     em nível body: no @media print esconde o app e
-    │   │   │                      #     imprime o documento completo em várias páginas),
+    │   │   │                      #   virtual-list (F5.5), toast, toast-host (F30),
+    │   │   │                      #   print-sheet (F22 evolução — portal de impressão),
     │   │   │                      #   number-ticker, sparkline (F8), color-picker,
     │   │   │                      #   icon-picker (pós-F10), live-pulse-beacon (F11),
     │   │   │                      #   tooltip (F25 — primitivo acessível, CSS puro),
-    │   │   │                      #   number-stepper-input (pós-F25 — substitui o
-    │   │   │                      #     input[type=number] nativo: botões −/+ com
-    │   │   │                      #     long-press e min/max/step),
-    │   │   │                      #   error-state (v1.25 — Alert + "Tentar novamente"
-    │   │   │                      #     com refetch das queries ativas; padrão de
-    │   │   │                      #     estado de erro do AGENTS.md §5)…
+    │   │   │                      #   popover (v1.62 — Radix Popover com tema/blur),
+    │   │   │                      #   number-stepper-input (pós-F25),
+    │   │   │                      #   error-state (v1.25 — Alert + "Tentar novamente")…
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, onboarding-card, pwa-update-toast,
+    │   │   │                      #   notifications-popover (v1.62 — resumo rápido de lembretes no header),
     │   │   │                      #   install-app-button (F5.6),
     │   │   │                      #   category-donut, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   credit-card-3d + credit-card-wallet (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line,
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
-    │   │   │                      #   export-data-hub (F22 — backup/CSV/restauração em Configurações),
-    │   │   │                      #   monthly-close-print-view (F22 — fechamento mensal imprimível),
-    │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section
-    │   │   │                      #     (F24 — fundo de emergência e simulador FIRE no Insights),
+    │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
+    │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section (F24),
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10),
     │       │                      #   privacy-toggle (F8), theme-toggle, calculator-button,
+    │       │                      #   notifications-button (v1.62 — sininho com badge no header),
     │       │                      #   global-search (busca no header)
     │       └── index.ts           #   barrel (AGENTS.md §7 — importações externas via @/components/layout)
     │

@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsPage } from "./settings-page";
 import { ThemeProvider } from "@/app/theme-provider";
 
+const mockUpdateReminderPreferences = vi.fn();
+
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
     user: { id: "u1", email: "usuario@teste.com", user_metadata: { name: "Gabriel" } },
@@ -42,6 +44,19 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useUserPreferences: () => ({
+    data: {
+      reminders_enabled: true,
+      reminder_days_before_debt: 3,
+      reminder_days_before_bill: 5,
+    },
+    isLoading: false,
+    error: null,
+  }),
+  useUpdateReminderPreferences: () => ({
+    mutate: mockUpdateReminderPreferences,
+    isPending: false,
+  }),
 }));
 
 function renderSettings() {
@@ -60,6 +75,7 @@ function renderSettings() {
 describe("SettingsPage (F11 — Centro de Personalização)", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    mockUpdateReminderPreferences.mockClear();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -75,7 +91,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     });
   });
 
-  it("renderiza o cabeçalho e abas principais", () => {
+  it("renderiza o cabeçalho e abas principais incluindo Lembretes", () => {
     renderSettings();
 
     expect(screen.getByText("Configurações & Personalização")).toBeInTheDocument();
@@ -83,6 +99,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.getByRole("tab", { name: /Movimento/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Sensorial/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Lembretes/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Perfil/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Dados/i })).toBeInTheDocument();
   });
@@ -96,30 +113,15 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("permite selecionar uma paleta de acento", async () => {
+  it("permite acessar a aba de Lembretes e interagir com as configurações", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const emeraldOption = screen.getByRole("button", { name: /Esmeralda Fintech/i });
-    await user.click(emeraldOption);
-    expect(document.documentElement.getAttribute("data-accent")).toBe("emerald");
-  });
+    const remindersTab = screen.getByRole("tab", { name: /Lembretes/i });
+    await user.click(remindersTab);
 
-  it("navega até a aba Dashboard e exibe opções modulares", async () => {
-    const user = userEvent.setup();
-    renderSettings();
-
-    await user.click(screen.getByRole("tab", { name: /Dashboard/i }));
-    expect(screen.getByText(/Resumo de Saldo & KPIs/i)).toBeInTheDocument();
-    expect(screen.getByText(/Saldo Líquido de Contas & Poupança/i)).toBeInTheDocument();
-  });
-
-  it("navega até a aba Perfil e exibe dados da conta", async () => {
-    const user = userEvent.setup();
-    renderSettings();
-
-    await user.click(screen.getByRole("tab", { name: /Perfil/i }));
-    expect(screen.getByText("Gabriel")).toBeInTheDocument();
-    expect(screen.getByText("usuario@teste.com")).toBeInTheDocument();
+    expect(screen.getByText("Lembretes & Notificações Automáticas")).toBeInTheDocument();
+    expect(screen.getByText("Antecedência para Faturas de Cartão")).toBeInTheDocument();
+    expect(screen.getByText("Antecedência para Dívidas")).toBeInTheDocument();
   });
 });

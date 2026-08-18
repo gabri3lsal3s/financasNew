@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { navItems } from "@/components/layout/nav-items";
+import { useReminders } from "@/state";
 
 /** Atraso do hover-expand: evita disparos acidentais com mouse rápido (F25). */
 const HOVER_EXPAND_DELAY_MS = 120;
@@ -29,6 +30,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { totalCount, urgentCount } = useReminders();
 
   // A limpeza dos timers no unmount evita setState em componente desmontado.
   useEffect(() => {
@@ -76,31 +78,58 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2.5" aria-label="Navegação principal">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === "/"}
-            aria-label={expanded ? undefined : item.label}
-            title={expanded ? undefined : item.label}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap",
-                !expanded && "justify-center px-2",
-                isActive
-                  ? "bg-primary/12 text-primary-strong font-semibold"
-                  : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-              )
-            }
-          >
-            <item.icon className="size-5 shrink-0" aria-hidden="true" />
-            {expanded && (
-              <span className="overflow-hidden whitespace-nowrap animate-fade-slide-in">
-                {item.label}
-              </span>
-            )}
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const isReminders = item.path === "/lembretes";
+          const showBadge = isReminders && totalCount > 0;
+
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === "/"}
+              aria-label={expanded ? undefined : item.label}
+              title={expanded ? undefined : item.label}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap relative",
+                  !expanded && "justify-center px-2",
+                  isActive
+                    ? "bg-primary/12 text-primary-strong font-semibold"
+                    : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                )
+              }
+            >
+              <div className="relative shrink-0">
+                <item.icon className="size-5 shrink-0" aria-hidden="true" />
+                {!expanded && showBadge && (
+                  <span
+                    className={cn(
+                      "absolute -top-1 -right-1 size-2 rounded-full ring-2 ring-surface",
+                      urgentCount > 0 ? "bg-danger" : "bg-primary",
+                    )}
+                  />
+                )}
+              </div>
+              {expanded && (
+                <div className="flex flex-1 items-center justify-between overflow-hidden animate-fade-slide-in">
+                  <span className="overflow-hidden truncate">{item.label}</span>
+                  {showBadge && (
+                    <span
+                      className={cn(
+                        "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                        urgentCount > 0
+                          ? "bg-danger text-white"
+                          : "bg-primary/15 text-primary-strong",
+                      )}
+                    >
+                      {totalCount > 9 ? "9+" : totalCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
       <div className="shrink-0 border-t border-border p-2.5">

@@ -58,4 +58,5 @@ export type {
 } from "./card-invoice-print-view";
 export { PlanningSection } from "./planning-section";
 export type { PlanningSectionProps } from "./planning-section";
-
+export { NotificationsPopover } from "./notifications-popover";
+export type { NotificationsPopoverProps } from "./notifications-popover";

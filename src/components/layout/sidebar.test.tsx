@@ -5,6 +5,16 @@ import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
 
+vi.mock("@/state", () => ({
+  useReminders: () => ({
+    totalCount: 0,
+    urgentCount: 0,
+    items: [],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 function renderSidebar(isCollapsed = false, onToggle = () => {}) {
   return render(
     <MemoryRouter initialEntries={["/"]}>

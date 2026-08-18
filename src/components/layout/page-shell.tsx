@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { CalculatorButton } from "@/components/layout/calculator-button";
 import { GlobalSearch } from "@/components/layout/global-search";
+import { NotificationsButton } from "@/components/layout/notifications-button";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -55,6 +56,7 @@ export function PageShell() {
             </div>
             <GlobalSearch className="flex-1" />
             <PrivacyToggle />
+            <NotificationsButton />
             <CalculatorButton />
             <ThemeToggle />
           </div>

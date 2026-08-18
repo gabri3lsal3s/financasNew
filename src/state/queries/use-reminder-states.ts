@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listReminderStates, setReminderState } from "@/data/repositories/reminder-states";
+import { listReminderStates, setReminderState, markAllRemindersAsRead } from "@/data/repositories/reminder-states";
 import type { ReminderState } from "@/domain/reminders";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
@@ -42,6 +42,28 @@ export function useSetReminderState() {
     onError: (error) => {
       pushToast({
         title: "Não foi possível atualizar o lembrete",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useMarkAllRemindersAsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (occurrenceKeys: string[]) => markAllRemindersAsRead(occurrenceKeys),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: reminderStatesKey });
+      pushToast({
+        title: "Lembretes atualizados",
+        description: "Todos os lembretes visíveis foram marcados como lidos.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível marcar os lembretes",
         description: getErrorMessage(error),
         variant: "destructive",
       });

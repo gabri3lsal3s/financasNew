@@ -62,3 +62,27 @@ export async function setReminderState(
     throw new AppError(classified.kind, classified.message, error);
   }
 }
+
+/**
+ * Marca múltiplas ocorrências de lembretes como lidas de uma só vez (ação em lote).
+ */
+export async function markAllRemindersAsRead(occurrenceKeys: string[]): Promise<void> {
+  if (occurrenceKeys.length === 0) return;
+  const user_id = await currentUserId();
+  const now = new Date().toISOString();
+  const inputs: DbInsert<ReminderState>[] = occurrenceKeys.map((occurrenceKey) => ({
+    user_id,
+    occurrence_key: occurrenceKey,
+    kind: "read",
+    snooze_until: null,
+    updated_at: now,
+  }));
+
+  const { error } = await getSupabase().from("reminder_states").upsert(inputs, {
+    onConflict: "user_id,occurrence_key",
+  });
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}

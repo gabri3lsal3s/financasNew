@@ -50,5 +50,12 @@ export { Dropzone } from "./dropzone";
 export type { DropzoneProps } from "./dropzone";
 export { Textarea } from "./textarea";
 export type { TextareaProps } from "./textarea";
-
-
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverAnchor,
+  PopoverClose,
+  PopoverArrow,
+} from "./popover";
+export type { PopoverContentProps } from "./popover";

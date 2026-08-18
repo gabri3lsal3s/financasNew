@@ -13,3 +13,4 @@ export { PageShell } from "./page-shell";
 export type { LoadingScreenProps } from "./loading-screen";
 export { LoadingScreen } from "./loading-screen";
 export { ThemeToggle } from "./theme-toggle";
+export { NotificationsButton } from "./notifications-button";

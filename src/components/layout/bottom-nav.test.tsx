@@ -1,7 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { BottomNav } from "./bottom-nav";
+
+vi.mock("@/state", () => ({
+  useReminders: () => ({
+    totalCount: 0,
+    urgentCount: 0,
+    items: [],
+    isLoading: false,
+    error: null,
+  }),
+}));
 
 function renderNav(entry = "/") {
   return render(

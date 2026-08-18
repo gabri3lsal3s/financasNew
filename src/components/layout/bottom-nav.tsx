@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
 import { triggerHaptic } from "@/services/haptics";
+import { useReminders } from "@/state";
 
 /** Resolve um slot obrigatório da BottomNav a partir da fonte única de navegação. */
 function requiredSlot(path: string): NavItem {
@@ -63,6 +64,7 @@ function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
 export function BottomNav() {
   const location = useLocation();
   const create = getFabAction(location.pathname, location.search);
+  const { totalCount, urgentCount } = useReminders();
 
   return (
     <nav
@@ -95,12 +97,22 @@ export function BottomNav() {
           to="/mais"
           className={({ isActive }) =>
             cn(
-              "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors",
+              "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors relative",
               isActive ? "text-primary-strong" : "text-muted-foreground",
             )
           }
         >
-          <Ellipsis className="size-5" aria-hidden="true" />
+          <div className="relative">
+            <Ellipsis className="size-5" aria-hidden="true" />
+            {totalCount > 0 && (
+              <span
+                className={cn(
+                  "absolute -top-0.5 -right-1 size-2 rounded-full ring-2 ring-surface",
+                  urgentCount > 0 ? "bg-danger" : "bg-primary",
+                )}
+              />
+            )}
+          </div>
           <span>Mais</span>
         </NavLink>
       </div>

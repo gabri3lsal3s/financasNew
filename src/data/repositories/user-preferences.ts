@@ -48,3 +48,30 @@ export async function updateSectorCaps(caps: SectorCaps): Promise<void> {
     throw new AppError(classified.kind, classified.message, error);
   }
 }
+
+export type ReminderPreferencesInput = {
+  remindersEnabled?: boolean;
+  reminderDaysBeforeDebt?: number;
+  reminderDaysBeforeBill?: number;
+};
+
+/** Atualiza as preferências de lembretes e notificações (§3.10). */
+export async function updateReminderPreferences(prefs: ReminderPreferencesInput): Promise<void> {
+  const user_id = await currentUserId();
+  const input: DbUpdate<UserPreferences> = {};
+  if (prefs.remindersEnabled !== undefined) {
+    input.reminders_enabled = prefs.remindersEnabled;
+  }
+  if (prefs.reminderDaysBeforeDebt !== undefined) {
+    input.reminder_days_before_debt = prefs.reminderDaysBeforeDebt;
+  }
+  if (prefs.reminderDaysBeforeBill !== undefined) {
+    input.reminder_days_before_bill = prefs.reminderDaysBeforeBill;
+  }
+
+  const { error } = await getSupabase().from("user_preferences").update(input).eq("user_id", user_id);
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}

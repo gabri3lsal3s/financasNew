@@ -59,7 +59,15 @@ export {
   useDeleteCategory,
 } from "./mutations/use-category-mutations";
 export { useFeedback, useSetFeedback } from "./queries/use-insight-feedback";
-export { useReminderStates, useSetReminderState } from "./queries/use-reminder-states";
+export {
+  useReminderStates,
+  useSetReminderState,
+  useMarkAllRemindersAsRead,
+} from "./queries/use-reminder-states";
+export { useUserPreferences } from "./queries/use-user-preferences";
+export { useUpdateReminderPreferences } from "./mutations/use-preference-mutations";
+export { useReminders } from "./queries/use-reminders";
+export type { RemindersData } from "./queries/use-reminders";
 export {
   usePortfolioAssets,
   useAssetPosition,

@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Zap,
   Sliders,
+  Bell,
 } from "lucide-react";
 import {
   Card,
@@ -28,6 +29,7 @@ import {
   Badge,
   LivePulseBeacon,
   Checkbox,
+  NumberStepperInput,
 } from "@/components/ui";
 import { useTheme } from "@/app/theme-provider";
 import type { ThemePreference } from "@/app/theme-provider";
@@ -64,7 +66,7 @@ import {
   serializeInvoicesCsv,
   serializePositionsCsv,
 } from "@/domain/export";
-import { usePortfolioPosition } from "@/state";
+import { usePortfolioPosition, useUserPreferences, useUpdateReminderPreferences } from "@/state";
 
 const ACCENT_OPTIONS: { id: AccentTheme; label: string; bgClass: string; hex: string }[] = [
   { id: "teal", label: "Teal Vital (Oficial)", bgClass: "bg-[#2A9D8F]", hex: "#2A9D8F" },
@@ -104,6 +106,31 @@ export function SettingsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const portfolioPosition = usePortfolioPosition();
+  const preferencesQuery = useUserPreferences();
+  const updatePreferencesMutation = useUpdateReminderPreferences();
+
+  const remindersEnabled = preferencesQuery.data?.reminders_enabled ?? true;
+  const billDaysBefore = preferencesQuery.data?.reminder_days_before_bill ?? 3;
+  const debtDaysBefore = preferencesQuery.data?.reminder_days_before_debt ?? 3;
+
+  const handleToggleReminders = (enabled: boolean) => {
+    triggerHaptic("medium");
+    updatePreferencesMutation.mutate({ remindersEnabled: enabled });
+  };
+
+  const handleUpdateBillDays = (valStr: string) => {
+    const num = parseInt(valStr, 10);
+    if (!Number.isNaN(num) && num >= 0 && num <= 30) {
+      updatePreferencesMutation.mutate({ reminderDaysBeforeBill: num });
+    }
+  };
+
+  const handleUpdateDebtDays = (valStr: string) => {
+    const num = parseInt(valStr, 10);
+    if (!Number.isNaN(num) && num >= 0 && num <= 30) {
+      updatePreferencesMutation.mutate({ reminderDaysBeforeDebt: num });
+    }
+  };
 
   const handleTestSound = (type: "click" | "success" | "pop") => {
     triggerHaptic("medium");
@@ -591,6 +618,83 @@ export function SettingsPage() {
                   />
                 </label>
               ))}
+            </CardContent>
+          </Card>
+        </div>
+      ),
+    },
+    {
+      value: "notificacoes",
+      label: "Lembretes",
+      icon: <Bell className="size-4" />,
+      content: (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>Lembretes & Notificações Automáticas</span>
+                <Badge variant={remindersEnabled ? "positive" : "muted"}>
+                  {remindersEnabled ? "Ativado" : "Desativado"}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <label className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-surface hover:bg-surface-hover cursor-pointer">
+                <div className="pr-4">
+                  <div className="font-semibold text-sm text-foreground">
+                    Habilitar Lembretes no Aplicativo
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Calcula e exibe alertas de faturas de cartão e dívidas no sininho do header e na central de lembretes.
+                  </div>
+                </div>
+                <Checkbox
+                  checked={remindersEnabled}
+                  onCheckedChange={(checked) => handleToggleReminders(Boolean(checked))}
+                />
+              </label>
+
+              {remindersEnabled && (
+                <div className="grid gap-4 pt-2 sm:grid-cols-2">
+                  <div className="p-4 rounded-xl border border-border bg-surface space-y-2">
+                    <div className="font-semibold text-sm text-foreground">
+                      Antecedência para Faturas de Cartão
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Quantos dias antes da data de vencimento a fatura em aberto deve começar a ser alertada.
+                    </p>
+                    <div className="pt-2">
+                      <NumberStepperInput
+                        value={billDaysBefore}
+                        onValueChange={handleUpdateBillDays}
+                        min={0}
+                        max={30}
+                        step={1}
+                        ariaLabel="Dias de antecedência para faturas"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-border bg-surface space-y-2">
+                    <div className="font-semibold text-sm text-foreground">
+                      Antecedência para Dívidas
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Quantos dias antes do vencimento a dívida pendente (a pagar ou a receber) deve ser alertada.
+                    </p>
+                    <div className="pt-2">
+                      <NumberStepperInput
+                        value={debtDaysBefore}
+                        onValueChange={handleUpdateDebtDays}
+                        min={0}
+                        max={30}
+                        step={1}
+                        ariaLabel="Dias de antecedência para dívidas"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

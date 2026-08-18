@@ -21,6 +21,15 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useReminders: () => ({
+    totalCount: 0,
+    urgentCount: 0,
+    items: [],
+    isLoading: false,
+    error: null,
+  }),
+  useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
+  useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 function renderShell() {
