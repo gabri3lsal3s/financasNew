@@ -22,7 +22,7 @@ function RequireAuth() {
   useRoutePrefetch();
 
   // Previne micro-flashes mantendo a tela de transição visível de forma estável e fluida (650ms)
-  const isTransitioning = useMinimumLoading(loading, 650);
+  const { isShowing: isTransitioning, isClosing } = useMinimumLoading(loading, 650);
 
   if (configError) {
     return (
@@ -38,7 +38,7 @@ function RequireAuth() {
     if (!loading && !session && !isTransitioning) {
       return <Navigate to="/entrar" replace state={{ from: location }} />;
     }
-    return <LoadingScreen />;
+    return <LoadingScreen isClosing={isClosing} />;
   }
 
   return (

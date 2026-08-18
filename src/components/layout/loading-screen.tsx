@@ -9,6 +9,11 @@ export interface LoadingScreenProps {
   customSteps?: Array<{ progress: number; text: string }>;
   /** Valor de progresso fixo (0 a 100). Se omitido, avança dinamicamente em tempo real. */
   progress?: number;
+  /**
+   * Quando `true`, sinaliza que o carregamento real terminou e o componente
+   * está prestes a ser desmontado. A barra corre suavemente até 100%.
+   */
+  isClosing?: boolean;
   /** Classes CSS adicionais para o container externo. */
   className?: string;
   /** Se deve ocupar a tela inteira com min-h-dvh (padrão: true). */
@@ -18,25 +23,42 @@ export interface LoadingScreenProps {
 const DEFAULT_STAGES = [
   { progress: 22, text: "Iniciando sessão segura…" },
   { progress: 54, text: "Sincronizando preferências e categorias…" },
-  { progress: 82, text: "Carregando transações e dados…" },
-  { progress: 96, text: "Preparando painel financeiro…" },
+  { progress: 78, text: "Carregando transações e dados…" },
+  { progress: 92, text: "Preparando painel financeiro…" },
+  { progress: 100, text: "Pronto!" },
 ];
 
 /**
  * Tela de carregamento oficial otimizada — "Guia Financeiro".
  * Apresenta somente a logo com brilho orbital sutil e barra de progresso
  * responsiva com avanço dinâmico e log em tempo real das etapas em execução.
+ *
+ * Ao receber `isClosing=true`, a barra corre até 100% antes de desmontar.
  */
 export function LoadingScreen({
   statusText,
   customSteps,
   progress: externalProgress,
+  isClosing = false,
   className,
   fullScreen = true,
 }: LoadingScreenProps) {
   const steps = customSteps ?? DEFAULT_STAGES;
+  const lastStepIndex = steps.length - 1;
+  const lastStepProgress = steps[lastStepIndex]?.progress ?? 100;
+
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [simulatedProgress, setSimulatedProgress] = useState(steps[0]?.progress ?? 15);
+  const [prevIsClosing, setPrevIsClosing] = useState(isClosing);
+
+  // Ao entrar na fase de fechamento, salta para o último estágio (100%) durante o render
+  if (isClosing !== prevIsClosing) {
+    setPrevIsClosing(isClosing);
+    if (isClosing) {
+      setCurrentStepIndex(lastStepIndex);
+      setSimulatedProgress(lastStepProgress);
+    }
+  }
 
   // Avanço dinâmico e realista do progresso e dos logs
   useEffect(() => {
@@ -49,13 +71,15 @@ export function LoadingScreen({
           setSimulatedProgress(steps[next]!.progress);
           return next;
         }
-        setSimulatedProgress((p) => Math.min(98, p + 1));
+        // Já está na última etapa: não avança mais além de 99
+        setSimulatedProgress((p) => Math.min(99, p + 1));
         return prev;
       });
     }, 450);
 
     return () => clearInterval(interval);
   }, [externalProgress, steps]);
+
 
   const activeProgress = Math.min(
     100,

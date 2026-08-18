@@ -19,49 +19,51 @@ export function useMinimumLoading(
   isLoading: boolean,
   minDurationMs = 650,
 ): UseMinimumLoadingResult {
-  const [delayedLoading, setDelayedLoading] = useState(isLoading);
-  const [isClosing, setIsClosing] = useState(false);
+  // `phase`: "idle" | "loading" | "closing" | "done"
+  const [phase, setPhase] = useState<"idle" | "loading" | "closing" | "done">(
+    isLoading ? "loading" : "idle",
+  );
   const [prevLoading, setPrevLoading] = useState(isLoading);
-  const mountTimeRef = useRef<number>(0);
+  const loadingStartRef = useRef<number>(0);
 
-  // Ajuste de estado de transição durante o render (padrão oficial React para transições de props/args)
+  // Derivação de estado durante o render (padrão oficial React)
   if (isLoading !== prevLoading) {
     setPrevLoading(isLoading);
     if (isLoading) {
-      setDelayedLoading(true);
-      setIsClosing(false);
+      setPhase("loading");
     }
   }
 
   useEffect(() => {
     if (isLoading) {
-      mountTimeRef.current = Date.now();
-      setIsClosing(false);
+      loadingStartRef.current = Date.now();
       return;
     }
 
-    if (mountTimeRef.current === 0) {
-      setDelayedLoading(false);
-      setIsClosing(false);
-      return;
+    if (loadingStartRef.current === 0) {
+      // Nunca chegou a carregar — encerra imediatamente
+      const t = setTimeout(() => setPhase("done"), 0);
+      return () => clearTimeout(t);
     }
 
-    const elapsed = Date.now() - mountTimeRef.current;
+    const elapsed = Date.now() - loadingStartRef.current;
     const remaining = Math.max(0, minDurationMs - elapsed);
 
-    // Sinaliza fase de fechamento imediatamente quando o loading real termina
-    setIsClosing(true);
-
-    const timer = setTimeout(() => {
-      setDelayedLoading(false);
-      setIsClosing(false);
-      mountTimeRef.current = 0;
+    // Fase de fechamento: aguarda o tempo mínimo antes de desmontar
+    const closing = setTimeout(() => setPhase("closing"), 0);
+    const done = setTimeout(() => {
+      setPhase("done");
+      loadingStartRef.current = 0;
     }, remaining);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(closing);
+      clearTimeout(done);
+    };
   }, [isLoading, minDurationMs]);
 
-  const isShowing = isLoading || delayedLoading;
+  const isShowing = phase === "loading" || phase === "closing";
+  const isClosing = phase === "closing";
 
-  return { isShowing, isClosing: isShowing && isClosing };
+  return { isShowing, isClosing };
 }
