@@ -126,12 +126,12 @@ export interface ExistingExpenseForReconciliation {
 
 ## 4. ALGORITMOS DE RECONCILIAÇÃO E RESILIÊNCIA
 
-### 4.1 Higienização de Nomes e Extração de Parcelas (`clean.ts` & `installments.ts`)
+### 4.1 Higienização de Nomes, Parcelas e Parser de Linguagem Natural (`clean.ts`, `installments.ts`, `text-parser.ts`)
 ```typescript
 import { normalizeText } from "@/domain/predictions";
 
 /**
- * Remove ruídos bancários e isola o nome do estabelecimento.
+ * Remove ruídos bancários, conectivos e isola o nome do estabelecimento.
  * Reutiliza normalizeText de predictions para evitar duplicar limpeza de diacríticos.
  */
 export function cleanDescription(raw: string): string {
@@ -142,10 +142,23 @@ export function cleanDescription(raw: string): string {
     .replace(/\s*\bPARC\s*\d{1,2}\/\d{1,2}\b/gi, "")
     .replace(/\s*\b\d{1,2}\s*DE\s*\d{1,2}\b/gi, "")
     .replace(/\s*\d{1,2}\/\d{1,2}\b/g, "")
+    .replace(/\s*\b(?:parcelado\s+em\s+|em\s+)?\d{1,2}\s*(?:x|vezes)\b/gi, "")
     .replace(/\s*-\s*(BR|SAO PAULO|RIO DE JANEIRO|CURITIBA|BELO HORIZONTE|BRASIL).*$/i, "")
+    .replace(/\s+(?:por|de|em|no|na)\s*$/i, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
+
+/**
+ * Extrator de entidades financeiras para texto livre e linguagem natural (Quick-Paste).
+ * Isola Data (ISO, DD/MM/AAAA, meses nominais, termos relativos 'hoje'/'ontem'),
+ * Valor (BRL decimal, sufixos 'reais', conectivos 'por'/'de') e Descrição sanitizada.
+ */
+export function parseNaturalLanguageLine(
+  line: string,
+  defaultYear = new Date().getFullYear(),
+): { date: string; description: string; amount: string } | null;
+```
 
 /** Extrai informações de parcelas embutidas no texto da descrição. */
 export function extractInstallmentInfo(raw: string): { current: number; total: number } | undefined {
