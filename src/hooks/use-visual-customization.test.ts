@@ -91,11 +91,15 @@ describe("useVisualCustomization (F11)", () => {
     expect(getVisualCustomization().numberTickerEnabled).toBe(true);
   });
 
-  it("permite ligar e desligar widgets do dashboard", () => {
-    updateVisualCustomization({
-      dashboardWidgets: { ...getVisualCustomization().dashboardWidgets, kpis: false, summary: false },
-    });
-    expect(getVisualCustomization().dashboardWidgets.kpis).toBe(false);
-    expect(getVisualCustomization().dashboardWidgets.summary).toBe(false);
+  it("permite salvar e restaurar disabledSensoryIntents para desativar categorias específicas", () => {
+    updateVisualCustomization({ disabledSensoryIntents: ["warning", "error"] });
+    expect(getVisualCustomization().disabledSensoryIntents).toEqual(["warning", "error"]);
+    expect(window.localStorage.getItem("financas_disabled_sensory_intents")).toBe(
+      JSON.stringify(["warning", "error"]),
+    );
+
+    // No init, recupera do localStorage
+    const config = initVisualCustomization();
+    expect(config.disabledSensoryIntents).toEqual(["warning", "error"]);
   });
 });

@@ -48,6 +48,10 @@ export function triggerSensory(intent: SensoryIntent, options?: SensoryOptions):
   if (typeof window === "undefined") return;
 
   const visual = getVisualCustomization();
+  if (visual.disabledSensoryIntents?.includes(intent)) {
+    return;
+  }
+
   const mapping = SENSORY_MAP[intent];
 
   // Disparo háptico respeitando a preferência global do usuário

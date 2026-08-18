@@ -83,4 +83,25 @@ describe("sensory service", () => {
     expect(triggerHaptic).toHaveBeenLastCalledWith("error");
     expect(playSound).toHaveBeenLastCalledWith("error", true);
   });
+
+  it("não dispara nem som nem haptic para categorias presentes em disabledSensoryIntents", () => {
+    updateVisualCustomization({
+      soundEnabled: true,
+      hapticEnabled: true,
+      disabledSensoryIntents: ["warning", "error"],
+    });
+
+    triggerSensory("warning");
+    expect(triggerHaptic).not.toHaveBeenCalled();
+    expect(playSound).not.toHaveBeenCalled();
+
+    triggerSensory("error");
+    expect(triggerHaptic).not.toHaveBeenCalled();
+    expect(playSound).not.toHaveBeenCalled();
+
+    // Outras categorias permitidas continuam disparando normalmente
+    triggerSensory("success");
+    expect(triggerHaptic).toHaveBeenCalledWith("success");
+    expect(playSound).toHaveBeenCalledWith("success", true);
+  });
 });

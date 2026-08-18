@@ -4,6 +4,15 @@ export type AccentTheme = "teal" | "emerald" | "gold" | "sapphire" | "violet" | 
 export type SurfaceStyle = "glass" | "flat" | "elevated";
 export type MotionLevel = "fluid" | "eco" | "reduced";
 
+export type SensoryIntent =
+  | "selection"
+  | "action"
+  | "toggle"
+  | "success"
+  | "warning"
+  | "destructive"
+  | "error";
+
 export interface DashboardWidgetsConfig {
   kpis: boolean;
   summary: boolean;
@@ -25,6 +34,7 @@ export interface VisualCustomization {
   motionLevel: MotionLevel;
   soundEnabled: boolean;
   hapticEnabled: boolean;
+  disabledSensoryIntents: SensoryIntent[];
   numberTickerEnabled: boolean;
   dashboardWidgets: DashboardWidgetsConfig;
   headerButtons: HeaderButtonsConfig;
@@ -36,6 +46,7 @@ const STORAGE_KEYS = {
   motionLevel: "financas_motion_level",
   soundEnabled: "financas_sound_enabled",
   hapticEnabled: "financas_haptic_enabled",
+  disabledSensoryIntents: "financas_disabled_sensory_intents",
   numberTickerEnabled: "financas_number_ticker_enabled",
   dashboardWidgets: "financas_dashboard_widgets",
   headerButtons: "financas_header_buttons",
@@ -62,6 +73,7 @@ const DEFAULT_CONFIG: VisualCustomization = {
   motionLevel: "fluid",
   soundEnabled: false,
   hapticEnabled: true,
+  disabledSensoryIntents: [],
   numberTickerEnabled: true,
   dashboardWidgets: DEFAULT_WIDGETS,
   headerButtons: DEFAULT_HEADER_BUTTONS,
@@ -120,6 +132,30 @@ function readStoredConfig(): VisualCustomization {
     const numberTickerEnabled =
       window.localStorage.getItem(STORAGE_KEYS.numberTickerEnabled) !== "false";
 
+    let disabledSensoryIntents: SensoryIntent[] = [];
+    const rawDisabled = window.localStorage.getItem(STORAGE_KEYS.disabledSensoryIntents);
+    if (rawDisabled) {
+      try {
+        const parsed = JSON.parse(rawDisabled);
+        if (Array.isArray(parsed)) {
+          const validIntents: SensoryIntent[] = [
+            "selection",
+            "action",
+            "toggle",
+            "success",
+            "warning",
+            "destructive",
+            "error",
+          ];
+          disabledSensoryIntents = parsed.filter((item): item is SensoryIntent =>
+            validIntents.includes(item),
+          );
+        }
+      } catch {
+        disabledSensoryIntents = [];
+      }
+    }
+
     let dashboardWidgets = DEFAULT_WIDGETS;
     const rawWidgets = window.localStorage.getItem(STORAGE_KEYS.dashboardWidgets);
     if (rawWidgets) {
@@ -146,6 +182,7 @@ function readStoredConfig(): VisualCustomization {
       motionLevel,
       soundEnabled,
       hapticEnabled,
+      disabledSensoryIntents,
       numberTickerEnabled,
       dashboardWidgets,
       headerButtons,
@@ -210,6 +247,12 @@ export function updateVisualCustomization(partial: Partial<VisualCustomization>)
     if (partial.hapticEnabled !== undefined) {
       window.localStorage.setItem(STORAGE_KEYS.hapticEnabled, String(next.hapticEnabled));
     }
+    if (partial.disabledSensoryIntents !== undefined) {
+      window.localStorage.setItem(
+        STORAGE_KEYS.disabledSensoryIntents,
+        JSON.stringify(next.disabledSensoryIntents),
+      );
+    }
     if (partial.numberTickerEnabled !== undefined) {
       window.localStorage.setItem(STORAGE_KEYS.numberTickerEnabled, String(next.numberTickerEnabled));
     }
@@ -243,6 +286,17 @@ export function useVisualCustomization() {
     setMotionLevel: (motionLevel: MotionLevel) => updateVisualCustomization({ motionLevel }),
     setSoundEnabled: (soundEnabled: boolean) => updateVisualCustomization({ soundEnabled }),
     setHapticEnabled: (hapticEnabled: boolean) => updateVisualCustomization({ hapticEnabled }),
+    toggleSensoryIntent: (intent: SensoryIntent, enabled: boolean) => {
+      const current = config.disabledSensoryIntents ?? [];
+      const next = enabled
+        ? current.filter((i) => i !== intent)
+        : current.includes(intent)
+          ? current
+          : [...current, intent];
+      updateVisualCustomization({ disabledSensoryIntents: next });
+    },
+    setDisabledSensoryIntents: (disabledSensoryIntents: SensoryIntent[]) =>
+      updateVisualCustomization({ disabledSensoryIntents }),
     setNumberTickerEnabled: (numberTickerEnabled: boolean) =>
       updateVisualCustomization({ numberTickerEnabled }),
     setDashboardWidget: (widget: keyof DashboardWidgetsConfig, visible: boolean) =>

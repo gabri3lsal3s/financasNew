@@ -25,6 +25,11 @@ import {
   Calculator,
   Vibrate,
   VibrateOff,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  MousePointerClick,
+  Trash2,
 } from "lucide-react";
 import {
   Card,
@@ -96,6 +101,58 @@ const SURFACE_OPTIONS: { id: SurfaceStyle; label: string; desc: string }[] = [
   { id: "glass", label: "Glassmorphism", desc: "Translúcido com desfoque e reflexo de borda" },
   { id: "flat", label: "Minimalista Flat", desc: "Bordas nítidas sem sombras ou gradientes" },
   { id: "elevated", label: "Elevado 3D", desc: "Sombras em camadas com relevo sutil" },
+];
+
+interface SensoryCategoryDefinition {
+  id: SensoryIntent;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+const SENSORY_CATEGORIES: SensoryCategoryDefinition[] = [
+  {
+    id: "selection",
+    title: "Navegação & Seleção",
+    description: "Abas, seletores de data, dropdowns e steppers de números.",
+    icon: <MousePointerClick className="size-4 text-primary" aria-hidden="true" />,
+  },
+  {
+    id: "action",
+    title: "Ações & Comandos",
+    description: "Cliques em botões primários/secundários e botão central (+ Novo).",
+    icon: <Zap className="size-4 text-primary" aria-hidden="true" />,
+  },
+  {
+    id: "toggle",
+    title: "Alternâncias & Switches",
+    description: "Modo privacidade, switches de configuração e atalhos rápidos.",
+    icon: <Sliders className="size-4 text-primary" aria-hidden="true" />,
+  },
+  {
+    id: "success",
+    title: "Sucesso & Confirmações",
+    description: "Conclusão de lançamentos, metas, pagamentos e importações.",
+    icon: <CheckCircle2 className="size-4 text-positive-strong" aria-hidden="true" />,
+  },
+  {
+    id: "warning",
+    title: "Alertas & Atenções",
+    description: "Avisos de confirmação e alertas de atenção.",
+    icon: <AlertTriangle className="size-4 text-amber-500" aria-hidden="true" />,
+  },
+  {
+    id: "destructive",
+    title: "Exclusões & Ações Destrutivas",
+    description: "Remoção de lançamentos, contas e ativos da carteira.",
+    icon: <Trash2 className="size-4 text-critical-strong" aria-hidden="true" />,
+  },
+  {
+    id: "error",
+    title: "Erros & Impedimentos",
+    description: "Falhas de validação de formulários e bloqueios.",
+    icon: <AlertCircle className="size-4 text-critical-strong" aria-hidden="true" />,
+  },
 ];
 
 const MOTION_OPTIONS: { id: MotionLevel; label: string; desc: string }[] = [
@@ -249,6 +306,30 @@ export function SettingsPage() {
       description: nextChecked
         ? "Feedback háptico (vibração) ativado."
         : "Feedback háptico (vibração) desativado.",
+      duration: 2200,
+    });
+  };
+
+  const handleToggleSensoryCategory = (intent: SensoryIntent, enabled: boolean, title: string) => {
+    visual.toggleSensoryIntent(intent, enabled);
+    if (enabled) {
+      triggerSensory(intent);
+    }
+    pushToast({
+      title: "Preferências salvas",
+      description: enabled
+        ? `Feedback para "${title}" ativado.`
+        : `Feedback para "${title}" desativado.`,
+      duration: 2200,
+    });
+  };
+
+  const handleEnableAllSensoryCategories = () => {
+    visual.setDisabledSensoryIntents([]);
+    triggerSensory("success");
+    pushToast({
+      title: "Preferências salvas",
+      description: "Todas as categorias sensoriais foram ativadas.",
       duration: 2200,
     });
   };
@@ -950,7 +1031,82 @@ export function SettingsPage() {
                 />
               </div>
 
-              {/* Botões de Teste Sensorial */}
+              {/* Categorias Granulares de Feedback Sensorial */}
+              <div className="pt-2 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground">
+                      Categorias de Microinteração
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Ative ou desative o feedback para categorias específicas conforme sua preferência.
+                    </p>
+                  </div>
+                  {visual.disabledSensoryIntents.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs text-primary"
+                      onClick={handleEnableAllSensoryCategories}
+                    >
+                      Ativar todas ({SENSORY_CATEGORIES.length})
+                    </Button>
+                  )}
+                </div>
+
+                <div className="divide-y divide-border/60 rounded-xl border border-border/80 bg-surface overflow-hidden">
+                  {SENSORY_CATEGORIES.map((cat) => {
+                    const isEnabled = !visual.disabledSensoryIntents.includes(cat.id);
+                    return (
+                      <div
+                        key={cat.id}
+                        className={cn(
+                          "flex items-center justify-between p-3.5 transition-colors",
+                          isEnabled ? "hover:bg-surface-hover/60" : "bg-muted/20 opacity-75",
+                        )}
+                      >
+                        <div className="flex items-start gap-3 min-w-0 flex-1 pr-3">
+                          <div className="mt-0.5 shrink-0">{cat.icon}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-foreground truncate">
+                                {cat.title}
+                              </span>
+                              <Badge variant={isEnabled ? "positive" : "muted"} className="text-[10px] py-0 px-1.5">
+                                {isEnabled ? "Ativo" : "Silenciado"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                              {cat.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs h-8 px-2.5"
+                            onClick={() => handleTestSensory(cat.id)}
+                            title={`Testar feedback de ${cat.title}`}
+                          >
+                            Testar
+                          </Button>
+                          <Checkbox
+                            checked={isEnabled}
+                            onCheckedChange={(checked) =>
+                              handleToggleSensoryCategory(cat.id, Boolean(checked), cat.title)
+                            }
+                            aria-label={`Feedback para ${cat.title}`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Botões de Teste Sensorial Rápido */}
               <div className="p-4 rounded-xl border border-border bg-muted/40 space-y-2">
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Testar Microinterações Sensoriais

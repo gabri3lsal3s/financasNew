@@ -327,6 +327,7 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - `error` → Falhas de validação e impedimentos (`error` [50, 40, 50, 40]ms / tom dissonante `error`).
 - **Governança de Preferências e Acessibilidade:**
   - Switches independentes nas Configurações: `soundEnabled` (padrão: `false`) e `hapticEnabled` (padrão: `true`).
+  - **Personalização Granular por Categoria:** O usuário pode ativar ou silenciar individualmente qualquer uma das 7 categorias (`disabledSensoryIntents`), personalizando a experiência tátil e auditiva com botões de pré-escuta/teste instantâneo na aba Sensorial.
   - Degradação graciosa: sem falhas em SSR, JSDOM ou navegadores/dispositivos sem suporte a `AudioContext` ou `navigator.vibrate`.
   - Respeito a `prefers-reduced-motion` e governança centralizada sem chamadas soltas ou duplicadas nas telas.
 
