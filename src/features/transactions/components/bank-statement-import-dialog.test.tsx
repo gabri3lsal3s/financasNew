@@ -85,8 +85,8 @@ describe("BankStatementImportDialog", () => {
     }
 
     // 5. Verifica itens na conferência
-    expect(screen.getByText(/Supermercado Dia/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pix Recebido Ana/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Supermercado Dia/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Pix Recebido Ana/i)[0]).toBeInTheDocument();
 
     // 6. Confirma importação
     const importBtn = screen.getByRole("button", { name: /Importar \(2\)/i });
