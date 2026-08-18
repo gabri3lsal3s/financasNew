@@ -19,13 +19,17 @@ import { cn } from "@/lib/utils";
 /** Retorna as iniciais do nome/email para o avatar. */
 function getInitials(name: string | undefined, email: string | undefined): string {
   if (name) {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    if (first && last && parts.length >= 2) {
+      return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
     }
-    return (parts[0]?.[0] ?? "U").toUpperCase();
+    if (first) {
+      return first.charAt(0).toUpperCase();
+    }
   }
-  return (email?.[0] ?? "U").toUpperCase();
+  return (email?.charAt(0) ?? "U").toUpperCase();
 }
 
 interface QuickLinkProps {

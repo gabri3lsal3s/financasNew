@@ -100,9 +100,9 @@
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
-    │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10),
+    │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10), logo-profile-button,
     │       │                      #   privacy-toggle (F8), theme-toggle, calculator-button,
-    │       │                      #   notifications-button (v1.62 — sininho com badge no header),
+    │       │                      #   notifications-button (v1.62 — sininho com badge dinâmico no header),
     │       │                      #   global-search (busca no header)
     │       └── index.ts           #   barrel (AGENTS.md §7 — importações externas via @/components/layout)
     │

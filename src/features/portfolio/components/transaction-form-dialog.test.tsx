@@ -51,8 +51,8 @@ describe("TransactionFormDialog — feedback de escrita (F15)", () => {
     const user = userEvent.setup();
     render(<TransactionFormDialog open={true} onOpenChange={vi.fn()} asset={asset} />);
 
-    await user.type(screen.getByRole("spinbutton", { name: "Quantidade" }), "10");
-    await user.type(screen.getByRole("spinbutton", { name: "Preço unitário" }), "42,50");
+    await user.type(screen.getByRole("textbox", { name: "Quantidade" }), "10");
+    await user.type(screen.getByRole("textbox", { name: "Preço unitário" }), "42,50");
     await user.click(screen.getByRole("button", { name: "Registrar" }));
 
     expect(createTxMock).toHaveBeenCalledTimes(1);
@@ -75,9 +75,9 @@ describe("TransactionFormDialog — feedback de escrita (F15)", () => {
     render(<TransactionFormDialog open={true} onOpenChange={vi.fn()} asset={asset} transaction={existingTx} />);
 
     // O formulário inicia preenchido com os dados da transação em edição.
-    expect(screen.getByRole("spinbutton", { name: "Quantidade" })).toHaveValue(10);
-    await user.clear(screen.getByRole("spinbutton", { name: "Quantidade" }));
-    await user.type(screen.getByRole("spinbutton", { name: "Quantidade" }), "15");
+    expect(screen.getByRole("textbox", { name: "Quantidade" })).toHaveValue("10");
+    await user.clear(screen.getByRole("textbox", { name: "Quantidade" }));
+    await user.type(screen.getByRole("textbox", { name: "Quantidade" }), "15");
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(updateTxMock).toHaveBeenCalledTimes(1);

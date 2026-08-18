@@ -32,15 +32,20 @@ vi.mock("@/state", () => ({
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
-function renderShell() {
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+function renderShell(initialEntries: string[] = ["/"]) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={["/"]}>
-      <Routes>
-        <Route element={<PageShell />}>
-          <Route path="/" element={<div data-testid="page-content">Conteúdo</div>} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route element={<PageShell />}>
+            <Route path="/" element={<div data-testid="page-content">Conteúdo</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -92,15 +97,7 @@ describe("PageShell (F7.2/F7.3)", () => {
   });
 
   it("renderiza o LaunchWizard overlay quando ?novo=transacao está presente", () => {
-    render(
-      <MemoryRouter initialEntries={["/?novo=transacao"]}>
-        <Routes>
-          <Route element={<PageShell />}>
-            <Route path="/" element={<div data-testid="page-content">Conteúdo</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderShell(["/?novo=transacao"]);
 
     expect(screen.getByTestId("launch-wizard-overlay")).toBeInTheDocument();
     expect(screen.getByTestId("page-content")).toBeInTheDocument();

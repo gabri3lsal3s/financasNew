@@ -38,7 +38,7 @@ export function PageShell() {
   // Notificações deslocam: privacidade primeiro, depois tema. Calculadora nunca é deslocada.
   const hasNotifications = totalCount > 0;
   const cfg = visual.headerButtons;
-  let showCalc = cfg.calculatorButton;
+  const showCalc = cfg.calculatorButton;
   let showTheme = cfg.themeToggle;
   let showPrivacy = cfg.privacyToggle;
 

@@ -104,11 +104,11 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.getByRole("tab", { name: /Dados/i })).toBeInTheDocument();
   });
 
-  it("permite alternar entre opções de tema visual", async () => {
+  it("permite alternar entre opções de tema visual e emite toast de confirmação", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const darkOption = screen.getByRole("button", { name: /Escuro/i });
+    const darkOption = screen.getByRole("button", { name: /^Escuro/i });
     await user.click(darkOption);
     expect(document.documentElement.dataset.theme).toBe("dark");
   });

@@ -32,7 +32,7 @@ describe("NotificationsButton", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
-  it("renderiza sem badge quando não há itens", () => {
+  it("não renderiza o botão quando não há itens (totalCount === 0)", () => {
     mockUseReminders.mockReturnValue({
       items: [],
       totalCount: 0,
@@ -41,21 +41,20 @@ describe("NotificationsButton", () => {
       isLoading: false,
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <NotificationsButton />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("button", { name: "Notificações" })).toBeInTheDocument();
-    expect(screen.queryByText("0")).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it("abre o popover ao clicar no sininho", async () => {
+  it("abre o popover ao clicar no sininho quando há notificações", async () => {
     const user = userEvent.setup();
     mockUseReminders.mockReturnValue({
       items: [],
-      totalCount: 0,
+      totalCount: 2,
       overdueCount: 0,
       dueTodayCount: 0,
       isLoading: false,
@@ -67,7 +66,7 @@ describe("NotificationsButton", () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Notificações" }));
+    await user.click(screen.getByRole("button", { name: /Notificações/i }));
     expect(screen.getByText("Lembretes & Avisos")).toBeInTheDocument();
   });
 });

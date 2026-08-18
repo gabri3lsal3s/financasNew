@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+
 import {
   Palette,
   Sparkles,
@@ -48,6 +48,7 @@ import {
   type SurfaceStyle,
   type MotionLevel,
   type HeaderButtonsConfig,
+  type DashboardWidgetsConfig,
 } from "@/hooks/use-visual-customization";
 import { playSound } from "@/services/audio-fx";
 import { triggerHaptic } from "@/services/haptics";
@@ -68,14 +69,10 @@ import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { numberToCents } from "@/domain/money";
 import { BACKUP_TABLE_KEYS, parseBackupPayload } from "@/domain/export";
 import type { ExportExpenseRow, ExportIncomeRow, ExportInvoiceRow, ExportPositionRow, RestoreSummary } from "@/domain/export";
-import {
-  serializeExpensesCsv,
-  serializeIncomesCsv,
-  serializeInvoicesCsv,
-  serializePositionsCsv,
-} from "@/domain/export";
+import { serializeExpensesCsv, serializeIncomesCsv, serializeInvoicesCsv, serializePositionsCsv } from "@/domain/export";
 import { usePortfolioPosition, useUserPreferences, useUpdateReminderPreferences } from "@/state";
 import { useSearchParams } from "react-router";
+import { pushToast } from "@/services/toast";
 
 const ACCENT_OPTIONS: { id: AccentTheme; label: string; bgClass: string; hex: string }[] = [
   { id: "teal", label: "Teal Vital (Oficial)", bgClass: "bg-[#2A9D8F]", hex: "#2A9D8F" },
@@ -119,14 +116,11 @@ const REMINDER_DAYS_OPTIONS: SelectOption[] = [
 ];
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("aparencia");
-  const [searchParams] = useSearchParams();
-
-  // Abre diretamente na aba indicada pelo query param ?tab= (ex.: /configuracoes?tab=perfil)
-  useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab) setActiveTab(tab);
-  }, [searchParams]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "aparencia";
+  const handleTabChange = (tab: string) => {
+    setSearchParams({ tab }, { replace: true });
+  };
   const { preference: themePref, setPreference: setThemePref } = useTheme();
   const density = useDensity();
   const privacyMasked = usePrivacyMask();
@@ -158,6 +152,118 @@ export function SettingsPage() {
     if (!Number.isNaN(num) && num >= 0 && num <= 30) {
       updatePreferencesMutation.mutate({ reminderDaysBeforeDebt: num });
     }
+  };
+
+  const handleSelectTheme = (id: ThemePreference, label: string) => {
+    triggerHaptic("light");
+    setThemePref(id);
+    pushToast({
+      title: "Preferências salvas",
+      description: `Tema alterado para ${label}.`,
+    });
+  };
+
+  const handleSelectAccent = (id: AccentTheme, label: string) => {
+    triggerHaptic("light");
+    visual.setAccent(id);
+    pushToast({
+      title: "Preferências salvas",
+      description: `Cor de destaque alterada para ${label}.`,
+    });
+  };
+
+  const handleSelectSurfaceStyle = (id: SurfaceStyle, label: string) => {
+    triggerHaptic("light");
+    visual.setSurfaceStyle(id);
+    pushToast({
+      title: "Preferências salvas",
+      description: `Estilo de superfícies alterado para ${label}.`,
+    });
+  };
+
+  const handleSelectDensity = (densityVal: "comfortable" | "compact", label: string) => {
+    triggerHaptic("light");
+    setDensity(densityVal);
+    pushToast({
+      title: "Preferências salvas",
+      description: `Densidade da interface alterada para ${label}.`,
+    });
+  };
+
+  const handleToggleHeaderButton = (key: keyof HeaderButtonsConfig, label: string, nextChecked: boolean) => {
+    triggerHaptic("light");
+    visual.setHeaderButton(key, nextChecked);
+    pushToast({
+      title: "Preferências salvas",
+      description: nextChecked
+        ? `Atalho "${label}" adicionado ao cabeçalho.`
+        : `Atalho "${label}" removido do cabeçalho.`,
+    });
+  };
+
+  const handleSelectMotionLevel = (id: MotionLevel, label: string) => {
+    triggerHaptic("light");
+    visual.setMotionLevel(id);
+    pushToast({
+      title: "Preferências salvas",
+      description: `Animações alteradas para ${label}.`,
+    });
+  };
+
+  const handleToggleNumberTicker = (nextChecked: boolean) => {
+    triggerHaptic("light");
+    visual.setNumberTickerEnabled(nextChecked);
+    pushToast({
+      title: "Preferências salvas",
+      description: nextChecked
+        ? "Contagem numérica animada ativada."
+        : "Contagem numérica animada desativada.",
+    });
+  };
+
+  const handleToggleSound = (nextChecked: boolean) => {
+    triggerHaptic("light");
+    visual.setSoundEnabled(nextChecked);
+    pushToast({
+      title: "Preferências salvas",
+      description: nextChecked
+        ? "Feedback sonoro ativado."
+        : "Feedback sonoro desativado.",
+    });
+  };
+
+  const handleTogglePrivacy = () => {
+    triggerHaptic("light");
+    togglePrivacyMask();
+    const nextMasked = !privacyMasked;
+    pushToast({
+      title: "Preferências salvas",
+      description: nextMasked
+        ? "Valores monetários ocultados (modo privacidade)."
+        : "Valores monetários visíveis.",
+    });
+  };
+
+  const handleToggleDashboardWidget = (key: keyof DashboardWidgetsConfig, label: string, nextChecked: boolean) => {
+    triggerHaptic("light");
+    visual.setDashboardWidget(key, nextChecked);
+    pushToast({
+      title: "Preferências salvas",
+      description: nextChecked
+        ? `Widget "${label}" exibido no início.`
+        : `Widget "${label}" ocultado do início.`,
+    });
+  };
+
+  const handleResetVisuals = () => {
+    visual.resetToDefaults();
+    setThemePref("system");
+    setDensity("comfortable");
+    triggerHaptic("light");
+    pushToast({
+      title: "Preferências redefinidas",
+      description: "Todas as preferências visuais foram restauradas para os padrões.",
+    });
   };
 
   const handleTestSound = (type: "click" | "success" | "pop") => {
@@ -277,6 +383,10 @@ export function SettingsPage() {
     await restoreBackup(validation.payload);
     await queryClient.invalidateQueries();
     triggerHaptic("medium");
+    pushToast({
+      title: "Dados restaurados com sucesso",
+      description: "Seus dados foram importados e sincronizados.",
+    });
   };
 
   const handleLogout = async () => {
@@ -317,7 +427,7 @@ export function SettingsPage() {
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setThemePref(t.id)}
+                      onClick={() => handleSelectTheme(t.id, t.label)}
                       className={`flex flex-col items-start p-3.5 rounded-xl border text-left transition-all select-none cursor-pointer ${
                         isSelected
                           ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
@@ -357,7 +467,7 @@ export function SettingsPage() {
                     <button
                       key={a.id}
                       type="button"
-                      onClick={() => visual.setAccent(a.id)}
+                      onClick={() => handleSelectAccent(a.id, a.label)}
                       className={cn(
                         "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all select-none cursor-pointer min-w-0",
                         isSelected
@@ -401,7 +511,7 @@ export function SettingsPage() {
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => visual.setSurfaceStyle(s.id)}
+                      onClick={() => handleSelectSurfaceStyle(s.id, s.label)}
                       className={`flex flex-col items-start p-3.5 rounded-xl border text-left transition-all select-none cursor-pointer ${
                         isSelected
                           ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
@@ -428,7 +538,7 @@ export function SettingsPage() {
             <CardContent className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
-                onClick={() => setDensity("comfortable")}
+                onClick={() => handleSelectDensity("comfortable", "Confortável")}
                 className={`flex-1 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                   density === "comfortable"
                     ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
@@ -445,7 +555,7 @@ export function SettingsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setDensity("compact")}
+                onClick={() => handleSelectDensity("compact", "Compacta")}
                 className={`flex-1 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                   density === "compact"
                     ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
@@ -479,15 +589,11 @@ export function SettingsPage() {
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      triggerHaptic("light");
-                      visual.setHeaderButton("logo", !isChecked);
-                    }}
+                    onClick={() => handleToggleHeaderButton("logo", "Logo no Header", !isChecked)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        triggerHaptic("light");
-                        visual.setHeaderButton("logo", !isChecked);
+                        handleToggleHeaderButton("logo", "Logo no Header", !isChecked);
                       }
                     }}
                     className={cn(
@@ -511,7 +617,7 @@ export function SettingsPage() {
                     </div>
                     <Checkbox
                       checked={isChecked}
-                      onCheckedChange={(checked) => visual.setHeaderButton("logo", Boolean(checked))}
+                      onCheckedChange={(checked) => handleToggleHeaderButton("logo", "Logo no Header", Boolean(checked))}
                       aria-label="Logo no Header"
                     />
                   </div>
@@ -584,15 +690,13 @@ export function SettingsPage() {
                       aria-disabled={isDisabled}
                       onClick={() => {
                         if (isDisabled) return;
-                        triggerHaptic("light");
-                        visual.setHeaderButton(item.key, !isChecked);
+                        handleToggleHeaderButton(item.key, item.label, !isChecked);
                       }}
                       onKeyDown={(e) => {
                         if (isDisabled) return;
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          triggerHaptic("light");
-                          visual.setHeaderButton(item.key, !isChecked);
+                          handleToggleHeaderButton(item.key, item.label, !isChecked);
                         }
                       }}
                       className={cn(
@@ -623,7 +727,7 @@ export function SettingsPage() {
                         checked={isChecked}
                         disabled={isDisabled}
                         onCheckedChange={(checked) => {
-                          if (!isDisabled) visual.setHeaderButton(item.key, Boolean(checked));
+                          if (!isDisabled) handleToggleHeaderButton(item.key, item.label, Boolean(checked));
                         }}
                         aria-label={item.label}
                       />
@@ -663,7 +767,7 @@ export function SettingsPage() {
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => visual.setMotionLevel(m.id)}
+                      onClick={() => handleSelectMotionLevel(m.id, m.label)}
                       className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                         isSelected
                           ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
@@ -690,15 +794,11 @@ export function SettingsPage() {
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  triggerHaptic("light");
-                  visual.setNumberTickerEnabled(!visual.numberTickerEnabled);
-                }}
+                onClick={() => handleToggleNumberTicker(!visual.numberTickerEnabled)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    triggerHaptic("light");
-                    visual.setNumberTickerEnabled(!visual.numberTickerEnabled);
+                    handleToggleNumberTicker(!visual.numberTickerEnabled);
                   }
                 }}
                 className={cn(
@@ -718,7 +818,7 @@ export function SettingsPage() {
                 </div>
                 <Checkbox
                   checked={visual.numberTickerEnabled}
-                  onCheckedChange={(checked) => visual.setNumberTickerEnabled(Boolean(checked))}
+                  onCheckedChange={(checked) => handleToggleNumberTicker(Boolean(checked))}
                   aria-label="Contagem Numérica Animada (Number Ticker)"
                 />
               </div>
@@ -753,15 +853,11 @@ export function SettingsPage() {
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  triggerHaptic("light");
-                  visual.setSoundEnabled(!visual.soundEnabled);
-                }}
+                onClick={() => handleToggleSound(!visual.soundEnabled)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    triggerHaptic("light");
-                    visual.setSoundEnabled(!visual.soundEnabled);
+                    handleToggleSound(!visual.soundEnabled);
                   }
                 }}
                 className={cn(
@@ -781,7 +877,7 @@ export function SettingsPage() {
                 </div>
                 <Checkbox
                   checked={visual.soundEnabled}
-                  onCheckedChange={(checked) => visual.setSoundEnabled(Boolean(checked))}
+                  onCheckedChange={(checked) => handleToggleSound(Boolean(checked))}
                   aria-label="Sons de Interface Sutis"
                 />
               </div>
@@ -817,15 +913,11 @@ export function SettingsPage() {
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  triggerHaptic("light");
-                  togglePrivacyMask();
-                }}
+                onClick={handleTogglePrivacy}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    triggerHaptic("light");
-                    togglePrivacyMask();
+                    handleTogglePrivacy();
                   }
                 }}
                 className={cn(
@@ -845,7 +937,7 @@ export function SettingsPage() {
                 </div>
                 <Checkbox
                   checked={privacyMasked}
-                  onCheckedChange={() => togglePrivacyMask()}
+                  onCheckedChange={handleTogglePrivacy}
                   aria-label="Ocultar Valores Monetários (Blur)"
                 />
               </div>
@@ -881,15 +973,11 @@ export function SettingsPage() {
                     key={w.key}
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      triggerHaptic("light");
-                      visual.setDashboardWidget(w.key, !isChecked);
-                    }}
+                    onClick={() => handleToggleDashboardWidget(w.key, w.label, !isChecked)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        triggerHaptic("light");
-                        visual.setDashboardWidget(w.key, !isChecked);
+                        handleToggleDashboardWidget(w.key, w.label, !isChecked);
                       }
                     }}
                     className={cn(
@@ -905,7 +993,7 @@ export function SettingsPage() {
                     </div>
                     <Checkbox
                       checked={isChecked}
-                      onCheckedChange={(checked) => visual.setDashboardWidget(w.key, Boolean(checked))}
+                      onCheckedChange={(checked) => handleToggleDashboardWidget(w.key, w.label, Boolean(checked))}
                       aria-label={w.label}
                     />
                   </div>
@@ -1130,12 +1218,7 @@ export function SettingsPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    visual.resetToDefaults();
-                    setThemePref("system");
-                    setDensity("comfortable");
-                    triggerHaptic("light");
-                  }}
+                  onClick={handleResetVisuals}
                   className="gap-2 shrink-0 text-muted-foreground hover:text-foreground"
                 >
                   <RotateCcw className="size-4" />
@@ -1161,7 +1244,7 @@ export function SettingsPage() {
       <div className="pb-12">
         <Tabs
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={handleTabChange}
           items={tabItems}
           variant="pills"
           className="w-full"
