@@ -1,17 +1,11 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Check, CheckCheck, RotateCcw, Sparkles } from "lucide-react";
-import { Alert, Badge, Button, Checkbox, MoneyText, Select, Tabs } from "@/components/ui";
+import { Check, CheckCheck, RotateCcw, Sparkles } from "lucide-react";
+import { Badge, Button, Checkbox, MoneyText, Select, Tabs } from "@/components/ui";
 import type { Category } from "@/types";
-import type {
-  BankTransactionItem,
-  ExistingExpenseForReconciliation,
-  ExistingIncomeForReconciliation,
-} from "@/domain/reconciliation";
+import type { BankTransactionItem } from "@/domain/reconciliation";
 
 interface BankStatementReconcileStepProps {
   items: BankTransactionItem[];
-  unmatchedAppExpenses?: ExistingExpenseForReconciliation[];
-  unmatchedAppIncomes?: ExistingIncomeForReconciliation[];
   categories: Category[];
   onToggleItem: (id: string) => void;
   onToggleAll: (selected: boolean) => void;
@@ -22,7 +16,7 @@ interface BankStatementReconcileStepProps {
   isPending: boolean;
 }
 
-type FilterTab = "all" | "expenses" | "incomes" | "new" | "matched" | "app_only";
+type FilterTab = "all" | "expenses" | "incomes" | "new" | "matched";
 
 const RECEIVE_TYPE_OPTIONS = [
   { value: "pix", label: "PIX" },
@@ -34,13 +28,11 @@ const RECEIVE_TYPE_OPTIONS = [
 
 /**
  * Passo 3 do Diálogo de Importação de Extrato Bancário:
- * Conferência bidirecional de despesas e receitas, seleção em lote,
+ * Conferência e conciliação de despesas e receitas do extrato, seleção em lote,
  * badges de status e seletores de categoria/tipo de recebimento.
  */
 export function BankStatementReconcileStep({
   items,
-  unmatchedAppExpenses = [],
-  unmatchedAppIncomes = [],
   categories,
   onToggleItem,
   onToggleAll,
@@ -66,7 +58,6 @@ export function BankStatementReconcileStep({
   const countIncomes = items.filter((it) => it.kind === "income").length;
   const countNew = items.filter((it) => it.status === "unmatched_new" && !it.ignoredByDefault).length;
   const countMatched = items.filter((it) => it.status === "exact_match" || it.status === "probable_match").length;
-  const countAppOnly = unmatchedAppExpenses.length + unmatchedAppIncomes.length;
 
   const filteredItems = useMemo(() => {
     switch (filter) {
@@ -102,36 +93,10 @@ export function BankStatementReconcileStep({
     { value: "incomes", label: `Receitas (${countIncomes})`, content: null },
     { value: "new", label: `Novos (${countNew})`, content: null },
     { value: "matched", label: `Conciliados (${countMatched})`, content: null },
-    ...(countAppOnly > 0
-      ? [{ value: "app_only", label: `No App apenas (${countAppOnly})`, content: null }]
-      : []),
   ];
 
   return (
     <div className="space-y-4">
-      {/* Alerta de Lançamentos do App Não Encontrados no Extrato */}
-      {countAppOnly > 0 && filter !== "app_only" ? (
-        <Alert variant="warning" className="text-xs py-2 px-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="size-4 shrink-0" aria-hidden />
-              <span>
-                {countAppOnly === 1
-                  ? "Existe 1 lançamento cadastrado no app que não consta neste extrato."
-                  : `Existem ${countAppOnly} lançamentos cadastrados no app que não constam neste extrato.`}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setFilter("app_only")}
-              className="text-[11px] font-medium underline hover:opacity-80 shrink-0"
-            >
-              Ver detalhes
-            </button>
-          </div>
-        </Alert>
-      ) : null}
-
       {/* Barra de Filtros Segmentados */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <Tabs
@@ -140,75 +105,21 @@ export function BankStatementReconcileStep({
           items={tabsList}
         />
 
-        {filter !== "app_only" ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground self-end sm:flex-none">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onToggleAll(!allFilteredSelected)}
-            >
-              {allFilteredSelected ? "Desmarcar visíveis" : "Marcar todos visíveis"}
-            </Button>
-          </div>
-        ) : null}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground self-end sm:flex-none">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleAll(!allFilteredSelected)}
+          >
+            {allFilteredSelected ? "Desmarcar visíveis" : "Marcar todos visíveis"}
+          </Button>
+        </div>
       </div>
 
       {/* Tabela de Itens */}
       <div className="max-h-[380px] overflow-y-auto rounded-lg border border-border/70 bg-surface/40 divide-y divide-border/40">
-        {filter === "app_only" ? (
-          countAppOnly === 0 ? (
-            <div className="p-8 text-center text-xs text-muted-foreground">
-              Todos os lançamentos do app foram encontrados no extrato.
-            </div>
-          ) : (
-            <div className="p-3 space-y-3">
-              {unmatchedAppExpenses.length > 0 ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-rose-500">Despesas no app sem correspondência no extrato:</p>
-                  <div className="space-y-1.5">
-                    {unmatchedAppExpenses.map((exp) => (
-                      <div
-                        key={exp.id}
-                        className="flex items-center justify-between p-2 rounded-md bg-rose-500/5 border border-rose-500/20 text-xs"
-                      >
-                        <div className="space-y-0.5">
-                          <p className="font-medium text-foreground">{exp.description}</p>
-                          <p className="text-[11px] text-muted-foreground">Data no app: {exp.date}</p>
-                        </div>
-                        <span className="font-mono font-semibold text-rose-500">
-                          <MoneyText cents={exp.valueCents} />
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {unmatchedAppIncomes.length > 0 ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-emerald-500">Receitas no app sem correspondência no extrato:</p>
-                  <div className="space-y-1.5">
-                    {unmatchedAppIncomes.map((inc) => (
-                      <div
-                        key={inc.id}
-                        className="flex items-center justify-between p-2 rounded-md bg-emerald-500/5 border border-emerald-500/20 text-xs"
-                      >
-                        <div className="space-y-0.5">
-                          <p className="font-medium text-foreground">{inc.description}</p>
-                          <p className="text-[11px] text-muted-foreground">Data no app: {inc.date}</p>
-                        </div>
-                        <span className="font-mono font-semibold text-emerald-500">
-                          <MoneyText cents={inc.valueCents} />
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )
-        ) : filteredItems.length === 0 ? (
+        {filteredItems.length === 0 ? (
           <div className="p-8 text-center text-xs text-muted-foreground">
             Nenhuma transação encontrada nesta categoria de filtro.
           </div>

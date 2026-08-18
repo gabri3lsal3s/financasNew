@@ -77,8 +77,6 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
   const [parsedRows, setParsedRows] = useState<RawParsedRow[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
   const [reconciledItems, setReconciledItems] = useState<BankTransactionItem[]>([]);
-  const [unmatchedAppExpenses, setUnmatchedAppExpenses] = useState<ExistingExpenseForReconciliation[]>([]);
-  const [unmatchedAppIncomes, setUnmatchedAppIncomes] = useState<ExistingIncomeForReconciliation[]>([]);
 
   const categoriesQuery = useCategories("expense");
   const expensesQuery = useExpenses(competenceMonth);
@@ -149,8 +147,6 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
         });
 
         setReconciledItems(reconciliation.items);
-        setUnmatchedAppExpenses(reconciliation.unmatchedExistingExpenses);
-        setUnmatchedAppIncomes(reconciliation.unmatchedExistingIncomes);
         setStep("reconcile");
       } else if (result.rows.length > 0) {
         setStep("mapping");
@@ -164,8 +160,6 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
         });
 
         setReconciledItems(reconciliation.items);
-        setUnmatchedAppExpenses(reconciliation.unmatchedExistingExpenses);
-        setUnmatchedAppIncomes(reconciliation.unmatchedExistingIncomes);
         setStep("reconcile");
       }
     } catch (err) {
@@ -218,8 +212,6 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
     });
 
     setReconciledItems(reconciliation.items);
-    setUnmatchedAppExpenses(reconciliation.unmatchedExistingExpenses);
-    setUnmatchedAppIncomes(reconciliation.unmatchedExistingIncomes);
     setStep("reconcile");
   };
 
@@ -328,8 +320,6 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
       {step === "reconcile" && (
         <BankStatementReconcileStep
           items={reconciledItems}
-          unmatchedAppExpenses={unmatchedAppExpenses}
-          unmatchedAppIncomes={unmatchedAppIncomes}
           categories={categories}
           onToggleItem={handleToggleItem}
           onToggleAll={handleToggleAll}

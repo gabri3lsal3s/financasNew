@@ -156,13 +156,13 @@ describe("BankStatementImportDialog", () => {
     });
   });
 
-  it("exibe alerta e aba 'No App apenas' para lançamentos cadastrados no app ausentes no extrato", async () => {
+  it("não exibe alerta falso de sobras no app garantindo fluxo de extrato limpo e sem alarmismo", async () => {
     const user = userEvent.setup();
 
     const orphanExpense: Expense = {
       id: "exp-orphan-1",
       user_id: "user-test",
-      date: "2026-08-20",
+      date: "2026-08-15",
       description: "Gasto Manual em Dinheiro",
       value: 50.0,
       base_amount: 50.0,
@@ -170,11 +170,11 @@ describe("BankStatementImportDialog", () => {
       payment_method: "cash",
       card_id: null,
       bill_competence: null,
-      installments_total: 1,
       installment_number: 1,
+      installments_total: 1,
       installment_group_id: null,
       report_weight: 1.0,
-      created_at: "2026-08-20T00:00:00Z",
+      created_at: "2026-08-15T00:00:00Z",
     };
 
     const orphanIncome: Income = {
@@ -218,16 +218,16 @@ describe("BankStatementImportDialog", () => {
       await user.click(advanceBtn);
     }
 
-    // Alerta de 2 lançamentos no app ausentes no extrato
+    // Não deve conter alerta ou aba de ausência do app no extrato bancário
     expect(
-      screen.getByText(/Existem 2 lançamentos cadastrados no app que não constam neste extrato/i),
-    ).toBeInTheDocument();
+      screen.queryByText(/não constam neste extrato/i),
+    ).not.toBeInTheDocument();
 
-    const appOnlyTab = screen.getByRole("tab", { name: /No App apenas \(2\)/i });
-    expect(appOnlyTab).toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: /No App apenas/i }),
+    ).not.toBeInTheDocument();
 
-    await user.click(appOnlyTab);
-    expect(screen.getByText(/Gasto Manual em Dinheiro/i)).toBeInTheDocument();
-    expect(screen.getByText(/Renda Extra Dinheiro/i)).toBeInTheDocument();
+    // Deve exibir normalmente a transação importada
+    expect(screen.getByText("Compra Outra")).toBeInTheDocument();
   });
 });
