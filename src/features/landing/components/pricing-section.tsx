@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import { Card, Badge } from "@/components/ui";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router";
 

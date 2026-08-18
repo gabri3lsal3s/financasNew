@@ -9,7 +9,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Badge, Button, Card } from "@/components/ui";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 export function HeroSection() {

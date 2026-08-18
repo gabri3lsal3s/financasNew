@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui";
 import { BrandLogo, ThemeToggle } from "@/components/layout";
 import { cn } from "@/lib/utils";
 

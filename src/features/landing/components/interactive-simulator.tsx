@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Flame, Calculator, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, Badge } from "@/components/ui";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router";
 
