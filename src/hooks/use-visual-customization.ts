@@ -12,6 +12,13 @@ export interface DashboardWidgetsConfig {
   budgets: boolean;
 }
 
+export interface HeaderButtonsConfig {
+  logo: boolean;
+  calculatorButton: boolean;
+  themeToggle: boolean;
+  privacyToggle: boolean;
+}
+
 export interface VisualCustomization {
   accent: AccentTheme;
   surfaceStyle: SurfaceStyle;
@@ -19,6 +26,7 @@ export interface VisualCustomization {
   soundEnabled: boolean;
   numberTickerEnabled: boolean;
   dashboardWidgets: DashboardWidgetsConfig;
+  headerButtons: HeaderButtonsConfig;
 }
 
 const STORAGE_KEYS = {
@@ -28,7 +36,15 @@ const STORAGE_KEYS = {
   soundEnabled: "financas_sound_enabled",
   numberTickerEnabled: "financas_number_ticker_enabled",
   dashboardWidgets: "financas_dashboard_widgets",
+  headerButtons: "financas_header_buttons",
 } as const;
+
+const DEFAULT_HEADER_BUTTONS: HeaderButtonsConfig = {
+  logo: true,
+  calculatorButton: true,
+  themeToggle: false,
+  privacyToggle: false,
+};
 
 const DEFAULT_WIDGETS: DashboardWidgetsConfig = {
   kpis: true,
@@ -45,6 +61,7 @@ const DEFAULT_CONFIG: VisualCustomization = {
   soundEnabled: false,
   numberTickerEnabled: true,
   dashboardWidgets: DEFAULT_WIDGETS,
+  headerButtons: DEFAULT_HEADER_BUTTONS,
 };
 
 const listeners = new Set<() => void>();
@@ -108,6 +125,16 @@ function readStoredConfig(): VisualCustomization {
       }
     }
 
+    let headerButtons = DEFAULT_HEADER_BUTTONS;
+    const rawHeader = window.localStorage.getItem(STORAGE_KEYS.headerButtons);
+    if (rawHeader) {
+      try {
+        headerButtons = { ...DEFAULT_HEADER_BUTTONS, ...JSON.parse(rawHeader) };
+      } catch {
+        headerButtons = DEFAULT_HEADER_BUTTONS;
+      }
+    }
+
     return {
       accent,
       surfaceStyle,
@@ -115,6 +142,7 @@ function readStoredConfig(): VisualCustomization {
       soundEnabled,
       numberTickerEnabled,
       dashboardWidgets,
+      headerButtons,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -179,6 +207,9 @@ export function updateVisualCustomization(partial: Partial<VisualCustomization>)
     if (partial.dashboardWidgets !== undefined) {
       window.localStorage.setItem(STORAGE_KEYS.dashboardWidgets, JSON.stringify(next.dashboardWidgets));
     }
+    if (partial.headerButtons !== undefined) {
+      window.localStorage.setItem(STORAGE_KEYS.headerButtons, JSON.stringify(next.headerButtons));
+    }
   } catch {
     // quota exceeded fallback
   }
@@ -207,6 +238,10 @@ export function useVisualCustomization() {
     setDashboardWidget: (widget: keyof DashboardWidgetsConfig, visible: boolean) =>
       updateVisualCustomization({
         dashboardWidgets: { ...config.dashboardWidgets, [widget]: visible },
+      }),
+    setHeaderButton: (button: keyof HeaderButtonsConfig, visible: boolean) =>
+      updateVisualCustomization({
+        headerButtons: { ...config.headerButtons, [button]: visible },
       }),
     resetToDefaults: () => updateVisualCustomization(DEFAULT_CONFIG),
   };

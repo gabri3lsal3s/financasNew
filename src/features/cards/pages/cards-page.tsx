@@ -392,7 +392,7 @@ export function CardsPage() {
                   className="gap-1.5 flex-1 sm:flex-none justify-center"
                 >
                   <FileUp className="size-3.5" aria-hidden="true" />
-                  <span>Importar fatura</span>
+                  <span>Importar<span className="hidden sm:inline"> fatura</span></span>
                 </Button>
                 <Button
                   type="button"

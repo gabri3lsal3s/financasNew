@@ -123,5 +123,12 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.getByText("Lembretes & Notificações Automáticas")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Faturas de Cartão")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Dívidas")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /Seletor de dias de antecedência para faturas/i })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /Seletor de dias de antecedência para dívidas/i })).toBeInTheDocument();
+
+    const toggleButton = screen.getByRole("checkbox", { name: /Habilitar Lembretes no Aplicativo/i });
+    await user.click(toggleButton);
+
+    expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({ remindersEnabled: false });
   });
 });

@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { BrandLogo } from "@/components/layout/brand-logo";
 import { CalculatorButton } from "@/components/layout/calculator-button";
 import { GlobalSearch } from "@/components/layout/global-search";
+import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { NotificationsButton } from "@/components/layout/notifications-button";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -14,6 +14,7 @@ import { LaunchWizard } from "@/features/transactions";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
+import { useReminders } from "@/state";
 
 /** Fallback de carregamento das rotas lazy (bundle splitting F5.5) — Skeleton, sem spinner. */
 function RouteFallback() {
@@ -27,10 +28,27 @@ function RouteFallback() {
 }
 
 export function PageShell() {
-  useVisualCustomization();
+  const visual = useVisualCustomization();
   const { isCollapsed, toggle } = useSidebarState();
   const location = useLocation();
   const { open: wizardOpen, setOpen: setWizardOpen } = useCreateDeepLink("transacao");
+  const { totalCount } = useReminders();
+
+  // --- Slot logic (máx. 2 entre: calc, tema, privacidade, notificações) ---
+  // Notificações deslocam: privacidade primeiro, depois tema. Calculadora nunca é deslocada.
+  const hasNotifications = totalCount > 0;
+  const cfg = visual.headerButtons;
+  let showCalc = cfg.calculatorButton;
+  let showTheme = cfg.themeToggle;
+  let showPrivacy = cfg.privacyToggle;
+
+  if (hasNotifications) {
+    const controlled = [showCalc, showTheme, showPrivacy].filter(Boolean).length;
+    if (controlled >= 2) {
+      if (showPrivacy) showPrivacy = false;
+      else if (showTheme) showTheme = false;
+    }
+  }
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
@@ -51,14 +69,20 @@ export function PageShell() {
             de utilidade ficam alinhados à direita. */}
         <header className="sticky top-0 z-sticky flex h-16 shrink-0 items-center border-b border-border bg-surface/80 backdrop-blur app-region-drag">
           <div className="mx-auto flex w-full max-w-5xl items-center gap-1.5 px-4 lg:px-8 app-region-no-drag">
-            <div className="flex items-center lg:hidden mr-1 shrink-0">
-              <BrandLogo showWordmark={false} markClassName="size-7" />
-            </div>
+            {visual.headerButtons.logo && (
+              <div className="flex items-center lg:hidden mr-1 shrink-0">
+                <LogoProfileButton />
+              </div>
+            )}
+            {/* Separador visual entre logo e busca (mobile) */}
+            {visual.headerButtons.logo && (
+              <div className="h-5 w-px bg-border shrink-0 lg:hidden" aria-hidden="true" />
+            )}
             <GlobalSearch className="flex-1" />
-            <PrivacyToggle />
-            <NotificationsButton />
-            <CalculatorButton />
-            <ThemeToggle />
+            {showCalc && <CalculatorButton />}
+            {hasNotifications && <NotificationsButton />}
+            {showTheme && <ThemeToggle />}
+            {showPrivacy && <PrivacyToggle />}
           </div>
         </header>
         <main className="flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain min-h-0">
