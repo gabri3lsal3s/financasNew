@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Download, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
+import { Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, Modal, MoneyText, PrintSheet, Skeleton } from "@/components/ui";
 import {
   CardInvoicePrintView,
@@ -35,6 +35,7 @@ import {
 } from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
 import { PaymentDialog } from "@/features/cards/components/payment-dialog";
+import { StatementImportDialog } from "@/features/cards/components/statement-import-dialog";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import type { CardPayment, CreditCard, Expense } from "@/types";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,7 @@ export function CardsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>(null);
   const [printOpen, setPrintOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const cards = cardsQuery.data ?? [];
   const selectedCard =
@@ -385,6 +387,17 @@ export function CardsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  onClick={() => setImportOpen(true)}
+                  disabled={!selectedCard}
+                  className="gap-1.5 flex-1 sm:flex-none justify-center"
+                >
+                  <FileUp className="size-3.5" aria-hidden="true" />
+                  <span>Importar fatura</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPrintOpen(true)}
                   disabled={competenceExpenses.length === 0 || !selectedCard}
                   className="gap-1.5 flex-1 sm:flex-none justify-center"
@@ -566,6 +579,13 @@ export function CardsPage() {
           }}
         />
       ) : null}
+
+      <StatementImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        card={selectedCard}
+        competenceMonth={effectiveMonth}
+      />
 
       <ExpenseDetailDialog
         expense={selectedExpense}

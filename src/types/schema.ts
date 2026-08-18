@@ -150,6 +150,10 @@ export type Expense = {
   recurrence_id?: string | null;
   /** 1-based dentro da recorrência (espelho do `occurrence_number` do motor). */
   occurrence_number?: number | null;
+  /** Hash determinístico ordinal anti-duplicação de extrato/fatura (Fase 30). */
+  statement_hash?: string | null;
+  /** Flag que indica se a despesa foi importada via extrato bancário. */
+  imported_from_statement?: boolean;
   created_at: string;
 };
 

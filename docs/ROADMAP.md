@@ -1399,11 +1399,49 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 13 | **F26** — Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | A / Mobile Gesture | F7/F13/F20 | ✅ Concluída (2026-08-15) — motor puro `domain/gestures/overscroll` (resistência elástica + barreira de inércia + threshold), hook `usePullUpToTop` (FSM com cancelamento reversível, decisão por ref, sem pointer capture para coexistir com swipe-to-action), primitivo `PullUpToTopIndicator` (anel SVG `stroke-primary`), integração no PageShell e remoção do `ScrollToTopButton`/`useScrollPosition` do roteador + regra CSS de diálogos · **removida em 2026-08-16** (gesto instável em dispositivos reais mesmo após as correções; rolagem nativa mantida) |
 | 14 | **F27** — Insights: Precisão, Deduplicação & Casos de Borda | A / Inteligência | F19 | ✅ Concluída (2026-08-15) — média mensal real nos desafios (`typicalMonthlySpendCents`), `categoryCount` no discricionário (linha "30% em não essenciais" oculta com 1 categoria — sem repetição) e guarda de `weekendRatio` incomparável ("—" sem alerta absurdo) |
 | 15 | **F28** — Investimentos: Mobile Responsive & Organização | A / Mobile Polish | F17 | ✅ Concluída (2026-08-15) — cards de posição no mobile (sem scroll horizontal) com `PositionRowActions` compartilhado, KPIs 2×2 (padrão do app), metas por classe empilháveis e remoção do código morto pós-F17 (`portfolio-page`/`position-tab`) |
-| 16 | **F30** — Importação e Reconciliação Inteligente de Faturas de Cartão | A / Cartões & Inteligência | F2/F21/F22 | 📋 Pronta para Execução |
+| 16 | **F30** — Importação e Reconciliação Inteligente de Faturas de Cartão | A / Cartões & Inteligência | F2/F21/F22 | ✅ Concluída (2026-08-18) — motor `domain/reconciliation` (CSV multi-encoding, OFX SGML/XML nativo, Quick-Paste, sniffer estatístico, scoring multidimensional 0–100, deduplicação ordinal), migration `0015` com RPC `import_statement_expenses` idempotente, diálogo em 3 passos e integração na `CardsPage` |
 | 17 | **F31** — Modernização de Micro-Interações "Obsidian Glass" & Feedback Tátil | A / UI & Micro-Interações | F8/F11/F15 | ✅ Concluída (2026-08-17) — morphing action buttons, checklist de aportes, alertas pulsantes de orçamento e transições suaves nos controles globais |
 | 18 | **F32** — Recorrências, Rendas Parceladas & Operações em Grupo | A / Transações | F2/F21/F25 | ✅ Concluída (2026-08-17) — template + materialização sob demanda (`recurrences`/`recurrence_skips`, 4 frequências, fim finito), rendas parceladas (1–60, D12), edição/exclusão em grupo nos 3 modos, wizard + extrato + insights integrados; ver seção Fase 32 abaixo |
 
-### Fase 32 — Recorrências, Rendas Parceladas & Operações em Grupo
+### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
+
+> **Status:** ✅ Concluída (2026-08-18) — todas as 4 etapas executadas (domínio puro, migration 0015, RPC transacional, estado, componentes em 3 passos, integração na `CardsPage`, testes unitários e de integração, docs). Suíte **1237 testes / 151 arquivos** (100% verde) + typecheck/lint/build limpos.
+
+**Objetivo (Trilha A / Cartões & Inteligência):** permitir a importação de faturas de cartão de crédito de qualquer instituição financeira (CSV com auto-encoding Latin-1/UTF-8, delimitador dinâmico, OFX SGML/XML bancário nativo ou Quick-Paste de texto copiado), processando 100% no cliente (privacidade absoluta), com reconciliação heurística contra despesas existentes, autopreenchimento preditivo de categorias e gravação transacional idempotente no Supabase.
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 30.1 — Motores Puros de Domínio (`src/domain/reconciliation/`):**
+   - Tipos e esquemas Zod (`types.ts`).
+   - Sanitização de ruído de adquirentes e detecção de pagamentos de fatura (`clean.ts`).
+   - Extração de parcelas embutidas (`installments.ts`).
+   - Geração de hash ordinal anti-colisão (`hash.ts`).
+   - Motor de scoring multidimensional 0–100 (50% valor centesimal + 25% proximidade temporal + 25% similaridade textual Jaccard reusando `src/domain/predictions/`) em `scorer.ts`.
+   - Hub de parsers resilientes: `csv-parser.ts` (PapaParse com auto-delimitador e fallback Latin-1/UTF-8), `ofx-parser.ts` (SGML/XML nativo em TS), `text-parser.ts` (Quick-Paste de texto corrido) e `type-sniffer.ts` (inferência por amostragem de dados).
+   - Testes unitários puros com Vitest (`reconciliation.test.ts`).
+2. **Etapa 30.2 — Infraestrutura de Dados & RPC Transacional:**
+   - Migration `supabase/migrations/20260101000015_statement_import.sql`: colunas `statement_hash` e `imported_from_statement` na tabela `expenses` + índice condicional único `idx_expenses_user_card_statement_hash`.
+   - RPC PostgreSQL `import_statement_expenses`: validação de `APP_START_DATE` (`>= 2026-01-01`), valor estritamente positivo, inserção atômica em lote com idempotência e registro em `audit_events`.
+   - Wrapper em `src/data/rpc.ts` e atualização de tipos em `src/types/schema.ts` e `src/types/database.ts`.
+3. **Etapa 30.3 — Componentes de Interface & Diálogo de Reconciliação:**
+   - `StatementImportDialog` em `src/features/cards/components/` com stepper de 3 passos:
+     - *Passo 1 (Upload):* Tabs com `Dropzone` de arquivos e `Textarea` para Quick-Paste.
+     - *Passo 2 (Mapeamento):* Prévia das 5 primeiras linhas e seletores assistidos (quando houver ambiguidade).
+     - *Passo 3 (Reconciliação):* Tabela de conferência com filtros rápidos (Todos / Novos / Sugestões / Conciliados), seleção em lote, badges semânticos Obsidian Glass, `MoneyText` e seletor de categorias com sugestão preditiva.
+4. **Etapa 30.4 — Integração na Tela de Cartões & Validação de Qualidade:**
+   - Botão de ação primário "Importar fatura" na `CardsPage` (`src/features/cards/pages/cards-page.tsx`).
+   - Invalidação seletiva de cache no TanStack Query (`useCardExpenses`, `useExpenses`, `useBudgets`).
+   - Testes de integração de UI (`statement-import-dialog.test.tsx`).
+
+**Arquivos:** `src/domain/reconciliation/*` (+ testes) · `supabase/migrations/20260101000015_statement_import.sql` · `src/data/rpc.ts` · `src/types/schema.ts` · `src/types/database.ts` · `src/features/cards/components/statement-import-dialog.tsx` · `src/features/cards/components/statement-*-step.tsx` · `src/features/cards/pages/cards-page.tsx`.
+
+**✅ DoD (critérios de aceite):**
+- Motores puros com cobertura de testes unitários para múltiplos layouts bancários (Nubank, Itaú, Bradesco, Inter, OFX SGML/XML e Quick-Paste).
+- Parsing e deduplicação ocorrem 100% no cliente sem envio de extratos bancários para servidores externos.
+- Idempotência verificada: reimportar o mesmo extrato resulta em 0 duplicatas no banco; compras legítimas de mesmo valor/data no mesmo dia são preservadas pelo índice ordinal.
+- Parcelas embutidas (`01/10`) extraídas e despesas com status de conciliado identificadas automaticamente.
+- Categorias dos novos lançamentos pré-preenchidas pelo motor preditivo de histórico (`domain/predictions`).
+- Interface 100% responsiva (Desktop e Mobile), sem emojis e com controles encapsulados Radix.
+- Suíte completa de testes (`npm run test`, `npm run typecheck`, `npm run lint`) 100% verde.
 
 > **Status:** ✅ Concluída (2026-08-17) — todas as 7 etapas executadas (domínio, migration 0013, RPCs, estado, wizard, diálogos, lista/insights, docs). Suíte **1202 testes / 145 arquivos** (100% verde) + typecheck/lint limpos.
 

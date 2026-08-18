@@ -169,6 +169,8 @@
     │   ├── fire/                  #   F24: regra dos 4% (meta = despesas × 25),
     │   │                          #     projeção anual determinística e faixas do
     │   │                          #     fundo de emergência (index.ts)
+    │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
+    │   │                          #     type-sniffer, hashing ordinal, scoring 0-100)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │                              #   summary.ts (F17: rentabilidade, alocação),
     │                              #   dividends.ts (F18: extrato e calendário de proventos)

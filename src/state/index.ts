@@ -31,6 +31,7 @@ export {
   useDeleteCardPayment,
   useRefinanceCreditCardBill,
 } from "./mutations/use-card-mutations";
+export { useImportStatementExpenses } from "./mutations/use-statement-mutations";
 export { useLoans } from "./queries/use-loans";
 export {
   useCreateLoanContract,

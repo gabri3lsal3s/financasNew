@@ -275,6 +275,18 @@ export interface Database {
         Args: { p_backup: unknown };
         Returns: Record<string, number>;
       };
+      import_statement_expenses: {
+        Args: {
+          p_card_id: string;
+          p_competence_month: string;
+          p_expenses: unknown;
+        };
+        Returns: {
+          success: boolean;
+          inserted_count: number;
+          skipped_count: number;
+        };
+      };
     };
   };
 }

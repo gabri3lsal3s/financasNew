@@ -46,4 +46,9 @@ export { LivePulseBeacon } from "./live-pulse-beacon";
 export type { LivePulseBeaconProps } from "./live-pulse-beacon";
 export { NumberStepperInput } from "./number-stepper-input";
 export type { NumberStepperInputProps } from "./number-stepper-input";
+export { Dropzone } from "./dropzone";
+export type { DropzoneProps } from "./dropzone";
+export { Textarea } from "./textarea";
+export type { TextareaProps } from "./textarea";
+
 

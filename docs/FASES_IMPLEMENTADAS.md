@@ -281,6 +281,30 @@
   3. **Aba Avisos & Diagnósticos:** Apresenta a grade 3x2 de indicadores de diagnóstico no topo e a lista de avisos contextuais logo abaixo.
   4. **Qualidade & Testes:** 145 arquivos e 1204 testes 100% verdes, typecheck e lint limpos.
 
+---
+
+## Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão (2026-08-18)
+
+- **Problema:** Lançamento de faturas de cartão de crédito de ponta a ponta exigia digitação manual de dezenas de compras por mês ou uso de formatos engessados. Faturas de diferentes bancos variam de formato (CSV com diferentes encodings/delimitadores, OFX SGML/XML ou texto corrido copiado do Internet Banking), trazendo ruídos de adquirentes (`PAG*`, `IFOOD*`), parcelamentos embutidos (`01/10`) e risco de duplicação com despesas já lançadas.
+- **Solução:**
+  1. **Motor Puro de Reconciliação Client-Side (`src/domain/reconciliation/`):**
+     - **Limpeza e Sanitização:** Remoção inteligente de prefixos de adquirentes e sufixos de cidades (`cleanDescription`) e detecção de pagamentos de fatura para ignorar por padrão (`isPaymentOrSettlement`).
+     - **Extração de Parcelas:** Identificação automática de padrões como `(01/10)`, `PARC 01/10`, `01 DE 10`.
+     - **Sniffer Estatístico por Amostragem:** Inferência automática das colunas de Data, Descrição e Valor mesmo em arquivos CSV sem cabeçalho e com datas em formatos variados (DD/MM/AAAA, AAAA-MM-DD, etc.).
+     - **Parsers Multi-Formato:** Hub universal capaz de processar CSV com auto-delimitador e fallback Latin-1/UTF-8 (`PapaParse`), OFX bancário nativo SGML/XML e Quick-Paste de texto corrido.
+     - **Scoring Multidimensional 0–100:** 50% valor centesimal + 25% proximidade temporal + 25% similaridade textual Jaccard (reutilizando `domain/predictions`).
+     - **Predição de Categorias:** Novos lançamentos recebem a categoria sugerida pelo histórico de compras do usuário.
+     - **Deduplicação e Hashing Ordinal:** Geração de hash SHA-256 com índice ordinal diário garantindo que compras de mesmo valor no mesmo dia não colidam nem gerem duplicatas em reimportações.
+  2. **Infraestrutura de Banco & RPC Transacional:**
+     - Migration `20260101000015_statement_import.sql` com colunas `statement_hash`, `imported_from_statement` e índice condicional único.
+     - RPC `import_statement_expenses` atômico e idempotente no Supabase com auditoria `audit_events`.
+  3. **Interface Obsidian Glass em 3 Passos (`StatementImportDialog`):**
+     - *Passo 1 (Upload):* Tabs com `Dropzone` para arquivos e `Textarea` para colar texto do extrato.
+     - *Passo 2 (Mapeamento):* Tabela de prévia e seletores de coluna assistidos.
+     - *Passo 3 (Conferência):* Tabela de conciliação com filtros rápidos (*Todos*, *Novos*, *Sugestões*, *Conciliados*), seleção em lote, badges semânticos, `MoneyText` e seletor de categorias.
+  4. **Integração na Tela de Cartões:** Botão "Importar fatura" integrado à barra de ações da fatura da `CardsPage`.
+  5. **Qualidade & Testes:** Suíte completa com 151 arquivos e 1.237 testes (100% verde) + typecheck, lint e build de produção limpos.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

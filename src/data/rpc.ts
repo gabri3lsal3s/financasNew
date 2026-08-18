@@ -607,3 +607,38 @@ export async function removeGroupTarget(groupType: "class" | "sector", name: str
     true,
   );
 }
+
+export interface StatementExpenseItemInput {
+  date: string;
+  value: number;
+  category_id: string;
+  description: string;
+  installments_total?: number;
+  installment_number?: number;
+  report_weight?: number;
+  statement_hash?: string;
+}
+
+export interface ImportStatementResult {
+  success: boolean;
+  inserted_count: number;
+  skipped_count: number;
+}
+
+/**
+ * Importa despesas de extrato/fatura em lote de forma atômica e idempotente (Fase 30).
+ */
+export async function importStatementExpenses(params: {
+  cardId: string;
+  competenceMonth: string;
+  expenses: StatementExpenseItemInput[];
+}): Promise<ImportStatementResult> {
+  return unwrapRpc(
+    callRpc("import_statement_expenses", {
+      p_card_id: params.cardId,
+      p_competence_month: params.competenceMonth,
+      p_expenses: params.expenses,
+    }),
+  );
+}
+
