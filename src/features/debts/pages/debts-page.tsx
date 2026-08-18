@@ -101,7 +101,7 @@ function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
   );
 }
 
-/** Dívidas / contas a pagar e receber (§3.4) — status derivado + quitação integrada. */
+/** Dívidas / contas a pagar e receber (§3.4) — status derivado + quitação integrada + financiamentos. */
 export function DebtsPage() {
   const debtsQuery = useDebts();
   const loansQuery = useLoans();
@@ -113,11 +113,17 @@ export function DebtsPage() {
   // Aba derivada: deep-link ?type= (busca §3.9) prevalece; sem param, usa a
   // escolha manual (tabs). O pick manual limpa o param (sem setState em effect).
   const paramType = searchParams.get("type");
-  const [pickedTab, setPickedTab] = useState<"payable" | "receivable">("payable");
-  const tab: "payable" | "receivable" =
-    paramType === "receivable" ? "receivable" : paramType === "payable" ? "payable" : pickedTab;
+  const [pickedTab, setPickedTab] = useState<"payable" | "receivable" | "loans">("payable");
+  const tab: "payable" | "receivable" | "loans" =
+    paramType === "receivable"
+      ? "receivable"
+      : paramType === "payable"
+        ? "payable"
+        : paramType === "loans"
+          ? "loans"
+          : pickedTab;
 
-  const handleTabChange = (next: "payable" | "receivable") => {
+  const handleTabChange = (next: "payable" | "receivable" | "loans") => {
     setPickedTab(next);
     setSearchParams(
       (prev) => {
@@ -148,113 +154,144 @@ export function DebtsPage() {
 
   const debts = debtsQuery.data ?? [];
   const loans = loansQuery.data ?? [];
-  const filtered = debts.filter((debt) => debt.type === tab);
+  const payableDebts = debts.filter((d) => d.type === "payable");
+  const receivableDebts = debts.filter((d) => d.type === "receivable");
+  const filtered = tab === "payable" ? payableDebts : tab === "receivable" ? receivableDebts : [];
 
   const error = debtsQuery.error || loansQuery.error;
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-center justify-between gap-2">
-        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Dívidas & Financiamentos</h1>
+      {/* Header com ações acessíveis tanto no mobile quanto no desktop */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Dívidas & Financiamentos
+          </h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Gestão de contas a pagar, a receber e contratos de amortização.
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="hidden sm:inline-flex"
+            size="sm"
+            aria-label="Financiamento"
+            className="flex-1 sm:flex-initial"
             onClick={() => setLoanFormOpen(true)}
           >
             <Coins aria-hidden="true" className="size-4" />
-            Financiamento
+            <span className="hidden sm:inline">Financiamento</span>
+            <span className="sm:hidden">Contrato</span>
           </Button>
           <Button
-            className="hidden sm:inline-flex"
+            size="sm"
+            aria-label="Nova dívida"
+            className="flex-1 sm:flex-initial"
             onClick={() => {
               setEditingDebt(null);
               setFormOpen(true);
             }}
           >
-            <Plus aria-hidden="true" />
+            <Plus aria-hidden="true" className="size-4" />
             Nova dívida
           </Button>
         </div>
       </header>
-
-      {loans.length > 0 && tab === "payable" && (
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Contratos & Financiamentos ({loans.length})
-            </h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setLoanFormOpen(true)}
-              className="text-xs sm:hidden"
-            >
-              Novo contrato
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {loans.map((loan) => (
-              <LoanCard key={loan.id} loan={loan} debts={debts} />
-            ))}
-          </div>
-        </section>
-      )}
 
       {error ? (
         <ErrorState message={getErrorMessage(error)} />
       ) : (
         <Tabs
           value={tab}
-          onValueChange={(value) => handleTabChange(value as "payable" | "receivable")}
+          onValueChange={(value) => handleTabChange(value as "payable" | "receivable" | "loans")}
           swipeable
           items={[
             {
               value: "payable",
-              label: `A pagar (${debts.filter((d) => d.type === "payable").length})`,
+              label: `A pagar (${payableDebts.length})`,
               content: null,
             },
             {
               value: "receivable",
-              label: `A receber (${debts.filter((d) => d.type === "receivable").length})`,
+              label: `A receber (${receivableDebts.length})`,
+              content: null,
+            },
+            {
+              value: "loans",
+              label: `Financiamentos (${loans.length})`,
               content: null,
             },
           ]}
         />
       )}
 
-      {debtsQuery.isLoading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
+      {/* Conteúdo de Financiamentos */}
+      {tab === "loans" && (
+        <div className="flex flex-col gap-4">
+          {loansQuery.isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Skeleton className="h-40 w-full rounded-2xl" />
+              <Skeleton className="h-40 w-full rounded-2xl" />
+            </div>
+          ) : loans.length === 0 ? (
+            <EmptyState
+              icon={<Coins className="size-6" aria-hidden="true" />}
+              title="Nenhum financiamento ou empréstimo"
+              description="Cadastre seus contratos de crédito (Price ou SAC) para simular amortizações e acompanhar o saldo devedor."
+              action={
+                <Button size="sm" onClick={() => setLoanFormOpen(true)}>
+                  <Plus aria-hidden="true" className="size-4" />
+                  Cadastrar contrato
+                </Button>
+              }
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {loans.map((loan) => (
+                <LoanCard key={loan.id} loan={loan} debts={debts} />
+              ))}
+            </div>
+          )}
         </div>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<HandCoins className="size-6" aria-hidden="true" />}
-          title={tab === "payable" ? "Nenhuma conta a pagar" : "Nenhuma conta a receber"}
-          description={
-            tab === "payable"
-              ? "Cadastre contas a pagar para acompanhar vencimentos e quitações."
-              : "Cadastre contas a receber para acompanhar valores a receber."
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-2">
-          {filtered.map((debt) => (
-            <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
-              <DebtRow
-                debt={debt}
-                onSettle={setSettling}
-                onUnsettle={handleUnsettle}
-                onEdit={(d) => {
-                  setEditingDebt(d);
-                  setFormOpen(true);
-                }}
-              />
-            </HighlightRow>
-          ))}
-        </div>
+      )}
+
+      {/* Conteúdo de Dívidas (A pagar / A receber) */}
+      {tab !== "loans" && (
+        <>
+          {debtsQuery.isLoading ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-xl" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<HandCoins className="size-6" aria-hidden="true" />}
+              title={tab === "payable" ? "Nenhuma conta a pagar" : "Nenhuma conta a receber"}
+              description={
+                tab === "payable"
+                  ? "Cadastre contas a pagar para acompanhar vencimentos e quitações."
+                  : "Cadastre contas a receber para acompanhar valores a receber."
+              }
+            />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {filtered.map((debt) => (
+                <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                  <DebtRow
+                    debt={debt}
+                    onSettle={setSettling}
+                    onUnsettle={handleUnsettle}
+                    onEdit={(d) => {
+                      setEditingDebt(d);
+                      setFormOpen(true);
+                    }}
+                  />
+                </HighlightRow>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <DebtFormDialog
@@ -280,3 +317,4 @@ export function DebtsPage() {
     </div>
   );
 }
+

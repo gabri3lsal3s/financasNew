@@ -55,12 +55,15 @@ export function CategoriesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-center justify-between gap-2">
-        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Categorias</h1>
-        {/* Nova categoria só no desktop — no mobile o FAB da BottomNav assume (F12). */}
-        <Button className="hidden sm:inline-flex" onClick={openCreate}>
-          <Plus aria-hidden="true" />
-          Nova categoria
+      <header className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">Categorias</h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">Organização de despesas e receitas</p>
+        </div>
+        <Button size="sm" aria-label="Nova categoria" onClick={openCreate} className="shrink-0">
+          <Plus aria-hidden="true" className="size-4" />
+          <span className="hidden sm:inline">Nova categoria</span>
+          <span className="sm:hidden">Nova</span>
         </Button>
       </header>
 

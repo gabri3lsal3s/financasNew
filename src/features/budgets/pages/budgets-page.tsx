@@ -140,13 +140,24 @@ export function BudgetsPage() {
           <MonthPicker value={month} onValueChange={setMonth} />
 
           {/* KPIs (§3.5.2) */}
-          <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+          <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Total de limites do mês</p>
-                <MoneyText cents={totalLimitsCents} variant="hero" className="mt-1" />
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary-strong">
+                  <PiggyBank className="size-3.5" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total de limites do mês</p>
+                  <p className="text-[11px] text-muted-foreground">{rows.length} {rows.length === 1 ? "categoria ativa" : "categorias ativas"}</p>
+                </div>
               </div>
               <p className="num text-sm font-medium text-muted-foreground">{Math.round(globalPercent)}% usado</p>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <MoneyText cents={totalLimitsCents} variant="hero" className="text-2xl sm:text-3xl" />
+              <span className="text-xs text-muted-foreground">
+                Gasto: <MoneyText cents={totalExpensesCents} tone="default" />
+              </span>
             </div>
             <Progress value={globalPercent} tone={progressTone(globalPercent)} aria-label={`Uso global: ${Math.round(globalPercent)}%`} />
           </div>
