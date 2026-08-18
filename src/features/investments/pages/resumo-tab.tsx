@@ -77,17 +77,6 @@ export function ResumoTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* F28 — mobile: descrição e CTA empilham (botão ocupa a largura); sm+ em linha. */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Posição derivada do ledger: nunca armazenada, sempre recalculada das transações e cotações.
-        </p>
-        <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setAssetOpen(true)}>
-          <Plus aria-hidden="true" />
-          Adicionar ativo
-        </Button>
-      </div>
-
       {position.error ? (
         <Alert variant="error">
           <div className="flex w-full items-center justify-between gap-3">
@@ -107,11 +96,11 @@ export function ResumoTab() {
             <SkeletonKpi />
             <SkeletonKpi />
           </div>
+          <SkeletonTable rows={4} />
           <div className="grid gap-3 lg:grid-cols-2">
             <SkeletonChart />
             <SkeletonChart />
           </div>
-          <SkeletonTable rows={4} />
         </div>
       ) : !hasInvestments ? (
         <EmptyState
@@ -129,7 +118,7 @@ export function ResumoTab() {
         />
       ) : (
         <>
-          {/* F28 — KPIs 2×2 no mobile (padrão do app, ex.: Home), 4 colunas no desktop. */}
+          {/* KPIs 2×2 no mobile, 4 colunas no desktop */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <KpiCard
               label="Patrimônio total"
@@ -147,6 +136,31 @@ export function ResumoTab() {
             <KpiCard label="Ativos" value={String(rows.length)} hint="Inclui caixa/reserva (1:1)" />
           </div>
 
+          {/* Seção principal: Posições da Carteira */}
+          <section aria-label="Posições" className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-foreground">Posições</h2>
+                <Badge variant="muted" className="text-[11px]">
+                  {rows.length} {rows.length === 1 ? "ativo" : "ativos"}
+                </Badge>
+              </div>
+              <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setAssetOpen(true)}>
+                <Plus aria-hidden="true" className="size-4" />
+                Adicionar ativo
+              </Button>
+            </div>
+            <PositionTable
+              rows={rows}
+              sortable
+              onRegisterTransaction={openTransaction}
+              onListTransactions={openList}
+              onEditAsset={openEdit}
+              onDeleteAsset={openDelete}
+            />
+          </section>
+
+          {/* Seção secundária: Análise de Alocação */}
           <div className="grid gap-3 lg:grid-cols-2">
             <section aria-label="Alocação por classe" className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
               <div className="mb-4 flex items-center gap-2">
@@ -168,23 +182,6 @@ export function ResumoTab() {
               <CategoryDonut slices={tickerSlices} className="sm:max-w-md" />
             </section>
           </div>
-
-          <section aria-label="Posições" className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Posições</h2>
-              <Badge variant="muted" className="text-[11px]">
-                {rows.length} {rows.length === 1 ? "ativo" : "ativos"}
-              </Badge>
-            </div>
-            <PositionTable
-              rows={rows}
-              sortable
-              onRegisterTransaction={openTransaction}
-              onListTransactions={openList}
-              onEditAsset={openEdit}
-              onDeleteAsset={openDelete}
-            />
-          </section>
         </>
       )}
 

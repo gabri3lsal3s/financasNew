@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Save, Shield, Trash2 } from "lucide-react";
-import { Alert, Button, EmptyState, NumberStepperInput, SkeletonList, SkeletonTable } from "@/components/ui";
+import { Alert, Button, EmptyState, NumberStepperInput, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
 import { parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
@@ -150,6 +150,8 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
 
   const capsDefaults = capsQuery.data;
 
+  const [subTab, setSubTab] = useState<"assets" | "classes">("assets");
+
   return (
     <div className="flex flex-col gap-6">
       {loadError ? <Alert variant="error">{getErrorMessage(loadError)}</Alert> : null}
@@ -176,138 +178,157 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           }
         />
       ) : (
-        <TargetEditor
-          rows={assetRows}
-          heading="Metas por ativo (% do patrimônio)"
-          onTargetChange={(key, value) =>
-            setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }))
-          }
-          onSave={() => void saveAssets()}
-          saving={saveTargets.isPending}
-          saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}
-          sumPercent={assetSum.sum}
-          sumError={assetSum.error}
-          emptyMessage="Nenhum ativo na carteira."
+        <Tabs
+          value={subTab}
+          onValueChange={(val: string) => setSubTab(val as "assets" | "classes")}
+          swipeable
+          items={[
+            {
+              value: "assets",
+              label: "Metas por Ativo",
+              content: (
+                <TargetEditor
+                  rows={assetRows}
+                  heading="Metas por ativo (% do patrimônio)"
+                  onTargetChange={(key, value) =>
+                    setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }))
+                  }
+                  onSave={() => void saveAssets()}
+                  saving={saveTargets.isPending}
+                  saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}
+                  sumPercent={assetSum.sum}
+                  sumError={assetSum.error}
+                  emptyMessage="Nenhum ativo na carteira."
+                />
+              ),
+            },
+            {
+              value: "classes",
+              label: "Classes & Travas de Risco",
+              content: (
+                <div className="flex flex-col gap-6">
+                  {classes.length > 0 ? (
+                    <section aria-label="Metas por classe" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">Metas por classe</h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Usadas pela calculadora no modo por meta de classe. A meta da classe é distribuída
+                          proporcionalmente ao valor atual dos ativos.
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {classes.map((className) => {
+                          const target = classTargetOf(className);
+                          const savedTarget = storedClassTargets.get(className) ?? 0;
+                          return (
+                            <div key={className} className="flex flex-col gap-3 rounded-xl border border-border/60 bg-surface-hover/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="flex min-w-0 flex-col">
+                                <p className="truncate text-sm font-medium text-foreground">{className}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {position.rows.filter((r) => r.assetClass === className).length} ativo(s)
+                                </p>
+                              </div>
+                              <div className="flex w-full items-center gap-2 sm:w-auto">
+                                <div className="flex flex-1 items-center gap-2 sm:w-44 sm:flex-none">
+                                  <NumberStepperInput
+                                    value={target}
+                                    min={0}
+                                    max={100}
+                                    step={0.5}
+                                    ariaLabel={`Meta da classe ${className} em %`}
+                                    onValueChange={(next) =>
+                                      setClassDraft((prev) => ({
+                                        ...prev,
+                                        [className]: parseTargetInput(next),
+                                      }))
+                                    }
+                                    className="[&_input]:text-right"
+                                  />
+                                  <span className="shrink-0 text-sm text-muted-foreground">%</span>
+                                </div>
+                                <div className="flex shrink-0 gap-1">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={target > 0 ? "secondary" : "outline"}
+                                    disabled={savingClass === className}
+                                    onClick={() => void saveClass(className)}
+                                  >
+                                    {savingClass === className ? "Salvando…" : "Salvar"}
+                                  </Button>
+                                  {savedTarget > 0 ? (
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      aria-label={`Remover meta da classe ${className}`}
+                                      disabled={savingClass === className}
+                                      onClick={() => void removeClass(className)}
+                                    >
+                                      <Trash2 className="size-4" aria-hidden="true" />
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  <section aria-label="Travas setoriais" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+                    <div className="flex items-start gap-2.5">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
+                        <Shield className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">Travas setoriais</h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Teto de exposição (% do patrimônio) para as classes Ações e FIIs. A calculadora de
+                          aporte nunca aloca acima do teto (§3.11.3.5).
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                        Máx. Ações (%)
+                        <NumberStepperInput
+                          value={capsDraft.acoes !== "" ? capsDraft.acoes : capsDefaults?.maxSectorAcoes ?? ""}
+                          min={0}
+                          max={100}
+                          step={1}
+                          placeholder="Sem trava"
+                          ariaLabel="Teto de exposição para Ações"
+                          onValueChange={(next) => setCapsDraft((prev) => ({ ...prev, acoes: next }))}
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                        Máx. FIIs (%)
+                        <NumberStepperInput
+                          value={capsDraft.fiis !== "" ? capsDraft.fiis : capsDefaults?.maxSectorFiis ?? ""}
+                          min={0}
+                          max={100}
+                          step={1}
+                          placeholder="Sem trava"
+                          ariaLabel="Teto de exposição para FIIs"
+                          onValueChange={(next) => setCapsDraft((prev) => ({ ...prev, fiis: next }))}
+                        />
+                      </label>
+                    </div>
+                    {capsError ? <Alert variant="error">{capsError}</Alert> : null}
+                    <div className="flex justify-end">
+                      <Button type="button" variant="outline" onClick={() => void saveCaps()} disabled={updateCaps.isPending}>
+                        {updateCaps.isPending ? "Salvando…" : "Salvar travas"}
+                      </Button>
+                    </div>
+                  </section>
+                </div>
+              ),
+            },
+          ]}
         />
       )}
-
-      {classes.length > 0 ? (
-        <section aria-label="Metas por classe" className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Metas por classe</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Usadas pela calculadora no modo por meta de classe. A meta da classe é distribuída
-              proporcionalmente ao valor atual dos ativos.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2">
-            {classes.map((className) => {
-              const target = classTargetOf(className);
-              const savedTarget = storedClassTargets.get(className) ?? 0;
-              return (
-                /* F28 — mobile: nome e controles empilham (sem overflow); sm+ em linha. */
-                <div key={className} className="flex flex-col gap-3 rounded-lg border border-border/60 bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 flex-col">
-                    <p className="truncate text-sm font-medium text-foreground">{className}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {position.rows.filter((r) => r.assetClass === className).length} ativo(s)
-                    </p>
-                  </div>
-                  <div className="flex w-full items-center gap-2 sm:w-auto">
-                    <div className="flex flex-1 items-center gap-2 sm:w-44 sm:flex-none">
-                      <NumberStepperInput
-                        value={target}
-                        min={0}
-                        max={100}
-                        step={0.5}
-                        ariaLabel={`Meta da classe ${className} em %`}
-                        onValueChange={(next) =>
-                          setClassDraft((prev) => ({
-                            ...prev,
-                            [className]: parseTargetInput(next),
-                          }))
-                        }
-                        className="[&_input]:text-right"
-                      />
-                      <span className="shrink-0 text-sm text-muted-foreground">%</span>
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={target > 0 ? "secondary" : "outline"}
-                        disabled={savingClass === className}
-                        onClick={() => void saveClass(className)}
-                      >
-                        {savingClass === className ? "Salvando…" : "Salvar"}
-                      </Button>
-                      {savedTarget > 0 ? (
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          aria-label={`Remover meta da classe ${className}`}
-                          disabled={savingClass === className}
-                          onClick={() => void removeClass(className)}
-                        >
-                          <Trash2 className="size-4" aria-hidden="true" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
-      <section aria-label="Travas setoriais" className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
-        <div className="flex items-start gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-            <Shield className="size-3.5" aria-hidden="true" />
-          </span>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Travas setoriais</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Teto de exposição (% do patrimônio) para as classes Ações e FIIs. A calculadora de
-              aporte nunca aloca acima do teto (§3.11.3.5).
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Máx. Ações (%)
-            <NumberStepperInput
-              value={capsDraft.acoes !== "" ? capsDraft.acoes : capsDefaults?.maxSectorAcoes ?? ""}
-              min={0}
-              max={100}
-              step={1}
-              placeholder="Sem trava"
-              ariaLabel="Teto de exposição para Ações"
-              onValueChange={(next) => setCapsDraft((prev) => ({ ...prev, acoes: next }))}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Máx. FIIs (%)
-            <NumberStepperInput
-              value={capsDraft.fiis !== "" ? capsDraft.fiis : capsDefaults?.maxSectorFiis ?? ""}
-              min={0}
-              max={100}
-              step={1}
-              placeholder="Sem trava"
-              ariaLabel="Teto de exposição para FIIs"
-              onValueChange={(next) => setCapsDraft((prev) => ({ ...prev, fiis: next }))}
-            />
-          </label>
-        </div>
-        {capsError ? <Alert variant="error">{capsError}</Alert> : null}
-        <div className="flex justify-end">
-          <Button type="button" variant="outline" onClick={() => void saveCaps()} disabled={updateCaps.isPending}>
-            {updateCaps.isPending ? "Salvando…" : "Salvar travas"}
-          </Button>
-        </div>
-      </section>
     </div>
   );
 }

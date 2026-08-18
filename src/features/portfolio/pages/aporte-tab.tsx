@@ -106,7 +106,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         />
       ) : (
         <>
-          <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
+          <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
                 Valor do aporte

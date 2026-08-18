@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarDays, Coins, TrendingUp } from "lucide-react";
+import { CalendarDays, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, EmptyState, SkeletonTable } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
@@ -38,14 +38,9 @@ export function ProventosTab() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-            <Coins className="size-3.5" aria-hidden="true" />
-          </span>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Proventos recebidos</h2>
-            <p className="text-xs text-muted-foreground">Rendimentos de dividendos, JCP e FIIs — só na carteira (fora do fluxo financeiro core).</p>
-          </div>
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Proventos recebidos</h2>
+          <p className="text-xs text-muted-foreground">Extrato e calendário de rendimentos de dividendos, JCP e FIIs.</p>
         </div>
         <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês dos proventos" />
       </div>
