@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { setCalculatorOpen } from "@/services/calculator-open";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 
 export type ModalSize = "sm" | "md" | "lg" | "xl";
 
@@ -137,7 +137,7 @@ export function Modal({
     const shouldClose = drag.dy >= CLOSE_DRAG_THRESHOLD || velocity > CLOSE_FLING_VELOCITY;
     setDragY(0);
     if (shouldClose) {
-      triggerHaptic("light");
+      triggerSensory("action");
       onOpenChange(false);
     }
   };
@@ -158,6 +158,7 @@ export function Modal({
           onPointerUp={finishDrag}
           onPointerCancel={cancelDrag}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
           style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
           className={cn(
             // Mobile (base): bottom sheet com slide-up e alça; lg+: diálogo centralizado.
@@ -193,7 +194,7 @@ export function Modal({
                   aria-label="Abrir calculadora"
                   title="Calculadora"
                   onClick={() => {
-                    triggerHaptic("light");
+                    triggerSensory("action");
                     setCalculatorOpen(true);
                   }}
                 >

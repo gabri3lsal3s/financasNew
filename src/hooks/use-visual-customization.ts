@@ -24,6 +24,7 @@ export interface VisualCustomization {
   surfaceStyle: SurfaceStyle;
   motionLevel: MotionLevel;
   soundEnabled: boolean;
+  hapticEnabled: boolean;
   numberTickerEnabled: boolean;
   dashboardWidgets: DashboardWidgetsConfig;
   headerButtons: HeaderButtonsConfig;
@@ -34,6 +35,7 @@ const STORAGE_KEYS = {
   surfaceStyle: "financas_surface_style",
   motionLevel: "financas_motion_level",
   soundEnabled: "financas_sound_enabled",
+  hapticEnabled: "financas_haptic_enabled",
   numberTickerEnabled: "financas_number_ticker_enabled",
   dashboardWidgets: "financas_dashboard_widgets",
   headerButtons: "financas_header_buttons",
@@ -59,6 +61,7 @@ const DEFAULT_CONFIG: VisualCustomization = {
   surfaceStyle: "glass",
   motionLevel: "fluid",
   soundEnabled: false,
+  hapticEnabled: true,
   numberTickerEnabled: true,
   dashboardWidgets: DEFAULT_WIDGETS,
   headerButtons: DEFAULT_HEADER_BUTTONS,
@@ -112,6 +115,8 @@ function readStoredConfig(): VisualCustomization {
       rawMotion && ["fluid", "eco", "reduced"].includes(rawMotion) ? rawMotion : "fluid";
 
     const soundEnabled = window.localStorage.getItem(STORAGE_KEYS.soundEnabled) === "true";
+    const hapticEnabled =
+      window.localStorage.getItem(STORAGE_KEYS.hapticEnabled) !== "false";
     const numberTickerEnabled =
       window.localStorage.getItem(STORAGE_KEYS.numberTickerEnabled) !== "false";
 
@@ -140,6 +145,7 @@ function readStoredConfig(): VisualCustomization {
       surfaceStyle,
       motionLevel,
       soundEnabled,
+      hapticEnabled,
       numberTickerEnabled,
       dashboardWidgets,
       headerButtons,
@@ -201,6 +207,9 @@ export function updateVisualCustomization(partial: Partial<VisualCustomization>)
     if (partial.soundEnabled !== undefined) {
       window.localStorage.setItem(STORAGE_KEYS.soundEnabled, String(next.soundEnabled));
     }
+    if (partial.hapticEnabled !== undefined) {
+      window.localStorage.setItem(STORAGE_KEYS.hapticEnabled, String(next.hapticEnabled));
+    }
     if (partial.numberTickerEnabled !== undefined) {
       window.localStorage.setItem(STORAGE_KEYS.numberTickerEnabled, String(next.numberTickerEnabled));
     }
@@ -233,6 +242,7 @@ export function useVisualCustomization() {
     setSurfaceStyle: (surfaceStyle: SurfaceStyle) => updateVisualCustomization({ surfaceStyle }),
     setMotionLevel: (motionLevel: MotionLevel) => updateVisualCustomization({ motionLevel }),
     setSoundEnabled: (soundEnabled: boolean) => updateVisualCustomization({ soundEnabled }),
+    setHapticEnabled: (hapticEnabled: boolean) => updateVisualCustomization({ hapticEnabled }),
     setNumberTickerEnabled: (numberTickerEnabled: boolean) =>
       updateVisualCustomization({ numberTickerEnabled }),
     setDashboardWidget: (widget: keyof DashboardWidgetsConfig, visible: boolean) =>

@@ -2,9 +2,7 @@ import { useRef } from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { triggerHaptic } from "@/services/haptics";
-import { playSound } from "@/services/audio-fx";
-import { getVisualCustomization } from "@/hooks/use-visual-customization";
+import { triggerSensory } from "@/services/sensory";
 import { useSwipeNavigation } from "@/hooks/use-swipe-navigation";
 
 export interface TabItem {
@@ -45,9 +43,7 @@ export function Tabs({
       const nextIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
       const next = items[nextIndex];
       if (next) {
-        triggerHaptic("light");
-        const visual = getVisualCustomization();
-        playSound("click", visual.soundEnabled);
+        triggerSensory("selection");
         onValueChange(next.value);
       }
     },
@@ -62,9 +58,7 @@ export function Tabs({
   });
 
   const handleTabChange = (val: string) => {
-    triggerHaptic("light");
-    const visual = getVisualCustomization();
-    playSound("click", visual.soundEnabled);
+    triggerSensory("selection");
     onValueChange(val);
   };
 

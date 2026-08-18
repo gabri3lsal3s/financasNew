@@ -5,7 +5,7 @@ import { ptBR } from "react-day-picker/locale";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 import type { ChevronProps, DayButtonProps } from "react-day-picker";
 import { toISODate } from "@/domain/money";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface DatePickerProps {
@@ -121,14 +121,14 @@ export function DatePicker({
   const handleSelectDay = (date: Date | undefined) => {
     if (date) {
       onValueChange(toISO(date));
-      triggerHaptic("light");
+      triggerSensory("selection");
       setOpen(false);
     }
   };
 
   const handleShortcut = (dateIso: string) => {
     onValueChange(dateIso);
-    triggerHaptic("light");
+    triggerSensory("selection");
     setOpen(false);
   };
 
@@ -153,7 +153,7 @@ export function DatePicker({
               onClick={(event) => {
                 event.stopPropagation();
                 onValueChange("");
-                triggerHaptic("light");
+                triggerSensory("selection");
               }}
               className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:text-foreground"
             >

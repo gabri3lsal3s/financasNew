@@ -643,6 +643,7 @@ export async function importStatementExpenses(params: {
 }
 
 export interface StatementIncomeItemInput {
+  category_id?: string;
   value: number;
   date: string;
   description: string;

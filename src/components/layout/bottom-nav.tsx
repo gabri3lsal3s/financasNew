@@ -3,7 +3,7 @@ import { Ellipsis, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { useReminders } from "@/state";
 
 /** Resolve um slot obrigatório da BottomNav a partir da fonte única de navegação. */
@@ -81,7 +81,7 @@ export function BottomNav() {
           to={create.to}
           aria-label={create.label}
           className="flex min-h-11 items-center justify-center"
-          onClick={() => triggerHaptic("light")}
+          onClick={() => triggerSensory("action")}
         >
           {/* FAB com fundo na cor do tema e contorno nítido suave (sem serrilhamento de box-shadow ring) */}
           <span className="-mt-6 flex size-14 items-center justify-center rounded-full bg-background shadow-xs transform-gpu">

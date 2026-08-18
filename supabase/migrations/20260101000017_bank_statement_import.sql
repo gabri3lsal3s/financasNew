@@ -38,6 +38,8 @@ DECLARE
   v_inc_id uuid;
   v_date date;
   v_val numeric;
+  v_inc_category_id uuid;
+  v_receive_type text;
 BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Não autorizado';
@@ -99,6 +101,19 @@ BEGIN
 
   -- 2. Processa Receitas (Entradas de Conta Corrente / Salário / PIX / TED)
   IF p_incomes IS NOT NULL AND jsonb_typeof(p_incomes) = 'array' THEN
+    -- Categoria de receita padrão do usuário se não informada
+    SELECT id INTO v_inc_category_id
+    FROM categories
+    WHERE user_id = v_user_id AND type = 'income'
+    ORDER BY is_reserved DESC, created_at ASC
+    LIMIT 1;
+
+    IF v_inc_category_id IS NULL THEN
+      INSERT INTO categories (user_id, type, name, is_reserved)
+      VALUES (v_user_id, 'income', 'Outros', true)
+      RETURNING id INTO v_inc_category_id;
+    END IF;
+
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_incomes)
     LOOP
       v_date := (v_item->>'date')::date;
@@ -112,22 +127,31 @@ BEGIN
         RAISE EXCEPTION 'Valor de receita deve ser estritamente positivo: %', v_val;
       END IF;
 
+      v_receive_type := CASE 
+        WHEN lower(COALESCE(v_item->>'receive_type', '')) IN ('pix') THEN 'pix'
+        WHEN lower(COALESCE(v_item->>'receive_type', '')) IN ('ted', 'doc', 'transfer', 'transferencia', 'transferência') THEN 'transfer'
+        WHEN lower(COALESCE(v_item->>'receive_type', '')) IN ('cash', 'dinheiro') THEN 'cash'
+        ELSE 'other'
+      END;
+
       INSERT INTO incomes (
         user_id,
+        category_id,
         value,
-        base_amount,
         date,
         description,
         receive_type,
+        report_weight,
         statement_hash,
         imported_from_statement
       ) VALUES (
         v_user_id,
-        v_val,
+        COALESCE((v_item->>'category_id')::uuid, v_inc_category_id),
         v_val,
         v_date,
         v_item->>'description',
-        COALESCE(v_item->>'receive_type', 'outros'),
+        v_receive_type,
+        1.0,
         v_item->>'statement_hash',
         true
       )

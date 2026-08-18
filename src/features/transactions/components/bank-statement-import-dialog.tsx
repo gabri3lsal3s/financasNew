@@ -20,8 +20,7 @@ import {
   useImportBankTransactions,
 } from "@/state";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
-import { playSound } from "@/services/audio-fx";
+import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { Expense, Income } from "@/types";
 import { BankStatementUploadStep } from "./bank-statement-upload-step";
@@ -79,6 +78,7 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
   const [reconciledItems, setReconciledItems] = useState<BankTransactionItem[]>([]);
 
   const categoriesQuery = useCategories("expense");
+  const incomeCategoriesQuery = useCategories("income");
   const expensesQuery = useExpenses(competenceMonth);
   const incomesQuery = useIncomes(competenceMonth);
   const historyQuery = usePredictionHistory(true);
@@ -86,6 +86,7 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
 
   const categories = categoriesQuery.data ?? [];
   const defaultCategoryId = categories[0]?.id ?? "";
+  const defaultIncomeCategoryId = incomeCategoriesQuery.data?.[0]?.id;
 
   // Despesas existentes na competência (apenas à vista/débito/PIX/boleto, ignorando cartão de crédito)
   const existingExpensesForReconciliation: ExistingExpenseForReconciliation[] = useMemo(() => {
@@ -260,6 +261,7 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
     const incomesPayload = selectedItems
       .filter((it) => it.kind === "income")
       .map((it) => ({
+        category_id: it.selectedCategoryId || defaultIncomeCategoryId || undefined,
         value: it.transaction.amountCents / 100,
         date: it.transaction.date,
         description: it.transaction.cleanDescription,
@@ -273,8 +275,7 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
         incomes: incomesPayload,
       });
 
-      triggerHaptic("success");
-      playSound("success");
+      triggerSensory("success");
 
       const totalInserted = result.expenses_inserted + result.incomes_inserted;
       pushToast({
@@ -285,7 +286,7 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
 
       onClose();
     } catch (err) {
-      triggerHaptic("warning");
+      triggerSensory("error");
       setError(getErrorMessage(err));
     }
   };

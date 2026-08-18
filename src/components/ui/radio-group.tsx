@@ -1,5 +1,5 @@
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface RadioOption {
@@ -20,7 +20,7 @@ export interface RadioGroupProps {
 export function RadioGroup({ value, onValueChange, options, name, disabled, className }: RadioGroupProps) {
   const handleValueChange = (next: string) => {
     onValueChange(next);
-    triggerHaptic("light");
+    triggerSensory("selection");
   };
 
   return (

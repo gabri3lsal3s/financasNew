@@ -11,10 +11,8 @@ import {
   type ClassTargetInput,
 } from "@/domain/portfolio";
 import { todayISO } from "@/domain/debts";
-import { getVisualCustomization } from "@/hooks/use-visual-customization";
-import { playSound } from "@/services/audio-fx";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
   useAllocationTargets,
@@ -104,8 +102,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
       }));
 
       await createBatch.mutateAsync(payload);
-      triggerHaptic("success");
-      playSound("success", getVisualCustomization().soundEnabled);
+      triggerSensory("success");
       pushToast({
         title: "Aportes registrados",
         description: `${eligibleRoutes.length} compras adicionadas ao extrato da carteira.`,

@@ -32,6 +32,20 @@ describe("haptics (F8 — Decisão 3)", () => {
 
     expect(triggerHaptic("success")).toBe(true);
     expect(vibrateMock).toHaveBeenLastCalledWith([12, 40, 24]);
+
+    expect(triggerHaptic("destructive")).toBe(true);
+    expect(vibrateMock).toHaveBeenLastCalledWith([40, 60, 40]);
+
+    expect(triggerHaptic("error")).toBe(true);
+    expect(vibrateMock).toHaveBeenLastCalledWith([50, 40, 50, 40]);
+  });
+
+  it("não dispara quando enabled é false", () => {
+    vibrateMock.mockReturnValue(true);
+    stubVibrate();
+
+    expect(triggerHaptic("light", false)).toBe(false);
+    expect(vibrateMock).not.toHaveBeenCalled();
   });
 
   it("nunca lança se navigator.vibrate falhar", () => {

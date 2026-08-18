@@ -23,6 +23,8 @@ import {
   PanelTop,
   Image as ImageIcon,
   Calculator,
+  Vibrate,
+  VibrateOff,
 } from "lucide-react";
 import {
   Card,
@@ -50,8 +52,7 @@ import {
   type HeaderButtonsConfig,
   type DashboardWidgetsConfig,
 } from "@/hooks/use-visual-customization";
-import { playSound } from "@/services/audio-fx";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory, type SensoryIntent } from "@/services/sensory";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { getSupabase } from "@/data/client";
@@ -136,7 +137,7 @@ export function SettingsPage() {
   const debtDaysBefore = preferencesQuery.data?.reminder_days_before_debt ?? 3;
 
   const handleToggleReminders = (enabled: boolean) => {
-    triggerHaptic("medium");
+    triggerSensory("toggle");
     updatePreferencesMutation.mutate({ remindersEnabled: enabled });
   };
 
@@ -155,7 +156,7 @@ export function SettingsPage() {
   };
 
   const handleSelectTheme = (id: ThemePreference, label: string) => {
-    triggerHaptic("light");
+    triggerSensory("selection");
     setThemePref(id);
     pushToast({
       title: "Preferências salvas",
@@ -165,7 +166,7 @@ export function SettingsPage() {
   };
 
   const handleSelectAccent = (id: AccentTheme, label: string) => {
-    triggerHaptic("light");
+    triggerSensory("selection");
     visual.setAccent(id);
     pushToast({
       title: "Preferências salvas",
@@ -175,7 +176,7 @@ export function SettingsPage() {
   };
 
   const handleSelectSurfaceStyle = (id: SurfaceStyle, label: string) => {
-    triggerHaptic("light");
+    triggerSensory("selection");
     visual.setSurfaceStyle(id);
     pushToast({
       title: "Preferências salvas",
@@ -185,7 +186,7 @@ export function SettingsPage() {
   };
 
   const handleSelectDensity = (densityVal: "comfortable" | "compact", label: string) => {
-    triggerHaptic("light");
+    triggerSensory("selection");
     setDensity(densityVal);
     pushToast({
       title: "Preferências salvas",
@@ -195,7 +196,7 @@ export function SettingsPage() {
   };
 
   const handleToggleHeaderButton = (key: keyof HeaderButtonsConfig, label: string, nextChecked: boolean) => {
-    triggerHaptic("light");
+    triggerSensory("toggle");
     visual.setHeaderButton(key, nextChecked);
     pushToast({
       title: "Preferências salvas",
@@ -207,7 +208,7 @@ export function SettingsPage() {
   };
 
   const handleSelectMotionLevel = (id: MotionLevel, label: string) => {
-    triggerHaptic("light");
+    triggerSensory("selection");
     visual.setMotionLevel(id);
     pushToast({
       title: "Preferências salvas",
@@ -217,7 +218,7 @@ export function SettingsPage() {
   };
 
   const handleToggleNumberTicker = (nextChecked: boolean) => {
-    triggerHaptic("light");
+    triggerSensory("toggle");
     visual.setNumberTickerEnabled(nextChecked);
     pushToast({
       title: "Preferências salvas",
@@ -229,7 +230,7 @@ export function SettingsPage() {
   };
 
   const handleToggleSound = (nextChecked: boolean) => {
-    triggerHaptic("light");
+    triggerSensory("action");
     visual.setSoundEnabled(nextChecked);
     pushToast({
       title: "Preferências salvas",
@@ -240,8 +241,20 @@ export function SettingsPage() {
     });
   };
 
+  const handleToggleHaptic = (nextChecked: boolean) => {
+    triggerSensory("action");
+    visual.setHapticEnabled(nextChecked);
+    pushToast({
+      title: "Preferências salvas",
+      description: nextChecked
+        ? "Feedback háptico (vibração) ativado."
+        : "Feedback háptico (vibração) desativado.",
+      duration: 2200,
+    });
+  };
+
   const handleTogglePrivacy = () => {
-    triggerHaptic("light");
+    triggerSensory("action");
     togglePrivacyMask();
     const nextMasked = !privacyMasked;
     pushToast({
@@ -254,7 +267,7 @@ export function SettingsPage() {
   };
 
   const handleToggleDashboardWidget = (key: keyof DashboardWidgetsConfig, label: string, nextChecked: boolean) => {
-    triggerHaptic("light");
+    triggerSensory("action");
     visual.setDashboardWidget(key, nextChecked);
     pushToast({
       title: "Preferências salvas",
@@ -269,7 +282,7 @@ export function SettingsPage() {
     visual.resetToDefaults();
     setThemePref("system");
     setDensity("comfortable");
-    triggerHaptic("light");
+    triggerSensory("action");
     pushToast({
       title: "Preferências redefinidas",
       description: "Todas as preferências visuais foram restauradas para os padrões.",
@@ -277,9 +290,8 @@ export function SettingsPage() {
     });
   };
 
-  const handleTestSound = (type: "click" | "success" | "pop") => {
-    triggerHaptic("medium");
-    playSound(type, true);
+  const handleTestSensory = (intent: SensoryIntent) => {
+    triggerSensory(intent);
   };
 
   // ---------------------------------------------------------------------
@@ -393,7 +405,7 @@ export function SettingsPage() {
     }
     await restoreBackup(validation.payload);
     await queryClient.invalidateQueries();
-    triggerHaptic("medium");
+    triggerSensory("success");
     pushToast({
       title: "Dados restaurados com sucesso",
       description: "Seus dados foram importados e sincronizados.",
@@ -402,7 +414,7 @@ export function SettingsPage() {
 
   const handleLogout = async () => {
     try {
-      triggerHaptic("medium");
+      triggerSensory("action");
       void queryClient.cancelQueries();
       queryClient.clear();
       const supabase = getSupabase();
@@ -848,19 +860,21 @@ export function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {visual.soundEnabled ? (
-                    <Volume2 className="size-4 text-primary" />
-                  ) : (
-                    <VolumeX className="size-4 text-muted-foreground" />
-                  )}
-                  <span>Feedback Sonoro Sintetizado</span>
+                  <Volume2 className="size-4 text-primary" />
+                  <span>Feedback Sensorial (Som & Vibração)</span>
                 </div>
-                <Badge variant={visual.soundEnabled ? "positive" : "muted"}>
-                  {visual.soundEnabled ? "Ativado" : "Desativado"}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant={visual.soundEnabled ? "positive" : "muted"}>
+                    {visual.soundEnabled ? "Som: On" : "Som: Off"}
+                  </Badge>
+                  <Badge variant={visual.hapticEnabled ? "positive" : "muted"}>
+                    {visual.hapticEnabled ? "Tátil: On" : "Tátil: Off"}
+                  </Badge>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Toggle de Som */}
               <div
                 role="button"
                 tabIndex={0}
@@ -879,11 +893,16 @@ export function SettingsPage() {
                 )}
               >
                 <div className="pr-4">
-                  <div className="font-semibold text-sm text-foreground">
-                    Sons de Interface Sutis
+                  <div className="font-semibold text-sm text-foreground flex items-center gap-2">
+                    {visual.soundEnabled ? (
+                      <Volume2 className="size-4 text-primary" />
+                    ) : (
+                      <VolumeX className="size-4 text-muted-foreground" />
+                    )}
+                    <span>Sons de Interface Sutis</span>
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Síntese ultraleve de áudio (Web Audio API) em cliques e confirmações.
+                    Síntese ultraleve de áudio (Web Audio API) em cliques, confirmações e alertas.
                   </div>
                 </div>
                 <Checkbox
@@ -893,20 +912,67 @@ export function SettingsPage() {
                 />
               </div>
 
-              {/* Botões de Teste */}
+              {/* Toggle de Vibração Háptica */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => handleToggleHaptic(!visual.hapticEnabled)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleToggleHaptic(!visual.hapticEnabled);
+                  }
+                }}
+                className={cn(
+                  "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
+                  visual.hapticEnabled
+                    ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                    : "border-border bg-surface hover:bg-surface-hover",
+                )}
+              >
+                <div className="pr-4">
+                  <div className="font-semibold text-sm text-foreground flex items-center gap-2">
+                    {visual.hapticEnabled ? (
+                      <Vibrate className="size-4 text-primary" />
+                    ) : (
+                      <VibrateOff className="size-4 text-muted-foreground" />
+                    )}
+                    <span>Feedback Háptico (Vibração)</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Micro-vibrações táteis calibradas em botões, abas e ações de conclusão no mobile.
+                  </div>
+                </div>
+                <Checkbox
+                  checked={visual.hapticEnabled}
+                  onCheckedChange={(checked) => handleToggleHaptic(Boolean(checked))}
+                  aria-label="Feedback Háptico (Vibração)"
+                />
+              </div>
+
+              {/* Botões de Teste Sensorial */}
               <div className="p-4 rounded-xl border border-border bg-muted/40 space-y-2">
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Testar Efeitos Sonoros
+                  Testar Microinterações Sensoriais
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Button size="sm" variant="outline" onClick={() => handleTestSound("click")}>
+                  <Button size="sm" variant="outline" onClick={() => handleTestSensory("action")}>
                     Micro-Clique
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleTestSound("pop")}>
+                  <Button size="sm" variant="outline" onClick={() => handleTestSensory("toggle")}>
                     Spring Pop
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleTestSound("success")}>
+                  <Button size="sm" variant="outline" onClick={() => handleTestSensory("success")}>
                     Sucesso
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleTestSensory("warning")}>
+                    Alerta
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleTestSensory("destructive")}>
+                    Exclusão
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleTestSensory("error")}>
+                    Erro
                   </Button>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { togglePrivacyMask, usePrivacyMask } from "@/hooks/use-privacy-mask";
 
 /**
@@ -15,7 +15,7 @@ export function PrivacyToggle() {
   // em globals.css) é aplicada pelo PRÓPRIO store (use-privacy-mask), não aqui.
 
   const handleToggle = () => {
-    triggerHaptic(masked ? "light" : "medium");
+    triggerSensory("toggle");
     togglePrivacyMask();
   };
 
@@ -28,7 +28,7 @@ export function PrivacyToggle() {
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
       if (event.key.toLowerCase() === "p") {
         event.preventDefault();
-        triggerHaptic(masked ? "light" : "medium");
+        triggerSensory("toggle");
         togglePrivacyMask();
       }
     };

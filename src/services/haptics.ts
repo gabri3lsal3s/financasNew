@@ -5,13 +5,21 @@
  * não suportado (desktop sem suporte, jsdom/testes). Nunca lança — vibração
  * é um enhancement, jamais um requisito de fluxo.
  */
-export type HapticPattern = "light" | "medium" | "success" | "warning";
+export type HapticPattern =
+  | "light"
+  | "medium"
+  | "success"
+  | "warning"
+  | "destructive"
+  | "error";
 
 const PATTERNS: Record<HapticPattern, number | number[]> = {
   light: 8,
   medium: [10, 30, 10],
   success: [12, 40, 24],
-  warning: [40, 60, 40],
+  warning: [30, 40, 30],
+  destructive: [40, 60, 40],
+  error: [50, 40, 50, 40],
 };
 
 export function isHapticsSupported(): boolean {
@@ -20,10 +28,14 @@ export function isHapticsSupported(): boolean {
 
 /**
  * Dispara a vibração do padrão informado. Retorna `true` se o dispositivo
- * aceitou a vibração (ou ela foi suportada); `false` em ambiente sem suporte.
+ * aceitou a vibração (ou ela foi suportada); `false` em ambiente sem suporte
+ * ou quando desabilitada.
  */
-export function triggerHaptic(pattern: HapticPattern = "light"): boolean {
-  if (!isHapticsSupported()) return false;
+export function triggerHaptic(
+  pattern: HapticPattern = "light",
+  enabled = true,
+): boolean {
+  if (!enabled || !isHapticsSupported()) return false;
   try {
     return navigator.vibrate(PATTERNS[pattern]);
   } catch {

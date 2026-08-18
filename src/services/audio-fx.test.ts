@@ -11,5 +11,7 @@ describe("audio-fx (F11)", () => {
     expect(() => playSound("pop", true)).not.toThrow();
     expect(() => playSound("success", true)).not.toThrow();
     expect(() => playSound("delete", true)).not.toThrow();
+    expect(() => playSound("warning", true)).not.toThrow();
+    expect(() => playSound("error", true)).not.toThrow();
   });
 });

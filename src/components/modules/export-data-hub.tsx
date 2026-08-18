@@ -9,8 +9,7 @@ import { Dropzone } from "@/components/ui/dropzone";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { MonthPicker } from "@/components/modules/month-picker";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
-import { playSound } from "@/services/audio-fx";
+import { triggerSensory } from "@/services/sensory";
 import { currentMonth, monthRange } from "@/lib/date";
 import { addDaysISO } from "@/domain/debts";
 import type { RestoreSummary } from "@/domain/export";
@@ -93,8 +92,9 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
     setExportingJson(true);
     try {
       await onExportJson();
-      playSound("success", true);
+      triggerSensory("success");
     } catch (error) {
+      triggerSensory("error");
       setJsonError(getErrorMessage(error));
     } finally {
       setExportingJson(false);
@@ -107,8 +107,9 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
     setCsvBusy(kind);
     try {
       await onExportCsv(kind, resolveRange());
-      playSound("success", true);
+      triggerSensory("success");
     } catch (error) {
+      triggerSensory("error");
       setCsvError(getErrorMessage(error));
     } finally {
       setCsvBusy(null);
@@ -123,6 +124,7 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
       const summary = await onRestore(file);
       setRestore({ step: "preview", file, summary });
     } catch (error) {
+      triggerSensory("error");
       setRestore({ step: "error", message: getErrorMessage(error) });
     }
   };
@@ -133,9 +135,10 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
     setRestore({ step: "restoring", file, summary });
     try {
       await onConfirmRestore(file);
-      triggerHaptic("medium");
+      triggerSensory("success");
       setRestore({ step: "done", summary });
     } catch (error) {
+      triggerSensory("error");
       setRestore({ step: "error", message: getErrorMessage(error) });
     }
   };

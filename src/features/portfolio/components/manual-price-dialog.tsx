@@ -4,10 +4,8 @@ import { Alert, Badge, Button, Modal, NumberStepperInput } from "@/components/ui
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { PriceSource } from "@/domain/portfolio";
-import { getVisualCustomization } from "@/hooks/use-visual-customization";
-import { playSound } from "@/services/audio-fx";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { useRemoveManualPrice, useSetManualPrice } from "@/state";
 import type { AssetCurrency } from "@/types";
 
@@ -53,8 +51,7 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
         ticker: asset.ticker,
         price: parsedPrice,
       });
-      triggerHaptic("success");
-      playSound("success", getVisualCustomization().soundEnabled);
+      triggerSensory("success");
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -65,8 +62,7 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
     setError(null);
     try {
       await removeManual.mutateAsync(asset.ticker);
-      triggerHaptic("success");
-      playSound("success", getVisualCustomization().soundEnabled);
+      triggerSensory("success");
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));

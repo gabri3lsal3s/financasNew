@@ -27,7 +27,7 @@ function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
-export type SoundEffect = "click" | "success" | "pop" | "delete";
+export type SoundEffect = "click" | "success" | "pop" | "delete" | "warning" | "error";
 
 export function playSound(effect: SoundEffect, enabled = true, volume = 0.08): void {
   if (!enabled || typeof window === "undefined") return;
@@ -111,6 +111,42 @@ export function playSound(effect: SoundEffect, enabled = true, volume = 0.08): v
 
       osc.start(now);
       osc.stop(now + 0.085);
+    } else if (effect === "warning") {
+      // Bitom sutil de atenção/limite (90ms)
+      [600, 480].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const startTime = now + idx * 0.045;
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0.18, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.04);
+
+        osc.connect(gain);
+        gain.connect(masterGain);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.045);
+      });
+    } else if (effect === "error") {
+      // Tom sutil de erro/impedimento (100ms)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(160, now + 0.1);
+
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(now);
+      osc.stop(now + 0.105);
     }
   } catch {
     // Silencioso em caso de restrição de autoplay do navegador

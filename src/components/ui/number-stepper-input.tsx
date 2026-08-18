@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 
 export interface NumberStepperInputProps {
   /** Valor atual — número ou string (vazio = sem valor, ex.: "Sem trava"). */
@@ -80,7 +80,7 @@ export function NumberStepperInput({
       const effectiveStep = step > 0 ? step : 1;
       const next = clamp(Math.round((numericValue() + direction * effectiveStep) * 1000) / 1000);
       onValueChange(String(next));
-      triggerHaptic("light");
+      triggerSensory("selection");
     },
     [clamp, numericValue, onValueChange, step],
   );

@@ -2,10 +2,8 @@ import { useState } from "react";
 import { Alert, Button, ConfirmDialog, Modal, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { todayISO } from "@/domain/debts";
-import { getVisualCustomization } from "@/hooks/use-visual-customization";
-import { playSound } from "@/services/audio-fx";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { useCreatePortfolioTransaction, useDeletePortfolioTransaction, useUpdatePortfolioTransaction } from "@/state";
 import { numberToCents } from "@/domain/money";
 import type { DbInsert, PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
@@ -90,8 +88,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
       } else {
         await createTx.mutateAsync(payload);
       }
-      triggerHaptic("success");
-      playSound("success", getVisualCustomization().soundEnabled);
+      triggerSensory("success");
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -103,8 +100,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
     setError(null);
     try {
       await deleteTx.mutateAsync(transaction.id);
-      triggerHaptic("warning");
-      playSound("delete", getVisualCustomization().soundEnabled);
+      triggerSensory("destructive");
       setConfirmDelete(false);
       onClose();
     } catch (err) {

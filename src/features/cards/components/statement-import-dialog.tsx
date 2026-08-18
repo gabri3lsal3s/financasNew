@@ -13,8 +13,7 @@ import {
 import { numberToCents } from "@/domain/money";
 import { useCategories, useCardExpenses, usePredictionHistory, useImportStatementExpenses } from "@/state";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
-import { playSound } from "@/services/audio-fx";
+import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { CreditCard, Expense } from "@/types";
 import { StatementUploadStep } from "./statement-upload-step";
@@ -230,8 +229,7 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
         expenses: payload,
       });
 
-      triggerHaptic("success");
-      playSound("success");
+      triggerSensory("success");
 
       pushToast({
         variant: "default",

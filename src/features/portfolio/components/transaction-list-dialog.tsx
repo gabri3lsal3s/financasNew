@@ -6,9 +6,7 @@ import { useAssetPosition, useDeletePortfolioTransaction } from "@/state";
 import { PORTFOLIO_TX_LABELS } from "@/lib/labels";
 import { numberToCents } from "@/domain/money";
 import { formatDateBR } from "@/lib/date";
-import { getVisualCustomization } from "@/hooks/use-visual-customization";
-import { playSound } from "@/services/audio-fx";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { TransactionFormDialog } from "./transaction-form-dialog";
 import type { PortfolioAsset, PortfolioTransaction } from "@/types";
 
@@ -39,8 +37,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
     if (!deleting) return;
     try {
       await deleteTx.mutateAsync(deleting.id);
-      triggerHaptic("warning");
-      playSound("delete", getVisualCustomization().soundEnabled);
+      triggerSensory("destructive");
     } catch {
       // Falha: o toast do hook (useDeletePortfolioTransaction) já exibiu o erro.
     } finally {
@@ -103,7 +100,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
                       type="button"
                       aria-label={`Editar ${PORTFOLIO_TX_LABELS[tx.type]}`}
                       onClick={() => {
-                        triggerHaptic("light");
+                        triggerSensory("selection");
                         setEditing(tx);
                       }}
                       className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg cursor-pointer py-0.5 active:scale-[0.99]"

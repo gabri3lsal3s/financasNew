@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, ConfirmDialog, Input, Modal, Select } from "@/components/ui";
-import { getVisualCustomization } from "@/hooks/use-visual-customization";
-import { playSound } from "@/services/audio-fx";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { useCreatePortfolioAsset, useDeletePortfolioAsset, useUpdatePortfolioAsset } from "@/state";
 import type { AssetCurrency, PortfolioAsset } from "@/types";
 
@@ -55,8 +53,7 @@ function AssetFormContent({ asset = null, onClose }: AssetFormContentProps) {
       } else {
         await createAsset.mutateAsync(payload);
       }
-      triggerHaptic("success");
-      playSound("success", getVisualCustomization().soundEnabled);
+      triggerSensory("success");
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -68,8 +65,7 @@ function AssetFormContent({ asset = null, onClose }: AssetFormContentProps) {
     setError(null);
     try {
       await deleteAsset.mutateAsync(asset.id);
-      triggerHaptic("warning");
-      playSound("delete", getVisualCustomization().soundEnabled);
+      triggerSensory("destructive");
       setConfirmDelete(false);
       onClose();
     } catch (err) {

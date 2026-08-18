@@ -19,8 +19,19 @@ describe("useVisualCustomization (F11)", () => {
     expect(config.surfaceStyle).toBe("glass");
     expect(config.motionLevel).toBe("fluid");
     expect(config.soundEnabled).toBe(false);
+    expect(config.hapticEnabled).toBe(true);
     expect(config.numberTickerEnabled).toBe(true);
     expect(config.dashboardWidgets.kpis).toBe(true);
+  });
+
+  it("permite ligar e desligar sons e vibrações", () => {
+    updateVisualCustomization({ soundEnabled: true });
+    expect(getVisualCustomization().soundEnabled).toBe(true);
+    expect(window.localStorage.getItem("financas_sound_enabled")).toBe("true");
+
+    updateVisualCustomization({ hapticEnabled: false });
+    expect(getVisualCustomization().hapticEnabled).toBe(false);
+    expect(window.localStorage.getItem("financas_haptic_enabled")).toBe("false");
   });
 
   it("restaura a personalização salva no localStorage imediatamente no init", () => {

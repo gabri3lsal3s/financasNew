@@ -3,8 +3,7 @@ import type { ButtonHTMLAttributes, MouseEvent } from "react";
 import type { VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { triggerHaptic } from "@/services/haptics";
-import { playSound } from "@/services/audio-fx";
+import { triggerSensory } from "@/services/sensory";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { buttonVariants } from "./button-variants";
 
@@ -31,10 +30,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     if (disabled || loading) return;
 
-    // Feedback sensorial
-    triggerHaptic("light");
+    // Feedback sensorial centralizado
+    triggerSensory(variant === "destructive" ? "destructive" : "action");
     const visual = getVisualCustomization();
-    playSound("click", visual.soundEnabled);
 
     // Efeito ripple dinâmico no ponto do clique (F11: só no nível "fluid";
     // eco/reduzido desligam a física elástica).

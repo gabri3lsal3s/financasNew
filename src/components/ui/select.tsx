@@ -1,6 +1,6 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface SelectOption {
@@ -30,7 +30,7 @@ export function Select({
 }: SelectProps) {
   const handleValueChange = (next: string) => {
     onValueChange(next);
-    triggerHaptic("light");
+    triggerSensory("selection");
   };
 
   return (
