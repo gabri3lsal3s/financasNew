@@ -117,26 +117,23 @@ describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
   });
 });
 
+function getTrackedFiles(): string[] {
+  try {
+    return execSync("git ls-files", { encoding: "utf8", timeout: 10000 }).trim().split("\n");
+  } catch {
+    return [];
+  }
+}
+
 describe("F6.2 — segredos e ambiente", () => {
   it("nenhum arquivo .env rastreado além do .env.example", () => {
-    let tracked: string[] = [];
-    try {
-      tracked = execSync("git ls-files", { encoding: "utf8", timeout: 10000 }).trim().split("\n");
-    } catch {
-      // Fallback gracioso caso git lock esteja ativo em sandbox
-      tracked = [];
-    }
+    const tracked = getTrackedFiles();
     const envFiles = tracked.filter((f) => f.startsWith(".env") && f !== ".env.example");
     expect(envFiles).toEqual([]);
   }, 15000);
 
   it("nenhum padrão de chave real nos arquivos rastreados", () => {
-    let tracked: string[] = [];
-    try {
-      tracked = execSync("git ls-files", { encoding: "utf8", timeout: 10000 }).trim().split("\n");
-    } catch {
-      tracked = [];
-    }
+    const tracked = getTrackedFiles();
     const secretPattern =
       /(sk_live_[A-Za-z0-9]+|pk_live_[A-Za-z0-9]+|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|service_role[=: ]+eyJ[A-Za-z0-9_-]+|AIza[0-9A-Za-z_-]{30,}|AKIA[0-9A-Z]{16})/;
     const hits = tracked.filter((f) => {
