@@ -148,3 +148,51 @@ export async function removeManualPrice(ticker: string): Promise<void> {
   }
 }
 
+/**
+ * Grava a cotação obtida de API para o usuário.
+ * Não sobrescreve se o usuário tiver um override manual ativo.
+ */
+export async function setAssetPriceFromApi(
+  ticker: string,
+  price: number,
+  currency: AssetCurrency,
+): Promise<void> {
+  const user_id = await currentUserId();
+  const normalizedTicker = ticker.trim().toUpperCase();
+
+  const { data: existing } = await resolveQuery<AssetPriceRow[]>(
+    getSupabase()
+      .from("asset_prices")
+      .select("ticker, price, currency, source, manual_price")
+      .eq("user_id", user_id)
+      .eq("ticker", normalizedTicker),
+  );
+  if (existing && existing.length > 0 && existing[0]?.source === "manual") {
+    return;
+  }
+
+  const row = {
+    user_id,
+    ticker: normalizedTicker,
+    price,
+    currency,
+    source: "api" as const,
+    manual_price: null,
+    updated_at: new Date().toISOString(),
+  };
+
+  await getSupabase()
+    .from("asset_prices")
+    .delete()
+    .eq("user_id", user_id)
+    .eq("ticker", normalizedTicker)
+    .eq("source", "api");
+
+  const { error } = await getSupabase().from("asset_prices").insert(row);
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+

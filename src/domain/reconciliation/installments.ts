@@ -43,5 +43,15 @@ export function extractInstallmentInfo(raw: string): ParsedInstallment | undefin
     }
   }
 
+  // Formato "3x", "em 3x", "parcelado em 3x", "3 vezes"
+  const multiplierMatch = /\b(?:parcelado\s+em\s+|em\s+)?(\d{1,2})\s*(?:x|vezes)\b/i.exec(raw);
+  if (multiplierMatch && multiplierMatch[1]) {
+    const total = Number.parseInt(multiplierMatch[1], 10);
+    if (!Number.isNaN(total) && total >= 2 && total <= 60) {
+      return { current: 1, total };
+    }
+  }
+
   return undefined;
 }
+

@@ -80,7 +80,7 @@ export {
   useUpdatePortfolioTransaction,
   useDeletePortfolioTransaction,
 } from "./queries/use-portfolio";
-export { useAssetPrices, useSetManualPrice, useRemoveManualPrice } from "./queries/use-asset-prices";
+export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";
 export { usePortfolioPosition } from "./queries/use-portfolio-position";
 export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";
 

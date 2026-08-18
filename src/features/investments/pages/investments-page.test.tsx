@@ -54,6 +54,7 @@ vi.mock("@/state", () => ({
   useUpdatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("InvestmentsPage (F17 — dashboard /investments)", () => {

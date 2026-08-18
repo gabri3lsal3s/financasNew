@@ -34,7 +34,7 @@ function RequireAuth() {
     if (!loading && !session) {
       return <Navigate to="/entrar" replace state={{ from: location }} />;
     }
-    return <LoadingScreen message="Carregando suas finanças…" />;
+    return <LoadingScreen />;
   }
 
   return (

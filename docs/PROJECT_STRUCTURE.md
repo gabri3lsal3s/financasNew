@@ -216,11 +216,12 @@
     │   ├── audio-fx.ts            #   Feedback sonoro sintetizado via Web Audio (F11)
     │   ├── export-actions.ts      #   F22: downloadBlob/Csv/Json + shareText (Web Share
     │   │                          #     API com fallback clipboard — DOM glue)
-    │    ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
+    │   ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
-    │   ├── calculator-open.ts    #   Store compartilhado de abertura da calculadora
+    │   ├── calculator-open.ts     #   Store compartilhado de abertura da calculadora
     │   │                          #     (header e modais abrem o mesmo painel — F9/pós-F25)
-    │   └── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F9)
+    │   ├── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F9)
+    │   └── quotes.ts              #   Busca e sincronização online de cotações no cliente (Brapi/AwesomeAPI/Yahoo)
     │
     ├── lib/                       # Utils genéricos (sem regra financeira)
     │   ├── date.ts                #   mês YYYY-MM, ranges, currentMonth (com teste)

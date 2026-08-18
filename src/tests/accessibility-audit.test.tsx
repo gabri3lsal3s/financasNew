@@ -193,6 +193,7 @@ vi.mock("@/state", () => ({
   usePredictionHistory: () => ({ entries: [], isLoading: false, error: null, refetch: vi.fn() }),
   usePortfolioAssets: () => ({ data: portfolioAssetsMock(), isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),

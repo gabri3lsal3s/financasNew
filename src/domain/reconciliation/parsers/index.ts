@@ -113,7 +113,8 @@ export function parseStatementInput(
   }
 
   // 2. CSV ou Texto tabular
-  const rows = lowerName.endsWith(".csv") ? parseCsvToRows(textContent) : parseTextToRows(textContent);
+  const startYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10) || new Date().getFullYear();
+  const rows = lowerName.endsWith(".csv") ? parseCsvToRows(textContent) : parseTextToRows(textContent, startYear);
   const mapping = sniffColumnMapping(rows);
   const transactions = buildTransactionsFromRows(rows, mapping, params);
 

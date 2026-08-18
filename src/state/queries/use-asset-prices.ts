@@ -55,3 +55,32 @@ export function useRemoveManualPrice() {
     },
   });
 }
+
+/** Sincroniza cotações online no cliente com fallback em cascata. */
+export function useSyncQuotes() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (assets: { ticker: string; asset_class?: string | null }[]) => {
+      const { syncQuotesForAssets } = await import("@/services/quotes");
+      return syncQuotesForAssets(assets);
+    },
+    onSuccess: (updatedCount) => {
+      void queryClient.invalidateQueries({ queryKey: assetPricesKey });
+      if (updatedCount > 0) {
+        pushToast({
+          title: "Cotações atualizadas",
+          description: `${updatedCount} ${updatedCount === 1 ? "ativo atualizado" : "ativos atualizados"} com dados de mercado.`,
+          variant: "default",
+        });
+      }
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Não foi possível atualizar as cotações",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+

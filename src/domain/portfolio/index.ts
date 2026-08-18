@@ -281,6 +281,14 @@ export {
   usdRateFromPrices,
   valueAssetPosition,
 } from "./valuation";
+export {
+  normalizeTickerForApi,
+  normalizeTickerForBrapi,
+  parseAwesomeApiResponse,
+  parseBrapiResponse,
+  parseYahooChartResponse,
+} from "./quotes";
+export type { ParsedQuote, QuoteCurrency } from "./quotes";
 export { allocationByTicker, assetYieldOnCostPct, portfolioReturnPct } from "./summary";
 export type { AllocationTickerSlice } from "./summary";
 export { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "./dividends";

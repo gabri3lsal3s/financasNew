@@ -66,9 +66,23 @@ export function useAssetPosition(assetId: string | null) {
 export function useCreatePortfolioAsset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Omit<DbInsert<PortfolioAsset>, "user_id">) => createPortfolioAsset(input),
+    mutationFn: async (input: Omit<DbInsert<PortfolioAsset>, "user_id">) => {
+      const created = await createPortfolioAsset(input);
+      void import("@/services/quotes")
+        .then(({ syncQuoteForTicker }) => syncQuoteForTicker(created.ticker, created.asset_class))
+        .then((quote) => {
+          if (quote) {
+            void queryClient.invalidateQueries({ queryKey: ["asset_prices"] });
+          }
+        })
+        .catch(() => {
+          // Degradação graciosa: segue com o fluxo sem travar
+        });
+      return created;
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: portfolioAssetsKey });
+      void queryClient.invalidateQueries({ queryKey: ["asset_prices"] });
     },
   });
 }

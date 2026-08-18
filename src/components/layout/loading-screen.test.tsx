@@ -1,18 +1,52 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoadingScreen } from "./loading-screen";
 
 describe("LoadingScreen", () => {
-  it("renderiza com mensagem padrão e atributos de acessibilidade", () => {
-    render(<LoadingScreen />);
-    expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByText("Carregando suas finanças…")).toBeInTheDocument();
-    expect(screen.getByText("Organização & Economia")).toBeInTheDocument();
+  beforeEach(() => {
+    vi.useFakeTimers();
   });
 
-  it("permite customização de mensagem e hint", () => {
-    render(<LoadingScreen message="Sincronizando contas…" hint="Aguarde um momento" />);
-    expect(screen.getByText("Sincronizando contas…")).toBeInTheDocument();
-    expect(screen.getByText("Aguarde um momento")).toBeInTheDocument();
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renderiza a logo, barra de progresso e log inicial", () => {
+    render(<LoadingScreen />);
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.getByText("Iniciando sessão segura…")).toBeInTheDocument();
+  });
+
+  it("avança as etapas do log e porcentagem com o tempo", () => {
+    render(<LoadingScreen />);
+
+    expect(screen.getByText("Iniciando sessão segura…")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(
+      screen.getByText("Sincronizando preferências e categorias…"),
+    ).toBeInTheDocument();
+  });
+
+  it("permite customização de statusText fixo e progresso externo", () => {
+    render(
+      <LoadingScreen
+        statusText="Restaurando cópia de segurança…"
+        progress={65}
+      />,
+    );
+
+    expect(
+      screen.getByText("Restaurando cópia de segurança…"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("65%")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "65",
+    );
   });
 });

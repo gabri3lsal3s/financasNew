@@ -188,6 +188,78 @@ DATA:OFXSGML
       expect(rows).toHaveLength(2);
       expect(rows[0]?.cells).toEqual(["15/08/2026", "Restaurante Quilo", "55,00"]);
     });
+
+    it("processa linhas em linguagem natural livre com espaço simples e R$", () => {
+      const text = `
+15/08 Uber 25,50
+12/08/2026 Almoço no Restaurante R$ 45,90
+14/08 Supermercado Extra R$ 342,10 (02/05)
+`;
+      const rows = parseTextToRows(text, 2026);
+      expect(rows).toHaveLength(3);
+      expect(rows[0]?.cells).toEqual(["15/08", "Uber", "25,50"]);
+      expect(rows[1]?.cells).toEqual(["2026-08-12", "Almoço no Restaurante", "45,90"]);
+      expect(rows[2]?.cells).toEqual(["14/08", "Supermercado Extra (02/05)", "342,10"]);
+    });
+
+    it("processa frases conversacionais com verbos, 'reais', datas relativas e parcelas", () => {
+      const text = `
+Ontem gastei 50 reais no mercado
+10 de maio Comprei tenis na Nike por 250,00 3x
+Netflix 55,90 10/08
+`;
+      const rows = parseTextToRows(text, 2026);
+      expect(rows).toHaveLength(3);
+      expect(rows[0]?.cells[1]).toBe("mercado");
+      expect(rows[0]?.cells[2]).toBe("50");
+      expect(rows[1]?.cells[0]).toBe("2026-05-10");
+      expect(rows[1]?.cells[1]).toBe("tenis na Nike 3x");
+      expect(rows[1]?.cells[2]).toBe("250,00");
+      expect(rows[2]?.cells[0]).toBe("10/08");
+      expect(rows[2]?.cells[1]).toBe("Netflix");
+      expect(rows[2]?.cells[2]).toBe("55,90");
+    });
+
+    it("processa texto com separador traço ou pipe", () => {
+      const text = `
+12/08/2026 - Padaria Bella Vista - R$ 18,50
+10/08 | Posto Ipiranga | 200,00
+`;
+      const rows = parseTextToRows(text, 2026);
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.cells).toEqual(["12/08/2026", "Padaria Bella Vista", "R$ 18,50"]);
+      expect(rows[1]?.cells).toEqual(["10/08", "Posto Ipiranga", "200,00"]);
+    });
+
+    it("converte texto em linguagem natural para transações completas de extrato via parseStatementInput", () => {
+      const naturalStatement = `
+15/08 Uber 25,50
+12/08/2026 Almoço no Restaurante R$ 45,90
+10 de agosto Comprei tenis na Nike por 250,00 3x
+`;
+      const result = parseStatementInput(naturalStatement, "pasted.txt", {
+        cardId: "card-1",
+        competenceMonth: "2026-08",
+      });
+
+      expect(result.transactions).toHaveLength(3);
+      expect(result.transactions[0]).toMatchObject({
+        date: "2026-08-15",
+        cleanDescription: "Uber",
+        amountCents: 2550,
+      });
+      expect(result.transactions[1]).toMatchObject({
+        date: "2026-08-12",
+        cleanDescription: "Almoço no Restaurante",
+        amountCents: 4590,
+      });
+      expect(result.transactions[2]).toMatchObject({
+        date: "2026-08-10",
+        cleanDescription: "tenis na Nike",
+        amountCents: 25000,
+        installment: { current: 1, total: 3 },
+      });
+    });
   });
 
   describe("Scoring e Reconciliação", () => {

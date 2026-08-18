@@ -1,13 +1,19 @@
-import { useState } from "react";
-import { Plus, TrendingUp, Wallet } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, RefreshCw, TrendingUp, Wallet } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonChart, SkeletonKpi, SkeletonTable } from "@/components/ui";
 import { AllocationDonut, CategoryDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
-import { dividendsInMonth, portfolioReturnPct } from "@/domain/portfolio";
+import { dividendsInMonth, isCashAssetClass, portfolioReturnPct } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { formatSignedPct } from "@/services/masks/percent";
-import { useAllPortfolioTransactions, useDeletePortfolioAsset, usePortfolioAssets, usePortfolioPosition } from "@/state";
+import {
+  useAllPortfolioTransactions,
+  useDeletePortfolioAsset,
+  usePortfolioAssets,
+  usePortfolioPosition,
+  useSyncQuotes,
+} from "@/state";
 import {
   AssetFormDialog,
   ManualPriceDialog,
@@ -28,6 +34,9 @@ export function ResumoTab() {
   const assetsQuery = usePortfolioAssets();
   const transactionsQuery = useAllPortfolioTransactions();
   const deleteAsset = useDeletePortfolioAsset();
+  const syncQuotes = useSyncQuotes();
+  const autoSyncedRef = useRef(false);
+
   const [assetOpen, setAssetOpen] = useState(false);
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
@@ -43,6 +52,21 @@ export function ResumoTab() {
 
   const rows = position.rows;
   const hasInvestments = rows.length > 0;
+
+  // Auto-sincronização inicial para ativos que ainda não possuem cotação em cache
+  useEffect(() => {
+    if (autoSyncedRef.current || assetsQuery.isLoading || !assetsQuery.data) return;
+    const assetsWithoutQuote = (assetsQuery.data ?? []).filter((a) => {
+      if (isCashAssetClass(a.asset_class)) return false;
+      const row = rows.find((r) => r.assetId === a.id);
+      return !row || (row.source === "fallback" && row.priceBRL <= 0);
+    });
+
+    if (assetsWithoutQuote.length > 0) {
+      autoSyncedRef.current = true;
+      syncQuotes.mutate(assetsWithoutQuote);
+    }
+  }, [assetsQuery.data, assetsQuery.isLoading, rows, syncQuotes]);
 
   const assetById = (assetId: string): PortfolioAsset | undefined => (assetsQuery.data ?? []).find((a) => a.id === assetId);
 
@@ -156,10 +180,27 @@ export function ResumoTab() {
                   {rows.length} {rows.length === 1 ? "ativo" : "ativos"}
                 </Badge>
               </div>
-              <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setAssetOpen(true)}>
-                <Plus aria-hidden="true" className="size-4" />
-                Adicionar ativo
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => syncQuotes.mutate(assetsQuery.data ?? [])}
+                  disabled={syncQuotes.isPending}
+                  className="w-full sm:w-auto text-xs"
+                  title="Atualizar cotações de mercado via API"
+                >
+                  <RefreshCw
+                    aria-hidden="true"
+                    className={`size-3.5 ${syncQuotes.isPending ? "animate-spin" : ""}`}
+                  />
+                  {syncQuotes.isPending ? "Atualizando…" : "Atualizar cotações"}
+                </Button>
+                <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setAssetOpen(true)}>
+                  <Plus aria-hidden="true" className="size-4" />
+                  Adicionar ativo
+                </Button>
+              </div>
             </div>
             <PositionTable
               rows={rows}

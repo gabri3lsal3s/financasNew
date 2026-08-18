@@ -1,4 +1,33 @@
 import type { ColumnMapping, RawParsedRow } from "../types";
+import { addDaysISO, todayISO } from "@/domain/debts";
+
+const MONTH_NAMES_DICT: Record<string, string> = {
+  janeiro: "01",
+  jan: "01",
+  fevereiro: "02",
+  fev: "02",
+  marco: "03",
+  março: "03",
+  mar: "03",
+  abril: "04",
+  abr: "04",
+  maio: "05",
+  mai: "05",
+  junho: "06",
+  jun: "06",
+  julho: "07",
+  jul: "07",
+  agosto: "08",
+  ago: "08",
+  setembro: "09",
+  set: "09",
+  outubro: "10",
+  out: "10",
+  novembro: "11",
+  nov: "11",
+  dezembro: "12",
+  dez: "12",
+};
 
 /**
  * Expressões regulares para detecção de datas no padrão brasileiro e internacional.
@@ -16,37 +45,55 @@ const DATE_PATTERNS = [
  * Se a data não tiver ano (ex.: "15/08"), usa o ano da competência ou o ano atual.
  */
 export function normalizeDateToISO(rawDate: string, defaultYear = new Date().getFullYear()): string | null {
-  const trimmed = rawDate.trim();
+  const trimmed = rawDate.trim().toLowerCase();
   if (!trimmed) return null;
 
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
+  // 1. Relativos
+  if (trimmed === "hoje") return todayISO();
+  if (trimmed === "ontem") return addDaysISO(todayISO(), -1);
+  if (trimmed === "anteontem") return addDaysISO(todayISO(), -2);
+
+  // 2. YYYY-MM-DD ou YYYY/MM/DD
+  const isoMatch = /^(\d{4})[/-](\d{2})[/-](\d{2})$/.exec(trimmed);
+  if (isoMatch && isoMatch[1] && isoMatch[2] && isoMatch[3]) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
   }
 
-  // DD/MM/YYYY ou DD-MM-YYYY
-  const dmyMatch = /^(\d{2})[/.-](\d{2})[/.-](\d{4})$/.exec(trimmed);
+  // 3. DD/MM/YYYY ou DD-MM-YYYY ou DD.MM.YYYY
+  const dmyMatch = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(trimmed);
   if (dmyMatch && dmyMatch[1] && dmyMatch[2] && dmyMatch[3]) {
-    const day = dmyMatch[1];
-    const month = dmyMatch[2];
+    const day = dmyMatch[1].padStart(2, "0");
+    const month = dmyMatch[2].padStart(2, "0");
     const year = dmyMatch[3];
     return `${year}-${month}-${day}`;
   }
 
-  // DD/MM/YY
-  const dmyShortMatch = /^(\d{2})[/.-](\d{2})[/.-](\d{2})$/.exec(trimmed);
+  // 4. DD de [Mês] (de [Ano])?
+  const namedMatch =
+    /^(\d{1,2})(?:º|o)?\s*(?:de\s+)?(janeiro|jan|fevereiro|fev|março|marco|mar|abril|abr|maio|mai|junho|jun|julho|jul|agosto|ago|setembro|set|outubro|out|novembro|nov|dezembro|dez)(?:\s*(?:de\s+)?(\d{4}))?$/i.exec(
+      trimmed,
+    );
+  if (namedMatch && namedMatch[1] && namedMatch[2]) {
+    const day = namedMatch[1].padStart(2, "0");
+    const month = MONTH_NAMES_DICT[namedMatch[2].toLowerCase()] ?? "01";
+    const year = namedMatch[3] ?? defaultYear.toString();
+    return `${year}-${month}-${day}`;
+  }
+
+  // 5. DD/MM/YY ou DD-MM-YY
+  const dmyShortMatch = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2})$/.exec(trimmed);
   if (dmyShortMatch && dmyShortMatch[1] && dmyShortMatch[2] && dmyShortMatch[3]) {
-    const day = dmyShortMatch[1];
-    const month = dmyShortMatch[2];
+    const day = dmyShortMatch[1].padStart(2, "0");
+    const month = dmyShortMatch[2].padStart(2, "0");
     const year = `20${dmyShortMatch[3]}`;
     return `${year}-${month}-${day}`;
   }
 
-  // DD/MM (sem ano)
-  const dmMatch = /^(\d{2})[/.-](\d{2})$/.exec(trimmed);
+  // 6. DD/MM ou DD-MM (sem ano)
+  const dmMatch = /^(\d{1,2})[/.-](\d{1,2})$/.exec(trimmed);
   if (dmMatch && dmMatch[1] && dmMatch[2]) {
-    const day = dmMatch[1];
-    const month = dmMatch[2];
+    const day = dmMatch[1].padStart(2, "0");
+    const month = dmMatch[2].padStart(2, "0");
     return `${defaultYear}-${month}-${day}`;
   }
 
@@ -67,10 +114,20 @@ export function parseAmountToCents(raw: string): { amountCents: number; isNegati
   }
 
   // Detecta sinal negativo
-  const isNegative = trimmed.startsWith("-") || trimmed.endsWith("-") || (trimmed.startsWith("(") && trimmed.endsWith(")"));
+  const isNegative =
+    trimmed.startsWith("-") ||
+    trimmed.endsWith("-") ||
+    (trimmed.startsWith("(") && trimmed.endsWith(")")) ||
+    /\b(estorno|devolução|devolucao|reembolso)\b/i.test(trimmed);
+
+  // Remove rótulos de moeda e palavras de preenchimento
+  const sanitized = trimmed
+    .replace(/^(?:R\$|BRL|\$)\s*/i, "")
+    .replace(/\s*(?:reais|real|conto)\b/i, "")
+    .trim();
 
   // Remove caracteres que não sejam dígitos, vírgula ou ponto
-  const clean = trimmed.replace(/[^\d,.-]/g, "");
+  const clean = sanitized.replace(/[^\d,.-]/g, "");
   if (!clean) return null;
 
   let normalized = clean.replace(/[-()]/g, "");
