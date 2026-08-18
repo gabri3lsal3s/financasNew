@@ -6,32 +6,39 @@ import { useEffect, useRef, useState } from "react";
  * mínimo garantido (`minDurationMs`, padrão: 650ms), evitando micro-flashes e sensação de instabilidade.
  */
 export function useMinimumLoading(isLoading: boolean, minDurationMs = 650): boolean {
-  const [shouldShow, setShouldShow] = useState(isLoading);
-  const mountTimeRef = useRef<number>(isLoading ? Date.now() : 0);
+  const [delayedLoading, setDelayedLoading] = useState(isLoading);
+  const [prevLoading, setPrevLoading] = useState(isLoading);
+  const mountTimeRef = useRef<number>(0);
+
+  // Ajuste de estado de transição durante o render (padrão oficial React para transições de props/args)
+  if (isLoading !== prevLoading) {
+    setPrevLoading(isLoading);
+    if (isLoading) {
+      setDelayedLoading(true);
+    }
+  }
 
   useEffect(() => {
     if (isLoading) {
-      setShouldShow(true);
       mountTimeRef.current = Date.now();
-    } else {
-      if (mountTimeRef.current === 0) {
-        setShouldShow(false);
-        return;
-      }
-
-      const elapsed = Date.now() - mountTimeRef.current;
-      const remaining = Math.max(0, minDurationMs - elapsed);
-
-      if (remaining === 0) {
-        setShouldShow(false);
-      } else {
-        const timer = setTimeout(() => {
-          setShouldShow(false);
-        }, remaining);
-        return () => clearTimeout(timer);
-      }
+      return;
     }
+
+    if (mountTimeRef.current === 0) {
+      setDelayedLoading(false);
+      return;
+    }
+
+    const elapsed = Date.now() - mountTimeRef.current;
+    const remaining = Math.max(0, minDurationMs - elapsed);
+
+    const timer = setTimeout(() => {
+      setDelayedLoading(false);
+      mountTimeRef.current = 0;
+    }, remaining);
+
+    return () => clearTimeout(timer);
   }, [isLoading, minDurationMs]);
 
-  return shouldShow;
+  return isLoading || delayedLoading;
 }
