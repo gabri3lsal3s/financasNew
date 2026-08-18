@@ -227,10 +227,12 @@ export function SettingsPage() {
   const handleLogout = async () => {
     try {
       triggerHaptic("medium");
+      void queryClient.cancelQueries();
+      queryClient.clear();
       const supabase = getSupabase();
       await supabase.auth.signOut();
     } catch {
-      // logout fallback
+      queryClient.clear();
     }
   };
 

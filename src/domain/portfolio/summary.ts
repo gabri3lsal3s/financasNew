@@ -67,3 +67,17 @@ export function allocationByTicker(
     }))
     .sort((a, b) => b.valueBRL - a.valueBRL);
 }
+
+// ---------------------------------------------------------------------------
+// Yield on Cost (YoC)
+// ---------------------------------------------------------------------------
+
+/**
+ * Calcula o Yield on Cost (%) de um ativo:
+ *   (totalDividends ÷ totalCost) × 100
+ * Retorna null se não houver custo ou proventos recebidos.
+ */
+export function assetYieldOnCostPct(dividends: number, totalCost: number): number | null {
+  if (totalCost <= 0 || dividends <= 0) return null;
+  return Math.round((dividends / totalCost) * 10000) / 100;
+}

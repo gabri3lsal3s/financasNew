@@ -114,4 +114,44 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     const mobileList = screen.getByRole("list", { name: "Posições (visão móvel)" });
     expect(within(mobileList).getByText("Carteira sem posições.")).toBeInTheDocument();
   });
+
+  it("filtra posições por busca de ticker ou classe", async () => {
+    const user = userEvent.setup();
+    render(<PositionTable rows={rows} />);
+
+    const searchInput = screen.getByPlaceholderText("Buscar por ticker ou classe…");
+    await user.type(searchInput, "PETR");
+
+    expect(screen.getAllByText("PETR4")).toHaveLength(2); // desktop + mobile
+    expect(screen.queryByText("BOVA11")).not.toBeInTheDocument();
+    expect(screen.queryByText("CAIXA")).not.toBeInTheDocument();
+  });
+
+  it("filtra posições ao clicar no botão da classe", async () => {
+    const user = userEvent.setup();
+    render(<PositionTable rows={rows} />);
+
+    const fiisFilter = screen.getByRole("button", { name: "FIIs" });
+    await user.click(fiisFilter);
+
+    expect(screen.getAllByText("BOVA11")).toHaveLength(2);
+    expect(screen.queryByText("PETR4")).not.toBeInTheDocument();
+  });
+
+  it("aciona onSetManualPrice ao clicar no botão de cotação", async () => {
+    const onSetManualPrice = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <PositionTable
+        rows={rows}
+        onSetManualPrice={onSetManualPrice}
+      />,
+    );
+
+    const priceButtons = screen.getAllByRole("button", { name: /Cotação de PETR4/ });
+    expect(priceButtons[0]).toBeDefined();
+    await user.click(priceButtons[0]!);
+
+    expect(onSetManualPrice).toHaveBeenCalledWith("a1", "PETR4", "BRL", 42.5, "manual");
+  });
 });

@@ -17,11 +17,12 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function systemTheme(): Theme {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function readPreference(): ThemePreference {
-  const stored = window.localStorage.getItem(STORAGE_KEY);
+  const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
   return stored === "light" || stored === "dark" || stored === "oled" || stored === "system"
     ? stored
     : "system";
@@ -47,10 +48,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [system, setSystem] = useState<Theme>(systemTheme);
 
   useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = (event: MediaQueryListEvent) => setSystem(event.matches ? "dark" : "light");
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    }
   }, []);
 
   const theme: Theme = preference === "system" ? system : preference;

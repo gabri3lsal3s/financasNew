@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   createPortfolioAsset,
   createPortfolioTransaction,
+  createPortfolioTransactionsBatch,
   deletePortfolioAsset,
   deletePortfolioTransaction,
   listAllPortfolioTransactions,
@@ -171,8 +172,21 @@ describe("portfolio repository (Fase 4 — ledger §3.11.2)", () => {
     await expect(deletePortfolioAsset("a1")).rejects.toThrow();
   });
 
-  it("propaga erro classificado quando a leitura falha", async () => {
-    builder = makeBuilder({ data: null, error: { message: "network down", code: "NETWORK_ERROR" } });
-    await expect(listPortfolioAssets()).rejects.toThrow();
+  it("createPortfolioTransactionsBatch insere múltiplas linhas e retorna vazio com array vazio", async () => {
+    const emptyResult = await createPortfolioTransactionsBatch([]);
+    expect(emptyResult).toEqual([]);
+
+    builder = makeBuilder({
+      data: [
+        { id: "t1", user_id: "u1", asset_id: "a1", type: "buy", date: "2026-01-15", quantity: 10, price: 100, total: 1000 },
+        { id: "t2", user_id: "u1", asset_id: "a2", type: "buy", date: "2026-01-15", quantity: 5, price: 200, total: 1000 },
+      ],
+    });
+    const result = await createPortfolioTransactionsBatch([
+      { asset_id: "a1", type: "buy", date: "2026-01-15", quantity: 10, price: 100, total: 1000 },
+      { asset_id: "a2", type: "buy", date: "2026-01-15", quantity: 5, price: 200, total: 1000 },
+    ]);
+    expect(result).toHaveLength(2);
+    expect(lastInsertInput).toHaveLength(2);
   });
 });

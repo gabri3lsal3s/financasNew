@@ -68,9 +68,11 @@ export {
   useUpdatePortfolioAsset,
   useDeletePortfolioAsset,
   useCreatePortfolioTransaction,
+  useCreatePortfolioTransactionsBatch,
   useUpdatePortfolioTransaction,
   useDeletePortfolioTransaction,
 } from "./queries/use-portfolio";
+export { useAssetPrices, useSetManualPrice, useRemoveManualPrice } from "./queries/use-asset-prices";
 export { usePortfolioPosition } from "./queries/use-portfolio-position";
 export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";
 

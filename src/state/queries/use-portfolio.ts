@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   createPortfolioAsset,
   createPortfolioTransaction,
+  createPortfolioTransactionsBatch,
   deletePortfolioAsset,
   deletePortfolioTransaction,
   listAllPortfolioTransactions,
@@ -76,6 +77,18 @@ export function useCreatePortfolioTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<DbInsert<PortfolioTransaction>, "user_id">) => createPortfolioTransaction(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portfolioTransactionsKey });
+      void queryClient.invalidateQueries({ queryKey: allPortfolioTransactionsKey });
+    },
+  });
+}
+
+export function useCreatePortfolioTransactionsBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (inputs: Omit<DbInsert<PortfolioTransaction>, "user_id">[]) =>
+      createPortfolioTransactionsBatch(inputs),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: portfolioTransactionsKey });
       void queryClient.invalidateQueries({ queryKey: allPortfolioTransactionsKey });

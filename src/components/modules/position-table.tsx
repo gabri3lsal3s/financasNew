@@ -1,12 +1,13 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, List, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, List, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
+import { Input } from "@/components/ui/input";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import type { PriceSource } from "@/domain/portfolio";
+import { assetYieldOnCostPct, type PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
 import { formatSignedPct } from "@/services/masks/percent";
@@ -19,6 +20,8 @@ export interface PositionRow {
   currency: AssetCurrency;
   quantity: number;
   averageCost: number;
+  totalCost?: number;
+  dividends?: number;
   priceBRL: number;
   source: PriceSource;
   valueBRL: number;
@@ -38,6 +41,8 @@ export interface PositionTableProps {
   onListTransactions?: (assetId: string, ticker: string) => void;
   /** Abre o formulário de edição do ativo (ticker/classe/moeda). */
   onEditAsset?: (assetId: string, ticker: string) => void;
+  /** Abre o diálogo de preço manual/cotação do ativo. */
+  onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
   /** Confirma a exclusão do ativo (transações e metas em cascata). */
   onDeleteAsset?: (assetId: string, ticker: string) => void;
   emptyMessage?: string;
@@ -113,12 +118,29 @@ export function PositionTable({
   onRegisterTransaction,
   onListTransactions,
   onEditAsset,
+  onSetManualPrice,
   onDeleteAsset,
   emptyMessage,
   sortable = false,
 }: PositionTableProps) {
   const density = useDensity();
   const [sort, setSort] = useState<SortState | null>(null);
+  const [search, setSearch] = useState("");
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
+
+  const availableClasses = [
+    ...new Set(rows.map((r) => (r.isCash ? "Caixa" : r.assetClass)).filter((c): c is string => Boolean(c))),
+  ];
+
+  const filteredRows = rows.filter((row) => {
+    const rowClass = row.isCash ? "Caixa" : row.assetClass;
+    const matchesSearch =
+      search.trim() === "" ||
+      row.ticker.toLowerCase().includes(search.toLowerCase().trim()) ||
+      (row.assetClass?.toLowerCase().includes(search.toLowerCase().trim()) ?? false);
+    const matchesClass = selectedClass === null || rowClass === selectedClass;
+    return matchesSearch && matchesClass;
+  });
 
   const toggleSort = (key: SortKey) => {
     setSort((current) => {
@@ -128,7 +150,7 @@ export function PositionTable({
     });
   };
 
-  const sortedRows = [...rows].sort((a, b) => {
+  const sortedRows = [...filteredRows].sort((a, b) => {
     if (!sort) return 0;
     const { key, direction } = sort;
     let cmp = 0;
@@ -206,6 +228,20 @@ export function PositionTable({
             <Badge variant="muted" title="Ativo de caixa/reserva valorado 1:1">
               caixa
             </Badge>
+          ) : onSetManualPrice ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
+              }}
+              className="cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+              title={`${PRICE_SOURCE_LABEL[row.source].title} — clique para alterar`}
+            >
+              <Badge variant={row.source === "manual" ? "portfolio" : "muted"}>
+                {PRICE_SOURCE_LABEL[row.source].label}
+              </Badge>
+            </button>
           ) : (
             <Badge variant={row.source === "manual" ? "portfolio" : "muted"} title={PRICE_SOURCE_LABEL[row.source].title}>
               {PRICE_SOURCE_LABEL[row.source].label}
@@ -250,10 +286,18 @@ export function PositionTable({
         if (row.isCash || row.unrealizedPct === null) return <span className="num text-sm text-muted-foreground">—</span>;
         const text = formatSignedPct(row.unrealizedPct);
         const tone = row.unrealizedPct >= 0 ? "positive" : "negative";
+        const yoc = assetYieldOnCostPct(row.dividends ?? 0, row.totalCost ?? 0);
         return (
-          <span className={cn("num text-sm font-semibold", tone === "positive" ? "text-positive-strong" : "text-negative-strong")}>
-            {text}
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className={cn("num text-sm font-semibold", tone === "positive" ? "text-positive-strong" : "text-negative-strong")}>
+              {text}
+            </span>
+            {yoc !== null ? (
+              <span className="text-[10px] text-muted-foreground" title={`Yield on Cost: ${yoc.toFixed(1)}% em proventos acumulados`}>
+                YoC {yoc.toFixed(1)}%
+              </span>
+            ) : null}
+          </div>
         );
       },
     },
@@ -265,7 +309,7 @@ export function PositionTable({
     },
   ];
 
-  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onDeleteAsset);
+  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onSetManualPrice || onDeleteAsset);
 
   if (hasRowActions) {
     columns.push({
@@ -277,18 +321,78 @@ export function PositionTable({
           row={row}
           onRegisterTransaction={onRegisterTransaction}
           onListTransactions={onListTransactions}
+          onSetManualPrice={onSetManualPrice}
           onDeleteAsset={onDeleteAsset}
         />
       ),
     });
   }
 
+  const hasFiltersActive = search.trim() !== "" || selectedClass !== null;
+
   return (
-    <>
+    <div className="flex flex-col gap-4">
+      {rows.length > 0 ? (
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por ticker ou classe…"
+              aria-label="Buscar ativo"
+              className="pl-8 pr-8"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Limpar busca"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+
+          {availableClasses.length > 1 ? (
+            <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => setSelectedClass(null)}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
+                  selectedClass === null
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Todas
+              </button>
+              {availableClasses.map((cls) => (
+                <button
+                  key={cls}
+                  type="button"
+                  onClick={() => setSelectedClass((prev) => (prev === cls ? null : cls))}
+                  className={cn(
+                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
+                    selectedClass === cls
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {cls}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <ul aria-label="Posições (visão móvel)" className="flex flex-col gap-2 sm:hidden">
         {sortedRows.length === 0 ? (
           <li className="rounded-xl border border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
-            {emptyMessage ?? "Nenhum ativo na carteira."}
+            {hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
           </li>
         ) : (
           sortedRows.map((row) => {
@@ -303,6 +407,7 @@ export function PositionTable({
                   ? "text-positive-strong"
                   : "text-negative-strong";
             const isClickable = Boolean(onEditAsset);
+            const yoc = assetYieldOnCostPct(row.dividends ?? 0, row.totalCost ?? 0);
             return (
               <li
                 key={row.assetId}
@@ -330,7 +435,12 @@ export function PositionTable({
                     <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
                     {row.assetClass ? <span className="truncate text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
                   </div>
-                  <span className={cn("num shrink-0 text-sm font-semibold", pctTone)}>{pctLabel}</span>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className={cn("num shrink-0 text-sm font-semibold", pctTone)}>{pctLabel}</span>
+                    {yoc !== null ? (
+                      <span className="text-[10px] text-muted-foreground">YoC {yoc.toFixed(1)}%</span>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
@@ -375,6 +485,7 @@ export function PositionTable({
                       row={row}
                       onRegisterTransaction={onRegisterTransaction}
                       onListTransactions={onListTransactions}
+                      onSetManualPrice={onSetManualPrice}
                       onDeleteAsset={onDeleteAsset}
                     />
                   </div>
@@ -391,10 +502,10 @@ export function PositionTable({
           rows={sortedRows}
           rowKey={(row) => row.assetId}
           density={density === "compact" ? "compact" : "comfortable"}
-          emptyMessage={emptyMessage ?? "Nenhum ativo na carteira."}
+          emptyMessage={hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
         />
       </div>
-    </>
+    </div>
   );
 }
 
@@ -402,11 +513,12 @@ interface PositionRowActionsProps {
   row: PositionRow;
   onRegisterTransaction?: (assetId: string, ticker: string) => void;
   onListTransactions?: (assetId: string, ticker: string) => void;
+  onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
   onDeleteAsset?: (assetId: string, ticker: string) => void;
 }
 
 /** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28). */
-function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onDeleteAsset }: PositionRowActionsProps) {
+function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onSetManualPrice, onDeleteAsset }: PositionRowActionsProps) {
   return (
     <div className="flex items-center justify-end gap-1">
       {onRegisterTransaction ? (
@@ -437,6 +549,22 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
           }}
         >
           <List className="size-4" aria-hidden="true" />
+        </Button>
+      ) : null}
+      {!row.isCash && onSetManualPrice ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="min-h-9 px-2"
+          aria-label={`Cotação de ${row.ticker}`}
+          title="Definir preço manual ou restaurar cotação automática"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
+          }}
+        >
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
         </Button>
       ) : null}
       {onDeleteAsset ? (

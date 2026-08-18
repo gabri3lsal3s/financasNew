@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Calculator } from "lucide-react";
-import { Alert, Button, EmptyState, MoneyInput, RadioGroup, SkeletonChart, SkeletonKpi } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, RadioGroup, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
   classCapsFromSectorCaps,
@@ -10,9 +10,15 @@ import {
   type AporteMode,
   type ClassTargetInput,
 } from "@/domain/portfolio";
+import { todayISO } from "@/domain/debts";
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
+import { playSound } from "@/services/audio-fx";
 import { getErrorMessage } from "@/services/errors";
+import { triggerHaptic } from "@/services/haptics";
+import { pushToast } from "@/services/toast";
 import {
   useAllocationTargets,
+  useCreatePortfolioTransactionsBatch,
   useGroupTargets,
   usePortfolioPosition,
   useSectorCaps,
@@ -28,9 +34,12 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
   const capsQuery = useSectorCaps();
+  const createBatch = useCreatePortfolioTransactionsBatch();
 
   const [aporteCents, setAporteCents] = useState(0);
   const [mode, setMode] = useState<AporteMode>("asset");
+  const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
+  const [batchError, setBatchError] = useState<string | null>(null);
 
   const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? capsQuery.error;
   const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || capsQuery.isLoading;
@@ -67,6 +76,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
 
   const routes: AporteRouteRow[] =
     result?.routes.map((r) => ({
+      assetId: r.assetId,
       ticker: r.ticker,
       assetClass: r.assetClass,
       targetValueBRL: r.targetValueBRL,
@@ -77,12 +87,44 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
       priceBRL: r.priceBRL,
     })) ?? [];
 
+  const eligibleRoutes = routes.filter((r) => r.quantity > 0);
+
+  const handleExecuteBatch = async () => {
+    if (eligibleRoutes.length === 0) return;
+    setBatchError(null);
+    try {
+      const date = todayISO();
+      const payload = eligibleRoutes.map((r) => ({
+        asset_id: r.assetId,
+        type: "buy" as const,
+        date,
+        quantity: r.quantity,
+        price: r.priceBRL,
+        total: Math.round(r.quantity * r.priceBRL * 100) / 100,
+      }));
+
+      await createBatch.mutateAsync(payload);
+      triggerHaptic("success");
+      playSound("success", getVisualCustomization().soundEnabled);
+      pushToast({
+        title: "Aportes registrados",
+        description: `${eligibleRoutes.length} compras adicionadas ao extrato da carteira.`,
+      });
+      setConfirmBatchOpen(false);
+      setAporteCents(0);
+      onGoToPosition?.();
+    } catch (err) {
+      setBatchError(getErrorMessage(err));
+    }
+  };
+
   const hasAssetTargets = targetsQuery.data !== undefined && targetsQuery.data.length > 0;
   const hasClassTargets = classTargets.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
       {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
+      {batchError ? <Alert variant="error">{batchError}</Alert> : null}
 
       {loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
@@ -153,15 +195,33 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
               totalAllocated={result.totalAllocated}
               leftover={result.leftover}
               routes={routes}
+              onExecuteAporte={() => setConfirmBatchOpen(true)}
+              executing={createBatch.isPending}
             />
           ) : null}
         </>
       )}
 
       <p className="text-xs text-muted-foreground">
-        Sugestão local baseada na posição atual e nas metas — nenhuma compra é executada. Preços manuais
-        prevalecem sobre cotação e fallback.
+        Sugestão calculada com base na posição e metas. Ao clicar em "Lançar compras no extrato", as operações de compra
+        são registradas automaticamente no ledger.
       </p>
+
+      <ConfirmDialog
+        open={confirmBatchOpen}
+        onOpenChange={setConfirmBatchOpen}
+        title="Lançar compras no extrato?"
+        description={
+          eligibleRoutes.length > 0
+            ? `Serão registradas ${eligibleRoutes.length} operações de compra (totalizando ${eligibleRoutes
+                .reduce((acc, r) => acc + r.allocatedBRL, 0)
+                .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) com a data de hoje.`
+            : "Nenhuma operação de compra para lançar."
+        }
+        confirmLabel="Lançar compras"
+        confirmPending={createBatch.isPending}
+        onConfirm={() => void handleExecuteBatch()}
+      />
     </div>
   );
 }

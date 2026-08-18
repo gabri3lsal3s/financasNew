@@ -93,6 +93,23 @@ export async function createPortfolioTransaction(
   return mapTransaction(data);
 }
 
+/** Cria múltiplas transações em lote (ex.: aporte sugerido pela calculadora). */
+export async function createPortfolioTransactionsBatch(
+  inputs: Omit<DbInsert<PortfolioTransaction>, "user_id">[],
+): Promise<PortfolioTransaction[]> {
+  if (inputs.length === 0) return [];
+  const user_id = await currentUserId();
+  const payload = inputs.map((input) => ({ ...input, user_id }));
+  const { data, error } = await resolveQuery<PortfolioTransaction[]>(
+    getSupabase().from("portfolio_transactions").insert(payload).select(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapTransaction);
+}
+
 /** Edita um ativo (ticker/classe/moeda) — CRUD completo do usuário. */
 export async function updatePortfolioAsset(id: string, patch: DbUpdate<PortfolioAsset>): Promise<PortfolioAsset> {
   const { data, error } = await resolveQuery<PortfolioAsset>(

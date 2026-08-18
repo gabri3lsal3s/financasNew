@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ArrowDownToLine, Check, PiggyBank, Wallet } from "lucide-react";
+import { ArrowDownToLine, Check, CheckCheck, PiggyBank, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 export interface AporteRouteRow {
+  assetId: string;
   ticker: string;
   assetClass: string | null;
   targetValueBRL: number;
@@ -24,6 +26,9 @@ export interface AporteResultProps {
   totalAllocated: number;
   leftover: number;
   routes: AporteRouteRow[];
+  /** Ação rápida para gravar todas as transações sugeridas no extrato */
+  onExecuteAporte?: () => void;
+  executing?: boolean;
 }
 
 const MODE_LABEL: Record<AporteResultProps["mode"], string> = {
@@ -36,7 +41,15 @@ const MODE_LABEL: Record<AporteResultProps["mode"], string> = {
  * Log de roteamento: por ativo — valor alvo, atual, aporte sugerido,
  * quantidade e preço; sobra final (→ caixa/reserva).
  */
-export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }: AporteResultProps) {
+export function AporteResult({
+  mode,
+  aporte,
+  totalAllocated,
+  leftover,
+  routes,
+  onExecuteAporte,
+  executing = false,
+}: AporteResultProps) {
   const [completedTickers, setCompletedTickers] = useState<Set<string>>(new Set());
 
   const toggleTicker = (ticker: string) => {
@@ -164,13 +177,31 @@ export function AporteResult({ mode, aporte, totalAllocated, leftover, routes }:
           Nenhum ativo elegível: defina metas abaixo da posição atual (gap positivo) com preço disponível.
         </p>
       ) : (
-        <DataList
-          columns={columns}
-          rows={routes}
-          rowKey={(row, index) => `${row.ticker}:${index}`}
-          density="compact"
-          emptyMessage="Sem sugestão de aporte."
-        />
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">Detalhamento dos aportes</h3>
+            {onExecuteAporte && routes.some((r) => r.quantity > 0) ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={onExecuteAporte}
+                disabled={executing}
+                className="gap-1.5"
+              >
+                <CheckCheck className="size-4" aria-hidden="true" />
+                <span>{executing ? "Lançando…" : "Lançar compras no extrato"}</span>
+              </Button>
+            ) : null}
+          </div>
+          <DataList
+            columns={columns}
+            rows={routes}
+            rowKey={(row, index) => `${row.ticker}:${index}`}
+            density="compact"
+            emptyMessage="Sem sugestão de aporte."
+          />
+        </>
       )}
     </section>
   );

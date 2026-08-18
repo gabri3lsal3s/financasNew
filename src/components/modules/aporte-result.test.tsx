@@ -1,10 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AporteResult, type AporteRouteRow } from "./aporte-result";
 
 const mockRoutes: AporteRouteRow[] = [
   {
+    assetId: "a1",
     ticker: "PETR4",
     assetClass: "Ações",
     targetValueBRL: 5000,
@@ -15,6 +16,7 @@ const mockRoutes: AporteRouteRow[] = [
     priceBRL: 40,
   },
   {
+    assetId: "a2",
     ticker: "HGLG11",
     assetClass: "FIIs",
     targetValueBRL: 6000,
@@ -81,5 +83,26 @@ describe("AporteResult", () => {
     );
 
     expect(screen.getByText(/Nenhum ativo elegível/i)).toBeInTheDocument();
+  });
+
+  it("aciona onExecuteAporte ao clicar no botão de lançar compras", async () => {
+    const onExecuteAporte = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <AporteResult
+        mode="asset"
+        aporte={2000}
+        totalAllocated={2000}
+        leftover={0}
+        routes={mockRoutes}
+        onExecuteAporte={onExecuteAporte}
+      />,
+    );
+
+    const launchBtn = screen.getByRole("button", { name: "Lançar compras no extrato" });
+    expect(launchBtn).toBeInTheDocument();
+    await user.click(launchBtn);
+
+    expect(onExecuteAporte).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,10 +8,14 @@ import { currentMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { formatSignedPct } from "@/services/masks/percent";
 import { useAllPortfolioTransactions, useDeletePortfolioAsset, usePortfolioAssets, usePortfolioPosition } from "@/state";
-import { AssetFormDialog } from "@/features/portfolio/components/asset-form-dialog";
-import { TransactionFormDialog } from "@/features/portfolio/components/transaction-form-dialog";
-import { TransactionListDialog } from "@/features/portfolio/components/transaction-list-dialog";
-import type { PortfolioAsset } from "@/types";
+import {
+  AssetFormDialog,
+  ManualPriceDialog,
+  TransactionFormDialog,
+  TransactionListDialog,
+} from "@/features/portfolio/components";
+import type { AssetCurrency, PortfolioAsset } from "@/types";
+import type { PriceSource } from "@/domain/portfolio";
 
 /**
  * Resumo da carteira (§F17 unificada) — consolidação executiva + operação:
@@ -29,6 +33,13 @@ export function ResumoTab() {
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [txFor, setTxFor] = useState<PortfolioAsset | null>(null);
   const [listFor, setListFor] = useState<PortfolioAsset | null>(null);
+  const [priceFor, setPriceFor] = useState<{
+    id: string;
+    ticker: string;
+    currency: AssetCurrency;
+    priceBRL: number;
+    source: PriceSource;
+  } | null>(null);
 
   const rows = position.rows;
   const hasInvestments = rows.length > 0;
@@ -156,6 +167,9 @@ export function ResumoTab() {
               onRegisterTransaction={openTransaction}
               onListTransactions={openList}
               onEditAsset={openEdit}
+              onSetManualPrice={(assetId, ticker, currency, priceBRL, source) => {
+                setPriceFor({ id: assetId, ticker, currency, priceBRL, source });
+              }}
               onDeleteAsset={openDelete}
             />
           </section>
@@ -192,6 +206,14 @@ export function ResumoTab() {
           open={assetEditing !== null}
           onOpenChange={(next) => !next && setAssetEditing(null)}
           asset={assetEditing}
+        />
+      ) : null}
+      {priceFor ? (
+        <ManualPriceDialog
+          key={priceFor.id}
+          open={priceFor !== null}
+          onOpenChange={(next) => !next && setPriceFor(null)}
+          asset={priceFor}
         />
       ) : null}
       {txFor ? (

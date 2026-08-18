@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocationByTicker, portfolioReturnPct } from "./summary";
+import { allocationByTicker, assetYieldOnCostPct, portfolioReturnPct } from "./summary";
 
 describe("portfolioReturnPct — rentabilidade ponderada pelo valor (§F17)", () => {
   it("pondera os percentuais pelo valor de mercado e ignora caixa", () => {
@@ -41,5 +41,21 @@ describe("allocationByTicker — alocação por ativo (§F17)", () => {
 
   it("carteira vazia → lista vazia", () => {
     expect(allocationByTicker([])).toEqual([]);
+  });
+});
+
+describe("assetYieldOnCostPct — Yield on Cost de ativo", () => {
+  it("calcula a relação percentual entre proventos recebidos e custo total", () => {
+    // 500 reais de proventos com 5.000 de custo = 10%
+    expect(assetYieldOnCostPct(500, 5000)).toBe(10);
+    // 123.45 reais com 2.500 = 4.94%
+    expect(assetYieldOnCostPct(123.45, 2500)).toBe(4.94);
+  });
+
+  it("retorna null se não houver custo ou não houver proventos", () => {
+    expect(assetYieldOnCostPct(0, 5000)).toBeNull();
+    expect(assetYieldOnCostPct(500, 0)).toBeNull();
+    expect(assetYieldOnCostPct(-10, 5000)).toBeNull();
+    expect(assetYieldOnCostPct(500, -100)).toBeNull();
   });
 });

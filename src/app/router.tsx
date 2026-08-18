@@ -1,13 +1,17 @@
 import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation } from "react-router";
 import { appRoutes } from "@/app/routes";
-import { Skeleton } from "@/components/ui";
-import { MoreMenu, PageShell } from "@/components/layout";
+import { LoadingScreen, MoreMenu, PageShell } from "@/components/layout";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
 import { useAuth } from "@/hooks/use-auth";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 
-/** Guard de autenticação: sem sessão → tela de login preservando a rota de origem. */
+/**
+ * Guard de autenticação:
+ * - Sem sessão → redireciona para a tela de login preservando a rota de origem.
+ * - Em transição/carregamento → exibe tela de carregamento oficial (`LoadingScreen`).
+ * - Sessão ativa → renderiza rotas autenticadas isoladas por `key={session.user.id}`.
+ */
 function RequireAuth() {
   const { session, loading, configError } = useAuth();
   const location = useLocation();
@@ -25,25 +29,20 @@ function RequireAuth() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center p-8">
-        <Skeleton className="h-10 w-64" />
-      </div>
-    );
-  }
-
-  if (!session) {
-    return <Navigate to="/entrar" replace state={{ from: location }} />;
+  if (loading || !session?.user) {
+    if (!loading && !session) {
+      return <Navigate to="/entrar" replace state={{ from: location }} />;
+    }
+    return <LoadingScreen message="Carregando suas finanças…" />;
   }
 
   return (
-    <>
+    <div key={session.user.id} className="contents">
       {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas,
           incluindo modais e drawers em overlay. */}
       <FloatingCalculator />
       <Outlet />
-    </>
+    </div>
   );
 }
 
@@ -72,4 +71,3 @@ export function AppRouter() {
     </BrowserRouter>
   );
 }
-

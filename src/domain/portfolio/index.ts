@@ -281,7 +281,7 @@ export {
   usdRateFromPrices,
   valueAssetPosition,
 } from "./valuation";
-export { allocationByTicker, portfolioReturnPct } from "./summary";
+export { allocationByTicker, assetYieldOnCostPct, portfolioReturnPct } from "./summary";
 export type { AllocationTickerSlice } from "./summary";
 export { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "./dividends";
 export type { DividendEntry, DividendTransaction, MonthDividendSummary } from "./dividends";

@@ -126,11 +126,13 @@
     │   │                          #   (targets/aporte tabs, reutilizados no hub; a antiga
     │   │                          #   página /carteira e a position-tab foram removidas na
     │   │                          #   F28 — /investments é o hub único desde a F17) +
-    │   │                          #   CRUD completo (2026-08-15): asset-form-dialog,
-    │   │                          #   transaction-form-dialog, transaction-list-dialog
+    │   │                          #   CRUD completo e Cotações (v1.60): asset-form-dialog,
+    │   │                          #   manual-price-dialog, transaction-form-dialog, transaction-list-dialog
+    │   │                          #   com barrel components/index.ts e index.ts de módulo
     │   └── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+unificação):
     │                              #     hub de abas (Resumo/Metas/Proventos/Aporte) —
     │                              #     pages/resumo-tab.tsx · pages/proventos-tab.tsx (F18)
+    │                              #     com barrel index.ts (v1.60)
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
