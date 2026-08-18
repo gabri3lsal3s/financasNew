@@ -5,6 +5,7 @@ import { Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui"
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
 import { debtStatus } from "@/domain/debts";
+import { numberToCents } from "@/domain/money";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
@@ -158,6 +159,14 @@ export function DebtsPage() {
   const receivableDebts = debts.filter((d) => d.type === "receivable");
   const filtered = tab === "payable" ? payableDebts : tab === "receivable" ? receivableDebts : [];
 
+  const payablePendingCents = debts
+    .filter((d) => d.type === "payable" && !d.paid_at)
+    .reduce((sum, d) => sum + numberToCents(d.amount), 0);
+  const receivablePendingCents = debts
+    .filter((d) => d.type === "receivable" && !d.paid_at)
+    .reduce((sum, d) => sum + numberToCents(d.amount), 0);
+  const netPendingCents = receivablePendingCents - payablePendingCents;
+
   const error = debtsQuery.error || loansQuery.error;
 
   return (
@@ -166,10 +175,10 @@ export function DebtsPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Dívidas & Financiamentos
+            Dívidas
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
-            Gestão de contas a pagar, a receber e contratos de amortização.
+            Gestão de contas a pagar, a receber e financiamentos
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -224,6 +233,24 @@ export function DebtsPage() {
             },
           ]}
         />
+      )}
+
+      {/* Resumo financeiro consolidado para contas a pagar/receber */}
+      {tab !== "loans" && !error && !debtsQuery.isLoading && debts.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">A pagar pendente</span>
+            <MoneyText cents={payablePendingCents} tone="negative" className="text-lg sm:text-xl font-bold" />
+          </div>
+          <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">A receber pendente</span>
+            <MoneyText cents={receivablePendingCents} tone="positive" className="text-lg sm:text-xl font-bold" />
+          </div>
+          <div className="col-span-2 sm:col-span-1 flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Saldo pendente líquido</span>
+            <MoneyText cents={netPendingCents} tone={netPendingCents >= 0 ? "positive" : "negative"} sign="auto" className="text-lg sm:text-xl font-bold" />
+          </div>
+        </div>
       )}
 
       {/* Conteúdo de Financiamentos */}

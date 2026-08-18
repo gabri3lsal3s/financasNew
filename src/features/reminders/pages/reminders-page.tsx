@@ -55,30 +55,39 @@ export function RemindersPage() {
     }
   };
 
-  const filteredItems = items.filter((item) => {
-    if (filter === "overdue") return item.status === "overdue";
-    if (filter === "bills") return item.kind === "bill";
-    if (filter === "debts") return item.kind === "debt";
-    return true;
-  });
+  const filteredItems = items
+    .filter((item) => {
+      if (filter === "overdue") return item.status === "overdue";
+      if (filter === "bills") return item.kind === "bill";
+      if (filter === "debts") return item.kind === "debt";
+      return true;
+    })
+    .sort((a, b) => {
+      const priority: Record<string, number> = { overdue: 0, due_today: 1, due_soon: 2, pending: 3 };
+      const diff = (priority[a.status] ?? 3) - (priority[b.status] ?? 3);
+      if (diff !== 0) return diff;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
 
   const billsCount = items.filter((i) => i.kind === "bill").length;
   const debtsCount = items.filter((i) => i.kind === "debt").length;
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Lembretes</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              Lembretes
+            </h1>
             {totalCount > 0 && (
               <Badge variant={overdueCount > 0 ? "critical" : "default"}>
                 {totalCount} {totalCount === 1 ? "pendência" : "pendências"}
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Faturas e dívidas consolidadas que precisam de sua atenção.
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Faturas e compromissos que precisam da sua atenção
           </p>
         </div>
 
@@ -88,7 +97,7 @@ export function RemindersPage() {
             size="sm"
             onClick={handleMarkAllRead}
             disabled={markAllMutation.isPending || filteredItems.length === 0}
-            className="self-start sm:self-auto"
+            className="self-start sm:self-auto shrink-0"
           >
             <CheckCheck className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
             Marcar todas como lidas

@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { navItems } from "@/components/layout/nav-items";
+import { navGroups } from "@/components/layout/nav-items";
 import { scrollToTop } from "@/services/scroll";
 import { useReminders } from "@/state";
 
@@ -79,69 +79,81 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         <BrandLogo showWordmark={expanded} markClassName="size-8 shrink-0" />
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2.5" aria-label="Navegação principal">
-        {navItems.map((item) => {
-          const isReminders = item.path === "/lembretes";
-          const showBadge = isReminders && totalCount > 0;
-          const isCurrent =
-            item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
+      <nav className="flex-1 space-y-4 overflow-y-auto p-2.5" aria-label="Navegação principal">
+        {navGroups.map((group, groupIndex) => (
+          <div key={group.title} className="space-y-1">
+            {expanded ? (
+              <p className="px-3.5 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 animate-fade-slide-in">
+                {group.title}
+              </p>
+            ) : groupIndex > 0 ? (
+              <div className="my-2 mx-auto h-px w-8 bg-border/80" aria-hidden="true" />
+            ) : null}
 
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/"}
-              aria-label={expanded ? undefined : item.label}
-              title={expanded ? undefined : item.label}
-              onClick={(e) => {
-                if (isCurrent) {
-                  const scrolled = scrollToTop();
-                  if (scrolled) {
-                    e.preventDefault();
+            {group.items.map((item) => {
+              const isReminders = item.path === "/lembretes";
+              const showBadge = isReminders && totalCount > 0;
+              const isCurrent =
+                item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
+
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === "/"}
+                  aria-label={expanded ? undefined : item.label}
+                  title={expanded ? undefined : item.label}
+                  onClick={(e) => {
+                    if (isCurrent) {
+                      const scrolled = scrollToTop();
+                      if (scrolled) {
+                        e.preventDefault();
+                      }
+                    }
+                  }}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap relative",
+                      !expanded && "justify-center px-2",
+                      isActive
+                        ? "bg-primary/12 text-primary-strong font-semibold"
+                        : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                    )
                   }
-                }
-              }}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap relative",
-                  !expanded && "justify-center px-2",
-                  isActive
-                    ? "bg-primary/12 text-primary-strong font-semibold"
-                    : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-                )
-              }
-            >
-              <div className="relative shrink-0">
-                <item.icon className="size-5 shrink-0" aria-hidden="true" />
-                {!expanded && showBadge && (
-                  <span
-                    className={cn(
-                      "absolute -top-1 -right-1 size-2 rounded-full ring-2 ring-surface",
-                      urgentCount > 0 ? "bg-danger" : "bg-primary",
+                >
+                  <div className="relative shrink-0">
+                    <item.icon className="size-5 shrink-0" aria-hidden="true" />
+                    {!expanded && showBadge && (
+                      <span
+                        className={cn(
+                          "absolute -top-1 -right-1 size-2 rounded-full ring-2 ring-surface",
+                          urgentCount > 0 ? "bg-danger" : "bg-primary",
+                        )}
+                      />
                     )}
-                  />
-                )}
-              </div>
-              {expanded && (
-                <div className="flex flex-1 items-center justify-between overflow-hidden animate-fade-slide-in">
-                  <span className="overflow-hidden truncate">{item.label}</span>
-                  {showBadge && (
-                    <span
-                      className={cn(
-                        "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                        urgentCount > 0
-                          ? "bg-danger text-white"
-                          : "bg-primary/15 text-primary-strong",
+                  </div>
+                  {expanded && (
+                    <div className="flex flex-1 items-center justify-between overflow-hidden animate-fade-slide-in">
+                      <span className="overflow-hidden truncate">{item.label}</span>
+                      {showBadge && (
+                        <span
+                          className={cn(
+                            "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                            urgentCount > 0
+                              ? "bg-danger text-white"
+                              : "bg-primary/15 text-primary-strong",
+                          )}
+                        >
+                          {totalCount > 9 ? "9+" : totalCount}
+                        </span>
                       )}
-                    >
-                      {totalCount > 9 ? "9+" : totalCount}
-                    </span>
+                    </div>
                   )}
-                </div>
-              )}
-            </NavLink>
-          );
-        })}
+                </NavLink>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="shrink-0 border-t border-border p-2.5">

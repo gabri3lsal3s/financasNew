@@ -44,14 +44,14 @@ import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { calculateChargesBreakdown, CHARGE_KIND_LABELS } from "@/domain/charges";
 import { ExpenseDetailDialog } from "@/features/transactions";
 import { ReportDetailDialog } from "../components/report-detail-dialog";
-import type { ChargeKind, Expense } from "@/types";
+import type { Expense } from "@/types";
 
 import { numberToCents } from "@/domain/money";
 
 type PeriodMode = "month" | "year" | "custom";
 type AggregationTab = "category" | "method" | "weekday" | "charges";
 
-/** Relatórios (§3.6) — agregações por categoria/forma/dia da semana, comparativo, visão dupla (Bruto vs. Ponderado) e merge de dívidas pagas. */
+/** Relatórios (§3.6) — visão analítica completa, agregações e fechamento de período. */
 export function ReportsPage() {
   const [month, setMonth] = useState(currentMonth());
   const [year, setYear] = useState(currentYear());
@@ -66,6 +66,7 @@ export function ReportsPage() {
     expenses: Expense[];
   } | null>(null);
   const [closeOpen, setCloseOpen] = useState(false);
+
 
   const range =
     mode === "month"
@@ -324,8 +325,26 @@ export function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* F12 — sem header visual: abas + seletor de período direto; título apenas p/ leitores de tela. */}
-      <h1 className="sr-only">Relatórios</h1>
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Relatórios
+          </h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Visão analítica de despesas, receitas e fechamento do período
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setCloseOpen(true)}
+          className="gap-2 self-start sm:self-auto shrink-0"
+        >
+          <Printer className="size-4" aria-hidden="true" />
+          <span>Fechamento do período</span>
+        </Button>
+      </header>
 
       <Tabs
         value={mode}
@@ -363,251 +382,236 @@ export function ReportsPage() {
         ]}
       />
 
-      {/* F22 — Fechamento imprimível do período (mês, ano ou custom) */}
-      <div className="flex justify-end">
-        <Button type="button" variant="outline" size="sm" onClick={() => setCloseOpen(true)} className="gap-2 w-full sm:w-auto justify-center">
-          <Printer className="size-4" aria-hidden="true" />
-          <span>Fechamento do período</span>
-        </Button>
-      </div>
-
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
-      {loading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-40 w-full" />
-        </div>
-      ) : expenses.length === 0 && incomes.length === 0 ? (
-        <EmptyState
-          icon={<ChartPie className="size-6" aria-hidden="true" />}
-          title="Sem lançamentos no período"
-          description={`Nenhuma receita ou despesa registrada em ${periodLabel}.`}
-        />
-      ) : (
-        <>
-          {/* Resumo com merge de dívidas (§4.3), comparativo e visão dupla (Ponderado vs. Nominal) */}
-          <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
-            <SummaryCard
-              label="Rendas"
-              cents={merged.incomePonderadoCents}
-              brutoCents={merged.incomeBrutoCents}
-              tone="positive"
-              delta={incomeDelta}
-              positiveIsGood
-            />
-            <SummaryCard
-              label="Despesas"
-              cents={merged.expensePonderadoCents}
-              brutoCents={merged.expenseBrutoCents}
-              tone="negative"
-              delta={expenseDelta}
-              positiveIsGood={false}
-            />
-            <SummaryCard
-              label="Saldo"
-              cents={merged.balancePonderadoCents}
-              brutoCents={merged.balanceBrutoCents}
-              tone={merged.balancePonderadoCents >= 0 ? "positive" : "negative"}
-            />
-            <SummaryCard label="Dívidas pagas" cents={paidDebts.reduce((a, d) => a + d.valueCents, 0)} />
-          </section>
-
-          {chargesBreakdown.wastedGrossCents > 0 && (
-            <div className="flex items-center justify-between rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-xs text-warning-strong">
-              <span className="font-medium">
-                Custo de fricção (Juros e Multas):{" "}
-                <strong>
-                  {(chargesBreakdown.wastedGrossCents / 100).toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })}
-                </strong>{" "}
-                gastos no período.
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setAggregationTab("charges")}
-              >
-                Ver detalhes
-              </Button>
+          {loading ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-40 w-full" />
             </div>
+          ) : expenses.length === 0 && incomes.length === 0 ? (
+            <EmptyState
+              icon={<ChartPie className="size-6" aria-hidden="true" />}
+              title="Sem lançamentos no período"
+              description={`Nenhuma receita ou despesa registrada em ${periodLabel}.`}
+            />
+          ) : (
+            <>
+              {/* Resumo com merge de dívidas (§4.3), comparativo e visão dupla (Ponderado vs. Nominal) */}
+              <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
+                <SummaryCard
+                  label="Rendas"
+                  cents={merged.incomePonderadoCents}
+                  brutoCents={merged.incomeBrutoCents}
+                  tone="positive"
+                  delta={incomeDelta}
+                  positiveIsGood
+                />
+                <SummaryCard
+                  label="Despesas"
+                  cents={merged.expensePonderadoCents}
+                  brutoCents={merged.expenseBrutoCents}
+                  tone="negative"
+                  delta={expenseDelta}
+                  positiveIsGood={false}
+                />
+                <SummaryCard
+                  label="Saldo"
+                  cents={merged.balancePonderadoCents}
+                  brutoCents={merged.balanceBrutoCents}
+                  tone={merged.balancePonderadoCents >= 0 ? "positive" : "negative"}
+                />
+                <SummaryCard label="Dívidas pagas" cents={paidDebts.reduce((a, d) => a + d.valueCents, 0)} />
+              </section>
+
+              {chargesBreakdown.wastedGrossCents > 0 && (
+                <div className="flex items-center justify-between rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-xs text-warning-strong">
+                  <span className="font-medium">
+                    Custo de fricção (Juros e Multas):{" "}
+                    <strong>
+                      {(chargesBreakdown.wastedGrossCents / 100).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </strong>{" "}
+                    gastos no período.
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setAggregationTab("charges")}
+                  >
+                    Ver detalhes
+                  </Button>
+                </div>
+              )}
+
+              {/* Agregações com abas interativas corrigidas */}
+              <Tabs
+                value={aggregationTab}
+                onValueChange={(val) => setAggregationTab(val as AggregationTab)}
+                swipeable
+                items={[
+                  {
+                    value: "category",
+                    label: "Por categoria",
+                    content: (
+                      <ReportTable
+                        title="Categoria"
+                        rows={categoryRows}
+                        totalBrutoCents={totalSpentBruto}
+                        totalPonderadoCents={totalSpentPonderado}
+                        totalCents={totalSpentPonderado}
+                        onRowClick={(row) => {
+                          const filtered = expenses.filter((e) => e.category_id === row.key);
+                          const catName = categoryById.get(row.key)?.name ?? "Outra";
+                          setDetailModal({
+                            open: true,
+                            title: `Despesas — ${catName}`,
+                            expenses: filtered,
+                          });
+                        }}
+                      />
+                    ),
+                  },
+                  {
+                    value: "charges",
+                    label: "Por encargos",
+                    content: (
+                      <ReportTable
+                        title="Natureza do gasto"
+                        rows={chargesRows}
+                        totalBrutoCents={totalSpentBruto}
+                        totalPonderadoCents={totalSpentPonderado}
+                        totalCents={totalSpentPonderado}
+                        onRowClick={(row) => {
+                          const filtered = expenses.filter((e) => (e.charge_kind ?? "regular") === row.key);
+                          setDetailModal({
+                            open: true,
+                            title: `Despesas — ${row.label}`,
+                            expenses: filtered,
+                          });
+                        }}
+                      />
+                    ),
+                  },
+                  {
+                    value: "method",
+                    label: "Por forma",
+                    content: (
+                      <ReportTable
+                        title="Forma de pagamento"
+                        rows={methodRows}
+                        totalBrutoCents={totalSpentBruto}
+                        totalPonderadoCents={totalSpentPonderado}
+                        totalCents={totalSpentPonderado}
+                        onRowClick={(row) => {
+                          const filtered = expenses.filter((e) => (e.payment_method ?? "other") === row.key);
+                          const methodName = PAYMENT_METHOD_LABELS[row.key as keyof typeof PAYMENT_METHOD_LABELS] ?? row.key;
+                          setDetailModal({
+                            open: true,
+                            title: `Despesas — ${methodName}`,
+                            expenses: filtered,
+                          });
+                        }}
+                      />
+                    ),
+                  },
+                  {
+                    value: "weekday",
+                    label: "Por dia da semana",
+                    content: (
+                      <ReportTable
+                        title="Dia da semana"
+                        rows={weekdayRows}
+                        totalBrutoCents={totalSpentBruto}
+                        totalPonderadoCents={totalSpentPonderado}
+                        totalCents={totalSpentPonderado}
+                        onRowClick={(row) => {
+                          const weekdayIndex = Number(row.key);
+                          const filtered = expenses.filter((e) => mondayFirstWeekday(e.date) === weekdayIndex);
+                          const weekdayName = WEEKDAY_LABELS[weekdayIndex] ?? "Dia da semana";
+                          setDetailModal({
+                            open: true,
+                            title: `Despesas — ${weekdayName}`,
+                            expenses: filtered,
+                          });
+                        }}
+                      />
+                    ),
+                  },
+                ]}
+              />
+            </>
           )}
 
-          {paidDebts.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {paidDebts.length} dívida(s) paga(s) somada(s) ao período pelo mês do vencimento.
-            </p>
-          ) : null}
-
-          {/* Agregações com abas interativas corrigidas */}
-          <Tabs
-            value={aggregationTab}
-            onValueChange={(val) => setAggregationTab(val as AggregationTab)}
-            swipeable
-            items={[
-              {
-                value: "category",
-                label: "Por categoria",
-                content: (
-                  <ReportTable
-                    title="Categoria"
-                    rows={categoryRows}
-                    totalBrutoCents={totalSpentBruto}
-                    totalPonderadoCents={totalSpentPonderado}
-                    totalCents={totalSpentPonderado}
-                    onRowClick={(row) => {
-                      const filtered = expenses.filter((e) => e.category_id === row.key);
-                      const catName = categoryById.get(row.key)?.name ?? "Outra";
-                      setDetailModal({
-                        open: true,
-                        title: `Despesas — ${catName}`,
-                        expenses: filtered,
-                      });
-                    }}
-                  />
-                ),
-              },
-              {
-                value: "method",
-                label: "Por forma",
-                content: (
-                  <ReportTable
-                    title="Forma de pagamento"
-                    rows={methodRows}
-                    totalBrutoCents={totalSpentBruto}
-                    totalPonderadoCents={totalSpentPonderado}
-                    totalCents={totalSpentPonderado}
-                    onRowClick={(row) => {
-                      const filtered = expenses.filter((e) => (e.payment_method ?? "other") === row.key);
-                      const methodName = PAYMENT_METHOD_LABELS[row.key as keyof typeof PAYMENT_METHOD_LABELS] ?? row.key;
-                      setDetailModal({
-                        open: true,
-                        title: `Despesas — ${methodName}`,
-                        expenses: filtered,
-                      });
-                    }}
-                  />
-                ),
-              },
-              {
-                value: "weekday",
-                label: "Por dia da semana",
-                content: (
-                  <ReportTable
-                    title="Dia da semana"
-                    rows={weekdayRows}
-                    totalBrutoCents={totalSpentBruto}
-                    totalPonderadoCents={totalSpentPonderado}
-                    totalCents={totalSpentPonderado}
-                    onRowClick={(row) => {
-                      const weekdayIndex = Number(row.key);
-                      const filtered = expenses.filter((e) => mondayFirstWeekday(e.date) === weekdayIndex);
-                      const weekdayName = WEEKDAY_LABELS[weekdayIndex] ?? "Dia da semana";
-                      setDetailModal({
-                        open: true,
-                        title: `Despesas — ${weekdayName}`,
-                        expenses: filtered,
-                      });
-                    }}
-                  />
-                ),
-              },
-              {
-                value: "charges",
-                label: "Por natureza / encargos",
-                content: (
-                  <ReportTable
-                    title="Natureza do gasto"
-                    rows={chargesRows}
-                    totalBrutoCents={totalSpentBruto}
-                    totalPonderadoCents={totalSpentPonderado}
-                    totalCents={totalSpentPonderado}
-                    onRowClick={(row) => {
-                      const filtered = expenses.filter((e) => (e.charge_kind ?? "regular") === row.key);
-                      const kindLabel = CHARGE_KIND_LABELS[row.key as ChargeKind] ?? row.key;
-                      setDetailModal({
-                        open: true,
-                        title: `Despesas — ${kindLabel}`,
-                        expenses: filtered,
-                      });
-                    }}
-                  />
-                ),
-              },
-            ]}
+          <ReportDetailDialog
+            open={detailModal !== null && detailModal.open}
+            onOpenChange={(open) => {
+              if (!open) setDetailModal(null);
+            }}
+            title={detailModal?.title ?? ""}
+            subtitle={periodLabel}
+            expenses={detailModal?.expenses ?? []}
+            categories={categories}
+            onSelectExpense={(exp) => setSelectedExpense(exp)}
           />
-        </>
-      )}
 
-      <ReportDetailDialog
-        open={detailModal !== null && detailModal.open}
-        onOpenChange={(open) => {
-          if (!open) setDetailModal(null);
-        }}
-        title={detailModal?.title ?? ""}
-        subtitle={periodLabel}
-        expenses={detailModal?.expenses ?? []}
-        categories={categories}
-        onSelectExpense={(exp) => setSelectedExpense(exp)}
-      />
-
-      <ExpenseDetailDialog
-        expense={selectedExpense}
-        open={selectedExpense !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedExpense(null);
-        }}
-      />
-
-      {/* F22 — Fechamento do período imprimível (folha de estilo @media print) */}
-      <Modal
-        open={closeOpen}
-        onOpenChange={setCloseOpen}
-        title="Fechamento do período"
-        description={`Fechamento detalhado de ${periodLabel}: resumo executivo + cada gasto por categoria e dia, com método de pagamento — pronto para imprimir ou salvar em PDF.`}
-        size="xl"
-        hideCalculator
-      >
-        <div className="mt-4">
-          <MonthlyClosePrintView
-            periodLabel={periodLabel}
-            totals={closeTotals}
-            expenseCount={expenses.length}
-            incomeCount={incomes.length}
-            categories={closeCategories}
-            paidInvoices={closeInvoices}
-            detailedCategories={closeDetailedCategories}
+          <ExpenseDetailDialog
+            expense={selectedExpense}
+            open={selectedExpense !== null}
+            onOpenChange={(open) => {
+              if (!open) setSelectedExpense(null);
+            }}
           />
-        </div>
-        <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setCloseOpen(false)} className="w-full sm:w-auto">
-            Fechar
-          </Button>
-          <Button type="button" onClick={() => window.print()} className="gap-2 w-full sm:w-auto justify-center">
-            <Printer className="size-4" aria-hidden="true" />
-            <span>Imprimir / Salvar PDF</span>
-          </Button>
-        </div>
-      </Modal>
 
-      {/* Portal de impressão (F22 evolução): o documento sai do modal e vai
-          para o body como `.print-sheet` — na impressão só ele aparece, em
-          fluxo normal, paginando por TODAS as páginas (sem cortar lançamentos). */}
-      <PrintSheet open={closeOpen}>
-        <MonthlyClosePrintView
-          periodLabel={periodLabel}
-          totals={closeTotals}
-          expenseCount={expenses.length}
-          incomeCount={incomes.length}
-          categories={closeCategories}
-          paidInvoices={closeInvoices}
-          detailedCategories={closeDetailedCategories}
-        />
-      </PrintSheet>
+          {/* F22 — Fechamento do período imprimível (folha de estilo @media print) */}
+          <Modal
+            open={closeOpen}
+            onOpenChange={setCloseOpen}
+            title="Fechamento do período"
+            description={`Fechamento detalhado de ${periodLabel}: resumo executivo + cada gasto por categoria e dia, com método de pagamento — pronto para imprimir ou salvar em PDF.`}
+            size="xl"
+            hideCalculator
+          >
+            <div className="mt-4">
+              <MonthlyClosePrintView
+                periodLabel={periodLabel}
+                totals={closeTotals}
+                expenseCount={expenses.length}
+                incomeCount={incomes.length}
+                categories={closeCategories}
+                paidInvoices={closeInvoices}
+                detailedCategories={closeDetailedCategories}
+              />
+            </div>
+            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setCloseOpen(false)} className="w-full sm:w-auto">
+                Fechar
+              </Button>
+              <Button type="button" onClick={() => window.print()} className="gap-2 w-full sm:w-auto justify-center">
+                <Printer className="size-4" aria-hidden="true" />
+                <span>Imprimir / Salvar PDF</span>
+              </Button>
+            </div>
+          </Modal>
+
+          {/* Portal de impressão (F22 evolução): o documento sai do modal e vai
+              para o body como `.print-sheet` — na impressão só ele aparece, em
+              fluxo normal, paginando por TODAS as páginas (sem cortar lançamentos). */}
+          <PrintSheet open={closeOpen}>
+            <MonthlyClosePrintView
+              periodLabel={periodLabel}
+              totals={closeTotals}
+              expenseCount={expenses.length}
+              incomeCount={incomes.length}
+              categories={closeCategories}
+              paidInvoices={closeInvoices}
+              detailedCategories={closeDetailedCategories}
+            />
+          </PrintSheet>
     </div>
   );
 }

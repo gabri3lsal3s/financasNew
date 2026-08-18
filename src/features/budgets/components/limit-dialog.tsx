@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Edit2 } from "lucide-react";
 import { Alert, Button, Modal, MoneyInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { suggestCategory, suggestLimitCents } from "@/domain/budgets";
@@ -18,6 +19,8 @@ export interface LimitDialogProps {
   monthlyIncomeCents: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Permite abrir o formulário cadastral da categoria (nome, cor, ícone). */
+  onEditCategory?: (category: Category) => void;
 }
 
 interface LimitDialogContentProps {
@@ -27,6 +30,7 @@ interface LimitDialogContentProps {
   inherited: boolean;
   monthlyIncomeCents: number;
   onClose: () => void;
+  onEditCategory?: (category: Category) => void;
 }
 
 function LimitDialogContent({
@@ -36,6 +40,7 @@ function LimitDialogContent({
   inherited,
   monthlyIncomeCents,
   onClose,
+  onEditCategory,
 }: LimitDialogContentProps) {
   const [cents, setCents] = useState(currentLimitCents);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +111,25 @@ function LimitDialogContent({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-2 pt-2">
+      {onEditCategory ? (
+        <div className="flex items-center justify-between border-t border-border pt-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground hover:text-foreground gap-1.5 px-0"
+            onClick={() => {
+              onClose();
+              onEditCategory(category);
+            }}
+          >
+            <Edit2 className="size-3.5" aria-hidden="true" />
+            <span>Editar detalhes da categoria (nome, cor, ícone)</span>
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-2 pt-1">
         {!inherited && currentLimitCents > 0 ? (
           <Button type="button" variant="ghost" className="text-critical hover:text-critical" onClick={() => void handleRemove()}>
             Remover limite
@@ -136,6 +159,7 @@ export function LimitDialog({
   monthlyIncomeCents,
   open,
   onOpenChange,
+  onEditCategory,
 }: LimitDialogProps) {
   return (
     <Modal
@@ -153,8 +177,10 @@ export function LimitDialog({
           inherited={inherited}
           monthlyIncomeCents={monthlyIncomeCents}
           onClose={() => onOpenChange(false)}
+          onEditCategory={onEditCategory}
         />
       ) : null}
     </Modal>
   );
 }
+

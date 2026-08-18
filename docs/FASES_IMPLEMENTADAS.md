@@ -311,6 +311,23 @@
      - **Mapeamento Manual Direto:** O Passo 2 aplica diretamente a seleção de colunas do usuário sem reexecutar o sniffer automático.
   6. **Qualidade & Testes:** Suíte completa com 154 arquivos e 1.254 testes (100% verde) + typecheck, lint e build de produção limpos.
 
+---
+
+## Evolução — Padronização Visual Global, Harmonização de Headers e Reorganização de Navegação (2026-08-18)
+
+- **Problema:** Com a evolução do app, algumas telas possuíam cabeçalhos inconsistentes, banners redundantes ocupando espaço vertical nobre, excesso de abas horizontais no mobile (ex.: 7 abas em Configurações) e ordenação não ideal de seções e alertas.
+- **Solução:**
+  1. **Padronização Global de Headers:** Hierarquia visual unificada com `h1` em Sora (`font-display font-bold text-xl sm:text-2xl`) + subtítulo conciso em Inter (`text-xs text-muted-foreground sm:text-sm`) e botões de ação alinhados à direita em todas as páginas secundárias (`Relatórios`, `Insights`, `Lembretes`, `Dívidas`, `Investimentos`, `Categorias`, `Configurações`).
+  2. **Enxugamento de Navegação & Abas:**
+     - **Configurações (`/configuracoes`):** Consolidação das 7 abas dispersas em 3 blocos lógicos harmoniosos (*Personalização*, *Interface*, *Conta & Dados*).
+     - **Categorias (`/orcamentos`):** Renomeado no menu para "Categorias" e abas simplificadas para *Despesas* e *Rendas*; despesas ordenadas pelo percentual consumido do orçamento.
+     - **Relatórios (`/relatorios`):** Botão de fechamento movido para o topo e abas analíticas reordenadas com foco em valor (*Por categoria* $\rightarrow$ *Por encargos/juros* $\rightarrow$ *Por forma de pagamento* $\rightarrow$ *Por dia da semana*).
+     - **Início (`/`):** Gráfico de Fluxo Diário priorizado em primeiro lugar, seguido pelo Donut de Categorias e resumo financeiro compacto.
+     - **Dívidas (`/dividas`):** Resumo com 3 cards de saldo pendente (*A pagar pendente*, *A receber pendente*, *Saldo pendente líquido*).
+     - **Insights (`/insights`):** Alertas de ação imediata posicionados no topo da aba de diagnósticos, com recolhimento inteligente (exibição dos 2 mais importantes com expansão/recolhimento sob demanda) e remoção de banners informativos redundantes.
+     - **Lembretes (`/lembretes`):** Ordenação estrita por gravidade (atrasados $\rightarrow$ próximos $\rightarrow$ futuros).
+  3. **Qualidade & Testes:** Suíte completa com 168 arquivos e 1.335 testes 100% aprovados, typecheck e lint limpos.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

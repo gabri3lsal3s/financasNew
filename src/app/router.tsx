@@ -67,8 +67,9 @@ export function AppRouter() {
 
         {/* Áreas autenticadas */}
         <Route element={<RequireAuth />}>
-          {/* Redirecionamento de compatibilidade para atalhos PWA / links legados */}
+          {/* Redirecionamento de compatibilidade para atalhos PWA / links legados / rotas unificadas */}
           <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
+          <Route path="/categorias" element={<Navigate to="/orcamentos" replace />} />
           <Route element={<PageShell />}>
             {appRoutes.map((route) => (
               <Route key={route.path} path={route.path} element={<route.Component />} />

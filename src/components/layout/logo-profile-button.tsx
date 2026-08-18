@@ -118,7 +118,12 @@ export function LogoProfileButton() {
         hideCalculator
         size="sm"
       >
-        <div className="mt-4 space-y-5">
+        <div className="mt-2 space-y-5">
+          {/* Assinatura da marca no topo do perfil */}
+          <div className="flex items-center justify-between rounded-xl border border-border/70 bg-surface-subtle/80 p-3.5 shadow-2xs">
+            <BrandLogo markClassName="size-9" showSubtitle />
+          </div>
+
           {/* Card de identidade do usuário */}
           <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/8 via-surface to-accent/5 p-5">
             {/* Decoração de fundo */}

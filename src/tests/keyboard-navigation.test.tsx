@@ -62,6 +62,21 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useAllCategories: () => ({
+    data: categories,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCategoryUsage: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCreateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDebts: () => ({
     data: [
       { id: "d1", name: "Conta de luz", type: "payable", amount: 200, due_date: "2026-08-20", paid_at: null, expense_id: null },
@@ -173,11 +188,11 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     const user = userEvent.setup();
     render(<BudgetsPage />);
 
-    const tab = screen.getByRole("tab", { name: "Metas de renda" });
+    const tab = screen.getByRole("tab", { name: "Rendas" });
     tab.focus();
     expect(tab).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(screen.getByRole("tab", { name: "Metas de renda" })).toHaveAttribute("data-state", "active");
+    expect(screen.getByRole("tab", { name: "Rendas" })).toHaveAttribute("data-state", "active");
   });
 
   it("DebtsPage: ações por linha alcançáveis por teclado", async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, PiggyBank, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, Check, PiggyBank, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
@@ -22,33 +22,50 @@ import { currentMonth } from "@/lib/date";
 import { triggerHaptic } from "@/services/haptics";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
-import { useBudgets, useCategories, useExpenses, useIncomeGoals, useIncomes, useReallocateBudget, useSetIncomeGoal, useRemoveIncomeGoal } from "@/state";
+import { cn } from "@/lib/utils";
+import {
+  useAllCategories,
+  useBudgets,
+  useCategories,
+  useCategoryUsage,
+  useExpenses,
+  useIncomeGoals,
+  useIncomes,
+  useReallocateBudget,
+  useSetIncomeGoal,
+  useRemoveIncomeGoal,
+} from "@/state";
 import { LimitDialog } from "@/features/budgets/components/limit-dialog";
+import { CategoryFormDialog } from "@/features/categories/components/category-form-dialog";
 import type { Category } from "@/types";
 
-/** Orçamentos (§3.5.2) e metas de renda (§3.5.3). */
+/** Categorias & Orçamentos (§3.5.2) e metas de renda (§3.5.3) — Opção C unificada. */
 export function BudgetsPage() {
   const [month, setMonth] = useState(currentMonth());
   const [tab, setTab] = useState<"limits" | "goals">("limits");
   const [limitFor, setLimitFor] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [reallocateOpen, setReallocateOpen] = useState(false);
   const [reallocateError, setReallocateError] = useState<string | null>(null);
 
   const budgetsQuery = useBudgets();
   const goalsQuery = useIncomeGoals();
+  const allCategoriesQuery = useAllCategories();
   const expenseCategories = useCategories("expense");
   const incomeCategories = useCategories("income");
   const expensesQuery = useExpenses(month);
   const incomesQuery = useIncomes(month);
+  const usageQuery = useCategoryUsage(editingCategory ? editingCategory.id : null);
 
   const reallocate = useReallocateBudget();
 
-  const error = budgetsQuery.error ?? goalsQuery.error ?? expensesQuery.error ?? incomesQuery.error;
+  const error = budgetsQuery.error ?? goalsQuery.error ?? expensesQuery.error ?? incomesQuery.error ?? allCategoriesQuery.error;
 
   const budgets = budgetsQuery.data ?? [];
 
   // Limites agrupados por categoria: cada uma herda APENAS do próprio histórico.
-  // Helpers compartilhados (F19) — mesma agregação de Overview/Insights.
   const limitsByCategory = budgetLimitsByCategory(budgets);
 
   const totalExpensesCents = (expensesQuery.data ?? []).reduce((acc, e) => acc + numberToCents(e.value * e.report_weight), 0);
@@ -61,33 +78,43 @@ export function BudgetsPage() {
   }
 
   const categories = expenseCategories.data ?? [];
+  const allCategories = allCategoriesQuery.data ?? [];
+  const siblings = allCategories.filter(
+    (c) => c.type === (editingCategory?.type ?? (tab === "limits" ? "expense" : "income")) && c.id !== editingCategory?.id,
+  );
 
-  // Categorias de despesa visíveis: com limite efetivo (herdado ou próprio)
-  // OU gasto no mês — sem limite definido, a linha aparece para o usuário
-  // poder criar o orçamento ali mesmo.
-  const rows = categories
-    .map((category) => {
-      const ownHistory = limitsByCategory.get(category.id) ?? [];
-      return {
-        category,
-        limitCents: resolveEffectiveLimit(ownHistory, month),
-        spentCents: spentByCategory.get(category.id) ?? 0,
-        inherited: isInheritedLimit(ownHistory, month),
-      };
-    })
-    .filter((row) => row.limitCents > 0 || row.spentCents > 0);
+  // Categorias de despesa com limite ou gasto
+  const allExpenseRows = categories.map((category) => {
+    const ownHistory = limitsByCategory.get(category.id) ?? [];
+    return {
+      category,
+      limitCents: resolveEffectiveLimit(ownHistory, month),
+      spentCents: spentByCategory.get(category.id) ?? 0,
+      inherited: isInheritedLimit(ownHistory, month),
+    };
+  });
 
-  const totalLimitsCents = rows.reduce((acc, row) => acc + row.limitCents, 0);
+  const activeRows = allExpenseRows
+    .filter((row) => row.limitCents > 0 || row.spentCents > 0)
+    .sort((a, b) => {
+      const pctA = a.limitCents > 0 ? a.spentCents / a.limitCents : a.spentCents > 0 ? 999 : 0;
+      const pctB = b.limitCents > 0 ? b.spentCents / b.limitCents : b.spentCents > 0 ? 999 : 0;
+      return pctB - pctA;
+    });
+  const unbudgetedRows = allExpenseRows.filter((row) => row.limitCents === 0 && row.spentCents === 0);
+
+  const rows = showAllCategories ? allExpenseRows : activeRows;
+
+  const totalLimitsCents = activeRows.reduce((acc, row) => acc + row.limitCents, 0);
   const globalPercent = globalUsedPercent(totalExpensesCents, totalLimitsCents, totalIncomesCents);
 
-  // Realocação opera sobre limites ARMAZENADOS no mês (o RPC lê do banco) —
-  // categorias com limite só herdado ficam de fora (origem não teria valor a reduzir).
+  // Realocação opera sobre limites ARMAZENADOS no mês
   const storedLimitsByCategory = new Map<string, number>();
   for (const budget of budgets) {
     if (budget.month === month) storedLimitsByCategory.set(budget.category_id, numberToCents(budget.limit));
   }
   const suggestion = reallocationSuggestion(
-    rows.map((row) => ({
+    activeRows.map((row) => ({
       categoryId: row.category.id,
       limitCents: storedLimitsByCategory.get(row.category.id) ?? 0,
       spentCents: row.spentCents,
@@ -118,18 +145,45 @@ export function BudgetsPage() {
     if (goal.month === month) goalsByCategory.set(goal.category_id, numberToCents(goal.expected));
   }
 
+  const handleOpenCreateCategory = () => {
+    setEditingCategory(null);
+    setCategoryFormOpen(true);
+  };
+
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setCategoryFormOpen(true);
+  };
+
   return (
     <div className="flex flex-col gap-6">
-      {/* F12 — sem header visual: abas + seletor de mês direto; título apenas p/ leitores de tela. */}
-      <h1 className="sr-only">Orçamentos</h1>
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Categorias
+          </h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Gestão de categorias, limites de gastos e expectativas de renda
+          </p>
+        </div>
+        <Button
+          size="sm"
+          aria-label="Nova categoria"
+          onClick={handleOpenCreateCategory}
+          className="shrink-0 self-start sm:self-auto gap-1.5"
+        >
+          <Plus aria-hidden="true" className="size-4" />
+          <span>Nova categoria</span>
+        </Button>
+      </header>
 
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as "limits" | "goals")}
         swipeable
         items={[
-          { value: "limits", label: "Limites de despesa", content: null },
-          { value: "goals", label: "Metas de renda", content: null },
+          { value: "limits", label: "Despesas", content: null },
+          { value: "goals", label: "Rendas", content: null },
         ]}
       />
 
@@ -148,7 +202,7 @@ export function BudgetsPage() {
                 </span>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total de limites do mês</p>
-                  <p className="text-[11px] text-muted-foreground">{rows.length} {rows.length === 1 ? "categoria ativa" : "categorias ativas"}</p>
+                  <p className="text-[11px] text-muted-foreground">{activeRows.length} {activeRows.length === 1 ? "categoria ativa" : "categorias ativas"}</p>
                 </div>
               </div>
               <p className="num text-sm font-medium text-muted-foreground">{Math.round(globalPercent)}% usado</p>
@@ -171,7 +225,13 @@ export function BudgetsPage() {
             <EmptyState
               icon={<PiggyBank className="size-6" aria-hidden="true" />}
               title="Nenhum orçamento"
-              description="Defina um limite mensal por categoria de despesa para acompanhar os gastos."
+              description="Defina um limite mensal por categoria de despesa para acompanhar os gastos ou crie uma nova categoria."
+              action={
+                <Button size="sm" onClick={handleOpenCreateCategory}>
+                  <Plus className="size-4" aria-hidden="true" />
+                  Nova categoria
+                </Button>
+              }
             />
           ) : (
             <div className="flex flex-col gap-3">
@@ -214,6 +274,22 @@ export function BudgetsPage() {
                   </div>
                 );
               })}
+
+              {unbudgetedRows.length > 0 && (
+                <div className="flex justify-center pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllCategories((prev) => !prev)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {showAllCategories
+                      ? "Ocultar categorias sem limite ou gasto no mês"
+                      : `Ver outras ${unbudgetedRows.length} categorias cadastradas`}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -253,6 +329,12 @@ export function BudgetsPage() {
               icon={<PiggyBank className="size-6" aria-hidden="true" />}
               title="Sem categorias de renda"
               description="Crie categorias de renda para definir metas."
+              action={
+                <Button size="sm" onClick={handleOpenCreateCategory}>
+                  <Plus className="size-4" aria-hidden="true" />
+                  Nova categoria
+                </Button>
+              }
             />
           ) : (
             (incomeCategories.data ?? []).map((category) => {
@@ -268,6 +350,7 @@ export function BudgetsPage() {
                   expectedCents={expectedCents}
                   statusLabel={expectedCents > 0 ? INCOME_GOAL_LABELS[status] : "Sem meta"}
                   deficit={status === "deficit"}
+                  onEditCategory={handleEditCategory}
                 />
               );
             })
@@ -285,8 +368,21 @@ export function BudgetsPage() {
           monthlyIncomeCents={totalIncomesCents}
           open={limitFor !== null}
           onOpenChange={(next) => !next && setLimitFor(null)}
+          onEditCategory={handleEditCategory}
         />
       ) : null}
+
+      <CategoryFormDialog
+        category={editingCategory}
+        defaultType={tab === "limits" ? "expense" : "income"}
+        open={categoryFormOpen}
+        onOpenChange={(next) => {
+          setCategoryFormOpen(next);
+          if (!next) setEditingCategory(null);
+        }}
+        siblings={editingCategory ? siblings : undefined}
+        usage={editingCategory ? (usageQuery.data ?? null) : undefined}
+      />
 
       <ConfirmDialog
         open={reallocateOpen}
@@ -318,6 +414,7 @@ function IncomeGoalRow({
   expectedCents,
   statusLabel,
   deficit,
+  onEditCategory,
 }: {
   category: Category;
   month: string;
@@ -325,6 +422,7 @@ function IncomeGoalRow({
   expectedCents: number;
   statusLabel: string;
   deficit: boolean;
+  onEditCategory?: (category: Category) => void;
 }) {
   const [cents, setCents] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -367,7 +465,16 @@ function IncomeGoalRow({
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0">
       {goalError ? <Alert variant="error">{goalError}</Alert> : null}
       <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-        <div className="flex items-center gap-2 min-w-0">
+        <div
+          role={onEditCategory ? "button" : undefined}
+          tabIndex={onEditCategory ? 0 : undefined}
+          onClick={onEditCategory ? () => onEditCategory(category) : undefined}
+          className={cn(
+            "flex items-center gap-2 min-w-0 rounded-lg transition-opacity",
+            onEditCategory && "cursor-pointer hover:opacity-80",
+          )}
+          title={onEditCategory ? "Clique para editar esta categoria" : undefined}
+        >
           <CategoryIcon icon={category.icon} color={category.color} />
           <p className="truncate text-sm font-medium text-foreground min-w-0">{category.name}</p>
         </div>

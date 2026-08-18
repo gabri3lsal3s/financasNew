@@ -1,10 +1,7 @@
 
 import {
   Palette,
-  Sparkles,
   Volume2,
-  LayoutDashboard,
-  User as UserIcon,
   Database,
   Check,
   Moon,
@@ -18,7 +15,6 @@ import {
   RotateCcw,
   Zap,
   Sliders,
-  Bell,
   Monitor,
   PanelTop,
   Image as ImageIcon,
@@ -175,7 +171,13 @@ const REMINDER_DAYS_OPTIONS: SelectOption[] = [
 
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "aparencia";
+  const tabParam = searchParams.get("tab");
+  const activeTab =
+    tabParam === "interface" || tabParam === "dashboard" || tabParam === "notificacoes" || tabParam === "lembretes"
+      ? "interface"
+      : tabParam === "dados" || tabParam === "perfil" || tabParam === "conta"
+        ? "dados"
+        : "personalizacao";
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab }, { replace: true });
   };
@@ -507,8 +509,8 @@ export function SettingsPage() {
 
   const tabItems = [
     {
-      value: "aparencia",
-      label: "Aparência",
+      value: "personalizacao",
+      label: "Personalização",
       icon: <Palette className="size-4" />,
       content: (
         <div className="space-y-6">
@@ -677,185 +679,7 @@ export function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Atalhos do Header */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <PanelTop className="size-4 text-primary" />
-                <span>Atalhos do Header</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* --- Logo (sem limite de slot) --- */}
-              {(() => {
-                const isChecked = visual.headerButtons.logo;
-                return (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleToggleHeaderButton("logo", "Logo no Header", !isChecked)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleToggleHeaderButton("logo", "Logo no Header", !isChecked);
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
-                      isChecked
-                        ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                        : "border-border bg-surface hover:bg-surface-hover",
-                    )}
-                  >
-                    <div className="flex items-center gap-3 pr-4 min-w-0">
-                      <ImageIcon
-                        className={cn("size-4 shrink-0", isChecked ? "text-primary" : "text-muted-foreground")}
-                        aria-hidden="true"
-                      />
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm text-foreground">Logo no Header</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          Exibe a marca do aplicativo no cabeçalho em telas menores (mobile e tablet).
-                        </div>
-                      </div>
-                    </div>
-                    <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={(checked) => handleToggleHeaderButton("logo", "Logo no Header", Boolean(checked))}
-                      aria-label="Logo no Header"
-                    />
-                  </div>
-                );
-              })()}
-
-              {/* --- Botões de ação com limite de 2 slots --- */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-0.5">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Botões de Ação
-                  </span>
-                  {(() => {
-                    const activeSlots = [
-                      visual.headerButtons.calculatorButton,
-                      visual.headerButtons.themeToggle,
-                      visual.headerButtons.privacyToggle,
-                    ].filter(Boolean).length;
-                    return (
-                      <span className={cn(
-                        "text-xs font-medium tabular-nums",
-                        activeSlots >= 2 ? "text-warning-text" : "text-muted-foreground",
-                      )}>
-                        {activeSlots}/2 slots
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                {(
-                  [
-                    {
-                      key: "calculatorButton" as const,
-                      label: "Calculadora",
-                      desc: "Exibe o botão de calculadora flutuante no cabeçalho.",
-                      icon: Calculator,
-                    },
-                    {
-                      key: "themeToggle" as const,
-                      label: "Alternar Tema Rápido",
-                      desc: "Adiciona o botão de troca de tema (Claro / Escuro / OLED / Sistema) direto no cabeçalho.",
-                      icon: Monitor,
-                    },
-                    {
-                      key: "privacyToggle" as const,
-                      label: "Ocultar Valores (Privacidade)",
-                      desc: "Adiciona o botão de ofuscamento de saldos e lançamentos ao cabeçalho. Atalho: tecla P.",
-                      icon: Eye,
-                    },
-                  ] satisfies {
-                    key: keyof HeaderButtonsConfig;
-                    label: string;
-                    desc: string;
-                    icon: typeof Monitor;
-                  }[]
-                ).map((item) => {
-                  const isChecked = visual.headerButtons[item.key];
-                  const activeSlots = [
-                    visual.headerButtons.calculatorButton,
-                    visual.headerButtons.themeToggle,
-                    visual.headerButtons.privacyToggle,
-                  ].filter(Boolean).length;
-                  const isDisabled = !isChecked && activeSlots >= 2;
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.key}
-                      role="button"
-                      tabIndex={isDisabled ? -1 : 0}
-                      aria-disabled={isDisabled}
-                      onClick={() => {
-                        if (isDisabled) return;
-                        handleToggleHeaderButton(item.key, item.label, !isChecked);
-                      }}
-                      onKeyDown={(e) => {
-                        if (isDisabled) return;
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleToggleHeaderButton(item.key, item.label, !isChecked);
-                        }
-                      }}
-                      className={cn(
-                        "flex items-center justify-between p-3.5 rounded-xl border transition-colors select-none",
-                        isDisabled
-                          ? "border-border bg-surface opacity-50 cursor-not-allowed"
-                          : isChecked
-                            ? "border-primary/40 bg-primary/5 hover:bg-primary/10 cursor-pointer"
-                            : "border-border bg-surface hover:bg-surface-hover cursor-pointer",
-                      )}
-                    >
-                      <div className="flex items-center gap-3 pr-4 min-w-0">
-                        <Icon
-                          className={cn(
-                            "size-4 shrink-0",
-                            isChecked ? "text-primary" : "text-muted-foreground",
-                          )}
-                          aria-hidden="true"
-                        />
-                        <div className="min-w-0">
-                          <div className="font-semibold text-sm text-foreground">{item.label}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {isDisabled ? "Limite de 2 atalhos de ação atingido." : item.desc}
-                          </div>
-                        </div>
-                      </div>
-                      <Checkbox
-                        checked={isChecked}
-                        disabled={isDisabled}
-                        onCheckedChange={(checked) => {
-                          if (!isDisabled) handleToggleHeaderButton(item.key, item.label, Boolean(checked));
-                        }}
-                        aria-label={item.label}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Nota sobre o comportamento das notificações */}
-              <p className="text-xs text-muted-foreground px-0.5 leading-relaxed">
-                O sino de notificações aparece automaticamente quando há lembretes pendentes e ocupa
-                1 slot, deslocando temporariamente o botão de menor prioridade.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      ),
-    },
-    {
-      value: "movimento",
-      label: "Movimento",
-      icon: <Sparkles className="size-4" />,
-      content: (
-        <div className="space-y-6">
+          {/* Nível de Fluidez & Animações */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -928,15 +752,8 @@ export function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      ),
-    },
-    {
-      value: "sensorial",
-      label: "Sensorial",
-      icon: <Volume2 className="size-4" />,
-      content: (
-        <div className="space-y-6">
+
+          {/* Feedback Sensorial (Som & Vibração) */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
@@ -1180,11 +997,182 @@ export function SettingsPage() {
       ),
     },
     {
-      value: "dashboard",
-      label: "Dashboard",
-      icon: <LayoutDashboard className="size-4" />,
+      value: "interface",
+      label: "Interface",
+      icon: <Sliders className="size-4" />,
       content: (
         <div className="space-y-6">
+          {/* Atalhos do Header */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <PanelTop className="size-4 text-primary" />
+                <span>Atalhos do Header</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* --- Logo (sem limite de slot) --- */}
+              {(() => {
+                const isChecked = visual.headerButtons.logo;
+                return (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleToggleHeaderButton("logo", "Logo no Header", !isChecked)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleToggleHeaderButton("logo", "Logo no Header", !isChecked);
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
+                      isChecked
+                        ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                        : "border-border bg-surface hover:bg-surface-hover",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 pr-4 min-w-0">
+                      <ImageIcon
+                        className={cn("size-4 shrink-0", isChecked ? "text-primary" : "text-muted-foreground")}
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm text-foreground">Logo no Header</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Exibe a marca do aplicativo no cabeçalho em telas menores (mobile e tablet).
+                        </div>
+                      </div>
+                    </div>
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={(checked) => handleToggleHeaderButton("logo", "Logo no Header", Boolean(checked))}
+                      aria-label="Logo no Header"
+                    />
+                  </div>
+                );
+              })()}
+
+              {/* --- Botões de ação com limite de 2 slots --- */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Botões de Ação
+                  </span>
+                  {(() => {
+                    const activeSlots = [
+                      visual.headerButtons.calculatorButton,
+                      visual.headerButtons.themeToggle,
+                      visual.headerButtons.privacyToggle,
+                    ].filter(Boolean).length;
+                    return (
+                      <span className={cn(
+                        "text-xs font-medium tabular-nums",
+                        activeSlots >= 2 ? "text-warning-text" : "text-muted-foreground",
+                      )}>
+                        {activeSlots}/2 slots
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                {(
+                  [
+                    {
+                      key: "calculatorButton" as const,
+                      label: "Calculadora",
+                      desc: "Exibe o botão de calculadora flutuante no cabeçalho.",
+                      icon: Calculator,
+                    },
+                    {
+                      key: "themeToggle" as const,
+                      label: "Alternar Tema Rápido",
+                      desc: "Adiciona o botão de troca de tema (Claro / Escuro / OLED / Sistema) direto no cabeçalho.",
+                      icon: Monitor,
+                    },
+                    {
+                      key: "privacyToggle" as const,
+                      label: "Ocultar Valores (Privacidade)",
+                      desc: "Adiciona o botão de ofuscamento de saldos e lançamentos ao cabeçalho. Atalho: tecla P.",
+                      icon: Eye,
+                    },
+                  ] satisfies {
+                    key: keyof HeaderButtonsConfig;
+                    label: string;
+                    desc: string;
+                    icon: typeof Monitor;
+                  }[]
+                ).map((item) => {
+                  const isChecked = visual.headerButtons[item.key];
+                  const activeSlots = [
+                    visual.headerButtons.calculatorButton,
+                    visual.headerButtons.themeToggle,
+                    visual.headerButtons.privacyToggle,
+                  ].filter(Boolean).length;
+                  const isDisabled = !isChecked && activeSlots >= 2;
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.key}
+                      role="button"
+                      tabIndex={isDisabled ? -1 : 0}
+                      aria-disabled={isDisabled}
+                      onClick={() => {
+                        if (isDisabled) return;
+                        handleToggleHeaderButton(item.key, item.label, !isChecked);
+                      }}
+                      onKeyDown={(e) => {
+                        if (isDisabled) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleToggleHeaderButton(item.key, item.label, !isChecked);
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center justify-between p-3.5 rounded-xl border transition-colors select-none",
+                        isDisabled
+                          ? "border-border bg-surface opacity-50 cursor-not-allowed"
+                          : isChecked
+                            ? "border-primary/40 bg-primary/5 hover:bg-primary/10 cursor-pointer"
+                            : "border-border bg-surface hover:bg-surface-hover cursor-pointer",
+                      )}
+                    >
+                      <div className="flex items-center gap-3 pr-4 min-w-0">
+                        <Icon
+                          className={cn(
+                            "size-4 shrink-0",
+                            isChecked ? "text-primary" : "text-muted-foreground",
+                          )}
+                          aria-hidden="true"
+                        />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm text-foreground">{item.label}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {isDisabled ? "Limite de 2 atalhos de ação atingido." : item.desc}
+                          </div>
+                        </div>
+                      </div>
+                      <Checkbox
+                        checked={isChecked}
+                        disabled={isDisabled}
+                        onCheckedChange={(checked) => {
+                          if (!isDisabled) handleToggleHeaderButton(item.key, item.label, Boolean(checked));
+                        }}
+                        aria-label={item.label}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Nota sobre o comportamento das notificações */}
+              <p className="text-xs text-muted-foreground px-0.5 leading-relaxed">
+                O sino de notificações aparece automaticamente quando há lembretes pendentes e ocupa
+                1 slot, deslocando temporariamente o botão de menor prioridade.
+              </p>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
@@ -1234,15 +1222,8 @@ export function SettingsPage() {
               })}
             </CardContent>
           </Card>
-        </div>
-      ),
-    },
-    {
-      value: "notificacoes",
-      label: "Lembretes",
-      icon: <Bell className="size-4" />,
-      content: (
-        <div className="space-y-6">
+
+          {/* Lembretes & Notificações Automáticas */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
@@ -1386,9 +1367,9 @@ export function SettingsPage() {
       ),
     },
     {
-      value: "perfil",
-      label: "Perfil",
-      icon: <UserIcon className="size-4" />,
+      value: "dados",
+      label: "Conta & Dados",
+      icon: <Database className="size-4" />,
       content: (
         <div className="space-y-6">
           <Card>
@@ -1420,15 +1401,7 @@ export function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      ),
-    },
-    {
-      value: "dados",
-      label: "Dados",
-      icon: <Database className="size-4" />,
-      content: (
-        <div className="space-y-6">
+
           <ExportDataHub
             onExportJson={handleExportJson}
             onExportCsv={handleExportCsv}
@@ -1468,9 +1441,11 @@ export function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-foreground">Configurações & Personalização</h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie temas, paletas de acento, micro-interações e preferências do seu Guia Financeiro.
+        <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+          Configurações
+        </h1>
+        <p className="text-xs text-muted-foreground sm:text-sm">
+          Personalização visual, preferências de interface e gestão de dados
         </p>
       </header>
 

@@ -1,7 +1,16 @@
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { ReportsPage } from "./reports-page";
+
+function renderReports(initialEntry = "/relatorios") {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <ReportsPage />
+    </MemoryRouter>,
+  );
+}
 
 const expenses = [
   { id: "e1", date: "2026-08-03", category_id: "c1", value: 1000, report_weight: 1, payment_method: "pix" },
@@ -79,25 +88,23 @@ vi.mock("@/state", () => ({
 
 describe("ReportsPage (relatórios §3.6)", () => {
   it("agrega por categoria com totais e merge de dívidas pagas", () => {
-    render(<ReportsPage />);
+    renderReports();
     // Categorias nas agregações.
     expect(screen.getByText("Alimentação")).toBeInTheDocument();
     expect(screen.getByText("Lazer")).toBeInTheDocument();
     // Resumo: rendas 5.000 + recebível pago 1.000 = 6.000
     expect(screen.getByText("R$ 6.000,00")).toBeInTheDocument();
-    // Merge: dívida paga somada → aparece a nota.
-    expect(screen.getByText(/dívida\(s\) paga\(s\)/)).toBeInTheDocument();
   });
 
   it("mostra comparativo com o mês anterior", () => {
-    render(<ReportsPage />);
+    renderReports();
     expect(screen.getByText("Rendas")).toBeInTheDocument();
     expect(screen.getByText("Despesas")).toBeInTheDocument();
   });
 
   it("permite alternar para a aba 'Por ano' e exibir dados anuais", async () => {
     const user = userEvent.setup();
-    render(<ReportsPage />);
+    renderReports();
 
     const yearTab = screen.getByRole("tab", { name: /Por ano/i });
     await user.click(yearTab);
@@ -117,7 +124,7 @@ describe("ReportsPage (relatórios §3.6)", () => {
 
   it("permite alternar entre as abas de agregação (Categoria, Forma, Dia da semana)", async () => {
     const user = userEvent.setup();
-    render(<ReportsPage />);
+    renderReports();
 
     // Aba Categoria ativa por padrão
     expect(screen.getByText("Alimentação")).toBeInTheDocument();
@@ -137,7 +144,7 @@ describe("ReportsPage (relatórios §3.6)", () => {
 
   it("abre o modal de detalhamento ao clicar em uma categoria", async () => {
     const user = userEvent.setup();
-    render(<ReportsPage />);
+    renderReports();
 
     const alimentacaoRow = screen.getByText("Alimentação");
     await user.click(alimentacaoRow);
@@ -148,7 +155,7 @@ describe("ReportsPage (relatórios §3.6)", () => {
 
   it("abre o modal de detalhamento ao clicar em uma forma de pagamento", async () => {
     const user = userEvent.setup();
-    render(<ReportsPage />);
+    renderReports();
 
     const formaTab = screen.getByRole("tab", { name: /Por forma/i });
     await user.click(formaTab);
@@ -162,7 +169,7 @@ describe("ReportsPage (relatórios §3.6)", () => {
 
   it("abre o modal de detalhamento ao clicar em um dia da semana", async () => {
     const user = userEvent.setup();
-    render(<ReportsPage />);
+    renderReports();
 
     const weekdayTab = screen.getByRole("tab", { name: /Por dia da semana/i });
     await user.click(weekdayTab);

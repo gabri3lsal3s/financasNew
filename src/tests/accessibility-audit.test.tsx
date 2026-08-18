@@ -82,6 +82,21 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useAllCategories: () => ({
+    data: categories,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCategoryUsage: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCreateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDebts: () => ({
     data: [
       { id: "d1", name: "Conta de luz", type: "payable", amount: 200, due_date: "2026-08-20", paid_at: null, expense_id: null },

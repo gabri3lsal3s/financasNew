@@ -16,8 +16,6 @@ const pageLoaders: Record<string, () => Promise<PageModule>> = {
   "/cartoes": () => import("@/features/cards/pages/cards-page").then((m) => ({ default: m.CardsPage })),
   "/dividas": () => import("@/features/debts/pages/debts-page").then((m) => ({ default: m.DebtsPage })),
   "/orcamentos": () => import("@/features/budgets/pages/budgets-page").then((m) => ({ default: m.BudgetsPage })),
-  "/categorias": () =>
-    import("@/features/categories/pages/categories-page").then((m) => ({ default: m.CategoriesPage })),
   "/relatorios": () => import("@/features/reports/pages/reports-page").then((m) => ({ default: m.ReportsPage })),
   "/insights": () => import("@/features/insights/pages/insights-page").then((m) => ({ default: m.InsightsPage })),
   "/investments": () =>

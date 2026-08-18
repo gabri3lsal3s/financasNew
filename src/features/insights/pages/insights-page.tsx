@@ -7,7 +7,6 @@ import {
   ChevronUp,
   EyeOff,
   Flame,
-  Lightbulb,
   PiggyBank,
   Repeat,
   Sparkles,
@@ -72,6 +71,7 @@ import { cn } from "@/lib/utils";
 export function InsightsPage() {
   const [tab, setTab] = useState("diagnostics");
   const [showIgnored, setShowIgnored] = useState(false);
+  const [expandedWarnings, setExpandedWarnings] = useState(false);
   const month = currentMonth();
 
   const month0 = useExpenses(month);
@@ -320,12 +320,16 @@ export function InsightsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Insights</h1>
-          <p className="text-sm text-muted-foreground">Análise do seu consumo, projeção e corte de gastos.</p>
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Insights
+          </h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Diagnósticos inteligentes, assinaturas recorrentes e projeções de gastos
+          </p>
         </div>
-        <div className="inline-flex items-center gap-1.5 self-start rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground sm:self-auto">
+        <div className="inline-flex items-center gap-1.5 self-start rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground sm:self-auto shrink-0">
           <Calendar className="size-3.5" aria-hidden="true" />
           <span>
             Referência: <strong className="font-medium text-foreground">{monthLabel(month)}</strong>
@@ -359,7 +363,61 @@ export function InsightsPage() {
               label: "Avisos & Diagnósticos",
               content: (
                 <div className="flex flex-col gap-6 min-w-0">
-                  {/* Bloco 1: Diagnóstico Financeiro (Grid 3x2 equilibrado) */}
+                  {/* Bloco 1: Avisos e Recomendações Imediatas */}
+                  <section aria-label="Avisos e recomendações" className="flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Avisos & Recomendações
+                      </h2>
+                      {warnings.length > 2 && (
+                        <span className="text-[11px] text-muted-foreground">
+                          {expandedWarnings ? `${warnings.length} de ${warnings.length}` : `2 de ${warnings.length} alertas`}
+                        </span>
+                      )}
+                    </div>
+                    {warnings.length === 0 ? (
+                      <div className="flex items-center gap-3 rounded-xl border border-positive/30 bg-positive/5 p-4 text-xs">
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong">
+                          <CheckCircle2 className="size-4" aria-hidden="true" />
+                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <p className="font-medium text-foreground">Nenhum aviso no momento.</p>
+                          <p className="text-muted-foreground">Seu ritmo de gastos e orçamentos estão equilibrados neste mês.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {(expandedWarnings ? warnings : warnings.slice(0, 2)).map((w) => (
+                          <Alert key={w.id} variant={w.variant}>
+                            {w.message}
+                          </Alert>
+                        ))}
+                        {warnings.length > 2 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setExpandedWarnings(!expandedWarnings)}
+                            className="self-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mt-0.5"
+                          >
+                            {expandedWarnings ? (
+                              <>
+                                <ChevronUp className="size-3.5" aria-hidden="true" />
+                                <span>Mostrar menos alertas</span>
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="size-3.5" aria-hidden="true" />
+                                <span>Ver mais {warnings.length - 2} {warnings.length - 2 === 1 ? "alerta" : "alertas"}</span>
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Bloco 2: Diagnóstico Financeiro (Grid 3x2 equilibrado) */}
                   <section aria-label="Diagnóstico financeiro" className="flex flex-col gap-3">
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Diagnóstico de Hábitos & Indicadores
@@ -409,32 +467,6 @@ export function InsightsPage() {
                         tone={trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
                       />
                     </div>
-                  </section>
-
-                  {/* Bloco 2: Avisos e Recomendações */}
-                  <section aria-label="Avisos e recomendações" className="flex flex-col gap-2.5">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Avisos & Recomendações
-                    </h2>
-                    {warnings.length === 0 ? (
-                      <div className="flex items-center gap-3 rounded-xl border border-positive/30 bg-positive/5 p-4 text-xs">
-                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong">
-                          <CheckCircle2 className="size-4" aria-hidden="true" />
-                        </span>
-                        <div className="flex flex-col gap-0.5">
-                          <p className="font-medium text-foreground">Nenhum aviso no momento.</p>
-                          <p className="text-muted-foreground">Seu ritmo de gastos e orçamentos estão equilibrados neste mês.</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {warnings.map((w) => (
-                          <Alert key={w.id} variant={w.variant}>
-                            {w.message}
-                          </Alert>
-                        ))}
-                      </div>
-                    )}
                   </section>
                 </div>
               ),
@@ -580,13 +612,6 @@ export function InsightsPage() {
                       ) : null}
                     </section>
                   ) : null}
-
-                  <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3.5 py-2.5 text-xs text-muted-foreground">
-                    <Lightbulb className="size-4 shrink-0 text-warning-strong" aria-hidden="true" />
-                    <span>
-                      O aprendizado persiste: ocorrências ignoradas deixam de contar nas análises e confirmadas ficam marcadas permanentemente.
-                    </span>
-                  </div>
                 </div>
               ),
             },

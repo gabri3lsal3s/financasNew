@@ -18,10 +18,12 @@ export function InvestmentsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Investimentos</h1>
-        <p className="text-sm text-muted-foreground">
-          Consolidação da carteira: posição, rendimentos, limites de alocação e rebalanceamento em um só lugar.
+      <header className="flex flex-col gap-1">
+        <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+          Investimentos
+        </h1>
+        <p className="text-xs text-muted-foreground sm:text-sm">
+          Posição da carteira, rendimentos e rebalanceamento de aportes
         </p>
       </header>
 

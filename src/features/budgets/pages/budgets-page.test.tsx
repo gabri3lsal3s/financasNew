@@ -38,6 +38,21 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useAllCategories: () => ({
+    data: baseCategories,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCategoryUsage: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useCreateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useExpenses: () => ({
     data: [
       { id: "e1", category_id: "c1", value: 1200, report_weight: 1 },
@@ -116,7 +131,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("metas de renda: compara realizado × esperado", async () => {
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Metas de renda" }));
+    await user.click(screen.getByRole("tab", { name: "Rendas" }));
 
     expect(screen.getByText("Salário")).toBeInTheDocument();
     // Realizado R$ 5.000 = meta R$ 5.000 → na meta
@@ -131,7 +146,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     setIncomeGoalMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Metas de renda" }));
+    await user.click(screen.getByRole("tab", { name: "Rendas" }));
 
     const goalInput = screen.getByRole("textbox", { name: "Meta de renda de Salário" });
     await user.type(goalInput, "600000");
@@ -149,7 +164,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     setIncomeGoalMock.mockRejectedValue(new Error("Falha de rede"));
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Metas de renda" }));
+    await user.click(screen.getByRole("tab", { name: "Rendas" }));
 
     const goalInput = screen.getByRole("textbox", { name: "Meta de renda de Salário" });
     await user.type(goalInput, "600000");

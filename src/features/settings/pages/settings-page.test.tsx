@@ -91,17 +91,13 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     });
   });
 
-  it("renderiza o cabeçalho e abas principais incluindo Lembretes", () => {
+  it("renderiza o cabeçalho e as 3 abas consolidadas", () => {
     renderSettings();
 
-    expect(screen.getByText("Configurações & Personalização")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Aparência/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Movimento/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Sensorial/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Dashboard/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Lembretes/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Perfil/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Dados/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Configurações" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Personalização/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Interface/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Conta & Dados/i })).toBeInTheDocument();
   });
 
   it("permite alternar entre opções de tema visual e emite toast de confirmação", async () => {
@@ -113,12 +109,12 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("permite acessar a aba de Lembretes e interagir com as configurações", async () => {
+  it("permite acessar a aba de Interface e interagir com as configurações de lembretes", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const remindersTab = screen.getByRole("tab", { name: /Lembretes/i });
-    await user.click(remindersTab);
+    const interfaceTab = screen.getByRole("tab", { name: /Interface/i });
+    await user.click(interfaceTab);
 
     expect(screen.getByText("Lembretes & Notificações Automáticas")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Faturas de Cartão")).toBeInTheDocument();

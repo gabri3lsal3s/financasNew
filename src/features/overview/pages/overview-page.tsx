@@ -260,6 +260,50 @@ export function OverviewPage() {
             </div>
           )}
 
+          {/* Análises do período: fluxo diário + distribuição por categoria */}
+          {(visual.dashboardWidgets.flow || (visual.dashboardWidgets.donut && donutSlices.length > 0)) && (
+            <section
+              aria-label="Análises do período"
+              className={cn("grid gap-3", visual.dashboardWidgets.flow && visual.dashboardWidgets.donut && donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
+            >
+              {visual.dashboardWidgets.flow && (
+                <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
+                        <Activity className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                        <span className="size-2 rounded-full bg-positive-strong" /> Receitas
+                      </span>
+                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                        <span className="size-2 rounded-full bg-negative-strong" /> Despesas
+                      </span>
+                    </div>
+                  </div>
+                  <DailyFlowChart days={dailyFlow} />
+                </section>
+              )}
+              {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
+                <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
+                        <PieChart className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
+                    </div>
+                    <Badge variant="muted" className="text-[11px]">{donutSlices.length} categorias</Badge>
+                  </div>
+                  <CategoryDonut slices={donutSlices} />
+                </section>
+              ) : null}
+            </section>
+          )}
+
           {/* Resumo financeiro (§3.6): saldo líquido de contas e taxa de poupança */}
           {visual.dashboardWidgets.summary && (
             <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2">
@@ -338,50 +382,6 @@ export function OverviewPage() {
             </section>
           )}
 
-          {/* Análises do período: fluxo diário + distribuição por categoria */}
-          {(visual.dashboardWidgets.flow || (visual.dashboardWidgets.donut && donutSlices.length > 0)) && (
-            <section
-              aria-label="Análises do período"
-              className={cn("grid gap-3", visual.dashboardWidgets.flow && visual.dashboardWidgets.donut && donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
-            >
-              {visual.dashboardWidgets.flow && (
-                <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
-                        <Activity className="size-3.5" aria-hidden="true" />
-                      </span>
-                      <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
-                        <span className="size-2 rounded-full bg-positive-strong" /> Receitas
-                      </span>
-                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
-                        <span className="size-2 rounded-full bg-negative-strong" /> Despesas
-                      </span>
-                    </div>
-                  </div>
-                  <DailyFlowChart days={dailyFlow} />
-                </section>
-              )}
-              {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
-                <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
-                        <PieChart className="size-3.5" aria-hidden="true" />
-                      </span>
-                      <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
-                    </div>
-                    <Badge variant="muted" className="text-[11px]">{donutSlices.length} categorias</Badge>
-                  </div>
-                  <CategoryDonut slices={donutSlices} />
-                </section>
-              ) : null}
-            </section>
-          )}
-
           {/* Orçamentos (§3.6): progresso e lista de atenção */}
           {visual.dashboardWidgets.budgets && (
             <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
@@ -418,7 +418,16 @@ export function OverviewPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Categorias em atenção</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Categorias em atenção</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/orcamentos")}
+                      className="text-xs text-primary hover:underline font-medium"
+                    >
+                      Ver todas em Categorias →
+                    </button>
+                  </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {attentionRows.slice(0, 4).map((row) => {
                       const percent = row.limitCents > 0 ? (row.spentCents / row.limitCents) * 100 : 0;
