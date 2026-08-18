@@ -52,7 +52,7 @@ export function Toast({
   title,
   description,
   variant = "default",
-  duration = 4000,
+  duration = 3000,
   action,
 }: ToastProps) {
   const Icon = variantIcon[variant];
@@ -105,7 +105,7 @@ export function Toast({
  */
 export function Toaster({ children, ...props }: ComponentProps<typeof ToastPrimitive.Provider>) {
   return (
-    <ToastPrimitive.Provider {...props}>
+    <ToastPrimitive.Provider duration={3000} {...props}>
       {children}
       <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-toast flex w-full max-w-sm flex-col gap-2 p-4 outline-none" />
     </ToastPrimitive.Provider>

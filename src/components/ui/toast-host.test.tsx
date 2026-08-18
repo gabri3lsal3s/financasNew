@@ -68,22 +68,36 @@ describe("ToastHost (bus de toasts imperativos)", () => {
     expect(screen.queryByText("Via dismissToast")).not.toBeInTheDocument();
   });
 
-  it("remove o toast ao clicar diretamente no cartão do toast", async () => {
-    const user = userEvent.setup();
+  it("fecha o toast automaticamente após a duração configurada", async () => {
     renderHost();
 
     act(() => {
-      pushToast({ title: "Clique para fechar", variant: "success" });
+      pushToast({ title: "Auto dismiss test", duration: 100 });
     });
 
-    const toastCard = screen.getByText("Clique para fechar");
-    await user.click(toastCard);
+    expect(screen.getByText("Auto dismiss test")).toBeInTheDocument();
 
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 350));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     });
 
-    expect(screen.queryByText("Clique para fechar")).not.toBeInTheDocument();
+    expect(screen.queryByText("Auto dismiss test")).not.toBeInTheDocument();
+  });
+
+  it("substitui o toast anterior ao receber uma nova notificação evitando empilhamento", () => {
+    renderHost();
+
+    act(() => {
+      pushToast({ title: "Primeiro toast" });
+    });
+    expect(screen.getByText("Primeiro toast")).toBeInTheDocument();
+
+    act(() => {
+      pushToast({ title: "Segundo toast" });
+    });
+
+    expect(screen.queryByText("Primeiro toast")).not.toBeInTheDocument();
+    expect(screen.getByText("Segundo toast")).toBeInTheDocument();
   });
 });
 

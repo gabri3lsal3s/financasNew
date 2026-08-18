@@ -160,6 +160,7 @@ export function SettingsPage() {
     pushToast({
       title: "Preferências salvas",
       description: `Tema alterado para ${label}.`,
+      duration: 2200,
     });
   };
 
@@ -169,6 +170,7 @@ export function SettingsPage() {
     pushToast({
       title: "Preferências salvas",
       description: `Cor de destaque alterada para ${label}.`,
+      duration: 2200,
     });
   };
 
@@ -178,6 +180,7 @@ export function SettingsPage() {
     pushToast({
       title: "Preferências salvas",
       description: `Estilo de superfícies alterado para ${label}.`,
+      duration: 2200,
     });
   };
 
@@ -187,6 +190,7 @@ export function SettingsPage() {
     pushToast({
       title: "Preferências salvas",
       description: `Densidade da interface alterada para ${label}.`,
+      duration: 2200,
     });
   };
 
@@ -198,6 +202,7 @@ export function SettingsPage() {
       description: nextChecked
         ? `Atalho "${label}" adicionado ao cabeçalho.`
         : `Atalho "${label}" removido do cabeçalho.`,
+      duration: 2200,
     });
   };
 
@@ -207,6 +212,7 @@ export function SettingsPage() {
     pushToast({
       title: "Preferências salvas",
       description: `Animações alteradas para ${label}.`,
+      duration: 2200,
     });
   };
 
@@ -218,6 +224,7 @@ export function SettingsPage() {
       description: nextChecked
         ? "Contagem numérica animada ativada."
         : "Contagem numérica animada desativada.",
+      duration: 2200,
     });
   };
 
@@ -229,6 +236,7 @@ export function SettingsPage() {
       description: nextChecked
         ? "Feedback sonoro ativado."
         : "Feedback sonoro desativado.",
+      duration: 2200,
     });
   };
 
@@ -241,6 +249,7 @@ export function SettingsPage() {
       description: nextMasked
         ? "Valores monetários ocultados (modo privacidade)."
         : "Valores monetários visíveis.",
+      duration: 2200,
     });
   };
 
@@ -252,6 +261,7 @@ export function SettingsPage() {
       description: nextChecked
         ? `Widget "${label}" exibido no início.`
         : `Widget "${label}" ocultado do início.`,
+      duration: 2200,
     });
   };
 
@@ -263,6 +273,7 @@ export function SettingsPage() {
     pushToast({
       title: "Preferências redefinidas",
       description: "Todas as preferências visuais foram restauradas para os padrões.",
+      duration: 2500,
     });
   };
 

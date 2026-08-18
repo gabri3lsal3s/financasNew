@@ -39,7 +39,10 @@ function emit(): void {
   for (const listener of listeners) listener(snapshot);
 }
 
-/** Dispara um toast global (ex.: rollback de atualização otimista). */
+/** Quantidade máxima de toasts simultâneos visíveis na tela (evita empilhamento). */
+export const MAX_CONCURRENT_TOASTS = 1;
+
+/** Dispara um toast global (substitui o anterior para evitar empilhamento). */
 export function pushToast(request: ToastRequest): number {
   const id = nextId++;
   const item: ToastItem = {
@@ -47,9 +50,10 @@ export function pushToast(request: ToastRequest): number {
     title: request.title,
     description: request.description,
     variant: request.variant ?? "default",
-    duration: request.duration ?? 4000,
+    duration: request.duration ?? 3000,
   };
-  items = [...items, item];
+  // Mantém no máximo MAX_CONCURRENT_TOASTS — descarta os anteriores
+  items = [item];
   emit();
   return id;
 }

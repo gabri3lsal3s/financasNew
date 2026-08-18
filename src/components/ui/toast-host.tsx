@@ -7,6 +7,30 @@ interface HostToast extends ToastItem {
   open: boolean;
 }
 
+/** Componente item com timer autônomo de auto-dismiss garantido. */
+function ToastHostItem({ item, onDismiss }: { item: HostToast; onDismiss: () => void }) {
+  useEffect(() => {
+    if (!item.open) return;
+    const timer = setTimeout(() => {
+      onDismiss();
+    }, item.duration || 3000);
+    return () => clearTimeout(timer);
+  }, [item.id, item.open, item.duration, onDismiss]);
+
+  return (
+    <Toast
+      open={item.open}
+      onOpenChange={(next) => {
+        if (!next) onDismiss();
+      }}
+      title={item.title}
+      description={item.description}
+      variant={item.variant}
+      duration={item.duration}
+    />
+  );
+}
+
 /**
  * Assinante único do bus de toasts (`services/toast.ts`) — montar dentro do
  * `Toaster` (providers). Renderiza cada toast com animação de saída: ao
@@ -32,16 +56,10 @@ export function ToastHost() {
   return (
     <>
       {items.map((item) => (
-        <Toast
+        <ToastHostItem
           key={item.id}
-          open={item.open}
-          onOpenChange={(next) => {
-            if (!next) handleDismiss(item.id);
-          }}
-          title={item.title}
-          description={item.description}
-          variant={item.variant}
-          duration={item.duration}
+          item={item}
+          onDismiss={() => handleDismiss(item.id)}
         />
       ))}
     </>
