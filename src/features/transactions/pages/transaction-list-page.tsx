@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router";
 import { useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Plus, Repeat, Zap } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, FileSpreadsheet, Plus, Repeat, Zap } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -16,6 +16,7 @@ import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { partitionInvoiceExpenses } from "@/domain/cards";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
+import { BankStatementImportDialog } from "@/features/transactions/components/bank-statement-import-dialog";
 import type { Category, Expense, Income } from "@/types";
 
 function sumCents(items: readonly { value: number }[]): number {
@@ -89,6 +90,7 @@ export function TransactionListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const { highlightId } = useHighlightTarget("q");
 
   // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
@@ -165,10 +167,20 @@ export function TransactionListPage() {
         />
       </div>
 
-      <Button className="w-full" onClick={() => setWizardOpen(true)}>
-        <Plus aria-hidden="true" />
-        Nova transação
-      </Button>
+      <div className="flex flex-col sm:flex-row items-center gap-2">
+        <Button className="w-full sm:flex-1 gap-1.5" onClick={() => setWizardOpen(true)}>
+          <Plus className="size-4" aria-hidden="true" />
+          Nova transação
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto gap-1.5"
+          onClick={() => setIsImportOpen(true)}
+        >
+          <FileSpreadsheet className="size-4" aria-hidden="true" />
+          Importar extrato
+        </Button>
+      </div>
 
       {error ? (
         <div className="flex flex-col gap-3">
@@ -404,6 +416,12 @@ export function TransactionListPage() {
             setSelectedIncome(null);
           }
         }}
+      />
+
+      <BankStatementImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        competenceMonth={month}
       />
     </div>
   );

@@ -287,6 +287,19 @@ export interface Database {
           skipped_count: number;
         };
       };
+      import_bank_transactions: {
+        Args: {
+          p_expenses: unknown;
+          p_incomes: unknown;
+        };
+        Returns: {
+          success: boolean;
+          expenses_inserted: number;
+          expenses_skipped: number;
+          incomes_inserted: number;
+          incomes_skipped: number;
+        };
+      };
     };
   };
 }

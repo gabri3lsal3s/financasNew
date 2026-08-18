@@ -34,6 +34,13 @@ export interface StatementTransaction {
 /**
  * Status de correspondência com as despesas já existentes no banco.
  */
+export interface CategoryPredictionSource {
+  description: string;
+  categoryId: string;
+}
+
+export type StatementSourceType = "ofx" | "csv" | "text_paste";
+
 export type MatchStatus = "exact_match" | "probable_match" | "unmatched_new";
 
 /**
@@ -104,8 +111,76 @@ export interface ColumnMapping {
   dateColIndex: number;
   descriptionColIndex: number;
   amountColIndex: number;
+  typeColIndex?: number;
   hasHeader: boolean;
   startRowIndex: number;
+}
+
+/**
+ * Natureza classificada de uma transação de conta corrente.
+ */
+export type BankTransactionKind = "expense" | "income" | "transfer_ignored" | "card_payment_ignored";
+
+/**
+ * Projeção leve de uma receita existente para o motor de scoring.
+ */
+export interface ExistingIncomeForReconciliation {
+  id: string;
+  date: string;
+  description: string;
+  valueCents: number;
+  receiveType?: string | null;
+  statementHash?: string | null;
+}
+
+/**
+ * Item de reconciliação de conta corrente (Despesas e Receitas).
+ */
+export interface BankTransactionItem {
+  /** A transação lida do extrato. */
+  transaction: StatementTransaction;
+  /** Natureza da transação (saída, entrada ou ignorada por regra de negócio). */
+  kind: BankTransactionKind;
+  /** Classificação de correspondência contra o banco. */
+  status: MatchStatus;
+  /** Score de similaridade e correspondência (0 a 100). */
+  score: number;
+  /** Vínculo com despesa existente (quando houver match de saída). */
+  matchedExpenseId?: string;
+  matchedExpenseDescription?: string;
+  matchedExpenseDate?: string;
+  matchedExpenseValueCents?: number;
+  /** Vínculo com receita existente (quando houver match de entrada). */
+  matchedIncomeId?: string;
+  matchedIncomeDescription?: string;
+  matchedIncomeDate?: string;
+  matchedIncomeValueCents?: number;
+  /** Categoria sugerida preditivamente (para saídas). */
+  suggestedCategoryId: string;
+  /** Categoria atualmente selecionada na UI (para saídas). */
+  selectedCategoryId: string;
+  /** Tipo de recebimento sugerido (para entradas: 'pix', 'ted', 'salario', etc.). */
+  suggestedReceiveType?: string;
+  /** Tipo de recebimento selecionado na UI (para entradas). */
+  selectedReceiveType?: string;
+  /** Se o item está marcado para ser importado na confirmação final. */
+  selected: boolean;
+  /** Se a linha foi desmarcada por padrão pelas travas de segurança. */
+  ignoredByDefault?: boolean;
+  /** Motivo descritivo para ter sido ignorada (ex.: "Pagamento de fatura de cartão"). */
+  ignoreReason?: string;
+}
+
+/**
+ * Resultado consolidado da reconciliação bidirecional de conta corrente.
+ */
+export interface BankReconciliationResult {
+  /** Transações lidas do extrato com classificação e correspondência. */
+  items: BankTransactionItem[];
+  /** Despesas cadastradas no app que NÃO foram encontradas no extrato. */
+  unmatchedExistingExpenses: ExistingExpenseForReconciliation[];
+  /** Receitas cadastradas no app que NÃO foram encontradas no extrato. */
+  unmatchedExistingIncomes: ExistingIncomeForReconciliation[];
 }
 
 /** Schema Zod para validação da transação de extrato. */
@@ -127,3 +202,4 @@ export const statementTransactionSchema = z.object({
     .optional(),
   statementHash: z.string().min(8),
 });
+

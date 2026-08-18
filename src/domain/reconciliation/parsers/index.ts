@@ -41,8 +41,32 @@ export function buildTransactionsFromRows(
     }
 
     const { amountCents, isNegative } = parsedAmt;
+    let isCredit = isNegative;
+
+    if (mapping.typeColIndex !== undefined) {
+      const typeVal = (row.cells[mapping.typeColIndex] ?? "").trim().toLowerCase();
+      if (
+        typeVal === "c" ||
+        typeVal === "credito" ||
+        typeVal === "crédito" ||
+        typeVal === "entrada" ||
+        typeVal === "+"
+      ) {
+        isCredit = true;
+      } else if (
+        typeVal === "d" ||
+        typeVal === "debito" ||
+        typeVal === "débito" ||
+        typeVal === "saida" ||
+        typeVal === "saída" ||
+        typeVal === "-"
+      ) {
+        isCredit = false;
+      }
+    }
+
     const isPayment = isPaymentOrSettlement(rawDesc);
-    const isRefund = isNegative && !isPayment;
+    const isRefund = isCredit && !isPayment;
 
     const cleanDesc = cleanDescription(rawDesc) || "Despesa";
     const installment = extractInstallmentInfo(rawDesc);

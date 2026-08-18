@@ -1,6 +1,6 @@
 import { jaccardTokens, tokenize } from "@/domain/predictions";
-import type { PredictionEntry } from "@/domain/predictions";
 import type {
+  CategoryPredictionSource,
   ExistingExpenseForReconciliation,
   ReconciliationItem,
   ReconciliationResult,
@@ -64,10 +64,10 @@ export function calculateMatchScore(
  */
 export function predictCategoryForDescription(
   cleanDescription: string,
-  history: PredictionEntry[],
+  history: CategoryPredictionSource[] | undefined,
   defaultCategoryId: string,
 ): string {
-  if (history.length === 0) return defaultCategoryId;
+  if (!history || history.length === 0) return defaultCategoryId;
 
   const targetTokens = tokenize(cleanDescription);
   if (targetTokens.length === 0) return defaultCategoryId;
@@ -98,7 +98,7 @@ export function predictCategoryForDescription(
 export function reconcileStatementTransactions(params: {
   statementTransactions: StatementTransaction[];
   existingExpenses: ExistingExpenseForReconciliation[];
-  history: PredictionEntry[];
+  history: CategoryPredictionSource[];
   defaultCategoryId: string;
 }): ReconciliationResult {
   const { statementTransactions, existingExpenses, history, defaultCategoryId } = params;

@@ -642,3 +642,45 @@ export async function importStatementExpenses(params: {
   );
 }
 
+export interface StatementIncomeItemInput {
+  value: number;
+  date: string;
+  description: string;
+  receive_type: string;
+  statement_hash: string;
+}
+
+export interface BankExpenseItemInput {
+  category_id: string;
+  value: number;
+  date: string;
+  description: string;
+  statement_hash: string;
+  payment_method?: string;
+  report_weight?: number;
+}
+
+export interface ImportBankTransactionsResult {
+  success: boolean;
+  expenses_inserted: number;
+  expenses_skipped: number;
+  incomes_inserted: number;
+  incomes_skipped: number;
+}
+
+/**
+ * Importa despesas e receitas de extrato bancário de forma atômica e idempotente (Fase 34).
+ */
+export async function importBankTransactions(params: {
+  expenses: BankExpenseItemInput[];
+  incomes: StatementIncomeItemInput[];
+}): Promise<ImportBankTransactionsResult> {
+  return unwrapRpc(
+    callRpc("import_bank_transactions", {
+      p_expenses: params.expenses,
+      p_incomes: params.incomes,
+    }),
+  );
+}
+
+

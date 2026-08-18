@@ -182,6 +182,7 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
   const dateScores = new Array(maxCols).fill(0);
   const amountScores = new Array(maxCols).fill(0);
   const textScores = new Array(maxCols).fill(0);
+  const typeScores = new Array(maxCols).fill(0);
 
   // Determina se a primeira linha é cabeçalho e aplica boost pelos nomes das colunas
   let hasHeader = false;
@@ -197,6 +198,8 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
       firstRowText.includes("lançamento") ||
       firstRowText.includes("lancamento") ||
       firstRowText.includes("estabelecimento") ||
+      firstRowText.includes("tipo") ||
+      firstRowText.includes("d/c") ||
       firstRowText.includes("titular");
 
     if (hasHeaderKeywords) {
@@ -220,6 +223,19 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
           headerCell.includes("preco")
         ) {
           amountScores[c] = (amountScores[c] ?? 0) + 100;
+        }
+
+        // Cabeçalho de tipo (D/C)
+        if (
+          headerCell === "d/c" ||
+          headerCell === "tipo" ||
+          headerCell === "tipo transação" ||
+          headerCell === "tipo transacao" ||
+          headerCell === "debito/credito" ||
+          headerCell === "débito/crédito" ||
+          headerCell === "sinal"
+        ) {
+          typeScores[c] = (typeScores[c] ?? 0) + 100;
         }
 
         // Cabeçalho de descrição/estabelecimento
@@ -266,8 +282,10 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
       const cell = (row.cells[c] ?? "").trim();
       if (!cell) continue;
 
+      const lowerCell = cell.toLowerCase();
+
       // Armazena valores únicos para checagem de diversidade/cardinalidade
-      columnValues[c]?.add(cell.toLowerCase());
+      columnValues[c]?.add(lowerCell);
 
       // Testa Data
       if (DATE_PATTERNS.some((p) => p.test(cell)) || normalizeDateToISO(cell) !== null) {
@@ -279,6 +297,21 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
         amountScores[c] = (amountScores[c] ?? 0) + 3;
       }
 
+      // Testa Tipo D/C
+      if (
+        lowerCell === "d" ||
+        lowerCell === "c" ||
+        lowerCell === "debito" ||
+        lowerCell === "débito" ||
+        lowerCell === "credito" ||
+        lowerCell === "crédito" ||
+        lowerCell === "entrada" ||
+        lowerCell === "saida" ||
+        lowerCell === "saída"
+      ) {
+        typeScores[c] = (typeScores[c] ?? 0) + 5;
+      }
+
       // Testa Texto descritivo
       if (cell.length >= 3 && !DATE_PATTERNS.some((p) => p.test(cell)) && parseAmountToCents(cell) === null) {
         textScores[c] = (textScores[c] ?? 0) + 2;
@@ -286,8 +319,7 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     }
   }
 
-  // Ajuste por cardinalidade (colunas com valores repetitivos como nome fixo do titular
-  // têm diversidade baixa; descrições de compras reais têm alta cardinalidade de valores distintos)
+  // Ajuste por cardinalidade
   if (sampleRows.length >= 3) {
     for (let c = 0; c < maxCols; c++) {
       const uniqueCount = columnValues[c]?.size ?? 0;
@@ -322,11 +354,22 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     }
   }
 
-  // Encontra a melhor coluna de descrição (diferente de data e valor)
+  // Encontra a melhor coluna de tipo (diferente de data e valor)
+  let bestTypeCol: number | undefined;
+  let maxTypeScore = 10; // Threshold mínimo
+  for (let i = 0; i < maxCols; i++) {
+    if (i === bestDateCol || i === bestAmountCol) continue;
+    if ((typeScores[i] ?? 0) > maxTypeScore) {
+      maxTypeScore = typeScores[i] ?? 0;
+      bestTypeCol = i;
+    }
+  }
+
+  // Encontra a melhor coluna de descrição (diferente de data, valor e tipo)
   let bestDescCol = 0;
   let maxTextScore = -Infinity;
   for (let i = 0; i < maxCols; i++) {
-    if (i === bestDateCol || i === bestAmountCol) continue;
+    if (i === bestDateCol || i === bestAmountCol || i === bestTypeCol) continue;
     if ((textScores[i] ?? 0) > maxTextScore) {
       maxTextScore = textScores[i] ?? 0;
       bestDescCol = i;
@@ -337,6 +380,7 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     dateColIndex: bestDateCol,
     descriptionColIndex: bestDescCol,
     amountColIndex: bestAmountCol,
+    typeColIndex: bestTypeCol,
     hasHeader,
     startRowIndex: hasHeader ? 1 : 0,
   };
