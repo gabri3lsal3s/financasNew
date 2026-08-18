@@ -125,9 +125,24 @@ export function usePortfolioPosition(): PortfolioPosition {
       const priceRow = priceByTicker.get(normalizedTicker);
       const defaultFallback = fallbackPriceFor(asset.currency);
       const effectiveFallback = ledger.averageCost > 0 ? ledger.averageCost : defaultFallback;
+
+      const manualPriceCandidate =
+        priceRow?.manual_price !== null && priceRow?.manual_price !== undefined && priceRow.manual_price > 0
+          ? priceRow.manual_price
+          : priceRow?.source === "manual" && priceRow.price > 0
+            ? priceRow.price
+            : null;
+
+      const cachePriceCandidate =
+        priceRow?.source === "api" && priceRow.price > 0
+          ? priceRow.price
+          : priceRow?.source !== "manual" && priceRow?.price && priceRow.price > 0
+            ? priceRow.price
+            : null;
+
       const resolved = resolvePrice({
-        manualPrice: priceRow?.manual_price ?? null,
-        cachePrice: priceRow?.price ?? null,
+        manualPrice: manualPriceCandidate,
+        cachePrice: cachePriceCandidate,
         fallbackPrice: effectiveFallback,
       });
       priceBRL = asset.currency === "USD" ? round2(resolved.price * usdRate) : resolved.price;

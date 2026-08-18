@@ -10,6 +10,9 @@ import {
   buildQuoteUpsertRow,
   isCashClass,
   normalizeTickerForApi,
+  normalizeTickerForBrapi,
+  parseAwesomeApiResponse,
+  parseBrapiResponse,
   parseYahooChartResponse,
 } from "../../supabase/functions/_shared/quotes-core";
 
@@ -35,6 +38,101 @@ describe("normalizeTickerForApi — ticker armazenado → formato Yahoo", () => 
   it("entrada vazia retorna vazio (inválido para a API)", () => {
     expect(normalizeTickerForApi("  ")).toBe("");
     expect(normalizeTickerForApi("")).toBe("");
+  });
+});
+
+describe("normalizeTickerForBrapi — ticker armazenado → formato Brapi", () => {
+  it("remove sufixo .SA quando presente", () => {
+    expect(normalizeTickerForBrapi("PETR4.SA")).toBe("PETR4");
+    expect(normalizeTickerForBrapi("bova11.sa")).toBe("BOVA11");
+  });
+
+  it("mantém ticker limpo", () => {
+    expect(normalizeTickerForBrapi("PETR4")).toBe("PETR4");
+    expect(normalizeTickerForBrapi("AAPL")).toBe("AAPL");
+  });
+});
+
+describe("parseBrapiResponse — payload da API Brapi", () => {
+  const validPayload = {
+    results: [
+      {
+        symbol: "PETR4",
+        currency: "BRL",
+        regularMarketPrice: 38.5,
+      },
+    ],
+  };
+
+  it("extrai preço e moeda de um payload válido", () => {
+    expect(parseBrapiResponse("PETR4", validPayload)).toEqual({
+      ticker: "PETR4",
+      price: 38.5,
+      currency: "BRL",
+    });
+  });
+
+  it("aceita chave alternativa price", () => {
+    const payload = {
+      results: [{ symbol: "VALE3", currency: "BRL", price: 62.1 }],
+    };
+    expect(parseBrapiResponse("VALE3", payload)).toEqual({
+      ticker: "VALE3",
+      price: 62.1,
+      currency: "BRL",
+    });
+  });
+
+  it("reconhece moeda USD se fornecida", () => {
+    const payload = {
+      results: [{ symbol: "AAPL", currency: "USD", regularMarketPrice: 220.0 }],
+    };
+    expect(parseBrapiResponse("AAPL", payload)?.currency).toBe("USD");
+  });
+
+  it("retorna null para payloads inválidos ou vazios", () => {
+    expect(parseBrapiResponse("PETR4", null)).toBeNull();
+    expect(parseBrapiResponse("PETR4", {})).toBeNull();
+    expect(parseBrapiResponse("PETR4", { results: [] })).toBeNull();
+    expect(parseBrapiResponse("PETR4", { results: [{ regularMarketPrice: 0 }] })).toBeNull();
+    expect(parseBrapiResponse("PETR4", { results: [{ regularMarketPrice: -10 }] })).toBeNull();
+    expect(parseBrapiResponse("PETR4", { results: [{ regularMarketPrice: "NaN" }] })).toBeNull();
+  });
+});
+
+describe("parseAwesomeApiResponse — payload da AwesomeAPI (câmbio)", () => {
+  const validPayload = {
+    USDBRL: {
+      code: "USD",
+      codein: "BRL",
+      bid: "5.4512",
+      ask: "5.4530",
+    },
+  };
+
+  it("extrai cotação de câmbio USD-BRL a partir do campo bid", () => {
+    expect(parseAwesomeApiResponse("USDBRL=X", validPayload)).toEqual({
+      ticker: "USDBRL=X",
+      price: 5.4512,
+      currency: "BRL",
+    });
+  });
+
+  it("aceita número direto no bid", () => {
+    const payload = { USDBRL: { bid: 5.42 } };
+    expect(parseAwesomeApiResponse("USDBRL=X", payload)).toEqual({
+      ticker: "USDBRL=X",
+      price: 5.42,
+      currency: "BRL",
+    });
+  });
+
+  it("retorna null para payload inválido ou sem valores válidos", () => {
+    expect(parseAwesomeApiResponse("USDBRL=X", null)).toBeNull();
+    expect(parseAwesomeApiResponse("USDBRL=X", {})).toBeNull();
+    expect(parseAwesomeApiResponse("USDBRL=X", { USDBRL: null })).toBeNull();
+    expect(parseAwesomeApiResponse("USDBRL=X", { USDBRL: { bid: "0" } })).toBeNull();
+    expect(parseAwesomeApiResponse("USDBRL=X", { USDBRL: { bid: "-5.0" } })).toBeNull();
   });
 });
 

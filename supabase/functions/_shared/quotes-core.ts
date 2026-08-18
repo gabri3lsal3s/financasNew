@@ -67,6 +67,60 @@ export function parseYahooChartResponse(ticker: string, payload: unknown): Parse
 }
 
 /**
+ * Normaliza o ticker para a API Brapi (remove sufixo `.SA` se presente).
+ */
+export function normalizeTickerForBrapi(raw: string): string {
+  const ticker = raw.trim().toUpperCase();
+  if (ticker.endsWith(".SA")) return ticker.slice(0, -3);
+  return ticker;
+}
+
+/**
+ * Extrai { price, currency } do payload da API Brapi (`/api/quote/{ticker}`).
+ * Payload típico: { results: [{ symbol: "PETR4", regularMarketPrice: 38.5, currency: "BRL" }] }
+ */
+export function parseBrapiResponse(ticker: string, payload: unknown): ParsedQuote | null {
+  if (!payload || typeof payload !== "object") return null;
+  const results = (payload as Record<string, unknown>).results;
+  if (!Array.isArray(results) || results.length === 0) return null;
+  const item = results[0];
+  if (!item || typeof item !== "object") return null;
+  const itemRecord = item as Record<string, unknown>;
+  const rawPrice = itemRecord.regularMarketPrice ?? itemRecord.price;
+  const priceNum = typeof rawPrice === "number" ? rawPrice : Number(rawPrice);
+  if (!Number.isFinite(priceNum) || priceNum <= 0) return null;
+  const rawCurrency = itemRecord.currency;
+  return {
+    ticker,
+    price: priceNum,
+    currency: rawCurrency === "USD" ? "USD" : "BRL",
+  };
+}
+
+/**
+ * Extrai a cotação cambial da AwesomeAPI (`/last/USD-BRL`).
+ * Payload típico: { USDBRL: { bid: "5.45" } }
+ */
+export function parseAwesomeApiResponse(ticker: string, payload: unknown): ParsedQuote | null {
+  if (!payload || typeof payload !== "object") return null;
+  const record = payload as Record<string, unknown>;
+  // Procura pela chave do par (ex.: USDBRL ou a primeira chave presente)
+  const pairKey = Object.keys(record).find((key) => !key.startsWith("_"));
+  if (!pairKey) return null;
+  const data = record[pairKey];
+  if (!data || typeof data !== "object") return null;
+  const dataRecord = data as Record<string, unknown>;
+  const rawPrice = dataRecord.bid ?? dataRecord.ask;
+  const priceNum = typeof rawPrice === "number" ? rawPrice : Number(rawPrice);
+  if (!Number.isFinite(priceNum) || priceNum <= 0) return null;
+  return {
+    ticker,
+    price: priceNum,
+    currency: "BRL",
+  };
+}
+
+/**
  * Guardrail de spike (§1.6): variação > 50% em 1 dia mantém o último preço
  * válido (proteção contra dado corrompido de API).
  * Espelho de `src/domain/portfolio/valuation.ts` — a edge function roda fora

@@ -66,6 +66,26 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
     expect(rows[1]).toMatchObject({ ticker: "PETR4", price: 42.5, manual_price: 42.5 });
   });
 
+  it("listAssetPrices consolida por ticker: override manual prevalece sobre cache global da API", async () => {
+    builder = makeBuilder({
+      data: [
+        // A API retornou preço 0 ou antigo primeiro
+        { ticker: "PETR4", price: "0", currency: "BRL", source: "api", manual_price: null },
+        // E o usuário tem override manual
+        { ticker: "PETR4", price: "42.5", currency: "BRL", source: "manual", manual_price: "42.5" },
+        // Outro ativo onde a ordem veio inversa
+        { ticker: "VALE3", price: "60.0", currency: "BRL", source: "manual", manual_price: "60.0" },
+        { ticker: "VALE3", price: "55.0", currency: "BRL", source: "api", manual_price: null },
+      ],
+    });
+    const rows = await listAssetPrices();
+    expect(rows).toHaveLength(2);
+    const petr4 = rows.find((r) => r.ticker === "PETR4");
+    const vale3 = rows.find((r) => r.ticker === "VALE3");
+    expect(petr4).toMatchObject({ ticker: "PETR4", price: 42.5, source: "manual", manual_price: 42.5 });
+    expect(vale3).toMatchObject({ ticker: "VALE3", price: 60.0, source: "manual", manual_price: 60.0 });
+  });
+
   it("setManualPrice grava override com moeda inferida pelo ticker (USD)", async () => {
     builder = makeBuilder({ data: null });
     await setManualPrice({ ticker: "AAPL", price: 210.5 });

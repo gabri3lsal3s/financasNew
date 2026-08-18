@@ -231,7 +231,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - `services/format`: moeda (`Intl.NumberFormat` pt-BR), datas (timezone local — nunca `toISOString` em ranges de mês), percentuais.
 - `services/masks`: máscaras de input monetário (`inputMode=numeric`), datas.
 - `services/errors`: **gateway único** `getErrorMessage` com mensagens pt-BR; casos especiais: rate limit, e-mail não confirmado, sessão expirada, rede indisponível.
-- Cotações: **edge function `supabase/functions/quotes/`** (F1.7, Deno — fetch Yahoo em cascata + upsert do cache global `asset_prices` com `source 'api'`; motor puro testado em `_shared/quotes-core.ts`) + fallback estático + **preço manual** (D5) + guardrail de spike > 50%/dia. A UI nunca chama a API externa — sempre lê o cache do servidor.
+- Cotações: **edge function `supabase/functions/quotes/`** (F1.7, Deno — fetch em cascata Yahoo → Brapi/AwesomeAPI + upsert do cache global `asset_prices` com `source 'api'`; motor puro testado em `_shared/quotes-core.ts`) + fallback estático + **preço manual** (D5, override do usuário consolidado com precedência estrita sobre cache) + guardrail de spike > 50%/dia. A UI nunca chama a API externa — sempre lê o cache do servidor.
 
 ---
 

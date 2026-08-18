@@ -27,6 +27,9 @@ import {
   buildQuoteUpsertRow,
   isCashClass,
   normalizeTickerForApi,
+  normalizeTickerForBrapi,
+  parseAwesomeApiResponse,
+  parseBrapiResponse,
   parseYahooChartResponse,
   type ParsedQuote,
   type QuoteUpsertRow,
@@ -49,8 +52,8 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/** Busca a cotação de um ticker com fallback em cascata entre hosts Yahoo. */
-async function fetchQuote(ticker: string): Promise<ParsedQuote | null> {
+/** Busca cotação no Yahoo Finance com timeout e rotação de hosts. */
+async function fetchYahooQuote(ticker: string): Promise<ParsedQuote | null> {
   const apiTicker = normalizeTickerForApi(ticker);
   if (!apiTicker) return null;
 
@@ -72,6 +75,74 @@ async function fetchQuote(ticker: string): Promise<ParsedQuote | null> {
       // host falhou (timeout/erro de rede) → tenta o próximo
     }
   }
+  return null;
+}
+
+/** Busca cotação de ações/FIIs na Brapi (fallback para B3). */
+async function fetchBrapiQuote(ticker: string): Promise<ParsedQuote | null> {
+  const cleanTicker = normalizeTickerForBrapi(ticker);
+  if (!cleanTicker || cleanTicker.includes("=")) return null;
+
+  const url = `https://brapi.dev/api/quote/${encodeURIComponent(cleanTicker)}`;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(url, {
+      headers: { "User-Agent": USER_AGENT },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    const payload: unknown = await response.json();
+    return parseBrapiResponse(ticker, payload);
+  } catch {
+    return null;
+  }
+}
+
+/** Busca cotação cambial USD-BRL na AwesomeAPI (fallback para câmbio). */
+async function fetchAwesomeApiQuote(ticker: string): Promise<ParsedQuote | null> {
+  const normalized = ticker.trim().toUpperCase();
+  if (normalized !== "USDBRL=X" && normalized !== "USD-BRL" && normalized !== "USDBRL") {
+    return null;
+  }
+
+  const url = "https://economia.awesomeapi.com.br/last/USD-BRL";
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(url, {
+      headers: { "User-Agent": USER_AGENT },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    const payload: unknown = await response.json();
+    return parseAwesomeApiResponse(ticker, payload);
+  } catch {
+    return null;
+  }
+}
+
+/** Busca a cotação com pipeline de fallback em cascata (Yahoo → Brapi / AwesomeAPI). */
+async function fetchQuote(ticker: string): Promise<ParsedQuote | null> {
+  const normalized = ticker.trim().toUpperCase();
+  if (!normalized) return null;
+
+  // Se for par de câmbio USD/BRL, tenta Yahoo e AwesomeAPI
+  if (normalized === "USDBRL=X" || normalized === "USD-BRL" || normalized === "USDBRL") {
+    const yahoo = await fetchYahooQuote(ticker);
+    if (yahoo) return yahoo;
+    return await fetchAwesomeApiQuote(ticker);
+  }
+
+  // Para ações/FIIs/ativos em geral: tenta Yahoo e depois Brapi
+  const yahoo = await fetchYahooQuote(ticker);
+  if (yahoo) return yahoo;
+
+  const brapi = await fetchBrapiQuote(ticker);
+  if (brapi) return brapi;
+
   return null;
 }
 

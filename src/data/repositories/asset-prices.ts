@@ -42,6 +42,38 @@ function mapRow(row: {
 }
 
 /**
+ * Consolida as linhas de preços por ticker:
+ * 1. Linhas manuais do usuário (`source === 'manual'`) prevalecem sobre cache global (`source === 'api'`);
+ * 2. Se a cotação global falhar ou vier zerada, o override manual do usuário nunca é sobrescrito.
+ */
+export function consolidateAssetPrices(rows: AssetPriceRow[]): AssetPriceRow[] {
+  const map = new Map<string, AssetPriceRow>();
+  for (const row of rows) {
+    const key = row.ticker.trim().toUpperCase();
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, {
+        ...row,
+        manual_price: row.source === "manual" ? (row.manual_price ?? (row.price > 0 ? row.price : null)) : row.manual_price,
+      });
+      continue;
+    }
+
+    if (row.source === "manual") {
+      map.set(key, {
+        ...row,
+        manual_price: row.manual_price ?? (row.price > 0 ? row.price : null),
+      });
+    } else if (existing.source !== "manual") {
+      if (existing.price <= 0 && row.price > 0) {
+        map.set(key, row);
+      }
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
  * Lista os preços relevantes para o usuário: cache global (user_id NULL)
  * e overrides manuais do próprio usuário. A resolução do pipeline
  * (manual → api → fallback) acontece no domínio (`domain/portfolio`).
@@ -58,7 +90,8 @@ export async function listAssetPrices(): Promise<AssetPriceRow[]> {
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
   }
-  return (data ?? []).map(mapRow);
+  const mapped = (data ?? []).map(mapRow);
+  return consolidateAssetPrices(mapped);
 }
 
 /**
