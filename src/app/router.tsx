@@ -5,12 +5,13 @@ import { FloatingCalculator } from "@/components/modules/floating-calculator";
 import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
 import { LandingPage } from "@/features/landing";
 import { useAuth } from "@/hooks/use-auth";
+import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 
 /**
  * Guard de autenticação:
  * - Sem sessão → redireciona para a tela de login preservando a rota de origem.
- * - Em transição/carregamento → exibe tela de carregamento oficial (`LoadingScreen`).
+ * - Em transição/carregamento → exibe tela de carregamento oficial (`LoadingScreen`) com tempo mínimo anti-flicker.
  * - Sessão ativa → renderiza rotas autenticadas isoladas por `key={session.user.id}`.
  */
 function RequireAuth() {
@@ -19,6 +20,9 @@ function RequireAuth() {
 
   // F23 — pre-fetching discreto dos chunks das rotas vizinhas (idle).
   useRoutePrefetch();
+
+  // Previne micro-flashes mantendo a tela de transição visível de forma estável e fluida (650ms)
+  const isTransitioning = useMinimumLoading(loading, 650);
 
   if (configError) {
     return (
@@ -30,8 +34,8 @@ function RequireAuth() {
     );
   }
 
-  if (loading || !session?.user) {
-    if (!loading && !session) {
+  if (loading || isTransitioning || !session?.user) {
+    if (!loading && !session && !isTransitioning) {
       return <Navigate to="/entrar" replace state={{ from: location }} />;
     }
     return <LoadingScreen />;

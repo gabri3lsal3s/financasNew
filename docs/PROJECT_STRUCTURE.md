@@ -103,7 +103,7 @@
     │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10), logo-profile-button,
     │       │                      #   privacy-toggle (F8), theme-toggle, calculator-button,
     │       │                      #   notifications-button (v1.62 — sininho com badge dinâmico no header),
-    │       │                      #   global-search (busca no header)
+    │       │                      #   global-search (busca no header), loading-screen (F10/F23 — tela de carregamento oficial e dinâmica)
     │       └── index.ts           #   barrel (AGENTS.md §7 — importações externas via @/components/layout)
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5

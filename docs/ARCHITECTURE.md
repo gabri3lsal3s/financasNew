@@ -203,9 +203,11 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - **Optimistic updates** apenas para operações simples e de baixo risco; rollback automático em erro. Nunca para RPCs compostos.
 - **Geração de parcelas:** o cliente calcula via `domain/money` (TS, testável) e envia as linhas; o RPC **valida invariantes no servidor** (soma = valor original, parcelas 1–60, datas ≥ APP_START_DATE) e persiste — sem duplicar a lógica de divisão em SQL.
 
-### 5.3 Estado de UI e autenticação
+### 5.3 Estado de UI, autenticação e ciclo de vida de cache
 
-- **Sessão:** contexto do Supabase Auth (AuthProvider).
+- **Sessão:** contexto do Supabase Auth (AuthProvider / `useAuth`).
+- **Purge Atômico de Cache (`AuthQuerySync`):** em eventos `SIGNED_OUT` ou troca de usuário (`userId` distinto), o listener sincroniza com o TanStack Query cancelando queries ativas (`cancelQueries`) e limpando 100% da memória (`queryClient.clear()`), prevenindo colisão de cache entre contas.
+- **Isolamento de Árvore e Anti-Flicker (`RequireAuth`):** rotas autenticadas usam `key={session.user.id}` para remontagem limpa e o hook `useMinimumLoading` (650ms) com a tela oficial `LoadingScreen` (barra de progresso dinâmica + log em tempo real), eliminando micro-flashes durante transições de rede ou sessão.
 - **Tema e preferências:** contexto local + persistência em `user_preferences` (não passa por TanStack Query).
 - **Estado de tela** (wizard, modais, filtros): hooks locais de `features/`. **Sem** store global de dados de negócio — dados de negócio vivem no servidor, nunca em memória de cliente.
 - **Sessão expirada (401):** redirect para login **preservando a rota pretendida** (retorno pós-login); mensagem via gateway.
