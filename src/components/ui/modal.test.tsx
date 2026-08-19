@@ -16,10 +16,20 @@ describe("Modal", () => {
     expect(screen.getByText("Formulário")).toBeInTheDocument();
   });
 
-  it("renderiza o botão de calculadora ao lado do botão de fechar e abre a calculadora", async () => {
-    const user = userEvent.setup();
+  it("não renderiza o botão de calculadora por padrão", () => {
     render(
       <Modal open onOpenChange={vi.fn()} title="Nova despesa">
+        <p>Formulário</p>
+      </Modal>,
+    );
+    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
+  });
+
+  it("renderiza o botão de calculadora ao lado do botão de fechar quando showCalculator=true", async () => {
+    const user = userEvent.setup();
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Nova despesa" showCalculator>
         <p>Formulário</p>
       </Modal>,
     );
@@ -30,16 +40,9 @@ describe("Modal", () => {
     await user.click(calcButton);
   });
 
-  it("permite ocultar o botão de calculadora com hideCalculator ou elevated", () => {
-    const { rerender } = render(
-      <Modal open onOpenChange={vi.fn()} title="Calculadora" elevated>
-        <p>Conteúdo</p>
-      </Modal>,
-    );
-    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
-
-    rerender(
-      <Modal open onOpenChange={vi.fn()} title="Modal sem calculadora" hideCalculator>
+  it("oculta o botão de calculadora quando elevated=true, mesmo com showCalculator=true", () => {
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Calculadora" elevated showCalculator>
         <p>Conteúdo</p>
       </Modal>,
     );

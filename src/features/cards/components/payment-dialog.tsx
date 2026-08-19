@@ -143,6 +143,7 @@ export function PaymentDialog({
         onOpenChange={onOpenChange}
         title={isRefund ? "Registrar estorno" : "Registrar pagamento"}
         description={`Fatura de ${competenceMonth}`}
+        showCalculator
       >
         {open ? (
           <PaymentDialogContent

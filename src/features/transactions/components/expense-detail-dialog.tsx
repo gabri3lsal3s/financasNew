@@ -544,6 +544,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
           onOpenChange(next);
         }}
         title={isEditing ? "Editar despesa" : "Detalhes da despesa"}
+        showCalculator={isEditing}
       >
         {expense ? (
           <div className="mt-4 flex flex-col gap-4 min-w-0">

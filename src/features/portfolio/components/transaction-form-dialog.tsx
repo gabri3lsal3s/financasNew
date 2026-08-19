@@ -234,6 +234,7 @@ export function TransactionFormDialog({ open, onOpenChange, asset, transaction =
           ? "Atualize a operação — o ledger e o caixa derivado são recalculados a partir das transações."
           : "O ledger e o caixa derivado são recalculados a partir das transações."
       }
+      showCalculator
     >
       {open ? (
         <TransactionFormContent

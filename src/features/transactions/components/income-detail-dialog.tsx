@@ -403,6 +403,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
           onOpenChange(next);
         }}
         title={isEditing ? "Editar receita" : "Detalhes da receita"}
+        showCalculator={isEditing}
       >
         {income ? (
           <div className="mt-4 flex flex-col gap-4 min-w-0">

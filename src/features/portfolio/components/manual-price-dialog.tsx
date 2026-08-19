@@ -145,6 +145,7 @@ export function ManualPriceDialog({ open, onOpenChange, asset }: ManualPriceDial
       onOpenChange={onOpenChange}
       title={`Cotação · ${asset?.ticker ?? ""}`}
       description="Defina um preço fixo manual ou restaure a cotação automática da API de mercado."
+      showCalculator
     >
       {open && asset ? (
         <ManualPriceContent

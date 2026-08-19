@@ -167,6 +167,7 @@ export function LimitDialog({
       onOpenChange={onOpenChange}
       title={`Limite — ${category.name}`}
       description={`Mês ${month}${inherited ? " · herdado do mês anterior (ao salvar, vira limite próprio)" : ""}`}
+      showCalculator
     >
       {open ? (
         <LimitDialogContent

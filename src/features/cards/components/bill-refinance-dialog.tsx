@@ -207,6 +207,7 @@ export function BillRefinanceDialog(props: BillRefinanceDialogProps) {
       onOpenChange={props.onOpenChange}
       title="Parcelar fatura do cartão"
       description={`Simulação para a fatura de ${props.competenceMonth}`}
+      showCalculator
     >
       {props.open ? (
         <BillRefinanceContent

@@ -184,6 +184,7 @@ export function DebtFormDialog({ debt, open, onOpenChange, onDelete }: DebtFormD
       onOpenChange={onOpenChange}
       title={debt ? "Editar dívida" : "Nova dívida"}
       description="Conta a pagar ou a receber com status derivado (nunca armazenado)."
+      showCalculator
     >
       {open ? (
         <DebtFormContent

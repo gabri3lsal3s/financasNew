@@ -115,7 +115,6 @@ export function LogoProfileButton() {
         open={open}
         onOpenChange={setOpen}
         title="Perfil"
-        hideCalculator
         size="sm"
       >
         <div className="mt-2 space-y-5">

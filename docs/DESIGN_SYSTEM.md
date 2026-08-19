@@ -246,6 +246,8 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 
 **Regra de criação:** qualquer novo controle nativo que precise ser usado deve primeiro virar um primitivo em `components/ui/` (ver `docs/PROJECT_STRUCTURE.md` §8) — proibido ad-hoc em tela.
 
+**Calculadora em modais (`showCalculator`):** o componente `Modal` expõe a prop `showCalculator` (default `false`). O botão de calculadora **só deve aparecer em modais com campo de valor monetário** (i.e., que contêm `MoneyInput`). Modais de confirmação, exclusão, visualização, importação e configuração **nunca passam `showCalculator`**. Modais com `elevated={true}` ignoram a prop (a calculadora não abre sobre si mesma).
+
 ---
 
 ## 12. ENTRADA MONETÁRIA — PADRÃO NUBANK (INPUT MONETÁRIO PROGRESSIVO)

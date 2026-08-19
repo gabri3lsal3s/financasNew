@@ -222,6 +222,7 @@ export function LaunchWizard({
       }}
       title="Novo lançamento"
       size="lg"
+      showCalculator
     >
       <div className="flex flex-col gap-6 pt-2">
         <Stepper steps={[...WIZARD_STEPS]} current={state.step} />

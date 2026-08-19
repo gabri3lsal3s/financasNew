@@ -274,6 +274,7 @@ export function CardFormDialog({ card, open, onOpenChange, onDeleted }: CardForm
       onOpenChange={onOpenChange}
       title={card ? "Editar cartão" : "Novo cartão"}
       description={card ? "Altere as configurações ou desative o cartão." : "Preencha os dados do cartão de crédito."}
+      showCalculator
     >
       {open ? (
         <CardFormContent

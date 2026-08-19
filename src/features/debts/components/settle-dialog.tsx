@@ -265,6 +265,7 @@ export function SettleDialog({ debt, open, onOpenChange }: SettleDialogProps) {
       onOpenChange={onOpenChange}
       title={title}
       description={debt.name}
+      showCalculator
     >
       {open ? (
         <SettleDialogContent

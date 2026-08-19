@@ -604,7 +604,6 @@ export function CardsPage() {
             title={`Fatura — ${selectedCard.name}`}
             description={`Gastos lançados no cartão em ${monthLabel(effectiveMonth)} (competência ${effectiveMonth}), prontos para imprimir ou salvar em PDF — compare com a fatura do banco.`}
             size="xl"
-            hideCalculator
           >
             <div className="mt-4">
               <CardInvoicePrintView

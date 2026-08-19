@@ -75,7 +75,6 @@ export function FloatingCalculator() {
       title="Calculadora"
       description="Use o resultado no campo em foco do formulário."
       elevated
-      hideCalculator
     >
         <div className="mt-4 flex flex-col gap-4">
           {/* Display */}

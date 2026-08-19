@@ -29,8 +29,8 @@ export interface ModalProps {
   size?: ModalSize;
   /** Sobe o z-index acima de outros modais (ex.: calculadora sobre formulários). */
   elevated?: boolean;
-  /** Oculta o botão de calculadora no cabeçalho do modal. */
-  hideCalculator?: boolean;
+  /** Exibe o botão de calculadora no cabeçalho do modal (default false). Use apenas em modais com campos de valor monetário. */
+  showCalculator?: boolean;
 }
 
 /** Distância (px) de arrasto que dispara o fechamento do bottom sheet. */
@@ -65,10 +65,10 @@ export function Modal({
   className,
   size = "md",
   elevated = false,
-  hideCalculator = false,
+  showCalculator = false,
 }: ModalProps) {
   const z = elevated ? "z-floating-tools" : "z-modal";
-  const showCalculator = !hideCalculator && !elevated;
+  const displayCalculator = showCalculator && !elevated;
 
   const contentRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -186,7 +186,7 @@ export function Modal({
               ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              {showCalculator ? (
+              {displayCalculator ? (
                 <Button
                   type="button"
                   variant="ghost"

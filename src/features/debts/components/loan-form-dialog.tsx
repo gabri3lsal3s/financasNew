@@ -79,6 +79,7 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
       onOpenChange={onOpenChange}
       title="Novo empréstimo / financiamento"
       description="Cadastre o contrato com cálculo de saldo devedor e parcelas"
+      showCalculator
     >
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
         {error ? <Alert variant="error">{error}</Alert> : null}

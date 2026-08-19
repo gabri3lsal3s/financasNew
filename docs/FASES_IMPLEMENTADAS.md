@@ -326,7 +326,18 @@
      - **Dívidas (`/dividas`):** Resumo com 3 cards de saldo pendente (*A pagar pendente*, *A receber pendente*, *Saldo pendente líquido*).
      - **Insights (`/insights`):** Alertas de ação imediata posicionados no topo da aba de diagnósticos, com recolhimento inteligente (exibição dos 2 mais importantes com expansão/recolhimento sob demanda) e remoção de banners informativos redundantes.
      - **Lembretes (`/lembretes`):** Ordenação estrita por gravidade (atrasados $\rightarrow$ próximos $\rightarrow$ futuros).
-  3. **Qualidade & Testes:** Suíte completa com 168 arquivos e 1.335 testes 100% aprovados, typecheck e lint limpos.
+  3. **Qualidade & Testes:** Suíte completa com 168 arquivos e 1.339 testes 100% aprovados, typecheck e lint limpos.
+
+## Hotfix — Botão de Calculadora em Modais: Inversão do Padrão (2026-08-18)
+
+- **Problema:** o componente `Modal` exibia o botão de calculadora **por padrão** em todos os modais via prop `hideCalculator` (opt-out). Isso fazia o botão aparecer em contextos onde não faz sentido: diálogos de confirmação/exclusão (`ConfirmDialog`, `DeleteCategoryDialog`), modais de visualização (detalhe de relatório, lista de lançamentos de portfólio), modais de importação (extrato bancário, fatura OFX) e formulário de categoria (sem campos de valor monetário).
+- **Causa raiz:** design de opt-out (`hideCalculator` default `false`) — qualquer novo modal criado sem declarar a prop exibia o botão incorretamente.
+- **Solução:** inversão para **opt-in** (`showCalculator` default `false`) — a calculadora só aparece quando declarada explicitamente. Regra documentada no `docs/DESIGN_SYSTEM.md §13`.
+  - `components/ui/modal.tsx` — prop renomeada de `hideCalculator` para `showCalculator` (default `false`); lógica interna usa variável `displayCalculator = showCalculator && !elevated`.
+  - **13 modais** receberam `showCalculator` (todos com `MoneyInput`): formulários de dívida/empréstimo/amortização/liquidação, formulários de cartão/pagamento/refinanciamento, limite de orçamento, cotação manual de ativo, transação de portfólio, wizard de novo lançamento; detalhe de despesa/receita usam `showCalculator={isEditing}` (aparece só no modo edição).
+  - **4 modais** tiveram `hideCalculator` removido (prop desnecessária com o novo padrão): perfil de usuário, calculadora flutuante, fatura imprimível e fechamento de período.
+  - Testes de `modal.test.tsx` atualizados: novo caso "não renderiza por padrão", caso "aparece com `showCalculator`", caso "`elevated` sobrepõe `showCalculator`".
+- **Verificação:** 168/168 arquivos de teste passando (1339 testes), typecheck limpo, lint limpo, build de produção limpo.
 
 ## Notas finais
 
