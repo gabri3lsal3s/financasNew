@@ -157,42 +157,75 @@ export async function setAssetPriceFromApi(
   price: number,
   currency: AssetCurrency,
 ): Promise<void> {
-  const user_id = await currentUserId();
-  const normalizedTicker = ticker.trim().toUpperCase();
+  await setAssetPricesBatchFromApi([{ ticker, price, currency }]);
+}
 
-  const { data: existing } = await resolveQuery<AssetPriceRow[]>(
+/**
+ * Grava cotações obtidas de API em lote para o usuário (evita N+1 de banco).
+ * Não sobrescreve se o usuário tiver override manual ativo para o ticker.
+ */
+export async function setAssetPricesBatchFromApi(
+  quotes: Array<{ ticker: string; price: number; currency: AssetCurrency }>,
+): Promise<void> {
+  if (quotes.length === 0) return;
+  const user_id = await currentUserId();
+  const normalizedTickers = [...new Set(quotes.map((q) => q.ticker.trim().toUpperCase()))];
+
+  // 1) Busca em lote todos os overrides manuais existentes
+  const { data: existingManuals, error: fetchError } = await resolveQuery<AssetPriceRow[]>(
     getSupabase()
       .from("asset_prices")
       .select("ticker, price, currency, source, manual_price")
       .eq("user_id", user_id)
-      .eq("ticker", normalizedTicker),
+      .eq("source", "manual")
+      .in("ticker", normalizedTickers),
   );
-  if (existing && existing.length > 0 && existing[0]?.source === "manual") {
-    return;
+
+  if (fetchError) {
+    const classified = classifyError(fetchError);
+    throw new AppError(classified.kind, classified.message, fetchError);
   }
 
-  const row = {
-    user_id,
-    ticker: normalizedTicker,
-    price,
-    currency,
-    source: "api" as const,
-    manual_price: null,
-    updated_at: new Date().toISOString(),
-  };
+  const manualSet = new Set((existingManuals ?? []).map((m) => m.ticker.trim().toUpperCase()));
+  const now = new Date().toISOString();
 
-  await getSupabase()
+  // 2) Filtra apenas os tickers sem override manual
+  const rowsToInsert = quotes
+    .filter((q) => !manualSet.has(q.ticker.trim().toUpperCase()) && q.price > 0)
+    .map((q) => ({
+      user_id,
+      ticker: q.ticker.trim().toUpperCase(),
+      price: q.price,
+      currency: q.currency,
+      source: "api" as const,
+      manual_price: null,
+      updated_at: now,
+    }));
+
+  if (rowsToInsert.length === 0) return;
+
+  const tickersToUpdate = [...new Set(rowsToInsert.map((r) => r.ticker))];
+
+  // 3) Remove caches anteriores de API em lote
+  const { error: deleteError } = await getSupabase()
     .from("asset_prices")
     .delete()
     .eq("user_id", user_id)
-    .eq("ticker", normalizedTicker)
-    .eq("source", "api");
+    .eq("source", "api")
+    .in("ticker", tickersToUpdate);
 
-  const { error } = await getSupabase().from("asset_prices").insert(row);
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
+  if (deleteError) {
+    const classified = classifyError(deleteError);
+    throw new AppError(classified.kind, classified.message, deleteError);
+  }
+
+  // 4) Insere o lote em uma única instrução atômica
+  const { error: insertError } = await getSupabase().from("asset_prices").insert(rowsToInsert);
+  if (insertError) {
+    const classified = classifyError(insertError);
+    throw new AppError(classified.kind, classified.message, insertError);
   }
 }
+
 
 

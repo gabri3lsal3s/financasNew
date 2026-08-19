@@ -39,20 +39,23 @@ export function useUpdateCustomSettings() {
       await queryClient.cancelQueries({ queryKey: userPreferencesKey });
       const previous = queryClient.getQueryData<UserPreferences | null>(userPreferencesKey);
       if (previous) {
-        queryClient.setQueryData<UserPreferences | null>(userPreferencesKey, {
-          ...previous,
-          custom_settings: {
-            ...(previous.custom_settings ?? {}),
-            ...patch,
-            dashboardWidgets: {
-              ...(previous.custom_settings?.dashboardWidgets ?? {}),
-              ...(patch.dashboardWidgets ?? {}),
+        queryClient.setQueryData<UserPreferences | null>(userPreferencesKey, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            custom_settings: {
+              ...(old.custom_settings ?? {}),
+              ...patch,
+              dashboardWidgets: {
+                ...(old.custom_settings?.dashboardWidgets ?? {}),
+                ...(patch.dashboardWidgets ?? {}),
+              },
+              headerButtons: {
+                ...(old.custom_settings?.headerButtons ?? {}),
+                ...(patch.headerButtons ?? {}),
+              },
             },
-            headerButtons: {
-              ...(previous.custom_settings?.headerButtons ?? {}),
-              ...(patch.headerButtons ?? {}),
-            },
-          },
+          };
         });
       }
       return { previous };

@@ -1,10 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { listAssetPrices, removeManualPrice, setManualPrice } from "./asset-prices";
+import {
+  listAssetPrices,
+  removeManualPrice,
+  setAssetPricesBatchFromApi,
+  setManualPrice,
+} from "./asset-prices";
 
 interface Builder {
   select: ReturnType<typeof vi.fn>;
   or: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  in: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
@@ -12,12 +18,14 @@ interface Builder {
 
 let lastInsertInput: unknown = null;
 let lastDeleteCalls: string[] = [];
+let lastInCalls: Array<{ col: string; vals: unknown[] }> = [];
 
 function makeBuilder(result: unknown): Builder {
   const builder = {
     select: vi.fn(),
     or: vi.fn(),
     eq: vi.fn(),
+    in: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
@@ -26,6 +34,10 @@ function makeBuilder(result: unknown): Builder {
   builder.or.mockReturnValue(builder);
   builder.eq.mockImplementation((col: string, val: string) => {
     lastDeleteCalls.push(`${col}=${val}`);
+    return builder;
+  });
+  builder.in.mockImplementation((col: string, vals: unknown[]) => {
+    lastInCalls.push({ col, vals });
     return builder;
   });
   builder.insert.mockImplementation((input: unknown) => {
@@ -50,6 +62,7 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
   beforeEach(() => {
     lastInsertInput = null;
     lastDeleteCalls = [];
+    lastInCalls = [];
   });
 
   it("listAssetPrices busca cache global + overrides do usuário", async () => {
@@ -112,8 +125,31 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
     expect(lastDeleteCalls).toEqual(["user_id=u1", "ticker=AAPL", "source=manual"]);
   });
 
+  it("setAssetPricesBatchFromApi grava lote ignorando tickers com override manual", async () => {
+    // Simula que PETR4 possui override manual já registrado
+    builder = makeBuilder({
+      data: [{ ticker: "PETR4", price: 45, currency: "BRL", source: "manual", manual_price: 45 }],
+    });
+
+    await setAssetPricesBatchFromApi([
+      { ticker: "PETR4", price: 38.0, currency: "BRL" },
+      { ticker: "VALE3", price: 62.5, currency: "BRL" },
+    ]);
+
+    // Apenas VALE3 deve ser inserido (PETR4 foi ignorado devido ao override manual)
+    const inserted = lastInsertInput as Array<{ ticker: string; price: number; source: string }>;
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0]).toMatchObject({
+      ticker: "VALE3",
+      price: 62.5,
+      currency: "BRL",
+      source: "api",
+    });
+  });
+
   it("propaga erro classificado quando a leitura falha", async () => {
     builder = makeBuilder({ data: null, error: { message: "network down", code: "NETWORK_ERROR" } });
     await expect(listAssetPrices()).rejects.toThrow();
   });
 });
+

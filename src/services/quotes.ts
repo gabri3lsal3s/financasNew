@@ -16,7 +16,7 @@ import {
   parseYahooChartResponse,
   type ParsedQuote,
 } from "@/domain/portfolio";
-import { setAssetPriceFromApi } from "@/data/repositories/asset-prices";
+import { setAssetPriceFromApi, setAssetPricesBatchFromApi } from "@/data/repositories/asset-prices";
 
 const FETCH_TIMEOUT_MS = 5_000;
 
@@ -132,14 +132,30 @@ export async function syncQuotesForAssets(
   if (eligible.length === 0) return 0;
 
   const results = await Promise.allSettled(
-    eligible.map((a) => syncQuoteForTicker(a.ticker, a.asset_class)),
+    eligible.map((a) => fetchOnlineQuote(a.ticker)),
   );
 
-  let updatedCount = 0;
+  const successfulQuotes: ParsedQuote[] = [];
   for (const res of results) {
-    if (res.status === "fulfilled" && res.value !== null) {
-      updatedCount += 1;
+    if (res.status === "fulfilled" && res.value !== null && res.value.price > 0) {
+      successfulQuotes.push(res.value);
     }
   }
-  return updatedCount;
+
+  if (successfulQuotes.length > 0) {
+    try {
+      await setAssetPricesBatchFromApi(
+        successfulQuotes.map((q) => ({
+          ticker: q.ticker,
+          price: q.price,
+          currency: q.currency,
+        })),
+      );
+    } catch {
+      // Degradação graciosa: segue sem lançar erro de persistência em lote
+    }
+  }
+
+  return successfulQuotes.length;
 }
+
