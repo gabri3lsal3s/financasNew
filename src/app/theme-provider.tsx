@@ -1,15 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import {
+  getUserStorageItem,
+  setUserStorageItem,
+  subscribeActiveUserId,
+} from "@/services/user-storage";
 
 export type Theme = "light" | "dark" | "oled";
 export type ThemePreference = Theme | "system";
 
-const STORAGE_KEY = "financas:theme";
+const STORAGE_KEY = "theme";
 
 interface ThemeContextValue {
   /** Tema efetivo (system já resolvido). */
   theme: Theme;
-  /** Preferência do usuário (persistida). */
+  /** Preferência do usuário (persistida no storage local do dispositivo). */
   preference: ThemePreference;
   setPreference: (preference: ThemePreference) => void;
 }
@@ -21,8 +26,8 @@ function systemTheme(): Theme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-function readPreference(): ThemePreference {
-  const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
+function readPreference(userId?: string | null): ThemePreference {
+  const stored = getUserStorageItem(STORAGE_KEY, userId);
   return stored === "light" || stored === "dark" || stored === "oled" || stored === "system"
     ? stored
     : "system";
@@ -44,8 +49,15 @@ function updateMetaThemeColor(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>(readPreference);
+  const [preference, setPreferenceState] = useState<ThemePreference>(() => readPreference());
   const [system, setSystem] = useState<Theme>(systemTheme);
+
+  useEffect(() => {
+    const unsub = subscribeActiveUserId((userId) => {
+      setPreferenceState(readPreference(userId));
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
@@ -68,7 +80,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next);
-    window.localStorage.setItem(STORAGE_KEY, next);
+    setUserStorageItem(STORAGE_KEY, next);
   }, []);
 
   const value = useMemo(() => ({ theme, preference, setPreference }), [theme, preference, setPreference]);

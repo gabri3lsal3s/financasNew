@@ -56,7 +56,6 @@ import {
 import { triggerSensory, type SensoryIntent } from "@/services/sensory";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { getSupabase } from "@/data/client";
 import { cn } from "@/lib/utils";
 import { ExportDataHub } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
@@ -72,7 +71,8 @@ import { numberToCents } from "@/domain/money";
 import { BACKUP_TABLE_KEYS, parseBackupPayload } from "@/domain/export";
 import type { ExportExpenseRow, ExportIncomeRow, ExportInvoiceRow, ExportPositionRow, RestoreSummary } from "@/domain/export";
 import { serializeExpensesCsv, serializeIncomesCsv, serializeInvoicesCsv, serializePositionsCsv } from "@/domain/export";
-import { usePortfolioPosition, useUserPreferences, useUpdateReminderPreferences } from "@/state";
+import { usePortfolioPosition, useUserPreferences, useUpdateReminderPreferences, useUpdateCustomSettings } from "@/state";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { useSearchParams } from "react-router";
 import { pushToast } from "@/services/toast";
 
@@ -187,9 +187,11 @@ export function SettingsPage() {
   const visual = useVisualCustomization();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { signOut } = useSignOut();
   const portfolioPosition = usePortfolioPosition();
   const preferencesQuery = useUserPreferences();
   const updatePreferencesMutation = useUpdateReminderPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
 
   const remindersEnabled = preferencesQuery.data?.reminders_enabled ?? true;
   const billDaysBefore = preferencesQuery.data?.reminder_days_before_bill ?? 3;
@@ -237,6 +239,7 @@ export function SettingsPage() {
   const handleSelectSurfaceStyle = (id: SurfaceStyle, label: string) => {
     triggerSensory("selection");
     visual.setSurfaceStyle(id);
+    updateCustomSettingsMutation.mutate({ surfaceStyle: id });
     pushToast({
       title: "Preferências salvas",
       description: `Estilo de superfícies alterado para ${label}.`,
@@ -247,6 +250,7 @@ export function SettingsPage() {
   const handleSelectDensity = (densityVal: "comfortable" | "compact", label: string) => {
     triggerSensory("selection");
     setDensity(densityVal);
+    updateCustomSettingsMutation.mutate({ density: densityVal });
     pushToast({
       title: "Preferências salvas",
       description: `Densidade da interface alterada para ${label}.`,
@@ -257,6 +261,9 @@ export function SettingsPage() {
   const handleToggleHeaderButton = (key: keyof HeaderButtonsConfig, label: string, nextChecked: boolean) => {
     triggerSensory("toggle");
     visual.setHeaderButton(key, nextChecked);
+    updateCustomSettingsMutation.mutate({
+      headerButtons: { [key]: nextChecked },
+    });
     pushToast({
       title: "Preferências salvas",
       description: nextChecked
@@ -269,6 +276,7 @@ export function SettingsPage() {
   const handleSelectMotionLevel = (id: MotionLevel, label: string) => {
     triggerSensory("selection");
     visual.setMotionLevel(id);
+    updateCustomSettingsMutation.mutate({ motionLevel: id });
     pushToast({
       title: "Preferências salvas",
       description: `Animações alteradas para ${label}.`,
@@ -279,6 +287,7 @@ export function SettingsPage() {
   const handleToggleNumberTicker = (nextChecked: boolean) => {
     triggerSensory("toggle");
     visual.setNumberTickerEnabled(nextChecked);
+    updateCustomSettingsMutation.mutate({ numberTickerEnabled: nextChecked });
     pushToast({
       title: "Preferências salvas",
       description: nextChecked
@@ -291,6 +300,7 @@ export function SettingsPage() {
   const handleToggleSound = (nextChecked: boolean) => {
     triggerSensory("action");
     visual.setSoundEnabled(nextChecked);
+    updateCustomSettingsMutation.mutate({ soundEnabled: nextChecked });
     pushToast({
       title: "Preferências salvas",
       description: nextChecked
@@ -303,6 +313,7 @@ export function SettingsPage() {
   const handleToggleHaptic = (nextChecked: boolean) => {
     triggerSensory("action");
     visual.setHapticEnabled(nextChecked);
+    updateCustomSettingsMutation.mutate({ hapticEnabled: nextChecked });
     pushToast({
       title: "Preferências salvas",
       description: nextChecked
@@ -314,6 +325,13 @@ export function SettingsPage() {
 
   const handleToggleSensoryCategory = (intent: SensoryIntent, enabled: boolean, title: string) => {
     visual.toggleSensoryIntent(intent, enabled);
+    const current = visual.disabledSensoryIntents ?? [];
+    const next = enabled
+      ? current.filter((i) => i !== intent)
+      : current.includes(intent)
+        ? current
+        : [...current, intent];
+    updateCustomSettingsMutation.mutate({ disabledSensoryIntents: next });
     if (enabled) {
       triggerSensory(intent);
     }
@@ -328,6 +346,7 @@ export function SettingsPage() {
 
   const handleEnableAllSensoryCategories = () => {
     visual.setDisabledSensoryIntents([]);
+    updateCustomSettingsMutation.mutate({ disabledSensoryIntents: [] });
     triggerSensory("success");
     pushToast({
       title: "Preferências salvas",
@@ -352,6 +371,9 @@ export function SettingsPage() {
   const handleToggleDashboardWidget = (key: keyof DashboardWidgetsConfig, label: string, nextChecked: boolean) => {
     triggerSensory("action");
     visual.setDashboardWidget(key, nextChecked);
+    updateCustomSettingsMutation.mutate({
+      dashboardWidgets: { [key]: nextChecked },
+    });
     pushToast({
       title: "Preferências salvas",
       description: nextChecked
@@ -365,6 +387,28 @@ export function SettingsPage() {
     visual.resetToDefaults();
     setThemePref("system");
     setDensity("comfortable");
+    updateCustomSettingsMutation.mutate({
+      density: "comfortable",
+      surfaceStyle: "glass",
+      motionLevel: "fluid",
+      soundEnabled: false,
+      hapticEnabled: true,
+      disabledSensoryIntents: [],
+      numberTickerEnabled: true,
+      dashboardWidgets: {
+        kpis: true,
+        summary: true,
+        flow: true,
+        donut: true,
+        budgets: true,
+      },
+      headerButtons: {
+        logo: true,
+        calculatorButton: true,
+        themeToggle: false,
+        privacyToggle: false,
+      },
+    });
     triggerSensory("action");
     pushToast({
       title: "Preferências redefinidas",
@@ -496,15 +540,8 @@ export function SettingsPage() {
   };
 
   const handleLogout = async () => {
-    try {
-      triggerSensory("action");
-      void queryClient.cancelQueries();
-      queryClient.clear();
-      const supabase = getSupabase();
-      await supabase.auth.signOut();
-    } catch {
-      queryClient.clear();
-    }
+    triggerSensory("action");
+    await signOut();
   };
 
   const tabItems = [

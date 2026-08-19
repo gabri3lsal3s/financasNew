@@ -1,11 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   updateReminderPreferences,
+  updateCustomSettings,
   type ReminderPreferencesInput,
 } from "@/data/repositories/user-preferences";
 import { userPreferencesKey } from "@/state/queries/use-user-preferences";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
+import type { UserCustomSettings, UserPreferences } from "@/types";
 
 export function useUpdateReminderPreferences() {
   const queryClient = useQueryClient();
@@ -28,3 +30,46 @@ export function useUpdateReminderPreferences() {
     },
   });
 }
+
+export function useUpdateCustomSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<UserCustomSettings>) => updateCustomSettings(input),
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({ queryKey: userPreferencesKey });
+      const previous = queryClient.getQueryData<UserPreferences | null>(userPreferencesKey);
+      if (previous) {
+        queryClient.setQueryData<UserPreferences | null>(userPreferencesKey, {
+          ...previous,
+          custom_settings: {
+            ...(previous.custom_settings ?? {}),
+            ...patch,
+            dashboardWidgets: {
+              ...(previous.custom_settings?.dashboardWidgets ?? {}),
+              ...(patch.dashboardWidgets ?? {}),
+            },
+            headerButtons: {
+              ...(previous.custom_settings?.headerButtons ?? {}),
+              ...(patch.headerButtons ?? {}),
+            },
+          },
+        });
+      }
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(userPreferencesKey, context.previous);
+      }
+      pushToast({
+        title: "Não foi possível salvar as configurações na nuvem",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: userPreferencesKey });
+    },
+  });
+}
+

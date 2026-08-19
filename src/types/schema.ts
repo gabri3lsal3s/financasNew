@@ -83,6 +83,29 @@ export type Profile = {
   created_at: string;
 };
 
+export type UserCustomSettings = {
+  density?: "comfortable" | "compact";
+  surfaceStyle?: "glass" | "flat" | "elevated";
+  motionLevel?: "fluid" | "eco" | "reduced";
+  soundEnabled?: boolean;
+  hapticEnabled?: boolean;
+  disabledSensoryIntents?: string[];
+  numberTickerEnabled?: boolean;
+  dashboardWidgets?: {
+    kpis?: boolean;
+    summary?: boolean;
+    flow?: boolean;
+    donut?: boolean;
+    budgets?: boolean;
+  };
+  headerButtons?: {
+    logo?: boolean;
+    calculatorButton?: boolean;
+    themeToggle?: boolean;
+    privacyToggle?: boolean;
+  };
+};
+
 export type UserPreferences = {
   user_id: string;
   theme: ThemePreference;
@@ -92,6 +115,7 @@ export type UserPreferences = {
   report_weights_enabled: boolean;
   max_sector_acoes: number | null;
   max_sector_fiis: number | null;
+  custom_settings?: UserCustomSettings;
 };
 
 export type Category = {

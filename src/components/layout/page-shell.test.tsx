@@ -4,7 +4,9 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PageShell } from "./page-shell";
 
-const STORAGE_KEY = "financas_sidebar_collapsed";
+import { getUserStorageKey } from "@/services/user-storage";
+
+const STORAGE_KEY = getUserStorageKey("sidebar_collapsed");
 
 vi.mock("@/app/theme-provider", () => ({
   useTheme: () => ({ theme: "light", preference: "light", setPreference: vi.fn() }),

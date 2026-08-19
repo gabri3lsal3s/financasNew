@@ -200,7 +200,7 @@
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
-    │                              #   use-sidebar-state,
+    │                              #   use-sidebar-state, use-sign-out (logout unificado),
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
@@ -210,6 +210,8 @@
     │   │                          #     formatPercent)
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
+    │   ├── user-storage.ts        #   Isolamento de localStorage por userId (financas_${userId}_*) + sanitizeLegacyStorage
+    │   ├── auth-cleanup.ts        #   resetAppState() — cancelamento de queries, purge de cache, reset de stores e DOM
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
     │   ├── toast.ts               #   F30: bus de toasts imperativos (pushToast/dismissToast
     │   │                          #     — pub/sub com Single Toast Mode, auto-dismiss garantido)

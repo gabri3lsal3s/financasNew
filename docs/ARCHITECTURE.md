@@ -206,9 +206,12 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 ### 5.3 Estado de UI, autenticação e ciclo de vida de cache
 
 - **Sessão:** contexto do Supabase Auth (AuthProvider / `useAuth`).
-- **Purge Atômico de Cache (`AuthQuerySync`):** em eventos `SIGNED_OUT` ou troca de usuário (`userId` distinto), o listener sincroniza com o TanStack Query cancelando queries ativas (`cancelQueries`) e limpando 100% da memória (`queryClient.clear()`), prevenindo colisão de cache entre contas.
+- **Purge Atômico de Cache e Reset de Estado (`AuthQuerySync` & `resetAppState`):** em eventos `SIGNED_OUT` ou troca de usuário (`userId` distinto), o listener invoca `resetAppState` cancelando queries ativas (`cancelQueries`), limpando 100% da memória do TanStack Query (`queryClient.clear()`), resetando stores locais em memória (`visualCustomization`, `density`, `privacyMask`, `sidebarState`) e removendo atributos do DOM raiz (`data-accent`, `data-surface-style`, `data-motion`, `data-privacy`), prevenindo retenção ou vazamento de dados entre contas.
+- **Isolamento de Armazenamento Local (`user-storage.ts`):** chaves do `localStorage` utilizam namespace obrigatório por usuário (`financas_${userId}_<chave>`). Chaves legadas ou despadronizadas sem namespace são purgadas automaticamente no boot/logout (`sanitizeLegacyStorage`).
 - **Isolamento de Árvore e Anti-Flicker (`RequireAuth`):** rotas autenticadas usam `key={session.user.id}` para remontagem limpa e o hook `useMinimumLoading` (650ms) com a tela oficial `LoadingScreen` (barra de progresso dinâmica + log em tempo real), eliminando micro-flashes durante transições de rede ou sessão.
-- **Tema e preferências:** contexto local + persistência em `user_preferences` (não passa por TanStack Query).
+- **Persistência Híbrida de Preferências:**
+  - **Nuvem (Supabase `user_preferences` + `custom_settings`):** lembretes, travas setoriais, densidade de tabelas, widgets do dashboard, atalhos do cabeçalho, animações, feedback sonoro/háptico e contadores animados são sincronizados multidispositivo via `useUserPreferences` e `useUpdateCustomSettings`.
+  - **Dispositivo (Local por Usuário):** tema visual (`light`/`dark`/`oled`/`system`) e cor de destaque (`accent`) são mantidos isolados no `localStorage` por `userId`, respeitando as características físicas de cada tela/dispositivo.
 - **Estado de tela** (wizard, modais, filtros): hooks locais de `features/`. **Sem** store global de dados de negócio — dados de negócio vivem no servidor, nunca em memória de cliente.
 - **Sessão expirada (401):** redirect para login **preservando a rota pretendida** (retorno pós-login); mensagem via gateway.
 

@@ -3,6 +3,7 @@ import { getSupabase } from "@/data/client";
 import { ensureOwnProfile } from "@/data/repositories/profiles";
 import { getErrorMessage } from "@/services/errors";
 import { reportError, setObservabilityUser } from "@/services/observability";
+import { setActiveUserId } from "@/services/user-storage";
 import type { Session, User } from "@supabase/supabase-js";
 
 /**
@@ -21,6 +22,10 @@ export interface AuthState {
 }
 
 type AuthInit = { supabase: ReturnType<typeof getSupabase> } | { configError: string };
+
+export function resetEnsuredProfiles(): void {
+  ensuredProfiles.clear();
+}
 
 /**
  * Sessão do usuário — fonte única para guards de rota e telas de auth.
@@ -42,8 +47,10 @@ export function useAuth(): AuthState {
       : { session: null, user: null, loading: false, configError: init.configError },
   );
 
-  // Correlaciona erros ao usuário no Sentry (no-op sem DSN) — F6.3.
+  // Correlaciona erros ao usuário no Sentry (no-op sem DSN) — F6.3 e sincroniza storage.
   useEffect(() => {
+    const uid = state.user?.id ?? null;
+    setActiveUserId(uid);
     void setObservabilityUser(state.user ? { id: state.user.id, email: state.user.email } : null);
   }, [state.user]);
 
@@ -65,6 +72,8 @@ export function useAuth(): AuthState {
 
     void init.supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
+      const uid = data.session?.user?.id ?? null;
+      setActiveUserId(uid);
       setState({
         session: data.session,
         user: data.session?.user ?? null,
@@ -75,6 +84,8 @@ export function useAuth(): AuthState {
 
     const { data: subscription } = init.supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
+      const uid = session?.user?.id ?? null;
+      setActiveUserId(uid);
       setState({
         session,
         user: session?.user ?? null,

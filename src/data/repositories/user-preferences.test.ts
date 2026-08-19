@@ -3,6 +3,7 @@ import {
   getUserPreferences,
   updateSectorCaps,
   updateReminderPreferences,
+  updateCustomSettings,
 } from "./user-preferences";
 
 interface Builder {
@@ -98,6 +99,25 @@ describe("user-preferences repository", () => {
       reminders_enabled: false,
       reminder_days_before_debt: 5,
       reminder_days_before_bill: 4,
+    });
+  });
+
+  it("updateCustomSettings atualiza configurações customizadas JSONB", async () => {
+    builder = makeBuilder({
+      data: {
+        user_id: "u1",
+        custom_settings: { density: "comfortable" },
+      },
+      error: null,
+    });
+    await updateCustomSettings({ density: "compact", soundEnabled: true });
+    expect(lastUpdateInput).toEqual({
+      custom_settings: {
+        density: "compact",
+        soundEnabled: true,
+        dashboardWidgets: {},
+        headerButtons: {},
+      },
     });
   });
 

@@ -7,6 +7,7 @@ import { SettingsPage } from "./settings-page";
 import { ThemeProvider } from "@/app/theme-provider";
 
 const mockUpdateReminderPreferences = vi.fn();
+const mockUpdateCustomSettings = vi.fn();
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
@@ -49,12 +50,17 @@ vi.mock("@/state", () => ({
       reminders_enabled: true,
       reminder_days_before_debt: 3,
       reminder_days_before_bill: 5,
+      custom_settings: {},
     },
     isLoading: false,
     error: null,
   }),
   useUpdateReminderPreferences: () => ({
     mutate: mockUpdateReminderPreferences,
+    isPending: false,
+  }),
+  useUpdateCustomSettings: () => ({
+    mutate: mockUpdateCustomSettings,
     isPending: false,
   }),
 }));

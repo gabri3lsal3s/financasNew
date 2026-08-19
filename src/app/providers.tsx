@@ -6,12 +6,16 @@ import { Toaster } from "@/components/ui/toast";
 import { ToastHost } from "@/components/ui/toast-host";
 import { PWAUpdateToast } from "@/components/modules/pwa-update-toast";
 import { getSupabase } from "@/data/client";
+import { resetAppState } from "@/services/auth-cleanup";
+import { useUserPreferences } from "@/state/queries/use-user-preferences";
+import { syncVisualWithCloud } from "@/hooks/use-visual-customization";
 
 /**
- * Sincroniza o ciclo de vida do TanStack Query com a sessão de autenticação do Supabase.
- * Cancela requisições em andamento e limpa TODO o cache em memória no logout (`SIGNED_OUT`)
- * ou na transição entre diferentes contas de usuário (`userId` distinto), impedindo
- * retenção de dados ou colisão de cache entre sessões.
+ * Sincroniza o ciclo de vida do TanStack Query e das stores locais
+ * com a sessão de autenticação do Supabase.
+ * Ao deslogar (`SIGNED_OUT`) ou na troca de usuário (`userId` distinto),
+ * invoca `resetAppState` cancelando requisições, limpando cache e restaurando
+ * os padrões de fábrica no DOM e na memória.
  */
 function AuthQuerySync({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -33,10 +37,7 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
         event === "SIGNED_OUT" ||
         (activeUserIdRef.current !== null && activeUserIdRef.current !== newUserId)
       ) {
-        // 1. Cancela buscas em andamento para não gravar dados da conta anterior
-        void queryClient.cancelQueries();
-        // 2. Limpa completamente todo o QueryCache e MutationCache em memória
-        queryClient.clear();
+        resetAppState(queryClient, newUserId);
       }
 
       activeUserIdRef.current = newUserId;
@@ -46,6 +47,21 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
       subscription.subscription.unsubscribe();
     };
   }, [queryClient]);
+
+  return <>{children}</>;
+}
+
+/**
+ * Sincroniza preferências customizadas salvas na nuvem com o estado local do app.
+ */
+function CloudPreferencesSync({ children }: { children: ReactNode }) {
+  const { data: preferences } = useUserPreferences();
+
+  useEffect(() => {
+    if (preferences?.custom_settings) {
+      syncVisualWithCloud(preferences.custom_settings);
+    }
+  }, [preferences?.custom_settings]);
 
   return <>{children}</>;
 }
@@ -69,15 +85,17 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthQuerySync>
-        <ThemeProvider>
-          <Toaster>
-            {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}
-            <PWAUpdateToast />
-            {/* Host do bus de toasts (services/toast) — rollbacks otimistas etc. */}
-            <ToastHost />
-            {children}
-          </Toaster>
-        </ThemeProvider>
+        <CloudPreferencesSync>
+          <ThemeProvider>
+            <Toaster>
+              {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}
+              <PWAUpdateToast />
+              {/* Host do bus de toasts (services/toast) — rollbacks otimistas etc. */}
+              <ToastHost />
+              {children}
+            </Toaster>
+          </ThemeProvider>
+        </CloudPreferencesSync>
       </AuthQuerySync>
     </QueryClientProvider>
   );

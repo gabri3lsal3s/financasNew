@@ -43,6 +43,10 @@ export function togglePrivacyMask(): void {
   setPrivacyMasked(!masked);
 }
 
+export function resetPrivacyMask(): void {
+  setPrivacyMasked(false);
+}
+
 /** Hook — componentes de valor (KpiCard, TransactionRow, MoneyInput…) leem o modo. */
 export function usePrivacyMask(): boolean {
   return useSyncExternalStore(subscribePrivacyMask, getPrivacyMasked, getPrivacyMasked);

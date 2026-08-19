@@ -11,9 +11,7 @@ import {
 import { Modal, Button, LivePulseBeacon } from "@/components/ui";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { useAuth } from "@/hooks/use-auth";
-import { getSupabase } from "@/data/client";
 import { triggerHaptic } from "@/services/haptics";
-import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 /** Retorna as iniciais do nome/email para o avatar. */
@@ -62,11 +60,13 @@ function QuickLink({ icon: Icon, label, description, onClick }: QuickLinkProps) 
  * Botão da logo no header (mobile) que abre um modal de perfil do usuário.
  * Combina identidade visual da marca com acesso rápido a configurações e logout.
  */
+import { useSignOut } from "@/hooks/use-sign-out";
+
 export function LogoProfileButton() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { signOut } = useSignOut();
 
   const name: string | undefined = user?.user_metadata?.name as string | undefined;
   const email = user?.email;
@@ -74,16 +74,9 @@ export function LogoProfileButton() {
   const displayName = name ?? email?.split("@")[0] ?? "Usuário";
 
   const handleLogout = async () => {
-    try {
-      triggerHaptic("medium");
-      setOpen(false);
-      void queryClient.cancelQueries();
-      queryClient.clear();
-      const supabase = getSupabase();
-      await supabase.auth.signOut();
-    } catch {
-      queryClient.clear();
-    }
+    triggerHaptic("medium");
+    setOpen(false);
+    await signOut();
   };
 
   const goTo = (path: string) => {
