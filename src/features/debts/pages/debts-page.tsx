@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Check, Coins, HandCoins, Plus } from "lucide-react";
-import { Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { Calendar, Check, ChevronDown, ChevronUp, Coins, HandCoins, Plus } from "lucide-react";
+import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
-import { debtStatus } from "@/domain/debts";
+import { debtStatus, todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
+import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
@@ -25,84 +26,92 @@ interface DebtRowProps {
 }
 
 /**
- * Linha de dívida — nível de módulo (nunca aninhada em `DebtsPage`): evita que
- * o React remonte todas as linhas a cada render da página (tipo de componente
- * novo por render → perda de foco/jank com listas grandes). Callbacks via props.
+ * Linha de dívida refinada — layout em 2 níveis claro e adaptado para mobile e desktop.
  */
 function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
   const status = debtStatus(debt.due_date, debt.paid_at);
   const isPaid = status === "paid";
+
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:bg-surface-hover/60">
-      <button
-        type="button"
-        aria-label={`Editar ${debt.name}`}
-        onClick={() => {
-          triggerHaptic("light");
-          onEdit(debt);
-        }}
-        className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg cursor-pointer py-0.5 active:scale-[0.99]"
-      >
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-medium text-foreground">{debt.name}</p>
-            {!isPaid ? <DebtStatusBadge status={status} /> : null}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Vence em {debt.due_date}
-            {debt.paid_at ? ` · quitada em ${debt.paid_at.slice(0, 10)}` : ""}
-            {debt.expense_id ? " · vinculada a despesa" : ""}
-          </p>
-        </div>
-        <div className="shrink-0 text-right pr-1">
+    <div className="group flex flex-col gap-2.5 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-border hover:bg-surface">
+      {/* Linha superior: Nome + Badge à esquerda, Valor à direita */}
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <button
+          type="button"
+          aria-label={`Editar ${debt.name}`}
+          onClick={() => {
+            triggerHaptic("light");
+            onEdit(debt);
+          }}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md cursor-pointer active:scale-[0.99]"
+        >
+          <span className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+            {debt.name}
+          </span>
+          {!isPaid ? <DebtStatusBadge status={status} /> : null}
+        </button>
+
+        <div className="shrink-0 text-right">
           <MoneyText
-            cents={Math.round(debt.amount * 100)}
+            cents={numberToCents(debt.amount)}
             variant="value"
             tone={debt.type === "receivable" ? "positive" : "negative"}
+            className="text-sm sm:text-base font-bold"
           />
         </div>
-      </button>
+      </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        {isPaid ? (
-          <div
-            className="inline-flex items-center rounded-lg border border-positive/40 bg-positive/10 p-0.5 shadow-sm transition-all duration-200"
-            role="group"
-            aria-label={`Ações para ${debt.name}`}
-          >
+      {/* Linha inferior: Data de vencimento/quitação à esquerda, Ação à direita */}
+      <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs">
+          <Calendar className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+          <span>
+            {isPaid
+              ? `Quitada em ${formatDateBR(debt.paid_at ?? debt.due_date)}`
+              : `Vencimento: ${formatDateBR(debt.due_date)}`}
+          </span>
+          {debt.expense_id ? (
+            <span className="hidden sm:inline text-muted-foreground/60">· vinculada a despesa</span>
+          ) : null}
+        </div>
+
+        <div className="flex shrink-0 items-center">
+          {isPaid ? (
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
                 onUnsettle(debt);
               }}
-              className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-positive-strong transition-all duration-200 hover:bg-positive/20 active:scale-95 sm:h-8"
+              className="inline-flex h-7 items-center gap-1 rounded-lg border border-positive/30 bg-positive/10 px-2.5 text-[11px] font-medium text-positive-strong hover:bg-positive/20 active:scale-95 transition-all cursor-pointer"
               aria-label={`Quitada (${debt.name}) — clique para desmarcar`}
               title={`Quitada (${debt.name}) — clique para desmarcar`}
             >
-              <Check className="size-3.5 animate-spring-pop sm:size-4" aria-hidden="true" />
+              <Check className="size-3.5" aria-hidden="true" />
               <span>Quitada</span>
             </button>
-          </div>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            aria-label={`Quitar ${debt.name}`}
-            onClick={() => {
-              triggerHaptic("light");
-              onSettle(debt);
-            }}
-          >
-            Quitar
-          </Button>
-        )}
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label={`Quitar ${debt.name}`}
+              onClick={() => {
+                triggerHaptic("light");
+                onSettle(debt);
+              }}
+              className="h-7 px-2.5 text-[11px] sm:h-8 sm:px-3 sm:text-xs"
+            >
+              <Check className="size-3.5 mr-1" aria-hidden="true" />
+              {debt.type === "receivable" ? "Receber" : "Quitar"}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-/** Dívidas / contas a pagar e receber (§3.4) — status derivado + quitação integrada + financiamentos. */
+/** Dívidas / contas a pagar e receber (§3.4) — agrupamento inteligente por urgência + financiamentos. */
 export function DebtsPage() {
   const debtsQuery = useDebts();
   const loansQuery = useLoans();
@@ -111,8 +120,11 @@ export function DebtsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { highlightId } = useHighlightTarget("q");
 
+  // Estado de visualização do histórico de quitadas
+  const [showPaid, setShowPaid] = useState(false);
+
   // Aba derivada: deep-link ?type= (busca §3.9) prevalece; sem param, usa a
-  // escolha manual (tabs). O pick manual limpa o param (sem setState em effect).
+  // escolha manual (tabs). O pick manual limpa o param.
   const paramType = searchParams.get("type");
   const [pickedTab, setPickedTab] = useState<"payable" | "receivable" | "loans">("payable");
   const tab: "payable" | "receivable" | "loans" =
@@ -168,6 +180,38 @@ export function DebtsPage() {
   const netPendingCents = receivablePendingCents - payablePendingCents;
 
   const error = debtsQuery.error || loansQuery.error;
+
+  // Agrupamento temporal inteligente para evitar sobrecarga visual
+  const today = todayISO();
+  const thisMonth = currentMonth();
+
+  const overdueOrToday: Debt[] = [];
+  const thisMonthList: Debt[] = [];
+  const futureList: Debt[] = [];
+  const paidList: Debt[] = [];
+
+  for (const debt of filtered) {
+    const status = debtStatus(debt.due_date, debt.paid_at, today);
+    if (status === "paid") {
+      paidList.push(debt);
+    } else if (status === "overdue" || status === "due_today") {
+      overdueOrToday.push(debt);
+    } else if (debt.due_date.slice(0, 7) === thisMonth) {
+      thisMonthList.push(debt);
+    } else {
+      futureList.push(debt);
+    }
+  }
+
+  // Ordenação prioritária
+  overdueOrToday.sort((a, b) => a.due_date.localeCompare(b.due_date));
+  thisMonthList.sort((a, b) => a.due_date.localeCompare(b.due_date));
+  futureList.sort((a, b) => a.due_date.localeCompare(b.due_date));
+  paidList.sort((a, b) => (b.paid_at ?? b.due_date).localeCompare(a.paid_at ?? a.due_date));
+
+  // Quitadas ficam visíveis automaticamente se não houver nenhuma pendente
+  const hasPending = overdueOrToday.length > 0 || thisMonthList.length > 0 || futureList.length > 0;
+  const isPaidVisible = showPaid || !hasPending;
 
   return (
     <div className="flex flex-col gap-6">
@@ -235,20 +279,31 @@ export function DebtsPage() {
         />
       )}
 
-      {/* Resumo financeiro consolidado para contas a pagar/receber */}
+      {/* Resumo financeiro consolidado: 3 cards proporcionais no mobile e desktop */}
       {tab !== "loans" && !error && !debtsQuery.isLoading && debts.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">A pagar pendente</span>
-            <MoneyText cents={payablePendingCents} tone="negative" className="text-lg sm:text-xl font-bold" />
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
+            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              A pagar
+            </span>
+            <MoneyText cents={payablePendingCents} tone="negative" className="text-sm sm:text-lg font-bold" />
           </div>
-          <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">A receber pendente</span>
-            <MoneyText cents={receivablePendingCents} tone="positive" className="text-lg sm:text-xl font-bold" />
+          <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
+            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              A receber
+            </span>
+            <MoneyText cents={receivablePendingCents} tone="positive" className="text-sm sm:text-lg font-bold" />
           </div>
-          <div className="col-span-2 sm:col-span-1 flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Saldo pendente líquido</span>
-            <MoneyText cents={netPendingCents} tone={netPendingCents >= 0 ? "positive" : "negative"} sign="auto" className="text-lg sm:text-xl font-bold" />
+          <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
+            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              Saldo pendente
+            </span>
+            <MoneyText
+              cents={netPendingCents}
+              tone={netPendingCents >= 0 ? "positive" : "negative"}
+              sign="auto"
+              className="text-sm sm:text-lg font-bold"
+            />
           </div>
         </div>
       )}
@@ -283,13 +338,13 @@ export function DebtsPage() {
         </div>
       )}
 
-      {/* Conteúdo de Dívidas (A pagar / A receber) */}
+      {/* Conteúdo de Dívidas (A pagar / A receber) com Agrupamento Inteligente */}
       {tab !== "loans" && (
         <>
           {debtsQuery.isLoading ? (
             <div className="flex flex-col gap-2">
-              <Skeleton className="h-16 w-full rounded-xl" />
-              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-2xl" />
+              <Skeleton className="h-20 w-full rounded-2xl" />
             </div>
           ) : filtered.length === 0 ? (
             <EmptyState
@@ -302,20 +357,146 @@ export function DebtsPage() {
               }
             />
           ) : (
-            <div className="flex flex-col gap-2">
-              {filtered.map((debt) => (
-                <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
-                  <DebtRow
-                    debt={debt}
-                    onSettle={setSettling}
-                    onUnsettle={handleUnsettle}
-                    onEdit={(d) => {
-                      setEditingDebt(d);
-                      setFormOpen(true);
-                    }}
-                  />
-                </HighlightRow>
-              ))}
+            <div className="flex flex-col gap-6">
+              {/* Grupo 1: Atrasadas e Vencendo Hoje */}
+              {overdueOrToday.length > 0 && (
+                <section aria-label="Contas atrasadas e vencendo hoje" className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-2 rounded-full bg-critical-strong animate-pulse" />
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-critical-strong">
+                        Atrasadas & Vencendo Hoje
+                      </h2>
+                    </div>
+                    <Badge variant="critical" className="text-[11px] font-semibold">
+                      {overdueOrToday.length}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-col gap-2.5">
+                    {overdueOrToday.map((debt) => (
+                      <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                        <DebtRow
+                          debt={debt}
+                          onSettle={setSettling}
+                          onUnsettle={handleUnsettle}
+                          onEdit={(d) => {
+                            setEditingDebt(d);
+                            setFormOpen(true);
+                          }}
+                        />
+                      </HighlightRow>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Grupo 2: Vencimento no Mês Corrente */}
+              {thisMonthList.length > 0 && (
+                <section aria-label="Contas do mês atual" className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Vencimento em {monthLabel(thisMonth)}
+                    </h2>
+                    <span className="text-xs text-muted-foreground font-mono font-medium">
+                      {thisMonthList.length} {thisMonthList.length === 1 ? "conta" : "contas"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2.5">
+                    {thisMonthList.map((debt) => (
+                      <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                        <DebtRow
+                          debt={debt}
+                          onSettle={setSettling}
+                          onUnsettle={handleUnsettle}
+                          onEdit={(d) => {
+                            setEditingDebt(d);
+                            setFormOpen(true);
+                          }}
+                        />
+                      </HighlightRow>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Grupo 3: Próximos Vencimentos (Futuros) */}
+              {futureList.length > 0 && (
+                <section aria-label="Próximos vencimentos" className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Próximos Vencimentos
+                    </h2>
+                    <span className="text-xs text-muted-foreground font-mono font-medium">
+                      {futureList.length} {futureList.length === 1 ? "conta" : "contas"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2.5">
+                    {futureList.map((debt) => (
+                      <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                        <DebtRow
+                          debt={debt}
+                          onSettle={setSettling}
+                          onUnsettle={handleUnsettle}
+                          onEdit={(d) => {
+                            setEditingDebt(d);
+                            setFormOpen(true);
+                          }}
+                        />
+                      </HighlightRow>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Grupo 4: Quitadas / Histórico (Colapsável) */}
+              {paidList.length > 0 && (
+                <section aria-label="Histórico de quitadas" className="flex flex-col gap-2.5 pt-1">
+                  {hasPending ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPaid((prev) => !prev)}
+                      className="flex items-center justify-between py-3 px-3.5 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border/80 rounded-xl bg-surface/50 transition-all cursor-pointer"
+                      aria-expanded={isPaidVisible}
+                    >
+                      <span className="flex items-center gap-2 font-medium">
+                        <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
+                        Quitadas ({paidList.length})
+                      </span>
+                      {isPaidVisible ? (
+                        <ChevronUp className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        <ChevronDown className="size-3.5" aria-hidden="true" />
+                      )}
+                    </Button>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Quitadas ({paidList.length})
+                      </h2>
+                    </div>
+                  )}
+
+                  {isPaidVisible && (
+                    <div className="flex flex-col gap-2.5">
+                      {paidList.map((debt) => (
+                        <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                          <DebtRow
+                            debt={debt}
+                            onSettle={setSettling}
+                            onUnsettle={handleUnsettle}
+                            onEdit={(d) => {
+                              setEditingDebt(d);
+                              setFormOpen(true);
+                            }}
+                          />
+                        </HighlightRow>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
           )}
         </>
@@ -328,8 +509,6 @@ export function DebtsPage() {
           setFormOpen(next);
           if (!next) setEditingDebt(null);
         }}
-        // Exclusão com feedback: o hook exibe toast em falha e o formulário
-        // permanece aberto com o erro (o diálogo rejeita a promise).
         onDelete={async (debt) => {
           await deleteDebt.mutateAsync(debt.id);
         }}

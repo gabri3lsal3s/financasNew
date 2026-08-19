@@ -89,10 +89,14 @@ vi.mock("@/state", () => ({
 }));
 
 describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
-  it("lista dívidas com status derivado", () => {
+  it("lista dívidas com status derivado", async () => {
+    const user = userEvent.setup();
     render(<DebtsPage />);
     expect(screen.getByText("Conta de luz")).toBeInTheDocument();
     expect(screen.getByText("Pendente")).toBeInTheDocument();
+
+    const togglePaid = screen.getByRole("button", { name: /Quitadas \(1\)/i });
+    await user.click(togglePaid);
     expect(screen.getByText("Quitada")).toBeInTheDocument();
   });
 
@@ -100,6 +104,9 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     updateDebtMock.mockResolvedValue({ id: "d3", paid_at: null });
     const user = userEvent.setup();
     render(<DebtsPage />);
+
+    const togglePaid = screen.getByRole("button", { name: /Quitadas \(1\)/i });
+    await user.click(togglePaid);
 
     const unsettleBtn = screen.getByRole("button", { name: /Quitada \(Conta paga\)/i });
     await user.click(unsettleBtn);

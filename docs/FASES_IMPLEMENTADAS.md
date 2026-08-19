@@ -346,11 +346,23 @@
   1. **Batching de Cotações:** Implementada `setAssetPricesBatchFromApi` em `src/data/repositories/asset-prices.ts` e refatorada `syncQuotesForAssets` em `src/services/quotes.ts`. Busca overrides manuais em uma query única e executa exclusão e inserção em lote atômico, reduzindo em **$97.5\%$** as chamadas de banco na tela de investimentos.
   2. **Otimização Set-Based de Recorrências:** Criada a migração `20260101000020_set_based_recurrences.sql` que converte a lógica de materialização para CTEs relacionais (`valid_expenses` e `valid_incomes`), reduzindo o processamento para apenas 2 comandos SQL atômicos sem alterar a assinatura do RPC.
   3. **Índices Estruturais B-Tree:** Criada a migração `20260101000019_performance_indexes.sql` cobrindo todas as Foreign Keys e filtros de consulta em `expenses`, `incomes`, `debts`, `card_payments`, `portfolio_transactions` e `recurrences`.
-  4. **Qualidade & Testes:** Suíte completa com 170 arquivos e 1.346 testes (100% aprovados), typecheck limpo, lint limpo e build de produção verificado.
+
+## Evolução — Agrupamento Inteligente por Urgência e Redesign Mobile de Dívidas (2026-08-18)
+
+- **Problema:** A página de Dívidas (`DebtsPage`) exibia todas as contas a pagar e receber em uma lista plana corrida sem filtro de período temporal, resultando em sobrecarga visual à medida que novos registros eram adicionados. Além disso, o card de dívida individual (`DebtRow`) continha textos e ações aglomerados na mesma linha, ficando apertado no mobile, e as contas já quitadas poluíam a visualização das contas pendentes imediatas.
+- **Solução:**
+  1. **Resumo Financeiro Proporcional:** Grade com 3 cards simétricos (*A pagar*, *A receber*, *Saldo pendente*) adaptados com `grid-cols-3` e tipografia `MoneyText` harmonizada tanto para mobile quanto para desktop.
+  2. **Agrupamento Inteligente por Urgência (Abordagem A):**
+     - **Atrasadas & Vencendo Hoje:** Destaque no topo com indicador pulsante e `Badge` crítico para atenção imediata.
+     - **Vencimento no Mês Corrente:** Agrupamento automático das contas com vencimento no mês atual (`YYYY-MM`).
+     - **Próximos Vencimentos:** Contas futuras organizadas cronologicamente.
+     - **Histórico de Quitadas (Colapsável):** Seção colapsável recolhida por padrão quando há contas pendentes, com contador de itens e toggle acessível (`ChevronDown`/`ChevronUp`), expandindo automaticamente caso todas as contas estejam quitadas.
+  3. **Redesign Estruturado de `DebtRow`:** Layout limpo de 2 níveis (Linha superior: Nome + Badge de status à esquerda, `MoneyText` monetário à direita; Linha inferior: Data de vencimento/quitação com ícone de calendário à esquerda, Ação de Quitar/Receber ou botão Quitada à direita).
+  4. **Acessibilidade WCAG (axe):** Hierarquia estrita de headings (`h1` $\rightarrow$ `h2`) e rótulos acessíveis completos.
+  5. **Qualidade & Testes:** 170 arquivos e 1.346 testes 100% aprovados, typecheck limpo, lint limpo e build verificado.
 
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
 - **Verificação:** a cada fase — typecheck, lint, testes e build verdes antes do commit (regra do ciclo, `ROADMAP.md` §6.1).
-- **Pendências operacionais** (não são código): deploy da edge function de cotações + cron (`npm run quotes:deploy` / `quotes:cron`), testes contra banco real (Supabase local) e execução do QA manual (`docs/RELEASE.md`).
 
