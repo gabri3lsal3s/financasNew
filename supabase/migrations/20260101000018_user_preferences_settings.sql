@@ -9,59 +9,48 @@ alter table public.user_preferences
   add column if not exists custom_settings jsonb not null default '{}'::jsonb;
 
 -- Atualiza a função de restore para suportar custom_settings se presente
-create or replace function public.restore_user_backup(
-  p_payload jsonb
-)
+create or replace function public.restore_backup(p_backup jsonb)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, auth
+set search_path = public, pg_temp
 as $$
 declare
-  v_uid uuid;
-  v_data jsonb;
-  v_version text;
-  v_res jsonb;
+  v_uid uuid := auth.uid();
+  v_data jsonb := p_backup -> 'data';
+  v_counts jsonb;
 begin
-  v_uid := auth.uid();
   if v_uid is null then
-    raise exception 'Não autenticado' using errcode = '42501';
+    raise exception 'Não autenticado';
   end if;
-
-  v_version := p_payload ->> 'version';
-  if v_version is null or (v_version <> '1.0' and v_version <> '2.0') then
-    raise exception 'Versão de backup incompatível: %', coalesce(v_version, 'null');
-  end if;
-
-  v_data := p_payload -> 'data';
-  if v_data is null then
-    raise exception 'Payload de backup sem nó data';
+  if jsonb_typeof(v_data) <> 'object' then
+    raise exception 'Backup inválido: campo "data" ausente ou malformado';
   end if;
 
   -- ------------------------------------------------------------------
-  -- 1) Limpeza total na ordem inversa de dependências FK
+  -- 1) Apaga os dados atuais do usuário (filhos antes dos pais)
   -- ------------------------------------------------------------------
-  delete from public.audit_events where user_id = v_uid;
-  delete from public.recurrence_skips where user_id = v_uid;
+  delete from public.portfolio_transactions pt
+    using public.portfolio_assets a
+    where pt.asset_id = a.id and a.user_id = v_uid;
+  delete from public.allocation_targets t
+    using public.portfolio_assets a
+    where t.asset_id = a.id and a.user_id = v_uid;
+  delete from public.card_competence_overrides o
+    using public.credit_cards c
+    where o.card_id = c.id and c.user_id = v_uid;
+  delete from public.card_payments cp
+    using public.credit_cards c
+    where cp.card_id = c.id and c.user_id = v_uid;
+  delete from public.debts where user_id = v_uid;
   delete from public.expenses where user_id = v_uid;
   delete from public.incomes where user_id = v_uid;
-  delete from public.recurrences where user_id = v_uid;
-  delete from public.card_competence_overrides where card_id in (
-    select id from public.credit_cards where user_id = v_uid
-  );
-  delete from public.card_payments where user_id = v_uid;
-  delete from public.debts where user_id = v_uid;
-  delete from public.loans where user_id = v_uid;
   delete from public.budgets where user_id = v_uid;
   delete from public.income_goals where user_id = v_uid;
   delete from public.insight_feedback where user_id = v_uid;
   delete from public.reminder_states where user_id = v_uid;
   delete from public.asset_prices where user_id = v_uid;
-  delete from public.portfolio_transactions where user_id = v_uid;
   delete from public.portfolio_assets where user_id = v_uid;
-  delete from public.allocation_targets where user_id = v_uid;
-  delete from public.class_targets where user_id = v_uid;
-  delete from public.sector_targets where user_id = v_uid;
   delete from public.credit_cards where user_id = v_uid;
   delete from public.categories where user_id = v_uid;
   delete from public.user_preferences where user_id = v_uid;
@@ -93,74 +82,83 @@ begin
   select id, v_uid, value, date, category_id, receive_type, description, report_weight, source_ref, created_at
   from jsonb_populate_recordset(null::public.incomes, coalesce(v_data -> 'incomes', '[]'::jsonb));
 
-  insert into public.expenses (
-    id, user_id, value, date, category_id, payment_method, card_id,
-    installments_total, installment_number, installment_group_id,
-    bill_competence, report_weight, base_amount, description, created_at
-  )
-  select
-    id, v_uid, value, date, category_id, payment_method, card_id,
-    installments_total, installment_number, installment_group_id,
-    bill_competence, report_weight, base_amount, description, created_at
+  insert into public.expenses (id, user_id, value, date, category_id, payment_method, card_id, installments_total, installment_number, installment_group_id, bill_competence, report_weight, base_amount, description, created_at)
+  select id, v_uid, value, date, category_id, payment_method, card_id, installments_total, installment_number, installment_group_id, bill_competence, report_weight, base_amount, description, created_at
   from jsonb_populate_recordset(null::public.expenses, coalesce(v_data -> 'expenses', '[]'::jsonb));
 
-  insert into public.debts (id, user_id, type, name, total_amount, remaining_amount, due_date, status, notes, created_at)
-  select id, v_uid, type, name, total_amount, remaining_amount, due_date, status, notes, created_at
-  from jsonb_populate_recordset(null::public.debts, coalesce(v_data -> 'debts', '[]'::jsonb));
-
-  insert into public.card_payments (id, user_id, card_id, competence_month, amount, payment_date, created_at)
-  select id, v_uid, card_id, competence_month, amount, payment_date, created_at
+  insert into public.card_payments (id, user_id, card_id, competence_month, amount, date, note, is_refund)
+  select id, v_uid, card_id, competence_month, amount, date, note, is_refund
   from jsonb_populate_recordset(null::public.card_payments, coalesce(v_data -> 'card_payments', '[]'::jsonb));
 
-  insert into public.budgets (id, user_id, category_id, month, amount)
-  select id, v_uid, category_id, month, amount
+  insert into public.debts (id, user_id, name, type, amount, due_date, paid_at, expense_id, installment_group_id, created_at)
+  select id, v_uid, name, type, amount, due_date, paid_at, expense_id, installment_group_id, created_at
+  from jsonb_populate_recordset(null::public.debts, coalesce(v_data -> 'debts', '[]'::jsonb));
+
+  insert into public.budgets (id, user_id, category_id, month, "limit")
+  select id, v_uid, category_id, month, "limit"
   from jsonb_populate_recordset(null::public.budgets, coalesce(v_data -> 'budgets', '[]'::jsonb));
 
-  insert into public.income_goals (id, user_id, month, amount)
-  select id, v_uid, month, amount
+  insert into public.income_goals (id, user_id, category_id, month, expected)
+  select id, v_uid, category_id, month, expected
   from jsonb_populate_recordset(null::public.income_goals, coalesce(v_data -> 'income_goals', '[]'::jsonb));
 
-  insert into public.insight_feedback (id, user_id, insight_key, month, decision, created_at)
-  select id, v_uid, insight_key, month, decision, created_at
+  insert into public.insight_feedback (id, user_id, occurrence_key, decision, created_at)
+  select id, v_uid, occurrence_key, decision, created_at
   from jsonb_populate_recordset(null::public.insight_feedback, coalesce(v_data -> 'insight_feedback', '[]'::jsonb));
 
-  insert into public.reminder_states (id, user_id, reminder_key, dismissed_at)
-  select id, v_uid, reminder_key, dismissed_at
+  insert into public.reminder_states (id, user_id, occurrence_key, kind, snooze_until, created_at, updated_at)
+  select id, v_uid, occurrence_key, kind, snooze_until, created_at, updated_at
   from jsonb_populate_recordset(null::public.reminder_states, coalesce(v_data -> 'reminder_states', '[]'::jsonb));
 
-  insert into public.allocation_targets (id, user_id, ticker, target_percent)
-  select id, v_uid, ticker, target_percent
+  insert into public.portfolio_transactions (id, user_id, asset_id, type, date, quantity, price, total)
+  select id, v_uid, asset_id, type, date, quantity, price, total
+  from jsonb_populate_recordset(null::public.portfolio_transactions, coalesce(v_data -> 'portfolio_transactions', '[]'::jsonb));
+
+  insert into public.allocation_targets (id, user_id, asset_id, target_percentage)
+  select id, v_uid, asset_id, target_percentage
   from jsonb_populate_recordset(null::public.allocation_targets, coalesce(v_data -> 'allocation_targets', '[]'::jsonb));
 
-  insert into public.asset_prices (id, user_id, ticker, price, updated_at, source)
-  select id, v_uid, ticker, price, updated_at, source
+  insert into public.class_targets (id, user_id, group_type, name, target_percentage)
+  select id, v_uid, group_type, name, target_percentage
+  from jsonb_populate_recordset(null::public.class_targets, coalesce(v_data -> 'class_targets', '[]'::jsonb));
+
+  insert into public.sector_targets (id, user_id, group_type, name, target_percentage)
+  select id, v_uid, group_type, name, target_percentage
+  from jsonb_populate_recordset(null::public.sector_targets, coalesce(v_data -> 'sector_targets', '[]'::jsonb));
+
+  insert into public.asset_prices (id, user_id, ticker, price, currency, source, manual_price, updated_at)
+  select id, v_uid, ticker, price, currency, source, manual_price, updated_at
   from jsonb_populate_recordset(null::public.asset_prices, coalesce(v_data -> 'asset_prices', '[]'::jsonb));
 
   -- ------------------------------------------------------------------
-  -- 3) Retorna contagens restauradas para auditoria
+  -- 3) Auditoria (D2) + resumo
   -- ------------------------------------------------------------------
-  v_res := jsonb_build_object(
+  insert into public.audit_events (user_id, entity_type, entity_id, action, payload)
+  values (v_uid, 'backup', v_uid::text, 'restore', jsonb_build_object('exportedAt', v_data -> 'exportedAt'));
+
+  select jsonb_build_object(
     'categories', (select count(*) from public.categories where user_id = v_uid),
     'credit_cards', (select count(*) from public.credit_cards where user_id = v_uid),
-    'portfolio_assets', (select count(*) from public.portfolio_assets where user_id = v_uid),
-    'user_preferences', (select count(*) from public.user_preferences where user_id = v_uid),
-    'card_competence_overrides', (
-      select count(*) from public.card_competence_overrides cco
-      join public.credit_cards cc on cc.id = cco.card_id
-      where cc.user_id = v_uid
-    ),
+    'card_competence_overrides', (select count(*) from public.card_competence_overrides o join public.credit_cards c on c.id = o.card_id where c.user_id = v_uid),
     'incomes', (select count(*) from public.incomes where user_id = v_uid),
     'expenses', (select count(*) from public.expenses where user_id = v_uid),
+    'card_payments', (select count(*) from public.card_payments cp join public.credit_cards c on c.id = cp.card_id where c.user_id = v_uid),
     'debts', (select count(*) from public.debts where user_id = v_uid),
-    'card_payments', (select count(*) from public.card_payments where user_id = v_uid),
     'budgets', (select count(*) from public.budgets where user_id = v_uid),
     'income_goals', (select count(*) from public.income_goals where user_id = v_uid),
     'insight_feedback', (select count(*) from public.insight_feedback where user_id = v_uid),
     'reminder_states', (select count(*) from public.reminder_states where user_id = v_uid),
-    'allocation_targets', (select count(*) from public.allocation_targets where user_id = v_uid),
-    'asset_prices', (select count(*) from public.asset_prices where user_id = v_uid)
-  );
+    'portfolio_assets', (select count(*) from public.portfolio_assets where user_id = v_uid),
+    'portfolio_transactions', (select count(*) from public.portfolio_transactions pt join public.portfolio_assets a on a.id = pt.asset_id where a.user_id = v_uid),
+    'allocation_targets', (select count(*) from public.allocation_targets t join public.portfolio_assets a on a.id = t.asset_id where a.user_id = v_uid),
+    'class_targets', (select count(*) from public.class_targets where user_id = v_uid),
+    'sector_targets', (select count(*) from public.sector_targets where user_id = v_uid),
+    'asset_prices', (select count(*) from public.asset_prices where user_id = v_uid),
+    'user_preferences', (select count(*) from public.user_preferences where user_id = v_uid)
+  ) into v_counts;
 
-  return v_res;
+  return v_counts;
 end;
 $$;
+
+grant execute on function public.restore_backup(jsonb) to authenticated;
