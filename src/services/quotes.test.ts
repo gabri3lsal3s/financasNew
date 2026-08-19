@@ -2,10 +2,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fetchOnlineQuote, syncQuoteForTicker, syncQuotesForAssets } from "./quotes";
 
 const mockSetAssetPrice = vi.fn();
+const mockSetAssetPricesBatch = vi.fn();
 
 vi.mock("@/data/repositories/asset-prices", () => ({
   setAssetPriceFromApi: (ticker: string, price: number, currency: string) =>
     mockSetAssetPrice(ticker, price, currency),
+  setAssetPricesBatchFromApi: (quotes: Array<{ ticker: string; price: number; currency: string }>) =>
+    mockSetAssetPricesBatch(quotes),
 }));
 
 describe("quotes service", () => {
@@ -69,7 +72,10 @@ describe("quotes service", () => {
     ]);
 
     expect(updated).toBe(1);
-    expect(mockSetAssetPrice).toHaveBeenCalledTimes(1);
+    expect(mockSetAssetPricesBatch).toHaveBeenCalledTimes(1);
+    expect(mockSetAssetPricesBatch).toHaveBeenCalledWith([
+      { ticker: "BOVA11", price: 120.0, currency: "BRL" },
+    ]);
 
     vi.unstubAllGlobals();
   });

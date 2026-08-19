@@ -339,8 +339,18 @@
   - Testes de `modal.test.tsx` atualizados: novo caso "não renderiza por padrão", caso "aparece com `showCalculator`", caso "`elevated` sobrepõe `showCalculator`".
 - **Verificação:** 168/168 arquivos de teste passando (1339 testes), typecheck limpo, lint limpo, build de produção limpo.
 
+## Auditoria de Acesso a Dados — Resolução de N+1, Batching e Índices Estruturais (2026-08-18)
+
+- **Problema:** (1) A sincronização de cotações da carteira executava $N$ requisições HTTP externas + $3N$ operações no banco de dados ($1 \text{ SELECT} + 1 \text{ DELETE} + 1 \text{ INSERT}$ por ativo), totalizando ~80 round-trips para 20 ativos; (2) O RPC `materialize_recurrences` utilizava loops iterativos em cursor PL/pgSQL (RBAR) gerando até $4N$ instruções SQL síncronas por lote de recorrências; (3) Foreign Keys centrais e colunas de consulta frequente (`category_id`, `card_id`, `recurrence_id`, `installment_group_id`, `source_ref`, `due_date`) careciam de índices dedicados, resultando em *Sequential Scans* no PostgreSQL sob RLS.
+- **Solução:**
+  1. **Batching de Cotações:** Implementada `setAssetPricesBatchFromApi` em `src/data/repositories/asset-prices.ts` e refatorada `syncQuotesForAssets` em `src/services/quotes.ts`. Busca overrides manuais em uma query única e executa exclusão e inserção em lote atômico, reduzindo em **$97.5\%$** as chamadas de banco na tela de investimentos.
+  2. **Otimização Set-Based de Recorrências:** Criada a migração `20260101000020_set_based_recurrences.sql` que converte a lógica de materialização para CTEs relacionais (`valid_expenses` e `valid_incomes`), reduzindo o processamento para apenas 2 comandos SQL atômicos sem alterar a assinatura do RPC.
+  3. **Índices Estruturais B-Tree:** Criada a migração `20260101000019_performance_indexes.sql` cobrindo todas as Foreign Keys e filtros de consulta em `expenses`, `incomes`, `debts`, `card_payments`, `portfolio_transactions` e `recurrences`.
+  4. **Qualidade & Testes:** Suíte completa com 170 arquivos e 1.346 testes (100% aprovados), typecheck limpo, lint limpo e build de produção verificado.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
 - **Verificação:** a cada fase — typecheck, lint, testes e build verdes antes do commit (regra do ciclo, `ROADMAP.md` §6.1).
 - **Pendências operacionais** (não são código): deploy da edge function de cotações + cron (`npm run quotes:deploy` / `quotes:cron`), testes contra banco real (Supabase local) e execução do QA manual (`docs/RELEASE.md`).
+

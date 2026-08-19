@@ -52,9 +52,9 @@
 │       └── offline.html           # Fallback offline (App Shell mínimo)
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
-│   ├── migrations/                # 0001_schema.sql · 0002_rls.sql · 0003_functions.sql …
-│   │                              # 0009_backfill_profiles.sql (schema, RLS por auth.uid(),
-│   │                              # triggers + RPCs transacionais + backfill de perfis)
+│   ├── migrations/                # 0001..0020_set_based_recurrences.sql
+│   │                              # (schema, RLS, triggers, RPCs transacionais,
+│   │                              # índices estruturais e materialização set-based)
 │   └── functions/                 # Edge functions (runtime Deno — fora do bundle Vite)
 │       ├── _shared/quotes-core.ts #   Motor puro de cotações (F1.7) — TS sem I/O, testável
 │       │                          #   em src/tests/quotes-core.test.ts
