@@ -163,6 +163,39 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(createExpenseMock.mock.calls[0]?.[0].reportWeight).toBe(0.375);
   });
 
+  it("permite selecionar manualmente a forma de pagamento e peso no relatório no passo 3", async () => {
+    const user = userEvent.setup();
+    render(<LaunchWizard />);
+
+    // Passo 1 — valor
+    await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "5000");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 2 — categoria
+    await user.click(screen.getByRole("button", { name: /alimentação/i }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    // Passo 3 — altera forma de pagamento para Transferência
+    await user.click(screen.getByRole("combobox", { name: "Forma de pagamento" }));
+    await user.click(screen.getByRole("option", { name: "Transferência" }));
+    expect(screen.getByRole("combobox", { name: "Forma de pagamento" })).toHaveTextContent("Transferência");
+
+    // Passo 3 — altera peso no relatório para 50%
+    await user.click(screen.getByRole("combobox", { name: "Peso no relatório" }));
+    await user.click(screen.getByRole("option", { name: "50%" }));
+    expect(screen.getByRole("combobox", { name: "Peso no relatório" })).toHaveTextContent("50%");
+
+    // Avança para o Passo 4 e confirma
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByText("50%")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar lançamento" }));
+
+    expect(createExpenseMock).toHaveBeenCalledTimes(1);
+    const params = createExpenseMock.mock.calls[0]?.[0];
+    expect(params.paymentMethod).toBe("transfer");
+    expect(params.reportWeight).toBe(0.5);
+  });
+
   it("sugestão de descrição na etapa de detalhes preenche SÓ a descrição (hotfix)", async () => {
     predictionHistoryMock.mockReturnValue([
       {
