@@ -95,14 +95,14 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   return (
     <div
       ref={containerRef}
-      className={cn("relative select-none", className)}
+      className={cn("relative select-none w-full min-w-0 overflow-hidden", className)}
       onPointerMove={handlePointerMove}
       onPointerLeave={() => setScrubIndex(null)}
       // F20 — isolamento: scrub do gráfico nunca dispara a navegação por swipe.
       data-swipe-nav-ignore
     >
-      <div className="relative h-44 w-full" aria-hidden="true">
-        <svg viewBox={`0 0 ${LINE_WIDTH} ${LINE_HEIGHT}`} preserveAspectRatio="none" className="h-full w-full overflow-visible">
+      <div className="relative h-44 w-full overflow-hidden" aria-hidden="true">
+        <svg viewBox={`0 0 ${LINE_WIDTH} ${LINE_HEIGHT}`} preserveAspectRatio="none" className="h-full w-full">
           {/* Linhas guias horizontais limpas e sutis */}
           <line x1="0" y1={PAD} x2={LINE_WIDTH} y2={PAD} stroke="currentColor" strokeDasharray="2 4" className="text-border/30" strokeWidth={1} />
           <line x1="0" y1={LINE_HEIGHT / 2} x2={LINE_WIDTH} y2={LINE_HEIGHT / 2} stroke="currentColor" strokeDasharray="2 4" className="text-border/25" strokeWidth={1} />
@@ -132,27 +132,27 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
         {/* Ponto final das linhas (sem sombras) */}
         {lastIncome ? (
           <span
-            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface"
-            style={{ left: `${(lastIncome.x / LINE_WIDTH) * 100}%`, top: `${(lastIncome.y / LINE_HEIGHT) * 100}%` }}
+            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface pointer-events-none"
+            style={{ left: `${Math.min(99, Math.max(1, (lastIncome.x / LINE_WIDTH) * 100))}%`, top: `${(lastIncome.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}
         {lastExpense ? (
           <span
-            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-negative-strong ring-2 ring-surface"
-            style={{ left: `${(lastExpense.x / LINE_WIDTH) * 100}%`, top: `${(lastExpense.y / LINE_HEIGHT) * 100}%` }}
+            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-negative-strong ring-2 ring-surface pointer-events-none"
+            style={{ left: `${Math.min(99, Math.max(1, (lastExpense.x / LINE_WIDTH) * 100))}%`, top: `${(lastExpense.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}
 
         {/* Pontos do dia sob scrubbing (sem sombras) */}
         {scrubIncome ? (
           <span
-            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface"
+            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-positive-strong ring-2 ring-surface pointer-events-none"
             style={{ left: scrubLeft, top: `${(scrubIncome.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}
         {scrubExpense ? (
           <span
-            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-negative-strong ring-2 ring-surface"
+            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-negative-strong ring-2 ring-surface pointer-events-none"
             style={{ left: scrubLeft, top: `${(scrubExpense.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}

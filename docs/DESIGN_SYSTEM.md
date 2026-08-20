@@ -396,3 +396,12 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Ações secundárias (ex.: botão "Quitar", exclusão) são organizadas como elementos irmãos (*siblings*) dentro do layout flex, prevenindo violações de *nested-interactive controls*.
 - **Feedback Tátil & Visual:** Cada clique de edição dispara `triggerHaptic("light")` e aplica estados visuais de `cursor-pointer`, `hover:bg-surface-hover/60` e `active:scale-[0.99]`.
 
+### 14.15 Contenção e Responsividade Mobile (Zero Horizontal Overflow & Safe Flex/Grid)
+- **Diretriz de Contenção de Layout:** Nenhum elemento ou card de dashboard pode ultrapassar a largura do viewport em dispositivos móveis (< 640px).
+- **Regra de Flexbox & Grid:**
+  - Todo filho de flex/grid que contém texto dinâmico ou truncado deve ter `min-w-0` e `flex-1 truncate` (evitando expansão forçada por `min-content` de strings longas como nomes de categorias ou descrições).
+  - Rótulos em gráficos e listas de distribuição (`CategoryDonut`, `DailyFlowChart`, `KpiCard`) usam truncamento com tooltip acessível (`title` nativo ou Radix Tooltip) e valores monetários/percentuais com `shrink-0` e `tabular-nums`.
+- **Delimitação de Gráficos SVG:**
+  - Contêineres de gráficos SVG (`DailyFlowChart`, `Sparkline`, `CategoryDonut`) usam `overflow-hidden` e `w-full min-w-0` com limites de pontos/marcadores contidos (*clamped*), impedindo vazamento de traços vetoriais fora das margens do card.
+- **Espaçamento Responsivo:** Cards e contêineres adotam padding responsivo (`p-4 sm:p-5`, `px-3.5 sm:px-4`) para manter proporções ideais e máxima área útil em telas estreitas (≥ 320px).
+

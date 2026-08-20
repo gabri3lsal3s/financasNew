@@ -197,7 +197,7 @@ export function OverviewPage() {
     .slice(0, 5);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       {/* F12 — sem header visual: o app mostra direto o seletor de mês.
           Título mantido apenas para leitores de tela (ordem de heading). */}
       <h1 className="sr-only">Visão Geral</h1>
@@ -224,7 +224,7 @@ export function OverviewPage() {
         <>
           {/* KPIs fundamentais (§3.6) com sparkline */}
           {visual.dashboardWidgets.kpis && (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
               <KpiCard
                 label="Receitas"
                 cents={totals.incomeCents}
@@ -264,23 +264,23 @@ export function OverviewPage() {
           {(visual.dashboardWidgets.flow || (visual.dashboardWidgets.donut && donutSlices.length > 0)) && (
             <section
               aria-label="Análises do período"
-              className={cn("grid gap-3", visual.dashboardWidgets.flow && visual.dashboardWidgets.donut && donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
+              className={cn("grid gap-3 min-w-0", visual.dashboardWidgets.flow && visual.dashboardWidgets.donut && donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
             >
               {visual.dashboardWidgets.flow && (
-                <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
+                <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                         <Activity className="size-3.5" aria-hidden="true" />
                       </span>
-                      <h2 className="text-sm font-semibold text-foreground">Fluxo diário</h2>
+                      <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Fluxo diário</h2>
                     </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
-                        <span className="size-2 rounded-full bg-positive-strong" /> Receitas
+                    <div className="flex items-center gap-2 sm:gap-3 text-xs shrink-0">
+                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px] shrink-0">
+                        <span className="size-2 rounded-full bg-positive-strong shrink-0" /> Receitas
                       </span>
-                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
-                        <span className="size-2 rounded-full bg-negative-strong" /> Despesas
+                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px] shrink-0">
+                        <span className="size-2 rounded-full bg-negative-strong shrink-0" /> Despesas
                       </span>
                     </div>
                   </div>
@@ -288,15 +288,15 @@ export function OverviewPage() {
                 </section>
               )}
               {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
-                <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
+                <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                         <PieChart className="size-3.5" aria-hidden="true" />
                       </span>
-                      <h2 className="text-sm font-semibold text-foreground">Distribuição por categoria</h2>
+                      <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Distribuição por categoria</h2>
                     </div>
-                    <Badge variant="muted" className="text-[11px]">{donutSlices.length} categorias</Badge>
+                    <Badge variant="muted" className="text-[11px] shrink-0">{donutSlices.length} categorias</Badge>
                   </div>
                   <CategoryDonut slices={donutSlices} />
                 </section>
@@ -306,10 +306,10 @@ export function OverviewPage() {
 
           {/* Resumo financeiro (§3.6): saldo líquido de contas e taxa de poupança */}
           {visual.dashboardWidgets.summary && (
-            <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2">
-              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
+            <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2 min-w-0">
+              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className={cn(
                         "flex size-7 shrink-0 items-center justify-center rounded-lg border transition-colors",
@@ -320,9 +320,9 @@ export function OverviewPage() {
                     >
                       <Wallet className="size-3.5" aria-hidden="true" />
                     </span>
-                    <h2 className="text-sm font-semibold text-foreground">Saldo líquido de contas</h2>
+                    <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Saldo líquido de contas</h2>
                   </div>
-                  <Badge variant="muted" className="text-[11px]">Projeção</Badge>
+                  <Badge variant="muted" className="text-[11px] shrink-0">Projeção</Badge>
                 </div>
                 <div>
                   <MoneyText
@@ -330,28 +330,28 @@ export function OverviewPage() {
                     variant="hero"
                     tone="auto"
                     sign="auto"
-                    className="text-3xl tracking-tight"
+                    className="text-2xl sm:text-3xl tracking-tight truncate"
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
-                  <div className="truncate">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">A receber</p>
-                    <MoneyText cents={receivablePending} tone="positive" className="privacy-mask text-[11px]" />
+                <div className="grid grid-cols-3 gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground min-w-0">
+                  <div className="min-w-0 truncate">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">A receber</p>
+                    <MoneyText cents={receivablePending} tone="positive" className="privacy-mask text-[11px] truncate block" />
                   </div>
-                  <div className="truncate">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">A pagar</p>
-                    <MoneyText cents={payablePending} tone="negative" className="privacy-mask text-[11px]" />
+                  <div className="min-w-0 truncate">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">A pagar</p>
+                    <MoneyText cents={payablePending} tone="negative" className="privacy-mask text-[11px] truncate block" />
                   </div>
-                  <div className="truncate">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Faturas</p>
-                    <MoneyText cents={openInvoices} tone="default" className="privacy-mask text-[11px]" />
+                  <div className="min-w-0 truncate">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">Faturas</p>
+                    <MoneyText cents={openInvoices} tone="default" className="privacy-mask text-[11px] truncate block" />
                   </div>
                 </div>
               </article>
 
-              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
+              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className={cn(
                         "flex size-7 shrink-0 items-center justify-center rounded-lg border transition-colors",
@@ -364,14 +364,14 @@ export function OverviewPage() {
                     >
                       <PiggyBank className="size-3.5" aria-hidden="true" />
                     </span>
-                    <h2 className="text-sm font-semibold text-foreground">Taxa de poupança</h2>
+                    <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Taxa de poupança</h2>
                   </div>
-                  <Badge variant={totals.savingsRatePercent >= 20 ? "positive" : totals.savingsRatePercent >= 0 ? "muted" : "critical"}>
+                  <Badge variant={totals.savingsRatePercent >= 20 ? "positive" : totals.savingsRatePercent >= 0 ? "muted" : "critical"} className="shrink-0">
                     {totals.savingsRatePercent >= 20 ? "Meta atingida" : totals.savingsRatePercent >= 0 ? "Regular" : "Abaixo"}
                   </Badge>
                 </div>
                 <div>
-                  <p className={cn("num text-3xl font-bold tracking-tight", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
+                  <p className={cn("num text-2xl sm:text-3xl font-bold tracking-tight", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
                     {formatPercent(totals.savingsRatePercent)}%
                   </p>
                 </div>

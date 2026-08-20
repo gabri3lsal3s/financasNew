@@ -78,17 +78,17 @@ export function PageShell() {
             {visual.headerButtons.logo && (
               <div className="h-5 w-px bg-border shrink-0 lg:hidden" aria-hidden="true" />
             )}
-            <GlobalSearch className="flex-1" />
+            <GlobalSearch className="flex-1 min-w-0" />
             {showCalc && <CalculatorButton />}
             {hasNotifications && <NotificationsButton />}
             {showTheme && <ThemeToggle />}
             {showPrivacy && <PrivacyToggle />}
           </div>
         </header>
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain min-h-0">
-          <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 lg:px-8">
+        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain min-h-0 w-full">
+          <div className="mx-auto w-full max-w-5xl px-3.5 sm:px-4 pb-28 pt-4 sm:pt-6 lg:px-8 min-w-0">
             {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
-            <div key={location.pathname} className="animate-route-in">
+            <div key={location.pathname} className="animate-route-in min-w-0 w-full">
               <Suspense fallback={<RouteFallback />}>
                 <Outlet />
               </Suspense>

@@ -80,12 +80,12 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
 
   return (
     // F20 — isolamento: gestos no donut (lista com hover) nunca viram swipe.
-    <div className={cn("flex flex-col items-center gap-6 sm:flex-row sm:items-center", className)} data-swipe-nav-ignore>
+    <div className={cn("flex flex-col items-center gap-6 sm:flex-row sm:items-center w-full min-w-0", className)} data-swipe-nav-ignore>
       {/* Anel SVG de alto contraste */}
       <div className="relative shrink-0 flex items-center justify-center">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="size-34 -rotate-90"
+          className="size-32 sm:size-34 -rotate-90"
           aria-hidden="true"
         >
           <circle
@@ -130,9 +130,9 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
           return (
             <li
               key={slice.label}
-              className="group flex flex-col gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface-hover/60 min-w-0"
+              className="group flex flex-col gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface-hover/60 min-w-0 w-full"
             >
-              <div className="flex items-center gap-2 text-xs min-w-0">
+              <div className="flex items-center gap-2 text-xs min-w-0 w-full">
                 {slice.icon ? (
                   <CategoryIcon icon={slice.icon} color={slice.color} className="size-4 shrink-0" />
                 ) : (
@@ -142,11 +142,13 @@ export function CategoryDonut({ slices, totalCents, centerValue, className }: Ca
                     className={cn("size-2.5 shrink-0 rounded-full ring-2 ring-surface shadow-xs", !slice.color && bgClass)}
                   />
                 )}
-                <span className="truncate font-semibold text-foreground min-w-0">{slice.label}</span>
-                <span className="num ml-auto font-bold text-foreground text-xs shrink-0">
+                <span className="min-w-0 flex-1 truncate font-semibold text-foreground" title={slice.label}>
+                  {slice.label}
+                </span>
+                <span className="num font-bold text-foreground text-xs shrink-0 tabular-nums">
                   {percent.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%
                 </span>
-                <MoneyText cents={slice.valueCents} tone="default" className="privacy-mask w-22 text-right text-xs font-semibold shrink-0" />
+                <MoneyText cents={slice.valueCents} tone="default" className="privacy-mask min-w-[4.5rem] text-right text-xs font-semibold shrink-0 tabular-nums" />
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/50 dark:bg-border/60" aria-hidden="true">
                 <div
