@@ -172,15 +172,15 @@ export function ResumoTab() {
           </div>
 
           {/* Seção principal: Posições da Carteira */}
-          <section aria-label="Posições" className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">Posições</h2>
-                <Badge variant="muted" className="text-[11px]">
+          <section aria-label="Posições" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="text-sm font-semibold text-foreground truncate">Posições</h2>
+                <Badge variant="muted" className="text-[11px] shrink-0">
                   {rows.length} {rows.length === 1 ? "ativo" : "ativos"}
                 </Badge>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <Button
                   type="button"
                   variant="outline"
@@ -196,7 +196,7 @@ export function ResumoTab() {
                   />
                   {syncQuotes.isPending ? "Atualizando…" : "Atualizar cotações"}
                 </Button>
-                <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setAssetOpen(true)}>
+                <Button type="button" size="sm" className="w-full sm:w-auto shrink-0" onClick={() => setAssetOpen(true)}>
                   <Plus aria-hidden="true" className="size-4" />
                   Adicionar ativo
                 </Button>
@@ -216,25 +216,25 @@ export function ResumoTab() {
           </section>
 
           {/* Seção secundária: Análise de Alocação */}
-          <div className="grid gap-3 lg:grid-cols-2">
-            <section aria-label="Alocação por classe" className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-              <div className="mb-4 flex items-center gap-2">
+          <div className="grid gap-3 lg:grid-cols-2 min-w-0">
+            <section aria-label="Alocação por classe" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              <div className="mb-4 flex items-center gap-2 min-w-0">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
                   <Wallet className="size-3.5" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-semibold text-foreground">Alocação por classe</h2>
+                <h2 className="text-sm font-semibold text-foreground truncate">Alocação por classe</h2>
               </div>
-              <AllocationDonut slices={classSlices} className="sm:max-w-md" />
+              <AllocationDonut slices={classSlices} className="w-full sm:max-w-md min-w-0" />
             </section>
 
-            <section aria-label="Alocação por ativo" className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-              <div className="mb-4 flex items-center gap-2">
+            <section aria-label="Alocação por ativo" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              <div className="mb-4 flex items-center gap-2 min-w-0">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
                   <TrendingUp className="size-3.5" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-semibold text-foreground">Alocação por ativo</h2>
+                <h2 className="text-sm font-semibold text-foreground truncate">Alocação por ativo</h2>
               </div>
-              <CategoryDonut slices={tickerSlices} className="sm:max-w-md" />
+              <CategoryDonut slices={tickerSlices} className="w-full sm:max-w-md min-w-0" />
             </section>
           </div>
         </>

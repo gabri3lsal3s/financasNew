@@ -150,17 +150,17 @@ export function AporteResult({
   ];
 
   return (
-    <section aria-label="Resultado da simulação de aporte" className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-3">
-        <ResultStat icon={<PiggyBank className="size-4" aria-hidden="true" />} label="Aporte informado" cents={numberToCents(aporte)} />
+    <section aria-label="Resultado da simulação de aporte" className="flex flex-col gap-4 min-w-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
+        <ResultStat icon={<PiggyBank className="size-4 shrink-0" aria-hidden="true" />} label="Aporte informado" cents={numberToCents(aporte)} />
         <ResultStat
-          icon={<ArrowDownToLine className="size-4" aria-hidden="true" />}
+          icon={<ArrowDownToLine className="size-4 shrink-0" aria-hidden="true" />}
           label={completedCount > 0 ? `Alocado (${completedCount}/${routes.length} feitos)` : "Alocado em ativos"}
           cents={numberToCents(totalAllocated)}
           accent
         />
         <ResultStat
-          icon={<Wallet className="size-4" aria-hidden="true" />}
+          icon={<Wallet className="size-4 shrink-0" aria-hidden="true" />}
           label="Sobra para caixa"
           cents={numberToCents(leftover)}
           tone={leftover > 0 ? "attention" : "neutral"}
@@ -178,8 +178,8 @@ export function AporteResult({
         </p>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">Detalhamento dos aportes</h3>
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider truncate">Detalhamento dos aportes</h3>
             {onExecuteAporte && routes.some((r) => r.quantity > 0) ? (
               <Button
                 type="button"
@@ -187,7 +187,7 @@ export function AporteResult({
                 variant="secondary"
                 onClick={onExecuteAporte}
                 disabled={executing}
-                className="gap-1.5"
+                className="gap-1.5 shrink-0"
               >
                 <CheckCheck className="size-4" aria-hidden="true" />
                 <span>{executing ? "Lançando…" : "Lançar compras no extrato"}</span>
@@ -221,16 +221,16 @@ function ResultStat({
   tone?: "neutral" | "attention";
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-4">
-      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+    <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 overflow-hidden">
+      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground truncate">
         {icon}
-        {label}
+        <span className="truncate">{label}</span>
       </span>
       <MoneyText
         cents={cents}
         variant="value"
         tone="default"
-        className={cn("text-xl font-semibold", accent && "text-portfolio", tone === "attention" && "text-warning-strong")}
+        className={cn("text-lg sm:text-xl font-semibold truncate", accent && "text-portfolio", tone === "attention" && "text-warning-strong")}
       />
     </div>
   );

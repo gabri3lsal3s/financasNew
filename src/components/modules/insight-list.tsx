@@ -68,26 +68,26 @@ export function InsightList({
           <li
             key={item.key}
             className={cn(
-              "flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3 transition-all duration-200",
+              "flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3 transition-all duration-200 min-w-0 overflow-hidden",
               ignored && "opacity-60",
             )}
           >
-            <div className="flex min-w-0 items-start gap-3">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
               {item.icon ? (
                 <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center text-muted-foreground">
                   {item.icon}
                 </span>
               ) : null}
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <h3 className="text-sm font-medium text-foreground">{item.title}</h3>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                  <h3 className="text-sm font-medium text-foreground truncate">{item.title}</h3>
                   {item.badges?.map((b) => (
-                    <Badge key={b.label} variant={b.tone ?? "default"}>{b.label}</Badge>
+                    <Badge key={b.label} variant={b.tone ?? "default"} className="shrink-0">{b.label}</Badge>
                   ))}
-                  {item.tag ? <Badge variant={item.tagTone ?? "default"}>{item.tag}</Badge> : null}
-                  {ignored ? <Badge variant="muted">Ignorada</Badge> : null}
+                  {item.tag ? <Badge variant={item.tagTone ?? "default"} className="shrink-0">{item.tag}</Badge> : null}
+                  {ignored ? <Badge variant="muted" className="shrink-0">Ignorada</Badge> : null}
                 </div>
-                {item.subtitle ? <p className="text-xs text-muted-foreground">{item.subtitle}</p> : null}
+                {item.subtitle ? <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p> : null}
                 {item.confidence !== undefined ? (
                   <p className="text-[11px] text-muted-foreground">
                     Confiança{" "}

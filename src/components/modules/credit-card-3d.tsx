@@ -274,21 +274,21 @@ export function CreditCard3D({
         {/* Linha 3: Rodapé — Número Mascarado, Ciclo de Datas e Limite */}
         <div className="relative z-10 flex flex-col gap-1.5 pt-2 border-t border-white/10">
           {/* Dados do Ciclo: Melhor Dia, Fechamento, Vencimento */}
-          <div className="flex items-center justify-between text-[11px] sm:text-xs text-white/75 font-mono">
-            <span>Melhor dia: {bestDay}</span>
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] sm:text-xs text-white/75 font-mono min-w-0">
+            <span className="truncate">Melhor dia: {bestDay}</span>
 
-            <div className="flex items-center gap-2.5">
-              <span>Fechamento: {card.closing_day}</span>
-              <span>Vencimento: {card.due_day}</span>
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+              <span>Fech.: {card.closing_day}</span>
+              <span>Venc.: {card.due_day}</span>
             </div>
           </div>
 
           {/* Limite Total e Disponível com Barra Sutil */}
           {limit.totalLimitCents !== null && (
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between items-center text-[10px] text-white/70 font-mono">
-                <span>•••• {lastFourDigits}</span>
-                <span>
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-wrap justify-between items-center gap-x-2 gap-y-0.5 text-[10px] text-white/70 font-mono min-w-0">
+                <span className="shrink-0">•••• {lastFourDigits}</span>
+                <span className="truncate">
                   Disp: <strong className="text-white">{formatCentsAsBRL(limit.availableLimitCents ?? 0)}</strong> / {formatCentsAsBRL(limit.totalLimitCents)}
                 </span>
               </div>

@@ -37,7 +37,7 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onOpen, st
   return (
     <article
       className={cn(
-        "flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4",
+        "flex flex-col sm:flex-row sm:items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden",
         clickable && "cursor-pointer transition-colors hover:bg-surface-hover",
       )}
       onClick={clickable ? onOpen : undefined}
@@ -54,7 +54,7 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onOpen, st
           : undefined
       }
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 min-w-0 flex-1">
         <span
           className={cn(
             "flex size-9 shrink-0 items-center justify-center",
@@ -63,14 +63,14 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onOpen, st
         >
           <Icon className="size-4" aria-hidden="true" />
         </span>
-        <div className="flex flex-col gap-0.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-            <Badge variant={STATUS_VARIANTS[item.status]}>{STATUS_LABELS[item.status]}</Badge>
-            {stateKind === "snoozed" ? <Badge variant="muted">Adiado</Badge> : null}
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <h3 className="text-sm font-semibold text-foreground truncate min-w-0">{item.title}</h3>
+            <Badge variant={STATUS_VARIANTS[item.status]} className="shrink-0">{STATUS_LABELS[item.status]}</Badge>
+            {stateKind === "snoozed" ? <Badge variant="muted" className="shrink-0">Adiado</Badge> : null}
           </div>
-          {item.subtitle ? <p className="text-xs text-muted-foreground">{item.subtitle}</p> : null}
-          <p className="text-xs text-muted-foreground">
+          {item.subtitle ? <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p> : null}
+          <p className="text-xs text-muted-foreground truncate">
             Vence em <span className="num font-medium text-foreground">{item.dueDate}</span>
             {item.amountCents > 0 ? (
               <>

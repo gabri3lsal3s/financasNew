@@ -36,15 +36,15 @@ export interface AlertCardProps {
 export function AlertCard({ priority, title, description, icon, actions }: AlertCardProps) {
   const Icon = PRIORITY_ICONS[priority] ?? AlertTriangle;
   return (
-    <article className={cn("flex flex-col gap-2 rounded-xl border p-4", PRIORITY_TONES[priority])}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
+    <article className={cn("flex flex-col gap-2 rounded-xl border p-4 min-w-0 overflow-hidden", PRIORITY_TONES[priority])}>
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="flex size-8 shrink-0 items-center justify-center">
             {icon ?? <Icon className="size-4" aria-hidden="true" />}
           </span>
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          <h3 className="text-sm font-semibold text-foreground truncate min-w-0">{title}</h3>
         </div>
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground shrink-0">
           #{priority}
         </span>
       </div>

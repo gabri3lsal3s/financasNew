@@ -34,8 +34,8 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
   return (
     <>
       <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {LOAN_TYPE_LABELS[loan.loan_type] ?? "Contrato de crédito"}
             </span>
@@ -52,7 +52,7 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
           </Button>
         </div>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 min-w-0">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Progresso de quitação</span>
             <span>
@@ -67,8 +67,8 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-border/50 pt-3">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3 min-w-0">
+          <div className="min-w-0">
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Saldo a pagar</span>
             <div className="text-base font-bold text-foreground">
               <MoneyText cents={numberToCents(pendingAmount)} variant="value" />
@@ -80,12 +80,12 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
               variant="outline"
               size="sm"
               onClick={() => setAmortizeOpen(true)}
-              className="text-xs"
+              className="text-xs shrink-0"
             >
               Amortizar com desconto
             </Button>
           ) : (
-            <span className="text-xs font-semibold text-positive-strong">Quitado</span>
+            <span className="text-xs font-semibold text-positive-strong shrink-0">Quitado</span>
           )}
         </div>
       </div>

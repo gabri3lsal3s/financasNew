@@ -145,9 +145,9 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         />
       ) : (
         <>
-          <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-w-0">
+              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground min-w-0">
                 Valor do aporte
                 <MoneyInput
                   cents={aporteCents}
@@ -157,7 +157,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
                   placeholder="R$ 0,00"
                 />
               </label>
-              <fieldset className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+              <fieldset className="flex flex-col gap-1 text-xs font-medium text-muted-foreground min-w-0">
                 Modo de rebalanceamento
                 <RadioGroup
                   value={mode}
