@@ -267,7 +267,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Faixas de atenção:** ≥ 85% → Atenção; ≥ 90% → Alta; ≥ 95% → Crítica; > 100% → **Excedida** (alerta com valor excedido).
 - **KPIs:** total de limites do mês, % global usado (`min(100, despesas ÷ (totalLimites || rendas))`), cor de progresso (≥85% vermelho, ≥70% amarelo, senão verde).
 - **Sugestão de limite** por % da renda (regra de nome: moradia ≤ 30%, alimentação ≤ 15%, transporte ≤ 10%…).
-- **Realocação automática:** categoria com maior excesso → maior folga; valor = `min(excesso, folga)` arredondado ao múltiplo de 10 (mínimo R$ 10); reduz origem (nunca < 0) e aumenta destino — com confirmação.
+- **Realocação automática:** categoria com maior folga → maior excesso; valor = `min(excesso, folga)` arredondado ao múltiplo de 10 (mínimo R$ 10); reduz limite da origem com folga e aumenta o destino com excesso — com confirmação.
 - **Alertas:** categoria estourou → lista de atenção + motor de insights (§3.8).
 
 #### 3.5.3 Metas de renda

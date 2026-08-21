@@ -1,10 +1,8 @@
 -- ================================================================
--- 0005_budgets.sql — RPCs de orçamentos (Entrega 7, Fase 2)
+-- 0021_fix_reallocate_budget.sql — Correção de RPC reallocate_budget
 --
--- Realocação automática (§3.5.2): categoria com maior excesso →
--- maior folga, transferindo min(excesso, folga) arredondado a R$ 10
--- (mínimo R$ 10). A operação mexe em DOIS limites — por isso é uma
--- função atômica (D1), nunca duas chamadas separadas da UI.
+-- Trata limites herdados, evita atribuição de NULL e respeita
+-- a constraint limit > 0 no PostgreSQL.
 -- ================================================================
 
 create or replace function public.reallocate_budget(

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Activity, DollarSign, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Badge, EmptyState, ErrorState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
+  CategoryIcon,
   DailyFlowChart,
   DeltaHint,
   KpiCard,
@@ -384,75 +385,107 @@ export function OverviewPage() {
 
           {/* Orçamentos (§3.6): progresso e lista de atenção */}
           {visual.dashboardWidgets.budgets && (
-            <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+            <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                     <Target className="size-3.5" aria-hidden="true" />
                   </span>
                   <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Orçamentos do mês</h2>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 min-w-0">
-                  <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground min-w-0">
-                    <MoneyText cents={expenseCents} tone="default" className="text-xs" />
-                    <span>de</span>
-                    <MoneyText cents={totalLimitsCents} tone="default" className="text-xs text-muted-foreground" />
-                  </span>
-                  <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[11px] shrink-0">
-                    {Math.round(globalPercent)}% utilizado
-                  </Badge>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/orcamentos")}
+                  className="flex items-center gap-1 text-xs text-primary hover:underline font-medium shrink-0 cursor-pointer"
+                >
+                  <span>Ver todos</span>
+                  <ChevronRight className="size-3.5" aria-hidden="true" />
+                </button>
               </div>
 
-              <Progress
-                value={globalPercent}
-                tone={progressTone(globalPercent)}
-                className="h-2"
-                aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`}
-              />
-
-              {attentionRows.length === 0 ? (
-                <div className="flex items-center gap-2.5 rounded-xl border border-positive/20 bg-positive/5 px-3.5 py-3 text-xs text-positive-strong">
-                  <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
-                  <span>Todos os orçamentos sob controle neste mês.</span>
+              {budgetRows.length === 0 ? (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed border-border/80 bg-surface-hover/20 p-3.5 text-xs text-muted-foreground">
+                  <span>Nenhum orçamento configurado para este mês.</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/orcamentos")}
+                    className="font-medium text-primary hover:underline cursor-pointer"
+                  >
+                    Definir limites →
+                  </button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Categorias em atenção</p>
-                    <button
-                      type="button"
-                      onClick={() => navigate("/orcamentos")}
-                      className="text-xs text-primary hover:underline font-medium"
-                    >
-                      Ver todas em Categorias →
-                    </button>
+                <div className="flex flex-col gap-3.5">
+                  <div className="flex flex-col gap-2 rounded-xl bg-surface-hover/30 border border-border/40 p-3">
+                    <div className="flex items-center justify-between text-xs min-w-0">
+                      <span className="text-muted-foreground">Uso consolidado</span>
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <MoneyText cents={expenseCents} tone="default" className="font-semibold text-foreground" />
+                        <span className="text-muted-foreground font-normal">de</span>
+                        <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground" />
+                        <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[10px] px-1.5 py-0">
+                          {Math.round(globalPercent)}%
+                        </Badge>
+                      </span>
+                    </div>
+                    <Progress
+                      value={globalPercent}
+                      tone={progressTone(globalPercent)}
+                      className="h-2"
+                      aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`}
+                    />
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {attentionRows.slice(0, 4).map((row) => {
+
+                  {attentionRows.length === 0 ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-positive/20 bg-positive/5 px-3 py-2 text-xs text-positive-strong">
+                      <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span>Todos os limites sob controle neste mês.</span>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col gap-2">
+                    {(attentionRows.length > 0
+                      ? attentionRows.slice(0, 4)
+                      : [...budgetRows]
+                          .sort((a, b) => (b.limitCents > 0 ? b.spentCents / b.limitCents : 0) - (a.limitCents > 0 ? a.spentCents / a.limitCents : 0))
+                          .slice(0, 4)
+                    ).map((row) => {
                       const percent = row.limitCents > 0 ? (row.spentCents / row.limitCents) * 100 : 0;
-                      const isOver = row.spentCents > row.limitCents;
+                      const status = budgetStatus(row.spentCents, row.limitCents);
+                      const isOver = status === "exceeded";
+                      const isAttention = status !== "ok";
+
                       return (
                         <div
                           key={row.category.id}
-                          className="flex flex-col gap-2 rounded-xl border border-border/60 bg-surface-hover/30 p-3"
+                          onClick={() => navigate("/orcamentos")}
+                          className="group flex flex-col gap-1.5 rounded-xl border border-border/50 bg-surface/50 p-2.5 hover:border-border hover:bg-surface-hover/50 transition-colors cursor-pointer"
                         >
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-medium text-foreground truncate">{row.category.name}</span>
-                            <Badge variant={isOver ? "critical" : "warning"} className="text-[10px] px-1.5 py-0">
-                              {BUDGET_STATUS_LABELS[row.status]}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                            <MoneyText cents={row.spentCents} tone="default" className="privacy-mask text-[11px]" />
-                            <span className="flex items-center gap-1">
-                              <span>de</span>
-                              <MoneyText cents={row.limitCents} tone="default" className="text-[11px] text-muted-foreground" />
-                            </span>
+                          <div className="flex items-center justify-between gap-2 min-w-0 text-xs">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CategoryIcon icon={row.category.icon} color={row.category.color} className="size-5 shrink-0" />
+                              <span className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                                {row.category.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 text-[11px]">
+                              <span className="text-muted-foreground">
+                                <MoneyText cents={row.spentCents} tone="default" className="font-medium text-foreground" />
+                                {" / "}
+                                <MoneyText cents={row.limitCents} tone="default" />
+                              </span>
+                              {isAttention ? (
+                                <Badge variant={isOver ? "critical" : "warning"} className="text-[9px] px-1 py-0">
+                                  {BUDGET_STATUS_LABELS[status]}
+                                </Badge>
+                              ) : (
+                                <span className="num text-muted-foreground font-medium">{Math.round(percent)}%</span>
+                              )}
+                            </div>
                           </div>
                           <Progress
-                            value={percent}
-                            tone={isOver ? "critical" : "warning"}
+                            value={Math.min(100, percent)}
+                            tone={isOver ? "critical" : isAttention ? "warning" : "positive"}
                             className="h-1.5"
                             aria-label={`Uso da categoria ${row.category.name}: ${Math.round(percent)}%`}
                           />
@@ -460,8 +493,11 @@ export function OverviewPage() {
                       );
                     })}
                   </div>
+
                   {attentionRows.length > 4 ? (
-                    <p className="text-xs text-muted-foreground text-center">+{attentionRows.length - 4} outra(s) categoria(s) em atenção.</p>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      +{attentionRows.length - 4} outra(s) categoria(s) em atenção no mês.
+                    </p>
                   ) : null}
                 </div>
               )}

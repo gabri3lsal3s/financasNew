@@ -80,7 +80,7 @@ vi.mock("@/state", () => ({
 describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("exibe o KPI de total de limites e as categorias com progresso", () => {
     render(<BudgetsPage />);
-    expect(screen.getByText("Total de limites do mês")).toBeInTheDocument();
+    expect(screen.getByText("Orçamento do Mês")).toBeInTheDocument();
     expect(screen.getByText("R$ 2.000,00")).toBeInTheDocument();
     // "Moradia" aparece na linha da categoria e na sugestão de realocação
     expect(screen.getAllByText("Moradia").length).toBeGreaterThan(0);
@@ -88,10 +88,10 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(screen.getByText("Excedida")).toBeInTheDocument();
   });
 
-  it("recomenda realocação do maior excesso para a maior folga", () => {
+  it("recomenda realocação da maior folga para o maior excesso", () => {
     render(<BudgetsPage />);
-    // Moradia (1.200/1.000 → excesso R$ 200) → Lazer (100/1.000 → folga R$ 900)
-    expect(screen.getByText("Realocação sugerida")).toBeInTheDocument();
+    // Lazer (100/1.000 → folga R$ 900) → Moradia (1.200/1.000 → excesso R$ 200)
+    expect(screen.getByText("Sugestão de Realocação de Limite")).toBeInTheDocument();
     expect(screen.getByText(/R\$ 200,00/)).toBeInTheDocument();
   });
 
@@ -105,8 +105,8 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
 
     expect(reallocateMock).toHaveBeenCalledTimes(1);
     const params = reallocateMock.mock.calls[0]?.[0];
-    expect(params.fromCategoryId).toBe("c1");
-    expect(params.toCategoryId).toBe("c2");
+    expect(params.fromCategoryId).toBe("c2");
+    expect(params.toCategoryId).toBe("c1");
     expect(params.amount).toBe(200);
   });
 
@@ -131,44 +131,43 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("metas de renda: compara realizado × esperado", async () => {
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Rendas" }));
+    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
     expect(screen.getByText("Salário")).toBeInTheDocument();
     // Realizado R$ 5.000 = meta R$ 5.000 → na meta
     expect(screen.getByText("Na meta")).toBeInTheDocument();
     expect(screen.getByText(/Realizado:/)).toBeInTheDocument();
-
-    const goalInput = screen.getByRole("textbox", { name: "Meta de renda de Salário" });
-    expect(goalInput).toBeInTheDocument();
   });
 
-  it("salva uma nova meta de renda com feedback de sucesso", async () => {
+  it("salva uma nova meta de renda através do diálogo", async () => {
     setIncomeGoalMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Rendas" }));
+    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
-    const goalInput = screen.getByRole("textbox", { name: "Meta de renda de Salário" });
+    await user.click(screen.getAllByRole("button", { name: "Editar meta de renda de Salário" })[0]!);
+    const goalInput = screen.getByRole("textbox", { name: "Expectativa de renda mensal da categoria" });
+    await user.clear(goalInput);
     await user.type(goalInput, "600000");
-    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar meta" }));
 
     expect(setIncomeGoalMock).toHaveBeenCalledTimes(1);
     const params = setIncomeGoalMock.mock.calls[0]?.[0];
     expect(params.categoryId).toBe("i1");
     expect(params.expected).toBe(6000);
-    // Feedback visual de sucesso "Salva" (não apenas silencioso).
-    expect(await screen.findByRole("button", { name: /Salva/ })).toBeInTheDocument();
   });
 
-  it("falha ao salvar meta mostra erro inline (sem falha silenciosa)", async () => {
+  it("falha ao salvar meta mostra erro no modal", async () => {
     setIncomeGoalMock.mockRejectedValue(new Error("Falha de rede"));
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Rendas" }));
+    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
-    const goalInput = screen.getByRole("textbox", { name: "Meta de renda de Salário" });
+    await user.click(screen.getAllByRole("button", { name: "Editar meta de renda de Salário" })[0]!);
+    const goalInput = screen.getByRole("textbox", { name: "Expectativa de renda mensal da categoria" });
+    await user.clear(goalInput);
     await user.type(goalInput, "600000");
-    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar meta" }));
 
     expect(await screen.findByText("Falha de rede")).toBeInTheDocument();
     // Restaura para não contaminar os demais testes.

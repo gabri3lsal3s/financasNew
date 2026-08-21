@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { ArrowRight, Check, PiggyBank, Plus, Sparkles, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, Progress, Skeleton, Tabs } from "@/components/ui";
+import { useState } from "react";
+import { ArrowRight, Edit3, PiggyBank, Plus, Sparkles } from "lucide-react";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Progress, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
@@ -22,7 +22,6 @@ import { currentMonth } from "@/lib/date";
 import { triggerHaptic } from "@/services/haptics";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
-import { cn } from "@/lib/utils";
 import {
   useAllCategories,
   useBudgets,
@@ -32,10 +31,9 @@ import {
   useIncomeGoals,
   useIncomes,
   useReallocateBudget,
-  useSetIncomeGoal,
-  useRemoveIncomeGoal,
 } from "@/state";
 import { LimitDialog } from "@/features/budgets/components/limit-dialog";
+import { IncomeGoalDialog } from "@/features/budgets/components/income-goal-dialog";
 import { CategoryFormDialog } from "@/features/categories/components/category-form-dialog";
 import type { Category } from "@/types";
 
@@ -44,6 +42,7 @@ export function BudgetsPage() {
   const [month, setMonth] = useState(currentMonth());
   const [tab, setTab] = useState<"limits" | "goals">("limits");
   const [limitFor, setLimitFor] = useState<Category | null>(null);
+  const [goalFor, setGoalFor] = useState<Category | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
@@ -107,16 +106,13 @@ export function BudgetsPage() {
 
   const totalLimitsCents = activeRows.reduce((acc, row) => acc + row.limitCents, 0);
   const globalPercent = globalUsedPercent(totalExpensesCents, totalLimitsCents, totalIncomesCents);
+  const attentionCount = activeRows.filter((row) => budgetStatus(row.spentCents, row.limitCents) !== "ok").length;
 
-  // Realocação opera sobre limites ARMAZENADOS no mês
-  const storedLimitsByCategory = new Map<string, number>();
-  for (const budget of budgets) {
-    if (budget.month === month) storedLimitsByCategory.set(budget.category_id, numberToCents(budget.limit));
-  }
+  // Realocação opera sobre limites efetivos no mês (com herança)
   const suggestion = reallocationSuggestion(
     activeRows.map((row) => ({
       categoryId: row.category.id,
-      limitCents: storedLimitsByCategory.get(row.category.id) ?? 0,
+      limitCents: row.limitCents,
       spentCents: row.spentCents,
     })),
   );
@@ -160,7 +156,7 @@ export function BudgetsPage() {
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Categorias
+            Categorias & Orçamentos
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
             Gestão de categorias, limites de gastos e expectativas de renda
@@ -182,8 +178,8 @@ export function BudgetsPage() {
         onValueChange={(value) => setTab(value as "limits" | "goals")}
         swipeable
         items={[
-          { value: "limits", label: "Despesas", content: null },
-          { value: "goals", label: "Rendas", content: null },
+          { value: "limits", label: "Despesas & Limites", content: null },
+          { value: "goals", label: "Rendas & Metas", content: null },
         ]}
       />
 
@@ -193,38 +189,81 @@ export function BudgetsPage() {
         <>
           <MonthPicker value={month} onValueChange={setMonth} />
 
-          {/* KPIs (§3.5.2) */}
-          <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
+          {/* Resumo do Orçamento Geral (§3.5.2) */}
+          <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary-strong">
                   <PiggyBank className="size-3.5" aria-hidden="true" />
                 </span>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total de limites do mês</p>
-                  <p className="text-[11px] text-muted-foreground">{activeRows.length} {activeRows.length === 1 ? "categoria ativa" : "categorias ativas"}</p>
+                <div className="min-w-0">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">Orçamento do Mês</h2>
+                  <p className="text-[11px] text-muted-foreground">
+                    {activeRows.length} {activeRows.length === 1 ? "categoria ativa" : "categorias ativas"}
+                    {attentionCount > 0 ? ` · ${attentionCount} em atenção` : ""}
+                  </p>
                 </div>
               </div>
-              <p className="num text-sm font-medium text-muted-foreground">{Math.round(globalPercent)}% usado</p>
+              <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-xs shrink-0">
+                {Math.round(globalPercent)}% utilizado
+              </Badge>
             </div>
-            <div className="flex items-baseline justify-between">
-              <MoneyText cents={totalLimitsCents} variant="hero" className="text-2xl sm:text-3xl" />
-              <span className="text-xs text-muted-foreground">
-                Gasto: <MoneyText cents={totalExpensesCents} tone="default" />
-              </span>
+
+            <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+              <div className="flex items-baseline gap-2">
+                <MoneyText cents={totalLimitsCents} variant="hero" className="text-2xl sm:text-3xl" />
+                <span className="text-xs text-muted-foreground font-normal">teto planejado</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Total gasto: <MoneyText cents={totalExpensesCents} tone="default" className="font-semibold text-foreground" />
+              </div>
             </div>
-            <Progress value={globalPercent} tone={progressTone(globalPercent)} aria-label={`Uso global: ${Math.round(globalPercent)}%`} />
+
+            <Progress
+              value={globalPercent}
+              tone={progressTone(globalPercent)}
+              className="h-2"
+              aria-label={`Uso global: ${Math.round(globalPercent)}%`}
+            />
           </div>
+
+          {/* Recomendação de realocação inteligente (§3.5.2) */}
+          {suggestion && fromCategory && toCategory ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-xs">
+              <div className="flex items-start gap-3 min-w-0">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/15 border border-primary/30 text-primary-strong">
+                  <Sparkles className="size-4" aria-hidden="true" />
+                </span>
+                <div className="text-sm min-w-0">
+                  <p className="font-semibold text-foreground">Sugestão de Realocação de Limite</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    <span className="font-medium text-positive-strong">{fromCategory.name}</span> possui folga.
+                    Transfira <MoneyText cents={suggestion.amountCents} tone="default" className="font-semibold text-foreground" /> de
+                    limite para cobrir os gastos de <span className="font-medium text-critical">{toCategory.name}</span>.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setReallocateOpen(true)}
+                className="shrink-0 self-start sm:self-auto gap-1.5 border-primary/30 hover:bg-primary/10"
+              >
+                <span>Aplicar realocação</span>
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Button>
+            </div>
+          ) : null}
 
           {budgetsQuery.isLoading || expensesQuery.isLoading ? (
             <div className="flex flex-col gap-2">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full rounded-2xl" />
+              <Skeleton className="h-16 w-full rounded-2xl" />
             </div>
           ) : rows.length === 0 ? (
             <EmptyState
               icon={<PiggyBank className="size-6" aria-hidden="true" />}
-              title="Nenhum orçamento"
+              title="Nenhum orçamento configurado"
               description="Defina um limite mensal por categoria de despesa para acompanhar os gastos ou crie uma nova categoria."
               action={
                 <Button size="sm" onClick={handleOpenCreateCategory}>
@@ -234,41 +273,88 @@ export function BudgetsPage() {
               }
             />
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               {rows.map((row) => {
                 const status = budgetStatus(row.spentCents, row.limitCents);
+                const isOver = status === "exceeded";
+                const isAttention = status !== "ok";
+
                 return (
                   <div
                     key={row.category.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Editar limite de ${row.category.name}`}
-                    onClick={() => {
-                      triggerHaptic("light");
-                      setLimitFor(row.category);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
+                    className="group flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-border hover:bg-surface min-w-0"
+                  >
+                    <div className="flex items-center justify-between gap-3 min-w-0">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Editar limite de ${row.category.name}`}
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setLimitFor(row.category);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            triggerHaptic("light");
+                            setLimitFor(row.category);
+                          }
+                        }}
+                        className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
+                      >
+                        <CategoryIcon icon={row.category.icon} color={row.category.color} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                              {row.category.name}
+                            </p>
+                            {row.inherited ? (
+                              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                herdado
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {row.limitCents > 0 && isAttention ? (
+                          <Badge variant={isOver ? "critical" : "warning"} className="text-[10px] px-1.5 py-0">
+                            {BUDGET_STATUS_LABELS[status]}
+                          </Badge>
+                        ) : null}
+
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="size-7 text-muted-foreground hover:text-foreground"
+                          aria-label={`Editar cadastro de ${row.category.name}`}
+                          title={`Editar cadastro de ${row.category.name}`}
+                          onClick={() => handleEditCategory(row.category)}
+                        >
+                          <Edit3 className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Editar limite de ${row.category.name}`}
+                      onClick={() => {
                         triggerHaptic("light");
                         setLimitFor(row.category);
-                      }
-                    }}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 cursor-pointer transition-colors hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                        <CategoryIcon icon={row.category.icon} color={row.category.color} />
-                        <p className="truncate text-sm font-medium text-foreground min-w-0">{row.category.name}</p>
-                        {row.inherited ? (
-                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">herdado</span>
-                        ) : null}
-                        {row.limitCents > 0 ? (
-                          <span className={`shrink-0 text-[10px] font-medium ${status === "exceeded" ? "text-critical" : "text-muted-foreground"}`}>
-                            {BUDGET_STATUS_LABELS[status]}
-                          </span>
-                        ) : null}
-                      </div>
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          triggerHaptic("light");
+                          setLimitFor(row.category);
+                        }
+                      }}
+                      className="cursor-pointer"
+                    >
                       <BudgetProgressBar spentCents={row.spentCents} limitCents={row.limitCents} />
                     </div>
                   </div>
@@ -276,7 +362,7 @@ export function BudgetsPage() {
               })}
 
               {unbudgetedRows.length > 0 && (
-                <div className="flex justify-center pt-1">
+                <div className="flex justify-center pt-2">
                   <Button
                     type="button"
                     variant="ghost"
@@ -292,43 +378,21 @@ export function BudgetsPage() {
               )}
             </div>
           )}
-
-          {/* Recomendação de realocação (§3.5.2) */}
-          {suggestion && fromCategory && toCategory ? (
-            <div className="flex flex-col gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4">
-              <div className="flex items-start gap-2.5">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-warning/20 border border-warning/30 text-warning-strong">
-                  <Sparkles className="size-3.5" aria-hidden="true" />
-                </span>
-                <div className="text-sm">
-                  <p className="font-medium text-foreground">Realocação sugerida</p>
-                  <p className="mt-0.5 text-muted-foreground">
-                    <span className="font-medium text-critical">{fromCategory.name}</span> excedeu o limite. Transfira{" "}
-                    <MoneyText cents={suggestion.amountCents} tone="default" /> de limite para{" "}
-                    <span className="font-medium text-positive-strong">{toCategory.name}</span>, que tem folga.
-                  </p>
-                </div>
-              </div>
-              <div>
-                <Button size="sm" variant="outline" onClick={() => setReallocateOpen(true)}>
-                  <ArrowRight aria-hidden="true" />
-                  Aplicar realocação
-                </Button>
-              </div>
-            </div>
-          ) : null}
         </>
       ) : (
         /* Aba Metas de renda (§3.5.3) */
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground">
-            Defina a expectativa mensal por categoria de renda para comparar o realizado.
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Defina a expectativa mensal por categoria de renda para comparar com os recebimentos realizados.
+            </p>
+          </div>
+
           {(incomeCategories.data ?? []).length === 0 ? (
             <EmptyState
               icon={<PiggyBank className="size-6" aria-hidden="true" />}
               title="Sem categorias de renda"
-              description="Crie categorias de renda para definir metas."
+              description="Crie categorias de renda para definir metas mensais."
               action={
                 <Button size="sm" onClick={handleOpenCreateCategory}>
                   <Plus className="size-4" aria-hidden="true" />
@@ -337,23 +401,113 @@ export function BudgetsPage() {
               }
             />
           ) : (
-            (incomeCategories.data ?? []).map((category) => {
-              const realizedCents = realizedByCategory.get(category.id) ?? 0;
-              const expectedCents = goalsByCategory.get(category.id) ?? 0;
-              const status = incomeGoalStatus(realizedCents, expectedCents);
-              return (
-                <IncomeGoalRow
-                  key={category.id}
-                  category={category}
-                  month={month}
-                  realizedCents={realizedCents}
-                  expectedCents={expectedCents}
-                  statusLabel={expectedCents > 0 ? INCOME_GOAL_LABELS[status] : "Sem meta"}
-                  deficit={status === "deficit"}
-                  onEditCategory={handleEditCategory}
-                />
-              );
-            })
+            <div className="flex flex-col gap-2.5">
+              {(incomeCategories.data ?? []).map((category) => {
+                const realizedCents = realizedByCategory.get(category.id) ?? 0;
+                const expectedCents = goalsByCategory.get(category.id) ?? 0;
+                const status = incomeGoalStatus(realizedCents, expectedCents);
+                const percent = expectedCents > 0 ? Math.min(100, (realizedCents / expectedCents) * 100) : 0;
+
+                return (
+                  <div
+                    key={category.id}
+                    className="group flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-border hover:bg-surface min-w-0"
+                  >
+                    <div className="flex items-center justify-between gap-3 min-w-0">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Editar meta de renda de ${category.name}`}
+                        onClick={() => {
+                          triggerHaptic("light");
+                          setGoalFor(category);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            triggerHaptic("light");
+                            setGoalFor(category);
+                          }
+                        }}
+                        className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
+                      >
+                        <CategoryIcon icon={category.icon} color={category.color} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                            {category.name}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge
+                          variant={expectedCents === 0 ? "muted" : status === "deficit" ? "critical" : "positive"}
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {expectedCents > 0 ? INCOME_GOAL_LABELS[status] : "Sem meta"}
+                        </Badge>
+
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="size-7 text-muted-foreground hover:text-foreground"
+                          aria-label={`Editar cadastro de ${category.name}`}
+                          title={`Editar cadastro de ${category.name}`}
+                          onClick={() => handleEditCategory(category)}
+                        >
+                          <Edit3 className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Editar meta de renda de ${category.name}`}
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setGoalFor(category);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          triggerHaptic("light");
+                          setGoalFor(category);
+                        }
+                      }}
+                      className="flex flex-col gap-1.5 cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <span>Realizado:</span>
+                          <MoneyText cents={realizedCents} tone="default" className="font-semibold text-foreground" />
+                          {expectedCents > 0 ? (
+                            <>
+                              <span>de</span>
+                              <MoneyText cents={expectedCents} tone="default" />
+                            </>
+                          ) : null}
+                        </span>
+                        {expectedCents > 0 ? (
+                          <span className="num font-medium">{Math.round(percent)}%</span>
+                        ) : (
+                          <span className="text-[11px] text-primary hover:underline">Toque para definir</span>
+                        )}
+                      </div>
+                      {expectedCents > 0 ? (
+                        <Progress
+                          value={percent}
+                          tone={status === "deficit" ? "warning" : "positive"}
+                          className="h-1.5"
+                          aria-label={`Realizado de ${category.name}: ${Math.round(percent)}%`}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -368,6 +522,18 @@ export function BudgetsPage() {
           monthlyIncomeCents={totalIncomesCents}
           open={limitFor !== null}
           onOpenChange={(next) => !next && setLimitFor(null)}
+          onEditCategory={handleEditCategory}
+        />
+      ) : null}
+
+      {goalFor ? (
+        <IncomeGoalDialog
+          key={`${goalFor.id}:${month}`}
+          category={goalFor}
+          month={month}
+          currentExpectedCents={goalsByCategory.get(goalFor.id) ?? 0}
+          open={goalFor !== null}
+          onOpenChange={(next) => !next && setGoalFor(null)}
           onEditCategory={handleEditCategory}
         />
       ) : null}
@@ -387,10 +553,10 @@ export function BudgetsPage() {
       <ConfirmDialog
         open={reallocateOpen}
         onOpenChange={setReallocateOpen}
-        title="Aplicar realocação?"
+        title="Aplicar realocação de limite?"
         description={
           suggestion && fromCategory && toCategory
-            ? `Transferir ${formatCentsAsBRL(suggestion.amountCents)} do limite de ${fromCategory.name} para ${toCategory.name} (mês ${month}).`
+            ? `Transferir ${formatCentsAsBRL(suggestion.amountCents)} da folga de ${fromCategory.name} para cobrir o limite de ${toCategory.name} (mês ${month}).`
             : undefined
         }
         confirmLabel={reallocate.isPending ? "Aplicando…" : "Aplicar"}
@@ -407,131 +573,3 @@ export function BudgetsPage() {
   );
 }
 
-function IncomeGoalRow({
-  category,
-  month,
-  realizedCents,
-  expectedCents,
-  statusLabel,
-  deficit,
-  onEditCategory,
-}: {
-  category: Category;
-  month: string;
-  realizedCents: number;
-  expectedCents: number;
-  statusLabel: string;
-  deficit: boolean;
-  onEditCategory?: (category: Category) => void;
-}) {
-  const [cents, setCents] = useState(0);
-  const [saved, setSaved] = useState(false);
-  const [goalError, setGoalError] = useState<string | null>(null);
-  const setGoal = useSetIncomeGoal();
-  const removeGoal = useRemoveIncomeGoal();
-
-  // Feedback de "Salva" por 2s com limpeza do timer no unmount (sem setState
-  // após desmontagem — evita warning/fuga de memória em listas longas).
-  useEffect(() => {
-    if (!saved) return;
-    const timer = window.setTimeout(() => setSaved(false), 2000);
-    return () => window.clearTimeout(timer);
-  }, [saved]);
-
-  /** Salva a meta com feedback de erro real (falha de rede não fica silenciosa). */
-  const saveGoal = async () => {
-    if (cents <= 0) return;
-    setGoalError(null);
-    try {
-      await setGoal.mutateAsync({ categoryId: category.id, month, expected: cents / 100 });
-      setCents(0);
-      setSaved(true);
-    } catch (err) {
-      setGoalError(getErrorMessage(err));
-    }
-  };
-
-  /** Remove a meta com feedback de erro real. */
-  const removeGoalSafe = async () => {
-    setGoalError(null);
-    try {
-      await removeGoal.mutateAsync({ categoryId: category.id, month });
-    } catch (err) {
-      setGoalError(getErrorMessage(err));
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0">
-      {goalError ? <Alert variant="error">{goalError}</Alert> : null}
-      <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-        <div
-          role={onEditCategory ? "button" : undefined}
-          tabIndex={onEditCategory ? 0 : undefined}
-          onClick={onEditCategory ? () => onEditCategory(category) : undefined}
-          className={cn(
-            "flex items-center gap-2 min-w-0 rounded-lg transition-opacity",
-            onEditCategory && "cursor-pointer hover:opacity-80",
-          )}
-          title={onEditCategory ? "Clique para editar esta categoria" : undefined}
-        >
-          <CategoryIcon icon={category.icon} color={category.color} />
-          <p className="truncate text-sm font-medium text-foreground min-w-0">{category.name}</p>
-        </div>
-        <span className={`shrink-0 text-xs font-medium ${deficit ? "text-critical" : expectedCents > 0 ? "text-positive-strong" : "text-muted-foreground"}`}>
-          {statusLabel}
-        </span>
-      </div>
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2.5 min-w-0">
-        <p className="num text-sm text-muted-foreground min-w-0">
-          Realizado: <MoneyText cents={realizedCents} tone="default" />
-          {expectedCents > 0 ? (
-            <>
-              {" "}· Meta: <MoneyText cents={expectedCents} tone="default" />
-            </>
-          ) : null}
-        </p>
-        <div className="flex w-full sm:w-auto items-center gap-2">
-          <div className="flex-1 sm:w-40 min-w-0">
-            <MoneyInput
-              className="w-full"
-              cents={cents}
-              onCentsChange={setCents}
-              aria-label={`Meta de renda de ${category.name}`}
-              placeholder="Definir meta"
-            />
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant={saved ? "outline" : "default"}
-            disabled={cents <= 0 || setGoal.isPending}
-            onClick={() => void saveGoal()}
-            className="shrink-0"
-          >
-            {saved ? (
-              <>
-                <Check className="size-3.5" aria-hidden="true" />
-                Salva
-              </>
-            ) : (
-              "Salvar"
-            )}
-          </Button>
-          {expectedCents > 0 ? (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              aria-label={`Remover meta de ${category.name}`}
-              onClick={() => void removeGoalSafe()}
-              className="shrink-0"
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}

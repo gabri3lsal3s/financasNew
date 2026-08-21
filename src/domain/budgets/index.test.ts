@@ -121,7 +121,7 @@ describe("reallocationSuggestion (§3.5.2)", () => {
       { categoryId: "b", limitCents: 100000, spentCents: 30000 }, // folga 70.000
       { categoryId: "c", limitCents: 50000, spentCents: 10000 }, // folga 40.000
     ]);
-    expect(suggestion).toEqual({ fromCategoryId: "a", toCategoryId: "b", amountCents: 60000 });
+    expect(suggestion).toEqual({ fromCategoryId: "b", toCategoryId: "a", amountCents: 60000 });
   });
 
   it("limita ao menor valor (folga menor que excesso), arredondado para baixo", () => {
@@ -129,7 +129,7 @@ describe("reallocationSuggestion (§3.5.2)", () => {
       { categoryId: "a", limitCents: 100000, spentCents: 115000 }, // excesso 15.000
       { categoryId: "b", limitCents: 100000, spentCents: 89000 }, // folga 11.000
     ]);
-    expect(suggestion?.amountCents).toBe(11000);
+    expect(suggestion).toEqual({ fromCategoryId: "b", toCategoryId: "a", amountCents: 11000 });
   });
 
   it("não sugere quando o valor transferido arredonda para menos de R$ 10", () => {

@@ -180,16 +180,17 @@ export function reallocationSuggestion(rows: readonly BudgetRow[]): Reallocation
     .filter((row) => row.slackCents >= 1000) // folga mínima de R$ 10
     .sort((a, b) => b.slackCents - a.slackCents);
 
-  const from = overspent[0];
-  const to = slack[0];
-  if (!from || !to || from.categoryId === to.categoryId) return null;
+  const overspentCat = overspent[0];
+  const slackCat = slack[0];
+  if (!overspentCat || !slackCat || overspentCat.categoryId === slackCat.categoryId) return null;
 
-  const transfer = Math.min(from.excessCents, to.slackCents);
+  const transfer = Math.min(overspentCat.excessCents, slackCat.slackCents);
   // Arredonda para baixo ao múltiplo de R$ 10 (mínimo R$ 10).
   const rounded = Math.floor(transfer / 1000) * 1000;
   if (rounded < 1000) return null;
 
-  return { fromCategoryId: from.categoryId, toCategoryId: to.categoryId, amountCents: rounded };
+  // Origem: categoria com folga/sobra; Destino: categoria com excesso/estouro.
+  return { fromCategoryId: slackCat.categoryId, toCategoryId: overspentCat.categoryId, amountCents: rounded };
 }
 
 // ---------------------------------------------------------------------------
