@@ -16,6 +16,8 @@
    ---------------------------------------------------------------- */
 :root,
 html[data-theme="light"] {
+  color-scheme: light;
+
   /* Neutros (família ardósia-teal) */
   --background: 204 29% 97%;        /* #F4F7F9 */
   --surface: 0 0% 100%;             /* #FFFFFF */
@@ -99,6 +101,8 @@ html[data-theme="light"] {
    primária em Teal vivo (#2DD4BF) e acentos dourados (#F3C352).
    ---------------------------------------------------------------- */
 html[data-theme="dark"] {
+  color-scheme: dark;
+
   /* Neutros */
   --background: 206 49% 9%;         /* #0C1923 — Abissal */
   --surface: 206 42% 15%;           /* #162836 — ardósia escuro */
@@ -158,6 +162,8 @@ html[data-theme="dark"] {
    cinza neutro puro (#2E2E2E / 0% saturação) e contraste limpo.
    ---------------------------------------------------------------- */
 html[data-theme="oled"] {
+  color-scheme: dark;
+
   --background: 0 0% 0%;            /* #000000 — true black (AMOLED) */
   --surface: 0 0% 4%;               /* #0A0A0A */
   --surface-hover: 0 0% 8%;         /* #141414 — hover perceptível sobre true black */
@@ -235,6 +241,7 @@ html[data-theme="oled"] {
    ---------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
+    color-scheme: dark;
     --background: 206 49% 9%;
     --surface: 206 42% 15%;
     --surface-hover: 206 41% 19%;

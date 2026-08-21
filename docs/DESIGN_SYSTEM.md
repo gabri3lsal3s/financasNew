@@ -196,9 +196,9 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 | `src/styles/tokens.css` | **Fonte única da verdade** — todos os tokens (3 temas + fallback de sistema) |
 | `src/styles/globals.css` | Importa tokens; `@theme inline` (Tailwind v4) gera utilitários `bg-primary`, `text-negative`, `rounded-xl`, `shadow-kpi`, `font-mono`, `bg-cat-3`…; utilitários `.num` e `.display`; base (body, selection, focus) |
 | `tailwind.config.ts` | **Somente se a Fase 0 usar Tailwind v3** — bloco completo no final de `globals.css` |
-| `index.html` | Carregar Google Fonts: Inter (400/500/600/700), Sora (700/800), IBM Plex Mono (400/500/600) + `preconnect` |
+| `index.html` | Carregar Google Fonts: Inter (400/500/600/700), Sora (700/800), IBM Plex Mono (400/500/600) + `preconnect`, meta `color-scheme` e inline bootstrap script |
 
-**Fluxo de tema:** `ThemeProvider` (Fase 0) resolve `system → light|dark` e grava `data-theme` em `<html>`; preferência persistida em `user_preferences.theme`. O fallback `@media (prefers-color-scheme)` evita flash sem JS.
+**Fluxo de tema:** `ThemeProvider` (Fase 0) resolve `system → light|oled` (modo escuro padrão do sistema/forced-dark resolve para OLED `#000000`) e grava `data-theme` e `style.colorScheme` em `<html>`; preferência persistida em `user_preferences.theme` e espelhada no storage local síncrono. O fallback `@media (prefers-color-scheme)` e `index.html` inline script evitam flash sem JS e garantem sincronização de tema desde o 1º frame do HTML Splash Screen.
 
 ---
 

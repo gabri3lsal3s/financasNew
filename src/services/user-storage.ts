@@ -25,6 +25,13 @@ export function subscribeActiveUserId(listener: (userId: string | null) => void)
   };
 }
 
+const SYNCED_BOOT_KEYS = [
+  "theme",
+  "accent_theme",
+  "surface_style",
+  "motion_level",
+];
+
 export function getUserStorageKey(key: string, userId?: string | null): string {
   const uid = userId !== undefined ? userId : activeUserId;
   return uid ? `financas_${uid}_${key}` : `financas_guest_${key}`;
@@ -34,7 +41,14 @@ export function getUserStorageItem(key: string, userId?: string | null): string 
   if (typeof window === "undefined") return null;
   try {
     const fullKey = getUserStorageKey(key, userId);
-    return window.localStorage.getItem(fullKey);
+    const value = window.localStorage.getItem(fullKey);
+    if (value !== null) return value;
+
+    // Se estiver sem usuário ativo e a chave for de bootstrap visual, usa o espelho ativo
+    if ((userId === undefined || userId === null) && !activeUserId && SYNCED_BOOT_KEYS.includes(key)) {
+      return window.localStorage.getItem(`financas_active_${key}`);
+    }
+    return null;
   } catch {
     return null;
   }
@@ -45,6 +59,10 @@ export function setUserStorageItem(key: string, value: string, userId?: string |
   try {
     const fullKey = getUserStorageKey(key, userId);
     window.localStorage.setItem(fullKey, value);
+
+    if (SYNCED_BOOT_KEYS.includes(key)) {
+      window.localStorage.setItem(`financas_active_${key}`, value);
+    }
   } catch {
     // quota exceeded or storage disabled
   }

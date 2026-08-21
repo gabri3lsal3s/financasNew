@@ -4,8 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="Gestão financeira pessoal e rebalanceamento de carteira." />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F7F9" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1923" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
     <link rel="manifest" href="/pwa/manifest.webmanifest" />
     <!-- Favicons com cache-busting (?v=2 — o navegador mantém o favicon antigo agressivamente) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
@@ -27,11 +28,26 @@
     <script>
       (function() {
         try {
-          var theme = localStorage.getItem('financas:theme');
+          function getStoredValue(keyName) {
+            var direct = localStorage.getItem('financas_active_' + keyName);
+            if (direct) return direct;
+            var guest = localStorage.getItem('financas_guest_' + keyName);
+            if (guest) return guest;
+            for (var i = 0; i < localStorage.length; i++) {
+              var k = localStorage.key(i);
+              if (k && k.indexOf('financas_') === 0 && k.slice(-keyName.length - 1) === '_' + keyName) {
+                return localStorage.getItem(k);
+              }
+            }
+            return null;
+          }
+
+          var theme = getStoredValue('theme');
           if (!theme || theme === 'system') {
-            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oled' : 'light';
           }
           document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark';
 
           var themeColor = theme === 'oled' ? '#000000' : (theme === 'dark' ? '#0C1923' : '#F4F7F9');
           var metas = document.querySelectorAll('meta[name="theme-color"]');
@@ -39,15 +55,15 @@
             m.setAttribute('content', themeColor);
           });
 
-          var accent = localStorage.getItem('financas_accent_theme');
+          var accent = getStoredValue('accent_theme');
           if (accent && accent !== 'teal') {
             document.documentElement.setAttribute('data-accent', accent);
           }
-          var surface = localStorage.getItem('financas_surface_style');
+          var surface = getStoredValue('surface_style');
           if (surface && surface !== 'glass') {
             document.documentElement.setAttribute('data-surface-style', surface);
           }
-          var motion = localStorage.getItem('financas_motion_level');
+          var motion = getStoredValue('motion_level');
           if (motion && motion !== 'fluid') {
             document.documentElement.setAttribute('data-motion', motion);
           }
@@ -61,6 +77,7 @@
         padding: 0;
         background-color: #F4F7F9;
         color: #142531;
+        color-scheme: light;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
@@ -70,25 +87,38 @@
       html[data-theme="dark"], html[data-theme="dark"] body {
         background-color: #0C1923;
         color: #E6EFF5;
+        color-scheme: dark;
       }
 
       html[data-theme="oled"], html[data-theme="oled"] body {
         background-color: #000000;
         color: #FFFFFF;
+        color-scheme: dark;
       }
 
-      /* ---- Splash Screen Inline — Fundo branco puro com somente o ícone ---- */
+      /* ---- Splash Screen Inline — Fundo acompanha o tema ativo com o ícone ---- */
       #app-splash {
         position: fixed;
         inset: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #FFFFFF;
+        background-color: #F4F7F9;
+        color: #142531;
         transition: opacity 0.22s ease-out;
         z-index: 9999;
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      html[data-theme="dark"] #app-splash {
+        background-color: #0C1923;
+        color: #E6EFF5;
+      }
+
+      html[data-theme="oled"] #app-splash {
+        background-color: #000000;
+        color: #FFFFFF;
       }
 
       #app-splash-icon {
@@ -126,7 +156,7 @@
   </head>
   <body>
     <div id="root">
-      <!-- Splash screen inline (fundo branco puro, somente o ícone) -->
+      <!-- Splash screen inline (fundo sincronizado ao tema, somente o ícone) -->
       <div id="app-splash" aria-hidden="true" role="presentation">
         <img
           id="app-splash-icon"

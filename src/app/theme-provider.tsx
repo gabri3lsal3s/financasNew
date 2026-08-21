@@ -23,7 +23,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function systemTheme(): Theme {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "oled" : "light";
 }
 
 function readPreference(userId?: string | null): ThemePreference {
@@ -62,7 +62,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (event: MediaQueryListEvent) => setSystem(event.matches ? "dark" : "light");
+    const onChange = (event: MediaQueryListEvent) => setSystem(event.matches ? "oled" : "light");
     if (typeof mq.addEventListener === "function") {
       mq.addEventListener("change", onChange);
       return () => mq.removeEventListener("change", onChange);
@@ -74,6 +74,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Aplica o tema nos tokens (tokens.css) — fallback CSS evita flash sem JS.
     document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme === "light" ? "light" : "dark";
     // Sincroniza a cor da barra de título do SO/PWA e barra de status mobile
     updateMetaThemeColor(theme);
   }, [theme]);

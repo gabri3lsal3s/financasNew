@@ -125,8 +125,9 @@ Referência completa (ajustar nomes à marca final):
 ```html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="description" content="Gestão financeira pessoal e rebalanceamento de carteira." />
+<meta name="color-scheme" content="light dark" />
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F7F9" />
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1923" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
 <link rel="manifest" href="/pwa/manifest.webmanifest" />
 <link rel="icon" href="/pwa/icons/icon-192.png" sizes="192x192" />
 <link rel="apple-touch-icon" href="/pwa/icons/apple-touch-icon-180.png" />
@@ -136,8 +137,9 @@ Referência completa (ajustar nomes à marca final):
 ```
 
 **Splash screens:**
+- **Prevenção de Forced Dark Quebrado:** `<meta name="color-scheme" content="light dark" />` e CSS `color-scheme: light/dark` sinalizam aos motores de Auto Dark Mode (Chromium/Samsung Internet/Brave) que o app possui seus próprios temas nativos, desativando a inversão algorítmica destrutiva. O tema escuro padrão do sistema/forced-dark resolve para **OLED** (`#000000`).
 - **Android:** o splash é automático (ícone + `background_color` do manifest) — `background_color: #0C1923` (Abissal) minimiza o flash ao abrir em tema escuro; em light, o HTML splash cobre o fundo imediatamente.
-- **HTML Splash Screen (`index.html`):** a `<div id="app-splash">` renderiza imediatamente dentro do `#root` antes do React montar, exibindo o ícone do app em 120px com animação pulse e barra de progresso teal. Usa os mesmos valores dos tokens dos 3 temas via seletores `[data-theme]` (aplicados pelo script inline antes do render — sem flash). Some automaticamente via CSS `#root:not(:empty) #app-splash { opacity: 0 }` assim que o React monta qualquer conteúdo. Animações desativadas em `prefers-reduced-motion: reduce` e `data-motion="reduced"`/`"eco"`.
+- **HTML Splash Screen (`index.html`):** a `<div id="app-splash">` renderiza imediatamente dentro do `#root` antes do React montar, exibindo o ícone do app em 144px com animação pulse sutil. O fundo sincroniza imediatamente ao tema ativo do usuário (`light` #F4F7F9, `dark` #0C1923, `oled` #000000) recuperado síncronamente do storage. Some automaticamente via CSS `#root:not(:empty) #app-splash { opacity: 0 }` assim que o React monta qualquer conteúdo. Animações desativadas em `prefers-reduced-motion: reduce` e `data-motion="reduced"`/`"eco"`.
 - **iOS:** `apple-touch-startup-image` (tamanhos por device — opcional); sem isso, o iOS compõe da `apple-touch-icon` + fundo. Validar em device real.
 - `viewport-fit=cover` garante respeito às "safe areas" (notch) no modo standalone.
 
