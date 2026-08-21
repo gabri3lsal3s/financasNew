@@ -60,3 +60,5 @@ export { PlanningSection } from "./planning-section";
 export type { PlanningSectionProps } from "./planning-section";
 export { NotificationsPopover } from "./notifications-popover";
 export type { NotificationsPopoverProps } from "./notifications-popover";
+export { PaceAlertBanner } from "./pace-alert-banner";
+export type { PaceAlertBannerProps } from "./pace-alert-banner";

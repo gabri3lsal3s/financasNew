@@ -361,6 +361,23 @@
   4. **Acessibilidade WCAG (axe):** Hierarquia estrita de headings (`h1` $\rightarrow$ `h2`) e rótulos acessíveis completos.
   5. **Qualidade & Testes:** 170 arquivos e 1.346 testes 100% aprovados, typecheck limpo, lint limpo e build verificado.
 
+## Evolução — Banner Contextual de Atenção e Governança de Widgets na Visão Geral (2026-08-20)
+
+- **Contexto & Necessidade:** Proporcionar feedback inteligente e imediato no primeiro contato do usuário na Home (`OverviewPage`) sobre o ritmo de consumo do mês e possíveis riscos de déficit, integrando a inteligência da Projeção de Gastos sem poluir a interface quando as finanças estiverem no trilho normal.
+- **Implementação:**
+  1. **Novo Módulo `PaceAlertBanner` (`src/components/modules/pace-alert-banner.tsx`):**
+     - Banner contextual e responsivo com variantes semânticas (`warning` para ritmo acelerado, `critical` para déficit projetado).
+     - Exibe métricas de consumo (`% gasto`, `% do mês decorrido`, limite diário recomendado em `MoneyText` e dias restantes).
+     - Botão de ação com deep linking para `/insights` (*"Simular cortes e projeção"*).
+  2. **Integração na `OverviewPage`:**
+     - Utiliza funções puras do domínio (`src/domain/projection` — `spendingPace`, `dailyBudget`, `endOfMonthProjection`).
+     - Renderização condicional ativada apenas no mês corrente quando `pace.ahead === true` ou `projection.onTrack === false` e quando a preferência `contextBanners` estiver habilitada.
+  3. **Personalização e Limite Mínimo de 3 Widgets no Dashboard:**
+     - Adicionada opção `contextBanners` em `DashboardWidgetsConfig` (`useVisualCustomization` + `UserCustomSettings` no Supabase).
+     - **Regra de limite mínimo:** O usuário é impedido de desativar widgets se houver $\le 3$ ativos, garantindo que o início mantenha uma composição rica e funcional.
+     - Feedback com sensory haptics (`warning`), toast orientativo e bloqueio nos checkboxes.
+  4. **Qualidade & Testes:** Testes unitários de módulo (`pace-alert-banner.test.tsx`), página (`overview-page.test.tsx`), hook de personalização (`use-visual-customization.test.ts`) e configurações (`settings-page.test.tsx`).
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

@@ -369,6 +369,17 @@ export function SettingsPage() {
   };
 
   const handleToggleDashboardWidget = (key: keyof DashboardWidgetsConfig, label: string, nextChecked: boolean) => {
+    const activeWidgetsCount = Object.values(visual.dashboardWidgets).filter(Boolean).length;
+    if (!nextChecked && activeWidgetsCount <= 3) {
+      triggerSensory("warning");
+      pushToast({
+        title: "Limite mínimo atingido",
+        description: "Mantenha ao menos 3 widgets ativos para que a Visão Geral exiba uma composição equilibrada.",
+        duration: 3000,
+      });
+      return;
+    }
+
     triggerSensory("action");
     visual.setDashboardWidget(key, nextChecked);
     updateCustomSettingsMutation.mutate({
@@ -401,6 +412,7 @@ export function SettingsPage() {
         flow: true,
         donut: true,
         budgets: true,
+        contextBanners: true,
       },
       headerButtons: {
         logo: true,
@@ -1218,45 +1230,55 @@ export function SettingsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {[
-                { key: "kpis" as const, label: "Resumo de Saldo & KPIs (com Sparklines)", desc: "Entradas, Saídas, Investimentos e Saldo Geral" },
-                { key: "summary" as const, label: "Saldo Líquido de Contas & Poupança", desc: "A receber, a pagar, faturas abertas e taxa de poupança" },
-                { key: "flow" as const, label: "Gráfico de Fluxo Diário", desc: "Curva acumulada de receitas versus despesas no mês" },
-                { key: "donut" as const, label: "Distribuição por Categorias", desc: "Gráfico donut com os maiores destinos do seu dinheiro" },
-                { key: "budgets" as const, label: "Acompanhamento de Orçamentos", desc: "Barras de consumo e limites por categoria" },
-              ].map((w) => {
-                const isChecked = visual.dashboardWidgets[w.key];
-                return (
-                  <div
-                    key={w.key}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleToggleDashboardWidget(w.key, w.label, !isChecked)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleToggleDashboardWidget(w.key, w.label, !isChecked);
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
-                      isChecked
-                        ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                        : "border-border bg-surface hover:bg-surface-hover",
-                    )}
-                  >
-                    <div className="pr-4">
-                      <div className="font-semibold text-sm text-foreground">{w.label}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{w.desc}</div>
+              {(() => {
+                const activeWidgetsCount = Object.values(visual.dashboardWidgets).filter(Boolean).length;
+                return [
+                  { key: "kpis" as const, label: "Resumo de Saldo & KPIs (com Sparklines)", desc: "Entradas, Saídas, Investimentos e Saldo Geral" },
+                  { key: "summary" as const, label: "Saldo Líquido de Contas & Poupança", desc: "A receber, a pagar, faturas abertas e taxa de poupança" },
+                  { key: "flow" as const, label: "Gráfico de Fluxo Diário", desc: "Curva acumulada de receitas versus despesas no mês" },
+                  { key: "donut" as const, label: "Distribuição por Categorias", desc: "Gráfico donut com os maiores destinos do seu dinheiro" },
+                  { key: "budgets" as const, label: "Acompanhamento de Orçamentos", desc: "Barras de consumo e limites por categoria" },
+                  { key: "contextBanners" as const, label: "Banners Contextuais de Atenção & Ritmo", desc: "Avisos inteligentes quando o ritmo de gastos estiver acelerado ou com risco de déficit" },
+                ].map((w) => {
+                  const isChecked = visual.dashboardWidgets[w.key];
+                  const isMinThresholdReached = isChecked && activeWidgetsCount <= 3;
+                  return (
+                    <div
+                      key={w.key}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleToggleDashboardWidget(w.key, w.label, !isChecked)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleToggleDashboardWidget(w.key, w.label, !isChecked);
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
+                        isChecked
+                          ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                          : "border-border bg-surface hover:bg-surface-hover",
+                        isMinThresholdReached ? "opacity-90" : "",
+                      )}
+                    >
+                      <div className="pr-4">
+                        <div className="font-semibold text-sm text-foreground">{w.label}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{w.desc}</div>
+                      </div>
+                      <Checkbox
+                        checked={isChecked}
+                        disabled={isMinThresholdReached}
+                        onCheckedChange={(checked) => handleToggleDashboardWidget(w.key, w.label, Boolean(checked))}
+                        aria-label={w.label}
+                      />
                     </div>
-                    <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={(checked) => handleToggleDashboardWidget(w.key, w.label, Boolean(checked))}
-                      aria-label={w.label}
-                    />
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
+              <p className="text-xs text-muted-foreground px-0.5 leading-relaxed">
+                Mantenha ao menos 3 widgets ativos para que a tela de Visão Geral exiba uma composição equilibrada de informações.
+              </p>
             </CardContent>
           </Card>
 

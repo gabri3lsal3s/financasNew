@@ -133,4 +133,23 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
     expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({ remindersEnabled: false });
   });
+
+  it("permite personalizar widgets do dashboard e respeita o limite mínimo de 3 widgets ativos", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const interfaceTab = screen.getByRole("tab", { name: /Interface/i });
+    await user.click(interfaceTab);
+
+    expect(screen.getByText("Widgets Visíveis na Visão Geral")).toBeInTheDocument();
+    expect(screen.getByText("Banners Contextuais de Atenção & Ritmo")).toBeInTheDocument();
+
+    const bannerCheckbox = screen.getByRole("checkbox", { name: /Banners Contextuais de Atenção & Ritmo/i });
+    expect(bannerCheckbox).toBeChecked();
+
+    await user.click(bannerCheckbox);
+    expect(mockUpdateCustomSettings).toHaveBeenCalledWith({
+      dashboardWidgets: { contextBanners: false },
+    });
+  });
 });

@@ -27,6 +27,7 @@ describe("useVisualCustomization (F11)", () => {
     expect(config.hapticEnabled).toBe(true);
     expect(config.numberTickerEnabled).toBe(true);
     expect(config.dashboardWidgets.kpis).toBe(true);
+    expect(config.dashboardWidgets.contextBanners).toBe(true);
   });
 
   it("permite ligar e desligar sons e vibrações", () => {

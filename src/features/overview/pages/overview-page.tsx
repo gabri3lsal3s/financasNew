@@ -10,6 +10,7 @@ import {
   KpiCard,
   MonthPicker,
   OnboardingCard,
+  PaceAlertBanner,
 } from "@/components/modules";
 import { isOnboardingComplete } from "@/domain/onboarding";
 import {
@@ -23,6 +24,7 @@ import {
   spentByCategoryMap,
 } from "@/domain/budgets";
 import { todayISO } from "@/domain/debts";
+import { dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projection";
 import {
   accountsNet,
   buildDailyFlow,
@@ -197,6 +199,48 @@ export function OverviewPage() {
     .sort((a, b) => b.valueCents - a.valueCents)
     .slice(0, 5);
 
+  // Projeção e ritmo de gastos (§3.8) para o mês atual.
+  const isCurrentMonth = month === currentMonth();
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayOfMonth = now.getDate();
+
+  const pace = isCurrentMonth
+    ? spendingPace({
+        spentCents: expenseCents,
+        monthlyBudgetCents: Math.max(1, incomeCents),
+        dayOfMonth,
+        daysInMonth,
+      })
+    : { active: false, spentPercent: 0, elapsedPercent: 0, gapPoints: 0, ahead: false };
+
+  const daily = isCurrentMonth
+    ? dailyBudget({
+        phase: "current",
+        incomesCents: incomeCents,
+        investmentsCents: investmentCents,
+        expensesCents: expenseCents,
+        dayOfMonth,
+        daysInMonth,
+      })
+    : { dailyCents: null, monthlyNetCents: 0, daysRemaining: null };
+
+  const projection = isCurrentMonth
+    ? endOfMonthProjection({
+        phase: "current",
+        incomesCents: incomeCents,
+        investmentsCents: investmentCents,
+        expensesCents: expenseCents,
+        dayOfMonth,
+        daysInMonth,
+      })
+    : { projectedExpensesCents: null, surplusCents: null, onTrack: null, burnRateCents: null };
+
+  const showPaceAlert =
+    isCurrentMonth &&
+    pace.active &&
+    (pace.ahead || projection.onTrack === false || (projection.surplusCents !== null && projection.surplusCents < 0));
+
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       {/* F12 — sem header visual: o app mostra direto o seletor de mês.
@@ -209,6 +253,17 @@ export function OverviewPage() {
 
       {!loading && !error && !onboardingComplete && onboardingQuery.data ? (
         <OnboardingCard counts={onboardingQuery.data} />
+      ) : null}
+
+      {!loading && !error && visual.dashboardWidgets.contextBanners && showPaceAlert ? (
+        <PaceAlertBanner
+          spentPercent={pace.spentPercent}
+          elapsedPercent={pace.elapsedPercent}
+          dailyCents={daily.dailyCents}
+          daysRemaining={daily.daysRemaining}
+          surplusCents={projection.surplusCents}
+          onNavigateInsights={() => navigate("/insights")}
+        />
       ) : null}
 
       {loading ? (

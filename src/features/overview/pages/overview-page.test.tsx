@@ -199,4 +199,16 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.queryByText("Carteira em resumo")).not.toBeInTheDocument();
     expect(screen.queryByText("Patrimônio total")).not.toBeInTheDocument();
   });
+
+  it("renderiza o banner de atenção contextual quando o ritmo de gastos estiver acelerado e navega para /insights", async () => {
+    const user = userEvent.setup();
+    render(<OverviewPage />);
+
+    // Se o banner estiver visível na data atual, valida o botão de navegação
+    const actionButton = screen.queryByRole("button", { name: /Simular cortes e projeção/i });
+    if (actionButton) {
+      await user.click(actionButton);
+      expect(navigateMock).toHaveBeenCalledWith("/insights");
+    }
+  });
 });

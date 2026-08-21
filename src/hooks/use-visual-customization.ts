@@ -26,6 +26,7 @@ export interface DashboardWidgetsConfig {
   flow: boolean;
   donut: boolean;
   budgets: boolean;
+  contextBanners: boolean;
 }
 
 export interface HeaderButtonsConfig {
@@ -72,6 +73,7 @@ export const DEFAULT_WIDGETS: DashboardWidgetsConfig = {
   flow: true,
   donut: true,
   budgets: true,
+  contextBanners: true,
 };
 
 export const DEFAULT_CONFIG: VisualCustomization = {

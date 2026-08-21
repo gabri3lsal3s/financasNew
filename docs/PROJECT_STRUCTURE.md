@@ -93,7 +93,7 @@
     │   │   │                      #   category-donut, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   credit-card-3d + credit-card-wallet (F13),
-    │   │   │                      #   delta-hint (F14), highlight-row, projection-line,
+    │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
     │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section (F24),

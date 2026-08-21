@@ -97,6 +97,7 @@ export type UserCustomSettings = {
     flow?: boolean;
     donut?: boolean;
     budgets?: boolean;
+    contextBanners?: boolean;
   };
   headerButtons?: {
     logo?: boolean;
