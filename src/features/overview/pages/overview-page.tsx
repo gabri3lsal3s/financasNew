@@ -120,6 +120,8 @@ export function OverviewPage() {
   // Computação pura dos totais do mês (§3.6).
   const incomeCents = weightedSum(incomesQuery.data ?? []);
   const expenseCents = weightedSum(expensesQuery.data ?? []);
+  const grossIncomeCents = (incomesQuery.data ?? []).reduce((acc, i) => acc + Math.round(i.value * 100), 0);
+  const grossExpenseCents = (expensesQuery.data ?? []).reduce((acc, e) => acc + Math.round(e.value * 100), 0);
   const prevIncomeCents = weightedSum(prevIncomesQuery.data ?? []);
   const prevExpenseCents = weightedSum(prevExpensesQuery.data ?? []);
 
@@ -286,7 +288,16 @@ export function OverviewPage() {
                 cents={totals.incomeCents}
                 tone="positive"
                 icon={<TrendingUp className="size-4" aria-hidden="true" />}
-                hint={<DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />}
+                hint={
+                  <div className="flex flex-col gap-0.5">
+                    <DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />
+                    {grossIncomeCents !== totals.incomeCents ? (
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        Total: <MoneyText cents={grossIncomeCents} tone="default" className="text-[10px]" />
+                      </span>
+                    ) : null}
+                  </div>
+                }
                 spark={incomeSpark}
               />
               <KpiCard
@@ -294,7 +305,16 @@ export function OverviewPage() {
                 cents={totals.expenseCents}
                 tone="negative"
                 icon={<TrendingDown className="size-4" aria-hidden="true" />}
-                hint={<DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />}
+                hint={
+                  <div className="flex flex-col gap-0.5">
+                    <DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />
+                    {grossExpenseCents !== totals.expenseCents ? (
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        Total: <MoneyText cents={grossExpenseCents} tone="default" className="text-[10px]" />
+                      </span>
+                    ) : null}
+                  </div>
+                }
                 spark={expenseSpark}
               />
               {/* F16 — deep-link: KPI da carteira navega para /carteira (operação/metas). */}
@@ -312,6 +332,13 @@ export function OverviewPage() {
                 cents={totals.balanceCents}
                 tone={totals.balanceCents >= 0 ? "positive" : "negative"}
                 icon={<DollarSign className="size-4" aria-hidden="true" />}
+                hint={
+                  totals.investmentCents > 0 ? (
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      Deduz aportes do mês
+                    </span>
+                  ) : undefined
+                }
               />
             </div>
           )}

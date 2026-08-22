@@ -91,7 +91,7 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
             <Sparkline data={spark} height={28} strokeClassName={sparkTone[tone]} />
           </div>
         ) : null}
-        {hint ? <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p> : null}
+        {hint ? <div className="mt-1 truncate text-xs text-muted-foreground">{hint}</div> : null}
       </div>
     </Card>
   );

@@ -58,8 +58,8 @@ describe("openInvoicesTotal (§3.3.3/§3.6 — faturas em aberto)", () => {
     const payments = [
       { card_id: "c1", competence_month: "2026-08", amount: 40 },
     ];
-    // c1: 100 − 40 = 60 · c2: 100 − 0 = 100 → total 160
-    expect(openInvoicesTotal(expenses, payments, TODAY)).toBe(16000);
+    // c1: 100 − 40 = 60 (bruto) · c2: 200 − 0 = 200 (bruto) → total fatura a pagar 260
+    expect(openInvoicesTotal(expenses, payments, TODAY)).toBe(26000);
   });
 
   it("ignora despesas sem cartão", () => {

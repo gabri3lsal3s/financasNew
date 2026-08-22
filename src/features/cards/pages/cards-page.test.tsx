@@ -93,8 +93,8 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(screen.getAllByText("Nubank").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Fatura Total (Bruto)").length).toBeGreaterThan(0);
     expect(screen.getByText(/Melhor dia:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Fechamento:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Vencimento:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fech\.:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Venc\.:/i)).toBeInTheDocument();
   });
 
   it("exibe KPIs da fatura (fatura total bruto, pago, saldo aberto)", () => {

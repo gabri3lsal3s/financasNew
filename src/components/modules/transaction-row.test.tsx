@@ -44,6 +44,7 @@ describe("TransactionRow", () => {
       />,
     );
     expect(screen.getByText("−R$ 200,00")).toBeInTheDocument();
-    expect(screen.getByText(/Relat\.:\s*R\$\s*100,00/)).toBeInTheDocument();
+    expect(screen.getByText("Relat.:")).toBeInTheDocument();
+    expect(screen.getByText("R$ 100,00")).toBeInTheDocument();
   });
 });

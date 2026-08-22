@@ -62,10 +62,10 @@ describe("buildCompetenceSummaries (§3.3.3)", () => {
     const august = summaries.find((s) => s.month === "2026-08");
     expect(august?.previstoBrutoCents).toBe(30000); // 100 + 200 = 300 reais
     expect(august?.previstoPonderadoCents).toBe(20000); // 100 + 100 = 200 reais
-    expect(august?.previstoCents).toBe(20000);
+    expect(august?.previstoCents).toBe(30000);
     expect(august?.saldoBrutoCents).toBe(30000);
     expect(august?.saldoPonderadoCents).toBe(20000);
-    expect(august?.saldoCents).toBe(20000);
+    expect(august?.saldoCents).toBe(30000);
     expect(august?.pagoCents).toBe(0);
   });
 

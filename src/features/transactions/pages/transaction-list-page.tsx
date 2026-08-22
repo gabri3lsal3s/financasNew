@@ -4,6 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, FileSpreadsheet, Plus, Repeat, Zap } from 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MoneyText } from "@/components/ui/money-text";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { VirtualList } from "@/components/ui/virtual-list";
 import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
@@ -126,7 +127,16 @@ export function TransactionListPage() {
 
   const incomesTotalCents = sumCents(incomesQuery.data ?? []);
   const expensesTotalCents = sumCents(expensesQuery.data ?? []);
+  const incomesWeightedCents = (incomesQuery.data ?? []).reduce(
+    (acc, i) => acc + Math.round(i.value * i.report_weight * 100),
+    0,
+  );
+  const expensesWeightedCents = (expensesQuery.data ?? []).reduce(
+    (acc, e) => acc + Math.round(e.value * e.report_weight * 100),
+    0,
+  );
   const balanceCents = incomesTotalCents - expensesTotalCents;
+  const balanceWeightedCents = incomesWeightedCents - expensesWeightedCents;
 
   // Partição de despesas: recorrentes (recurrence_id) × parceladas × à vista
   // — mesmo motor puro usado na página de cartões (domain/cards).
@@ -158,12 +168,44 @@ export function TransactionListPage() {
       <MonthPicker value={month} onValueChange={handleMonthChange} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
-        <KpiCard label="Receitas" cents={incomesTotalCents} tone="positive" />
-        <KpiCard label="Despesas" cents={expensesTotalCents} tone="negative" />
+        <KpiCard
+          label="Receitas"
+          cents={incomesTotalCents}
+          tone="positive"
+          hint={
+            incomesTotalCents !== incomesWeightedCents ? (
+              <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                <span>Sua cota:</span>
+                <MoneyText cents={incomesWeightedCents} tone="default" />
+              </span>
+            ) : undefined
+          }
+        />
+        <KpiCard
+          label="Despesas"
+          cents={expensesTotalCents}
+          tone="negative"
+          hint={
+            expensesTotalCents !== expensesWeightedCents ? (
+              <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                <span>Sua cota:</span>
+                <MoneyText cents={expensesWeightedCents} tone="default" />
+              </span>
+            ) : undefined
+          }
+        />
         <KpiCard
           label="Saldo do mês"
           cents={balanceCents}
           tone={balanceCents >= 0 ? "positive" : "negative"}
+          hint={
+            balanceCents !== balanceWeightedCents ? (
+              <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                <span>Sua cota:</span>
+                <MoneyText cents={balanceWeightedCents} tone="default" />
+              </span>
+            ) : undefined
+          }
         />
       </div>
 

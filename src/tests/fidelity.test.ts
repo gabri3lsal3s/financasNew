@@ -145,7 +145,14 @@ describe("§3.3 — Cartões: fatura, pagamentos e estornos", () => {
       [{ bill_competence: "2026-08", value: 100, report_weight: 0.5 }],
       [{ competence_month: "2026-08", amount: -40 }],
     );
-    expect(summaries[0]).toMatchObject({ previstoCents: 5000, pagoCents: 0, estornoCents: 4000, saldoCents: 5000 });
+    expect(summaries[0]).toMatchObject({
+      previstoBrutoCents: 10000,
+      previstoPonderadoCents: 5000,
+      pagoCents: 0,
+      estornoCents: 4000,
+      saldoBrutoCents: 10000,
+      saldoPonderadoCents: 5000,
+    });
   });
 
   it("seleção automática do mês: atual com pendência → varredura para trás → seguinte → atual", () => {
@@ -235,7 +242,7 @@ describe("§3.5 — Categorias, orçamentos e metas", () => {
       { categoryId: "a", limitCents: 100_000, spentCents: 160_000 }, // excesso 60.000
       { categoryId: "b", limitCents: 100_000, spentCents: 30_000 }, // folga 70.000
     ]);
-    expect(suggestion).toEqual({ fromCategoryId: "a", toCategoryId: "b", amountCents: 60_000 });
+    expect(suggestion).toEqual({ fromCategoryId: "b", toCategoryId: "a", amountCents: 60_000 });
   });
 
   it("meta de renda: déficit quando realizado < esperado", () => {
@@ -261,12 +268,12 @@ describe("§3.6 — Visão consolidada (Dia/Mês/Ano)", () => {
     expect(accountsNet(100_000, 40_000, 30_000)).toBe(30_000);
   });
 
-  it("faturas em aberto aplicam o peso de relatório", () => {
+  it("faturas em aberto somam o saldo bruto das faturas a pagar", () => {
     const expenses = [
       { card_id: "c1", bill_competence: "2026-08", value: 100, report_weight: 1 },
       { card_id: "c2", bill_competence: "2026-08", value: 200, report_weight: 0.5 },
     ];
-    expect(openInvoicesTotal(expenses, [], TODAY)).toBe(20_000); // 100 + 100
+    expect(openInvoicesTotal(expenses, [], TODAY)).toBe(30_000); // 100 + 200 (bruto)
   });
 
   it("fluxo diário empilha rendas/despesas/investimentos por dia", () => {

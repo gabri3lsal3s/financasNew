@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
-import { formatCentsAsBRL } from "@/services/masks";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
 import { useDensity } from "@/hooks/use-density";
 
@@ -96,12 +95,13 @@ export function TransactionRow({
           sign={kindSign[kind]}
           aria-hidden={masked || undefined}
         />
-        {hasDifferentWeight ? (
+        {hasDifferentWeight && effectiveWeightedCents !== undefined ? (
           <span
-            className="text-[11px] text-muted-foreground font-mono"
+            className="text-[11px] text-muted-foreground font-mono inline-flex items-center gap-1"
             title="Valor considerado no relatório"
           >
-            Relat.: {formatCentsAsBRL(effectiveWeightedCents)}
+            <span>Relat.:</span>
+            <MoneyText cents={effectiveWeightedCents} tone="default" className="text-[11px] text-muted-foreground" />
           </span>
         ) : null}
       </div>

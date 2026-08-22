@@ -200,6 +200,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 - **Entrada no lançamento:** opções rápidas em porcentagem (100%, 75%, 50%, 25%, 0%) e opção **"Personalizado"** com entrada direta do **valor gasto real em reais (R$)** considerado no relatório. O sistema converte e persiste a fração normalizada (0–1).
 - **Listas e Linhas de Transação:** quando uma despesa/receita possui `report_weight < 1`, o componente `TransactionRow` exibe o valor real/nominal em destaque com a indicação secundária `Relat.: R$ X,XX`.
+- **KPIs da tela de Transações:** os cards de topo (`Receitas`, `Despesas`, `Saldo do mês`) exibem o valor nominal/bruto total em destaque e, quando houver transações rateadas, exibem o hint secundário `Sua cota: R$ X,XX`.
 - **Detalhamento e Edição (`ExpenseDetailDialog`):** exibe o valor nominal e o valor no relatório correspondente tanto no cabeçalho quanto na lista de metadados, e permite editar o peso e o valor considerado no relatório.
 - **Cartões e Relatórios:** totalização e gráficos segregam e exibem simultaneamente os valores nominais brutos e os valores ponderados.
 
@@ -230,6 +231,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Visão dupla da fatura:** no cartão 3D, nos KPIs e no extrato da fatura, o sistema exibe simultaneamente:
   1. **Fatura Total (Valor Bruto / 100% nominal):** total desembolsado no cartão.
   2. **Fatura Ponderada (Com Pesos do Relatório):** total considerado após pesos/rateios percentuais.
+- **Status da fatura e quitação bancária:** o status (`open`, `closed`, `overdue`, `near_due`) e o saldo aberto a pagar ao banco são calculados com base no **saldo bruto nominal (`saldoBrutoCents`)**, garantindo que a fatura só seja considerada quitada perante o banco após o pagamento integral da obrigação.
 - **Detalhamento e edição pela fatura:** a tela de cartões permite clicar em qualquer despesa da fatura para abrir seu diálogo de detalhes, edição completa (categoria, valor, data, forma) e alteração/transição de competência da fatura (`bill_competence`) ou exclusão.
 - **Fallback de descrição:** quando um lançamento não possuir descrição textual, o sistema exibe o nome de sua respectiva categoria como título principal (nunca textos genéricos como "despesa sem descrição").
 - Fatura consolida: despesas do período (com peso aplicado, `base_amount` preservado para auditoria), pagamentos e estornos.

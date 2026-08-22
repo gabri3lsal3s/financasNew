@@ -188,11 +188,11 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     const user = userEvent.setup();
     render(<BudgetsPage />);
 
-    const tab = screen.getByRole("tab", { name: "Rendas" });
+    const tab = screen.getByRole("tab", { name: /rendas & metas/i });
     tab.focus();
     expect(tab).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(screen.getByRole("tab", { name: "Rendas" })).toHaveAttribute("data-state", "active");
+    expect(screen.getByRole("tab", { name: /rendas & metas/i })).toHaveAttribute("data-state", "active");
   });
 
   it("DebtsPage: ações por linha alcançáveis por teclado", async () => {

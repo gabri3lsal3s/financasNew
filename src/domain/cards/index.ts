@@ -127,12 +127,12 @@ export function buildCompetenceSummaries(
       month,
       previstoBrutoCents: previstoBruto,
       previstoPonderadoCents: previstoPonderado,
-      previstoCents: previstoPonderado,
+      previstoCents: previstoBruto,
       pagoCents: pago,
       estornoCents: estorno,
       saldoBrutoCents: invoiceBalance(previstoBruto, pago),
       saldoPonderadoCents: invoiceBalance(previstoPonderado, pago),
-      saldoCents: invoiceBalance(previstoPonderado, pago),
+      saldoCents: invoiceBalance(previstoBruto, pago),
     });
   }
   return summaries.sort((a, b) => (a.month < b.month ? 1 : -1));
