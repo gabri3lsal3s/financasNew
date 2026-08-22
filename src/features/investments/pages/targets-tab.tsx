@@ -58,14 +58,27 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   const assetTargetOf = (assetId: string) => assetDraft[assetId] ?? storedAssetTargets.get(assetId) ?? 0;
   const classTargetOf = (className: string) => classDraft[className] ?? storedClassTargets.get(className) ?? 0;
 
+  const [assetClassFilter, setAssetClassFilter] = useState<string | null>(null);
+
   const assetRows = position.rows.map((row) => ({
     key: row.assetId,
     label: row.ticker,
+    assetClass: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
     detail: `${formatCentsAsBRL(numberToCents(row.valueBRL))} · ${row.pct.toFixed(1)}% hoje`,
     target: assetTargetOf(row.assetId),
   }));
 
   const assetSum = validateTargetsSum(assetRows.map((r) => ({ target: r.target })));
+
+  const visibleAssetRows = assetClassFilter
+    ? assetRows.filter((r) => r.assetClass === assetClassFilter)
+    : assetRows;
+
+  const activeClassTargetSum = assetClassFilter
+    ? assetRows
+        .filter((r) => r.assetClass === assetClassFilter)
+        .reduce((acc, r) => acc + r.target, 0)
+    : null;
 
   const saveAssets = async () => {
     setError(null);
@@ -181,19 +194,59 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
               value: "assets",
               label: "Metas por Ativo",
               content: (
-                <TargetEditor
-                  rows={assetRows}
-                  heading="Metas por ativo (% do patrimônio)"
-                  onTargetChange={(key, value) =>
-                    setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }))
-                  }
-                  onSave={() => void saveAssets()}
-                  saving={saveTargets.isPending}
-                  saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}
-                  sumPercent={assetSum.sum}
-                  sumError={assetSum.error}
-                  emptyMessage="Nenhum ativo na carteira."
-                />
+                <div className="flex flex-col gap-4">
+                  {classes.length > 1 ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setAssetClassFilter(null)}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                            assetClassFilter === null
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Todas as classes
+                        </button>
+                        {classes.map((cls) => (
+                          <button
+                            key={cls}
+                            type="button"
+                            onClick={() => setAssetClassFilter((prev) => (prev === cls ? null : cls))}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                              assetClassFilter === cls
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {cls}
+                          </button>
+                        ))}
+                      </div>
+
+                      {activeClassTargetSum !== null ? (
+                        <span className="text-xs text-muted-foreground">
+                          Soma {assetClassFilter}: <strong className="text-foreground">{activeClassTargetSum.toFixed(1)}%</strong>
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <TargetEditor
+                    rows={visibleAssetRows}
+                    heading="Metas por ativo (% do patrimônio)"
+                    onTargetChange={(key, value) =>
+                      setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }))
+                    }
+                    onSave={() => void saveAssets()}
+                    saving={saveTargets.isPending}
+                    saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}
+                    sumPercent={assetSum.sum}
+                    sumError={assetSum.error}
+                    emptyMessage={assetClassFilter ? `Nenhum ativo na classe ${assetClassFilter}.` : "Nenhum ativo na carteira."}
+                  />
+                </div>
               ),
             },
             {

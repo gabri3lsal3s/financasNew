@@ -1,13 +1,26 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, List, Pencil, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  MoreHorizontal,
+  Pencil,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 import { Input } from "@/components/ui/input";
 import { MoneyText } from "@/components/ui/money-text";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { numberToCents } from "@/domain/money";
-import { assetYieldOnCostPct, type PriceSource } from "@/domain/portfolio";
+import type { PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
 import { formatSignedPct } from "@/services/masks/percent";
@@ -126,13 +139,38 @@ export function PositionTable({
   sortable = false,
 }: PositionTableProps) {
   const density = useDensity();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [sort, setSort] = useState<SortState | null>(null);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
 
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      return 5;
+    }
+    return 10;
+  });
+  const [page, setPage] = useState<number>(1);
+
+  const scrollToTop = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      containerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const availableClasses = [
     ...new Set(rows.map((r) => (r.isCash ? "Caixa" : r.assetClass)).filter((c): c is string => Boolean(c))),
   ];
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleClassChange = (cls: string | null) => {
+    setSelectedClass(cls);
+    setPage(1);
+  };
 
   const filteredRows = rows.filter((row) => {
     const rowClass = row.isCash ? "Caixa" : row.assetClass;
@@ -169,6 +207,13 @@ export function PositionTable({
     }
     return direction === "asc" ? cmp : -cmp;
   });
+
+  const totalPages = pageSize === Infinity ? 1 : Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedRows =
+    pageSize === Infinity
+      ? sortedRows
+      : sortedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const headerFor = (key: SortKey, label: string): ReactNode =>
     sortable ? (
@@ -223,34 +268,70 @@ export function PositionTable({
       key: "price",
       header: headerFor("price", "Preço"),
       align: "right",
-      cell: (row) => (
-        <div className="flex flex-col items-end gap-0.5">
-          {row.isCash ? <span className="num text-sm text-foreground">1:1</span> : <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />}
-          {row.isCash ? (
-            <Badge variant="muted" title="Ativo de caixa/reserva valorado 1:1">
-              caixa
-            </Badge>
-          ) : onSetManualPrice ? (
+      cell: (row) => {
+        if (row.isCash) {
+          return <span className="num text-sm text-foreground">1:1</span>;
+        }
+
+        const isManual = row.source === "manual";
+        const isFallback = row.source === "fallback";
+
+        if (onSetManualPrice) {
+          return (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
               }}
-              className="cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+              aria-label={`Cotação de ${row.ticker}`}
+              className="group inline-flex items-center justify-end gap-1.5 rounded-md px-1.5 py-0.5 -mr-1.5 transition-colors hover:bg-surface-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
               title={`${PRICE_SOURCE_LABEL[row.source].title} — clique para alterar`}
             >
-              <Badge variant={row.source === "manual" ? "portfolio" : "muted"}>
-                {PRICE_SOURCE_LABEL[row.source].label}
-              </Badge>
+              <MoneyText
+                cents={numberToCents(row.priceBRL)}
+                tone="default"
+                className="group-hover:text-primary transition-colors text-sm"
+              />
+              {isManual ? (
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                />
+              ) : isFallback ? (
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-warning-strong shrink-0 ring-2 ring-warning-strong/25"
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="size-1 rounded-full bg-muted-foreground/30 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                />
+              )}
             </button>
-          ) : (
-            <Badge variant={row.source === "manual" ? "portfolio" : "muted"} title={PRICE_SOURCE_LABEL[row.source].title}>
-              {PRICE_SOURCE_LABEL[row.source].label}
-            </Badge>
-          )}
-        </div>
-      ),
+          );
+        }
+
+        return (
+          <div className="inline-flex items-center justify-end gap-1.5">
+            <MoneyText cents={numberToCents(row.priceBRL)} tone="default" className="text-sm" />
+            {isManual ? (
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                title="Preço manual"
+              />
+            ) : isFallback ? (
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-warning-strong shrink-0 ring-2 ring-warning-strong/25"
+                title="Preço estimado (fallback)"
+              />
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       key: "averageCost",
@@ -285,21 +366,19 @@ export function PositionTable({
       header: headerFor("unrealizedPct", "Rentab."),
       align: "right",
       cell: (row) => {
-        if (row.isCash || row.unrealizedPct === null) return <span className="num text-sm text-muted-foreground">—</span>;
-        const text = formatSignedPct(row.unrealizedPct);
+        if (row.isCash || row.unrealizedPct === null) {
+          return <span className="num text-sm text-muted-foreground">—</span>;
+        }
         const tone = row.unrealizedPct >= 0 ? "positive" : "negative";
-        const yoc = assetYieldOnCostPct(row.dividends ?? 0, row.totalCost ?? 0);
         return (
-          <div className="flex flex-col items-end gap-0.5">
-            <span className={cn("num text-sm font-semibold", tone === "positive" ? "text-positive-strong" : "text-negative-strong")}>
-              {text}
-            </span>
-            {yoc !== null ? (
-              <span className="text-[10px] text-muted-foreground" title={`Yield on Cost: ${yoc.toFixed(1)}% em proventos acumulados`}>
-                YoC {yoc.toFixed(1)}%
-              </span>
-            ) : null}
-          </div>
+          <span
+            className={cn(
+              "num text-sm font-semibold",
+              tone === "positive" ? "text-positive-strong" : "text-negative-strong",
+            )}
+          >
+            {formatSignedPct(row.unrealizedPct)}
+          </span>
         );
       },
     },
@@ -334,37 +413,44 @@ export function PositionTable({
   const hasFiltersActive = search.trim() !== "" || selectedClass !== null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={containerRef} className="flex flex-col gap-3">
       {rows.length > 0 ? (
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 sm:max-w-xs">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between min-w-0">
+          <div className="relative flex-1 w-full min-w-0">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Buscar por ticker ou classe…"
               aria-label="Buscar ativo"
-              className="pl-8 pr-8"
+              className={cn("pl-8 w-full", hasFiltersActive ? "pr-24" : "pr-8")}
             />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                aria-label="Limpar busca"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
+            {hasFiltersActive ? (
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                <span className="text-[11px] font-medium text-muted-foreground bg-surface-hover/80 px-1.5 py-0.5 rounded border border-border/40">
+                  {filteredRows.length}/{rows.length}
+                </span>
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSearchChange("")}
+                    aria-label="Limpar busca"
+                    className="pointer-events-auto text-muted-foreground hover:text-foreground cursor-pointer p-0.5 transition-colors"
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
 
           {availableClasses.length > 1 ? (
-            <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0">
               <button
                 type="button"
-                onClick={() => setSelectedClass(null)}
+                onClick={() => handleClassChange(null)}
                 className={cn(
-                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
+                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
                   selectedClass === null
                     ? "bg-primary text-primary-foreground"
                     : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
@@ -376,9 +462,9 @@ export function PositionTable({
                 <button
                   key={cls}
                   type="button"
-                  onClick={() => setSelectedClass((prev) => (prev === cls ? null : cls))}
+                  onClick={() => handleClassChange(selectedClass === cls ? null : cls)}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
+                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
                     selectedClass === cls
                       ? "bg-primary text-primary-foreground"
                       : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
@@ -392,13 +478,13 @@ export function PositionTable({
         </div>
       ) : null}
 
-      <ul aria-label="Posições (visão móvel)" className="flex flex-col gap-2 sm:hidden">
-        {sortedRows.length === 0 ? (
+      <ul aria-label="Posições (visão móvel)" className="flex flex-col gap-2.5 sm:hidden">
+        {paginatedRows.length === 0 ? (
           <li className="rounded-xl border border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
             {hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
           </li>
         ) : (
-          sortedRows.map((row) => {
+          paginatedRows.map((row) => {
             const pctLabel =
               row.isCash || row.unrealizedPct === null
                 ? "—"
@@ -410,7 +496,6 @@ export function PositionTable({
                   ? "text-positive-strong"
                   : "text-negative-strong";
             const isClickable = Boolean(onEditAsset);
-            const yoc = assetYieldOnCostPct(row.dividends ?? 0, row.totalCost ?? 0);
             return (
               <li
                 key={row.assetId}
@@ -429,71 +514,93 @@ export function PositionTable({
                     : undefined
                 }
                 className={cn(
-                  "flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3.5 shadow-sm transition-colors",
-                  isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors",
+                  isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 )}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
-                    {row.assetClass ? <span className="truncate text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
+                {/* Linha 1: Ticker + Classe | Valor Total, Rentabilidade e Menu de Ações */}
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
+                    {row.assetClass ? (
+                      <span className="truncate text-[11px] text-muted-foreground bg-surface-hover/80 px-2 py-0.5 rounded-md border border-border/40">
+                        {row.assetClass}
+                      </span>
+                    ) : null}
                   </div>
-                  <div className="flex flex-col items-end gap-0.5">
-                    <span className={cn("num shrink-0 text-sm font-semibold", pctTone)}>{pctLabel}</span>
-                    {yoc !== null ? (
-                      <span className="text-[10px] text-muted-foreground">YoC {yoc.toFixed(1)}%</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
+                      <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, row.unrealizedPct !== null && row.unrealizedPct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
+                        {pctLabel}
+                      </span>
+                    </div>
+                    {hasRowActions ? (
+                      <div className="shrink-0 -mr-1" onClick={(e) => e.stopPropagation()}>
+                        <PositionRowActions
+                          row={row}
+                          onRegisterTransaction={onRegisterTransaction}
+                          onListTransactions={onListTransactions}
+                          onEditAsset={onEditAsset}
+                          onSetManualPrice={onSetManualPrice}
+                          onDeleteAsset={onDeleteAsset}
+                        />
+                      </div>
                     ) : null}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-[11px] text-muted-foreground">Valor</span>
-                    <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />
+                {/* Linha 2: Métricas de Custódia em grid de 3 colunas legível */}
+                <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-border/40">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-muted-foreground">Quantidade</span>
+                    <span className="font-semibold text-foreground">{row.isCash ? "—" : formatQuantity(row.quantity)}</span>
                   </div>
-                  <div className="flex min-w-0 flex-col items-end gap-0.5">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-muted-foreground">Preço</span>
+                    {row.isCash ? (
+                      <span className="font-semibold text-foreground">1:1</span>
+                    ) : onSetManualPrice ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
+                        }}
+                        aria-label={`Cotação de ${row.ticker}`}
+                        className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                      >
+                        <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
+                        {row.source === "manual" ? (
+                          <span
+                            aria-hidden="true"
+                            className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                            title="Preço manual"
+                          />
+                        ) : null}
+                      </button>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                        <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
+                        {row.source === "manual" ? (
+                          <span
+                            aria-hidden="true"
+                            className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                            title="Preço manual"
+                          />
+                        ) : null}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
                     <span className="text-[11px] text-muted-foreground">Lucro/Prejuízo</span>
                     {row.isCash ? (
-                      <span className="num text-sm text-muted-foreground">—</span>
+                      <span className="font-semibold text-muted-foreground">—</span>
                     ) : (
-                      <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" />
+                      <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" className="font-semibold" />
                     )}
                   </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                  <span>
-                    <span className="font-medium text-foreground/70">Qtd</span> {row.isCash ? "—" : formatQuantity(row.quantity)}
-                  </span>
-                  <span>
-                    <span className="font-medium text-foreground/70">Preço</span>{" "}
-                    {row.isCash ? (
-                      "1:1"
-                    ) : (
-                      <>
-                        <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />{" "}
-                        <span className="text-[10px]">{PRICE_SOURCE_LABEL[row.source].label}</span>
-                      </>
-                    )}
-                  </span>
-                  <span>
-                    <span className="font-medium text-foreground/70">Custo médio</span>{" "}
-                    {row.isCash ? "—" : <MoneyText cents={numberToCents(row.averageCost)} currency={row.currency} tone="default" />}
-                  </span>
-                </div>
-
-                {hasRowActions ? (
-                  <div className="flex items-center justify-end gap-1 border-t border-border/60 pt-2">
-                    <PositionRowActions
-                      row={row}
-                      onRegisterTransaction={onRegisterTransaction}
-                      onListTransactions={onListTransactions}
-                      onEditAsset={onEditAsset}
-                      onSetManualPrice={onSetManualPrice}
-                      onDeleteAsset={onDeleteAsset}
-                    />
-                  </div>
-                ) : null}
               </li>
             );
           })
@@ -503,12 +610,95 @@ export function PositionTable({
       <div className="hidden sm:block">
         <DataList
           columns={columns}
-          rows={sortedRows}
+          rows={paginatedRows}
           rowKey={(row) => row.assetId}
           density={density === "compact" ? "compact" : "comfortable"}
           emptyMessage={hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
         />
       </div>
+
+      {/* Paginação para carteiras com muitos ativos */}
+      {sortedRows.length > 5 ? (
+        <div className="flex items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <span>
+              Exibindo <strong className="text-foreground font-medium">{Math.min((currentPage - 1) * pageSize + 1, sortedRows.length)}–{Math.min(currentPage * pageSize, sortedRows.length)}</strong> de {sortedRows.length} ativos
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Seletor 'Por página' exibido apenas no desktop */}
+            <div className="hidden sm:flex items-center gap-1">
+              <span className="text-[11px]">Por página:</span>
+              {[10, 25].map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-xs transition-colors cursor-pointer",
+                    pageSize === size ? "bg-surface-hover font-semibold text-foreground" : "hover:text-foreground",
+                  )}
+                >
+                  {size}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setPageSize(Infinity);
+                  setPage(1);
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded text-xs transition-colors cursor-pointer",
+                  pageSize === Infinity ? "bg-surface-hover font-semibold text-foreground" : "hover:text-foreground",
+                )}
+              >
+                Todos
+              </button>
+            </div>
+
+            {pageSize !== Infinity && totalPages > 1 ? (
+              <div className="flex items-center gap-1.5 sm:border-l sm:border-border/60 sm:pl-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1}
+                  onClick={() => {
+                    setPage((p) => Math.max(1, p - 1));
+                    scrollToTop();
+                  }}
+                  className="size-7 p-0"
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft className="size-3.5" aria-hidden="true" />
+                </Button>
+                <span className="text-xs px-1.5 font-medium text-foreground">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => {
+                    setPage((p) => Math.min(totalPages, p + 1));
+                    scrollToTop();
+                  }}
+                  className="size-7 p-0"
+                  aria-label="Próxima página"
+                >
+                  <ChevronRight className="size-3.5" aria-hidden="true" />
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -522,8 +712,10 @@ interface PositionRowActionsProps {
   onDeleteAsset?: (assetId: string, ticker: string) => void;
 }
 
-/** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28). */
+/** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28) com menu contextual Popover limpo. */
 function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onEditAsset, onSetManualPrice, onDeleteAsset }: PositionRowActionsProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <div className="flex items-center justify-end gap-1">
       {onRegisterTransaction ? (
@@ -531,7 +723,7 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
           type="button"
           size="sm"
           variant="ghost"
-          className="min-h-11"
+          className="h-8 px-2.5 text-xs text-primary font-medium"
           aria-label={`Registrar transação de ${row.ticker}`}
           onClick={(e) => {
             e.stopPropagation();
@@ -541,70 +733,80 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
           Movimentar
         </Button>
       ) : null}
-      {onListTransactions ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="min-h-9 px-2"
-          aria-label={`Lançamentos de ${row.ticker}`}
-          title="Ver histórico de transações deste ativo"
-          onClick={(e) => {
-            e.stopPropagation();
-            onListTransactions(row.assetId, row.ticker);
-          }}
-        >
-          <List className="size-4" aria-hidden="true" />
-        </Button>
-      ) : null}
-      {onEditAsset ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="min-h-9 px-2"
-          aria-label={`Editar ${row.ticker}`}
-          title="Editar ticker, classe ou moeda do ativo"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEditAsset(row.assetId, row.ticker);
-          }}
-        >
-          <Pencil className="size-4" aria-hidden="true" />
-        </Button>
-      ) : null}
-      {!row.isCash && onSetManualPrice ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="min-h-9 px-2"
-          aria-label={`Cotação de ${row.ticker}`}
-          title="Definir preço manual ou restaurar cotação automática"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
-          }}
-        >
-          <SlidersHorizontal className="size-4" aria-hidden="true" />
-        </Button>
-      ) : null}
-      {onDeleteAsset ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="min-h-9 px-2 text-negative-strong hover:text-negative-strong"
-          aria-label={`Excluir ${row.ticker}`}
-          title="Excluir ativo da carteira"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDeleteAsset(row.assetId, row.ticker);
-          }}
-        >
-          <Trash2 className="size-4" aria-hidden="true" />
-        </Button>
-      ) : null}
+
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="size-8 p-0 text-muted-foreground hover:text-foreground"
+            aria-label={`Ações de ${row.ticker}`}
+            title="Mais opções deste ativo"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreHorizontal className="size-4" aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-48 p-1.5 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+          {onEditAsset ? (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-hover transition-colors text-left cursor-pointer"
+              onClick={() => {
+                setMenuOpen(false);
+                onEditAsset(row.assetId, row.ticker);
+              }}
+            >
+              <Pencil className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              Editar ativo
+            </button>
+          ) : null}
+
+          {onListTransactions ? (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-hover transition-colors text-left cursor-pointer"
+              onClick={() => {
+                setMenuOpen(false);
+                onListTransactions(row.assetId, row.ticker);
+              }}
+            >
+              <List className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              Extrato de transações
+            </button>
+          ) : null}
+
+          {!row.isCash && onSetManualPrice ? (
+            <button
+              type="button"
+              aria-label={`Cotação de ${row.ticker}`}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-hover transition-colors text-left cursor-pointer"
+              onClick={() => {
+                setMenuOpen(false);
+                onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
+              }}
+            >
+              <SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              Ajustar cotação
+            </button>
+          ) : null}
+
+          {onDeleteAsset ? (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-negative-strong hover:bg-negative-surface/30 transition-colors text-left cursor-pointer border-t border-border/40 mt-0.5 pt-1.5"
+              onClick={() => {
+                setMenuOpen(false);
+                onDeleteAsset(row.assetId, row.ticker);
+              }}
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              Excluir ativo
+            </button>
+          ) : null}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

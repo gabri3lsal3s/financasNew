@@ -1428,6 +1428,10 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 20 | **F34** — Importação e Reconciliação Inteligente de Extratos Bancários & Transações Gerais | A / Transações & Inteligência | F2/F30/F32 | ✅ Concluída (2026-08-18) — importação universal de extratos de conta corrente (OFX/CSV/Texto), reconciliação simultânea de receitas e despesas à vista/PIX/débito, deduplicação ordinal SHA-256 e proteção nativa anti-double-counting |
 | 21 | **F35** — Cotações em USD e Importação Assistida de Investimentos | B / Carteira & Moedas | F17/F18 | ✅ Concluída (2026-08-21) — suporte completo a ativos em USD, conversão cambial em tempo real, importação por linguagem natural/planilha e auditoria de fidelidade de cálculos |
 | 22 | **F36** — Posição Consolidada, Snapshots Patrimoniais & Simplificação de Aportes | B / Carteira & Rebalanceamento | F35 | ✅ Concluída (2026-08-22) — migração para modelo de custódia O(1) (Quantidade + PM), snapshots mensais, desacoplamento de aportes/proventos e aporte em 1-clique |
+| 23 | **F37** — Fidelidade de Dados, Posição Inicial & Gestão de Aportes | B / Carteira & Integridade | F36 | 📋 Planejada — snapshots verídicos sem dados fictícios, isolamento de Posição Inicial (sem inflar Home/taxa de poupança), preservação perpétua de proventos e gestão/expurgo de aportes do mês |
+| 24 | **F38** — Operações de Custódia: Vendas, Resgates, Splits & Ativo de Caixa | B / Carteira & Operação | F37 | 📋 Planejada — fluxo nativo de vendas/resgates com cálculo de lucro realizado e PM inalterado, monitor de isenção de 20k, desdobramentos/splits, renderização de ativos zerados e integração do ativo Caixa |
+| 25 | **F39** — Inteligência de Proventos, Bola de Neve & Margem de Segurança | B / Carteira & Patrimônio | F38 | 📋 Planejada — calculadora de proventos por cota, YoC histórico, indicador do Efeito Bola de Neve, termômetro de concentração de carteira, Preço Teto (Bazin) e normalização de metas em 1-clique |
+| 26 | **F40** — Central de Relatórios de Investimentos & Facilitador de IR/IRPF | B / Relatórios & Fiscal | F39 | 📋 Planejada — relatório executivo da carteira A4/PDF, relatório anual facilitador de IRPF (Bens e Direitos com texto para copiar, Rendimentos Isentos/Exclusivos e Renda Variável) e monitor mensal de DARF |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -1761,5 +1765,170 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Aba de proventos permite registro rápido e mantém o extrato mensal e calendário anual.
 - Suíte completa de testes automatizados (`npm test`, `npm run typecheck`, `npm run lint`) 100% verde.
 
+---
 
+### Fase 37 — Fidelidade de Dados, Posição Inicial & Gestão de Aportes
 
+> **Status:** 📋 Planejada (v1.75 — 2026-08-22) — eliminação estrita de dados fictícios em snapshots retroativos, segregação formal de Posição Inicial vs Novo Aporte Financeiro, preservação perpétua de proventos com `ON DELETE SET NULL` e diálogo de gestão e expurgo de aportes indevidos do mês.
+
+**Objetivo (Trilha B / Carteira & Integridade de Dados):** blindar a integridade dos dados e eliminar qualquer distorção em métricas da Home e evolução histórica:
+1. **Zero Dados Fictícios:** a série histórica de snapshots só contém meses a partir do momento real em que o usuário iniciou a sua carteira (`month >= created_at`), eliminando projeções retroativas artificiais;
+2. **Isolamento de Posição Inicial:** o cadastro inicial ou importação de custódia pré-existente (patrimônio acumulado) entra no patrimônio total da carteira sem inflar o KPI de *"Investimentos no mês"* da Home ou a Taxa de Poupança;
+3. **Preservação Eterna de Proventos:** ajuste relacional (`ON DELETE SET NULL` + `ticker`) para que proventos recebidos no passado nunca sejam apagados caso um ativo seja excluído ou descontinuado;
+4. **Gestão e Expurgo de Aportes (`ContributionsListDialog`):** painel para visualizar, editar e excluir aportes do mês corrente em 1 clique (para o usuário expurgar imediatamente qualquer aporte inflado de R$ 100k sem tocar na custódia de seus ativos).
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 37.1 — Fidelidade da Série de Snapshots (Zero Dados Fictícios):**
+   - Ajuste em `usePortfolioPosition` e repositório de snapshots: filtrar estritamente por meses $\ge$ mês do primeiro ativo ou snapshot real cadastrado pelo usuário.
+   - Remoção de projeções estáticas retroativas que duplicavam o valor atual em meses passados.
+   - Testes unitários puros cobrindo carteiras novas (apenas 1 ponto inicial) e carteiras maduras.
+2. **Etapa 37.2 — Integridade Relacional no Banco de Dados:**
+   - Migration `20260101000023_portfolio_integrity.sql`: alterar `portfolio_dividends.asset_id` para `ON DELETE SET NULL` e adicionar coluna `ticker` para preservação perpétua de dividendos.
+   - Atualização de contratos em `src/types/schema.ts` e `src/types/database.ts`.
+3. **Etapa 37.3 — Segregação de Posição Inicial nos Formulários e Importador:**
+   - `AssetFormDialog`: padrão *"Posição inicial pré-existente"* (sem gerar `portfolio_contributions` nem tocar na Home). Ao adicionar lote pela calculadora, checkbox explícito *"Contabilizar como novo aporte do mês"*.
+   - `PortfolioImportDialog`: modo padrão de importação de custódia como *"Posição Inicial"*.
+   - Testes de componentes garantindo que o cadastro de posição inicial não infla o fluxo financeiro.
+4. **Etapa 37.4 — Diálogo e Gestão de Aportes do Mês (`ContributionsListDialog`):**
+   - Diálogo `ContributionsListDialog` acessível via clique no KPI *"Investimentos"* da Home ou botão na aba Resumo.
+   - Listagem dos aportes registrados no mês com ações de editar data/valor e excluir em 1 clique com invalidação atômica de cache.
+   - Testes de UI e integração TanStack Query.
+
+**Arquivos:** `supabase/migrations/20260101000023_portfolio_integrity.sql` · `src/state/queries/use-portfolio-position.ts` · `src/features/investments/components/asset-form-dialog.tsx` · `src/features/investments/components/portfolio-import-dialog.tsx` · `src/features/investments/components/contributions-list-dialog.tsx` · `src/features/investments/pages/resumo-tab.tsx` · `docs/ROADMAP.md`.
+
+**✅ DoD (critérios de aceite):**
+- Usuário que inicia a carteira no mês corrente vê exatamente 1 ponto no histórico de snapshots (zero pontos fictícios em meses passados).
+- Cadastrar R$ 100.000,00 de posição inicial mantém o KPI de "Investimentos" do mês atual na Home em R$ 0,00.
+- Excluir um ativo com histórico de proventos mantém todos os dividendos preservados no calendário anual.
+- Usuário consegue expurgar qualquer aporte indevido pelo `ContributionsListDialog` com recálculo instantâneo da Home.
+- 0 erros de lint, 0 erros de TypeScript e suíte completa de testes 100% verde.
+
+---
+
+### Fase 38 — Operações de Custódia: Vendas, Resgates, Splits & Ativo de Caixa
+
+> **Status:** 📋 Planejada (v1.80 — 2026-08-23) — fluxo nativo de Venda/Desinvestimento com cálculo de lucro realizado e preservação do Preço Médio, monitor de isenção dos R$ 20k em ações e alíquota de 20% em FIIs, desdobramentos/splits, renderização limpa de ativos zerados e integração com o ativo Caixa da carteira.
+
+**Objetivo (Trilha B / Carteira & Operação de Custódia):** permitir todas as operações de desinvestimento e ajustes societários com rigor matemático e fiscal:
+1. **Fluxo Nativo de Venda / Desinvestimento:** cálculo de lucro realizado (R$ e %) e quantidade restante mantendo o PM rigorosamente inalterado;
+2. **Monitor Fiscal de Isenção na Venda:** barra de progresso no modal de venda de ações monitorando o teto mensal de R$ 20.000 de isenção e destaque da tributação de 20% para FIIs;
+3. **Ação Rápida de Desdobramento / Grupamento (Splits):** ajuste instantâneo de quantidade e preço médio na proporção definida mantendo o custo total idêntico;
+4. **Tratamento Limpo de Ativos Zerados:** ativos com `quantity === 0` exibem status *"Posição zerada"* sem divisões por zero ou `NaN%`;
+5. **Integração do Ativo Caixa:** opção de destinar o valor de vendas/resgates para o saldo em Caixa ou botão de 1-clique *"Rebalancear na aba Aporte"*.
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 38.1 — Domínio Puro de Vendas, Splits & Renda Fixa (`src/domain/portfolio/operations.ts`):**
+   - Funções puras `sellAssetPosition`, `splitAssetPosition` e `isCashOrFixedIncomeAsset`.
+   - Testes unitários puros com Vitest (`operations.test.ts`).
+2. **Etapa 38.2 — Aba de Venda e Resgate no `AssetFormDialog`:**
+   - Formulário com campos de quantidade, preço e data da venda.
+   - Resumo em tempo real de lucro/prejuízo realizado e monitor do teto de R$ 20k de ações.
+   - Checkbox para creditar no ativo Caixa ou enviar para a aba Aporte.
+3. **Etapa 38.3 — Ação Modal de Splits & Tratamento de Ativos Zerados:**
+   - Modal de desdobramento/grupamento no menu do ativo.
+   - Tratamento na `PositionTable` para ativos zerados (`quantity === 0`).
+4. **Etapa 38.4 — Atualização de Saldo 1:1 com Rendimento:**
+   - Atualização de saldo de Renda Fixa e Caixa com opção de registrar o rendimento creditado.
+
+**Arquivos:** `src/domain/portfolio/operations.ts` (+ testes) · `src/features/investments/components/asset-form-dialog.tsx` · `src/features/investments/components/asset-split-dialog.tsx` · `src/components/modules/position-table.tsx` · `docs/ROADMAP.md`.
+
+**✅ DoD (critérios de aceite):**
+- Registro de venda calcula lucro realizado e preserva o PM das cotas remanescentes.
+- Monitor de isenção de 20k orienta o investidor no momento da venda de ações.
+- Desdobramento/grupamento ajusta cotas e PM mantendo o custo total invariante.
+- Ativos zerados são renderizados com clareza sem erros matemáticos.
+- 0 erros de lint, 0 erros de TypeScript e suíte completa de testes 100% verde.
+
+---
+
+### Fase 39 — Inteligência de Proventos, Bola de Neve & Margem de Segurança
+
+> **Status:** 📋 Planejada (v1.85 — 2026-08-24) — calculadora rápida de proventos por cota, Yield on Cost (YoC) histórico acumulado, indicador do Efeito Bola de Neve na renda passiva, termômetro de concentração de carteira, Preço Teto (Método Bazin) e normalização de metas em 1-clique.
+
+**Objetivo (Trilha B / Carteira & Acúmulo de Patrimônio):** potencializar a disciplina de investimentos com métricas inteligentes voltadas à geração de renda e diversificação:
+1. **Calculadora de Proventos por Cota:** alternância entre *Valor Total* e *Valor por Cota* ($\text{Unitário} \times \text{Cotas}$) no `DividendFormDialog`;
+2. **Yield on Cost (YoC) Histórico:** campo opcional de proventos passados no cadastro do ativo para exibir o retorno real em proventos sobre o custo total;
+3. **Indicador do "Efeito Bola de Neve":** progresso de cada ativo para que seus proventos mensais comprem 1 cota inteira por mês sozinhos (*"Faltam X cotas para o ativo se pagar"*);
+4. **Termômetro de Concentração & Risco:** diagnóstico visual na aba Resumo alertando se um único ativo ultrapassar 25% do patrimônio ou setor desbalanceado;
+5. **Preço Teto / Margem de Segurança (Bazin):** campo opcional no ativo com badge `🟢 Abaixo do teto (Comprar)` ou `⚪ Acima do teto`;
+6. **Normalização de Metas em 1-Clique:** botão na aba Metas para ajustar proporcionalmente a soma das metas para 100%.
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 39.1 — Domínio Puro de Renda Passiva & Concentração (`src/domain/portfolio/snowball.ts`):**
+   - Funções puras `calculateSnowballProgress`, `calculateYieldOnCost` e `calculatePortfolioConcentration`.
+   - Testes unitários puros com Vitest (`snowball.test.ts`).
+2. **Etapa 39.2 — Calculadora por Cota & YoC Histórico:**
+   - Atualização do `DividendFormDialog` e campo `historical_dividends` em `AssetFormDialog`.
+   - Exibição de YoC na `PositionTable`.
+3. **Etapa 39.3 — Indicador da Bola de Neve na Aba Proventos:**
+   - Card/barra de progresso da bola de neve por ativo em `ProventosTab`.
+4. **Etapa 39.4 — Termômetro de Concentração, Preço Teto & Normalização de Metas:**
+   - Card de concentração em `ResumoTab`, badges de Preço Teto e botão de normalização em `TargetsTab`.
+
+**Arquivos:** `src/domain/portfolio/snowball.ts` (+ testes) · `src/features/investments/components/dividend-form-dialog.tsx` · `src/features/investments/pages/proventos-tab.tsx` · `src/features/investments/pages/resumo-tab.tsx` · `src/features/investments/pages/targets-tab.tsx` · `docs/ROADMAP.md`.
+
+**✅ DoD (critérios de aceite):**
+- Lançamento de proventos permite informar valor unitário por cota com cálculo automático.
+- Indicador da Bola de Neve calcula exatamente quantas cotas faltam para auto-sustentabilidade.
+- Termômetro de concentração alerta sobrepeso de ativos na carteira.
+- Normalização de metas ajusta a soma para 100% em 1-clique.
+- 0 erros de lint, 0 erros de TypeScript e suíte completa de testes 100% verde.
+
+---
+
+### Fase 40 — Central de Relatórios de Investimentos & Facilitador de IR/IRPF
+
+> **Status:** 📋 Planejada (v1.90 — 2026-08-25) — geração de Relatório Executivo de Acompanhamento da Carteira em padrão A4/PDF imprimível, Relatório Anual Facilitador de IRPF com textos pré-formatados das fichas da Receita Federal (Bens e Direitos com botão copiar, Rendimentos Isentos, Exclusivos e Renda Variável com compensação de prejuízos), Monitor Mensal de DARF, simulador FIRE refinado em Obsidian Glass e bloco de investimentos no Fechamento Mensal.
+
+**Objetivo (Trilha B / Relatórios & Inteligência Fiscal):** transformar o app em um facilitador definitivo da vida fiscal do investidor e unificar a prestação de contas executiva com o restante do aplicativo:
+1. **Harmonia Global: FIRE & Fechamento Mensal:** simulador FIRE refinado com botão *"Usar dados reais da carteira"* + bloco de *Aportes Patrimoniais* no documento de Fechamento Mensal imprimível (`MonthlyClosePrintView`);
+2. **Motor de Apuração Fiscal (`src/domain/portfolio/tax.ts`):** agregação anual de Bens e Direitos, classificação de proventos por ficha e apuração de ganhos líquidos com compensação de prejuízos;
+3. **Relatório Executivo da Carteira A4/PDF (`PortfolioExecutiveReport`):** padrão editorial claro com gráficos de alocação, KPIs e tabela consolidada de custódia;
+4. **Relatório Anual de IRPF (`PortfolioTaxReport`):** navegação por fichas da Receita com botões de 1-clique para copiar a discriminação de cada ativo;
+5. **Monitor Mensal de DARF:** status do mês avisando sobre isenção de 20k em ações e cálculo de DARF de FIIs.
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 40.1 — Harmonia Global: Simulador FIRE & Fechamento Mensal:**
+   - Integração de `PlanningSection` com dados reais da carteira e novo visual Obsidian Glass.
+   - Inclusão da seção de *Aportes Patrimoniais* no Fechamento Mensal imprimível (`MonthlyClosePrintView`).
+2. **Etapa 40.2 — Motor de Domínio Puro de Apuração Fiscal (`src/domain/portfolio/tax.ts`):**
+   - Agregação anual de bens e direitos em 31/12 por custo de aquisição.
+   - Classificação de proventos (Ficha 09, Ficha 26, Ficha 10) e ganhos líquidos de Renda Variável.
+   - Testes unitários puros com Vitest (`tax.test.ts`).
+3. **Etapa 40.3 — Relatório Executivo da Carteira A4/PDF (`PortfolioExecutiveReport`):**
+   - Componente imprimível A4 (`PrintSheet`) com paleta clara fixa, alocação e tabela completa.
+4. **Etapa 40.4 — Relatório de IRPF & Monitor Mensal de DARF:**
+   - Componente `PortfolioTaxReport` com as 4 fichas da Receita e botões de cópia rápida.
+   - Monitor mensal de apuração de DARF com controle de prejuízos a compensar.
+
+**Arquivos:** `src/domain/portfolio/tax.ts` (+ testes) · `src/components/modules/planning-section.tsx` · `src/components/modules/monthly-close-print-view.tsx` · `src/features/investments/components/portfolio-executive-report.tsx` · `src/features/investments/components/portfolio-tax-report.tsx` · `src/features/investments/components/portfolio-darf-monitor.tsx` · `src/features/investments/pages/relatorios-tab.tsx` · `docs/ROADMAP.md`.
+
+**✅ DoD (critérios de aceite):**
+- Relatório executivo da carteira renderiza em formato A4 perfeito para impressão e PDF em 1-clique.
+- Relatório de IRPF gera as 4 fichas principais da Receita com textos de discriminação prontos para cópia rápida.
+- Compensação de prejuízos em vendas de meses anteriores calcula com 100% de exatidão fiscal.
+- Monitor mensal avisa se há DARF a recolher e informa o valor exato.
+- Simulador FIRE consome dados reais da carteira com interface moderna Obsidian Glass.
+---
+
+### Refinamento de UX/UI & Responsividade Mobile da Área de Investimentos (v1.86 — 2026-08-22)
+
+> **Status:** ✅ Concluído — refatoração completa da experiência do usuário na área de investimentos para carteiras com grande número de ativos, unificação gráfica, design system aprimorado e responsividade mobile de alta performance.
+
+**Entregas Realizadas:**
+1. **Unificação do Gráfico de Distribuição da Carteira (`CategoryDonut` & `ResumoTab`):**
+   - Gráficos unificados em um único card de largura total com alternador ágil entre *"Por Classe"* (padrão inicial) e *"Por Ativo"*.
+   - Em modo "Por Ativo", legendas distribuídas em grid responsivo de 2 colunas com suporte a scroll vertical suave (sem limitação de visualização artificial).
+   - Cores HSL dinâmicas (`--cat-1` a `--cat-10`) com alto contraste e interatividade bidirecional (hover/clique no arco do donut ou na legenda abre o modal de edição/detalhes do ativo).
+2. **Linearidade & Despoluição da Tabela de Posições (`PositionTable`):**
+   - Remoção de badges de texto empilhadas na célula de preço, substituídas por micro-indicadores circulares sutis de alta precisão (preço manual e fallback).
+   - Barra de busca 100% fluida e responsiva (`flex-1 min-w-0`) expandindo até os filtros de classe, com contador dinâmico e botão limpar integrados.
+3. **Experiência Mobile Otimizada (Cards & Paginação):**
+   - Paginação padrão de 5 itens no mobile, ocultando o seletor redundante "Por página" em telas pequenas.
+   - Rolagem suave contextual (`behavior: "smooth"`) para o topo da tabela ao avançar/voltar página na navegação mobile.
+   - Cards mobile reestruturados em 2 linhas com layout de alta densidade: Linha 1 com Ticker, Classe, Valor, Rentabilidade e Menu de Ações no topo; Linha 2 com grid estruturado de 3 colunas (Quantidade, Preço, Lucro/Prejuízo).
+   - Título da seção responsivo: *"Posições em Carteira"* com colapso gracioso para *"Posições"* apenas em telas ultra-compactas (`< 380px`).
+4. **Abas Proventos e Metas:**
+   - Filtro de metas por classe e subtotal dinâmico em `TargetsTab`.
+   - Mini barras de progresso relativo de rendimentos no calendário de 12 meses em `ProventosTab`.
+   - Ordenação prioritária das rotas de aporte em `AporteResult`.

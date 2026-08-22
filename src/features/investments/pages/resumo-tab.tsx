@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { LineChart, Plus, RefreshCw, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import { LineChart, PieChart, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonChart, SkeletonKpi, SkeletonTable } from "@/components/ui";
-import { AllocationDonut, CategoryDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
+import { CategoryDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { isCashAssetClass, portfolioReturnPct } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
+import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import { formatSignedPct } from "@/services/masks/percent";
 import {
@@ -26,8 +27,8 @@ import type { PriceSource } from "@/domain/portfolio";
 /**
  * Resumo da carteira (§F36 unificada) — Posição Consolidada + Operação Ágil:
  * KPIs (patrimônio com Δ, rentabilidade ponderada, proventos do mês),
- * tabela de posições com edição direta de quantidade/preço médio,
- * donuts de distribuição (classe e ativo) e evolução histórica.
+ * gráfico unificado de distribuição da carteira em tela cheia com alternador por ativo/classe,
+ * tabela de posições com paginação e menu contextual, e evolução histórica.
  */
 export function ResumoTab() {
   const position = usePortfolioPosition();
@@ -41,6 +42,7 @@ export function ResumoTab() {
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [allocationMode, setAllocationMode] = useState<"asset" | "class">("class");
   const [priceFor, setPriceFor] = useState<{
     id: string;
     ticker: string;
@@ -88,17 +90,36 @@ export function ResumoTab() {
     .reduce((acc, d) => acc + d.amount, 0);
   const dividendsCents = numberToCents(dividendsThisMonth);
 
-  const classSlices = rows.map((row) => ({
-    label: row.assetClass?.trim() || (row.isCash ? "Caixa" : "Sem classe"),
-    valueCents: Math.round(row.valueBRL * 100),
-  }));
-  const tickerSlices = rows
-    .map((row) => ({
-      label: row.ticker,
-      valueCents: Math.round(row.valueBRL * 100),
+  // Agrupamento por classe de ativos (F16)
+  const classMap = new Map<string, number>();
+  for (const row of rows) {
+    const label = row.assetClass?.trim() || (row.isCash ? "Caixa" : "Sem classe");
+    const cents = Math.round(row.valueBRL * 100);
+    classMap.set(label, (classMap.get(label) ?? 0) + cents);
+  }
+  const classSlices = Array.from(classMap.entries())
+    .map(([label, valueCents]) => ({
+      key: label,
+      label,
+      valueCents,
+      subtitle: `${rows.filter((r) => (r.assetClass?.trim() || (r.isCash ? "Caixa" : "Sem classe")) === label).length} ativo(s)`,
     }))
-    .filter((slice) => slice.valueCents > 0)
+    .filter((s) => s.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents);
+
+  // Fatias individuais de cada ativo com clique interativo para ver/editar
+  const assetSlices = rows
+    .filter((row) => row.valueBRL > 0)
+    .sort((a, b) => b.valueBRL - a.valueBRL)
+    .map((row) => ({
+      key: row.assetId,
+      label: row.ticker,
+      subtitle: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
+      valueCents: Math.round(row.valueBRL * 100),
+      onClick: () => openEdit(row.assetId),
+    }));
+
+  const activeSlices = allocationMode === "asset" ? assetSlices : classSlices;
 
   const series = position.monthlySeries;
   const previousPoint = series.length > 1 ? series[series.length - 2] : undefined;
@@ -125,11 +146,8 @@ export function ResumoTab() {
             <SkeletonKpi />
             <SkeletonKpi />
           </div>
+          <SkeletonChart />
           <SkeletonTable rows={4} />
-          <div className="grid gap-3 lg:grid-cols-2">
-            <SkeletonChart />
-            <SkeletonChart />
-          </div>
         </div>
       ) : !hasInvestments ? (
         <EmptyState
@@ -171,26 +189,79 @@ export function ResumoTab() {
             <KpiCard label="Ativos em carteira" value={String(rows.length)} hint="Custódia consolidada" />
           </div>
 
+          {/* Gráfico Unificado de Distribuição da Carteira em Largura Total */}
+          <section aria-label="Distribuição da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
+                  <PieChart className="size-3.5" aria-hidden="true" />
+                </span>
+                <h2 className="text-sm font-semibold text-foreground truncate">Distribuição da Carteira</h2>
+                <Badge variant="muted" className="hidden sm:inline-flex text-[11px] shrink-0">
+                  {allocationMode === "asset"
+                    ? `${assetSlices.length} ${assetSlices.length === 1 ? "ativo" : "ativos"}`
+                    : `${classSlices.length} ${classSlices.length === 1 ? "classe" : "classes"}`}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-1 rounded-xl bg-surface-hover/80 p-1 border border-border/60 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setAllocationMode("class")}
+                  className={cn(
+                    "rounded-lg px-3 py-1 text-xs font-medium transition-colors cursor-pointer",
+                    allocationMode === "class"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Por Classe
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllocationMode("asset")}
+                  className={cn(
+                    "rounded-lg px-3 py-1 text-xs font-medium transition-colors cursor-pointer",
+                    allocationMode === "asset"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Por Ativo
+                </button>
+              </div>
+            </div>
+
+            <CategoryDonut
+              slices={activeSlices}
+              className="w-full min-w-0"
+              listClassName="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 w-full max-h-[28rem] overflow-y-auto pr-1"
+            />
+          </section>
+
           {/* Seção principal: Posições da Carteira */}
           <section aria-label="Posições" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <div className="mb-3 flex items-center justify-between gap-2 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <h2 className="text-sm font-semibold text-foreground truncate">Posições de Custódia</h2>
-                <Badge variant="muted" className="text-[11px] shrink-0">
+                <h2 className="text-sm font-semibold text-foreground truncate">
+                  Posições<span className="hidden min-[380px]:inline"> em Carteira</span>
+                </h2>
+                <Badge variant="muted" className="hidden sm:inline-flex text-[11px] shrink-0">
                   {rows.length} {rows.length === 1 ? "ativo" : "ativos"}
                 </Badge>
               </div>
-              <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setImportOpen(true)}
-                  className="w-full sm:w-auto text-xs"
+                  className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1.5 shrink-0"
                   title="Importar custódia via planilha ou texto livre"
+                  aria-label="Importar custódia"
                 >
-                  <Sparkles aria-hidden="true" className="size-3.5" />
-                  Importar custódia
+                  <Sparkles aria-hidden="true" className="size-3.5 text-portfolio" />
+                  <span className="hidden md:inline">Importar</span>
                 </Button>
                 <Button
                   type="button"
@@ -198,18 +269,26 @@ export function ResumoTab() {
                   size="sm"
                   onClick={() => syncQuotes.mutate(assetsQuery.data ?? [])}
                   disabled={syncQuotes.isPending}
-                  className="w-full sm:w-auto text-xs"
+                  className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1.5 shrink-0"
                   title="Atualizar cotações de mercado via API"
+                  aria-label="Atualizar cotações"
                 >
                   <RefreshCw
                     aria-hidden="true"
                     className={`size-3.5 ${syncQuotes.isPending ? "animate-spin" : ""}`}
                   />
-                  {syncQuotes.isPending ? "Atualizando…" : "Atualizar cotações"}
+                  <span className="hidden md:inline">{syncQuotes.isPending ? "Atualizando…" : "Atualizar"}</span>
                 </Button>
-                <Button type="button" size="sm" className="w-full sm:w-auto shrink-0" onClick={() => setAssetOpen(true)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1 shrink-0"
+                  onClick={() => setAssetOpen(true)}
+                  title="Adicionar novo ativo"
+                  aria-label="Adicionar novo ativo"
+                >
                   <Plus aria-hidden="true" className="size-4" />
-                  Adicionar ativo
+                  <span className="hidden sm:inline">Adicionar ativo</span>
                 </Button>
               </div>
             </div>
@@ -223,29 +302,6 @@ export function ResumoTab() {
               onDeleteAsset={openDelete}
             />
           </section>
-
-          {/* Seção secundária: Análise de Alocação e Evolução */}
-          <div className="grid gap-3 lg:grid-cols-2 min-w-0">
-            <section aria-label="Alocação por classe" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-              <div className="mb-4 flex items-center gap-2 min-w-0">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-                  <Wallet className="size-3.5" aria-hidden="true" />
-                </span>
-                <h2 className="text-sm font-semibold text-foreground truncate">Alocação por classe</h2>
-              </div>
-              <AllocationDonut slices={classSlices} className="w-full sm:max-w-md min-w-0" />
-            </section>
-
-            <section aria-label="Alocação por ativo" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-              <div className="mb-4 flex items-center gap-2 min-w-0">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-                  <TrendingUp className="size-3.5" aria-hidden="true" />
-                </span>
-                <h2 className="text-sm font-semibold text-foreground truncate">Alocação por ativo</h2>
-              </div>
-              <CategoryDonut slices={tickerSlices} className="w-full sm:max-w-md min-w-0" />
-            </section>
-          </div>
 
           {/* Seção de Evolução Patrimonial (Snapshots Mensais) */}
           <section aria-label="Evolução Patrimonial" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">

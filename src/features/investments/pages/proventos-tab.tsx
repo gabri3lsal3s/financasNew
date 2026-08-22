@@ -60,6 +60,8 @@ export function ProventosTab() {
     }
   };
 
+  const maxMonthTotal = Math.max(...yearly.map((e) => e.total), 1);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -187,20 +189,30 @@ export function ProventosTab() {
                       type="button"
                       onClick={() => setMonth(entry.month)}
                       aria-pressed={active}
-                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                      className={`flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer ${
                         active
                           ? "border-portfolio/40 bg-portfolio/10"
                           : "border-border/80 bg-transparent hover:border-border"
                       }`}
                     >
-                      <span className="text-xs font-medium capitalize text-foreground">{monthLabel(entry.month)}</span>
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span className="text-xs font-medium capitalize text-foreground">{monthLabel(entry.month)}</span>
+                        {hasValue ? (
+                          <span className="num text-xs font-semibold text-positive-strong">
+                            <MoneyText cents={numberToCents(entry.total)} tone="positive" />
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">—</span>
+                        )}
+                      </div>
                       {hasValue ? (
-                        <span className="num text-xs font-semibold text-positive-strong">
-                          <MoneyText cents={numberToCents(entry.total)} tone="positive" />
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">—</span>
-                      )}
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-border/40" aria-hidden="true">
+                          <div
+                            className="h-full rounded-full bg-positive-strong transition-all duration-300"
+                            style={{ width: `${Math.max(4, Math.min(100, (entry.total / maxMonthTotal) * 100))}%` }}
+                          />
+                        </div>
+                      ) : null}
                     </button>
                   </li>
                 );

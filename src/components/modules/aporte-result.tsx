@@ -68,6 +68,11 @@ export function AporteResult({
 
   const completedCount = completedTickers.size;
 
+  const sortedRoutes = [...routes].sort((a, b) => {
+    if (b.allocatedBRL !== a.allocatedBRL) return b.allocatedBRL - a.allocatedBRL;
+    return a.gapBRL - b.gapBRL;
+  });
+
   const columns: {
     key: string;
     header: ReactNode;
@@ -196,7 +201,7 @@ export function AporteResult({
           </div>
           <DataList
             columns={columns}
-            rows={routes}
+            rows={sortedRoutes}
             rowKey={(row, index) => `${row.ticker}:${index}`}
             density="compact"
             emptyMessage="Sem sugestão de aporte."
