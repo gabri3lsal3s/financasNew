@@ -1,5 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v1.71** registra o **Planejamento da Fase 41 — Arquitetura Unificada de Investimentos: Wizard de Inclusão, Quick Transaction Sheet & Visão Dedicada de Ativos** (2026-08-22): **(1) Auditoria & Eliminação do Anti-Pattern Modal-on-Modal**: descontinuação da sobrecarga de modais sobrepostos (`AssetFormDialog` de 28KB, `TransactionListDialog`, `TransactionFormDialog`, `AssetSplitDialog`, `DividendFormDialog`), substituindo-os por fluxos atômicos e mobile-first; **(2) Wizard de Inclusão de Ativos (`AssetWizard`)**: fluxo progressivo em 4 passos (*Tipo/Classe ➔ Ticker/Moeda ➔ Posição Inicial & Preço Médio ➔ Meta % & Revisão*), aproveitando o padrão já consolidado no app (`LaunchWizard` e `Stepper`); **(3) Ordem / Movimentação Rápida (`QuickTransactionSheet`)**: Bottom Sheet ágil e atômico para registrar Compra, Venda, Provento ou Split com cálculo em tempo real de preço médio ponderado, ganho de capital projetado e sincronização com saldo de Caixa; **(4) Visão Dedicada de Detalhes do Ativo (`AssetDetailSheet` com Deep Linking `?asset=<id>`)**: centralização de KPIs, ações rápidas, extrato de transações e histórico de proventos sem modais aninhados; **(5) Refatoração de Estado & Schemas Zod**: centralização das mutações em `src/state/mutations/use-portfolio-mutations.ts` e validação estrita com Zod (`src/domain/portfolio/schemas.ts`).
 > **v1.70** registra a **Proposta e Planejamento da Fase 36 — Refatoração da Carteira para Posição Consolidada, Snapshots Patrimoniais & Simplificação de Aportes** (2026-08-22): **(1) Transição de Paradigma**: migração do modelo de ledger de transações individuais para posição direta (`quantity` e `average_price` em `portfolio_assets`), eliminando a fricção de lançamentos manuais constantes; **(2) Snapshots Mensais & Histórico Patrimonial**: tabela `portfolio_snapshots` com evolução consolidada do patrimônio e custo mês a mês para comparativos "Δ vs. mês anterior" sem recálculo pesado de ledger em tempo de execução; **(3) Registro Desacoplado de Aportes & Proventos**: tabelas leves `portfolio_contributions` (integração direta com o fluxo de caixa de Home/Overview e Insights sem amarração forçada a notas de corretagem) e `portfolio_dividends` (extrato e calendário anual de rendimentos); **(4) UX Simplificada em 1-Passo**: unificação de cadastro/edição em modal direto com calculadora rápida de novo preço médio, importação rápida de custódia de corretoras/B3 e aplicação em 1-clique na calculadora de rebalanceamento; **(5) Blindagem contra 7 Fragilidades**: backfill automático na migration, paridade multimoeda (USD/BRL), integridade de backup e mitigação total de trade-offs.
 > **v1.69** registra a **Proposta e Planejamento da Fase 35 — Reformulação, Valoração Multimoeda, Cotações Resilientes & Importação Inteligente (CSV e Quick-Paste) da Carteira de Investimentos** (2026-08-22): **(1) Correção de Domínio & Valoração Multimoeda**: normalização de `totalCost` e `averageCost` para ativos internacionais em Dólar (USD) via taxa cambial `usdRate` para cálculo exato de PnL e rentabilidade não realizada (`unrealizedPnl` e `unrealizedPct`), com formatação dinâmica de moeda na `PositionTable`; **(2) Resiliência de Cotações & Câmbio Automático**: injeção automática de `USDBRL=X` na sincronização em lote e eliminação de bloqueios de CORS com AwesomeAPI e fallbacks em cascata; **(3) Motor Puro de Importação e Quick-Paste de Investimentos**: módulo `src/domain/portfolio/import-parser.ts` para reconhecimento inteligente de linguagem natural (*"15/08 comprei 100 PETR4 a 38,50"*, *"recebi 45,80 de dividendo de MXRF11"*) e sniffer/parser de CSVs de corretoras/B3; **(4) Interface de Importação em 3 Passos & UX**: modal `PortfolioImportDialog` (Upload/Paste $\rightarrow$ Mapeamento/Criação de Ativos $\rightarrow$ Gravação Atômica no Ledger), Extrato Consolidado da Carteira, ação rápida de registro em `ProventosTab` e correção de navegação de empty states; **(5) Unificação Arquitetural**: consolidação de componentes e páginas sob `src/features/investments/`.
 > **v1.68** registra a **Prevenção de Forced Dark Mode Quebrado em Navegadores e Sincronização Imediata de Tema na Splash/Loading Screen** (2026-08-21): **(1) Meta Tag `color-scheme` e Prevenção de Inversão Forçada**: inclusão de `<meta name="color-scheme" content="light dark" />` em `index.html` e declarações CSS `color-scheme: light / dark` em `src/styles/tokens.css` para sinalizar suporte nativo a temas escuros aos motores de "Auto Dark Mode" de navegadores móveis (Chromium, Samsung Internet, Brave), evitando inversão algorítmica destrutiva (CIELAB) de variáveis CSS, bordas e filtros; **(2) Resolução Padrão para Tema OLED**: detecção de preferência escura (`prefers-color-scheme: dark` ou modo dark forçado) no `ThemeProvider` (`src/app/theme-provider.tsx`) e no script inline de `index.html` configurada para o tema **OLED** (`#000000` true black); **(3) Splash Screen Inline Dinâmica com Fundo de Tema**: `#app-splash` em `index.html` adaptado para adotar a cor de fundo exata de cada tema (`light` `#F4F7F9`, `dark` `#0C1923`, `oled` `#000000`), eliminando o flash branco fixo; **(4) Espelho de Bootstrap Síncrono no `user-storage`**: sincronização imediata de `financas_active_theme` e atributos visuais em `src/services/user-storage.ts`, garantindo que a tela de carregamento e o bootstrap apliquem o tema escolhido pelo usuário desde o primeiro milissegundo antes da resolução assíncrona do Supabase Auth. Suíte 100% verde (20/20 testes de escopo, typecheck e lint limpos).
@@ -1428,10 +1429,10 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 20 | **F34** — Importação e Reconciliação Inteligente de Extratos Bancários & Transações Gerais | A / Transações & Inteligência | F2/F30/F32 | ✅ Concluída (2026-08-18) — importação universal de extratos de conta corrente (OFX/CSV/Texto), reconciliação simultânea de receitas e despesas à vista/PIX/débito, deduplicação ordinal SHA-256 e proteção nativa anti-double-counting |
 | 21 | **F35** — Cotações em USD e Importação Assistida de Investimentos | B / Carteira & Moedas | F17/F18 | ✅ Concluída (2026-08-21) — suporte completo a ativos em USD, conversão cambial em tempo real, importação por linguagem natural/planilha e auditoria de fidelidade de cálculos |
 | 22 | **F36** — Posição Consolidada, Snapshots Patrimoniais & Simplificação de Aportes | B / Carteira & Rebalanceamento | F35 | ✅ Concluída (2026-08-22) — migração para modelo de custódia O(1) (Quantidade + PM), snapshots mensais, desacoplamento de aportes/proventos e aporte em 1-clique |
-| 23 | **F37** — Fidelidade de Dados, Posição Inicial & Gestão de Aportes | B / Carteira & Integridade | F36 | 📋 Planejada — snapshots verídicos sem dados fictícios, isolamento de Posição Inicial (sem inflar Home/taxa de poupança), preservação perpétua de proventos e gestão/expurgo de aportes do mês |
-| 24 | **F38** — Operações de Custódia: Vendas, Resgates, Splits & Ativo de Caixa | B / Carteira & Operação | F37 | 📋 Planejada — fluxo nativo de vendas/resgates com cálculo de lucro realizado e PM inalterado, monitor de isenção de 20k, desdobramentos/splits, renderização de ativos zerados e integração do ativo Caixa |
-| 25 | **F39** — Inteligência de Proventos, Bola de Neve & Margem de Segurança | B / Carteira & Patrimônio | F38 | 📋 Planejada — calculadora de proventos por cota, YoC histórico, indicador do Efeito Bola de Neve, termômetro de concentração de carteira, Preço Teto (Bazin) e normalização de metas em 1-clique |
-| 26 | **F40** — Central de Relatórios de Investimentos & Facilitador de IR/IRPF | B / Relatórios & Fiscal | F39 | 📋 Planejada — relatório executivo da carteira A4/PDF, relatório anual facilitador de IRPF (Bens e Direitos com texto para copiar, Rendimentos Isentos/Exclusivos e Renda Variável) e monitor mensal de DARF |
+| 23 | **F37** — Fidelidade de Dados, Posição Inicial & Gestão de Aportes | B / Carteira & Integridade | F36 | ✅ Concluída (2026-08-22) — snapshots verídicos sem dados fictícios, isolamento de Posição Inicial (sem inflar Home/taxa de poupança), preservação perpétua de proventos e gestão/expurgo de aportes do mês |
+| 24 | **F38** — Operações de Custódia: Vendas, Resgates, Splits & Ativo de Caixa | B / Carteira & Operação | F37 | ✅ Concluída (2026-08-23) — fluxo nativo de vendas/resgates com cálculo de lucro realizado e PM inalterado, monitor de isenção de 20k, desdobramentos/splits, renderização de ativos zerados e integração do ativo Caixa |
+| 25 | **F39** — Inteligência de Proventos, Bola de Neve & Margem de Segurança | B / Carteira & Patrimônio | F38 | ✅ Concluída (2026-08-22) — calculadora de proventos por cota, YoC histórico, indicador do Efeito Bola de Neve, termômetro de concentração de carteira, Preço Teto (Bazin) e normalização de metas em 1-clique |
+| 26 | **F40** — Central de Relatórios de Investimentos & Facilitador de IR/IRPF | B / Relatórios & Fiscal | F39 | ✅ Concluída (2026-08-22) — relatório executivo da carteira A4/PDF, relatório anual facilitador de IRPF (Bens e Direitos com texto para copiar, Rendimentos Isentos/Exclusivos e Renda Variável) e monitor mensal de DARF |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -1769,7 +1770,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 37 — Fidelidade de Dados, Posição Inicial & Gestão de Aportes
 
-> **Status:** 📋 Planejada (v1.75 — 2026-08-22) — eliminação estrita de dados fictícios em snapshots retroativos, segregação formal de Posição Inicial vs Novo Aporte Financeiro, preservação perpétua de proventos com `ON DELETE SET NULL` e diálogo de gestão e expurgo de aportes indevidos do mês.
+> **Status:** ✅ Concluída (v1.75 — 2026-08-22) — eliminação estrita de dados fictícios em snapshots retroativos, segregação formal de Posição Inicial vs Novo Aporte Financeiro, preservação perpétua de proventos com `ON DELETE SET NULL`, inclusão no backup/restore e diálogo `ContributionsListDialog` para gestão e expurgo de aportes indevidos do mês. Suíte **1394 testes / 178 arquivos (100% verde)** + typecheck/lint/build limpos.
 
 **Objetivo (Trilha B / Carteira & Integridade de Dados):** blindar a integridade dos dados e eliminar qualquer distorção em métricas da Home e evolução histórica:
 1. **Zero Dados Fictícios:** a série histórica de snapshots só contém meses a partir do momento real em que o usuário iniciou a sua carteira (`month >= created_at`), eliminando projeções retroativas artificiais;
@@ -1807,7 +1808,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 38 — Operações de Custódia: Vendas, Resgates, Splits & Ativo de Caixa
 
-> **Status:** 📋 Planejada (v1.80 — 2026-08-23) — fluxo nativo de Venda/Desinvestimento com cálculo de lucro realizado e preservação do Preço Médio, monitor de isenção dos R$ 20k em ações e alíquota de 20% em FIIs, desdobramentos/splits, renderização limpa de ativos zerados e integração com o ativo Caixa da carteira.
+> **Status:** ✅ Concluída (v1.80 — 2026-08-23) — fluxo nativo de Venda/Desinvestimento com cálculo de lucro realizado e preservação do Preço Médio, monitor fiscal de isenção dos R$ 20k em ações e alíquota de 20% em FIIs, desdobramentos/splits com invariância patrimonial (`AssetSplitDialog`), renderização limpa de ativos zerados e integração com o ativo Caixa da carteira. Suíte **1406 testes / 180 arquivos (100% verde)** + typecheck/lint/build limpos.
 
 **Objetivo (Trilha B / Carteira & Operação de Custódia):** permitir todas as operações de desinvestimento e ajustes societários com rigor matemático e fiscal:
 1. **Fluxo Nativo de Venda / Desinvestimento:** cálculo de lucro realizado (R$ e %) e quantidade restante mantendo o PM rigorosamente inalterado;
@@ -1843,7 +1844,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 39 — Inteligência de Proventos, Bola de Neve & Margem de Segurança
 
-> **Status:** 📋 Planejada (v1.85 — 2026-08-24) — calculadora rápida de proventos por cota, Yield on Cost (YoC) histórico acumulado, indicador do Efeito Bola de Neve na renda passiva, termômetro de concentração de carteira, Preço Teto (Método Bazin) e normalização de metas em 1-clique.
+> **Status:** ✅ Concluído (v1.85 — 2026-08-22) — calculadora rápida de proventos por cota, Yield on Cost (YoC) histórico acumulado, indicador do Efeito Bola de Neve na renda passiva, termômetro de concentração de carteira, Preço Teto (Método Bazin) e normalização de metas em 1-clique.
 
 **Objetivo (Trilha B / Carteira & Acúmulo de Patrimônio):** potencializar a disciplina de investimentos com métricas inteligentes voltadas à geração de renda e diversificação:
 1. **Calculadora de Proventos por Cota:** alternância entre *Valor Total* e *Valor por Cota* ($\text{Unitário} \times \text{Cotas}$) no `DividendFormDialog`;
@@ -1878,7 +1879,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 40 — Central de Relatórios de Investimentos & Facilitador de IR/IRPF
 
-> **Status:** 📋 Planejada (v1.90 — 2026-08-25) — geração de Relatório Executivo de Acompanhamento da Carteira em padrão A4/PDF imprimível, Relatório Anual Facilitador de IRPF com textos pré-formatados das fichas da Receita Federal (Bens e Direitos com botão copiar, Rendimentos Isentos, Exclusivos e Renda Variável com compensação de prejuízos), Monitor Mensal de DARF, simulador FIRE refinado em Obsidian Glass e bloco de investimentos no Fechamento Mensal.
+> **Status:** ✅ Concluído (v1.90 — 2026-08-22) — motor puro de apuração fiscal (`tax.ts` com 8 testes), Relatório Executivo A4/PDF imprimível (`PortfolioExecutiveReport`), Facilitador Anual de IRPF com fichas da Receita e cópia rápida (`PortfolioTaxReport`), Monitor Mensal de DARF com isenção de 20k e compensação de prejuízos (`PortfolioDarfMonitor`) e nova aba "Relatórios & IR" integrada em `InvestmentsPage`.
 
 **Objetivo (Trilha B / Relatórios & Inteligência Fiscal):** transformar o app em um facilitador definitivo da vida fiscal do investidor e unificar a prestação de contas executiva com o restante do aplicativo:
 1. **Harmonia Global: FIRE & Fechamento Mensal:** simulador FIRE refinado com botão *"Usar dados reais da carteira"* + bloco de *Aportes Patrimoniais* no documento de Fechamento Mensal imprimível (`MonthlyClosePrintView`);
@@ -1932,3 +1933,40 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
    - Filtro de metas por classe e subtotal dinâmico em `TargetsTab`.
    - Mini barras de progresso relativo de rendimentos no calendário de 12 meses em `ProventosTab`.
    - Ordenação prioritária das rotas de aporte em `AporteResult`.
+
+---
+
+### Fase 41 — Arquitetura Unificada de Investimentos: Wizard de Inclusão, Quick Transaction Sheet & Visão Dedicada de Ativos (v1.71 — 2026-08-22)
+
+> **Status:** ⏳ Planejado / Em Andamento — eliminação definitiva de modais sobrepostos e fluxos redundantes na carteira de investimentos, introdução de Wizard de Inclusão progressivo, Bottom Sheet ágil para ordens e visão dedicada para gestão de ativos com deep linking.
+
+**Objetivo:** unificar a arquitetura e a experiência do usuário do módulo de investimentos com foco em usabilidade mobile-first e separação de intenções (*Cadastrar Novo Ativo* vs *Ordem/Aporte* vs *Gestão & Histórico*):
+1. **Wizard de Inclusão de Ativos (`AssetWizard`):** fluxo guiado de 4 passos (*Identificação/Classe ➔ Posição Inicial & PM ➔ Meta % ➔ Revisão*), com autocomplete de tickers e tratamento direto de Caixa 1:1;
+2. **Ordem / Movimentação Rápida (`QuickTransactionSheet`):** Bottom Sheet atômico de 1 tela para registrar Compra, Venda, Provento ou Split com cálculo de preço médio ponderado em tempo real e sincronização opcional com Caixa/Aportes;
+3. **Visão Dedicada de Detalhes do Ativo (`AssetDetailSheet` com Deep Linking `?asset=<id>`):** centralização de KPIs, histórico de transações e histórico de proventos sem modais aninhados;
+4. **Descontinuação de Modais Legados:** remoção de `AssetFormDialog`, `TransactionListDialog`, `TransactionFormDialog`, `AssetSplitDialog` e `DividendFormDialog`;
+5. **Centralização de Estado & Validação:** criação de `src/state/mutations/use-portfolio-mutations.ts` e validação de borda com Zod (`src/domain/portfolio/schemas.ts`).
+
+**Organização da Implementação em 5 Etapas:**
+1. **Etapa 41.1 — Fundação de Domínio, Schemas Zod & Centralização de Estado:**
+   - Schemas Zod (`src/domain/portfolio/schemas.ts`) com testes unitários.
+   - Centralização das mutações em `src/state/mutations/use-portfolio-mutations.ts` com sincronização bidirecional de posição e ledger.
+2. **Etapa 41.2 — Wizard de Inclusão de Ativos (`AssetWizard`):**
+   - Criação de `src/features/investments/wizard/` com máquina de estados pura e 4 passos (`step-identification`, `step-position`, `step-target`, `step-review`).
+   - Suporte a ativos em USD (câmbio dinâmico) e Caixa 1:1.
+3. **Etapa 41.3 — Ordem Rápida Unificada (`QuickTransactionSheet`):**
+   - Bottom Sheet ágil para compra, venda com cálculo de ganho de capital, provento e split.
+4. **Etapa 41.4 — Visão Dedicada de Detalhes do Ativo (`AssetDetailSheet`):**
+   - Painel lateral/drawer completo com deep linking por URL (`?asset=<id>`) e extrato cronológico.
+5. **Etapa 41.5 — Integração no Ecossistema, Limpeza de Modais Legados & Hardening:**
+   - Refatoração de `PositionTable`, `ResumoTab`, `AporteTab` e `ProventosTab`.
+   - Remoção dos componentes obsoletos e garantia de suíte 100% verde (`tsc`, `lint`, testes).
+
+**Arquivos:** `src/domain/portfolio/schemas.ts` (+ testes) · `src/state/mutations/use-portfolio-mutations.ts` (+ testes) · `src/features/investments/wizard/*` · `src/features/investments/components/quick-transaction-sheet.tsx` · `src/features/investments/components/asset-detail-sheet.tsx` · `src/features/investments/pages/resumo-tab.tsx` · `docs/ROADMAP.md`.
+
+**✅ DoD (critérios de aceite):**
+- Zero modais sobrepostos (nenhum diálogo abre outro diálogo por cima).
+- Inclusão de novo ativo via Wizard de 4 passos com validação Zod e suporte multimoeda/Caixa.
+- Registro de ordens (compra/venda/provento/split) em 1 toque via `QuickTransactionSheet`.
+- Visão de detalhes do ativo com deep linking `?asset=<id>` e extrato de transações.
+- Typecheck (`tsc --noEmit`), lint (`npm run lint`) e suíte de testes 100% verdes.

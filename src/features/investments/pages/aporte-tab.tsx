@@ -49,7 +49,8 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? capsQuery.error;
   const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || capsQuery.isLoading;
 
-  const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
+  const nonCashRows = position.rows.filter((r) => !r.isCash);
+  const classes = [...new Set(nonCashRows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
 
   const targetByAsset = new Map((targetsQuery.data ?? []).map((t) => [t.asset_id, t.target_percentage]));
   const classTargets: ClassTargetInput[] = (classTargetsQuery.data ?? []).map((t) => ({
@@ -62,7 +63,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     capsQuery.data?.maxSectorFiis ?? null,
   );
 
-  const assets: AporteAssetInput[] = position.rows.map((row) => ({
+  const assets: AporteAssetInput[] = nonCashRows.map((row) => ({
     id: row.assetId,
     ticker: row.ticker,
     assetClass: row.assetClass,
@@ -108,20 +109,15 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         const currentQty = Number(currentAsset?.quantity ?? 0);
         const currentAvgPrice = Number(currentAsset?.average_price ?? 0);
 
-        // Preço unitário na moeda nativa
-        const unitPrice = r.priceBRL;
-        const weighted = calculateWeightedAveragePrice(
-          currentQty,
-          currentAvgPrice,
-          r.quantity,
-          unitPrice,
-        );
+        const newLotQty = r.quantity;
+        const newLotPrice = r.priceBRL;
+        const lotCalc = calculateWeightedAveragePrice(currentQty, currentAvgPrice, newLotQty, newLotPrice);
 
         await updateAsset.mutateAsync({
           id: r.assetId,
           patch: {
-            quantity: weighted.newQuantity,
-            average_price: weighted.newAveragePrice,
+            quantity: lotCalc.newQuantity,
+            average_price: lotCalc.newAveragePrice,
           },
         });
 
@@ -189,6 +185,18 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
                   aria-label="Valor do aporte"
                   placeholder="R$ 0,00"
                 />
+                {position.cashBRL > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAporteCents(Math.round(position.cashBRL * 100));
+                      triggerSensory("selection");
+                    }}
+                    className="self-start text-[11px] text-portfolio hover:underline font-medium cursor-pointer pt-0.5"
+                  >
+                    Usar saldo em caixa (R$ {position.cashBRL.toFixed(2)})
+                  </button>
+                ) : null}
               </label>
               <fieldset className="flex flex-col gap-1 text-xs font-medium text-muted-foreground min-w-0">
                 <legend className="text-xs font-medium text-muted-foreground mb-1">Modo de simulação</legend>

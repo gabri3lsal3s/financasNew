@@ -58,6 +58,8 @@ vi.mock("@/state", () => ({
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeletePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioTransactionsBatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -88,6 +90,7 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Metas" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aporte" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Relatórios & IR" })).toBeInTheDocument();
   });
 
   it("estado vazio quando não há ativos", () => {
@@ -103,10 +106,9 @@ describe("InvestmentsPage — F17 unificada", () => {
     };
     render(<InvestmentsPage />);
 
+    expect(screen.getByText("Saldo em caixa")).toBeInTheDocument();
     expect(screen.getByText("Patrimônio total")).toBeInTheDocument();
     expect(screen.getAllByText("R$ 8.000,00").length).toBeGreaterThan(0);
-    expect(screen.getByText("Rentabilidade")).toBeInTheDocument();
     expect(screen.getByText("Proventos no mês")).toBeInTheDocument();
-    expect(screen.getByText("Ativos em carteira")).toBeInTheDocument();
   });
 });

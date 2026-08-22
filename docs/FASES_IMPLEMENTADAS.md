@@ -378,6 +378,33 @@
      - Feedback com sensory haptics (`warning`), toast orientativo e bloqueio nos checkboxes.
   4. **Qualidade & Testes:** Testes unitários de módulo (`pace-alert-banner.test.tsx`), página (`overview-page.test.tsx`), hook de personalização (`use-visual-customization.test.ts`) e configurações (`settings-page.test.tsx`).
 
+## F39 — Inteligência de Proventos, Bola de Neve & Margem de Segurança (2026-08-22)
+
+- **Problema:** O investidor focado em proventos perpétuos precisava calcular manualmente o reinvestimento de proventos, o Yield on Cost e o Preço Teto, além de ter risco de desbalanceamento por sobreconcentração de ativos.
+- **Solução:**
+  1. **Domínio Puro (`src/domain/portfolio/snowball.ts`):** `calculateSnowballProgress` (fórmula de autosustentação da cota), `calculateYieldOnCost`, `calculateBazinTargetPrice` (Preço Teto 6% a.a. Bazin) e `normalizeAllocationTargets`.
+  2. **Calculadora por Cota:** Alternador dinâmico em `DividendFormDialog` para lançamento por valor total ou valor por cota.
+  3. **Visualização do Efeito Bola de Neve:** Seção com barras de progresso e badge "Bola de Neve Ativa" em `ProventosTab`.
+  4. **Termômetro de Concentração e Normalização:** Diagnóstico automático para ativos com peso > 25% em `ResumoTab` e botão de normalização em 1-clique em `TargetsTab`.
+
+## F40 — Central de Relatórios de Investimentos & Facilitador de IR/IRPF (2026-08-22)
+
+- **Problema:** Acompanhamento fiscal e prestação de contas de investimentos dispersos e burocráticos, sem facilidade para a declaração anual de ajuste de IRPF e apuração mensal de DARF de bolsa.
+- **Solução:**
+  1. **Motor Fiscal Puro (`src/domain/portfolio/tax.ts`):** Enquadramento de Bens e Direitos por Grupo/Código da Receita, segregação de Rendimentos Isentos (Ficha 09) e Tributação Exclusiva (Ficha 10 - JCP), e apuração mensal de DARF com isenção de R$ 20.000 em ações e 20% em FIIs.
+  2. **Relatório Executivo A4/PDF (`PortfolioExecutiveReport`):** Visão consolidada pronta para impressão limpa ou exportação PDF via `PrintSheet`.
+  3. **Facilitador Anual de IRPF (`PortfolioTaxReport`):** Modal com textos pré-formatados das fichas da Receita Federal e botão de 1-clique para cópia rápida.
+  4. **Monitor Mensal de DARF (`PortfolioDarfMonitor`):** Painel interativo com seletor de mês, compensação de prejuízos e alerta de recolhimento via DARF (Código 6015).
+  5. **Aba "Relatórios & IR":** Nova aba no hub de investimentos (`InvestmentsPage`) com acesso ágil aos relatórios.
+
+## Evolução — Card Dedicado de Saldo em Caixa com Gestão Integrada (2026-08-22)
+
+- **Problema:** O saldo em Caixa não possuía fluxo ágil de edição quando zerado, e o card de "Ativos em carteira" ocupava espaço desnecessário no dashboard.
+- **Solução:**
+  1. **Componente `CashKpiCard` (`src/components/modules/cash-kpi-card.tsx`):** Card dedicado com `col-span-2` ocupando o primeiro espaço da grade de KPIs, com botões de "Editar saldo" e "Excluir" embutidos (quando cadastrado) ou botão rápido "Adicionar caixa" (quando zerado/não cadastrado).
+  2. **Remoção do Card Redundante:** O card KPI "Ativos em carteira" foi removido da `ResumoTab`, harmonizando a grade com 4 colunas no desktop (Caixa [2 cols] + Patrimônio [1 col] + Proventos [1 col]).
+  3. **Fluxo Rápido de Abertura:** `AssetFormDialog` adaptado com prop `initialAssetClass="Caixa"` para abertura imediata no modo de Saldo Direto 1:1.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

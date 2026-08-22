@@ -18,6 +18,8 @@ export interface TargetEditorProps {
   onSave: () => void;
   saving?: boolean;
   saveLabel?: string;
+  /** Callback para normalizar todas as metas para 100% em 1 clique (§F39). */
+  onNormalize?: () => void;
   /** Soma atual dos percentuais (0–100+). */
   sumPercent: number;
   /** Mensagem de erro quando a soma excede 100% (bloqueia o save). */
@@ -38,6 +40,7 @@ export function TargetEditor({
   onSave,
   saving = false,
   saveLabel = "Salvar metas",
+  onNormalize,
   sumPercent,
   sumError,
   heading,
@@ -101,7 +104,17 @@ export function TargetEditor({
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {onNormalize && rows.length > 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onNormalize}
+            disabled={saving}
+          >
+            Normalizar para 100%
+          </Button>
+        ) : null}
         <Button type="button" onClick={onSave} disabled={saving || sumError !== null || rows.length === 0}>
           {saving ? "Salvando…" : saveLabel}
         </Button>

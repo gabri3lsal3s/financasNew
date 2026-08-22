@@ -29,6 +29,15 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  usePortfolioPosition: () => ({
+    rows: [
+      { assetId: "a1", ticker: "PETR4", priceBRL: 30, valueBRL: 3000, isCash: false },
+      { assetId: "a2", ticker: "MXRF11", priceBRL: 10, valueBRL: 500, isCash: false },
+    ],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 const assets = [
@@ -55,8 +64,8 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
 
     // 100 + 50,25 = 150,25 (07/05 é outro mês).
     expect(screen.getAllByText("R$ 150,25").length).toBeGreaterThan(0);
-    expect(screen.getByText("PETR4")).toBeInTheDocument();
-    expect(screen.getByText("MXRF11")).toBeInTheDocument();
+    expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("MXRF11").length).toBeGreaterThanOrEqual(1);
     // Calendário anual presente (12 meses).
     expect(screen.getByText("Calendário de 2026")).toBeInTheDocument();
   });
@@ -87,5 +96,13 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     await user.click(julyButton);
     expect(screen.getAllByText("R$ 40,00").length).toBeGreaterThan(0);
     expect(julyButton).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("exibe o indicador do Efeito Bola de Neve para ativos com proventos", () => {
+    dividendsMock.mockReturnValue(dividends);
+    render(<ProventosTab />);
+
+    expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
+    expect(screen.getByText(/Progresso para que os proventos mensais comprem 1 nova cota inteira sozinhos/i)).toBeInTheDocument();
   });
 });

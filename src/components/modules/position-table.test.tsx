@@ -154,4 +154,39 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
 
     expect(onSetManualPrice).toHaveBeenCalledWith("a1", "PETR4", "BRL", 42.5, "manual");
   });
+
+  it("renderiza badge Zerada para ativos com quantidade igual a 0", () => {
+    const zeroedRows: PositionRow[] = [
+      {
+        ...rows[0]!,
+        assetId: "zero1",
+        ticker: "VALE3",
+        quantity: 0,
+        valueBRL: 0,
+        unrealizedPnl: 0,
+      },
+    ];
+
+    render(<PositionTable rows={zeroedRows} />);
+    expect(screen.getAllByText("Zerada").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("aciona onSplitAsset pelo menu contextual de ações", async () => {
+    const onSplitAsset = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <PositionTable
+        rows={rows}
+        onSplitAsset={onSplitAsset}
+      />,
+    );
+
+    const actionsButtons = screen.getAllByRole("button", { name: /Ações de PETR4/ });
+    await user.click(actionsButtons[0]!);
+
+    const splitOption = screen.getByRole("button", { name: /Desdobramento \/ Split/i });
+    await user.click(splitOption);
+
+    expect(onSplitAsset).toHaveBeenCalledWith("a1", "PETR4");
+  });
 });

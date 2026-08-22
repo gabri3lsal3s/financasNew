@@ -353,7 +353,8 @@ export type PortfolioContribution = {
 export type PortfolioDividend = {
   id: string;
   user_id: string;
-  asset_id: string;
+  asset_id: string | null;
+  ticker?: string | null;
   date: string;
   amount: number;
   notes?: string | null;

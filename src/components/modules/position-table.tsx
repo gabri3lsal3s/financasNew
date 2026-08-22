@@ -6,6 +6,7 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  Divide,
   List,
   MoreHorizontal,
   Pencil,
@@ -20,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyText } from "@/components/ui/money-text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { numberToCents } from "@/domain/money";
+import { calculateYieldOnCost } from "@/domain/portfolio";
 import type { PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
@@ -56,6 +58,8 @@ export interface PositionTableProps {
   onListTransactions?: (assetId: string, ticker: string) => void;
   /** Abre o formulário de edição do ativo (ticker/classe/moeda). */
   onEditAsset?: (assetId: string, ticker: string) => void;
+  /** Abre o diálogo de desdobramento/grupamento de cotas (splits). */
+  onSplitAsset?: (assetId: string, ticker: string) => void;
   /** Abre o diálogo de preço manual/cotação do ativo. */
   onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
   /** Confirma a exclusão do ativo (transações e metas em cascata). */
@@ -133,6 +137,7 @@ export function PositionTable({
   onRegisterTransaction,
   onListTransactions,
   onEditAsset,
+  onSplitAsset,
   onSetManualPrice,
   onDeleteAsset,
   emptyMessage,
@@ -260,7 +265,15 @@ export function PositionTable({
       align: "right",
       cell: (row) => (
         <span className="num text-sm text-muted-foreground">
-          {row.isCash ? "—" : formatQuantity(row.quantity)}
+          {row.isCash ? (
+            "—"
+          ) : row.quantity === 0 ? (
+            <span className="inline-flex items-center rounded-md bg-surface-hover/70 border border-border/60 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              Zerada
+            </span>
+          ) : (
+            formatQuantity(row.quantity)
+          )}
         </span>
       ),
     },
@@ -370,15 +383,26 @@ export function PositionTable({
           return <span className="num text-sm text-muted-foreground">—</span>;
         }
         const tone = row.unrealizedPct >= 0 ? "positive" : "negative";
+        const yoc = (row.dividends && row.dividends > 0)
+          ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
+          : 0;
+
         return (
-          <span
-            className={cn(
-              "num text-sm font-semibold",
-              tone === "positive" ? "text-positive-strong" : "text-negative-strong",
-            )}
-          >
-            {formatSignedPct(row.unrealizedPct)}
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span
+              className={cn(
+                "num text-sm font-semibold",
+                tone === "positive" ? "text-positive-strong" : "text-negative-strong",
+              )}
+            >
+              {formatSignedPct(row.unrealizedPct)}
+            </span>
+            {yoc > 0 ? (
+              <span className="text-[10px] text-portfolio font-medium" title="Yield on Cost acumulado">
+                YoC {yoc.toFixed(1)}%
+              </span>
+            ) : null}
+          </div>
         );
       },
     },
@@ -390,7 +414,7 @@ export function PositionTable({
     },
   ];
 
-  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onEditAsset || onSetManualPrice || onDeleteAsset);
+  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onEditAsset || onSplitAsset || onSetManualPrice || onDeleteAsset);
 
   if (hasRowActions) {
     columns.push({
@@ -403,6 +427,7 @@ export function PositionTable({
           onRegisterTransaction={onRegisterTransaction}
           onListTransactions={onListTransactions}
           onEditAsset={onEditAsset}
+          onSplitAsset={onSplitAsset}
           onSetManualPrice={onSetManualPrice}
           onDeleteAsset={onDeleteAsset}
         />
@@ -495,6 +520,9 @@ export function PositionTable({
                 : row.unrealizedPct >= 0
                   ? "text-positive-strong"
                   : "text-negative-strong";
+            const yoc = (row.dividends && row.dividends > 0)
+              ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
+              : 0;
             const isClickable = Boolean(onEditAsset);
             return (
               <li
@@ -518,7 +546,7 @@ export function PositionTable({
                   isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 )}
               >
-                {/* Linha 1: Ticker + Classe | Valor Total, Rentabilidade e Menu de Ações */}
+                {/* Linha 1: Ticker + Classe | Valor Total, Rentabilidade, YoC e Menu de Ações */}
                 <div className="flex items-center justify-between gap-2 min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
@@ -529,11 +557,18 @@ export function PositionTable({
                     ) : null}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
-                      <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, row.unrealizedPct !== null && row.unrealizedPct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
-                        {pctLabel}
-                      </span>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
+                        <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, row.unrealizedPct !== null && row.unrealizedPct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
+                          {pctLabel}
+                        </span>
+                      </div>
+                      {yoc > 0 ? (
+                        <span className="text-[10px] text-portfolio font-medium" title="Yield on Cost acumulado">
+                          YoC {yoc.toFixed(1)}%
+                        </span>
+                      ) : null}
                     </div>
                     {hasRowActions ? (
                       <div className="shrink-0 -mr-1" onClick={(e) => e.stopPropagation()}>
@@ -542,6 +577,7 @@ export function PositionTable({
                           onRegisterTransaction={onRegisterTransaction}
                           onListTransactions={onListTransactions}
                           onEditAsset={onEditAsset}
+                          onSplitAsset={onSplitAsset}
                           onSetManualPrice={onSetManualPrice}
                           onDeleteAsset={onDeleteAsset}
                         />
@@ -708,12 +744,13 @@ interface PositionRowActionsProps {
   onRegisterTransaction?: (assetId: string, ticker: string) => void;
   onListTransactions?: (assetId: string, ticker: string) => void;
   onEditAsset?: (assetId: string, ticker: string) => void;
+  onSplitAsset?: (assetId: string, ticker: string) => void;
   onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
   onDeleteAsset?: (assetId: string, ticker: string) => void;
 }
 
 /** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28) com menu contextual Popover limpo. */
-function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onEditAsset, onSetManualPrice, onDeleteAsset }: PositionRowActionsProps) {
+function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onEditAsset, onSplitAsset, onSetManualPrice, onDeleteAsset }: PositionRowActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -748,7 +785,7 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
             <MoreHorizontal className="size-4" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-48 p-1.5 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+        <PopoverContent align="end" className="w-52 p-1.5 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
           {onEditAsset ? (
             <button
               type="button"
@@ -759,7 +796,21 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
               }}
             >
               <Pencil className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              Editar ativo
+              Editar / Compras / Vendas
+            </button>
+          ) : null}
+
+          {!row.isCash && onSplitAsset && row.quantity > 0 ? (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-hover transition-colors text-left cursor-pointer"
+              onClick={() => {
+                setMenuOpen(false);
+                onSplitAsset(row.assetId, row.ticker);
+              }}
+            >
+              <Divide className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              Desdobramento / Split
             </button>
           ) : null}
 
@@ -810,4 +861,3 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
     </div>
   );
 }
-

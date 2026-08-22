@@ -4,16 +4,15 @@ import { ResumoTab } from "./resumo-tab";
 import { ProventosTab } from "./proventos-tab";
 import { AporteTab } from "./aporte-tab";
 import { TargetsTab } from "./targets-tab";
+import { RelatoriosTab } from "./relatorios-tab";
 
-
-type InvestmentsTab = "resumo" | "metas" | "aporte" | "proventos";
+type InvestmentsTab = "resumo" | "metas" | "aporte" | "proventos" | "relatorios";
 
 /**
  * Investimentos — área única de consolidação da carteira (unificação /carteira
  * + dashboard): Resumo (posição executiva + operação), Proventos (extrato e
  * calendário de rendimentos — F18), Metas (limites por ativo/classe + travas
- * setoriais) e Aporte (rebalanceamento). A antiga rota `/carteira` redireciona
- * para cá. Simples e organizado: sem telas paralelas.
+ * setoriais), Aporte (rebalanceamento) e Relatórios & IR (F40).
  */
 export function InvestmentsPage() {
   const [tab, setTab] = useState<InvestmentsTab>("resumo");
@@ -25,7 +24,7 @@ export function InvestmentsPage() {
           Investimentos
         </h1>
         <p className="text-xs text-muted-foreground sm:text-sm">
-          Posição da carteira, rendimentos e rebalanceamento de aportes
+          Posição da carteira, rendimentos, rebalanceamento de aportes e inteligência fiscal
         </p>
       </header>
 
@@ -49,6 +48,11 @@ export function InvestmentsPage() {
             value: "aporte",
             label: "Aporte",
             content: <AporteTab onGoToPosition={() => setTab("resumo")} />,
+          },
+          {
+            value: "relatorios",
+            label: "Relatórios & IR",
+            content: <RelatoriosTab />,
           },
         ]}
       />

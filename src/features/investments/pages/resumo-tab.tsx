@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { LineChart, PieChart, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonChart, SkeletonKpi, SkeletonTable } from "@/components/ui";
-import { CategoryDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
+import { Coins, LineChart, PieChart, Plus, RefreshCw, Shield, Sparkles, TrendingUp } from "lucide-react";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonChart, SkeletonKpi } from "@/components/ui";
+import { CategoryDonut, CashKpiCard, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
-import { isCashAssetClass, portfolioReturnPct } from "@/domain/portfolio";
+import { calculatePortfolioConcentration, isCashAssetClass } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
-import { formatSignedPct } from "@/services/masks/percent";
 import {
   useDeletePortfolioAsset,
   usePortfolioAssets,
@@ -18,6 +17,8 @@ import {
 } from "@/state";
 import {
   AssetFormDialog,
+  AssetSplitDialog,
+  ContributionsListDialog,
   ManualPriceDialog,
   PortfolioImportDialog,
 } from "../components";
@@ -39,9 +40,12 @@ export function ResumoTab() {
   const autoSyncedRef = useRef(false);
 
   const [assetOpen, setAssetOpen] = useState(false);
+  const [cashCreateOpen, setCashCreateOpen] = useState(false);
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
+  const [assetToSplit, setAssetToSplit] = useState<PortfolioAsset | null>(null);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [contributionsOpen, setContributionsOpen] = useState(false);
   const [allocationMode, setAllocationMode] = useState<"asset" | "class">("class");
   const [priceFor, setPriceFor] = useState<{
     id: string;
@@ -52,6 +56,10 @@ export function ResumoTab() {
   } | null>(null);
 
   const rows = position.rows;
+  const investmentRows = rows.filter((r) => !r.isCash);
+  const cashAsset = (assetsQuery.data ?? []).find(
+    (a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA",
+  );
   const hasInvestments = rows.length > 0;
 
   // Auto-sincronização inicial para ativos que ainda não possuem cotação em cache
@@ -81,7 +89,6 @@ export function ResumoTab() {
     if (asset) setAssetToDelete(asset);
   };
 
-  const returnPct = portfolioReturnPct(rows);
   const month = currentMonth();
 
   // Proventos do mês a partir de portfolio_dividends
@@ -125,44 +132,38 @@ export function ResumoTab() {
   const previousPoint = series.length > 1 ? series[series.length - 2] : undefined;
   const previousCents = previousPoint ? numberToCents(previousPoint.valueBRL) : 0;
 
+  const cashPct = position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0;
+  const concentration = calculatePortfolioConcentration(rows, 25);
+
   return (
-    <div className="flex flex-col gap-6">
-      {position.error ? (
-        <Alert variant="error">
-          <div className="flex w-full items-center justify-between gap-3">
-            <span>{getErrorMessage(position.error)}</span>
-            <Button type="button" size="sm" variant="outline" onClick={() => position.refetch()}>
-              Tentar novamente
-            </Button>
-          </div>
-        </Alert>
-      ) : null}
+    <div className="flex flex-col gap-6 min-w-0">
+      {position.error ? <Alert variant="error">{getErrorMessage(position.error)}</Alert> : null}
 
       {position.isLoading ? (
-        <div className="flex flex-col gap-3" aria-hidden="true">
+        <div className="flex flex-col gap-4" aria-hidden="true">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <SkeletonKpi />
-            <SkeletonKpi />
+            <div className="col-span-2">
+              <SkeletonKpi />
+            </div>
             <SkeletonKpi />
             <SkeletonKpi />
           </div>
           <SkeletonChart />
-          <SkeletonTable rows={4} />
         </div>
       ) : !hasInvestments ? (
         <EmptyState
           icon={<TrendingUp className="size-6" aria-hidden="true" />}
           title="Sem investimentos cadastrados"
-          description="Adicione seus ativos com quantidade e preço médio, ou importe sua custódia diretamente por texto ou planilha da B3/corretora."
+          description="Cadastre seus ativos com quantidade e preço médio para acompanhar seu patrimônio consolidado e projeção de independência financeira."
           tone="portfolio"
           headingLevel="h2"
           action={
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
-              <Button type="button" size="sm" onClick={() => setAssetOpen(true)} className="gap-1.5">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button type="button" onClick={() => setAssetOpen(true)}>
                 <Plus aria-hidden="true" className="size-4" />
-                Adicionar ativo
+                Adicionar primeiro ativo
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1.5">
+              <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
                 <Sparkles aria-hidden="true" className="size-4 text-portfolio" />
                 Importar custódia / texto
               </Button>
@@ -171,22 +172,33 @@ export function ResumoTab() {
         />
       ) : (
         <>
-          {/* KPIs 2×2 no mobile, 4 colunas no desktop */}
+          {/* KPIs: Caixa ocupa 2 colunas em primeiro lugar, seguido de Patrimônio e Proventos */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <CashKpiCard
+              className="col-span-2"
+              cashBRL={position.cashBRL}
+              cashPct={cashPct > 0 ? cashPct : undefined}
+              hasCashAsset={Boolean(cashAsset)}
+              onEdit={() => {
+                if (cashAsset) {
+                  openEdit(cashAsset.id);
+                } else {
+                  setCashCreateOpen(true);
+                }
+              }}
+              onDelete={() => {
+                if (cashAsset) {
+                  openDelete(cashAsset.id);
+                }
+              }}
+            />
             <KpiCard
               label="Patrimônio total"
               cents={numberToCents(position.totalBRL)}
               tone="portfolio"
               hint={<DeltaHint currentCents={numberToCents(position.totalBRL)} previousCents={previousCents} />}
             />
-            <KpiCard
-              label="Rentabilidade"
-              value={formatSignedPct(returnPct)}
-              tone={returnPct !== null && returnPct >= 0 ? "positive" : returnPct !== null ? "negative" : "default"}
-              hint="Não realizada, ponderada pelo valor"
-            />
             <KpiCard label="Proventos no mês" cents={dividendsCents} tone="positive" hint={`Recebidos em ${month}`} />
-            <KpiCard label="Ativos em carteira" value={String(rows.length)} hint="Custódia consolidada" />
           </div>
 
           {/* Gráfico Unificado de Distribuição da Carteira em Largura Total */}
@@ -239,6 +251,20 @@ export function ResumoTab() {
             />
           </section>
 
+          {/* Termômetro de Concentração & Risco (§F39) */}
+          {concentration.isConcentrated && (
+            <div className="flex flex-col gap-2 rounded-2xl border border-warning-border/80 bg-warning-surface/30 p-4 text-xs text-foreground">
+              <div className="flex items-center gap-2 font-semibold text-warning-strong">
+                <Shield className="size-4 shrink-0" aria-hidden="true" />
+                <span>Termômetro de Concentração de Carteira</span>
+              </div>
+              <p className="text-muted-foreground">
+                {concentration.concentratedAssets.map((a) => `${a.ticker} (${a.pct}%)`).join(", ")}{" "}
+                {concentration.concentratedAssets.length === 1 ? "ultrapassa" : "ultrapassam"} 25% do patrimônio em custódia de mercado. Considere direcionar novos aportes para equilibrar os demais ativos da carteira.
+              </p>
+            </div>
+          )}
+
           {/* Seção principal: Posições da Carteira */}
           <section aria-label="Posições" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-3 flex items-center justify-between gap-2 min-w-0">
@@ -247,7 +273,7 @@ export function ResumoTab() {
                   Posições<span className="hidden min-[380px]:inline"> em Carteira</span>
                 </h2>
                 <Badge variant="muted" className="hidden sm:inline-flex text-[11px] shrink-0">
-                  {rows.length} {rows.length === 1 ? "ativo" : "ativos"}
+                  {investmentRows.length} {investmentRows.length === 1 ? "ativo" : "ativos"}
                 </Badge>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
@@ -281,6 +307,18 @@ export function ResumoTab() {
                 </Button>
                 <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setContributionsOpen(true)}
+                  className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1.5 shrink-0"
+                  title="Gerenciar lançamentos de aportes financeiros do mês"
+                  aria-label="Gerenciar aportes do mês"
+                >
+                  <Coins aria-hidden="true" className="size-3.5 text-portfolio" />
+                  <span className="hidden md:inline">Aportes</span>
+                </Button>
+                <Button
+                  type="button"
                   size="sm"
                   className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1 shrink-0"
                   onClick={() => setAssetOpen(true)}
@@ -293,9 +331,13 @@ export function ResumoTab() {
               </div>
             </div>
             <PositionTable
-              rows={rows}
+              rows={investmentRows}
               sortable
               onEditAsset={openEdit}
+              onSplitAsset={(assetId) => {
+                const asset = assetById(assetId);
+                if (asset) setAssetToSplit(asset);
+              }}
               onSetManualPrice={(assetId, ticker, currency, priceBRL, source) => {
                 setPriceFor({ id: assetId, ticker, currency, priceBRL, source });
               }}
@@ -353,12 +395,25 @@ export function ResumoTab() {
       )}
 
       <AssetFormDialog open={assetOpen} onOpenChange={setAssetOpen} />
+      <AssetFormDialog
+        open={cashCreateOpen}
+        onOpenChange={setCashCreateOpen}
+        initialAssetClass="Caixa"
+      />
       {assetEditing ? (
         <AssetFormDialog
           key={assetEditing.id}
           open={assetEditing !== null}
           onOpenChange={(next) => !next && setAssetEditing(null)}
           asset={assetEditing}
+        />
+      ) : null}
+      {assetToSplit ? (
+        <AssetSplitDialog
+          key={assetToSplit.id}
+          open={assetToSplit !== null}
+          onOpenChange={(next) => !next && setAssetToSplit(null)}
+          asset={assetToSplit}
         />
       ) : null}
       {priceFor ? (
@@ -372,6 +427,10 @@ export function ResumoTab() {
       <PortfolioImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
+      />
+      <ContributionsListDialog
+        open={contributionsOpen}
+        onOpenChange={setContributionsOpen}
       />
       <ConfirmDialog
         open={assetToDelete !== null}

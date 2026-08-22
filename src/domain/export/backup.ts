@@ -37,6 +37,9 @@ export const BACKUP_TABLE_KEYS = [
   "reminder_states",
   "portfolio_assets",
   "portfolio_transactions",
+  "portfolio_snapshots",
+  "portfolio_contributions",
+  "portfolio_dividends",
   "allocation_targets",
   "class_targets",
   "sector_targets",
@@ -60,6 +63,9 @@ export interface BackupData {
   reminder_states: BackupRow[];
   portfolio_assets: BackupRow[];
   portfolio_transactions: BackupRow[];
+  portfolio_snapshots: BackupRow[];
+  portfolio_contributions: BackupRow[];
+  portfolio_dividends: BackupRow[];
   allocation_targets: BackupRow[];
   class_targets: BackupRow[];
   sector_targets: BackupRow[];
@@ -156,7 +162,8 @@ export function validateIntegrity(data: BackupData): string[] {
   const cardIds = idsOf(data.credit_cards);
   const assetIds = idsOf(data.portfolio_assets);
 
-  const checkRef = (rows: readonly BackupRow[], fkKey: string, allowed: Set<string>, label: string): void => {
+  const checkRef = (rows: readonly BackupRow[] | undefined, fkKey: string, allowed: Set<string>, label: string): void => {
+    if (!rows) return;
     for (const row of rows) {
       const ref = asString(row, fkKey);
       if (ref !== null && !allowed.has(ref)) {
@@ -174,6 +181,8 @@ export function validateIntegrity(data: BackupData): string[] {
   checkRef(data.card_payments, "card_id", cardIds, "de pagamento");
   checkRef(data.card_competence_overrides, "card_id", cardIds, "de override de competência");
   checkRef(data.portfolio_transactions, "asset_id", assetIds, "de transação de ativo");
+  checkRef(data.portfolio_contributions, "asset_id", assetIds, "de contribuição de ativo");
+  checkRef(data.portfolio_dividends, "asset_id", assetIds, "de provento de ativo");
   checkRef(data.allocation_targets, "asset_id", assetIds, "de meta de alocação");
 
   return errors;

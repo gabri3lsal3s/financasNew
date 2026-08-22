@@ -1,16 +1,26 @@
 export { AssetFormDialog } from "./asset-form-dialog";
+export { AssetSplitDialog } from "./asset-split-dialog";
+export { ContributionsListDialog } from "./contributions-list-dialog";
 export { DividendFormDialog } from "./dividend-form-dialog";
 export { ManualPriceDialog } from "./manual-price-dialog";
+export { PortfolioDarfMonitor } from "./portfolio-darf-monitor";
+export { PortfolioExecutiveReport } from "./portfolio-executive-report";
 export { PortfolioImportDialog } from "./portfolio-import-dialog";
 export { PortfolioMappingStep } from "./portfolio-mapping-step";
 export { PortfolioStatementDialog } from "./portfolio-statement-dialog";
+export { PortfolioTaxReport } from "./portfolio-tax-report";
 export { TransactionFormDialog } from "./transaction-form-dialog";
 export { TransactionListDialog } from "./transaction-list-dialog";
 export type { AssetFormDialogProps } from "./asset-form-dialog";
+export type { AssetSplitDialogProps } from "./asset-split-dialog";
+export type { ContributionsListDialogProps } from "./contributions-list-dialog";
 export type { DividendFormDialogProps } from "./dividend-form-dialog";
 export type { ManualPriceDialogProps } from "./manual-price-dialog";
+export type { PortfolioDarfMonitorProps } from "./portfolio-darf-monitor";
+export type { PortfolioExecutiveReportProps } from "./portfolio-executive-report";
 export type { PortfolioImportDialogProps } from "./portfolio-import-dialog";
 export type { PortfolioStatementDialogProps } from "./portfolio-statement-dialog";
+export type { PortfolioTaxReportProps } from "./portfolio-tax-report";
 export type { TransactionFormDialogProps } from "./transaction-form-dialog";
 export type { TransactionListDialogProps } from "./transaction-list-dialog";
 

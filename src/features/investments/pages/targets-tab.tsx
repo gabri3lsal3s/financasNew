@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Save, Shield, Trash2 } from "lucide-react";
 import { Alert, Button, EmptyState, NumberStepperInput, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
-import { parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
+import { normalizeAllocationTargets, parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
@@ -19,9 +19,9 @@ import {
 } from "@/state";
 
 /**
- * Metas de alocação (§3.11.1) — edição em lote por ativo com barra de soma
- * (≤ 100%, validada na UI e no banco via RPC), metas por classe e travas
- * setoriais (max_sector_acoes / max_sector_fiis).
+ * Metas de alocação (§3.11.1 e §F39) — edição em lote por ativo com barra de soma
+ * (≤ 100%, validada na UI e no banco via RPC), normalização em 1-clique,
+ * metas por classe e travas setoriais (max_sector_acoes / max_sector_fiis).
  */
 export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
@@ -79,6 +79,20 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         .filter((r) => r.assetClass === assetClassFilter)
         .reduce((acc, r) => acc + r.target, 0)
     : null;
+
+  const handleNormalize = () => {
+    const items = position.rows.map((row) => ({
+      id: row.assetId,
+      targetPercentage: assetTargetOf(row.assetId),
+    }));
+    const normalized = normalizeAllocationTargets(items);
+    const nextDraft: Record<string, number> = {};
+    normalized.forEach((item) => {
+      nextDraft[item.id] = item.targetPercentage;
+    });
+    setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
+  };
 
   const saveAssets = async () => {
     setError(null);
@@ -239,6 +253,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                     onTargetChange={(key, value) =>
                       setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }))
                     }
+                    onNormalize={handleNormalize}
                     onSave={() => void saveAssets()}
                     saving={saveTargets.isPending}
                     saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}

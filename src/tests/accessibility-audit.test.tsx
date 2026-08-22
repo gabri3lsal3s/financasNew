@@ -189,6 +189,15 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  usePortfolioContributions: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeletePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAllPortfolioTransactions: () => ({
     data: portfolioTransactionsMock(),
     isLoading: false,
@@ -235,7 +244,6 @@ vi.mock("@/state", () => ({
   usePredictionHistory: () => ({ entries: [], isLoading: false, error: null, refetch: vi.fn() }),
   usePortfolioAssets: () => ({ data: portfolioAssetsMock(), isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   usePortfolioDividends: () => ({ data: portfolioDividendsMock(), isLoading: false, isError: false, error: null, refetch: vi.fn() }),
-  usePortfolioContributions: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   usePortfolioSnapshots: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useDeletePortfolioDividend: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioDividend: () => ({ mutateAsync: vi.fn(), isPending: false }),

@@ -97,7 +97,8 @@
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
     │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section (F24),
-    │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes)…
+    │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
+    │   │   │                      #   cash-kpi-card (card do saldo em Caixa com ações de Editar/Excluir embutidas)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10), logo-profile-button,

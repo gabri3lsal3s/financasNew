@@ -14,6 +14,8 @@ vi.mock("@/state", () => ({
   useCreatePortfolioAsset: () => ({ mutateAsync: createAssetMock, isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: updateAssetMock, isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: deleteAssetMock, isPending: false }),
+  useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false, isError: false, error: null }),
 }));
 
 const existingAsset = {
@@ -91,5 +93,60 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
     expect(deleteAssetMock).toHaveBeenCalledTimes(1);
     expect(deleteAssetMock).toHaveBeenCalledWith("a1");
     expect(triggerSensory).toHaveBeenCalledWith("destructive");
+  });
+
+  it("permite alternar para a aba de venda e registrar desinvestimento com PM inalterado", async () => {
+    updateAssetMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<AssetFormDialog open={true} onOpenChange={vi.fn()} asset={existingAsset} />);
+
+    // Clica na aba Venda / Desinvestimento
+    const sellTab = screen.getByRole("button", { name: /Venda \/ Desinvestimento/i });
+    await user.click(sellTab);
+
+    expect(screen.getByText(/Custódia Disponível para Venda/i)).toBeInTheDocument();
+    expect(screen.getByText(/100 cotas @ BRL 30.00/i)).toBeInTheDocument();
+
+    // Clica no atalho rápido "50%"
+    await user.click(screen.getByRole("button", { name: "50%" }));
+    expect(screen.getByLabelText("Quantidade a vender")).toHaveValue("50");
+
+    // Confirma a venda
+    await user.click(screen.getByRole("button", { name: /Confirmar Venda \/ Resgate/i }));
+
+    expect(updateAssetMock).toHaveBeenCalledWith({
+      id: "a1",
+      patch: {
+        quantity: 50,
+        average_price: 30, // PM mantido inalterado
+      },
+    });
+    expect(triggerSensory).toHaveBeenCalledWith("destructive");
+  });
+
+  it("permite cadastrar saldo de Caixa sem nome e salva com ticker 'CAIXA' por padrão", async () => {
+    createAssetMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
+
+    // Clica no preset "Caixa"
+    await user.click(screen.getByRole("button", { name: "Caixa" }));
+
+    // Preenche apenas o valor do saldo em quantidade
+    await user.type(screen.getByLabelText("Quantidade ou saldo"), "5000");
+
+    // O botão deve estar habilitado mesmo com o campo de nome vazio
+    const submitBtn = screen.getByRole("button", { name: "Adicionar à carteira" });
+    expect(submitBtn).toBeEnabled();
+    await user.click(submitBtn);
+
+    expect(createAssetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticker: "CAIXA",
+        asset_class: "Caixa",
+        quantity: 5000,
+        average_price: 1,
+      }),
+    );
   });
 });

@@ -15,7 +15,7 @@ import {
   usdRateFromPrices,
   type PriceSource,
 } from "@/domain/portfolio";
-import { currentMonth, shiftMonth } from "@/lib/date";
+import { currentMonth } from "@/lib/date";
 import type { AssetCurrency } from "@/types";
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
@@ -87,7 +87,9 @@ export function usePortfolioPosition(): PortfolioPosition {
   // Agrupa proventos por ativo
   const dividendsByAsset = new Map<string, number>();
   for (const d of dividendsQuery.data ?? []) {
-    dividendsByAsset.set(d.asset_id, (dividendsByAsset.get(d.asset_id) ?? 0) + d.amount);
+    if (d.asset_id) {
+      dividendsByAsset.set(d.asset_id, (dividendsByAsset.get(d.asset_id) ?? 0) + d.amount);
+    }
   }
 
   let totalBRL = 0;
@@ -174,21 +176,31 @@ export function usePortfolioPosition(): PortfolioPosition {
     }
   }
 
-  // Snapshots mensais (últimos 6 meses)
-  const months = Array.from({ length: 6 }, (_, index) => shiftMonth(thisMonth, index - 5));
-  const snapshotByMonth = new Map((snapshotsQuery.data ?? []).map((s) => [s.month, s]));
+  // Snapshots mensais reais (F37): apenas meses com dados verídicos gravados + mês corrente
+  const rawSnapshots = (snapshotsQuery.data ?? [])
+    .filter((s) => s.month < thisMonth)
+    .sort((a, b) => a.month.localeCompare(b.month));
 
-  const monthlySeries = months.map((month) => {
-    if (month === thisMonth) {
-      return { month, valueBRL: totalBRL, costBRL: totalCostBRL };
-    }
-    const snap = snapshotByMonth.get(month);
-    return {
-      month,
-      valueBRL: snap ? snap.total_value : totalBRL,
-      costBRL: snap ? snap.total_cost : totalCostBRL,
-    };
-  });
+  const seriesPoints: { month: string; valueBRL: number; costBRL: number }[] = [];
+  for (const snap of rawSnapshots) {
+    seriesPoints.push({
+      month: snap.month,
+      valueBRL: Number(snap.total_value),
+      costBRL: Number(snap.total_cost),
+    });
+  }
+
+  // Adiciona o mês corrente quando houver ativos ou patrimônio
+  if (totalBRL > 0 || (assetsQuery.data && assetsQuery.data.length > 0)) {
+    seriesPoints.push({
+      month: thisMonth,
+      valueBRL: totalBRL,
+      costBRL: totalCostBRL,
+    });
+  }
+
+  // Retém os últimos 6 meses da série real (sem preenchimento artificial de meses passados)
+  const monthlySeries = seriesPoints.slice(-6);
 
   // Atualiza snapshot do mês corrente em background quando há dados carregados
   const lastUpdatedMonth = useRef<string | null>(null);

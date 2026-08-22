@@ -334,6 +334,48 @@ export type {
   PortfolioSpreadsheetMode,
   RawPortfolioRow,
 } from "./import-parser";
+export {
+  MONTHLY_STOCK_TAX_EXEMPTION_LIMIT_BRL,
+  FII_CAPITAL_GAIN_TAX_RATE,
+  sellAssetPosition,
+  splitAssetPosition,
+} from "./operations";
+export type {
+  SellAssetInput,
+  SellAssetResult,
+  SplitAssetInput,
+  SplitAssetResult,
+} from "./operations";
+export {
+  calculateBazinTargetPrice,
+  calculatePortfolioConcentration,
+  calculateSnowballProgress,
+  calculateYieldOnCost,
+  normalizeAllocationTargets,
+} from "./snowball";
+export type {
+  BazinTargetPriceInput,
+  BazinTargetPriceResult,
+  ConcentrationItem,
+  PortfolioConcentrationResult,
+  SnowballProgressInput,
+  SnowballProgressResult,
+  TargetPercentageItem,
+} from "./snowball";
+export {
+  calculateMonthlyDarf,
+  classifyAnnualDividendsReport,
+  generateAnnualBensDireitosReport,
+  getBensDireitosClassification,
+} from "./tax";
+export type {
+  AnnualBensDireitosReport,
+  AnnualDividendsTaxReport,
+  DividendTaxItem,
+  MonthlyDarfInput,
+  MonthlyDarfResult,
+  TaxAssetItem,
+} from "./tax";
 
 
 
