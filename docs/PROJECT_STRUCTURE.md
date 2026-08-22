@@ -117,12 +117,13 @@
     │   ├── insights/              #   Insights, projeção e corte
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)
-    │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35):
-    │   │                          #     hub de 4 abas (Resumo / Proventos / Metas / Aporte)
-    │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, investments-page
-    │   │                          #     components: asset-form-dialog, manual-price-dialog, transaction-form-dialog,
+    │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40):
+    │   │                          #     hub de 5 abas (Resumo / Proventos / Metas / Aporte / Relatórios & IR)
+    │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, relatorios-tab, investments-page
+    │   │                          #     components: asset-form-dialog, cash-form-dialog, manual-price-dialog, transaction-form-dialog,
     │   │                          #       transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
-    │   │                          #       portfolio-mapping-step, portfolio-statement-dialog com barrels components/index.ts e index.ts
+    │   │                          #       portfolio-mapping-step, portfolio-statement-dialog, portfolio-executive-report,
+    │   │                          #       portfolio-tax-report, portfolio-darf-monitor com barrels components/index.ts e index.ts
     │   └── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
     │                              #     com simulador FIRE interativo, showcase, pricing e FAQ
     │

@@ -152,6 +152,6 @@ describe("ResumoTab", () => {
     await user.click(editBtn);
 
     // Diálogo de edição do caixa
-    expect(screen.getByRole("heading", { name: /Editar CAIXA/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Editar Saldo em Caixa/i })).toBeInTheDocument();
   });
 });

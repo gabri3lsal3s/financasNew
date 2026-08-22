@@ -3,10 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { triggerSensory } from "@/services/sensory";
 import { AssetFormDialog } from "./asset-form-dialog";
+import type { PortfolioAsset } from "@/types";
 
 const createAssetMock = vi.fn();
 const updateAssetMock = vi.fn();
 const deleteAssetMock = vi.fn();
+const usePortfolioAssetsMock = vi.fn(() => ({ data: [] as PortfolioAsset[], isLoading: false, isError: false, error: null }));
 
 vi.mock("@/services/sensory", () => ({ triggerSensory: vi.fn() }));
 
@@ -15,7 +17,7 @@ vi.mock("@/state", () => ({
   useUpdatePortfolioAsset: () => ({ mutateAsync: updateAssetMock, isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: deleteAssetMock, isPending: false }),
   useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  usePortfolioAssets: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  usePortfolioAssets: () => usePortfolioAssetsMock(),
 }));
 
 const existingAsset = {
@@ -148,5 +150,25 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
         average_price: 1,
       }),
     );
+  });
+
+  it("impede cadastrar um segundo ativo de Caixa se já existir um na carteira", async () => {
+    // Mock com caixa já existente
+    usePortfolioAssetsMock.mockReturnValue({
+      data: [{ id: "c1", user_id: "u1", ticker: "CAIXA", asset_class: "Caixa", quantity: 1000, average_price: 1, currency: "BRL" }],
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    const user = userEvent.setup();
+    render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
+
+    // Tenta cadastrar ativo com ticker CAIXA
+    await user.type(screen.getByLabelText("Ticker do ativo"), "CAIXA");
+    await user.click(screen.getByRole("button", { name: "Adicionar à carteira" }));
+
+    expect(screen.getByText(/Já existe um ativo de Caixa cadastrado na carteira/i)).toBeInTheDocument();
+    expect(createAssetMock).not.toHaveBeenCalled();
   });
 });

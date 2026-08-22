@@ -1,5 +1,6 @@
 export { AssetFormDialog } from "./asset-form-dialog";
 export { AssetSplitDialog } from "./asset-split-dialog";
+export { CashFormDialog } from "./cash-form-dialog";
 export { ContributionsListDialog } from "./contributions-list-dialog";
 export { DividendFormDialog } from "./dividend-form-dialog";
 export { ManualPriceDialog } from "./manual-price-dialog";
@@ -13,6 +14,7 @@ export { TransactionFormDialog } from "./transaction-form-dialog";
 export { TransactionListDialog } from "./transaction-list-dialog";
 export type { AssetFormDialogProps } from "./asset-form-dialog";
 export type { AssetSplitDialogProps } from "./asset-split-dialog";
+export type { CashFormDialogProps } from "./cash-form-dialog";
 export type { ContributionsListDialogProps } from "./contributions-list-dialog";
 export type { DividendFormDialogProps } from "./dividend-form-dialog";
 export type { ManualPriceDialogProps } from "./manual-price-dialog";

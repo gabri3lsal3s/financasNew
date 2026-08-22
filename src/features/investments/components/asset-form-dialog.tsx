@@ -134,6 +134,10 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     assetClass: asset?.asset_class,
   });
 
+  const existingCashAsset = (allAssetsQuery.data ?? []).find(
+    (a) => (isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA") && a.id !== asset?.id,
+  );
+
   const isCashMode = directBalanceMode || isCashAssetClass(assetClass);
   const normalizedTicker = ticker.trim() === "" && isCashMode ? "CAIXA" : ticker.trim().toUpperCase();
   const canSubmit = normalizedTicker.length > 0 && !pending;
@@ -141,6 +145,14 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const submit = async () => {
     if (!canSubmit) return;
     setError(null);
+
+    // Validação estrita de unicidade do Caixa: só é permitido 1 ativo de caixa na carteira
+    if (!isEdit && (isCashMode || normalizedTicker === "CAIXA") && existingCashAsset) {
+      setError("Já existe um ativo de Caixa cadastrado na carteira. Utilize o card de Saldo em Caixa no início da página para gerenciar o valor.");
+      triggerSensory("error");
+      return;
+    }
+
     try {
       const effectiveClass = assetClass.trim() === "" ? (isCashMode ? "Caixa" : null) : assetClass.trim();
       const payload = {
@@ -457,7 +469,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
           {/* Chips de classes comuns */}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] text-muted-foreground">Sugestões:</span>
-            {ASSET_CLASS_PRESETS.map((preset) => (
+            {ASSET_CLASS_PRESETS.filter((preset) => !isCashAssetClass(preset) || !existingCashAsset).map((preset) => (
               <button
                 key={preset}
                 type="button"

@@ -1936,23 +1936,27 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 41 — Arquitetura Unificada de Investimentos: Wizard de Inclusão, Quick Transaction Sheet & Visão Dedicada de Ativos (v1.71 — 2026-08-22)
+### Fase 41 — Arquitetura Unificada de Investimentos: Investment Wizard (Novo Ativo & Aporte), Quick Transaction Sheet, Autocomplete de Tickers & Visão Dedicada de Ativos (v1.71 — 2026-08-22)
 
-> **Status:** ⏳ Planejado / Em Andamento — eliminação definitiva de modais sobrepostos e fluxos redundantes na carteira de investimentos, introdução de Wizard de Inclusão progressivo, Bottom Sheet ágil para ordens e visão dedicada para gestão de ativos com deep linking.
+> **Status:** ⏳ Planejado / Em Andamento — eliminação definitiva de modais sobrepostos e fluxos redundantes na carteira de investimentos, introdução do **Investment Wizard Unificado** (inclusão guiada de novos ativos e fluxo rápido de aporte em ativos existentes com cálculo de PM), **Autocomplete Inteligente de Tickers** com catálogo B3/Global, **Sugestões Preditivas de Aporte baseadas em Metas**, Bottom Sheet ágil para ordens e visão dedicada para gestão de ativos com deep linking.
 
-**Objetivo:** unificar a arquitetura e a experiência do usuário do módulo de investimentos com foco em usabilidade mobile-first e separação de intenções (*Cadastrar Novo Ativo* vs *Ordem/Aporte* vs *Gestão & Histórico*):
-1. **Wizard de Inclusão de Ativos (`AssetWizard`):** fluxo guiado de 4 passos (*Identificação/Classe ➔ Posição Inicial & PM ➔ Meta % ➔ Revisão*), com autocomplete de tickers e tratamento direto de Caixa 1:1;
-2. **Ordem / Movimentação Rápida (`QuickTransactionSheet`):** Bottom Sheet atômico de 1 tela para registrar Compra, Venda, Provento ou Split com cálculo de preço médio ponderado em tempo real e sincronização opcional com Caixa/Aportes;
-3. **Visão Dedicada de Detalhes do Ativo (`AssetDetailSheet` com Deep Linking `?asset=<id>`):** centralização de KPIs, histórico de transações e histórico de proventos sem modais aninhados;
-4. **Descontinuação de Modais Legados:** remoção de `AssetFormDialog`, `TransactionListDialog`, `TransactionFormDialog`, `AssetSplitDialog` e `DividendFormDialog`;
-5. **Centralização de Estado & Validação:** criação de `src/state/mutations/use-portfolio-mutations.ts` e validação de borda com Zod (`src/domain/portfolio/schemas.ts`).
+**Objetivo:** unificar a arquitetura e a experiência do usuário do módulo de investimentos com foco em usabilidade mobile-first e fluxo guiado inteligente:
+1. **Autocomplete Inteligente de Tickers (`tickers-catalog.ts`):** catálogo puro dos principais ativos B3 (Ações, FIIs, BDRs, ETFs), Renda Fixa, Cripto e Globais com inferência automática de classe e moeda (BRL/USD) durante a digitação;
+2. **Sugestões Preditivas de Aporte no Wizard:** detecção automática de ativos em déficit em relação às metas cadastradas, gerando cards de atalho rápido com o valor sugerido pré-carregado no Passo 1;
+3. **Investment Wizard Unificado (`InvestmentWizard`):** máquina de estados com bifurcação inteligente no Passo 1:
+   - *Modo Aporte em Ativo Existente:* seleciona o ativo da carteira (ou abre via fast-track a partir da tabela) ➔ Passo 2: Quantidade/Valor, Preço e cálculo em tempo real do novo Preço Médio ➔ Passo 3: Revisão & Confirmação com sincronização de Caixa;
+   - *Modo Novo Ativo:* Ticker com Autocomplete ➔ Posição Inicial & PM ➔ Meta % de Alocação ➔ Revisão do Impacto Patrimonial;
+4. **Ordem / Movimentação Rápida (`QuickTransactionSheet`):** Bottom Sheet atômico de 1 tela para registrar Compra, Venda, Provento ou Split com cálculo de preço médio ponderado em tempo real e sincronização opcional com Caixa/Aportes;
+5. **Visão Dedicada de Detalhes do Ativo (`AssetDetailSheet` com Deep Linking `?asset=<id>`):** centralização de KPIs, histórico de transações e histórico de proventos sem modais aninhados;
+6. **Descontinuação de Modais Legados & Centralização de Mutações:** remoção de `AssetFormDialog`, `TransactionListDialog`, `TransactionFormDialog`, `AssetSplitDialog` e `DividendFormDialog`; criação de `src/state/mutations/use-portfolio-mutations.ts` e validação com Zod (`src/domain/portfolio/schemas.ts`).
 
 **Organização da Implementação em 5 Etapas:**
-1. **Etapa 41.1 — Fundação de Domínio, Schemas Zod & Centralização de Estado:**
+1. **Etapa 41.1 — Fundação de Domínio, Schemas Zod, Catálogo de Tickers & Centralização de Estado:**
    - Schemas Zod (`src/domain/portfolio/schemas.ts`) com testes unitários.
+   - Catálogo estático leve de tickers (`src/domain/portfolio/tickers-catalog.ts`) e motor de busca/inferência com testes.
    - Centralização das mutações em `src/state/mutations/use-portfolio-mutations.ts` com sincronização bidirecional de posição e ledger.
-2. **Etapa 41.2 — Wizard de Inclusão de Ativos (`AssetWizard`):**
-   - Criação de `src/features/investments/wizard/` com máquina de estados pura e 4 passos (`step-identification`, `step-position`, `step-target`, `step-review`).
+2. **Etapa 41.2 — Investment Wizard Unificado (`InvestmentWizard`):**
+   - Criação de `src/features/investments/wizard/` com máquina de estados pura com suporte a bifurcação (Novo Ativo vs Aporte em Existente), autocomplete de tickers e sugestões preditivas baseadas em metas.
    - Suporte a ativos em USD (câmbio dinâmico) e Caixa 1:1.
 3. **Etapa 41.3 — Ordem Rápida Unificada (`QuickTransactionSheet`):**
    - Bottom Sheet ágil para compra, venda com cálculo de ganho de capital, provento e split.
@@ -1962,11 +1966,13 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
    - Refatoração de `PositionTable`, `ResumoTab`, `AporteTab` e `ProventosTab`.
    - Remoção dos componentes obsoletos e garantia de suíte 100% verde (`tsc`, `lint`, testes).
 
-**Arquivos:** `src/domain/portfolio/schemas.ts` (+ testes) · `src/state/mutations/use-portfolio-mutations.ts` (+ testes) · `src/features/investments/wizard/*` · `src/features/investments/components/quick-transaction-sheet.tsx` · `src/features/investments/components/asset-detail-sheet.tsx` · `src/features/investments/pages/resumo-tab.tsx` · `docs/ROADMAP.md`.
+**Arquivos:** `src/domain/portfolio/schemas.ts` (+ testes) · `src/domain/portfolio/tickers-catalog.ts` (+ testes) · `src/state/mutations/use-portfolio-mutations.ts` (+ testes) · `src/features/investments/wizard/*` · `src/features/investments/components/quick-transaction-sheet.tsx` · `src/features/investments/components/asset-detail-sheet.tsx` · `src/features/investments/pages/resumo-tab.tsx` · `docs/ROADMAP.md`.
 
 **✅ DoD (critérios de aceite):**
 - Zero modais sobrepostos (nenhum diálogo abre outro diálogo por cima).
-- Inclusão de novo ativo via Wizard de 4 passos com validação Zod e suporte multimoeda/Caixa.
+- Autocomplete instantâneo de tickers sugerindo nome, classe e moeda durante a digitação.
+- Sugestões preditivas de aporte baseadas em metas exibidas no Passo 1 do Wizard.
+- Investment Wizard unificado permitindo tanto adicionar um novo ativo quanto aportar em ativo existente com recálculo de PM.
 - Registro de ordens (compra/venda/provento/split) em 1 toque via `QuickTransactionSheet`.
 - Visão de detalhes do ativo com deep linking `?asset=<id>` e extrato de transações.
 - Typecheck (`tsc --noEmit`), lint (`npm run lint`) e suíte de testes 100% verdes.

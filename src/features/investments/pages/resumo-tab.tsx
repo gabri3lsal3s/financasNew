@@ -18,6 +18,7 @@ import {
 import {
   AssetFormDialog,
   AssetSplitDialog,
+  CashFormDialog,
   ContributionsListDialog,
   ManualPriceDialog,
   PortfolioImportDialog,
@@ -40,7 +41,7 @@ export function ResumoTab() {
   const autoSyncedRef = useRef(false);
 
   const [assetOpen, setAssetOpen] = useState(false);
-  const [cashCreateOpen, setCashCreateOpen] = useState(false);
+  const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
   const [assetToSplit, setAssetToSplit] = useState<PortfolioAsset | null>(null);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
@@ -81,7 +82,13 @@ export function ResumoTab() {
 
   const openEdit = (assetId: string) => {
     const asset = assetById(assetId);
-    if (asset) setAssetEditing(asset);
+    if (asset) {
+      if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
+        setCashDialogOpen(true);
+      } else {
+        setAssetEditing(asset);
+      }
+    }
   };
 
   const openDelete = (assetId: string) => {
@@ -179,13 +186,7 @@ export function ResumoTab() {
               cashBRL={position.cashBRL}
               cashPct={cashPct > 0 ? cashPct : undefined}
               hasCashAsset={Boolean(cashAsset)}
-              onEdit={() => {
-                if (cashAsset) {
-                  openEdit(cashAsset.id);
-                } else {
-                  setCashCreateOpen(true);
-                }
-              }}
+              onEdit={() => setCashDialogOpen(true)}
               onDelete={() => {
                 if (cashAsset) {
                   openDelete(cashAsset.id);
@@ -395,10 +396,10 @@ export function ResumoTab() {
       )}
 
       <AssetFormDialog open={assetOpen} onOpenChange={setAssetOpen} />
-      <AssetFormDialog
-        open={cashCreateOpen}
-        onOpenChange={setCashCreateOpen}
-        initialAssetClass="Caixa"
+      <CashFormDialog
+        open={cashDialogOpen}
+        onOpenChange={setCashDialogOpen}
+        asset={cashAsset ?? null}
       />
       {assetEditing ? (
         <AssetFormDialog
