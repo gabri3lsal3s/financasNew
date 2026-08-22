@@ -99,13 +99,13 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │
     ├── components/
     │   ├── ui/                    # ⭐ PRIMITIVOS GENÉRICOS (sem domínio)
-    │   │   ├── button.tsx         #   Button, Input, Select, Card, Badge, Modal,
+    │   │   ├── button.tsx         #   Button, Input, MoneyInput, Select, Card, Badge, Modal,
     │   │   ├── index.ts           #   Tabs, Sheet, Dialog, Skeleton, EmptyState,
     │   │   └── …                  #   DataList, Progress, Stepper, Command (⌘K), Toast
     │   ├── modules/               # ⭐ COMPONENTES DE DOMÍNIO (reutilizáveis)
-    │   │   ├── kpi-card.tsx       #   KpiCard, TransactionRow, BudgetProgressBar,
+    │   │   ├── kpi-card.tsx       #   KpiCard, CashKpiCard, TransactionRow, BudgetProgressBar,
     │   │   ├── index.ts           #   DebtStatusBadge, InvoiceStatusBadge, CategoryIcon,
-    │   │   └── …                  #   InstallmentBadge, MonthPicker, …
+    │   │   └── …                  #   InstallmentBadge, MonthPicker, PositionTable, …
     │   └── layout/                # Sidebar, BottomNav, AppHeader, PageShell
     │
     ├── features/                  # ÁREAS/PÁGINAS (composição fina de módulos + contratos)
@@ -118,7 +118,8 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── insights/              #   Insights, projeção e corte
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, perfil)
-    │   └── portfolio/             #   Carteira, metas, calculadora de aporte
+    │   ├── investments/           #   Investimentos (Hub 5 abas: Resumo, Proventos, Metas, Aporte, Relatórios & IR)
+    │   └── landing/               #   Landing page pública e simulador FIRE
     │
     ├── domain/                    # ⭐ MOTORES DE CÁLCULO PUROS (testáveis, sem deps)
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
@@ -143,7 +144,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── cards/                 #   faturas, fechamento e refinanciamento sem double-counting
     │   ├── fire/                  #   F24: regra dos 4%, projeção e faixas de emergência
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
-    │                              #   summary (rentabilidade/alocação) + dividends (F18)
+    │                              #   proventos/YoC (snowball), apuração fiscal/DARF/IRPF (tax)
     │
     ├── data/                      # SERVIÇOS DE DADOS
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)

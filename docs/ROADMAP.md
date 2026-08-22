@@ -1970,6 +1970,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 **✅ DoD (critérios de aceite):**
 - Zero modais sobrepostos (nenhum diálogo abre outro diálogo por cima).
+- **Padronização em Caixa Alta (UPPERCASE):** todos os campos e modais de ticker forçam caixa alta na UI (`font-mono uppercase`) e na mutação de estado (`.toUpperCase()`), mantendo total conformidade com a B3 e mercado global.
 - Autocomplete instantâneo de tickers sugerindo nome, classe e moeda durante a digitação.
 - Sugestões preditivas de aporte baseadas em metas exibidas no Passo 1 do Wizard.
 - Investment Wizard unificado permitindo tanto adicionar um novo ativo quanto aportar em ativo existente com recálculo de PM.

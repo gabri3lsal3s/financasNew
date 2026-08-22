@@ -397,13 +397,19 @@
   4. **Monitor Mensal de DARF (`PortfolioDarfMonitor`):** Painel interativo com seletor de mês, compensação de prejuízos e alerta de recolhimento via DARF (Código 6015).
   5. **Aba "Relatórios & IR":** Nova aba no hub de investimentos (`InvestmentsPage`) com acesso ágil aos relatórios.
 
-## Evolução — Card Dedicado de Saldo em Caixa com Gestão Integrada (2026-08-22)
+## Evolução — Card Dedicado de Saldo em Caixa & Diálogo Exclusivo sem Edição de Nome (2026-08-22)
 
-- **Problema:** O saldo em Caixa não possuía fluxo ágil de edição quando zerado, e o card de "Ativos em carteira" ocupava espaço desnecessário no dashboard.
+- **Problema:** O saldo em Caixa não possuía fluxo ágil de edição quando zerado, o card de "Ativos em carteira" ocupava espaço desnecessário no dashboard, e o formulário de cadastro de ativos permitia selecionar nome arbitrário para caixa ou criar múltiplos caixas na mesma carteira.
 - **Solução:**
-  1. **Componente `CashKpiCard` (`src/components/modules/cash-kpi-card.tsx`):** Card dedicado com `col-span-2` ocupando o primeiro espaço da grade de KPIs, com botões de "Editar saldo" e "Excluir" embutidos (quando cadastrado) ou botão rápido "Adicionar caixa" (quando zerado/não cadastrado).
-  2. **Remoção do Card Redundante:** O card KPI "Ativos em carteira" foi removido da `ResumoTab`, harmonizando a grade com 4 colunas no desktop (Caixa [2 cols] + Patrimônio [1 col] + Proventos [1 col]).
-  3. **Fluxo Rápido de Abertura:** `AssetFormDialog` adaptado com prop `initialAssetClass="Caixa"` para abertura imediata no modo de Saldo Direto 1:1.
+  1. **Componente `CashKpiCard` (`src/components/modules/cash-kpi-card.tsx`):** Card de domínio dedicado ocupando as primeiras 2 colunas (`col-span-2`) da grade de KPIs, com botões rápidos de "Editar saldo" e "Excluir" (quando cadastrado) ou botão rápido "Adicionar caixa" (quando zerado/não cadastrado).
+  2. **Diálogo Especializado `CashFormDialog` (`src/features/investments/components/cash-form-dialog.tsx`):**
+     - Sem opção de escolher o nome: fixado compulsoriamente como `ticker: "CAIXA"` e `asset_class: "Caixa"`.
+     - Campo monetário direto com `MoneyInput` para preenchimento de Saldo Disponível em centavos e campo opcional de anotações.
+  3. **Restrição Estrita de Unicidade:**
+     - Apenas **1 ativo de Caixa** é permitido na carteira.
+     - O formulário geral `AssetFormDialog` oculta a sugestão "Caixa" e bloqueia qualquer tentativa de cadastrar um segundo ativo com ticker ou classe de caixa.
+     - O `CashFormDialog` atualiza idempotentemente o saldo do caixa existente caso já cadastrado.
+  4. **Harmonização da Grade de KPIs:** Remoção do card "Ativos em carteira", resultando em 4 colunas equilibradas no desktop: Saldo em Caixa (2 colunas) + Patrimônio Total (1 coluna) + Proventos no Mês (1 coluna).
 
 ## Notas finais
 
