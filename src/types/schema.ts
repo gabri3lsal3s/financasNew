@@ -324,6 +324,40 @@ export type PortfolioAsset = {
   ticker: string;
   asset_class: string | null;
   currency: AssetCurrency;
+  quantity: number;
+  average_price: number;
+  notes?: string | null;
+  updated_at?: string;
+};
+
+export type PortfolioSnapshot = {
+  id: string;
+  user_id: string;
+  month: string;
+  total_value: number;
+  total_cost: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PortfolioContribution = {
+  id: string;
+  user_id: string;
+  asset_id: string | null;
+  date: string;
+  amount: number;
+  notes?: string | null;
+  created_at?: string;
+};
+
+export type PortfolioDividend = {
+  id: string;
+  user_id: string;
+  asset_id: string;
+  date: string;
+  amount: number;
+  notes?: string | null;
+  created_at?: string;
 };
 
 export type PortfolioTransaction = {

@@ -1,38 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, RefreshCw, TrendingUp, Wallet } from "lucide-react";
+import { LineChart, Plus, RefreshCw, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonChart, SkeletonKpi, SkeletonTable } from "@/components/ui";
 import { AllocationDonut, CategoryDonut, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
-import { dividendsInMonth, isCashAssetClass, portfolioReturnPct } from "@/domain/portfolio";
+import { MoneyText } from "@/components/ui/money-text";
+import { isCashAssetClass, portfolioReturnPct } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { formatSignedPct } from "@/services/masks/percent";
 import {
-  useAllPortfolioTransactions,
   useDeletePortfolioAsset,
   usePortfolioAssets,
+  usePortfolioDividends,
   usePortfolioPosition,
   useSyncQuotes,
 } from "@/state";
 import {
   AssetFormDialog,
   ManualPriceDialog,
-  TransactionFormDialog,
-  TransactionListDialog,
-} from "@/features/portfolio/components";
+  PortfolioImportDialog,
+} from "../components";
 import type { AssetCurrency, PortfolioAsset } from "@/types";
 import type { PriceSource } from "@/domain/portfolio";
 
 /**
- * Resumo da carteira (§F17 unificada) — consolidação executiva + operação:
+ * Resumo da carteira (§F36 unificada) — Posição Consolidada + Operação Ágil:
  * KPIs (patrimônio com Δ, rentabilidade ponderada, proventos do mês),
- * donuts de distribuição (classe e ativo), tabela de posições com ordenação
- * e os acessos de operação (adicionar ativo / movimentar) no mesmo lugar.
+ * tabela de posições com edição direta de quantidade/preço médio,
+ * donuts de distribuição (classe e ativo) e evolução histórica.
  */
 export function ResumoTab() {
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
-  const transactionsQuery = useAllPortfolioTransactions();
+  const dividendsQuery = usePortfolioDividends();
   const deleteAsset = useDeletePortfolioAsset();
   const syncQuotes = useSyncQuotes();
   const autoSyncedRef = useRef(false);
@@ -40,8 +40,7 @@ export function ResumoTab() {
   const [assetOpen, setAssetOpen] = useState(false);
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
-  const [txFor, setTxFor] = useState<PortfolioAsset | null>(null);
-  const [listFor, setListFor] = useState<PortfolioAsset | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [priceFor, setPriceFor] = useState<{
     id: string;
     ticker: string;
@@ -70,16 +69,6 @@ export function ResumoTab() {
 
   const assetById = (assetId: string): PortfolioAsset | undefined => (assetsQuery.data ?? []).find((a) => a.id === assetId);
 
-  const openTransaction = (assetId: string) => {
-    const asset = assetById(assetId);
-    if (asset) setTxFor(asset);
-  };
-
-  const openList = (assetId: string) => {
-    const asset = assetById(assetId);
-    if (asset) setListFor(asset);
-  };
-
   const openEdit = (assetId: string) => {
     const asset = assetById(assetId);
     if (asset) setAssetEditing(asset);
@@ -92,7 +81,12 @@ export function ResumoTab() {
 
   const returnPct = portfolioReturnPct(rows);
   const month = currentMonth();
-  const dividendsCents = numberToCents(dividendsInMonth(transactionsQuery.data ?? [], month));
+
+  // Proventos do mês a partir de portfolio_dividends
+  const dividendsThisMonth = (dividendsQuery.data ?? [])
+    .filter((d) => d.date.startsWith(month))
+    .reduce((acc, d) => acc + d.amount, 0);
+  const dividendsCents = numberToCents(dividendsThisMonth);
 
   const classSlices = rows.map((row) => ({
     label: row.assetClass?.trim() || (row.isCash ? "Caixa" : "Sem classe"),
@@ -140,15 +134,21 @@ export function ResumoTab() {
       ) : !hasInvestments ? (
         <EmptyState
           icon={<TrendingUp className="size-6" aria-hidden="true" />}
-          title="Sem investimentos"
-          description="Adicione um ativo e registre as transações para acompanhar o patrimônio, a rentabilidade e a alocação aqui."
+          title="Sem investimentos cadastrados"
+          description="Adicione seus ativos com quantidade e preço médio, ou importe sua custódia diretamente por texto ou planilha da B3/corretora."
           tone="portfolio"
           headingLevel="h2"
           action={
-            <Button type="button" size="sm" onClick={() => setAssetOpen(true)}>
-              <Plus aria-hidden="true" />
-              Adicionar ativo
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              <Button type="button" size="sm" onClick={() => setAssetOpen(true)} className="gap-1.5">
+                <Plus aria-hidden="true" className="size-4" />
+                Adicionar ativo
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1.5">
+                <Sparkles aria-hidden="true" className="size-4 text-portfolio" />
+                Importar custódia / texto
+              </Button>
+            </div>
           }
         />
       ) : (
@@ -168,19 +168,30 @@ export function ResumoTab() {
               hint="Não realizada, ponderada pelo valor"
             />
             <KpiCard label="Proventos no mês" cents={dividendsCents} tone="positive" hint={`Recebidos em ${month}`} />
-            <KpiCard label="Ativos" value={String(rows.length)} hint="Inclui caixa/reserva (1:1)" />
+            <KpiCard label="Ativos em carteira" value={String(rows.length)} hint="Custódia consolidada" />
           </div>
 
           {/* Seção principal: Posições da Carteira */}
           <section aria-label="Posições" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <h2 className="text-sm font-semibold text-foreground truncate">Posições</h2>
+                <h2 className="text-sm font-semibold text-foreground truncate">Posições de Custódia</h2>
                 <Badge variant="muted" className="text-[11px] shrink-0">
                   {rows.length} {rows.length === 1 ? "ativo" : "ativos"}
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImportOpen(true)}
+                  className="w-full sm:w-auto text-xs"
+                  title="Importar custódia via planilha ou texto livre"
+                >
+                  <Sparkles aria-hidden="true" className="size-3.5" />
+                  Importar custódia
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -205,8 +216,6 @@ export function ResumoTab() {
             <PositionTable
               rows={rows}
               sortable
-              onRegisterTransaction={openTransaction}
-              onListTransactions={openList}
               onEditAsset={openEdit}
               onSetManualPrice={(assetId, ticker, currency, priceBRL, source) => {
                 setPriceFor({ id: assetId, ticker, currency, priceBRL, source });
@@ -215,7 +224,7 @@ export function ResumoTab() {
             />
           </section>
 
-          {/* Seção secundária: Análise de Alocação */}
+          {/* Seção secundária: Análise de Alocação e Evolução */}
           <div className="grid gap-3 lg:grid-cols-2 min-w-0">
             <section aria-label="Alocação por classe" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
               <div className="mb-4 flex items-center gap-2 min-w-0">
@@ -237,6 +246,53 @@ export function ResumoTab() {
               <CategoryDonut slices={tickerSlices} className="w-full sm:max-w-md min-w-0" />
             </section>
           </div>
+
+          {/* Seção de Evolução Patrimonial (Snapshots Mensais) */}
+          <section aria-label="Evolução Patrimonial" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
+                  <LineChart className="size-3.5" aria-hidden="true" />
+                </span>
+                <h2 className="text-sm font-semibold text-foreground">Evolução Histórica (Snapshots Mensais)</h2>
+              </div>
+              <span className="text-xs text-muted-foreground">Últimos 6 meses</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-2">
+              {series.map((point) => {
+                const isCurrent = point.month === month;
+                const gain = point.valueBRL - point.costBRL;
+                const gainPct = point.costBRL > 0 ? (gain / point.costBRL) * 100 : 0;
+                return (
+                  <div
+                    key={point.month}
+                    className={`rounded-xl border p-3 flex flex-col gap-1 transition-colors ${
+                      isCurrent
+                        ? "border-portfolio/40 bg-portfolio/5"
+                        : "border-border/60 bg-surface-hover/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground">{point.month}</span>
+                      {isCurrent ? <Badge variant="portfolio" className="text-[10px] px-1.5 py-0">atual</Badge> : null}
+                    </div>
+                    <MoneyText cents={numberToCents(point.valueBRL)} tone="default" className="text-sm font-semibold" />
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                      <span>Custo</span>
+                      <MoneyText cents={numberToCents(point.costBRL)} tone="default" className="text-muted-foreground" />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">Resultado</span>
+                      <span className={`num font-medium ${gain >= 0 ? "text-positive-strong" : "text-negative-strong"}`}>
+                        {gainPct >= 0 ? "+" : ""}{gainPct.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </>
       )}
 
@@ -257,34 +313,20 @@ export function ResumoTab() {
           asset={priceFor}
         />
       ) : null}
-      {txFor ? (
-        <TransactionFormDialog
-          key={txFor.id}
-          open={txFor !== null}
-          onOpenChange={(next) => !next && setTxFor(null)}
-          asset={txFor}
-        />
-      ) : null}
-      {listFor ? (
-        <TransactionListDialog
-          key={listFor.id}
-          open={listFor !== null}
-          onOpenChange={(next) => !next && setListFor(null)}
-          asset={listFor}
-        />
-      ) : null}
+      <PortfolioImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+      />
       <ConfirmDialog
         open={assetToDelete !== null}
         onOpenChange={(next) => !next && setAssetToDelete(null)}
         title={assetToDelete ? `Excluir ${assetToDelete.ticker}?` : "Excluir ativo?"}
-        description="O ativo, suas transações e metas de alocação serão removidos em cascata. A posição é recalculada automaticamente."
+        description="O ativo e suas metas de alocação serão removidos da carteira. A posição é recalculada automaticamente."
         confirmLabel="Excluir"
         variant="destructive"
         confirmPending={deleteAsset.isPending}
         onConfirm={() => {
           if (!assetToDelete) return;
-          // Fecha a confirmação em sucesso E em falha (o toast do hook exibe o
-          // erro) — antes, falha deixava o diálogo preso com rejection não tratada.
           const assetId = assetToDelete.id;
           void Promise.resolve(deleteAsset.mutateAsync(assetId)).finally(() => setAssetToDelete(null));
         }}

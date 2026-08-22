@@ -3,6 +3,7 @@ import { Calculator } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, RadioGroup, SkeletonChart, SkeletonKpi } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
+  calculateWeightedAveragePrice,
   classCapsFromSectorCaps,
   simulateRebalanceAporte,
   simulateSmartAporte,
@@ -16,28 +17,34 @@ import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
   useAllocationTargets,
-  useCreatePortfolioTransactionsBatch,
+  useCreatePortfolioContribution,
   useGroupTargets,
+  usePortfolioAssets,
   usePortfolioPosition,
   useSectorCaps,
+  useUpdatePortfolioAsset,
 } from "@/state";
 
 /**
- * Calculadora de aporte (§3.11.3) — simulação local (pura) em 2 modos:
- * por meta individual de ativo ou por meta de classe, com travas setoriais
- * e log de roteamento. Nada é persistido: a sugestão é um relatório.
+ * Calculadora de aporte (§F36) — simulação local (pura) em 2 modos:
+ * por meta individual de ativo ou por meta de classe, com travas setoriais.
+ * Ao aplicar o lote, atualiza a quantidade e preço médio ponderado dos ativos
+ * e registra o aporte em `portfolio_contributions`.
  */
 export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
+  const assetsQuery = usePortfolioAssets();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
   const capsQuery = useSectorCaps();
-  const createBatch = useCreatePortfolioTransactionsBatch();
+  const updateAsset = useUpdatePortfolioAsset();
+  const createContribution = useCreatePortfolioContribution();
 
   const [aporteCents, setAporteCents] = useState(0);
   const [mode, setMode] = useState<AporteMode>("asset");
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
 
   const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? capsQuery.error;
   const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || capsQuery.isLoading;
@@ -88,35 +95,61 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const eligibleRoutes = routes.filter((r) => r.quantity > 0);
 
   const handleExecuteBatch = async () => {
-    if (eligibleRoutes.length === 0) return;
+    if (eligibleRoutes.length === 0 || isApplying) return;
     setBatchError(null);
+    setIsApplying(true);
     try {
       const date = todayISO();
-      const payload = eligibleRoutes.map((r) => ({
-        asset_id: r.assetId,
-        type: "buy" as const,
-        date,
-        quantity: r.quantity,
-        price: r.priceBRL,
-        total: Math.round(r.quantity * r.priceBRL * 100) / 100,
-      }));
+      const assetsList = assetsQuery.data ?? [];
+      let totalAllocatedBRL = 0;
 
-      await createBatch.mutateAsync(payload);
+      for (const r of eligibleRoutes) {
+        const currentAsset = assetsList.find((a) => a.id === r.assetId);
+        const currentQty = Number(currentAsset?.quantity ?? 0);
+        const currentAvgPrice = Number(currentAsset?.average_price ?? 0);
+
+        // Preço unitário na moeda nativa
+        const unitPrice = r.priceBRL;
+        const weighted = calculateWeightedAveragePrice(
+          currentQty,
+          currentAvgPrice,
+          r.quantity,
+          unitPrice,
+        );
+
+        await updateAsset.mutateAsync({
+          id: r.assetId,
+          patch: {
+            quantity: weighted.newQuantity,
+            average_price: weighted.newAveragePrice,
+          },
+        });
+
+        totalAllocatedBRL += r.allocatedBRL;
+      }
+
+      // Registra a contribuição do aporte mensal
+      await createContribution.mutateAsync({
+        asset_id: null,
+        date,
+        amount: Math.round(totalAllocatedBRL * 100) / 100,
+        notes: `Aporte inteligente (${eligibleRoutes.length} ativos)`,
+      });
+
       triggerSensory("success");
       pushToast({
-        title: "Aportes registrados",
-        description: `${eligibleRoutes.length} compras adicionadas ao extrato da carteira.`,
+        title: "Aportes aplicados à carteira",
+        description: `Posições de ${eligibleRoutes.length} ativos atualizadas com sucesso.`,
       });
       setConfirmBatchOpen(false);
       setAporteCents(0);
       onGoToPosition?.();
     } catch (err) {
       setBatchError(getErrorMessage(err));
+    } finally {
+      setIsApplying(false);
     }
   };
-
-  const hasAssetTargets = targetsQuery.data !== undefined && targetsQuery.data.length > 0;
-  const hasClassTargets = classTargets.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -132,13 +165,13 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         <EmptyState
           icon={<Calculator className="size-6" aria-hidden="true" />}
           title="Carteira vazia"
-          description="Adicione ativos na aba Posição antes de simular o aporte."
+          description="Adicione ativos na aba Resumo antes de simular o aporte."
           tone="portfolio"
           headingLevel="h2"
           action={
             onGoToPosition ? (
               <Button type="button" onClick={onGoToPosition}>
-                Ir para Posição
+                Ir para Resumo
               </Button>
             ) : undefined
           }
@@ -158,65 +191,47 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
                 />
               </label>
               <fieldset className="flex flex-col gap-1 text-xs font-medium text-muted-foreground min-w-0">
-                Modo de rebalanceamento
+                <legend className="text-xs font-medium text-muted-foreground mb-1">Modo de simulação</legend>
                 <RadioGroup
-                  value={mode}
-                  onValueChange={(value) => setMode(value as AporteMode)}
                   name="aporte-mode"
+                  value={mode}
+                  onValueChange={(val) => setMode(val as AporteMode)}
                   options={[
-                    { value: "asset", label: "Por meta individual de ativo" },
-                    { value: "class", label: "Por meta de classe" },
+                    {
+                      value: "asset",
+                      label: "Meta por ativo",
+                    },
+                    {
+                      value: "class",
+                      label: "Meta por classe",
+                    },
                   ]}
                 />
               </fieldset>
             </div>
-
-            {!hasAssetTargets && !hasClassTargets ? (
-              <Alert variant="warning">
-                Nenhuma meta definida: defina metas por ativo ou por classe na aba Metas para gerar sugestões.
-              </Alert>
-            ) : null}
           </section>
 
-          {aporteCents <= 0 ? (
-            <EmptyState
-              icon={<Calculator className="size-6" aria-hidden="true" />}
-              title="Informe o valor do aporte"
-              description="A simulação distribui o aporte pelos gaps de alocação e devolve a sobra para caixa/reserva."
-              headingLevel="h2"
-            />
-          ) : result ? (
+          {result ? (
             <AporteResult
               mode={mode}
-              aporte={aporteCents / 100}
+              aporte={result.aporte}
               totalAllocated={result.totalAllocated}
               leftover={result.leftover}
               routes={routes}
-              onExecuteAporte={() => setConfirmBatchOpen(true)}
-              executing={createBatch.isPending}
+              onExecuteAporte={eligibleRoutes.length > 0 ? () => setConfirmBatchOpen(true) : undefined}
+              executing={isApplying}
             />
           ) : null}
         </>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Sugestão calculada com base na posição e metas. Ao clicar em "Lançar compras no extrato", as operações de compra
-        são registradas automaticamente no ledger.
-      </p>
-
       <ConfirmDialog
         open={confirmBatchOpen}
         onOpenChange={setConfirmBatchOpen}
-        title="Lançar compras no extrato?"
-        description={
-          eligibleRoutes.length > 0
-            ? `Serão registradas ${eligibleRoutes.length} operações de compra (totalizando ${eligibleRoutes
-                .reduce((acc, r) => acc + r.allocatedBRL, 0)
-                .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) com a data de hoje.`
-            : "Nenhuma operação de compra para lançar."
-        }
-        confirmLabel="Lançar compras"
-        confirmPending={createBatch.isPending}
+        title="Aplicar aporte à carteira?"
+        description={`Essa ação atualizará a quantidade e o preço médio ponderado de ${eligibleRoutes.length} ativos da sua carteira e registrará a contribuição deste mês.`}
+        confirmLabel="Aplicar aporte"
+        confirmPending={isApplying}
         onConfirm={() => void handleExecuteBatch()}
       />
     </div>

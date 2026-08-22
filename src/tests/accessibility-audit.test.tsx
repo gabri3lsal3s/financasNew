@@ -16,6 +16,7 @@ import { LaunchWizard } from "@/features/transactions/wizard/launch-wizard";
 
 const portfolioTransactionsMock = vi.fn(() => [] as unknown[]);
 const portfolioAssetsMock = vi.fn(() => [] as unknown[]);
+const portfolioDividendsMock = vi.fn(() => [] as unknown[]);
 
 vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
@@ -153,10 +154,36 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   usePortfolioPosition: () => ({
-    rows: [],
-    totalBRL: 0,
+    rows: (portfolioAssetsMock() as Array<{ id: string; ticker: string; asset_class?: string; currency: "BRL" | "USD" }>).map((a) => ({
+      assetId: a.id,
+      ticker: a.ticker,
+      assetClass: a.asset_class ?? "Ações",
+      currency: a.currency ?? "BRL",
+      quantity: 10,
+      averageCost: 40,
+      totalCost: 400,
+      totalCostBRL: 400,
+      averageCostBRL: 40,
+      dividends: 0,
+      priceBRL: 42.5,
+      source: "api" as const,
+      valueBRL: 425,
+      unrealizedPct: 6.25,
+      unrealizedPnl: 25,
+      pct: 100,
+      isCash: false,
+    })),
+    totalBRL: (portfolioAssetsMock() as unknown[]).length > 0 ? 425 : 0,
+    totalCostBRL: (portfolioAssetsMock() as unknown[]).length > 0 ? 400 : 0,
     cashBRL: 0,
-    monthlySeries: [],
+    monthlySeries: [
+      { month: "2026-03", valueBRL: 425, costBRL: 400 },
+      { month: "2026-04", valueBRL: 425, costBRL: 400 },
+      { month: "2026-05", valueBRL: 425, costBRL: 400 },
+      { month: "2026-06", valueBRL: 425, costBRL: 400 },
+      { month: "2026-07", valueBRL: 425, costBRL: 400 },
+      { month: "2026-08", valueBRL: 425, costBRL: 400 },
+    ],
     monthlyContributionCents: 0,
     isLoading: false,
     error: null,
@@ -207,12 +234,18 @@ vi.mock("@/state", () => ({
   useDeleteLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePredictionHistory: () => ({ entries: [], isLoading: false, error: null, refetch: vi.fn() }),
   usePortfolioAssets: () => ({ data: portfolioAssetsMock(), isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  usePortfolioDividends: () => ({ data: portfolioDividendsMock(), isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  usePortfolioContributions: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  usePortfolioSnapshots: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useDeletePortfolioDividend: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreatePortfolioDividend: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreatePortfolioTransactionsBatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
@@ -221,6 +254,7 @@ vi.mock("@/state", () => ({
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+
 
 /**
  * Auditoria a11y (F5.3) — axe-core nas telas P0 (DESIGN_SYSTEM §9):
@@ -279,9 +313,9 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
   });
 
   it("InvestmentsPage — aba Proventos com extrato sem violações (F18)", async () => {
-    portfolioTransactionsMock.mockReturnValue([
-      { id: "t1", user_id: "u1", asset_id: "a1", type: "dividend", date: "2026-08-10", quantity: 0, price: 0, total: 100 },
-      { id: "t2", user_id: "u1", asset_id: "a2", type: "fii_yield", date: "2026-08-20", quantity: 0, price: 0, total: 50.25 },
+    portfolioDividendsMock.mockReturnValue([
+      { id: "t1", user_id: "u1", asset_id: "a1", date: "2026-08-10", amount: 100, notes: "DIVIDENDO" },
+      { id: "t2", user_id: "u1", asset_id: "a2", date: "2026-08-20", amount: 50.25, notes: "RENDIMENTO" },
     ]);
     portfolioAssetsMock.mockReturnValue([
       { id: "a1", user_id: "u1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" },

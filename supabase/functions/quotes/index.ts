@@ -151,10 +151,18 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Autenticação: apenas service role (cron ou chamada manual).
+  // Autenticação: aceita Bearer token (JWT do usuário autenticado ou service role key).
   const auth = req.headers.get("authorization") ?? "";
+  const apiKey = req.headers.get("apikey") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!auth.startsWith("Bearer ") || auth.slice(7) !== serviceRoleKey) {
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
+  const isAuthorized =
+    auth.startsWith("Bearer ") ||
+    apiKey === serviceRoleKey ||
+    apiKey === anonKey;
+
+  if (!isAuthorized) {
     return json({ error: "unauthorized" }, 401);
   }
 
@@ -166,25 +174,42 @@ Deno.serve(async (req) => {
     auth: { persistSession: false },
   });
 
-  // 1) Tickers únicos da carteira (exclui caixa/reserva — 1:1, sem cotação).
-  const { data: assets, error: assetsError } = await supabase
-    .from("portfolio_assets")
-    .select("ticker, asset_class");
-  if (assetsError) {
-    return json({ error: assetsError.message }, 500);
+  // Lê tickers customizados do body se fornecidos
+  let requestedTickers: string[] = [];
+  if (req.method === "POST") {
+    try {
+      const body = await req.json();
+      if (body && Array.isArray(body.tickers)) {
+        requestedTickers = body.tickers.map((t: string) => String(t).trim().toUpperCase()).filter(Boolean);
+      }
+    } catch {
+      // payload sem json body
+    }
   }
 
-  const tickers = [
-    ...new Set(
-      (assets ?? [])
-        .filter((asset) => !isCashClass(asset.asset_class))
-        .map((asset) => asset.ticker.trim().toUpperCase())
-        .filter((ticker) => ticker.length > 0),
-    ),
-  ];
+  let tickers: string[] = requestedTickers;
+
+  // 1) Se não foram passados tickers no body, busca todos os da carteira
+  if (tickers.length === 0) {
+    const { data: assets, error: assetsError } = await supabase
+      .from("portfolio_assets")
+      .select("ticker, asset_class");
+    if (assetsError) {
+      return json({ error: assetsError.message }, 500);
+    }
+
+    tickers = [
+      ...new Set(
+        (assets ?? [])
+          .filter((asset) => !isCashClass(asset.asset_class))
+          .map((asset) => asset.ticker.trim().toUpperCase())
+          .filter((ticker) => ticker.length > 0),
+      ),
+    ];
+  }
 
   if (tickers.length === 0) {
-    return json({ ok: true, updated: 0, guarded: 0, failed: 0 });
+    return json({ ok: true, updated: 0, guarded: 0, failed: 0, quotes: [] });
   }
 
   // 2) Preço atual do cache global (para o guardrail de spike).
@@ -242,5 +267,10 @@ Deno.serve(async (req) => {
     guarded,
     failed,
     tickers,
+    quotes: rows.map((r) => ({
+      ticker: r.ticker,
+      price: Number(r.price),
+      currency: r.currency,
+    })),
   });
 });

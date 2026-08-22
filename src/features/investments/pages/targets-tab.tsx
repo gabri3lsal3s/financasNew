@@ -160,13 +160,13 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         <EmptyState
           icon={<Save className="size-6" aria-hidden="true" />}
           title="Sem ativos para definir metas"
-          description="Adicione ativos na aba Posição para definir as metas de alocação."
+          description="Adicione ativos na aba Resumo para definir as metas de alocação."
           tone="portfolio"
           headingLevel="h2"
           action={
             onGoToPosition ? (
               <Button type="button" onClick={onGoToPosition}>
-                Ir para Posição
+                Ir para Resumo
               </Button>
             ) : undefined
           }

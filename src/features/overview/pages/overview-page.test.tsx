@@ -8,7 +8,7 @@ vi.mock("react-router", () => ({
 }));
 
 const navigateMock = vi.fn();
-let portfolioTransactionsMock: { id: string; asset_id: string; type: string; date: string; total: number }[] = [];
+let portfolioContributionsMock: { id: string; asset_id: string | null; date: string; amount: number; notes: string | null }[] = [];
 
 const expenseCategories = [
   { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense" },
@@ -104,8 +104,8 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
-  useAllPortfolioTransactions: () => ({
-    data: portfolioTransactionsMock,
+  usePortfolioContributions: () => ({
+    data: portfolioContributionsMock,
     isLoading: false,
     isError: false,
     error: null,
@@ -116,7 +116,7 @@ vi.mock("@/state", () => ({
 describe("OverviewPage — visão consolidada (§3.6)", () => {
   beforeEach(() => {
     navigateMock.mockReset();
-    portfolioTransactionsMock = [];
+    portfolioContributionsMock = [];
   });
 
   it("exibe os KPIs fundamentais com peso de relatório", () => {
@@ -174,10 +174,10 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
   it("KPI de investimentos reflete os aportes realizados no mês e navega para /carteira", async () => {
     const user = userEvent.setup();
-    portfolioTransactionsMock = [
-      { id: "tx1", asset_id: "a1", type: "buy", date: "2026-08-05", total: 1500 },
-      { id: "tx2", asset_id: "a2", type: "subscription", date: "2026-08-15", total: 500 },
-      { id: "tx3", asset_id: "a1", type: "buy", date: "2026-07-20", total: 1000 },
+    portfolioContributionsMock = [
+      { id: "c1", asset_id: "a1", date: "2026-08-05", amount: 1500, notes: null },
+      { id: "c2", asset_id: "a2", date: "2026-08-15", amount: 500, notes: null },
+      { id: "c3", asset_id: "a1", date: "2026-07-20", amount: 1000, notes: null },
     ];
 
     render(<OverviewPage />);

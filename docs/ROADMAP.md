@@ -1,5 +1,7 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v1.70** registra a **Proposta e Planejamento da Fase 36 — Refatoração da Carteira para Posição Consolidada, Snapshots Patrimoniais & Simplificação de Aportes** (2026-08-22): **(1) Transição de Paradigma**: migração do modelo de ledger de transações individuais para posição direta (`quantity` e `average_price` em `portfolio_assets`), eliminando a fricção de lançamentos manuais constantes; **(2) Snapshots Mensais & Histórico Patrimonial**: tabela `portfolio_snapshots` com evolução consolidada do patrimônio e custo mês a mês para comparativos "Δ vs. mês anterior" sem recálculo pesado de ledger em tempo de execução; **(3) Registro Desacoplado de Aportes & Proventos**: tabelas leves `portfolio_contributions` (integração direta com o fluxo de caixa de Home/Overview e Insights sem amarração forçada a notas de corretagem) e `portfolio_dividends` (extrato e calendário anual de rendimentos); **(4) UX Simplificada em 1-Passo**: unificação de cadastro/edição em modal direto com calculadora rápida de novo preço médio, importação rápida de custódia de corretoras/B3 e aplicação em 1-clique na calculadora de rebalanceamento; **(5) Blindagem contra 7 Fragilidades**: backfill automático na migration, paridade multimoeda (USD/BRL), integridade de backup e mitigação total de trade-offs.
+> **v1.69** registra a **Proposta e Planejamento da Fase 35 — Reformulação, Valoração Multimoeda, Cotações Resilientes & Importação Inteligente (CSV e Quick-Paste) da Carteira de Investimentos** (2026-08-22): **(1) Correção de Domínio & Valoração Multimoeda**: normalização de `totalCost` e `averageCost` para ativos internacionais em Dólar (USD) via taxa cambial `usdRate` para cálculo exato de PnL e rentabilidade não realizada (`unrealizedPnl` e `unrealizedPct`), com formatação dinâmica de moeda na `PositionTable`; **(2) Resiliência de Cotações & Câmbio Automático**: injeção automática de `USDBRL=X` na sincronização em lote e eliminação de bloqueios de CORS com AwesomeAPI e fallbacks em cascata; **(3) Motor Puro de Importação e Quick-Paste de Investimentos**: módulo `src/domain/portfolio/import-parser.ts` para reconhecimento inteligente de linguagem natural (*"15/08 comprei 100 PETR4 a 38,50"*, *"recebi 45,80 de dividendo de MXRF11"*) e sniffer/parser de CSVs de corretoras/B3; **(4) Interface de Importação em 3 Passos & UX**: modal `PortfolioImportDialog` (Upload/Paste $\rightarrow$ Mapeamento/Criação de Ativos $\rightarrow$ Gravação Atômica no Ledger), Extrato Consolidado da Carteira, ação rápida de registro em `ProventosTab` e correção de navegação de empty states; **(5) Unificação Arquitetural**: consolidação de componentes e páginas sob `src/features/investments/`.
 > **v1.68** registra a **Prevenção de Forced Dark Mode Quebrado em Navegadores e Sincronização Imediata de Tema na Splash/Loading Screen** (2026-08-21): **(1) Meta Tag `color-scheme` e Prevenção de Inversão Forçada**: inclusão de `<meta name="color-scheme" content="light dark" />` em `index.html` e declarações CSS `color-scheme: light / dark` em `src/styles/tokens.css` para sinalizar suporte nativo a temas escuros aos motores de "Auto Dark Mode" de navegadores móveis (Chromium, Samsung Internet, Brave), evitando inversão algorítmica destrutiva (CIELAB) de variáveis CSS, bordas e filtros; **(2) Resolução Padrão para Tema OLED**: detecção de preferência escura (`prefers-color-scheme: dark` ou modo dark forçado) no `ThemeProvider` (`src/app/theme-provider.tsx`) e no script inline de `index.html` configurada para o tema **OLED** (`#000000` true black); **(3) Splash Screen Inline Dinâmica com Fundo de Tema**: `#app-splash` em `index.html` adaptado para adotar a cor de fundo exata de cada tema (`light` `#F4F7F9`, `dark` `#0C1923`, `oled` `#000000`), eliminando o flash branco fixo; **(4) Espelho de Bootstrap Síncrono no `user-storage`**: sincronização imediata de `financas_active_theme` e atributos visuais em `src/services/user-storage.ts`, garantindo que a tela de carregamento e o bootstrap apliquem o tema escolhido pelo usuário desde o primeiro milissegundo antes da resolução assíncrona do Supabase Auth. Suíte 100% verde (20/20 testes de escopo, typecheck e lint limpos).
 > **v1.67** registra o **Isolamento Absoluto de Sessão, Teardown no Logout e Persistência Híbrida de Preferências (Nuvem vs. Dispositivo)** (2026-08-18): **(1) Isolamento de Armazenamento Local**: módulo `src/services/user-storage.ts` garantindo namespace por usuário (`financas_${userId}_<chave>`) para o `localStorage` e purga de chaves legadas globais (`sanitizeLegacyStorage`); **(2) Teardown Unificado de Sessão**: `resetAppState` em `src/services/auth-cleanup.ts` e hook `useSignOut` em `src/hooks/use-sign-out.ts` cancelando queries do TanStack Query, limpando cache em memória (`queryClient.clear()`), resetando stores locais (`density`, `visualCustomization`, `privacyMask`, `sidebarState`) e removendo atributos do DOM (`data-accent`, `data-surface-style`, `data-motion`, `data-privacy`); **(3) Sincronização em Nuvem de Ergonomia & Interface**: migração `20260101000018_user_preferences_settings.sql` com `custom_settings jsonb` em `user_preferences`, repositório `updateCustomSettings` e hook `useUpdateCustomSettings` para sincronização multidispositivo de widgets, sons, hápticos, animações e densidade; **(4) Independência de Tema de Cor por Aparelho**: tema visual (`theme`) e cor de destaque (`accent`) salvos no storage local do usuário para preservar a melhor configuração visual por hardware de tela (ex: OLED no mobile vs Claro no desktop); **(5) Testes Automatizados**: testes unitários de storage, cleanup e reatividade (100% verde).
 > **v1.66** registra a **Correção Crítica de Detecção de Rendas no Quick-Paste e Reconciliação de Extrato Bancário** (2026-08-18): **(1) Bug Root-Cause**: `buildTransactionsFromRows` usava `cells[descColIndex]` como `rawDescription`, descartando o texto original — palavras-chave de renda ("Pix Recebido", "salario", "recebi de") eram perdidas antes de chegarem ao motor `isLikelyIncomeDescription`; **(2) Fix em `parsers/index.ts`**: `rawDescription` agora preserva `row.rawText` (texto completo da linha original), e `isCredit` usa `isLikelyIncomeDescription(row.rawText)` como fallback heurístico quando não há coluna D/C explícita; **(3) Expansão de `INFLOW_KEYWORDS` em `clean.ts`**: adicionadas frases de linguagem natural: "recebi", "recebi de", "ganhei", "entrou", "renda de", "pagamento recebido", "transferencia recebida", "creditado", "recebimento pix", "ted recebido"; **(4) `sanitizeNaturalDescription`**: inclui verbos de renda e não retorna "Despesa" como fallback fixo; **(5) 5 novos testes** em `bank-reconciliation.test.ts` cobrindo Quick-Paste sem coluna D/C, sem falso-positivo em despesas comuns e verificação de preservação do `rawDescription`. Suíte **34 testes** no módulo de reconciliação (100% verde).
@@ -68,6 +70,16 @@
 | **F24** | Planejamento Financeiro & Simulador FIRE | Motor de independência financeira (juros compostos, regra 4%, taxa de poupança), meta de reserva de emergência e projeção multi-anual | Planejamento FIRE |
 | **F25** | Micro-interações, Feedback Visual & Ergonomia de Interface | Sidebar expand on hover com intent debounce e zero layout shift, Bottom Sheets no mobile, elevação tátil e tooltips | Micro-interações & Ergonomia |
 | **F26** | Gesto Interativo de Retorno ao Topo (Pull-up Overscroll UX) | Descontinuação do botão flutuante e introdução de overscroll elástico no fim da página (bottom pull-up) com barreira de inércia, micro-indicador minimalista e cancelamento dinâmico — **gesto removido em 2026-08-16** (instável; ver §3, F26) | Gesture UX & Mobile Polish |
+| **F27** | Sistema de Consciência de Gasto (Spenders Remorse & Impulsive Delay) | Diálogo de reflexão para compras impulsivas, cooldown configurável e métricas de compras evitadas | Consciência de Gasto |
+| **F28** | Unificação Definitiva do Hub de Investimentos (`/investments`) | Eliminação de telas paralelas `/carteira` e `/investimentos`, centralização em 4 abas únicas (Resumo/Proventos/Metas/Aporte) | Hub de Investimentos |
+| **F29** | Reconciliação Bidirecional & Sniffer de Faturas de Cartão | Importação CSV/OFX/Quick-Paste de faturas com sniffer estatístico, predição e prevenção de duplicatas | Importação de Faturas |
+| **F30** | Camada de Estado Otimista & Resiliência | Atualizações instantâneas de UI com rollback automático e sincronização em segundo plano | Estado Otimista |
+| **F31** | Auditoria A11y & Navegação por Teclado | Foco visível, traps de foco em modais, atalhos de teclado e conformidade WCAG AA | Acessibilidade AA |
+| **F32** | Recorrências, Rendas Parceladas & Operações em Grupo | Templates de recorrência, materialização sob demanda, parcelamento de rendas e edição em grupo | Recorrências & Parcelas |
+| **F33** | Encargos, Financiamentos & Amortizações Price/SAC | Quitação com juros/multa/desconto, parcelamento de fatura sem double-counting e contratos de financiamento | Encargos & Financiamentos |
+| **F34** | Importação Inteligente de Extratos Bancários | Reconciliação bidirecional de conta corrente (PIX/TED/Débito) com anti-double counting | Extratos Bancários |
+| **F35** | Valoração Multimoeda, Cotações Resilientes & Importação de Investimentos | PnL em USD/BRL exato, cotações/câmbio resilientes, parser de linguagem natural/CSV para carteira e Extrato Geral | Investimentos Completo |
+| **F36** | Posição Consolidada, Snapshots Patrimoniais & Simplificação de Aportes | Posição direta por ativo, snapshots mensais de histórico, aportes/proventos desacoplados e UX 1-Passo | Investimentos Simplificado |
 
 ---
 
@@ -1413,7 +1425,9 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 17 | **F31** — Modernização de Micro-Interações "Obsidian Glass" & Feedback Tátil | A / UI & Micro-Interações | F8/F11/F15 | ✅ Concluída (2026-08-17) — morphing action buttons, checklist de aportes, alertas pulsantes de orçamento e transições suaves nos controles globais |
 | 18 | **F32** — Recorrências, Rendas Parceladas & Operações em Grupo | A / Transações | F2/F21/F25 | ✅ Concluída (2026-08-17) — template + materialização sob demanda (`recurrences`/`recurrence_skips`, 4 frequências, fim finito), rendas parceladas (1–60, D12), edição/exclusão em grupo nos 3 modos, wizard + extrato + insights integrados; ver seção Fase 32 abaixo |
 | 19 | **F33** — Módulos de Encargos, Parcelamento de Faturas & Financiamentos | A / Crédito & Dívidas | F2/F5 | ✅ Concluída (2026-08-17) — quitação com mora/multa (`pay_debt`), parcelamento de fatura sem double-counting (`refinance_credit_card_bill`), classificação de encargos (`charge_kind`) e contratos de empréstimo/amortização antecipada (`loans`) |
-| 20 | **F34** — Importação e Reconciliação Inteligente de Extratos Bancários & Transações Gerais | A / Transações & Inteligência | F2/F30/F32 | 📋 Planejada — importação universal de extratos de conta corrente (OFX/CSV/Texto), reconciliação simultânea de receitas e despesas à vista/PIX/débito, deduplicação ordinal SHA-256 e proteção nativa anti-double-counting |
+| 20 | **F34** — Importação e Reconciliação Inteligente de Extratos Bancários & Transações Gerais | A / Transações & Inteligência | F2/F30/F32 | ✅ Concluída (2026-08-18) — importação universal de extratos de conta corrente (OFX/CSV/Texto), reconciliação simultânea de receitas e despesas à vista/PIX/débito, deduplicação ordinal SHA-256 e proteção nativa anti-double-counting |
+| 21 | **F35** — Cotações em USD e Importação Assistida de Investimentos | B / Carteira & Moedas | F17/F18 | ✅ Concluída (2026-08-21) — suporte completo a ativos em USD, conversão cambial em tempo real, importação por linguagem natural/planilha e auditoria de fidelidade de cálculos |
+| 22 | **F36** — Posição Consolidada, Snapshots Patrimoniais & Simplificação de Aportes | B / Carteira & Rebalanceamento | F35 | ✅ Concluída (2026-08-22) — migração para modelo de custódia O(1) (Quantidade + PM), snapshots mensais, desacoplamento de aportes/proventos e aporte em 1-clique |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -1633,4 +1647,119 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Categorias de despesa e tipos de receita pré-preenchidos pelo motor preditivo de histórico (`domain/predictions`).
 - Interface 100% responsiva (Desktop e Mobile), sem emojis e com controles encapsulados Radix.
 - Suíte completa de testes (`npm run test`, `npm run typecheck`, `npm run lint`) 100% verde.
+
+---
+
+### Fase 35 — Reformulação, Valoração Multimoeda, Cotações Resilientes & Importação Inteligente (CSV e Quick-Paste) da Carteira de Investimentos
+
+> **Status:** 🟢 Concluída (v1.69 — 2026-08-22) — eliminação das 8 fragilidades de investimentos, valoração multimoeda com paridade cambial, cotações com auto-sync de dólar, motor de importação de planilhas de corretoras e texto em linguagem natural, extrato geral da carteira e unificação arquitetural sob `src/features/investments/`.
+
+
+**Objetivo (Trilha B / Carteira & Rebalanceamento):** elevar a funcionalidade de Investimentos ao mesmo nível de maturidade e robustez das demais áreas do app, eliminando distorções de cálculo em ativos estrangeiros, tornando a sincronização de cotações à prova de falhas de CORS, adicionando importação inteligente em 3 passos (CSV e Quick-Paste) e unificando a arquitetura sob `src/features/investments/`.
+
+**Entregas organizadas em 5 Etapas:**
+
+1. **Etapa 35.1 — Domínio Puro, Valoração Multimoeda & PnL:**
+   - Normalização de `totalCost` para BRL (`totalCostBRL = totalCostUSD * usdRate`) no cálculo de `positionPnl(valueBRL, totalCostBRL)` em `use-portfolio-position.ts`, eliminando a distorção no lucro e na rentabilidade percentual não realizada (`unrealizedPct`).
+   - Preservação e renderização fiel da moeda nativa do ativo (`USD` ou `BRL`) no custo médio e preços da `PositionTable`.
+   - Conversão do aporte mensal (`monthlyContributionCents`) para BRL com a taxa de câmbio vigente.
+   - Ajuste em `simulateRebalanceAporte` para novos ativos sem saldo na classe receberem alocação proporcional equitativa.
+   - Testes unitários de domínio e queries (`valuation.test.ts`, `aporte.test.ts`, `summary.test.ts`).
+
+2. **Etapa 35.2 — Resiliência de Cotações Automáticas & Câmbio USD-BRL:**
+   - Injeção automática de `USDBRL=X` no lote de busca do `syncQuotesForAssets` sempre que houver ativos em USD ou na sincronização global de `ResumoTab`.
+   - Utilização de `AwesomeAPI` (`economia.awesomeapi.com.br`) como fonte primária para `USDBRL=X` com suporte aberto a CORS no client-side.
+   - Tratamento de rate limit e fallbacks em cascata (AwesomeAPI $\rightarrow$ Brapi com fallback de token $\rightarrow$ Yahoo Finance).
+   - Feedback refinado no Toast de sincronização com contagem de cotações obtidas e indicação de overrides manuais mantidos.
+   - Testes unitários do motor de cotações (`quotes.test.ts`).
+
+3. **Etapa 35.3 — Motor Puro de Importação e Quick-Paste de Investimentos:**
+   - Criação do módulo `src/domain/portfolio/import-parser.ts` com:
+     - `parseNaturalInvestmentLine`: extração de data, ticker (B3/BDR/Global), operação (`buy`, `sell`, `dividend`, `jcp`, `fii_yield`, `subscription`, `split`), quantidade, preço unitário e valor total a partir de frases corridas (*"15/08 comprei 100 PETR4 a 38,50"*, *"recebi 45,80 de dividendo de MXRF11"*).
+     - `parseInvestmentCsv`: sniffer e parser para relatórios tabulares de B3 (Área do Investidor), Kinvo, Gorila, XP, NuInvest, Inter e BTG com identificação assistida de colunas e auto-inferência de classe de ativo (`Ações`, `FIIs`, `BDRs`, `Renda Fixa`, `Cripto`).
+     - Deduplicação inteligente de lançamentos contra transações existentes.
+   - Suíte de testes unitários extensiva (`import-parser.test.ts`).
+
+4. **Etapa 35.4 — Diálogo de Importação em 3 Passos, Extrato Geral & UX de Proventos:**
+   - Modal `PortfolioImportDialog` em `src/features/investments/components/` com os 3 passos:
+     - *Passo 1 (Upload / Quick-Paste):* Tabs com `Dropzone` para arquivos CSV/planilhas e `Textarea` para colar texto livre com chips de exemplos clicáveis.
+     - *Passo 2 (Mapeamento & Pré-visualização):* Tabela interativa com as operações identificadas, badges de tipo, detecção de ativos novos e seleção em lote.
+     - *Passo 3 (Gravação Atômica):* Criação automática de ativos faltantes + inserção em lote no ledger via `useCreatePortfolioTransactionsBatch` e invalidação coordenada de cache.
+   - Botão de ação *"Importar / Quick-Paste"* no cabeçalho de `ResumoTab`.
+   - Seção de **Extrato Consolidado da Carteira** para auditoria cronológica de todas as operações de todos os ativos.
+   - Ação rápida *"Registrar provento"* no cabeçalho de `ProventosTab`.
+   - Ação explícita de *"Editar ativo"* na tabela de posições.
+   - Correção dos textos de empty state em `TargetsTab` e `AporteTab` apontando para a aba *"Resumo"*.
+
+5. **Etapa 35.5 — Unificação Arquitetural, Governança & Auditoria de Qualidade:**
+   - Consolidação de todos os componentes e abas sob `src/features/investments/`, eliminando a duplicidade de diretórios com `src/features/portfolio/`.
+   - Atualização de `docs/PROJECT_STRUCTURE.md` e barrels `index.ts`.
+   - Auditoria completa de qualidade: 0 erros no typecheck (`tsc -b`), 0 erros no ESLint (`npm run lint`), conformidade com `no-decorative-unicode` e 100% da suíte de testes verdes.
+
+**Arquivos:** `src/domain/portfolio/import-parser.ts` (+ testes) · `src/domain/portfolio/*` · `src/services/quotes.ts` · `src/state/queries/use-portfolio-position.ts` · `src/state/queries/use-asset-prices.ts` · `src/components/modules/position-table.tsx` · `src/features/investments/components/portfolio-import-dialog.tsx` · `src/features/investments/components/*` · `src/features/investments/pages/*` · `docs/PROJECT_STRUCTURE.md` · `docs/ROADMAP.md`.
+
+**✅ DoD (critérios de aceite):**
+- PnL e rentabilidade percentual de ativos em USD calculados de forma exata após conversão cambial.
+- Sincronização em lote atualiza a cotação cambial `USDBRL=X` sem erros de CORS no navegador.
+- Quick-Paste e importação CSV interpretam compras, vendas, dividendos, JCP, rendimentos e desdobramentos, criando ativos faltantes automaticamente.
+- Todas as abas de investimentos operam sob a mesma pasta de feature e os empty states navegam corretamente para a aba Resumo.
+- 0 erros de lint, 0 erros de TypeScript e suíte de testes 100% verde.
+
+---
+
+### Fase 36 — Refatoração da Carteira para Posição Consolidada, Snapshots Patrimoniais & Simplificação de Aportes
+
+> **Status:** ✅ Concluída (v1.70 — 2026-08-22) — transição do modelo transacional/ledger para Posição Consolidada (Quantidade + Preço Médio), criação de snapshots mensais de histórico (`portfolio_snapshots`), registro desacoplado de aportes (`portfolio_contributions`) e proventos (`portfolio_dividends`), experiência de cadastro em 1-passo com mitigação completa das 7 fragilidades. Suíte **1392 testes / 177 arquivos (100% verde)** + typecheck e lint limpos.
+
+**Objetivo (Trilha B / Carteira & Rebalanceamento):** eliminar a fricção excessiva no uso diário da carteira através da migração para o paradigma de **Posição Consolidada (Snapshot de Saldo e Preço Médio)** por ativo, garantindo:
+1. **Zero Fricção Operacional:** cadastro e manutenção em 1 único passo (Ticker, Classe, Quantidade e Preço Médio);
+2. **Histórico Patrimonial Leve e Confiável:** tabela `portfolio_snapshots` com registro mensal de patrimônio total e custo investido, eliminando simulações pesadas de ledger no cliente;
+3. **Desacoplamento de Aportes & Proventos:** registros independentes de aportes mensais (`portfolio_contributions`) para integração perfeita com o fluxo de caixa de Home/Overview e Insights, e tabela direta de proventos (`portfolio_dividends`);
+4. **Preservação Integral do Rebalanceamento:** o motor de cálculo de aportes e limites de risco (`simulateSmartAporte` / `simulateRebalanceAporte`) continua 100% funcional, agora com aplicação em 1-clique;
+5. **Mitigação Completa das 7 Fragilidades Arquiteturais:** backfill automático, paridade multimoeda (USD/BRL), integridade de backup e segurança de rollback.
+
+**Entregas organizadas em 5 Etapas:**
+
+1. **Etapa 36.1 — Infraestrutura de Banco & Migration com Backfill:**
+   - Migration `supabase/migrations/20260101000022_portfolio_consolidated_position.sql`:
+     - Colunas `quantity`, `average_price`, `notes` e `updated_at` na tabela `portfolio_assets`.
+     - Tabelas `portfolio_snapshots` (histórico mensal de patrimônio e custo), `portfolio_contributions` (aportes financeiros mensais) e `portfolio_dividends` (proventos recebidos).
+     - Script SQL de Backfill: agrega transações existentes para popular a posição inicial de cada ativo e gerar os snapshots dos últimos 6 meses.
+     - Políticas de RLS (`all_own`) e índices de performance.
+
+2. **Etapa 36.2 — Contratos de Domínio Puro & Valoração Direta:**
+   - Atualização de `src/types/schema.ts` e `src/types/database.ts` com as novas tipagens.
+   - Refatoração de `src/domain/portfolio/valuation.ts`: `calculatePositionSummary` para valoração imediata $O(1)$ (`totalCost`, `totalCostBRL`, `valueBRL`, `unrealizedPnl`, `unrealizedPct`).
+   - Adaptação do `import-parser.ts` para leitura de posições de custódia (*"PETR4: 100 cotas a R$ 38,50"*, *"VALE3: 200 a R$ 60,00"* e planilhas B3).
+   - Testes unitários puros com Vitest (`valuation.test.ts`, `summary.test.ts`, `import-parser.test.ts`).
+
+3. **Etapa 36.3 — Camada de Acesso a Dados & Estado:**
+   - Atualização de `src/data/repositories/portfolio.ts` e novos repositórios para snapshots, aportes e proventos.
+   - Refatoração do hook `usePortfolioPosition` (`src/state/queries/use-portfolio-position.ts`): carrega apenas ativos, preços e contribuições do mês corrente, dispensando o download de todo o histórico transacional.
+   - Integração com `OverviewPage` e `InsightsPage` para alimentar `investmentCents` a partir de `portfolio_contributions`.
+   - Atualização dos schemas de backup em `src/domain/export/backup.ts`.
+
+4. **Etapa 36.4 — Interface do Usuário (UI/UX) Simplificada:**
+   - `AssetFormDialog`: unificação de cadastro/edição em modal direto com calculadora rápida de novo preço médio ponderado.
+   - `PositionTable`: ação "Editar Posição" ágil, remoção de diálogos transacionais legados.
+   - `AporteTab`: execução do aporte em 1-clique (atualiza quantidade e grava a contribuição do mês).
+   - `ProventosTab`: formulário direto e calendário anual conectado a `portfolio_dividends`.
+   - `PortfolioImportDialog`: importador de custódia em 3 passos com prévia clara.
+   - Remoção de componentes e diálogos obsoletos (`TransactionFormDialog`, `TransactionListDialog`, `PortfolioStatementDialog`).
+
+5. **Etapa 36.5 — Verificação, Governança & Conformidade:**
+   - Execução de `npm run typecheck`, `npm run lint` e suíte completa de testes.
+   - Atualização de `docs/ARCHITECTURE.md` e `ESPECIFICACAO_TECNICA.md`.
+
+**Arquivos:** `supabase/migrations/20260101000022_portfolio_consolidated_position.sql` · `src/types/schema.ts` · `src/domain/portfolio/*` · `src/data/repositories/portfolio.ts` · `src/state/queries/use-portfolio-position.ts` · `src/features/investments/*` · `src/features/overview/pages/overview-page.tsx` · `src/features/insights/pages/insights-page.tsx` · `src/domain/export/backup.ts` · `docs/ROADMAP.md`.
+
+**✅ DoD (critérios de aceite):**
+- Cadastro e edição de ativos realizados em 1 único passo com quantidade e preço médio.
+- Backfill executado com sucesso: usuários com transações passadas têm suas posições preservadas com 100% de precisão.
+- Lucro não realizado, rentabilidade percentual e valoração multimoeda (USD/BRL) calculados corretamente de forma instantânea.
+- Aportes aplicados via calculadora ou lançados manualmente refletem com precisão no saldo da Home e Insights.
+- Aba de proventos permite registro rápido e mantém o extrato mensal e calendário anual.
+- Suíte completa de testes automatizados (`npm test`, `npm run typecheck`, `npm run lint`) 100% verde.
+
+
 

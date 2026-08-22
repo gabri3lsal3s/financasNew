@@ -1,15 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   createPortfolioAsset,
-  createPortfolioTransaction,
-  createPortfolioTransactionsBatch,
+  createPortfolioContribution,
+  createPortfolioDividend,
   deletePortfolioAsset,
-  deletePortfolioTransaction,
+  deletePortfolioContribution,
+  deletePortfolioDividend,
   listAllPortfolioTransactions,
   listPortfolioAssets,
   listPortfolioTransactions,
-  updatePortfolioAsset,
-  updatePortfolioTransaction,
+  upsertPortfolioSnapshot,
 } from "./portfolio";
 
 interface Builder {
@@ -17,15 +17,15 @@ interface Builder {
   eq: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
+  upsert: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
 
 let lastInsertInput: unknown = null;
-let lastUpdateInput: unknown = null;
+let lastUpsertInput: unknown = null;
 let lastDeletedId: string | null = null;
-let lastEqValue: string | null = null;
 
 function makeBuilder(result: unknown): Builder {
   const builder = {
@@ -33,6 +33,7 @@ function makeBuilder(result: unknown): Builder {
     eq: vi.fn(),
     order: vi.fn(),
     insert: vi.fn(),
+    upsert: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
@@ -44,21 +45,9 @@ function makeBuilder(result: unknown): Builder {
     lastInsertInput = input;
     return { ...builder, select: () => ({ ...builder, single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }) }) };
   });
-  builder.update.mockImplementation((input: unknown) => {
-    lastUpdateInput = input;
-    const updateChain = {
-      ...builder,
-      eq: vi.fn((_col: string, value: string) => {
-        lastEqValue = value;
-        return updateChain;
-      }),
-      select: () => ({ ...builder, single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }) }),
-    };
-    return updateChain;
-  });
-  builder.eq.mockImplementation((_col: string, value: string) => {
-    lastEqValue = value;
-    return builder;
+  builder.upsert.mockImplementation((input: unknown) => {
+    lastUpsertInput = input;
+    return { ...builder, select: () => ({ ...builder, single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }) }) };
   });
   builder.delete.mockImplementation(() => {
     const deleteChain = {
@@ -83,19 +72,20 @@ vi.mock("@/data/session", () => ({
   currentUserId: async () => "u1",
 }));
 
-describe("portfolio repository (Fase 4 — ledger §3.11.2)", () => {
+describe("portfolio repository (Fase 36 — Posição Consolidada)", () => {
   beforeEach(() => {
     lastInsertInput = null;
-    lastUpdateInput = null;
+    lastUpsertInput = null;
     lastDeletedId = null;
-    lastEqValue = null;
   });
 
-  it("listPortfolioAssets devolve os ativos", async () => {
-    builder = makeBuilder({ data: [{ id: "a1", user_id: "u1", ticker: "PETR4", asset_class: "acao", currency: "BRL" }] });
+  it("listPortfolioAssets devolve os ativos com quantity e average_price numéricos", async () => {
+    builder = makeBuilder({ data: [{ id: "a1", user_id: "u1", ticker: "PETR4", asset_class: "acao", currency: "BRL", quantity: "100", average_price: "35.5" }] });
     const assets = await listPortfolioAssets();
     expect(assets).toHaveLength(1);
     expect(assets[0]?.ticker).toBe("PETR4");
+    expect(assets[0]?.quantity).toBe(100);
+    expect(assets[0]?.average_price).toBe(35.5);
   });
 
   it("listPortfolioTransactions converte numeric → number na borda", async () => {
@@ -122,37 +112,31 @@ describe("portfolio repository (Fase 4 — ledger §3.11.2)", () => {
   });
 
   it("createPortfolioAsset insere com user_id", async () => {
-    builder = makeBuilder({ data: { id: "a1", user_id: "u1", ticker: "BOVA11", asset_class: "fii", currency: "BRL" } });
-    const asset = await createPortfolioAsset({ ticker: "BOVA11", asset_class: "fii", currency: "BRL" });
+    builder = makeBuilder({ data: { id: "a1", user_id: "u1", ticker: "BOVA11", asset_class: "fii", currency: "BRL", quantity: 0, average_price: 0 } });
+    const asset = await createPortfolioAsset({ ticker: "BOVA11", asset_class: "fii", currency: "BRL", quantity: 0, average_price: 0 });
     expect(lastInsertInput).toMatchObject({ user_id: "u1", ticker: "BOVA11" });
     expect(asset.ticker).toBe("BOVA11");
   });
 
-  it("createPortfolioTransaction insere com user_id", async () => {
-    builder = makeBuilder(
-      { data: { id: "t1", user_id: "u1", asset_id: "a1", type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 } },
-    );
-    const row = await createPortfolioTransaction({ asset_id: "a1", type: "buy", date: "2026-01-10", quantity: 10, price: 100, total: 1000 });
-    expect(lastInsertInput).toMatchObject({ user_id: "u1", asset_id: "a1", type: "buy" });
-    expect(row.total).toBe(1000);
+  it("upsertPortfolioSnapshot grava snapshot mensal", async () => {
+    builder = makeBuilder({ data: { id: "s1", user_id: "u1", month: "2026-08", total_value: 50000, total_cost: 42000 } });
+    const snap = await upsertPortfolioSnapshot({ month: "2026-08", total_value: 50000, total_cost: 42000 });
+    expect(lastUpsertInput).toMatchObject({ user_id: "u1", month: "2026-08", total_value: 50000, total_cost: 42000 });
+    expect(snap.total_value).toBe(50000);
   });
 
-  it("updatePortfolioAsset edita os campos do ativo", async () => {
-    builder = makeBuilder({ data: { id: "a1", user_id: "u1", ticker: "PETR3", asset_class: "acao", currency: "BRL" } });
-    const asset = await updatePortfolioAsset("a1", { ticker: "PETR3", asset_class: "acao" });
-    expect(lastUpdateInput).toMatchObject({ ticker: "PETR3" });
-    expect(lastEqValue).toBe("a1");
-    expect(asset.ticker).toBe("PETR3");
+  it("createPortfolioContribution insere contribuição com user_id", async () => {
+    builder = makeBuilder({ data: { id: "c1", user_id: "u1", date: "2026-08-15", amount: 1500, notes: "Aporte" } });
+    const c = await createPortfolioContribution({ asset_id: null, date: "2026-08-15", amount: 1500, notes: "Aporte" });
+    expect(lastInsertInput).toMatchObject({ user_id: "u1", amount: 1500 });
+    expect(c.amount).toBe(1500);
   });
 
-  it("updatePortfolioTransaction edita os campos da transação", async () => {
-    builder = makeBuilder(
-      { data: { id: "t1", user_id: "u1", asset_id: "a1", type: "buy", date: "2026-01-15", quantity: 15, price: 100, total: 1500 } },
-    );
-    const row = await updatePortfolioTransaction("t1", { quantity: 15, total: 1500 });
-    expect(lastUpdateInput).toMatchObject({ quantity: 15 });
-    expect(lastEqValue).toBe("t1");
-    expect(row.total).toBe(1500);
+  it("createPortfolioDividend insere provento com user_id", async () => {
+    builder = makeBuilder({ data: { id: "d1", user_id: "u1", asset_id: "a1", date: "2026-08-10", amount: 85.5 } });
+    const d = await createPortfolioDividend({ asset_id: "a1", date: "2026-08-10", amount: 85.5 });
+    expect(lastInsertInput).toMatchObject({ user_id: "u1", amount: 85.5 });
+    expect(d.amount).toBe(85.5);
   });
 
   it("deletePortfolioAsset remove o ativo pelo id", async () => {
@@ -161,32 +145,20 @@ describe("portfolio repository (Fase 4 — ledger §3.11.2)", () => {
     expect(lastDeletedId).toBe("a1");
   });
 
-  it("deletePortfolioTransaction remove a transação pelo id", async () => {
+  it("deletePortfolioContribution remove contribuição pelo id", async () => {
     builder = makeBuilder({ data: null, error: null });
-    await deletePortfolioTransaction("t1");
-    expect(lastDeletedId).toBe("t1");
+    await deletePortfolioContribution("c1");
+    expect(lastDeletedId).toBe("c1");
+  });
+
+  it("deletePortfolioDividend remove provento pelo id", async () => {
+    builder = makeBuilder({ data: null, error: null });
+    await deletePortfolioDividend("d1");
+    expect(lastDeletedId).toBe("d1");
   });
 
   it("delete propaga erro classificado quando a exclusão falha", async () => {
     builder = makeBuilder({ data: null, error: { message: "network down", code: "NETWORK_ERROR" } });
     await expect(deletePortfolioAsset("a1")).rejects.toThrow();
-  });
-
-  it("createPortfolioTransactionsBatch insere múltiplas linhas e retorna vazio com array vazio", async () => {
-    const emptyResult = await createPortfolioTransactionsBatch([]);
-    expect(emptyResult).toEqual([]);
-
-    builder = makeBuilder({
-      data: [
-        { id: "t1", user_id: "u1", asset_id: "a1", type: "buy", date: "2026-01-15", quantity: 10, price: 100, total: 1000 },
-        { id: "t2", user_id: "u1", asset_id: "a2", type: "buy", date: "2026-01-15", quantity: 5, price: 200, total: 1000 },
-      ],
-    });
-    const result = await createPortfolioTransactionsBatch([
-      { asset_id: "a1", type: "buy", date: "2026-01-15", quantity: 10, price: 100, total: 1000 },
-      { asset_id: "a2", type: "buy", date: "2026-01-15", quantity: 5, price: 200, total: 1000 },
-    ]);
-    expect(result).toHaveLength(2);
-    expect(lastInsertInput).toHaveLength(2);
   });
 });

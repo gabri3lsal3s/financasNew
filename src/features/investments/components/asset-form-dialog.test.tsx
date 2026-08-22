@@ -22,9 +22,11 @@ const existingAsset = {
   ticker: "PETR4",
   asset_class: "Ações",
   currency: "BRL" as const,
+  quantity: 100,
+  average_price: 30,
 };
 
-describe("AssetFormDialog — feedback de escrita (F15)", () => {
+describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
   beforeEach(() => {
     createAssetMock.mockReset();
     updateAssetMock.mockReset();
@@ -38,7 +40,7 @@ describe("AssetFormDialog — feedback de escrita (F15)", () => {
     render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
 
     await user.type(screen.getByLabelText("Ticker do ativo"), "petr4");
-    await user.click(screen.getByRole("button", { name: "Adicionar" }));
+    await user.click(screen.getByRole("button", { name: "Adicionar à carteira" }));
 
     expect(createAssetMock).toHaveBeenCalledTimes(1);
     // O ticker é normalizado para maiúsculas antes do envio.
@@ -52,8 +54,8 @@ describe("AssetFormDialog — feedback de escrita (F15)", () => {
     const user = userEvent.setup();
     render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Adicionar" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Adicionar" }));
+    expect(screen.getByRole("button", { name: "Adicionar à carteira" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Adicionar à carteira" }));
 
     expect(createAssetMock).not.toHaveBeenCalled();
     expect(triggerSensory).not.toHaveBeenCalled();
@@ -68,7 +70,7 @@ describe("AssetFormDialog — feedback de escrita (F15)", () => {
     expect(screen.getByLabelText("Ticker do ativo")).toHaveValue("PETR4");
     await user.clear(screen.getByLabelText("Ticker do ativo"));
     await user.type(screen.getByLabelText("Ticker do ativo"), "petr3");
-    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
     expect(updateAssetMock).toHaveBeenCalledTimes(1);
     expect(updateAssetMock).toHaveBeenCalledWith({

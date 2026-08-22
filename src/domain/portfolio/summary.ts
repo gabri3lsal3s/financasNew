@@ -81,3 +81,43 @@ export function assetYieldOnCostPct(dividends: number, totalCost: number): numbe
   if (totalCost <= 0 || dividends <= 0) return null;
   return Math.round((dividends / totalCost) * 10000) / 100;
 }
+
+// ---------------------------------------------------------------------------
+// Novo Preço Médio Ponderado (Helper de Aporte / Compra de Lote)
+// ---------------------------------------------------------------------------
+
+export interface WeightedAveragePriceResult {
+  newQuantity: number;
+  newAveragePrice: number;
+  newTotalCost: number;
+}
+
+/**
+ * Calcula o novo preço médio ponderado ao adquirir um novo lote de cotas:
+ *   ( (qtdAtual × pmAtual) + (qtdNova × precoNovo) ) ÷ (qtdAtual + qtdNova)
+ */
+export function calculateWeightedAveragePrice(
+  currentQuantity: number,
+  currentAveragePrice: number,
+  newQuantity: number,
+  newPrice: number,
+): WeightedAveragePriceResult {
+  const safeCurrentQty = Math.max(0, currentQuantity);
+  const safeCurrentPm = Math.max(0, currentAveragePrice);
+  const safeNewQty = Math.max(0, newQuantity);
+  const safeNewPrice = Math.max(0, newPrice);
+
+  const totalQty = safeCurrentQty + safeNewQty;
+  if (totalQty <= 0) {
+    return { newQuantity: 0, newAveragePrice: 0, newTotalCost: 0 };
+  }
+
+  const totalCost = safeCurrentQty * safeCurrentPm + safeNewQty * safeNewPrice;
+  const newAveragePrice = totalCost / totalQty;
+
+  return {
+    newQuantity: Math.round(totalQty * 100000000) / 100000000,
+    newAveragePrice: Math.round(newAveragePrice * 100000000) / 100000000,
+    newTotalCost: Math.round(totalCost * 100) / 100,
+  };
+}

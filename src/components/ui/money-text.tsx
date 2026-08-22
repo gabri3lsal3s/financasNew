@@ -1,6 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsCurrency } from "@/services/masks";
+import type { AssetCurrency } from "@/types";
 
 /**
  * MoneyText — primitivo de valor monetário (F12, hierarquia tipográfica).
@@ -13,6 +14,8 @@ import { formatCentsAsBRL } from "@/services/masks";
 export interface MoneyTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   /** Valor em centavos (pode ser negativo — o sinal é derivado). */
   cents: number;
+  /** Moeda da exibição (padrão BRL). */
+  currency?: AssetCurrency;
   /** Escala: hero (KPI) · value (lista/linha) · caption (resumo/legenda). */
   variant?: "hero" | "value" | "caption";
   /**
@@ -60,6 +63,7 @@ function signPrefix(sign: NonNullable<MoneyTextProps["sign"]>, cents: number): s
 
 export function MoneyText({
   cents,
+  currency = "BRL",
   variant = "value",
   tone = "auto",
   sign = "auto",
@@ -70,7 +74,8 @@ export function MoneyText({
   const prefix = signPrefix(sign, cents);
   return (
     <span className={cn("num", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
-      {`${prefix}${formatCentsAsBRL(Math.abs(cents))}`}
+      {`${prefix}${formatCentsAsCurrency(Math.abs(cents), currency)}`}
     </span>
   );
 }
+

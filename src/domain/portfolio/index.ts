@@ -178,27 +178,8 @@ export function convertToBRL(valueCents: number, currency: "BRL" | "USD", usdRat
 // ---------------------------------------------------------------------------
 // Rentabilidade não realizada & série mensal derivada (F14)
 // ---------------------------------------------------------------------------
-
-export interface PositionPnl {
-  /** Lucro/prejuízo não realizado em BRL: valor de mercado − custo total. */
-  unrealizedPnl: number;
-  /**
-   * Rentabilidade % sobre o custo (÷ custo total). `null` quando não há
-   * custo (ex.: caixa/reserva 1:1 — o conceito de rentabilidade não se aplica).
-   */
-  unrealizedPct: number | null;
-}
-
-/**
- * Rentabilidade de uma posição (§F14): valor de mercado − custo total e
- * percentual sobre o custo. Função pura — a UI só exibe os valores (regra
- * de ouro: nenhum cálculo em componente).
- */
-export function positionPnl(valueBRL: number, totalCost: number): PositionPnl {
-  const unrealizedPnl = roundMoney(valueBRL - totalCost);
-  const unrealizedPct = totalCost > 0 ? Math.round((unrealizedPnl / totalCost) * 10000) / 100 : null;
-  return { unrealizedPnl, unrealizedPct };
-}
+// Alocação por classe & série mensal
+// ---------------------------------------------------------------------------
 
 export interface AllocationClassSlice {
   /** Nome da classe (valor bruto do ativo; "Sem classe" quando null). */
@@ -273,13 +254,23 @@ export function portfolioMonthlySeries(
 export {
   FALLBACK_USD_RATE,
   applySpikeGuardrail,
+  calculatePositionSummary,
   fallbackPriceFor,
   inferCurrencyFromTicker,
   isCashAssetClass,
   normalizeClassName,
+  positionPnl,
   resolvePrice,
   usdRateFromPrices,
   valueAssetPosition,
+} from "./valuation";
+export type {
+  AssetValuation,
+  ConsolidatedPositionSummary,
+  PositionPnl,
+  PriceCandidate,
+  PriceSource,
+  ResolvedPrice,
 } from "./valuation";
 export {
   normalizeTickerForApi,
@@ -289,11 +280,15 @@ export {
   parseYahooChartResponse,
 } from "./quotes";
 export type { ParsedQuote, QuoteCurrency } from "./quotes";
-export { allocationByTicker, assetYieldOnCostPct, portfolioReturnPct } from "./summary";
-export type { AllocationTickerSlice } from "./summary";
+export {
+  allocationByTicker,
+  assetYieldOnCostPct,
+  calculateWeightedAveragePrice,
+  portfolioReturnPct,
+} from "./summary";
+export type { AllocationTickerSlice, WeightedAveragePriceResult } from "./summary";
 export { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "./dividends";
 export type { DividendEntry, DividendTransaction, MonthDividendSummary } from "./dividends";
-export type { AssetValuation, PriceCandidate, PriceSource, ResolvedPrice } from "./valuation";
 export {
   clampTargetPercentage,
   parseTargetInput,
@@ -316,3 +311,29 @@ export type {
   ClassCapInput,
   ClassTargetInput,
 } from "./aporte";
+export {
+  detectPortfolioColumns,
+  extractDateFromText,
+  extractTickerFromText,
+  identifyTransactionType,
+  inferAssetClassFromTicker,
+  parseInvestmentCsv,
+  parseNaturalInvestmentLine,
+  parseNumberClean,
+  parsePortfolioFromMapping,
+  parsePortfolioInput,
+} from "./import-parser";
+export {
+  parseSharedStringsXml,
+  parseWorksheetXmlToCsv,
+  parseXlsxToCsv,
+} from "./xlsx-parser";
+export type {
+  ParsedPortfolioImportRow,
+  PortfolioColumnMapping,
+  PortfolioSpreadsheetMode,
+  RawPortfolioRow,
+} from "./import-parser";
+
+
+

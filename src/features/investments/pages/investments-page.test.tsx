@@ -5,8 +5,9 @@ import { InvestmentsPage } from "./investments-page";
 let positionMock = {
   rows: [] as unknown[],
   totalBRL: 0,
+  totalCostBRL: 0,
   cashBRL: 0,
-  monthlySeries: [] as { month: string; valueBRL: number }[],
+  monthlySeries: [] as { month: string; valueBRL: number; costBRL: number }[],
   monthlyContributionCents: 0,
   isLoading: false,
   error: null as unknown,
@@ -20,6 +21,10 @@ const row = (overrides: Partial<Record<string, unknown>> = {}) => ({
   currency: "BRL",
   quantity: 10,
   averageCost: 40,
+  totalCost: 400,
+  totalCostBRL: 400,
+  averageCostBRL: 40,
+  dividends: 0,
   priceBRL: 42.5,
   source: "api",
   valueBRL: 8000,
@@ -44,6 +49,9 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   usePortfolioAssets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  usePortfolioDividends: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  usePortfolioContributions: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  usePortfolioSnapshots: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSectorCaps: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
@@ -51,17 +59,19 @@ vi.mock("@/state", () => ({
   useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreatePortfolioTransactionsBatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
-describe("InvestmentsPage (F17 — dashboard /investments)", () => {
+describe("InvestmentsPage — F17 unificada", () => {
   beforeEach(() => {
     positionMock = {
       rows: [],
       totalBRL: 0,
+      totalCostBRL: 0,
       cashBRL: 0,
       monthlySeries: [],
       monthlyContributionCents: 0,
@@ -71,51 +81,32 @@ describe("InvestmentsPage (F17 — dashboard /investments)", () => {
     };
   });
 
-  it("vazio exibe EmptyState com CTA para adicionar o primeiro ativo", () => {
+  it("renderiza o header, abas e navegação padrão", () => {
     render(<InvestmentsPage />);
-    expect(screen.getByText("Sem investimentos")).toBeInTheDocument();
-    // Header e EmptyState oferecem o mesmo CTA (2 botões).
-    expect(screen.getAllByRole("button", { name: /Adicionar ativo/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Investimentos", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Resumo" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Metas" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Aporte" })).toBeInTheDocument();
   });
 
-  it("com posição mostra KPIs executivos, donuts e tabela com ordenação", () => {
+  it("estado vazio quando não há ativos", () => {
+    render(<InvestmentsPage />);
+    expect(screen.getByText("Sem investimentos cadastrados")).toBeInTheDocument();
+  });
+
+  it("com ativos, exibe KPIs e tabela de posições", () => {
     positionMock = {
       ...positionMock,
-      rows: [
-        row(),
-        row({
-          assetId: "a2",
-          ticker: "BOVA11",
-          assetClass: "FIIs",
-          valueBRL: 2000,
-          unrealizedPct: 5,
-          unrealizedPnl: 100,
-          pct: 20,
-        }),
-      ],
-      totalBRL: 10000,
-      cashBRL: 500,
-      monthlySeries: [
-        { month: "2026-07", valueBRL: 8000 },
-        { month: "2026-08", valueBRL: 10000 },
-      ],
+      rows: [row({ assetId: "a1", ticker: "PETR4", valueBRL: 8000, pct: 80, unrealizedPct: 20 })],
+      totalBRL: 8000,
     };
     render(<InvestmentsPage />);
-    expect(screen.getByText("Patrimônio total")).toBeInTheDocument();
-    // Rentabilidade ponderada: (20×8000 + 5×2000) ÷ 10.000 = 17,0%
-    expect(screen.getByText("+17,0%")).toBeInTheDocument();
-    expect(screen.getByText("Proventos no mês")).toBeInTheDocument();
-    expect(screen.getByText("Alocação por classe")).toBeInTheDocument();
-    expect(screen.getByText("Alocação por ativo")).toBeInTheDocument();
-    expect(screen.getByText("Posições")).toBeInTheDocument();
-    // Ordenação: cabeçalho "Valor" é um botão.
-    expect(screen.getByRole("button", { name: /Valor/i })).toBeInTheDocument();
-  });
 
-  it("loading exibe skeletons sem dados", () => {
-    positionMock = { ...positionMock, isLoading: true };
-    render(<InvestmentsPage />);
-    expect(screen.queryByText("Patrimônio total")).not.toBeInTheDocument();
-    expect(screen.getByText("Investimentos")).toBeInTheDocument();
+    expect(screen.getByText("Patrimônio total")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 8.000,00").length).toBeGreaterThan(0);
+    expect(screen.getByText("Rentabilidade")).toBeInTheDocument();
+    expect(screen.getByText("Proventos no mês")).toBeInTheDocument();
+    expect(screen.getByText("Ativos em carteira")).toBeInTheDocument();
   });
 });

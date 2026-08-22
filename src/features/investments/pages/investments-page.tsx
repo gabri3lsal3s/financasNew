@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Tabs } from "@/components/ui";
 import { ResumoTab } from "./resumo-tab";
 import { ProventosTab } from "./proventos-tab";
-import { AporteTab, TargetsTab } from "@/features/portfolio";
+import { AporteTab } from "./aporte-tab";
+import { TargetsTab } from "./targets-tab";
+
 
 type InvestmentsTab = "resumo" | "metas" | "aporte" | "proventos";
 

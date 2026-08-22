@@ -17,6 +17,9 @@ import type {
   InsightFeedback,
   Loan,
   PortfolioAsset,
+  PortfolioContribution,
+  PortfolioDividend,
+  PortfolioSnapshot,
   ReminderState,
   PortfolioTransaction,
   Profile,
@@ -55,6 +58,9 @@ export interface Database {
       insight_feedback: Table<InsightFeedback>;
       reminder_states: Table<ReminderState>;
       portfolio_assets: Table<PortfolioAsset>;
+      portfolio_contributions: Table<PortfolioContribution>;
+      portfolio_dividends: Table<PortfolioDividend>;
+      portfolio_snapshots: Table<PortfolioSnapshot>;
       portfolio_transactions: Table<PortfolioTransaction>;
       allocation_targets: Table<AllocationTarget>;
       class_targets: Table<GroupTarget>;

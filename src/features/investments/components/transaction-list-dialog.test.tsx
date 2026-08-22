@@ -28,6 +28,8 @@ const asset = {
   ticker: "PETR4",
   asset_class: "Ações",
   currency: "BRL" as const,
+  quantity: 100,
+  average_price: 30,
 };
 
 const txs = [

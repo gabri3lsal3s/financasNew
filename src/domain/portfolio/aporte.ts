@@ -196,7 +196,10 @@ function simulateAporte(opts: {
       if (members.length === 0 || !(classTargetPct > 0)) continue;
       const classValue = members.reduce((acc, m) => acc + nonNegative(m.currentValueBRL), 0);
       for (const member of members) {
-        const share = classValue > 0 ? nonNegative(member.currentValueBRL) / classValue : 1 / members.length;
+        const share =
+          classValue > 0 && member.currentValueBRL > 0
+            ? nonNegative(member.currentValueBRL) / classValue
+            : 1 / members.length;
         const targetPct = round2(classTargetPct * share);
         const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
         const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));

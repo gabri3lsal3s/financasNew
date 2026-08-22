@@ -170,3 +170,120 @@ export function useDeletePortfolioTransaction() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Snapshots Mensais
+// ---------------------------------------------------------------------------
+
+export const portfolioSnapshotsKey = ["portfolio_snapshots"] as const;
+
+export function usePortfolioSnapshots() {
+  return useQuery({
+    queryKey: portfolioSnapshotsKey,
+    queryFn: () => import("@/data/repositories/portfolio").then((m) => m.listPortfolioSnapshots()),
+    staleTime: STALE_TIMES.analytical,
+  });
+}
+
+export function useUpsertPortfolioSnapshot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { month: string; total_value: number; total_cost: number }) =>
+      import("@/data/repositories/portfolio").then((m) => m.upsertPortfolioSnapshot(input)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portfolioSnapshotsKey });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Contribuições / Aportes Mensais
+// ---------------------------------------------------------------------------
+
+export const portfolioContributionsKey = ["portfolio_contributions"] as const;
+
+export function usePortfolioContributions() {
+  return useQuery({
+    queryKey: portfolioContributionsKey,
+    queryFn: () => import("@/data/repositories/portfolio").then((m) => m.listPortfolioContributions()),
+    staleTime: STALE_TIMES.analytical,
+  });
+}
+
+export function useCreatePortfolioContribution() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<DbInsert<import("@/types").PortfolioContribution>, "user_id">) =>
+      import("@/data/repositories/portfolio").then((m) => m.createPortfolioContribution(input)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portfolioContributionsKey });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
+export function useDeletePortfolioContribution() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      import("@/data/repositories/portfolio").then((m) => m.deletePortfolioContribution(id)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portfolioContributionsKey });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Proventos Recebidos
+// ---------------------------------------------------------------------------
+
+export const portfolioDividendsKey = ["portfolio_dividends"] as const;
+
+export function usePortfolioDividends() {
+  return useQuery({
+    queryKey: portfolioDividendsKey,
+    queryFn: () => import("@/data/repositories/portfolio").then((m) => m.listPortfolioDividends()),
+    staleTime: STALE_TIMES.analytical,
+  });
+}
+
+export function useCreatePortfolioDividend() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<DbInsert<import("@/types").PortfolioDividend>, "user_id">) =>
+      import("@/data/repositories/portfolio").then((m) => m.createPortfolioDividend(input)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portfolioDividendsKey });
+    },
+  });
+}
+
+export function useDeletePortfolioDividend() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      import("@/data/repositories/portfolio").then((m) => m.deletePortfolioDividend(id)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portfolioDividendsKey });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Criação / Atualização em Lote de Ativos (Custódia)
+// ---------------------------------------------------------------------------
+
+export function useUpsertPortfolioAssetsBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (inputs: Omit<DbInsert<PortfolioAsset>, "user_id">[]) =>
+      import("@/data/repositories/portfolio").then((m) => m.upsertPortfolioAssetsBatch(inputs)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portfolioAssetsKey });
+      void queryClient.invalidateQueries({ queryKey: ["asset_prices"] });
+    },
+  });
+}

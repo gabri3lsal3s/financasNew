@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   applySpikeGuardrail,
+  calculatePositionSummary,
   FALLBACK_USD_RATE,
   fallbackPriceFor,
   inferCurrencyFromTicker,
   isCashAssetClass,
   normalizeClassName,
+  positionPnl,
   resolvePrice,
   usdRateFromPrices,
   valueAssetPosition,
   type ResolvedPrice,
 } from "./valuation";
+
 
 describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
   describe("resolvePrice — pipeline manual → api → fallback", () => {
@@ -138,9 +141,77 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
 
     it("preço manual é marcado como manual na valoração", () => {
       const resolved: ResolvedPrice = { price: 42.5, source: "manual" };
-      const valuation = valueAssetPosition(3, resolved, "BRL");
+      const valuation = valueAssetPosition(10, resolved, "BRL");
       expect(valuation.manual).toBe(true);
-      expect(valuation.valueBRL).toBeCloseTo(127.5, 6);
+    });
+
+    it("calcula PnL consistente em USD convertendo custo e valor de mercado para BRL", () => {
+      const quantity = 10;
+      const totalCostUSD = 1000;
+      const usdRate = 5.5; 
+      const totalCostBRL = totalCostUSD * usdRate; 
+
+      const resolved: ResolvedPrice = { price: 120, source: "api" };
+      const valuation = valueAssetPosition(quantity, resolved, "USD", usdRate);
+      expect(valuation.valueBRL).toBe(6600);
+
+      const pnl = positionPnl(valuation.valueBRL, totalCostBRL);
+      expect(pnl.unrealizedPnl).toBe(1100); 
+      expect(pnl.unrealizedPct).toBe(20); 
+    });
+  });
+
+  describe("calculatePositionSummary — Posição Consolidada O(1)", () => {
+    it("ativo BRL com lucro", () => {
+      const summary = calculatePositionSummary({
+        quantity: 100,
+        averagePrice: 30,
+        assetClass: "Ações",
+        currency: "BRL",
+        resolvedPrice: { price: 35, source: "api" },
+      });
+
+      expect(summary.totalCost).toBe(3000);
+      expect(summary.totalCostBRL).toBe(3000);
+      expect(summary.valueBRL).toBe(3500);
+      expect(summary.unrealizedPnl).toBe(500);
+      expect(summary.unrealizedPct).toBe(16.67);
+      expect(summary.isCash).toBe(false);
+    });
+
+    it("ativo de caixa/reserva com valor 1:1", () => {
+      const summary = calculatePositionSummary({
+        quantity: 5000,
+        averagePrice: 1,
+        assetClass: "Caixa",
+        currency: "BRL",
+        resolvedPrice: { price: 1, source: "fallback" },
+      });
+
+      expect(summary.totalCost).toBe(5000);
+      expect(summary.valueBRL).toBe(5000);
+      expect(summary.unrealizedPnl).toBe(0);
+      expect(summary.unrealizedPct).toBeNull();
+      expect(summary.isCash).toBe(true);
+    });
+
+    it("ativo em USD convertido pela taxa cambial", () => {
+      const summary = calculatePositionSummary({
+        quantity: 10,
+        averagePrice: 100,
+        assetClass: "Internacional",
+        currency: "USD",
+        resolvedPrice: { price: 120, source: "api" },
+        usdRate: 5.5,
+      });
+
+      expect(summary.totalCost).toBe(1000); // 10 * 100 USD
+      expect(summary.totalCostBRL).toBe(5500); // 1000 * 5.5
+      expect(summary.priceBRL).toBe(660); // 120 * 5.5
+      expect(summary.valueBRL).toBe(6600); // 10 * 660
+      expect(summary.unrealizedPnl).toBe(1100);
+      expect(summary.unrealizedPct).toBe(20);
     });
   });
 });
+

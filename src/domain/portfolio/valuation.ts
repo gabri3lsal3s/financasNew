@@ -131,6 +131,26 @@ export function inferCurrencyFromTicker(ticker: string): AssetCurrency {
   return /^[A-Za-z]{2,5}$/.test(ticker) ? "USD" : "BRL";
 }
 
+export interface PositionPnl {
+  /** Lucro/prejuízo não realizado em BRL: valor de mercado − custo total. */
+  unrealizedPnl: number;
+  /**
+   * Rentabilidade % sobre o custo (÷ custo total). `null` quando não há
+   * custo (ex.: caixa/reserva 1:1 — o conceito de rentabilidade não se aplica).
+   */
+  unrealizedPct: number | null;
+}
+
+/**
+ * Rentabilidade de uma posição (§F14): valor de mercado − custo total e
+ * percentual sobre o custo. Função pura — a UI só exibe os valores.
+ */
+export function positionPnl(valueBRL: number, totalCost: number): PositionPnl {
+  const unrealizedPnl = Math.round((valueBRL - totalCost) * 100) / 100;
+  const unrealizedPct = totalCost > 0 ? Math.round((unrealizedPnl / totalCost) * 10000) / 100 : null;
+  return { unrealizedPnl, unrealizedPct };
+}
+
 /**
  * Valoriza uma posição a partir do preço JÁ resolvido: valor de mercado na
  * moeda do ativo, convertido para BRL (reutiliza `convertToBRL` — DRY).
@@ -145,4 +165,72 @@ export function valueAssetPosition(
   const value = quantity * resolved.price;
   const valueBRL = currency === "USD" ? value * usdRate : value;
   return { valueBRL, source: resolved.source, manual: resolved.source === "manual" };
+}
+
+export interface ConsolidatedPositionSummary {
+  quantity: number;
+  averagePrice: number;
+  totalCost: number;
+  totalCostBRL: number;
+  averagePriceBRL: number;
+  priceBRL: number;
+  valueBRL: number;
+  source: PriceSource;
+  unrealizedPnl: number;
+  unrealizedPct: number | null;
+  isCash: boolean;
+}
+
+/**
+ * Valoração direta da posição consolidada (Fase 36 — O(1) sem ledger transacional).
+ */
+export function calculatePositionSummary(params: {
+  quantity: number;
+  averagePrice: number;
+  assetClass: string | null;
+  currency: AssetCurrency;
+  resolvedPrice: ResolvedPrice;
+  usdRate?: number;
+}): ConsolidatedPositionSummary {
+  const { quantity, averagePrice, assetClass, currency, resolvedPrice, usdRate = FALLBACK_USD_RATE } = params;
+  const isCash = isCashAssetClass(assetClass);
+  const rate = currency === "USD" ? usdRate : 1;
+
+  if (isCash) {
+    const valueBRL = Math.round(quantity * 100) / 100;
+    return {
+      quantity,
+      averagePrice: 1,
+      totalCost: valueBRL,
+      totalCostBRL: valueBRL,
+      averagePriceBRL: 1,
+      priceBRL: 1,
+      valueBRL,
+      source: "fallback",
+      unrealizedPnl: 0,
+      unrealizedPct: null,
+      isCash: true,
+    };
+  }
+
+  const priceBRL = Math.round(resolvedPrice.price * rate * 100) / 100;
+  const totalCost = Math.round(quantity * averagePrice * 100) / 100;
+  const totalCostBRL = Math.round(totalCost * rate * 100) / 100;
+  const averagePriceBRL = Math.round(averagePrice * rate * 100) / 100;
+  const valueBRL = Math.round(quantity * priceBRL * 100) / 100;
+  const pnl = positionPnl(valueBRL, totalCostBRL);
+
+  return {
+    quantity,
+    averagePrice,
+    totalCost,
+    totalCostBRL,
+    averagePriceBRL,
+    priceBRL,
+    valueBRL,
+    source: resolvedPrice.source,
+    unrealizedPnl: pnl.unrealizedPnl,
+    unrealizedPct: pnl.unrealizedPct,
+    isCash: false,
+  };
 }

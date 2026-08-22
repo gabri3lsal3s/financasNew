@@ -1,30 +1,22 @@
-import { useAllPortfolioTransactions, usePortfolioAssets } from "./use-portfolio";
+import { useEffect, useRef } from "react";
+import {
+  usePortfolioAssets,
+  usePortfolioContributions,
+  usePortfolioDividends,
+  usePortfolioSnapshots,
+  useUpsertPortfolioSnapshot,
+} from "./use-portfolio";
 import { useAssetPrices } from "./use-asset-prices";
 import {
-  computeLedger,
+  calculatePositionSummary,
   fallbackPriceFor,
   isCashAssetClass,
-  portfolioMonthlySeries,
-  positionPnl,
   resolvePrice,
   usdRateFromPrices,
-  valueAssetPosition,
-  type LedgerTransaction,
   type PriceSource,
 } from "@/domain/portfolio";
 import { currentMonth, shiftMonth } from "@/lib/date";
-import type { AssetCurrency, PortfolioTransaction } from "@/types";
-
-/**
- * Posição consolidada da carteira (§3.11.2) — derivação local de exibição:
- *   • Ledger por ativo (custo médio, quantidade, proventos — domain puro);
- *   • Valoração em BRL com pipeline manual → cache → fallback (D5);
- *   • Rentabilidade não realizada (valor − custo, % sobre o custo — F14);
- *   • Caixa/reserva com valor 1:1 (quantidade = valor);
- *   • pctAtual = valor ÷ patrimônio total × 100;
- *   • Série mensal derivada (F14) para o comparativo Δ vs. mês anterior.
- * Nenhuma posição é armazenada — tudo derivado das transações + cotações.
- */
+import type { AssetCurrency } from "@/types";
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
@@ -34,8 +26,14 @@ export interface PortfolioPositionRow {
   assetClass: string | null;
   currency: AssetCurrency;
   quantity: number;
+  /** Custo médio na moeda nativa do ativo (USD ou BRL). */
   averageCost: number;
+  /** Custo total na moeda nativa do ativo (USD ou BRL). */
   totalCost: number;
+  /** Custo total convertido para BRL (para PnL e relatórios consolidados). */
+  totalCostBRL: number;
+  /** Custo médio convertido para BRL. */
+  averageCostBRL: number;
   dividends: number;
   /** Preço unitário em BRL (caixa = 1). */
   priceBRL: number;
@@ -56,116 +54,108 @@ export interface PortfolioPosition {
   rows: PortfolioPositionRow[];
   /** Patrimônio total = soma das posições em BRL. */
   totalBRL: number;
-  /** Caixa derivado do ledger (fluxo líquido) — pode ser negativo. */
+  /** Custo total da carteira em BRL. */
+  totalCostBRL: number;
+  /** Caixa derivado/alocado (valor dos ativos com classe caixa/reserva). */
   cashBRL: number;
   /**
-   * Série mensal derivada (F14): últimos 6 meses, valorados com os preços
-   * atuais (aproximação documentada em `portfolioMonthlySeries`). Usada no
-   * comparativo "Δ vs. mês anterior" do KPI Patrimônio e na sparkline (F16).
+   * Série mensal a partir de snapshots (F36).
    */
-  monthlySeries: { month: string; valueBRL: number }[];
+  monthlySeries: { month: string; valueBRL: number; costBRL: number }[];
   /**
-   * Aporte líquido do mês corrente em centavos (F19): compras + subscrições
-   * − vendas do mês. É a "saída mensal de investimentos" usada nas projeções
-   * de insights — não o patrimônio (que distorceria o superávit).
+   * Aporte líquido do mês corrente em centavos (F19 & F36).
    */
   monthlyContributionCents: number;
   isLoading: boolean;
   error: unknown;
-  /** Reexecuta as consultas de ativos, transações e preços. */
+  /** Reexecuta as consultas. */
   refetch: () => void;
 }
 
 export function usePortfolioPosition(): PortfolioPosition {
   const assetsQuery = usePortfolioAssets();
-  const transactionsQuery = useAllPortfolioTransactions();
   const pricesQuery = useAssetPrices();
+  const contributionsQuery = usePortfolioContributions();
+  const dividendsQuery = usePortfolioDividends();
+  const snapshotsQuery = usePortfolioSnapshots();
+  const upsertSnapshot = useUpsertPortfolioSnapshot();
 
   const prices = pricesQuery.data ?? [];
   const usdRate = usdRateFromPrices(prices);
   const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
 
-  const transactionsByAsset = new Map<string, PortfolioTransaction[]>();
-  for (const tx of transactionsQuery.data ?? []) {
-    const list = transactionsByAsset.get(tx.asset_id) ?? [];
-    list.push(tx);
-    transactionsByAsset.set(tx.asset_id, list);
+  // Agrupa proventos por ativo
+  const dividendsByAsset = new Map<string, number>();
+  for (const d of dividendsQuery.data ?? []) {
+    dividendsByAsset.set(d.asset_id, (dividendsByAsset.get(d.asset_id) ?? 0) + d.amount);
   }
 
   let totalBRL = 0;
+  let totalCostBRL = 0;
   let cashBRL = 0;
   const rawRows: Array<Omit<PortfolioPositionRow, "pct">> = [];
 
   for (const asset of assetsQuery.data ?? []) {
-    const ledger = computeLedger(
-      (transactionsByAsset.get(asset.id) ?? []).map(
-        (t): LedgerTransaction => ({
-          id: t.id,
-          type: t.type,
-          date: t.date,
-          quantity: t.quantity,
-          price: t.price,
-          total: t.total,
-        }),
-      ),
-    );
-    cashBRL = round2(cashBRL + ledger.cash);
-
     const isCash = isCashAssetClass(asset.asset_class);
-    let source: PriceSource = "fallback";
-    let priceBRL: number;
-    let valueBRL: number;
+    const quantity = Number(asset.quantity ?? 0);
+    const averageCost = Number(asset.average_price ?? 0);
 
-    if (isCash) {
-      // Ticker de caixa: valor 1:1 (quantidade = valor) — §3.11.2.
-      priceBRL = 1;
-      valueBRL = ledger.quantity;
-    } else {
-      const normalizedTicker = asset.ticker.trim().toUpperCase();
-      const priceRow = priceByTicker.get(normalizedTicker);
-      const defaultFallback = fallbackPriceFor(asset.currency);
-      const effectiveFallback = ledger.averageCost > 0 ? ledger.averageCost : defaultFallback;
+    const normalizedTicker = asset.ticker.trim().toUpperCase();
+    const priceRow = priceByTicker.get(normalizedTicker);
+    const defaultFallback = fallbackPriceFor(asset.currency);
+    const effectiveFallback = averageCost > 0 ? averageCost : defaultFallback;
 
-      const manualPriceCandidate =
-        priceRow?.manual_price !== null && priceRow?.manual_price !== undefined && priceRow.manual_price > 0
-          ? priceRow.manual_price
-          : priceRow?.source === "manual" && priceRow.price > 0
-            ? priceRow.price
-            : null;
-
-      const cachePriceCandidate =
-        priceRow?.source === "api" && priceRow.price > 0
+    const manualPriceCandidate =
+      priceRow?.manual_price !== null && priceRow?.manual_price !== undefined && priceRow.manual_price > 0
+        ? priceRow.manual_price
+        : priceRow?.source === "manual" && priceRow.price > 0
           ? priceRow.price
-          : priceRow?.source !== "manual" && priceRow?.price && priceRow.price > 0
-            ? priceRow.price
-            : null;
+          : null;
 
-      const resolved = resolvePrice({
-        manualPrice: manualPriceCandidate,
-        cachePrice: cachePriceCandidate,
-        fallbackPrice: effectiveFallback,
-      });
-      priceBRL = asset.currency === "USD" ? round2(resolved.price * usdRate) : resolved.price;
-      valueBRL = valueAssetPosition(ledger.quantity, resolved, asset.currency, usdRate).valueBRL;
-      source = resolved.source;
+    const cachePriceCandidate =
+      priceRow?.source === "api" && priceRow.price > 0
+        ? priceRow.price
+        : priceRow?.source !== "manual" && priceRow?.price && priceRow.price > 0
+          ? priceRow.price
+          : null;
+
+    const resolved = resolvePrice({
+      manualPrice: manualPriceCandidate,
+      cachePrice: cachePriceCandidate,
+      fallbackPrice: effectiveFallback,
+    });
+
+    const summary = calculatePositionSummary({
+      quantity,
+      averagePrice: averageCost,
+      assetClass: asset.asset_class,
+      currency: asset.currency,
+      resolvedPrice: resolved,
+      usdRate,
+    });
+
+    totalBRL = round2(totalBRL + summary.valueBRL);
+    totalCostBRL = round2(totalCostBRL + summary.totalCostBRL);
+    if (isCash) {
+      cashBRL = round2(cashBRL + summary.valueBRL);
     }
 
-    totalBRL = round2(totalBRL + valueBRL);
-    const pnl = positionPnl(valueBRL, ledger.totalCost);
     rawRows.push({
       assetId: asset.id,
       ticker: asset.ticker,
       assetClass: asset.asset_class,
       currency: asset.currency,
-      quantity: ledger.quantity,
-      averageCost: ledger.averageCost,
-      totalCost: ledger.totalCost,
-      dividends: ledger.dividends,
-      priceBRL,
-      source,
-      valueBRL: round2(valueBRL),
-      unrealizedPnl: pnl.unrealizedPnl,
-      unrealizedPct: pnl.unrealizedPct,
+      quantity,
+      averageCost,
+      totalCost: summary.totalCost,
+      totalCostBRL: summary.totalCostBRL,
+      averageCostBRL: summary.averagePriceBRL,
+      dividends: dividendsByAsset.get(asset.id) ?? 0,
+      priceBRL: summary.priceBRL,
+      source: summary.source,
+      valueBRL: summary.valueBRL,
+      unrealizedPnl: summary.unrealizedPnl,
+      unrealizedPct: summary.unrealizedPct,
       isCash,
     });
   }
@@ -175,38 +165,68 @@ export function usePortfolioPosition(): PortfolioPosition {
     pct: totalBRL > 0 ? Math.round((row.valueBRL / totalBRL) * 10000) / 100 : 0,
   }));
 
-  // Série mensal derivada (F14): últimos 6 meses (inclusive o atual), valorada
-  // com os preços atuais — aproximação documentada em `portfolioMonthlySeries`.
-  const months = Array.from({ length: 6 }, (_, index) => shiftMonth(currentMonth(), index - 5));
-  const seriesAssets = rawRows.map((row) => ({
-    assetId: row.assetId,
-    isCash: row.isCash,
-    priceBRL: row.priceBRL,
-  }));
-  const monthlySeries = portfolioMonthlySeries(transactionsByAsset, seriesAssets, months);
-
-  // Aporte líquido do mês corrente (F19): compras + subscrições debitam,
-  // vendas creditam; proventos/splits não contam como aporte.
-  const currentMonthKey = currentMonth();
+  // Aporte líquido do mês corrente a partir de portfolio_contributions
+  const thisMonth = currentMonth();
   let contributionBRL = 0;
-  for (const tx of transactionsQuery.data ?? []) {
-    if (!tx.date.startsWith(currentMonthKey)) continue;
-    if (tx.type === "buy" || tx.type === "subscription") contributionBRL += tx.total;
-    else if (tx.type === "sell") contributionBRL -= tx.total;
+  for (const c of contributionsQuery.data ?? []) {
+    if (c.date.startsWith(thisMonth)) {
+      contributionBRL += c.amount;
+    }
   }
+
+  // Snapshots mensais (últimos 6 meses)
+  const months = Array.from({ length: 6 }, (_, index) => shiftMonth(thisMonth, index - 5));
+  const snapshotByMonth = new Map((snapshotsQuery.data ?? []).map((s) => [s.month, s]));
+
+  const monthlySeries = months.map((month) => {
+    if (month === thisMonth) {
+      return { month, valueBRL: totalBRL, costBRL: totalCostBRL };
+    }
+    const snap = snapshotByMonth.get(month);
+    return {
+      month,
+      valueBRL: snap ? snap.total_value : totalBRL,
+      costBRL: snap ? snap.total_cost : totalCostBRL,
+    };
+  });
+
+  // Atualiza snapshot do mês corrente em background quando há dados carregados
+  const lastUpdatedMonth = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      assetsQuery.isLoading ||
+      pricesQuery.isLoading ||
+      !assetsQuery.data ||
+      assetsQuery.data.length === 0 ||
+      totalBRL <= 0
+    ) {
+      return;
+    }
+    if (lastUpdatedMonth.current !== thisMonth) {
+      lastUpdatedMonth.current = thisMonth;
+      upsertSnapshot.mutate({
+        month: thisMonth,
+        total_value: totalBRL,
+        total_cost: totalCostBRL,
+      });
+    }
+  }, [assetsQuery.data, assetsQuery.isLoading, pricesQuery.isLoading, thisMonth, totalBRL, totalCostBRL, upsertSnapshot]);
 
   return {
     rows,
     totalBRL,
+    totalCostBRL,
     cashBRL,
     monthlySeries,
     monthlyContributionCents: Math.round(contributionBRL * 100),
-    isLoading: assetsQuery.isLoading || transactionsQuery.isLoading || pricesQuery.isLoading,
-    error: assetsQuery.error ?? transactionsQuery.error ?? pricesQuery.error,
+    isLoading: assetsQuery.isLoading || pricesQuery.isLoading,
+    error: assetsQuery.error ?? pricesQuery.error,
     refetch: () => {
       void assetsQuery.refetch();
-      void transactionsQuery.refetch();
       void pricesQuery.refetch();
+      void contributionsQuery.refetch();
+      void dividendsQuery.refetch();
+      void snapshotsQuery.refetch();
     },
   };
 }

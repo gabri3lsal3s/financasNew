@@ -371,17 +371,21 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - Alvo = % do **patrimônio total** (incluindo caixa/reserva).
 - Edição em lote com feedback visual de soma (barra de total ≤ 100%).
 
-#### 3.11.2 Posição Atual (Ledger)
+#### 3.11.2 Posição Atual (Posição Consolidada & Snapshots — F36)
 
-- Tipos: `buy, sell, dividend, jcp, fii_yield, split, reverse_split, subscription`.
-- **Custo médio** = custoTotal ÷ quantidade (atualizado a cada compra; vendas reduzem proporcionalmente).
-- Proventos acumulam separadamente e **não alteram custo nem posição**.
-- Split soma cotas; reverse split subtrai.
-- Tickers de caixa com valor 1:1 (quantidade = valor).
-- **Caixa derivado do ledger** (nunca armazenado): compras/subscrições debitam; vendas e proventos creditam.
-- **Valoração:** ativos de mercado → cotação (cache + fallback + manual, §1.6); renda fixa/Tesouro → valor manual ou aplicado; caixa → valor direto.
+- **Modelo de Custódia Direta:** posições mantidas diretamente em `portfolio_assets` (`quantity`, `average_price`, `notes`), permitindo valoração instantânea $O(1)$ (`calculatePositionSummary`).
+- **Valoração e Rentabilidade:**
+  - `totalCost = quantity * average_price`
+  - `valueBRL = quantity * priceBRL` (com conversão USD via `USDBRL=X` quando aplicável)
+  - `unrealizedPnl = valueBRL - totalCostBRL`
+  - `unrealizedPct = (unrealizedPnl / totalCostBRL) * 100`
+- **Snapshots Patrimoniais:** histórico mensal gravado na tabela `portfolio_snapshots` (`month`, `total_value`, `total_cost`), com evolução visual dos últimos 6 meses.
+- **Aportes Mensais (`portfolio_contributions`):** registros independentes de aportes financeiros integrados aos fluxos de caixa da Overview e dos Insights.
+- **Proventos (`portfolio_dividends`):** lançamentos desacoplados para extrato mensal e calendário anual.
+- **Preço Médio Ponderado em Novos Lotes (`calculateWeightedAveragePrice`):**
+  - $\text{Novo PM} = \frac{(\text{Qtd Atual} \times \text{PM Atual}) + (\text{Qtd Nova} \times \text{Preço Novo})}{\text{Qtd Atual} + \text{Qtd Nova}}$
+- Tickers de caixa/renda fixa operam em modo Saldo Direto 1:1 (quantidade = valor, PM = 1,00).
 - `pctAtual = valorAtual ÷ patrimônioTotal × 100`; `gapPct = target − pctAtual`; `gapFinanceiro = gapPct% × patrimônioTotal`.
-- USD→BRL pela cotação `USDBRL=X` (fallback 5,25); moeda inferida pelo padrão do ticker (2–5 letras sem números = USD; B3/RF/cripto = BRL).
 
 #### 3.11.3 Algoritmo de Aporte (`simulateSmartAporte` / `simulateRebalanceAporte`)
 

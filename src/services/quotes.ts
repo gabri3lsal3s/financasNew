@@ -1,10 +1,11 @@
 /**
  * Serviço de busca e sincronização de cotações online no cliente — ESPECIFICAÇÃO §1.6 (D5).
  *
- * Utiliza APIs com suporte nativo a CORS e fallback em cascata:
- * 1. Brapi (brapi.dev) para ações/FIIs/BDRs da B3;
- * 2. AwesomeAPI para cotações cambiais (USD-BRL);
- * 3. Yahoo Finance Chart API v8 em cascata.
+ * Utiliza APIs com suporte a CORS e fallback em cascata:
+ * 1. AwesomeAPI para câmbio (USD-BRL, EUR-BRL) e cripto (BTC-BRL, ETH-BRL);
+ * 2. Brapi (brapi.dev) para ações/FIIs/BDRs da B3;
+ * 3. Yahoo Finance Chart API v8 via proxies CORS públicos abertos (AllOrigins, CorsProxy, CodeTabs);
+ * 4. Supabase Edge Function `quotes` como backend gateway.
  */
 
 import {
@@ -17,6 +18,7 @@ import {
   type ParsedQuote,
 } from "@/domain/portfolio";
 import { setAssetPriceFromApi, setAssetPricesBatchFromApi } from "@/data/repositories/asset-prices";
+import { getSupabase } from "@/data/client";
 
 const FETCH_TIMEOUT_MS = 5_000;
 
@@ -25,7 +27,11 @@ async function fetchBrapi(ticker: string): Promise<ParsedQuote | null> {
   const cleanTicker = normalizeTickerForBrapi(ticker);
   if (!cleanTicker || cleanTicker.includes("=")) return null;
 
-  const url = `https://brapi.dev/api/quote/${encodeURIComponent(cleanTicker)}`;
+  const token =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_BRAPI_TOKEN
+      ? `?token=${encodeURIComponent(import.meta.env.VITE_BRAPI_TOKEN)}`
+      : "";
+  const url = `https://brapi.dev/api/quote/${encodeURIComponent(cleanTicker)}${token}`;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -39,9 +45,23 @@ async function fetchBrapi(ticker: string): Promise<ParsedQuote | null> {
   }
 }
 
-/** Busca cotação cambial USD-BRL na AwesomeAPI. */
+/** Busca cotação na AwesomeAPI (Câmbio USD-BRL, EUR-BRL e Cripto BTC-BRL, ETH-BRL com CORS aberto). */
 async function fetchAwesomeApi(ticker: string): Promise<ParsedQuote | null> {
-  const url = "https://economia.awesomeapi.com.br/last/USD-BRL";
+  const normalized = ticker.trim().toUpperCase();
+  let pair: string;
+  if (normalized === "USDBRL=X" || normalized === "USD-BRL" || normalized === "USDBRL") {
+    pair = "USD-BRL";
+  } else if (normalized === "EURBRL=X" || normalized === "EUR-BRL" || normalized === "EURBRL") {
+    pair = "EUR-BRL";
+  } else if (normalized === "BTC" || normalized === "BTC-BRL" || normalized === "BTCBRL") {
+    pair = "BTC-BRL";
+  } else if (normalized === "ETH" || normalized === "ETH-BRL" || normalized === "ETHBRL") {
+    pair = "ETH-BRL";
+  } else {
+    return null;
+  }
+
+  const url = `https://economia.awesomeapi.com.br/last/${pair}`;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -49,20 +69,36 @@ async function fetchAwesomeApi(ticker: string): Promise<ParsedQuote | null> {
     clearTimeout(timer);
     if (!response.ok) return null;
     const payload: unknown = await response.json();
-    return parseAwesomeApiResponse(ticker, payload);
+    const parsed = parseAwesomeApiResponse(ticker, payload);
+    if (parsed) {
+      return { ...parsed, ticker };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-/** Busca cotação no Yahoo Finance Chart API v8. */
+/**
+ * Busca cotação no Yahoo Finance Chart API v8 contornando restrições de CORS
+ * do navegador através de gateways CORS públicos e rotação de hosts.
+ */
 async function fetchYahoo(ticker: string): Promise<ParsedQuote | null> {
   const apiTicker = normalizeTickerForApi(ticker);
   if (!apiTicker) return null;
 
-  const hosts = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"];
-  for (const host of hosts) {
-    const url = `https://${host}/v8/finance/chart/${encodeURIComponent(apiTicker)}?interval=1d&range=1d`;
+  const targetYahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(apiTicker)}?interval=1d&range=1d`;
+
+  // Em navegadores clientes, chamadas diretas ao Yahoo sofrem bloqueio Same-Origin (CORS).
+  // Os proxies CORS transparentes abaixo resolvem o bloqueio e retornam o JSON oficial.
+  const proxyEndpoints = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetYahooUrl)}`,
+    `https://corsproxy.io/?url=${encodeURIComponent(targetYahooUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetYahooUrl)}`,
+    targetYahooUrl,
+  ];
+
+  for (const url of proxyEndpoints) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -73,10 +109,24 @@ async function fetchYahoo(ticker: string): Promise<ParsedQuote | null> {
       const parsed = parseYahooChartResponse(ticker, payload);
       if (parsed) return parsed;
     } catch {
-      // continua para o próximo host
+      // Continua para o próximo endpoint/proxy da cascata
     }
   }
   return null;
+}
+
+/** Tenta buscar via Supabase Edge Function se estiver disponível */
+async function fetchViaEdgeFunction(tickers: string[]): Promise<ParsedQuote[]> {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.functions.invoke("quotes", {
+      body: { tickers },
+    });
+    if (error || !data || !Array.isArray(data.quotes)) return [];
+    return data.quotes as ParsedQuote[];
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -86,17 +136,15 @@ export async function fetchOnlineQuote(ticker: string): Promise<ParsedQuote | nu
   const normalized = ticker.trim().toUpperCase();
   if (!normalized) return null;
 
-  if (normalized === "USDBRL=X" || normalized === "USD-BRL" || normalized === "USDBRL") {
-    const awesome = await fetchAwesomeApi(ticker);
-    if (awesome) return awesome;
-    return await fetchYahoo(ticker);
-  }
+  // 1. AwesomeAPI primeiro para Câmbio e Cripto (CORS aberto, altíssima velocidade)
+  const awesome = await fetchAwesomeApi(normalized);
+  if (awesome) return awesome;
 
-  // Tenta Brapi primeiro para B3
+  // 2. Brapi para B3 (se token configurado ou público)
   const brapi = await fetchBrapi(ticker);
   if (brapi) return brapi;
 
-  // Fallback para Yahoo
+  // 3. Yahoo Finance com CORS Gateway
   return await fetchYahoo(ticker);
 }
 
@@ -122,18 +170,29 @@ export async function syncQuoteForTicker(
 }
 
 /**
- * Sincroniza em lote as cotações de uma lista de ativos.
+ * Sincroniza em lote as cotações de uma lista de ativos + câmbio USDBRL=X.
  * Retorna o total de ativos atualizados com sucesso.
  */
 export async function syncQuotesForAssets(
   assets: { ticker: string; asset_class?: string | null }[],
 ): Promise<number> {
   const eligible = assets.filter((a) => !isCashAssetClass(a.asset_class ?? null));
-  if (eligible.length === 0) return 0;
 
-  const results = await Promise.allSettled(
-    eligible.map((a) => fetchOnlineQuote(a.ticker)),
-  );
+  // Garante que a cotação do dólar USDBRL=X seja sempre sincronizada
+  const tickersToFetch = new Set(eligible.map((a) => a.ticker.trim().toUpperCase()));
+  tickersToFetch.add("USDBRL=X");
+
+  const tickerList = [...tickersToFetch];
+
+  // Tenta primeiro a Edge Function (servidor com acesso direto ao Yahoo)
+  const edgeQuotes = await fetchViaEdgeFunction(tickerList);
+  if (edgeQuotes.length > 0) {
+    const userAssetUpdatedCount = edgeQuotes.filter((q) => q.ticker !== "USDBRL=X").length;
+    return userAssetUpdatedCount > 0 ? userAssetUpdatedCount : edgeQuotes.length;
+  }
+
+  // Fallback client-side paralelo em cascata
+  const results = await Promise.allSettled(tickerList.map((t) => fetchOnlineQuote(t)));
 
   const successfulQuotes: ParsedQuote[] = [];
   for (const res of results) {
@@ -156,6 +215,6 @@ export async function syncQuotesForAssets(
     }
   }
 
-  return successfulQuotes.length;
+  const userAssetUpdatedCount = successfulQuotes.filter((q) => q.ticker !== "USDBRL=X").length;
+  return userAssetUpdatedCount > 0 ? userAssetUpdatedCount : successfulQuotes.length;
 }
-

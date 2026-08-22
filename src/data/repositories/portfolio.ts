@@ -2,15 +2,26 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
-import type { DbInsert, DbUpdate, PortfolioAsset, PortfolioTransaction } from "@/types";
+import type {
+  DbInsert,
+  DbUpdate,
+  PortfolioAsset,
+  PortfolioContribution,
+  PortfolioDividend,
+  PortfolioSnapshot,
+  PortfolioTransaction,
+} from "@/types";
 
 /**
- * Carteira — integração remota (ledger §3.11.2).
- * A posição NUNCA é armazenada: deriva das transações em `domain/portfolio`.
+ * Carteira — integração remota (Posição Consolidada e Snapshots §F36).
  */
 
 function mapAsset(row: PortfolioAsset): PortfolioAsset {
-  return { ...row };
+  return {
+    ...row,
+    quantity: Number(row.quantity ?? 0),
+    average_price: Number(row.average_price ?? 0),
+  };
 }
 
 function mapTransaction(row: PortfolioTransaction): PortfolioTransaction {
@@ -22,7 +33,33 @@ function mapTransaction(row: PortfolioTransaction): PortfolioTransaction {
   };
 }
 
-/** Ativos da carteira (com posição derivada no domínio). */
+function mapSnapshot(row: PortfolioSnapshot): PortfolioSnapshot {
+  return {
+    ...row,
+    total_value: Number(row.total_value),
+    total_cost: Number(row.total_cost),
+  };
+}
+
+function mapContribution(row: PortfolioContribution): PortfolioContribution {
+  return {
+    ...row,
+    amount: Number(row.amount),
+  };
+}
+
+function mapDividend(row: PortfolioDividend): PortfolioDividend {
+  return {
+    ...row,
+    amount: Number(row.amount),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Ativos da Carteira (Posição Consolidada)
+// ---------------------------------------------------------------------------
+
+/** Ativos da carteira com quantidade e preço médio consolidados. */
 export async function listPortfolioAssets(): Promise<PortfolioAsset[]> {
   const { data, error } = await resolveQuery<PortfolioAsset[]>(
     getSupabase().from("portfolio_assets").select("*").order("ticker"),
@@ -32,33 +69,6 @@ export async function listPortfolioAssets(): Promise<PortfolioAsset[]> {
     throw new AppError(classified.kind, classified.message, error);
   }
   return (data ?? []).map(mapAsset);
-}
-
-/** Transações de um ativo, em ordem cronológica (para o ledger). */
-export async function listPortfolioTransactions(assetId: string): Promise<PortfolioTransaction[]> {
-  const { data, error } = await resolveQuery<PortfolioTransaction[]>(
-    getSupabase().from("portfolio_transactions").select("*").eq("asset_id", assetId).order("date"),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapTransaction);
-}
-
-/**
- * Todas as transações da carteira (RLS por usuário) — usada pela posição
- * consolidada e pela calculadora de aporte (evita N+1 por ativo).
- */
-export async function listAllPortfolioTransactions(): Promise<PortfolioTransaction[]> {
-  const { data, error } = await resolveQuery<PortfolioTransaction[]>(
-    getSupabase().from("portfolio_transactions").select("*").order("date"),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  return (data ?? []).map(mapTransaction);
 }
 
 export async function createPortfolioAsset(input: Omit<DbInsert<PortfolioAsset>, "user_id">): Promise<PortfolioAsset> {
@@ -74,6 +84,194 @@ export async function createPortfolioAsset(input: Omit<DbInsert<PortfolioAsset>,
     throw new AppError("unknown", "Resposta vazia ao criar ativo.", null);
   }
   return mapAsset(data);
+}
+
+/** Cria ou atualiza ativos em lote (importador de custódia). */
+export async function upsertPortfolioAssetsBatch(
+  inputs: Omit<DbInsert<PortfolioAsset>, "user_id">[],
+): Promise<PortfolioAsset[]> {
+  if (inputs.length === 0) return [];
+  const user_id = await currentUserId();
+  const payload = inputs.map((input) => ({ ...input, user_id }));
+  const { data, error } = await resolveQuery<PortfolioAsset[]>(
+    getSupabase()
+      .from("portfolio_assets")
+      .upsert(payload, { onConflict: "user_id,ticker" })
+      .select(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapAsset);
+}
+
+/** Edita um ativo (ticker/classe/moeda/posição). */
+export async function updatePortfolioAsset(id: string, patch: DbUpdate<PortfolioAsset>): Promise<PortfolioAsset> {
+  const { data, error } = await resolveQuery<PortfolioAsset>(
+    getSupabase().from("portfolio_assets").update(patch).eq("id", id).select().single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao editar ativo.", null);
+  }
+  return mapAsset(data);
+}
+
+/** Exclui um ativo em cascata. */
+export async function deletePortfolioAsset(id: string): Promise<void> {
+  const { error } = await resolveQuery(getSupabase().from("portfolio_assets").delete().eq("id", id));
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Snapshots Mensais de Patrimônio
+// ---------------------------------------------------------------------------
+
+export async function listPortfolioSnapshots(): Promise<PortfolioSnapshot[]> {
+  const { data, error } = await resolveQuery<PortfolioSnapshot[]>(
+    getSupabase().from("portfolio_snapshots").select("*").order("month"),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapSnapshot);
+}
+
+export async function upsertPortfolioSnapshot(input: {
+  month: string;
+  total_value: number;
+  total_cost: number;
+}): Promise<PortfolioSnapshot> {
+  const user_id = await currentUserId();
+  const { data, error } = await resolveQuery<PortfolioSnapshot>(
+    getSupabase()
+      .from("portfolio_snapshots")
+      .upsert({ ...input, user_id }, { onConflict: "user_id,month" })
+      .select()
+      .single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao gravar snapshot de patrimônio.", null);
+  }
+  return mapSnapshot(data);
+}
+
+// ---------------------------------------------------------------------------
+// Contribuições / Aportes Mensais (Desacopladas)
+// ---------------------------------------------------------------------------
+
+export async function listPortfolioContributions(): Promise<PortfolioContribution[]> {
+  const { data, error } = await resolveQuery<PortfolioContribution[]>(
+    getSupabase().from("portfolio_contributions").select("*").order("date", { ascending: false }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapContribution);
+}
+
+export async function createPortfolioContribution(
+  input: Omit<DbInsert<PortfolioContribution>, "user_id">,
+): Promise<PortfolioContribution> {
+  const user_id = await currentUserId();
+  const { data, error } = await resolveQuery<PortfolioContribution>(
+    getSupabase().from("portfolio_contributions").insert({ ...input, user_id }).select().single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao criar contribuição de aporte.", null);
+  }
+  return mapContribution(data);
+}
+
+export async function deletePortfolioContribution(id: string): Promise<void> {
+  const { error } = await resolveQuery(getSupabase().from("portfolio_contributions").delete().eq("id", id));
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Proventos Recebidos
+// ---------------------------------------------------------------------------
+
+export async function listPortfolioDividends(): Promise<PortfolioDividend[]> {
+  const { data, error } = await resolveQuery<PortfolioDividend[]>(
+    getSupabase().from("portfolio_dividends").select("*").order("date", { ascending: false }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapDividend);
+}
+
+export async function createPortfolioDividend(
+  input: Omit<DbInsert<PortfolioDividend>, "user_id">,
+): Promise<PortfolioDividend> {
+  const user_id = await currentUserId();
+  const { data, error } = await resolveQuery<PortfolioDividend>(
+    getSupabase().from("portfolio_dividends").insert({ ...input, user_id }).select().single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao registrar provento.", null);
+  }
+  return mapDividend(data);
+}
+
+export async function deletePortfolioDividend(id: string): Promise<void> {
+  const { error } = await resolveQuery(getSupabase().from("portfolio_dividends").delete().eq("id", id));
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Métodos de compatibilidade (Transações legadas / Extrato)
+// ---------------------------------------------------------------------------
+
+export async function listPortfolioTransactions(assetId: string): Promise<PortfolioTransaction[]> {
+  const { data, error } = await resolveQuery<PortfolioTransaction[]>(
+    getSupabase().from("portfolio_transactions").select("*").eq("asset_id", assetId).order("date"),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapTransaction);
+}
+
+export async function listAllPortfolioTransactions(): Promise<PortfolioTransaction[]> {
+  const { data, error } = await resolveQuery<PortfolioTransaction[]>(
+    getSupabase().from("portfolio_transactions").select("*").order("date"),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapTransaction);
 }
 
 export async function createPortfolioTransaction(
@@ -93,7 +291,6 @@ export async function createPortfolioTransaction(
   return mapTransaction(data);
 }
 
-/** Cria múltiplas transações em lote (ex.: aporte sugerido pela calculadora). */
 export async function createPortfolioTransactionsBatch(
   inputs: Omit<DbInsert<PortfolioTransaction>, "user_id">[],
 ): Promise<PortfolioTransaction[]> {
@@ -110,35 +307,6 @@ export async function createPortfolioTransactionsBatch(
   return (data ?? []).map(mapTransaction);
 }
 
-/** Edita um ativo (ticker/classe/moeda) — CRUD completo do usuário. */
-export async function updatePortfolioAsset(id: string, patch: DbUpdate<PortfolioAsset>): Promise<PortfolioAsset> {
-  const { data, error } = await resolveQuery<PortfolioAsset>(
-    getSupabase().from("portfolio_assets").update(patch).eq("id", id).select().single(),
-  );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-  if (!data) {
-    throw new AppError("unknown", "Resposta vazia ao editar ativo.", null);
-  }
-  return mapAsset(data);
-}
-
-/**
- * Exclui um ativo — as transações e metas vinculadas são removidas em cascata
- * pelo banco (`portfolio_transactions.asset_id`/`allocation_targets.asset_id`
- * com `on delete cascade`). A posição derivada é recalculada automaticamente.
- */
-export async function deletePortfolioAsset(id: string): Promise<void> {
-  const { error } = await resolveQuery(getSupabase().from("portfolio_assets").delete().eq("id", id));
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
-  }
-}
-
-/** Edita uma transação da carteira (alimenta o ledger derivado). */
 export async function updatePortfolioTransaction(
   id: string,
   patch: DbUpdate<PortfolioTransaction>,
@@ -156,7 +324,6 @@ export async function updatePortfolioTransaction(
   return mapTransaction(data);
 }
 
-/** Exclui uma transação — o ledger da posição é recalculado. */
 export async function deletePortfolioTransaction(id: string): Promise<void> {
   const { error } = await resolveQuery(getSupabase().from("portfolio_transactions").delete().eq("id", id));
   if (error) {

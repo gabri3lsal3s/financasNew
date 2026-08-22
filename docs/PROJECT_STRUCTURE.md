@@ -108,25 +108,20 @@
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
     │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8)
-    │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento
-    │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos)
-    │   ├── debts/                 #   Dívidas (status, quitação integrada)
+    │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento + reconciliação de extratos
+    │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
+    │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
     │   ├── reports/               #   Relatórios
     │   ├── insights/              #   Insights, projeção e corte
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)
-    │   ├── portfolio/             #   Carteira (portfólio) — componentes de operação
-    │   │                          #   (targets/aporte tabs, reutilizados no hub; a antiga
-    │   │                          #   página /carteira e a position-tab foram removidas na
-    │   │                          #   F28 — /investments é o hub único desde a F17) +
-    │   │                          #   CRUD completo e Cotações (v1.60): asset-form-dialog,
-    │   │                          #   manual-price-dialog, transaction-form-dialog, transaction-list-dialog
-    │   │                          #   com barrel components/index.ts e index.ts de módulo
-    │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+unificação):
-    │   │                          #     hub de abas (Resumo/Metas/Proventos/Aporte) —
-    │   │                          #     pages/resumo-tab.tsx · pages/proventos-tab.tsx (F18)
-    │   │                          #     com barrel index.ts (v1.60)
+    │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35):
+    │   │                          #     hub de 4 abas (Resumo / Proventos / Metas / Aporte)
+    │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, investments-page
+    │   │                          #     components: asset-form-dialog, manual-price-dialog, transaction-form-dialog,
+    │   │                          #       transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
+    │   │                          #       portfolio-mapping-step, portfolio-statement-dialog com barrels components/index.ts e index.ts
     │   └── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
     │                              #     com simulador FIRE interativo, showcase, pricing e FAQ
     │
@@ -171,7 +166,8 @@
     │   │                          #     type-sniffer, hashing ordinal, scoring 0-100)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │                              #   summary.ts (F17: rentabilidade, alocação),
-    │                              #   dividends.ts (F18: extrato e calendário de proventos)
+    │                              #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
+    │                              #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls)
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, List, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, List, Pencil, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
@@ -21,6 +21,8 @@ export interface PositionRow {
   quantity: number;
   averageCost: number;
   totalCost?: number;
+  totalCostBRL?: number;
+  averageCostBRL?: number;
   dividends?: number;
   priceBRL: number;
   source: PriceSource;
@@ -258,7 +260,7 @@ export function PositionTable({
         row.isCash ? (
           <span className="num text-sm text-muted-foreground">—</span>
         ) : (
-          <MoneyText cents={numberToCents(row.averageCost)} tone="default" className="text-muted-foreground" />
+          <MoneyText cents={numberToCents(row.averageCost)} currency={row.currency} tone="default" className="text-muted-foreground" />
         ),
     },
     {
@@ -309,7 +311,7 @@ export function PositionTable({
     },
   ];
 
-  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onSetManualPrice || onDeleteAsset);
+  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onEditAsset || onSetManualPrice || onDeleteAsset);
 
   if (hasRowActions) {
     columns.push({
@@ -321,6 +323,7 @@ export function PositionTable({
           row={row}
           onRegisterTransaction={onRegisterTransaction}
           onListTransactions={onListTransactions}
+          onEditAsset={onEditAsset}
           onSetManualPrice={onSetManualPrice}
           onDeleteAsset={onDeleteAsset}
         />
@@ -475,7 +478,7 @@ export function PositionTable({
                   </span>
                   <span>
                     <span className="font-medium text-foreground/70">Custo médio</span>{" "}
-                    {row.isCash ? "—" : <MoneyText cents={numberToCents(row.averageCost)} tone="default" />}
+                    {row.isCash ? "—" : <MoneyText cents={numberToCents(row.averageCost)} currency={row.currency} tone="default" />}
                   </span>
                 </div>
 
@@ -485,6 +488,7 @@ export function PositionTable({
                       row={row}
                       onRegisterTransaction={onRegisterTransaction}
                       onListTransactions={onListTransactions}
+                      onEditAsset={onEditAsset}
                       onSetManualPrice={onSetManualPrice}
                       onDeleteAsset={onDeleteAsset}
                     />
@@ -513,12 +517,13 @@ interface PositionRowActionsProps {
   row: PositionRow;
   onRegisterTransaction?: (assetId: string, ticker: string) => void;
   onListTransactions?: (assetId: string, ticker: string) => void;
+  onEditAsset?: (assetId: string, ticker: string) => void;
   onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
   onDeleteAsset?: (assetId: string, ticker: string) => void;
 }
 
 /** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28). */
-function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onSetManualPrice, onDeleteAsset }: PositionRowActionsProps) {
+function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onEditAsset, onSetManualPrice, onDeleteAsset }: PositionRowActionsProps) {
   return (
     <div className="flex items-center justify-end gap-1">
       {onRegisterTransaction ? (
@@ -543,12 +548,29 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
           variant="ghost"
           className="min-h-9 px-2"
           aria-label={`Lançamentos de ${row.ticker}`}
+          title="Ver histórico de transações deste ativo"
           onClick={(e) => {
             e.stopPropagation();
             onListTransactions(row.assetId, row.ticker);
           }}
         >
           <List className="size-4" aria-hidden="true" />
+        </Button>
+      ) : null}
+      {onEditAsset ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="min-h-9 px-2"
+          aria-label={`Editar ${row.ticker}`}
+          title="Editar ticker, classe ou moeda do ativo"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditAsset(row.assetId, row.ticker);
+          }}
+        >
+          <Pencil className="size-4" aria-hidden="true" />
         </Button>
       ) : null}
       {!row.isCash && onSetManualPrice ? (
@@ -574,6 +596,7 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
           variant="ghost"
           className="min-h-9 px-2 text-negative-strong hover:text-negative-strong"
           aria-label={`Excluir ${row.ticker}`}
+          title="Excluir ativo da carteira"
           onClick={(e) => {
             e.stopPropagation();
             onDeleteAsset(row.assetId, row.ticker);
@@ -585,3 +608,4 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
     </div>
   );
 }
+

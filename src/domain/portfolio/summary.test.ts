@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { allocationByTicker, assetYieldOnCostPct, portfolioReturnPct } from "./summary";
+import {
+  allocationByTicker,
+  assetYieldOnCostPct,
+  calculateWeightedAveragePrice,
+  portfolioReturnPct,
+} from "./summary";
 
 describe("portfolioReturnPct — rentabilidade ponderada pelo valor (§F17)", () => {
   it("pondera os percentuais pelo valor de mercado e ignora caixa", () => {
@@ -57,5 +62,35 @@ describe("assetYieldOnCostPct — Yield on Cost de ativo", () => {
     expect(assetYieldOnCostPct(500, 0)).toBeNull();
     expect(assetYieldOnCostPct(-10, 5000)).toBeNull();
     expect(assetYieldOnCostPct(500, -100)).toBeNull();
+  });
+});
+
+describe("calculateWeightedAveragePrice — Helper de Aporte e Lotes", () => {
+  it("calcula preço médio ponderado corretamente ao adicionar novo lote", () => {
+    // 100 cotas a R$ 20 + 100 cotas a R$ 40 = 200 cotas a R$ 30 (custo R$ 6.000)
+    const res = calculateWeightedAveragePrice(100, 20, 100, 40);
+    expect(res).toEqual({
+      newQuantity: 200,
+      newAveragePrice: 30,
+      newTotalCost: 6000,
+    });
+  });
+
+  it("calcula primeiro lote quando quantidade atual era zero", () => {
+    const res = calculateWeightedAveragePrice(0, 0, 50, 35.5);
+    expect(res).toEqual({
+      newQuantity: 50,
+      newAveragePrice: 35.5,
+      newTotalCost: 1775,
+    });
+  });
+
+  it("retorna zeros se as quantidades forem zero", () => {
+    const res = calculateWeightedAveragePrice(0, 0, 0, 0);
+    expect(res).toEqual({
+      newQuantity: 0,
+      newAveragePrice: 0,
+      newTotalCost: 0,
+    });
   });
 });

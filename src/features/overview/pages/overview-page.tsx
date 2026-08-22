@@ -38,7 +38,6 @@ import { getErrorMessage } from "@/services/errors";
 import {
   useAllCardExpenses,
   useAllCardPayments,
-  useAllPortfolioTransactions,
   useBudgets,
   useCategories,
   useCreditCards,
@@ -48,6 +47,7 @@ import {
   useIncomes,
   useIncomesByRange,
   useOnboardingCounts,
+  usePortfolioContributions,
 } from "@/state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { cn } from "@/lib/utils";
@@ -83,7 +83,7 @@ export function OverviewPage() {
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
   const onboardingQuery = useOnboardingCounts();
-  const portfolioTransactionsQuery = useAllPortfolioTransactions();
+  const contributionsQuery = usePortfolioContributions();
 
   const loading =
     incomesQuery.isLoading ||
@@ -98,7 +98,7 @@ export function OverviewPage() {
     expenseCategories.isLoading ||
     cardExpensesQuery.isLoading ||
     cardPaymentsQuery.isLoading ||
-    portfolioTransactionsQuery.isLoading;
+    contributionsQuery.isLoading;
 
   const error =
     incomesQuery.error ??
@@ -113,7 +113,7 @@ export function OverviewPage() {
     expenseCategories.error ??
     cardExpensesQuery.error ??
     cardPaymentsQuery.error ??
-    portfolioTransactionsQuery.error;
+    contributionsQuery.error;
 
   const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
 
@@ -125,16 +125,12 @@ export function OverviewPage() {
   const prevIncomeCents = weightedSum(prevIncomesQuery.data ?? []);
   const prevExpenseCents = weightedSum(prevExpensesQuery.data ?? []);
 
-  // Investimentos/Aportes no mês: compras + subscrições − vendas
-  const portfolioTxs = portfolioTransactionsQuery.data ?? [];
+  // Investimentos/Aportes no mês a partir de portfolio_contributions
+  const contributions = contributionsQuery.data ?? [];
   const computeMonthInvestments = (targetMonth: string) =>
-    portfolioTxs
-      .filter((tx) => tx.date.startsWith(targetMonth))
-      .reduce((acc, tx) => {
-        if (tx.type === "buy" || tx.type === "subscription") return acc + numberToCents(tx.total);
-        if (tx.type === "sell") return acc - numberToCents(tx.total);
-        return acc;
-      }, 0);
+    contributions
+      .filter((c) => c.date.startsWith(targetMonth))
+      .reduce((acc, c) => acc + numberToCents(c.amount), 0);
 
   const investmentCents = Math.max(0, computeMonthInvestments(month));
   const prevInvestmentCents = Math.max(0, computeMonthInvestments(prevMonth));
