@@ -188,21 +188,21 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     const user = userEvent.setup();
     render(<BudgetsPage />);
 
-    const tab = screen.getByRole("tab", { name: /rendas & metas/i });
+    const tab = screen.getByRole("tab", { name: /rendas/i });
     tab.focus();
     expect(tab).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(screen.getByRole("tab", { name: /rendas & metas/i })).toHaveAttribute("data-state", "active");
+    expect(screen.getByRole("tab", { name: /rendas/i })).toHaveAttribute("data-state", "active");
   });
 
   it("DebtsPage: ações por linha alcançáveis por teclado", async () => {
     const user = userEvent.setup();
     render(<DebtsPage />);
 
-    const tab = screen.getByRole("tab", { name: /a pagar/i });
+    const tab = screen.getByRole("tab", { name: /pagar/i });
     tab.focus();
     await user.keyboard("{Enter}");
-    expect(screen.getByRole("tab", { name: /a pagar/i })).toHaveAttribute("data-state", "active");
+    expect(screen.getByRole("tab", { name: /pagar/i })).toHaveAttribute("data-state", "active");
 
     const quitButton = screen.getByRole("button", { name: "Quitar Conta de luz" });
     quitButton.focus();

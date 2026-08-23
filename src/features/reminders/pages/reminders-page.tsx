@@ -96,6 +96,159 @@ export function RemindersPage() {
     return "Nenhuma pendência no momento. Todas as faturas e dívidas estão em dia.";
   };
 
+  const renderPendingContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      );
+    }
+    if (!preferences.enabled) {
+      return (
+        <EmptyState
+          icon={<Bell className="size-6" aria-hidden="true" />}
+          title="Lembretes desativados"
+          description="Você desativou os lembretes automáticos nas configurações."
+          tone="default"
+        />
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Sub-filtros secundários compactos quando em Pendentes e há itens */}
+        {totalCount > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                setSubFilter("all");
+              }}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                subFilter === "all"
+                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                  : "bg-muted/60 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Todas ({totalCount})
+            </button>
+            {overdueCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSubFilter("overdue");
+                }}
+                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                  subFilter === "overdue"
+                    ? "bg-critical text-critical-foreground font-semibold shadow-xs"
+                    : "bg-critical/10 text-critical hover:bg-critical/20"
+                }`}
+              >
+                Atrasadas ({overdueCount})
+              </button>
+            )}
+            {billsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSubFilter("bills");
+                }}
+                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                  subFilter === "bills"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "bg-muted/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Faturas ({billsCount})
+              </button>
+            )}
+            {debtsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSubFilter("debts");
+                }}
+                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                  subFilter === "debts"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "bg-muted/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Dívidas ({debtsCount})
+              </button>
+            )}
+          </div>
+        )}
+
+        {filteredItems.length === 0 ? (
+          <EmptyState
+            icon={<Bell className="size-6" aria-hidden="true" />}
+            title="Tudo em dia"
+            description={getEmptyDescription()}
+            tone="positive"
+          />
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {filteredItems.map((item) => (
+              <ReminderItem
+                key={item.key}
+                item={item}
+                stateKind={stateMap.get(item.key) ?? null}
+                onMarkRead={(key) => handle(key, { kind: "read" })}
+                onSnooze={snooze}
+                onRestore={(key) => handle(key, null)}
+                onOpen={() => openReminder(item)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderReadContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      );
+    }
+    const readItems = allItems.filter((it) => stateMap.get(it.key) === "read");
+    if (readItems.length === 0) {
+      return (
+        <EmptyState
+          icon={<Bell className="size-6" aria-hidden="true" />}
+          title="Tudo em dia"
+          description="Nenhum lembrete no histórico de lidos."
+          tone="positive"
+        />
+      );
+    }
+    return (
+      <div className="flex flex-col gap-2.5">
+        {readItems.map((item) => (
+          <ReminderItem
+            key={item.key}
+            item={item}
+            stateKind="read"
+            onMarkRead={(key) => handle(key, { kind: "read" })}
+            onSnooze={snooze}
+            onRestore={(key) => handle(key, null)}
+            onOpen={() => openReminder(item)}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -129,96 +282,34 @@ export function RemindersPage() {
         )}
       </header>
 
-      {/* Tabs Principais Unificadas (2 abas simétricas em Pills) */}
-      {allItems.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <Tabs
-            value={mainTab}
-            onValueChange={(val) => {
-              triggerHaptic("light");
-              setMainTab(val as MainTab);
-              setSubFilter("all");
-            }}
-            variant="underline"
-            items={[
-              { value: "pending", label: "Pendentes", icon: <Bell className="size-4" aria-hidden="true" />, content: null },
-              { value: "read", label: "Lidas", icon: <CheckCheck className="size-4" aria-hidden="true" />, content: null },
-            ]}
-          />
-
-          {/* Sub-filtros secundários compactos quando em Pendentes e há itens */}
-          {mainTab === "pending" && totalCount > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("light");
-                  setSubFilter("all");
-                }}
-                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                  subFilter === "all"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                    : "bg-muted/60 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Todas ({totalCount})
-              </button>
-              {overdueCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setSubFilter("overdue");
-                  }}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                    subFilter === "overdue"
-                      ? "bg-critical text-critical-foreground font-semibold shadow-xs"
-                      : "bg-critical/10 text-critical hover:bg-critical/20"
-                  }`}
-                >
-                  Atrasadas ({overdueCount})
-                </button>
-              )}
-              {billsCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setSubFilter("bills");
-                  }}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                    subFilter === "bills"
-                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                      : "bg-muted/60 text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Faturas ({billsCount})
-                </button>
-              )}
-              {debtsCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setSubFilter("debts");
-                  }}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                    subFilter === "debts"
-                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                      : "bg-muted/60 text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Dívidas ({debtsCount})
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
-      {isLoading ? (
+      {allItems.length > 0 ? (
+        <Tabs
+          value={mainTab}
+          onValueChange={(val) => {
+            triggerHaptic("light");
+            setMainTab(val as MainTab);
+            setSubFilter("all");
+          }}
+          variant="underline"
+          swipeable
+          items={[
+            {
+              value: "pending",
+              label: "Pendentes",
+              icon: <Bell className="size-4" aria-hidden="true" />,
+              content: renderPendingContent(),
+            },
+            {
+              value: "read",
+              label: "Lidas",
+              icon: <CheckCheck className="size-4" aria-hidden="true" />,
+              content: renderReadContent(),
+            },
+          ]}
+        />
+      ) : isLoading ? (
         <div className="flex flex-col gap-2">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
@@ -230,27 +321,13 @@ export function RemindersPage() {
           description="Você desativou os lembretes automáticos nas configurações."
           tone="default"
         />
-      ) : filteredItems.length === 0 ? (
+      ) : (
         <EmptyState
           icon={<Bell className="size-6" aria-hidden="true" />}
           title="Tudo em dia"
-          description={getEmptyDescription()}
+          description="Nenhuma pendência no momento. Todas as faturas e dívidas estão em dia."
           tone="positive"
         />
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {filteredItems.map((item) => (
-            <ReminderItem
-              key={item.key}
-              item={item}
-              stateKind={stateMap.get(item.key) ?? null}
-              onMarkRead={(key) => handle(key, { kind: "read" })}
-              onSnooze={snooze}
-              onRestore={(key) => handle(key, null)}
-              onOpen={() => openReminder(item)}
-            />
-          ))}
-        </div>
       )}
     </div>
   );

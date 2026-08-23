@@ -169,7 +169,6 @@ export function DebtsPage() {
   const loans = loansQuery.data ?? [];
   const payableDebts = debts.filter((d) => d.type === "payable");
   const receivableDebts = debts.filter((d) => d.type === "receivable");
-  const filtered = tab === "payable" ? payableDebts : tab === "receivable" ? receivableDebts : [];
 
   const payablePendingCents = debts
     .filter((d) => d.type === "payable" && !d.paid_at)
@@ -180,38 +179,258 @@ export function DebtsPage() {
   const netPendingCents = receivablePendingCents - payablePendingCents;
 
   const error = debtsQuery.error || loansQuery.error;
-
-  // Agrupamento temporal inteligente para evitar sobrecarga visual
   const today = todayISO();
   const thisMonth = currentMonth();
 
-  const overdueOrToday: Debt[] = [];
-  const thisMonthList: Debt[] = [];
-  const futureList: Debt[] = [];
-  const paidList: Debt[] = [];
+  const renderDebtsContent = (type: "payable" | "receivable") => {
+    const list = type === "payable" ? payableDebts : receivableDebts;
+    const overdueOrToday: Debt[] = [];
+    const thisMonthList: Debt[] = [];
+    const futureList: Debt[] = [];
+    const paidList: Debt[] = [];
 
-  for (const debt of filtered) {
-    const status = debtStatus(debt.due_date, debt.paid_at, today);
-    if (status === "paid") {
-      paidList.push(debt);
-    } else if (status === "overdue" || status === "due_today") {
-      overdueOrToday.push(debt);
-    } else if (debt.due_date.slice(0, 7) === thisMonth) {
-      thisMonthList.push(debt);
-    } else {
-      futureList.push(debt);
+    for (const debt of list) {
+      const status = debtStatus(debt.due_date, debt.paid_at, today);
+      if (status === "paid") {
+        paidList.push(debt);
+      } else if (status === "overdue" || status === "due_today") {
+        overdueOrToday.push(debt);
+      } else if (debt.due_date.slice(0, 7) === thisMonth) {
+        thisMonthList.push(debt);
+      } else {
+        futureList.push(debt);
+      }
     }
-  }
 
-  // Ordenação prioritária
-  overdueOrToday.sort((a, b) => a.due_date.localeCompare(b.due_date));
-  thisMonthList.sort((a, b) => a.due_date.localeCompare(b.due_date));
-  futureList.sort((a, b) => a.due_date.localeCompare(b.due_date));
-  paidList.sort((a, b) => (b.paid_at ?? b.due_date).localeCompare(a.paid_at ?? a.due_date));
+    overdueOrToday.sort((a, b) => a.due_date.localeCompare(b.due_date));
+    thisMonthList.sort((a, b) => a.due_date.localeCompare(b.due_date));
+    futureList.sort((a, b) => a.due_date.localeCompare(b.due_date));
+    paidList.sort((a, b) => (b.paid_at ?? b.due_date).localeCompare(a.paid_at ?? a.due_date));
 
-  // Quitadas ficam visíveis automaticamente se não houver nenhuma pendente
-  const hasPending = overdueOrToday.length > 0 || thisMonthList.length > 0 || futureList.length > 0;
-  const isPaidVisible = showPaid || !hasPending;
+    const hasPending = overdueOrToday.length > 0 || thisMonthList.length > 0 || futureList.length > 0;
+    const isPaidVisible = showPaid || !hasPending;
+
+    return (
+      <div className="flex flex-col gap-6">
+        {/* Resumo financeiro consolidado */}
+        {!debtsQuery.isLoading && debts.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
+              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                A pagar
+              </span>
+              <MoneyText cents={payablePendingCents} tone="negative" className="text-sm sm:text-lg font-bold" />
+            </div>
+            <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
+              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                A receber
+              </span>
+              <MoneyText cents={receivablePendingCents} tone="positive" className="text-sm sm:text-lg font-bold" />
+            </div>
+            <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
+              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                Saldo pendente
+              </span>
+              <MoneyText
+                cents={netPendingCents}
+                tone={netPendingCents >= 0 ? "positive" : "negative"}
+                sign="auto"
+                className="text-sm sm:text-lg font-bold"
+              />
+            </div>
+          </div>
+        )}
+
+        {debtsQuery.isLoading ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+          </div>
+        ) : list.length === 0 ? (
+          <EmptyState
+            icon={<HandCoins className="size-6" aria-hidden="true" />}
+            title={type === "payable" ? "Nenhuma conta a pagar" : "Nenhuma conta a receber"}
+            description={
+              type === "payable"
+                ? "Cadastre contas a pagar para acompanhar vencimentos e quitações."
+                : "Cadastre contas a receber para acompanhar valores a receber."
+            }
+          />
+        ) : (
+          <div className="flex flex-col gap-6">
+            {/* Grupo 1: Atrasadas e Vencendo Hoje */}
+            {overdueOrToday.length > 0 && (
+              <section aria-label="Contas atrasadas e vencendo hoje" className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-2 rounded-full bg-critical-strong animate-pulse" />
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-critical-strong">
+                      Atrasadas & Vencendo Hoje
+                    </h2>
+                  </div>
+                  <Badge variant="critical" className="text-[11px] font-semibold">
+                    {overdueOrToday.length}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {overdueOrToday.map((debt) => (
+                    <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                      <DebtRow
+                        debt={debt}
+                        onSettle={setSettling}
+                        onUnsettle={handleUnsettle}
+                        onEdit={(d) => {
+                          setEditingDebt(d);
+                          setFormOpen(true);
+                        }}
+                      />
+                    </HighlightRow>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Grupo 2: Vencimento no Mês Corrente */}
+            {thisMonthList.length > 0 && (
+              <section aria-label="Contas do mês atual" className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Vencimento em {monthLabel(thisMonth)}
+                  </h2>
+                  <span className="text-xs text-muted-foreground font-mono font-medium">
+                    {thisMonthList.length} {thisMonthList.length === 1 ? "conta" : "contas"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {thisMonthList.map((debt) => (
+                    <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                      <DebtRow
+                        debt={debt}
+                        onSettle={setSettling}
+                        onUnsettle={handleUnsettle}
+                        onEdit={(d) => {
+                          setEditingDebt(d);
+                          setFormOpen(true);
+                        }}
+                      />
+                    </HighlightRow>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Grupo 3: Próximos Vencimentos (Futuros) */}
+            {futureList.length > 0 && (
+              <section aria-label="Próximos vencimentos" className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Próximos Vencimentos
+                  </h2>
+                  <span className="text-xs text-muted-foreground font-mono font-medium">
+                    {futureList.length} {futureList.length === 1 ? "conta" : "contas"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {futureList.map((debt) => (
+                    <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                      <DebtRow
+                        debt={debt}
+                        onSettle={setSettling}
+                        onUnsettle={handleUnsettle}
+                        onEdit={(d) => {
+                          setEditingDebt(d);
+                          setFormOpen(true);
+                        }}
+                      />
+                    </HighlightRow>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Grupo 4: Quitadas / Histórico (Colapsável) */}
+            {paidList.length > 0 && (
+              <section aria-label="Histórico de quitadas" className="flex flex-col gap-2.5 pt-1">
+                {hasPending ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPaid((prev) => !prev)}
+                    className="flex items-center justify-between py-3 px-3.5 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border/80 rounded-xl bg-surface/50 transition-all cursor-pointer"
+                    aria-expanded={isPaidVisible}
+                  >
+                    <span className="flex items-center gap-2 font-medium">
+                      <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
+                      Quitadas ({paidList.length})
+                    </span>
+                    {isPaidVisible ? (
+                      <ChevronUp className="size-3.5" aria-hidden="true" />
+                    ) : (
+                      <ChevronDown className="size-3.5" aria-hidden="true" />
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Quitadas ({paidList.length})
+                    </h2>
+                  </div>
+                )}
+
+                {isPaidVisible && (
+                  <div className="flex flex-col gap-2.5">
+                    {paidList.map((debt) => (
+                      <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
+                        <DebtRow
+                          debt={debt}
+                          onSettle={setSettling}
+                          onUnsettle={handleUnsettle}
+                          onEdit={(d) => {
+                            setEditingDebt(d);
+                            setFormOpen(true);
+                          }}
+                        />
+                      </HighlightRow>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderLoansContent = () => (
+    <div className="flex flex-col gap-4">
+      {loansQuery.isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-2xl" />
+        </div>
+      ) : loans.length === 0 ? (
+        <EmptyState
+          icon={<Coins className="size-6" aria-hidden="true" />}
+          title="Nenhum contrato cadastrado"
+          description="Cadastre seus contratos de crédito (Price ou SAC) para simular amortizações e acompanhar o saldo devedor."
+          action={
+            <Button size="sm" onClick={() => setLoanFormOpen(true)}>
+              <Plus aria-hidden="true" className="size-4" />
+              Cadastrar contrato
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {loans.map((loan) => (
+            <LoanCard key={loan.id} loan={loan} debts={debts} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -264,245 +483,22 @@ export function DebtsPage() {
               value: "payable",
               label: "Pagar",
               icon: <ArrowUpRight className="size-4" aria-hidden="true" />,
-              content: null,
+              content: renderDebtsContent("payable"),
             },
             {
               value: "receivable",
               label: "Receber",
               icon: <ArrowDownLeft className="size-4" aria-hidden="true" />,
-              content: null,
+              content: renderDebtsContent("receivable"),
             },
             {
               value: "loans",
               label: "Contratos",
               icon: <Landmark className="size-4" aria-hidden="true" />,
-              content: null,
+              content: renderLoansContent(),
             },
           ]}
         />
-      )}
-
-      {/* Resumo financeiro consolidado: 3 cards proporcionais no mobile e desktop */}
-      {tab !== "loans" && !error && !debtsQuery.isLoading && debts.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
-            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
-              A pagar
-            </span>
-            <MoneyText cents={payablePendingCents} tone="negative" className="text-sm sm:text-lg font-bold" />
-          </div>
-          <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
-            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
-              A receber
-            </span>
-            <MoneyText cents={receivablePendingCents} tone="positive" className="text-sm sm:text-lg font-bold" />
-          </div>
-          <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
-            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
-              Saldo pendente
-            </span>
-            <MoneyText
-              cents={netPendingCents}
-              tone={netPendingCents >= 0 ? "positive" : "negative"}
-              sign="auto"
-              className="text-sm sm:text-lg font-bold"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Conteúdo de Contratos */}
-      {tab === "loans" && (
-        <div className="flex flex-col gap-4">
-          {loansQuery.isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Skeleton className="h-40 w-full rounded-2xl" />
-              <Skeleton className="h-40 w-full rounded-2xl" />
-            </div>
-          ) : loans.length === 0 ? (
-            <EmptyState
-              icon={<Coins className="size-6" aria-hidden="true" />}
-              title="Nenhum contrato cadastrado"
-              description="Cadastre seus contratos de crédito (Price ou SAC) para simular amortizações e acompanhar o saldo devedor."
-              action={
-                <Button size="sm" onClick={() => setLoanFormOpen(true)}>
-                  <Plus aria-hidden="true" className="size-4" />
-                  Cadastrar contrato
-                </Button>
-              }
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {loans.map((loan) => (
-                <LoanCard key={loan.id} loan={loan} debts={debts} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Conteúdo de Dívidas (A pagar / A receber) com Agrupamento Inteligente */}
-      {tab !== "loans" && (
-        <>
-          {debtsQuery.isLoading ? (
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-20 w-full rounded-2xl" />
-              <Skeleton className="h-20 w-full rounded-2xl" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              icon={<HandCoins className="size-6" aria-hidden="true" />}
-              title={tab === "payable" ? "Nenhuma conta a pagar" : "Nenhuma conta a receber"}
-              description={
-                tab === "payable"
-                  ? "Cadastre contas a pagar para acompanhar vencimentos e quitações."
-                  : "Cadastre contas a receber para acompanhar valores a receber."
-              }
-            />
-          ) : (
-            <div className="flex flex-col gap-6">
-              {/* Grupo 1: Atrasadas e Vencendo Hoje */}
-              {overdueOrToday.length > 0 && (
-                <section aria-label="Contas atrasadas e vencendo hoje" className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="flex size-2 rounded-full bg-critical-strong animate-pulse" />
-                      <h2 className="text-xs font-semibold uppercase tracking-wider text-critical-strong">
-                        Atrasadas & Vencendo Hoje
-                      </h2>
-                    </div>
-                    <Badge variant="critical" className="text-[11px] font-semibold">
-                      {overdueOrToday.length}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col gap-2.5">
-                    {overdueOrToday.map((debt) => (
-                      <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
-                        <DebtRow
-                          debt={debt}
-                          onSettle={setSettling}
-                          onUnsettle={handleUnsettle}
-                          onEdit={(d) => {
-                            setEditingDebt(d);
-                            setFormOpen(true);
-                          }}
-                        />
-                      </HighlightRow>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Grupo 2: Vencimento no Mês Corrente */}
-              {thisMonthList.length > 0 && (
-                <section aria-label="Contas do mês atual" className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Vencimento em {monthLabel(thisMonth)}
-                    </h2>
-                    <span className="text-xs text-muted-foreground font-mono font-medium">
-                      {thisMonthList.length} {thisMonthList.length === 1 ? "conta" : "contas"}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2.5">
-                    {thisMonthList.map((debt) => (
-                      <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
-                        <DebtRow
-                          debt={debt}
-                          onSettle={setSettling}
-                          onUnsettle={handleUnsettle}
-                          onEdit={(d) => {
-                            setEditingDebt(d);
-                            setFormOpen(true);
-                          }}
-                        />
-                      </HighlightRow>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Grupo 3: Próximos Vencimentos (Futuros) */}
-              {futureList.length > 0 && (
-                <section aria-label="Próximos vencimentos" className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Próximos Vencimentos
-                    </h2>
-                    <span className="text-xs text-muted-foreground font-mono font-medium">
-                      {futureList.length} {futureList.length === 1 ? "conta" : "contas"}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2.5">
-                    {futureList.map((debt) => (
-                      <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
-                        <DebtRow
-                          debt={debt}
-                          onSettle={setSettling}
-                          onUnsettle={handleUnsettle}
-                          onEdit={(d) => {
-                            setEditingDebt(d);
-                            setFormOpen(true);
-                          }}
-                        />
-                      </HighlightRow>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Grupo 4: Quitadas / Histórico (Colapsável) */}
-              {paidList.length > 0 && (
-                <section aria-label="Histórico de quitadas" className="flex flex-col gap-2.5 pt-1">
-                  {hasPending ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPaid((prev) => !prev)}
-                      className="flex items-center justify-between py-3 px-3.5 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border/80 rounded-xl bg-surface/50 transition-all cursor-pointer"
-                      aria-expanded={isPaidVisible}
-                    >
-                      <span className="flex items-center gap-2 font-medium">
-                        <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
-                        Quitadas ({paidList.length})
-                      </span>
-                      {isPaidVisible ? (
-                        <ChevronUp className="size-3.5" aria-hidden="true" />
-                      ) : (
-                        <ChevronDown className="size-3.5" aria-hidden="true" />
-                      )}
-                    </Button>
-                  ) : (
-                    <div className="flex items-center justify-between gap-2">
-                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Quitadas ({paidList.length})
-                      </h2>
-                    </div>
-                  )}
-
-                  {isPaidVisible && (
-                    <div className="flex flex-col gap-2.5">
-                      {paidList.map((debt) => (
-                        <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
-                          <DebtRow
-                            debt={debt}
-                            onSettle={setSettling}
-                            onUnsettle={handleUnsettle}
-                            onEdit={(d) => {
-                              setEditingDebt(d);
-                              setFormOpen(true);
-                            }}
-                          />
-                        </HighlightRow>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              )}
-            </div>
-          )}
-        </>
       )}
 
       <DebtFormDialog

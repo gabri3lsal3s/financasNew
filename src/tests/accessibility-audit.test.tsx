@@ -338,10 +338,10 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("InsightsPage — aba Planejamento (F24) sem violações", async () => {
+  it("InsightsPage — aba Projeção (F24) sem violações", async () => {
     const user = userEvent.setup();
     const { container } = render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Planejamento" }));
+    await user.click(screen.getByRole("tab", { name: "Projeção" }));
     expect(await axe(container)).toHaveNoViolations();
   });
 

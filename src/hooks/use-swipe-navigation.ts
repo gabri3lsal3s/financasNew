@@ -85,15 +85,32 @@ export const DEFAULT_IGNORE_SELECTORS = [
   ".no-swipe-nav",
   ".swipeable-item",
   "[data-swipe-action]",
-  "table",
-  ".overflow-x-auto",
   "[data-horizontal-scroll]",
 ] as const;
+
+/** Verifica se um nó ou seus ancestrais possuem rolagem horizontal ativa real. */
+function hasActiveHorizontalScroll(element: Element): boolean {
+  let current: Element | null = element;
+  while (current && current !== document.body && current !== document.documentElement) {
+    if (current.scrollWidth > current.clientWidth + 2) {
+      const style = window.getComputedStyle(current);
+      const overflowX = style.overflowX;
+      if (overflowX === "auto" || overflowX === "scroll") {
+        return true;
+      }
+    }
+    current = current.parentElement;
+  }
+  return false;
+}
 
 /** O toque começou em um nó a ser ignorado? (sobe até o contêiner). */
 function startsOnIgnored(target: EventTarget | null, selectors: readonly string[]): boolean {
   if (!(target instanceof Element)) return false;
-  return selectors.some((selector) => target.closest(selector) !== null);
+  if (selectors.some((selector) => target.closest(selector) !== null)) {
+    return true;
+  }
+  return hasActiveHorizontalScroll(target);
 }
 
 export function useSwipeNavigation({

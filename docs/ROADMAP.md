@@ -1061,6 +1061,7 @@
 - [x] **Micro-interações de feedback (entrega 6)** — rubber-banding com resistência crescente + spring-back animado (`transition: transform 0.25s ease-out`, desligada durante o arrasto), haptic `light` no lock e `warning` na borda, `touch-action: pan-y` (scroll vertical livre), `select-none` herdado dos componentes.
 - [x] **Testes** — 40 novos (20 motor + 13 hook + 4 MonthSwiper + 3 Tabs swipeable); suíte completa verde; typecheck/lint limpos (o único erro de `tsc -b` é o arquivo WIP do usuário `report-detail-dialog.test.tsx`).
 - [x] **Remoção do swipe de meses (2026-08-16)** — `MonthSwiper` (entrega 3) **removido** por instabilidade na navegação temporal; as 5 telas de mês voltaram ao `MonthPicker` por botões; arquivo `month-swiper.tsx` + 4 testes removidos; `useSwipeNavigation` e `Tabs swipeable` seguem intactos.
+- [x] **Otimização e fluidez no swipe entre abas e sub-abas (2026-08-23)** — `Tabs` injeta `data-swipe-tabs-content` estritamente quando `swipeable === true`, permitindo que sub-abas não-swipeable deleguem gestos para abas pai sem dead zones; detecção dinâmica de scroll horizontal real (`hasActiveHorizontalScroll`) substitui o bloqueio estático cego de `table`/`.overflow-x-auto`; migração de Dívidas, Orçamentos e Lembretes para renderizar o corpo completo dentro de `items[...].content` do `Tabs`. Suíte 100% verde (193 arquivos de teste e 1.485 testes).
 - [ ] Revisão manual em dispositivo real (iOS Safari + Chrome Android): thumb drift, coexistência com exclusão de despesas e bordas de mês — matriz em `RELEASE.md`.
 
 ---

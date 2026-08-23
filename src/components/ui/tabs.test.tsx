@@ -123,9 +123,48 @@ describe("Tabs", () => {
     expect(onParentChange).not.toHaveBeenCalled();
   });
 
-  it("sem swipeable, o conteúdo não recebe handlers de gesto", () => {
+  it("sem swipeable, o container não recebe data-swipe-tabs-content", () => {
     const { container } = render(<Tabs value="gastos" onValueChange={vi.fn()} items={items} />);
-    const content = container.querySelector<HTMLElement>("[data-swipe-tabs-content]")!;
-    expect(content.style.touchAction).toBe("");
+    const content = container.querySelector<HTMLElement>("[data-swipe-tabs-content]");
+    expect(content).toBeNull();
+  });
+
+  it("sub-aba não-swipeable permite que o swipe no pai funcione normalmente", () => {
+    const onParentChange = vi.fn();
+    const onChildChange = vi.fn();
+
+    const nestedItems = [
+      {
+        value: "parent-1",
+        label: "Pai 1",
+        content: (
+          <Tabs
+            value="child-1"
+            onValueChange={onChildChange}
+            items={[
+              { value: "child-1", label: "Filho 1", content: <p>Filho 1</p> },
+              { value: "child-2", label: "Filho 2", content: <p>Filho 2</p> },
+            ]}
+          />
+        ),
+      },
+      { value: "parent-2", label: "Pai 2", content: <p>Pai 2</p> },
+    ];
+
+    const { container } = render(
+      <Tabs value="parent-1" onValueChange={onParentChange} items={nestedItems} swipeable />,
+    );
+
+    const parentContent = container.querySelector<HTMLElement>("[data-swipe-tabs-content]")!;
+    const childText = container.querySelector("p")!;
+
+    fireEvent.pointerDown(childText, { clientX: 300, clientY: 100, pointerId: 1, pointerType: "touch", isPrimary: true });
+    clock.now = 200;
+    fireEvent.pointerMove(parentContent, { clientX: 220, clientY: 105, pointerId: 1, pointerType: "touch", isPrimary: true });
+    clock.now = 500;
+    fireEvent.pointerUp(parentContent, { clientX: 220, clientY: 105, pointerId: 1, pointerType: "touch", isPrimary: true });
+
+    expect(onParentChange).toHaveBeenCalledWith("parent-2");
+    expect(onChildChange).not.toHaveBeenCalled();
   });
 });

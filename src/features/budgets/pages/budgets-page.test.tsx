@@ -80,7 +80,8 @@ vi.mock("@/state", () => ({
 describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("exibe o KPI de total de limites e as categorias com progresso", () => {
     render(<BudgetsPage />);
-    expect(screen.getByText("Orçamento do Mês")).toBeInTheDocument();
+    expect(screen.getByText("Total Gasto")).toBeInTheDocument();
+    expect(screen.getByText("Teto Planejado")).toBeInTheDocument();
     expect(screen.getByText("R$ 2.000,00")).toBeInTheDocument();
     // "Moradia" aparece na linha da categoria e na sugestão de realocação
     expect(screen.getAllByText("Moradia").length).toBeGreaterThan(0);

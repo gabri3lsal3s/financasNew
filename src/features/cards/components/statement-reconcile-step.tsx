@@ -76,7 +76,7 @@ export function StatementReconcileStep({
     { value: "suggested", label: "Sugestões", content: null },
     { value: "matched", label: "Conciliados", content: null },
     ...(countAppOnly > 0
-      ? [{ value: "app_only", label: "No App apenas", content: null }]
+      ? [{ value: "app_only", label: `No App apenas (${countAppOnly})`, content: null }]
       : []),
   ];
 

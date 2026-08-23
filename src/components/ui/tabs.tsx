@@ -130,7 +130,7 @@ export function Tabs({
           touchAction: swipeable ? "pan-y" : undefined,
           transition: swipe.dragging ? "none" : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
-        data-swipe-tabs-content
+        data-swipe-tabs-content={swipeable ? "" : undefined}
       >
         {items.map((item) => (
           <TabsPrimitive.Content
