@@ -91,7 +91,9 @@ describe("useReminders", () => {
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
     expect(result.current.items).toHaveLength(2);
+    expect(result.current.allItems).toHaveLength(2);
     expect(result.current.totalCount).toBe(2);
+    expect(result.current.readCount).toBe(0);
     expect(result.current.preferences.enabled).toBe(true);
   });
 });

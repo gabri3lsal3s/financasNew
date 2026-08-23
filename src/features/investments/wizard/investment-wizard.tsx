@@ -24,6 +24,7 @@ import {
   getWizardSteps,
   parseNumber,
   type InvestmentWizardState,
+  type WizardMode,
 } from "./wizard-state";
 
 export interface InvestmentWizardProps {
@@ -31,10 +32,10 @@ export interface InvestmentWizardProps {
   onOpenChange?: (open: boolean) => void;
   onClose?: () => void;
   onSuccess?: () => void;
-  /** Ativo pré-selecionado para iniciar diretamente no fluxo Fast-Track de Aporte. */
+  /** Ativo pré-selecionado para iniciar diretamente no fluxo Fast-Track. */
   initialAsset?: PortfolioAsset | null;
-  /** Modo inicial ("select" | "new_asset" | "existing_aporte"). */
-  initialMode?: "select" | "new_asset" | "existing_aporte";
+  /** Modo inicial ("select" | "new_asset" | "buy" | "sell" | "dividend" | "split" | "existing_aporte"). */
+  initialMode?: WizardMode;
 }
 
 export function InvestmentWizard({
@@ -58,9 +59,10 @@ export function InvestmentWizard({
 
   const [state, setState] = useState<InvestmentWizardState>(() => {
     if (initialAsset) {
+      const mode: WizardMode = initialMode !== "select" ? initialMode : "buy";
       return {
         ...defaultWizardState,
-        mode: "existing_aporte",
+        mode,
         step: 2,
         selectedAsset: initialAsset,
         ticker: initialAsset.ticker,
@@ -105,8 +107,8 @@ export function InvestmentWizard({
 
   const steps = getWizardSteps(state.mode);
   const isLastStep =
-    (state.mode === "existing_aporte" && state.step === 3) ||
-    (state.mode === "new_asset" && state.step === 4);
+    (state.mode === "new_asset" && state.step === 4) ||
+    (state.mode !== "new_asset" && state.mode !== "select" && state.step === 3);
 
   const handleNext = () => {
     if (!canProceed(state)) return;
@@ -116,7 +118,7 @@ export function InvestmentWizard({
     // No modo select, ao avançar vai para o step 2 do modo correspondente
     if (state.mode === "select") {
       if (state.selectedAsset) {
-        setState((prev) => ({ ...prev, mode: "existing_aporte", step: 2 }));
+        setState((prev) => ({ ...prev, mode: "buy", step: 2 }));
       } else {
         setState((prev) => ({ ...prev, mode: "new_asset", step: 2 }));
       }
@@ -130,7 +132,7 @@ export function InvestmentWizard({
     setError(null);
     triggerSensory("selection");
 
-    if (state.mode === "existing_aporte" && state.step === 2 && !initialAsset) {
+    if (state.mode !== "new_asset" && state.mode !== "select" && state.step === 2 && !initialAsset) {
       setState((prev) => ({ ...prev, mode: "select", step: 1 }));
       return;
     }
@@ -146,7 +148,8 @@ export function InvestmentWizard({
   const handleSubmit = async () => {
     setError(null);
     try {
-      if (state.mode === "existing_aporte" && state.selectedAsset) {
+      if (state.mode === "buy" || state.mode === "existing_aporte") {
+        if (!state.selectedAsset) throw new Error("Selecione um ativo");
         const parsedQty = parseNumber(state.quantityStr);
         const price = state.priceCents / 100;
         const total = state.totalCents / 100 || parsedQty * price;
@@ -163,6 +166,50 @@ export function InvestmentWizard({
           recordContribution: state.recordContribution,
           notes: state.notes,
         });
+      } else if (state.mode === "sell") {
+        if (!state.selectedAsset) throw new Error("Selecione um ativo");
+        const parsedQty = parseNumber(state.quantityStr);
+        const price = state.priceCents / 100;
+        const total = parsedQty * price;
+
+        await recordOrder.mutateAsync({
+          asset: state.selectedAsset,
+          type: "sell",
+          date: state.date,
+          quantity: parsedQty,
+          price,
+          total,
+          syncCash: state.syncCash,
+          cashAsset,
+          notes: state.notes,
+        });
+      } else if (state.mode === "dividend") {
+        if (!state.selectedAsset) throw new Error("Selecione um ativo");
+        const total = state.totalCents / 100;
+
+        await recordOrder.mutateAsync({
+          asset: state.selectedAsset,
+          type: "dividend",
+          date: state.date,
+          quantity: 0,
+          price: 0,
+          total,
+          syncCash: state.syncCash,
+          cashAsset,
+          notes: state.notes,
+        });
+      } else if (state.mode === "split") {
+        if (!state.selectedAsset) throw new Error("Selecione um ativo");
+
+        await recordOrder.mutateAsync({
+          asset: state.selectedAsset,
+          type: "split",
+          date: state.date,
+          quantity: state.splitFactor,
+          price: 0,
+          total: 0,
+          notes: state.notes,
+        });
       } else if (state.mode === "new_asset") {
         const parsedQty = parseNumber(state.quantityStr);
         const price = state.priceCents / 100;
@@ -177,7 +224,7 @@ export function InvestmentWizard({
           notes: state.notes ? state.notes : null,
         });
 
-        // 3. Se foi definida meta de alocação % para o novo ativo, salva no repositório
+        // Se foi definida meta de alocação % para o novo ativo, salva no repositório
         if (state.targetPercentage !== null && state.targetPercentage > 0) {
           const currentTargets: AllocationTargetInput[] = targets.map((t) => ({
             assetId: t.asset_id,
@@ -199,21 +246,26 @@ export function InvestmentWizard({
 
   const isPending = createAsset.isPending || recordOrder.isPending || saveTargets.isPending;
 
+  const getModalTitle = () => {
+    if (state.mode === "sell") return `Vender · ${state.ticker || "Investimento"}`;
+    if (state.mode === "dividend") return `Provento · ${state.ticker || "Investimento"}`;
+    if (state.mode === "split") return `Split · ${state.ticker || "Investimento"}`;
+    if (state.mode === "buy" || state.mode === "existing_aporte") {
+      return `Novo Aporte · ${state.ticker || "Investimento"}`;
+    }
+    if (state.mode === "new_asset") {
+      return `Novo Ativo · ${state.ticker || "Investimento"}`;
+    }
+    return "Operação em Investimentos";
+  };
+
   return (
     <>
       <Modal
         open={open}
         onOpenChange={(next) => (!next ? requestClose() : onOpenChange?.(true))}
-        title={
-          state.mode === "existing_aporte"
-            ? `Novo Aporte · ${state.ticker || "Investimento"}`
-            : "Adicionar Ativo à Carteira"
-        }
-        description={
-          state.mode === "existing_aporte"
-            ? "Registre a compra de cotas ou novo aporte na sua posição."
-            : "Cadastre um novo ativo, defina a posição inicial e sua meta de alocação."
-        }
+        title={getModalTitle()}
+        description="Lance compras, vendas, proventos, splits ou cadastre novos ativos com atualização em tempo real."
         size="lg"
       >
         <div className="flex flex-col gap-6 pt-2">
@@ -237,57 +289,52 @@ export function InvestmentWizard({
               targets={targets}
               totalPortfolioBRL={position.totalBRL}
               onSelectResult={(res) => {
+                const isCash = isCashAssetClass(res.assetClass);
                 if (res.isExisting && res.existingAssetId) {
                   const asset = existingAssets.find((a) => a.id === res.existingAssetId);
                   setState((prev) => ({
                     ...prev,
-                    mode: "existing_aporte",
+                    mode: "buy",
                     step: 2,
                     selectedAsset: asset ?? null,
                     ticker: res.ticker,
                     name: res.name,
                     assetClass: res.assetClass,
                     currency: res.currency,
-                    isCash: isCashAssetClass(res.assetClass),
+                    isCash,
                   }));
                 } else {
                   setState((prev) => ({
                     ...prev,
                     mode: "new_asset",
-                    step: 2,
+                    step: 1,
                     selectedAsset: null,
                     ticker: res.ticker,
                     name: res.name,
                     assetClass: res.assetClass,
                     currency: res.currency,
-                    isCash: isCashAssetClass(res.assetClass),
+                    isCash,
                   }));
                 }
               }}
-              onSelectSuggestion={(sug) => {
-                const asset = existingAssets.find((a) => a.id === sug.assetId);
+              onSelectSuggestion={(item) => {
+                const asset = existingAssets.find((a) => a.id === item.assetId);
                 setState((prev) => ({
                   ...prev,
-                  mode: "existing_aporte",
+                  mode: "buy",
                   step: 2,
                   selectedAsset: asset ?? null,
-                  ticker: sug.ticker,
-                  assetClass: sug.assetClass,
-                  totalCents: Math.round(sug.gapBRL * 100),
-                  isCash: isCashAssetClass(sug.assetClass),
+                  ticker: item.ticker,
+                  assetClass: item.assetClass,
+                  currency: asset?.currency ?? "BRL",
+                  isCash: false,
+                  totalCents: Math.round(item.gapBRL * 100),
                 }));
               }}
             />
           )}
 
-          {state.mode === "existing_aporte" && state.step === 2 && (
-            <StepOrder
-              state={state}
-              onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
-              cashAsset={cashAsset}
-            />
-          )}
-
+          {/* Passo 1 do Novo Ativo: Identificação Cadastral */}
           {state.mode === "new_asset" && state.step === 1 && (
             <StepSelect
               state={state}
@@ -297,19 +344,34 @@ export function InvestmentWizard({
               targets={targets}
               totalPortfolioBRL={position.totalBRL}
               onSelectResult={(res) => {
+                const isCash = isCashAssetClass(res.assetClass);
                 setState((prev) => ({
                   ...prev,
                   ticker: res.ticker,
                   name: res.name,
                   assetClass: res.assetClass,
                   currency: res.currency,
-                  isCash: isCashAssetClass(res.assetClass),
+                  isCash,
                 }));
               }}
-              onSelectSuggestion={() => undefined}
+              onSelectSuggestion={(item) => {
+                const asset = existingAssets.find((a) => a.id === item.assetId);
+                setState((prev) => ({
+                  ...prev,
+                  mode: "buy",
+                  step: 2,
+                  selectedAsset: asset ?? null,
+                  ticker: item.ticker,
+                  assetClass: item.assetClass,
+                  currency: asset?.currency ?? "BRL",
+                  isCash: false,
+                  totalCents: Math.round(item.gapBRL * 100),
+                }));
+              }}
             />
           )}
 
+          {/* Passo 2 do Novo Ativo: Posição Inicial */}
           {state.mode === "new_asset" && state.step === 2 && (
             <StepNewPosition
               state={state}
@@ -317,6 +379,7 @@ export function InvestmentWizard({
             />
           )}
 
+          {/* Passo 3 do Novo Ativo: Meta de Alocação */}
           {state.mode === "new_asset" && state.step === 3 && (
             <StepTarget
               state={state}
@@ -325,6 +388,16 @@ export function InvestmentWizard({
             />
           )}
 
+          {/* Passo 2 de Operações em Ativo Existente: Quantidade e Preço */}
+          {state.mode !== "new_asset" && state.mode !== "select" && state.step === 2 && (
+            <StepOrder
+              state={state}
+              onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
+              cashAsset={cashAsset}
+            />
+          )}
+
+          {/* Passo Final: Revisão & Confirmação */}
           {isLastStep && (
             <StepReview
               state={state}
@@ -332,52 +405,64 @@ export function InvestmentWizard({
             />
           )}
 
-          {/* Rodapé de Ações com Navegação do Stepper */}
+          {/* Rodapé de Navegação do Wizard */}
           <div className="flex items-center justify-between border-t border-border/80 pt-4">
-            {state.step > 1 || (state.mode !== "select" && !initialAsset) ? (
-              <Button type="button" variant="outline" size="sm" onClick={handleBack} disabled={isPending}>
-                Voltar
-              </Button>
-            ) : (
-              <Button type="button" variant="ghost" size="sm" onClick={requestClose} disabled={isPending}>
-                Cancelar
-              </Button>
-            )}
+            <div>
+              {state.mode !== "select" && (state.step > 1 || !initialAsset) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBack}
+                  disabled={isPending}
+                >
+                  Voltar
+                </Button>
+              )}
+            </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={requestClose}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+
               {isLastStep ? (
                 <Button
                   type="button"
                   size="sm"
                   onClick={handleSubmit}
-                  disabled={isPending || !canProceed(state)}
+                  disabled={!canProceed(state) || isPending}
                 >
-                  {isPending ? "Salvando…" : state.mode === "existing_aporte" ? "Concluir Aporte" : "Cadastrar Ativo"}
+                  {isPending ? "Gravando..." : "Confirmar Operação"}
                 </Button>
               ) : (
-                state.mode !== "select" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleNext}
-                    disabled={!canProceed(state)}
-                  >
-                    Avançar
-                  </Button>
-                )
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleNext}
+                  disabled={!canProceed(state) || isPending}
+                >
+                  Continuar
+                </Button>
               )}
             </div>
           </div>
         </div>
       </Modal>
 
-      {/* Confirmação Anti-Perda Acidental */}
+      {/* Confirmação de Descarte se formulário foi preenchido */}
       <ConfirmDialog
         open={confirmClose}
         onOpenChange={setConfirmClose}
         title="Descartar alterações?"
-        description="Você preencheu dados da operação. Se fechar agora, essas informações não serão salvas."
-        confirmLabel="Descartar e Fechar"
+        description="Você já preencheu dados da operação. Se fechar agora, as informações serão perdidas."
+        confirmLabel="Descartar"
         variant="destructive"
         onConfirm={handleClose}
       />

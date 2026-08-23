@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { buildCompetenceSummaries } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
-import { buildReminders, type ReminderItem } from "@/domain/reminders";
+import { applyReminderState, deriveReminderItems, sortReminders, type ReminderItem } from "@/domain/reminders";
 import { formatCentsAsBRL } from "@/services/masks";
 import { useCreditCards } from "@/state/queries/use-credit-cards";
 import { useAllCardExpenses, useAllCardPayments } from "@/state/queries/use-overview";
@@ -11,11 +11,13 @@ import { useUserPreferences } from "@/state/queries/use-user-preferences";
 
 export interface RemindersData {
   items: ReminderItem[];
+  allItems: ReminderItem[];
   totalCount: number;
   overdueCount: number;
   dueTodayCount: number;
   dueSoonCount: number;
   urgentCount: number;
+  readCount: number;
   preferences: {
     enabled: boolean;
     debtDaysBefore: number;
@@ -62,8 +64,10 @@ export function useReminders(today: string = todayISO()): RemindersData {
     };
   }, [prefsQuery.data]);
 
-  const items = useMemo(() => {
-    if (!preferences.enabled) return [];
+  const { allItems, items, readCount } = useMemo(() => {
+    if (!preferences.enabled) {
+      return { allItems: [], items: [], readCount: 0 };
+    }
 
     const cards = cardsQuery.data ?? [];
     const allExpenses = cardExpensesQuery.data ?? [];
@@ -101,7 +105,12 @@ export function useReminders(today: string = todayISO()): RemindersData {
         link: { path: "/dividas", params: { q: d.id } },
       }));
 
-    return buildReminders({ bills, debts, preferences, today }, states);
+    const derived = deriveReminderItems({ bills, debts, preferences, today });
+    const unread = sortReminders(applyReminderState(derived, states, today));
+    const stateMap = new Map(states.map((s) => [s.key, s.kind]));
+    const read = derived.filter((item) => stateMap.get(item.key) === "read").length;
+
+    return { allItems: derived, items: unread, readCount: read };
   }, [
     preferences,
     cardsQuery.data,
@@ -119,11 +128,13 @@ export function useReminders(today: string = todayISO()): RemindersData {
 
   return {
     items,
+    allItems,
     totalCount: items.length,
     overdueCount,
     dueTodayCount,
     dueSoonCount,
     urgentCount,
+    readCount,
     preferences,
     isLoading,
     error,

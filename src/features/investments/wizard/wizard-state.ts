@@ -1,9 +1,17 @@
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
+import { sellAssetPosition } from "@/domain/portfolio/operations";
 import { cleanTicker } from "@/domain/portfolio/tickers-catalog";
 import { todayISO } from "@/domain/debts";
 import type { AssetCurrency, PortfolioAsset } from "@/types";
 
-export type WizardMode = "select" | "new_asset" | "existing_aporte";
+export type WizardMode =
+  | "select"
+  | "new_asset"
+  | "buy"
+  | "sell"
+  | "dividend"
+  | "split"
+  | "existing_aporte"; // alias para buy
 
 export interface InvestmentWizardState {
   mode: WizardMode;
@@ -23,6 +31,7 @@ export interface InvestmentWizardState {
   priceCents: number;
   totalCents: number;
   date: string;
+  splitFactor: number;
 
   // Metas e Opções
   targetPercentage: number | null;
@@ -47,6 +56,7 @@ export const defaultWizardState: InvestmentWizardState = {
   priceCents: 0,
   totalCents: 0,
   date: todayISO(),
+  splitFactor: 2,
 
   targetPercentage: null,
   syncCash: false,
@@ -76,7 +86,31 @@ export const parseNumber = (raw: string): number => {
  * Retorna os passos dinâmicos do Wizard conforme o modo de operação.
  */
 export function getWizardSteps(mode: WizardMode): readonly { title: string; subtitle: string }[] {
-  if (mode === "existing_aporte") {
+  if (mode === "sell") {
+    return [
+      { title: "Ativo", subtitle: "Seleção" },
+      { title: "Venda", subtitle: "Quantidade & Preço" },
+      { title: "Revisão", subtitle: "Confirmação" },
+    ];
+  }
+
+  if (mode === "dividend") {
+    return [
+      { title: "Ativo", subtitle: "Seleção" },
+      { title: "Provento", subtitle: "Valor & Data" },
+      { title: "Revisão", subtitle: "Confirmação" },
+    ];
+  }
+
+  if (mode === "split") {
+    return [
+      { title: "Ativo", subtitle: "Seleção" },
+      { title: "Desdobro", subtitle: "Fator & Data" },
+      { title: "Revisão", subtitle: "Confirmação" },
+    ];
+  }
+
+  if (mode === "buy" || mode === "existing_aporte") {
     return [
       { title: "Ativo", subtitle: "Seleção" },
       { title: "Aporte", subtitle: "Quantidade & Preço" },
@@ -84,6 +118,7 @@ export function getWizardSteps(mode: WizardMode): readonly { title: string; subt
     ];
   }
 
+  // Modo new_asset (4 passos)
   return [
     { title: "Identificação", subtitle: "Código & Classe" },
     { title: "Posição", subtitle: "Cotas & Custo" },
@@ -101,10 +136,10 @@ export function canProceed(state: InvestmentWizardState): boolean {
   const total = state.totalCents / 100;
 
   if (state.mode === "select") {
-    return cleanTicker(state.ticker).length > 0;
+    return cleanTicker(state.ticker).length > 0 || state.selectedAsset !== null;
   }
 
-  if (state.mode === "existing_aporte") {
+  if (state.mode === "buy" || state.mode === "existing_aporte") {
     // Passo 1 (Seleção): precisa ter ativo selecionado
     if (state.step === 1) {
       return state.selectedAsset !== null || cleanTicker(state.ticker).length > 0;
@@ -117,6 +152,37 @@ export function canProceed(state: InvestmentWizardState): boolean {
       return parsedQty > 0 && (price > 0 || total > 0);
     }
     // Passo 3 (Revisão): pode concluir
+    return true;
+  }
+
+  if (state.mode === "sell") {
+    if (state.step === 1) {
+      return state.selectedAsset !== null;
+    }
+    if (state.step === 2) {
+      const maxQty = state.selectedAsset?.quantity ?? 0;
+      return parsedQty > 0 && parsedQty <= maxQty && price > 0;
+    }
+    return true;
+  }
+
+  if (state.mode === "dividend") {
+    if (state.step === 1) {
+      return state.selectedAsset !== null;
+    }
+    if (state.step === 2) {
+      return total > 0;
+    }
+    return true;
+  }
+
+  if (state.mode === "split") {
+    if (state.step === 1) {
+      return state.selectedAsset !== null;
+    }
+    if (state.step === 2) {
+      return state.splitFactor >= 2;
+    }
     return true;
   }
 
@@ -152,7 +218,10 @@ export interface InvestmentPreviewResult {
   newAveragePrice: number;
   totalOrderValueBRL: number;
   cashDebitBRL: number;
+  cashCreditBRL?: number;
   contributionBRL: number;
+  realizedPnl?: number;
+  realizedPnlPct?: number;
 }
 
 /**
@@ -169,6 +238,7 @@ export function calculateInvestmentPreview(
   const currentQty = state.selectedAsset?.quantity ?? 0;
   const currentAvgPrice = state.selectedAsset?.average_price ?? 0;
 
+  // 1. Caixa
   if (state.isCash) {
     const amount = inputTotal > 0 ? inputTotal : parsedQty;
     return {
@@ -182,6 +252,61 @@ export function calculateInvestmentPreview(
     };
   }
 
+  // 2. Venda
+  if (state.mode === "sell") {
+    const sellRes = sellAssetPosition({
+      currentQuantity: currentQty,
+      currentAveragePrice: currentAvgPrice,
+      sellQuantity: parsedQty,
+      sellPrice: inputPrice,
+      assetClass: state.assetClass,
+    });
+    const orderTotal = parsedQty * inputPrice;
+
+    return {
+      currentQuantity: currentQty,
+      currentAveragePrice: currentAvgPrice,
+      newQuantity: sellRes.remainingQuantity,
+      newAveragePrice: sellRes.remainingAveragePrice,
+      totalOrderValueBRL: Math.round(orderTotal * 100) / 100,
+      cashDebitBRL: 0,
+      cashCreditBRL: state.syncCash ? Math.round(orderTotal * 100) / 100 : 0,
+      contributionBRL: 0,
+      realizedPnl: sellRes.realizedPnl,
+      realizedPnlPct: sellRes.realizedPnlPct,
+    };
+  }
+
+  // 3. Provento
+  if (state.mode === "dividend") {
+    return {
+      currentQuantity: currentQty,
+      currentAveragePrice: currentAvgPrice,
+      newQuantity: currentQty,
+      newAveragePrice: currentAvgPrice,
+      totalOrderValueBRL: Math.round(inputTotal * 100) / 100,
+      cashDebitBRL: 0,
+      cashCreditBRL: state.syncCash ? Math.round(inputTotal * 100) / 100 : 0,
+      contributionBRL: 0,
+    };
+  }
+
+  // 4. Split
+  if (state.mode === "split") {
+    const newQty = currentQty * state.splitFactor;
+    const newAvg = currentAvgPrice / state.splitFactor;
+    return {
+      currentQuantity: currentQty,
+      currentAveragePrice: currentAvgPrice,
+      newQuantity: newQty,
+      newAveragePrice: newAvg,
+      totalOrderValueBRL: 0,
+      cashDebitBRL: 0,
+      contributionBRL: 0,
+    };
+  }
+
+  // 5. Compra / Novo Ativo
   const orderPrice = inputPrice > 0 ? inputPrice : parsedQty > 0 ? inputTotal / parsedQty : 0;
   const orderTotal = inputTotal > 0 ? inputTotal : parsedQty * orderPrice;
 

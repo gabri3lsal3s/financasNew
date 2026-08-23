@@ -30,12 +30,12 @@ export function NotificationsButton() {
         aria-label={`Notificações: ${totalCount} pendências`}
         title="Lembretes e Avisos"
         onClick={() => triggerHaptic("light")}
-        className="relative"
+        className="relative overflow-visible"
       >
         <Bell aria-hidden="true" />
         <span
           className={cn(
-            "absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ring-2 ring-surface transition-transform animate-in zoom-in-50",
+            "absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ring-2 ring-surface pointer-events-none transition-transform animate-in zoom-in-50",
             isUrgent
               ? "bg-danger text-white shadow-xs"
               : isDueToday

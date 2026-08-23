@@ -43,14 +43,95 @@ export function CategoriesPage() {
   const usageQuery = useCategoryUsage(editing ? editing.id : null);
 
   const categories = categoriesQuery.data ?? [];
-  const filtered = categories.filter((category) => category.type === tab);
-  const siblings = filtered.filter((category) => category.id !== editing?.id);
-
+  const siblings = categories.filter((c) => c.type === tab && c.id !== editing?.id);
   const error = categoriesQuery.error;
 
   const openCreate = () => {
     setEditing(null);
     setFormOpen(true);
+  };
+
+  const renderCategoryList = (type: CategoryType) => {
+    const list = categories.filter((category) => category.type === type);
+
+    if (categoriesQuery.isLoading) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
+        </div>
+      );
+    }
+
+    if (list.length === 0) {
+      return (
+        <EmptyState
+          icon={<Tags className="size-6" aria-hidden="true" />}
+          title={type === "expense" ? "Nenhuma categoria de despesa" : "Nenhuma categoria de renda"}
+          description="Crie categorias para classificar seus lançamentos."
+          action={<Button onClick={openCreate}>Criar categoria</Button>}
+        />
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {list.map((category) => {
+          const isClickable = !category.is_reserved;
+          return (
+            <HighlightRow key={category.id} highlightId={highlightId} id={category.id} className="border border-border bg-surface overflow-hidden">
+              <div
+                role={isClickable ? "button" : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                aria-label={isClickable ? `Editar ${category.name}` : undefined}
+                onClick={
+                  isClickable
+                    ? () => {
+                        triggerHaptic("light");
+                        setEditing(category);
+                        setFormOpen(true);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  isClickable
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          triggerHaptic("light");
+                          setEditing(category);
+                          setFormOpen(true);
+                        }
+                      }
+                    : undefined
+                }
+                className={cn(
+                  "flex items-center justify-between gap-3 p-4 transition-colors",
+                  isClickable
+                    ? "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    : "opacity-80",
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <CategoryIcon icon={category.icon} color={category.color} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{category.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {category.is_reserved ? "Reservada" : category.is_active ? "Ativa" : "Inativa"}
+                    </p>
+                  </div>
+                </div>
+                {category.is_reserved ? (
+                  <Badge variant="muted" className="text-[11px]">
+                    Reservada
+                  </Badge>
+                ) : null}
+              </div>
+            </HighlightRow>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -75,81 +156,18 @@ export function CategoriesPage() {
           onValueChange={(value) => handleTabChange(value as CategoryType)}
           swipeable
           items={[
-            { value: "expense", label: "Despesas", content: null },
-            { value: "income", label: "Rendas", content: null },
+            {
+              value: "expense",
+              label: "Despesas",
+              content: renderCategoryList("expense"),
+            },
+            {
+              value: "income",
+              label: "Rendas",
+              content: renderCategoryList("income"),
+            },
           ]}
         />
-      )}
-
-      {categoriesQuery.isLoading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<Tags className="size-6" aria-hidden="true" />}
-          title={tab === "expense" ? "Nenhuma categoria de despesa" : "Nenhuma categoria de renda"}
-          description="Crie categorias para classificar seus lançamentos."
-          action={<Button onClick={openCreate}>Criar categoria</Button>}
-        />
-      ) : (
-        <div className="flex flex-col gap-2">
-          {filtered.map((category) => {
-            const isClickable = !category.is_reserved;
-            return (
-              <HighlightRow key={category.id} highlightId={highlightId} id={category.id} className="border border-border bg-surface overflow-hidden">
-                <div
-                  role={isClickable ? "button" : undefined}
-                  tabIndex={isClickable ? 0 : undefined}
-                  aria-label={isClickable ? `Editar ${category.name}` : undefined}
-                  onClick={
-                    isClickable
-                      ? () => {
-                          triggerHaptic("light");
-                          setEditing(category);
-                          setFormOpen(true);
-                        }
-                      : undefined
-                  }
-                  onKeyDown={
-                    isClickable
-                      ? (event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            triggerHaptic("light");
-                            setEditing(category);
-                            setFormOpen(true);
-                          }
-                        }
-                      : undefined
-                  }
-                  className={cn(
-                    "flex items-center justify-between gap-3 p-4 transition-colors",
-                    isClickable
-                      ? "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      : "opacity-80",
-                  )}
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <CategoryIcon icon={category.icon} color={category.color} />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{category.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {category.is_reserved ? "Reservada" : category.is_active ? "Ativa" : "Inativa"}
-                      </p>
-                    </div>
-                  </div>
-                  {category.is_reserved ? (
-                    <Badge variant="muted" className="text-[11px]">
-                      Reservada
-                    </Badge>
-                  ) : null}
-                </div>
-              </HighlightRow>
-            );
-          })}
-        </div>
       )}
 
       <CategoryFormDialog

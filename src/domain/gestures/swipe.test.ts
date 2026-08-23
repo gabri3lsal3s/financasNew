@@ -11,16 +11,17 @@ import {
   resolveSwipeIntent,
 } from "./swipe";
 
-describe("isHorizontalLock (F20 — axis-lock ±30°)", () => {
-  it("aceita vetores dentro do cone de ±30° do eixo X", () => {
-    // tan(30°) ≈ 0.577 → dy pode ser até ~0.577× dx.
-    expect(isHorizontalLock(100, 50)).toBe(true); // 26.6° < 30°
-    expect(isHorizontalLock(100, 57.7)).toBe(true); // ~30°
+describe("isHorizontalLock (F20 — axis-lock ±42°)", () => {
+  it("aceita vetores dentro do cone de ±42° do eixo X", () => {
+    // tan(42°) ≈ 0.9004 → dy pode ser até ~0.9× dx.
+    expect(isHorizontalLock(100, 50)).toBe(true); // 26.6° < 42°
+    expect(isHorizontalLock(100, 80)).toBe(true); // 38.6° < 42°
+    expect(isHorizontalLock(100, 89)).toBe(true); // ~41.6° < 42°
     expect(isHorizontalLock(-80, -20)).toBe(true);
   });
 
   it("rejeita vetores fora do cone (drift vertical)", () => {
-    expect(isHorizontalLock(100, 80)).toBe(false);
+    expect(isHorizontalLock(100, 95)).toBe(false);
     expect(isHorizontalLock(100, 200)).toBe(false);
   });
 
@@ -35,7 +36,7 @@ describe("isHorizontalLock (F20 — axis-lock ±30°)", () => {
 });
 
 describe("isEdgeZoneTouch (F20 evolução — zona de exclusão de borda)", () => {
-  it("descarta toques iniciados na borda esquerda (edge swipe do sistema)", () => {
+  it("descarta toques iniciados na borda extrema (12px)", () => {
     expect(isEdgeZoneTouch(0, 390)).toBe(true);
     expect(isEdgeZoneTouch(10, 390)).toBe(true);
     expect(isEdgeZoneTouch(EDGE_INSET_PX, 390)).toBe(true); // <= inset
@@ -43,13 +44,13 @@ describe("isEdgeZoneTouch (F20 evolução — zona de exclusão de borda)", () =
 
   it("descarta toques iniciados na borda direita", () => {
     expect(isEdgeZoneTouch(390, 390)).toBe(true);
-    expect(isEdgeZoneTouch(380, 390)).toBe(true);
+    expect(isEdgeZoneTouch(385, 390)).toBe(true);
     expect(isEdgeZoneTouch(390 - EDGE_INSET_PX, 390)).toBe(true);
   });
 
   it("aceita toques na área central segura", () => {
     expect(isEdgeZoneTouch(195, 390)).toBe(false);
-    expect(isEdgeZoneTouch(EDGE_INSET_PX + 1, 390)).toBe(false); // 25 > 24
+    expect(isEdgeZoneTouch(EDGE_INSET_PX + 1, 390)).toBe(false); // 13 > 12
     expect(isEdgeZoneTouch(390 - EDGE_INSET_PX - 1, 390)).toBe(false);
   });
 
@@ -60,15 +61,15 @@ describe("isEdgeZoneTouch (F20 evolução — zona de exclusão de borda)", () =
   });
 });
 
-describe("isHorizontalDominant (F20 evolução — arming com razão 1.5)", () => {
-  it("arma quando o eixo X é claramente dominante (|dx| > 1.5·|dy|)", () => {
-    expect(isHorizontalDominant(100, 50)).toBe(true); // 100 > 75
-    expect(isHorizontalDominant(-80, -20)).toBe(true); // 80 > 30
+describe("isHorizontalDominant (F20 evolução — arming com razão 1.25)", () => {
+  it("arma quando o eixo X é claramente dominante (|dx| > 1.25·|dy|)", () => {
+    expect(isHorizontalDominant(100, 50)).toBe(true); // 100 > 62.5
+    expect(isHorizontalDominant(-80, -20)).toBe(true); // 80 > 25
   });
 
-  it("rejeita rolagem vertical com leve desvio horizontal (armar exige 1.5)", () => {
-    expect(isHorizontalDominant(40, 30)).toBe(false); // 40 <= 45
-    expect(isHorizontalDominant(60, 40)).toBe(false); // 60 <= 60
+  it("rejeita rolagem vertical com leve desvio horizontal", () => {
+    expect(isHorizontalDominant(30, 30)).toBe(false); // 30 <= 37.5
+    expect(isHorizontalDominant(50, 45)).toBe(false); // 50 <= 56.25
     expect(isHorizontalDominant(10, 100)).toBe(false); // dominância vertical
   });
 
@@ -99,15 +100,16 @@ describe("isFlick (F20 — arremesso > 0.3 px/ms com ≥ 30px)", () => {
   });
 });
 
-describe("activationDistance (F20 — max(60px, 15% viewport))", () => {
-  it("usa o piso de 60px em viewports pequenos", () => {
-    expect(activationDistance(320)).toBe(60); // 15% = 48 → piso 60
-    expect(activationDistance(390)).toBe(60);
+describe("activationDistance (F20 — clamped entre 48px e 120px, 14% viewport)", () => {
+  it("usa o piso de 48px em viewports pequenos", () => {
+    expect(activationDistance(320)).toBe(48); // 14% = 45 → piso 48
+    expect(activationDistance(300)).toBe(48);
   });
 
-  it("usa 15% do viewport quando maior que o piso", () => {
-    expect(activationDistance(430)).toBe(65); // 64.5 → arredonda 65
-    expect(activationDistance(1200)).toBe(180);
+  it("usa 14% do viewport quando maior que o piso", () => {
+    expect(activationDistance(390)).toBe(55); // 14% = 54.6 → 55
+    expect(activationDistance(500)).toBe(70); // 70px
+    expect(activationDistance(1200)).toBe(120); // clamped em 120px
   });
 });
 

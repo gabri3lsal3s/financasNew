@@ -58,6 +58,10 @@ describe("BottomNav 5 slots (F7.1)", () => {
 
     renderNav("/categorias");
     expect(screen.getByRole("link", { name: "Nova categoria" })).toHaveAttribute("href", "/categorias?novo=categoria");
+    unmount();
+
+    renderNav("/investments");
+    expect(screen.getByRole("link", { name: "Novo investimento" })).toHaveAttribute("href", "/investments?novo=investimento");
   });
 
   it("FAB central cai no wizard de lançamento mantendo a rota ativa em páginas sem criação própria", () => {

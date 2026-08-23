@@ -13,7 +13,7 @@ import {
   useMarkAllRemindersAsRead,
 } from "@/state";
 
-type ReminderFilter = "all" | "overdue" | "bills" | "debts";
+type ReminderFilter = "all" | "pending" | "overdue" | "bills" | "debts" | "read";
 
 /**
  * Central de lembretes (§3.10) — consolida faturas (saldo aberto por
@@ -25,10 +25,12 @@ export function RemindersPage() {
   const today = todayISO();
   const [filter, setFilter] = useState<ReminderFilter>("all");
 
-  const { items, totalCount, overdueCount, isLoading, error, preferences } = useReminders(today);
+  const { allItems, totalCount, overdueCount, readCount, isLoading, error, preferences } = useReminders(today);
   const statesQuery = useReminderStates();
   const setState = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
+
+  const stateMap = new Map((statesQuery.data ?? []).map((s) => [s.key, s.kind]));
 
   const handle = (occurrenceKey: string, state: { kind: "read" | "snoozed"; snoozeUntil?: string } | null) => {
     setState.mutate({ occurrenceKey, state });
@@ -47,30 +49,57 @@ export function RemindersPage() {
     navigate(`${item.link.path}?${params.toString()}`);
   };
 
-  const handleMarkAllRead = () => {
-    triggerHaptic("medium");
-    const keys = filteredItems.map((i) => i.key);
-    if (keys.length > 0) {
-      markAllMutation.mutate(keys);
-    }
-  };
-
-  const filteredItems = items
+  const filteredItems = allItems
     .filter((item) => {
-      if (filter === "overdue") return item.status === "overdue";
+      const stateKind = stateMap.get(item.key) ?? null;
+      if (filter === "pending") return stateKind !== "read";
+      if (filter === "overdue") return item.status === "overdue" && stateKind !== "read";
       if (filter === "bills") return item.kind === "bill";
       if (filter === "debts") return item.kind === "debt";
+      if (filter === "read") return stateKind === "read";
       return true;
     })
     .sort((a, b) => {
+      const aState = stateMap.get(a.key) ?? null;
+      const bState = stateMap.get(b.key) ?? null;
+      if (aState === "read" && bState !== "read") return 1;
+      if (aState !== "read" && bState === "read") return -1;
+
       const priority: Record<string, number> = { overdue: 0, due_today: 1, due_soon: 2, pending: 3 };
       const diff = (priority[a.status] ?? 3) - (priority[b.status] ?? 3);
       if (diff !== 0) return diff;
       return a.dueDate.localeCompare(b.dueDate);
     });
 
-  const billsCount = items.filter((i) => i.kind === "bill").length;
-  const debtsCount = items.filter((i) => i.kind === "debt").length;
+  const unreadFilteredItems = filteredItems.filter((i) => stateMap.get(i.key) !== "read");
+
+  const handleMarkAllRead = () => {
+    triggerHaptic("medium");
+    const keys = unreadFilteredItems.map((i) => i.key);
+    if (keys.length > 0) {
+      markAllMutation.mutate(keys);
+    }
+  };
+
+  const billsCount = allItems.filter((i) => i.kind === "bill").length;
+  const debtsCount = allItems.filter((i) => i.kind === "debt").length;
+
+  const getEmptyDescription = () => {
+    switch (filter) {
+      case "read":
+        return "Nenhum lembrete marcado como lido.";
+      case "overdue":
+        return "Nenhuma fatura ou dívida atrasada.";
+      case "bills":
+        return "Nenhuma fatura pendente ou recente.";
+      case "debts":
+        return "Nenhuma dívida pendente ou recente.";
+      case "pending":
+        return "Nenhuma pendência no momento.";
+      default:
+        return "Nenhuma fatura ou dívida encontrada.";
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,12 +120,12 @@ export function RemindersPage() {
           </p>
         </div>
 
-        {items.length > 0 && (
+        {allItems.length > 0 && (
           <Button
             variant="outline"
             size="sm"
             onClick={handleMarkAllRead}
-            disabled={markAllMutation.isPending || filteredItems.length === 0}
+            disabled={markAllMutation.isPending || unreadFilteredItems.length === 0}
             className="self-start sm:self-auto shrink-0"
           >
             <CheckCheck className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
@@ -106,7 +135,7 @@ export function RemindersPage() {
       </header>
 
       {/* Tabs de Filtro */}
-      {items.length > 0 && (
+      {allItems.length > 0 && (
         <Tabs
           value={filter}
           onValueChange={(val) => {
@@ -114,10 +143,12 @@ export function RemindersPage() {
             setFilter(val as ReminderFilter);
           }}
           items={[
-            { value: "all", label: `Todas (${totalCount})`, content: null },
+            { value: "all", label: `Todas (${allItems.length})`, content: null },
+            { value: "pending", label: `Pendentes (${totalCount})`, content: null },
             { value: "overdue", label: `Atrasadas (${overdueCount})`, content: null },
             { value: "bills", label: `Faturas (${billsCount})`, content: null },
             { value: "debts", label: `Dívidas (${debtsCount})`, content: null },
+            { value: "read", label: `Lidas (${readCount})`, content: null },
           ]}
         />
       )}
@@ -140,11 +171,7 @@ export function RemindersPage() {
         <EmptyState
           icon={<Bell className="size-6" aria-hidden="true" />}
           title="Tudo em dia"
-          description={
-            filter === "all"
-              ? "Nenhuma fatura ou dívida vencendo nos próximos dias."
-              : "Nenhum lembrete nesta categoria."
-          }
+          description={getEmptyDescription()}
           tone="positive"
         />
       ) : (
@@ -153,7 +180,7 @@ export function RemindersPage() {
             <ReminderItem
               key={item.key}
               item={item}
-              stateKind={statesQuery.data?.find((s) => s.key === item.key)?.kind ?? null}
+              stateKind={stateMap.get(item.key) ?? null}
               onMarkRead={(key) => handle(key, { kind: "read" })}
               onSnooze={snooze}
               onRestore={(key) => handle(key, null)}

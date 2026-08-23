@@ -85,9 +85,10 @@ export const DEFAULT_IGNORE_SELECTORS = [
   ".no-swipe-nav",
   ".swipeable-item",
   "[data-swipe-action]",
+  "table",
+  ".overflow-x-auto",
+  "[data-horizontal-scroll]",
 ] as const;
-
-const MIN_DISTANCE_FOR_LOCK = 4;
 
 /** O toque começou em um nó a ser ignorado? (sobe até o contêiner). */
 function startsOnIgnored(target: EventTarget | null, selectors: readonly string[]): boolean {
@@ -131,8 +132,9 @@ export function useSwipeNavigation({
   const settle = useCallback(() => {
     setOffsetPx(0);
     setDragging(false);
+    onDragProgress?.(0);
     gestureRef.current = null;
-  }, []);
+  }, [onDragProgress]);
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
@@ -141,8 +143,8 @@ export function useSwipeNavigation({
       if (event.isPrimary === false) return;
       if (startsOnIgnored(event.target, ignoreSelectors)) return;
 
-      // Edge inset (zona de segurança): toque iniciado na borda física fica
-      // com o gesto nativo de voltar do sistema — o app não compete ali.
+      // Edge inset (zona de segurança): toque iniciado na borda física extrema
+      // fica com o gesto nativo de voltar do sistema.
       if (isEdgeZoneTouch(event.clientX, window.innerWidth, edgeInsetPx)) return;
 
       gestureRef.current = {
@@ -165,19 +167,25 @@ export function useSwipeNavigation({
 
       const dx = event.clientX - gesture.startX;
       const dy = event.clientY - gesture.startY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
 
-      // Antes do lock: só inicia quando há movimento real e o arming passa.
+      // Antes do lock: avalia a intenção sem descarte prematuro por micro-oscilações.
       if (!gesture.locked) {
-        if (Math.abs(dx) < MIN_DISTANCE_FOR_LOCK && Math.abs(dy) < MIN_DISTANCE_FOR_LOCK) return;
-        // Arming: o eixo X precisa ser claramente dominante logo no início
-        // (`|dx| > 1.5·|dy|`) — rolagem vertical com leve desvio horizontal é
-        // descartada imediatamente, sem travar o scroll nativo. O cone ±30°
-        // segue como decisão final no settle (resolveSwipeIntent).
+        // Se a rolagem vertical for dominante e já tiver distância perceptível, libera o scroll nativo.
+        if (absDy >= LOCK_DISTANCE_PX && absDy > absDx) {
+          gestureRef.current = null;
+          return;
+        }
+
+        // Aguarda atingir a distância mínima para travar o gesto.
+        if (absDx < LOCK_DISTANCE_PX) return;
+
+        // Ao atingir LOCK_DISTANCE_PX no eixo X, verifica dominância horizontal.
         if (!isHorizontalDominant(dx, dy, AXIS_DOMINANCE_RATIO)) {
           gestureRef.current = null;
           return;
         }
-        if (Math.abs(dx) < LOCK_DISTANCE_PX) return;
 
         gesture.locked = true;
         gesture.boundarySide = null;
@@ -188,6 +196,10 @@ export function useSwipeNavigation({
         } catch {
           // Ambiente sem suporte a capture — o gesto segue sem ele.
         }
+      }
+
+      if (gesture.locked) {
+        event.stopPropagation?.();
       }
 
       gesture.lastX = event.clientX;
@@ -202,6 +214,10 @@ export function useSwipeNavigation({
     (event: ReactPointerEvent<HTMLElement>) => {
       const gesture = gestureRef.current;
       if (!gesture || event.pointerId !== gesture.pointerId) return;
+
+      if (gesture.locked) {
+        event.stopPropagation?.();
+      }
 
       try {
         event.currentTarget.releasePointerCapture?.(event.pointerId);

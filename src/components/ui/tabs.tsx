@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -52,14 +52,34 @@ export function Tabs({
     onDragProgress: (offsetPx) => {
       const node = contentRef.current;
       if (node) {
-        node.style.transform = `translateX(${offsetPx}px)`;
+        node.style.transform = offsetPx !== 0 ? `translateX(${offsetPx}px)` : "";
       }
     },
   });
 
+  // Limpa o deslocamento inline ao trocar de aba ou quando o arrasto termina
+  useEffect(() => {
+    if (!swipe.dragging && contentRef.current) {
+      contentRef.current.style.transform = "";
+    }
+  }, [value, swipe.dragging]);
+
   const handleTabChange = (val: string) => {
     triggerSensory("selection");
     onValueChange(val);
+  };
+
+  // Se o toque iniciou em uma sub-aba aninhada, este container pai não disputa o gesto
+  const handlePointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if (!swipeable) return;
+    const target = event.target;
+    if (target instanceof Element) {
+      const closestTabsContent = target.closest("[data-swipe-tabs-content]");
+      if (closestTabsContent && closestTabsContent !== contentRef.current) {
+        return;
+      }
+    }
+    swipe.pointerHandlers.onPointerDown(event);
   };
 
   return (
@@ -92,12 +112,15 @@ export function Tabs({
       {/* F20 — a área de conteúdo é o alvo do swipe (o List tem overflow-x-auto).
           `touch-action: pan-y` preserva o scroll vertical. */}
       <div
-        {...(swipeable ? swipe.pointerHandlers : {})}
+        onPointerDown={swipeable ? handlePointerDown : undefined}
+        onPointerMove={swipeable ? swipe.pointerHandlers.onPointerMove : undefined}
+        onPointerUp={swipeable ? swipe.pointerHandlers.onPointerUp : undefined}
+        onPointerCancel={swipeable ? swipe.pointerHandlers.onPointerCancel : undefined}
         ref={contentRef}
         className="mt-4 will-change-transform"
         style={{
           touchAction: swipeable ? "pan-y" : undefined,
-          transition: swipe.dragging ? "none" : "transform 0.25s ease-out",
+          transition: swipe.dragging ? "none" : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
         data-swipe-tabs-content
       >

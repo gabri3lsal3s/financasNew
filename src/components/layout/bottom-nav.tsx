@@ -38,6 +38,10 @@ function getFabAction(pathname: string, search = ""): { to: string; label: strin
     params.set("novo", "categoria");
     return { to: `${pathname}?${params.toString()}`, label: "Nova categoria" };
   }
+  if (pathname === "/investments" || pathname === "/investimentos") {
+    params.set("novo", "investimento");
+    return { to: `${pathname}?${params.toString()}`, label: "Novo investimento" };
+  }
   params.set("novo", "transacao");
   return { to: `${pathname}?${params.toString()}`, label: "Nova transação" };
 }

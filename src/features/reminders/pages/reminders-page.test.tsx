@@ -76,7 +76,7 @@ vi.mock("@/state", () => ({
     ];
 
     const debts = stateMocks.debts
-      .filter((d) => d.paid_at === null && d.id !== "d1" && d.id !== "d3")
+      .filter((d) => d.paid_at === null && d.id !== "d3")
       .map((d) => ({
         key: `debt:${d.id}`,
         kind: "debt" as const,
@@ -88,14 +88,17 @@ vi.mock("@/state", () => ({
         link: { path: "/dividas", params: { q: d.id } },
       }));
 
-    const items = [...bills, ...debts];
+    const allItems = [...bills, ...debts];
+    const items = allItems.filter((i) => i.key !== "debt:d1");
     return {
       items,
+      allItems,
       totalCount: items.length,
       overdueCount: items.filter((i) => i.status === "overdue").length,
       dueTodayCount: 0,
       dueSoonCount: items.filter((i) => i.status === "due_soon").length,
       urgentCount: items.filter((i) => i.status === "overdue").length,
+      readCount: 1,
       preferences: { enabled: true, debtDaysBefore: 3, billDaysBefore: 3 },
       isLoading: false,
       error: null,
@@ -104,14 +107,42 @@ vi.mock("@/state", () => ({
 }));
 
 describe("RemindersPage (central de lembretes §3.10)", () => {
-  it("consolida faturas e dívidas, ocultando lidas", () => {
+  it("consolida faturas e dívidas, exibindo ativas e lidas com suporte a filtros", async () => {
+    const user = userEvent.setup();
     render(<RemindersPage />);
-    // Fatura Nubank com saldo (previsto 2.000, sem pagamento) → vence dia 10.
+
+    // Fatura Nubank pendente → aparece
     expect(screen.getByText(/Fatura Nubank/)).toBeInTheDocument();
-    // Prestação carro marcada como lida → não aparece.
-    expect(screen.queryByText("Prestação carro")).not.toBeInTheDocument();
-    // Empréstimo vence dia 25 (fora da janela) → não aparece.
+    // Prestação carro marcada como lida → aparece com indicador de lido
+    expect(screen.getByText("Prestação carro")).toBeInTheDocument();
+    expect(screen.getByText("Lido")).toBeInTheDocument();
+    // Empréstimo vence dia 25 (fora da janela) → não aparece
     expect(screen.queryByText("Empréstimo")).not.toBeInTheDocument();
+
+    // Filtro "Pendentes" esconde as lidas
+    const pendingTab = screen.getByRole("tab", { name: /Pendentes/i });
+    await user.click(pendingTab);
+    expect(screen.queryByText("Prestação carro")).not.toBeInTheDocument();
+    expect(screen.getByText(/Fatura Nubank/)).toBeInTheDocument();
+
+    // Filtro "Lidas" exibe apenas as lidas
+    const readTab = screen.getByRole("tab", { name: /Lidas/i });
+    await user.click(readTab);
+    expect(screen.getByText("Prestação carro")).toBeInTheDocument();
+    expect(screen.queryByText(/Fatura Nubank/)).not.toBeInTheDocument();
+  });
+
+  it("permite reabrir um lembrete lido", async () => {
+    const user = userEvent.setup();
+    render(<RemindersPage />);
+
+    const reopenBtn = screen.getByRole("button", { name: /Reabrir lembrete Prestação carro/i });
+    await user.click(reopenBtn);
+
+    expect(setStateMock).toHaveBeenCalledWith({
+      occurrenceKey: "debt:d1",
+      state: null,
+    });
   });
 
   it("inclui dívidas vencidas de meses anteriores (atrasadas)", () => {

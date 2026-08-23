@@ -60,6 +60,19 @@ describe("InvestmentWizard (Fase 41)", () => {
     expect(screen.getByText("Posição Atual: 100 cotas · PM:")).toBeInTheDocument();
   });
 
+  it("inicia em modo fast-track de Venda quando recebe initialAsset e initialMode='sell'", () => {
+    render(
+      <InvestmentWizard
+        open={true}
+        initialAsset={mockAsset}
+        initialMode="sell"
+        onOpenChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Quantidade a Vender")).toBeInTheDocument();
+    expect(screen.getByText("Preço de Venda (BRL)")).toBeInTheDocument();
+  });
+
   it("permite selecionar um ativo existente e transitar para o formulário de aporte", () => {
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
     const assetButton = screen.getByText("PETR4").closest("button");

@@ -26,31 +26,34 @@ const FLICK_VELOCITY_PX_PER_MS = 0.3;
 const FLICK_MIN_DISTANCE_PX = 30;
 
 /** Distância mínima de ativação absoluta (px) quando o viewport é pequeno. */
-const ACTIVATION_MIN_PX = 60;
+const ACTIVATION_MIN_PX = 48;
 
-/** Fração do viewport para a distância de ativação relativa (15%). */
-const ACTIVATION_VIEWPORT_RATIO = 0.15;
+/** Distância máxima de ativação (px) em viewports largos/tablets. */
+const ACTIVATION_MAX_PX = 120;
+
+/** Fração do viewport para a distância de ativação relativa (14%). */
+const ACTIVATION_VIEWPORT_RATIO = 0.14;
 
 /** Fator de resistência da borda (elastic drag). */
 const BOUNDARY_RESISTANCE_FACTOR = 0.35;
 
 /** Distância (px) após o lock em que o ponteiro vira dono do gesto. */
-export const LOCK_DISTANCE_PX = 8;
+export const LOCK_DISTANCE_PX = 10;
 
 /**
- * Zona de segurança das bordas físicas (px) — gestos iniciados aqui ficam
- * reservados ao sistema operacional (edge swipe de voltar do Android/iOS).
- * O app só opera na área central segura (F20 evolução).
+ * Zona de segurança das bordas físicas (px) — gestos iniciados na borda
+ * extrema (12px) ficam reservados ao sistema operacional (edge swipe de voltar).
  */
-export const EDGE_INSET_PX = 24;
+export const EDGE_INSET_PX = 12;
 
 /**
- * Razão de dominância do eixo X para ARMAR o gesto: o swipe lateral só
- * inicia quando `|dx| > |dy| · 1.5` logo no início do toque — rolagem
- * vertical com leve desvio horizontal é descartada imediatamente, sem
- * travar o scroll nativo.
+ * Razão de dominância do eixo X para ARMAR o gesto: o swipe lateral
+ * exige que `|dx| > |dy| · 1.25` após atingir a distância de decisão.
  */
-export const AXIS_DOMINANCE_RATIO = 1.5;
+export const AXIS_DOMINANCE_RATIO = 1.25;
+
+/** Ângulo padrão de tolerância horizontal (cone de ±42° em torno do eixo X). */
+export const DEFAULT_HORIZONTAL_DEGREES = 42;
 
 /**
  * O toque começou na zona de exclusão de borda (edge inset)?
@@ -66,9 +69,7 @@ export function isEdgeZoneTouch(clientX: number, viewportWidthPx: number, insetP
 
 /**
  * Dominância horizontal clara para armar o gesto: `|dx| > |dy| · ratio`.
- * Complementa o cone ±30° (decisão final em `resolveSwipeIntent`): enquanto
- * o cone exige rigor ao soltar, a dominância protege o início do toque —
- * scroll vertical com leve drift lateral nunca vira navegação.
+ * Complementa o cone ±42° (decisão final em `resolveSwipeIntent`).
  */
 export function isHorizontalDominant(dx: number, dy: number, ratio = AXIS_DOMINANCE_RATIO): boolean {
   if (dx === 0) return false;
@@ -77,13 +78,13 @@ export function isHorizontalDominant(dx: number, dy: number, ratio = AXIS_DOMINA
 
 /**
  * Axis-lock: o gesto é horizontal quando o deslocamento Y fica dentro de
- * ±30° do eixo X (`|dy| ≤ |dx|·tan(30°)`). O parâmetro `degrees` permite
- * calibrar sem alterar o contrato (default 30).
+ * ±42° do eixo X (`|dy| ≤ |dx|·tan(42°)`). O parâmetro `degrees` permite
+ * calibrar sem alterar o contrato (default 42).
  *
  * Retorna `true` quando o vetor está dentro do cone do eixo X. Um gesto com
  * `|dy| > |dx|` (dominância vertical clara) sai imediatamente — rolagem.
  */
-export function isHorizontalLock(dx: number, dy: number, degrees = 30): boolean {
+export function isHorizontalLock(dx: number, dy: number, degrees = DEFAULT_HORIZONTAL_DEGREES): boolean {
   const absDx = Math.abs(dx);
   const absDy = Math.abs(dy);
   // Sem deslocamento horizontal ou dominância vertical inequívoca → rolagem.
@@ -105,12 +106,12 @@ export function isFlick(distancePx: number, elapsedMs: number): boolean {
 }
 
 /**
- * Distância de ativação do gesto: `max(60px, 15% do viewport)`.
+ * Distância de ativação do gesto: clamped entre 48px e 120px, ~14% do viewport.
  * Calibra o threshold proporcionalmente à largura do dispositivo.
  */
 export function activationDistance(viewportWidthPx: number): number {
   const relative = Math.round(viewportWidthPx * ACTIVATION_VIEWPORT_RATIO);
-  return Math.max(ACTIVATION_MIN_PX, relative);
+  return Math.min(ACTIVATION_MAX_PX, Math.max(ACTIVATION_MIN_PX, relative));
 }
 
 /**

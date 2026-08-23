@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvestmentsPage } from "./investments-page";
 
@@ -38,10 +39,6 @@ const row = (overrides: Partial<Record<string, unknown>> = {}) => ({
   ...overrides,
 });
 
-vi.mock("react-router", () => ({
-  Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
-}));
-
 vi.mock("@/state", () => ({
   usePortfolioPosition: () => positionMock,
   useAllPortfolioTransactions: () => ({
@@ -74,6 +71,14 @@ vi.mock("@/state", () => ({
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
+function renderPage(entry = "/investments") {
+  return render(
+    <MemoryRouter initialEntries={[entry]}>
+      <InvestmentsPage />
+    </MemoryRouter>,
+  );
+}
+
 describe("InvestmentsPage — F17 unificada", () => {
   beforeEach(() => {
     positionMock = {
@@ -93,7 +98,7 @@ describe("InvestmentsPage — F17 unificada", () => {
   });
 
   it("renderiza o header, abas e navegação padrão", () => {
-    render(<InvestmentsPage />);
+    renderPage();
     expect(screen.getByRole("heading", { name: "Investimentos", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Resumo" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
@@ -103,7 +108,7 @@ describe("InvestmentsPage — F17 unificada", () => {
   });
 
   it("estado vazio quando não há ativos", () => {
-    render(<InvestmentsPage />);
+    renderPage();
     expect(screen.getByText("Nenhum ativo cadastrado")).toBeInTheDocument();
   });
 
@@ -113,7 +118,7 @@ describe("InvestmentsPage — F17 unificada", () => {
       rows: [row({ assetId: "a1", ticker: "PETR4", valueBRL: 8000, pct: 80, unrealizedPct: 20 })],
       totalBRL: 8000,
     };
-    render(<InvestmentsPage />);
+    renderPage();
 
     expect(screen.getByText("Saldo em caixa")).toBeInTheDocument();
     expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();

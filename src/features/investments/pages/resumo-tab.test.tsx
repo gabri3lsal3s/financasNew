@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { ResumoTab } from "./resumo-tab";
 
@@ -155,9 +156,17 @@ vi.mock("@/state", () => ({
   }),
 }));
 
+function renderResumo(entry = "/investments") {
+  return render(
+    <MemoryRouter initialEntries={[entry]}>
+      <ResumoTab />
+    </MemoryRouter>,
+  );
+}
+
 describe("ResumoTab", () => {
   it("renderiza o card de Caixa em primeiro lugar com ações de editar e excluir, e não renderiza card de ativos em carteira", () => {
-    render(<ResumoTab />);
+    renderResumo();
 
     // Card de caixa
     expect(screen.getByText("Saldo em caixa")).toBeInTheDocument();
@@ -174,12 +183,17 @@ describe("ResumoTab", () => {
 
   it("permite abrir o diálogo de edição do caixa ao clicar no botão de editar", async () => {
     const user = userEvent.setup();
-    render(<ResumoTab />);
+    renderResumo();
 
     const editBtn = screen.getByRole("button", { name: /Editar saldo em caixa/i });
     await user.click(editBtn);
 
     // Diálogo de edição do caixa
     expect(screen.getByRole("heading", { name: /Editar Saldo em Caixa/i })).toBeInTheDocument();
+  });
+
+  it("abre automaticamente o InvestmentWizard quando a rota contiver ?novo=investimento", () => {
+    renderResumo("/investments?novo=investimento");
+    expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
   });
 });

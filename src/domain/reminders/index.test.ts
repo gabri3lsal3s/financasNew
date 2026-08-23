@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildReminders,
+  deriveReminderItems,
   applyReminderState,
   sortReminders,
   isSnoozeExpired,
@@ -196,7 +197,13 @@ describe("buildReminders (§3.10 — consolidação)", () => {
     expect(reminders[0]?.status).toBe("due_soon");
   });
 
+  it("deriveReminderItems retorna todas as faturas e dívidas elegíveis sem filtro de estado", () => {
+    const reminders = deriveReminderItems(input);
+    expect(reminders.map((r) => r.key)).toEqual(["debt:d1", "bill:c1:2026-08"]);
+  });
+
   it("preferência desabilitada → lista vazia", () => {
     expect(buildReminders({ ...input, preferences: { ...preferences, enabled: false } })).toEqual([]);
+    expect(deriveReminderItems({ ...input, preferences: { ...preferences, enabled: false } })).toEqual([]);
   });
 });

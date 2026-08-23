@@ -21,6 +21,7 @@ function fakePointer(
     target: el,
     setPointerCapture: vi.fn(),
     releasePointerCapture: vi.fn(),
+    stopPropagation: vi.fn(),
     ...extra,
   } as ReactPointerEvent<HTMLElement>;
 }
@@ -57,7 +58,7 @@ describe("useSwipeNavigation (F20 — engine de gestos)", () => {
     const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
     const el = document.createElement("div");
 
-    // innerWidth=390, inset default 24 → x=10 está na zona do SO.
+    // innerWidth=390, inset default 12 → x=10 está na zona extrema do SO.
     act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 10, 200)));
     act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 190, 205)));
     act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 190, 205)));
@@ -70,7 +71,7 @@ describe("useSwipeNavigation (F20 — engine de gestos)", () => {
     const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
     const el = document.createElement("div");
 
-    // x=385 >= 390-24 → zona direita do SO.
+    // x=385 >= 390-12 → zona direita do SO.
     act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 385, 200)));
     act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 200, 205)));
     act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 200, 205)));
@@ -94,31 +95,33 @@ describe("useSwipeNavigation (F20 — engine de gestos)", () => {
     expect(onNavigate).toHaveBeenCalledWith("previous");
   });
 
-  it("rolagem vertical com leve desvio horizontal NÃO arma (dominância 1.5)", () => {
+  it("rolagem vertical dominante NÃO arma o swipe (libera scroll nativo)", () => {
     const onNavigate = vi.fn();
     const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
     const el = document.createElement("div");
 
-    // dx=40, dy=30 → 40 <= 1.5·30 → descarte imediato, sem armar o rastreio.
+    // dx=5, dy=30 → dy >= 10 e dy > dx → descarte, sem travar scroll.
     act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 100, 100)));
-    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 140, 130)));
+    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 105, 130)));
     expect(result.current.dragging).toBe(false);
-    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 140, 130)));
+    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 105, 130)));
 
     expect(onNavigate).not.toHaveBeenCalled();
   });
 
-  it("dominância 1.5 arma o rastreio; o cone final ±30° decide a navegação", () => {
+  it("dominância horizontal arma o rastreio e drift vertical posterior impede navegação", () => {
     const onNavigate = vi.fn();
     const { result } = renderHook(() => useSwipeNavigation({ onNavigate }));
     const el = document.createElement("div");
 
-    // dx=100, dy=62 → dominância OK (100 > 93), mas fora do cone (62 > 57.7):
-    // o rastreio arma (drag elástico) e a decisão final é null (spring-back).
+    // Move 1: dx=50, dy=5 → dominância OK (arma o rastreio com drag elástico).
     act(() => result.current.pointerHandlers.onPointerDown(fakePointer(el, 100, 200)));
-    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 200, 262)));
+    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 150, 205)));
     expect(result.current.dragging).toBe(true);
-    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 200, 262)));
+
+    // Move 2: o usuário desliza verticalmente antes de soltar (dx=50, dy=120 → cone falha).
+    act(() => result.current.pointerHandlers.onPointerMove(fakePointer(el, 150, 320)));
+    act(() => result.current.pointerHandlers.onPointerUp(fakePointer(el, 150, 320)));
 
     expect(onNavigate).not.toHaveBeenCalled();
     expect(result.current.offsetPx).toBe(0);

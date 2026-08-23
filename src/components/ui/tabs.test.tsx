@@ -65,6 +65,64 @@ describe("Tabs", () => {
     expect(onValueChange).not.toHaveBeenCalled();
   });
 
+  it("swipeable: limpa o transform inline ao finalizar o gesto", () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <Tabs value="gastos" onValueChange={onValueChange} items={items} swipeable />,
+    );
+    const content = container.querySelector<HTMLElement>("[data-swipe-tabs-content]")!;
+
+    fireEvent.pointerDown(content, { clientX: 300, clientY: 100, pointerId: 1, pointerType: "touch", isPrimary: true });
+    clock.now = 200;
+    fireEvent.pointerMove(content, { clientX: 250, clientY: 100, pointerId: 1, pointerType: "touch", isPrimary: true });
+    expect(content.style.transform).toContain("translateX(-50px)");
+
+    clock.now = 500;
+    fireEvent.pointerUp(content, { clientX: 250, clientY: 100, pointerId: 1, pointerType: "touch", isPrimary: true });
+    expect(content.style.transform).toBe("");
+  });
+
+  it("swipeable: abas aninhadas não disparam a navegação da aba pai", () => {
+    const onParentChange = vi.fn();
+    const onChildChange = vi.fn();
+
+    const nestedItems = [
+      {
+        value: "parent-1",
+        label: "Pai 1",
+        content: (
+          <Tabs
+            value="child-1"
+            onValueChange={onChildChange}
+            swipeable
+            items={[
+              { value: "child-1", label: "Filho 1", content: <p>Filho 1</p> },
+              { value: "child-2", label: "Filho 2", content: <p>Filho 2</p> },
+            ]}
+          />
+        ),
+      },
+      { value: "parent-2", label: "Pai 2", content: <p>Pai 2</p> },
+    ];
+
+    const { container } = render(
+      <Tabs value="parent-1" onValueChange={onParentChange} items={nestedItems} swipeable />,
+    );
+
+    const allTabsContents = container.querySelectorAll<HTMLElement>("[data-swipe-tabs-content]");
+    const childContent = allTabsContents[1]!; // o interno
+
+    fireEvent.pointerDown(childContent, { clientX: 300, clientY: 100, pointerId: 1, pointerType: "touch", isPrimary: true });
+    clock.now = 200;
+    fireEvent.pointerMove(childContent, { clientX: 220, clientY: 105, pointerId: 1, pointerType: "touch", isPrimary: true });
+    clock.now = 500;
+    fireEvent.pointerUp(childContent, { clientX: 220, clientY: 105, pointerId: 1, pointerType: "touch", isPrimary: true });
+
+    // O filho deve navegar, mas o pai NÃO deve navegar
+    expect(onChildChange).toHaveBeenCalledWith("child-2");
+    expect(onParentChange).not.toHaveBeenCalled();
+  });
+
   it("sem swipeable, o conteúdo não recebe handlers de gesto", () => {
     const { container } = render(<Tabs value="gastos" onValueChange={vi.fn()} items={items} />);
     const content = container.querySelector<HTMLElement>("[data-swipe-tabs-content]")!;

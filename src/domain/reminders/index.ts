@@ -182,14 +182,11 @@ export interface RemindersInput {
 }
 
 /**
- * Consolida os alertas de faturas e dívidas, aplica o estado persistido
- * (lido/snooze) e ordena: atrasados primeiro, depois por vencimento.
+ * Deriva todos os alertas de faturas e dívidas elegíveis para lembrete (dentro da janela
+ * ou atrasadas), sem aplicar o filtro de lido/adiado.
  * Retorna vazio quando a preferência está desabilitada.
  */
-export function buildReminders(
-  input: RemindersInput,
-  states: readonly ReminderState[] = [],
-): ReminderItem[] {
+export function deriveReminderItems(input: RemindersInput): ReminderItem[] {
   if (!input.preferences.enabled) return [];
   const today = input.today ?? todayISO();
 
@@ -229,5 +226,19 @@ export function buildReminders(
     if (item) items.push(item);
   }
 
-  return sortReminders(applyReminderState(items, states, today));
+  return sortReminders(items);
+}
+
+/**
+ * Consolida os alertas de faturas e dívidas, aplica o estado persistido
+ * (lido/snooze) e ordena: atrasados primeiro, depois por vencimento.
+ * Retorna vazio quando a preferência está desabilitada.
+ */
+export function buildReminders(
+  input: RemindersInput,
+  states: readonly ReminderState[] = [],
+): ReminderItem[] {
+  const all = deriveReminderItems(input);
+  const today = input.today ?? todayISO();
+  return sortReminders(applyReminderState(all, states, today));
 }

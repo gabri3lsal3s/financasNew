@@ -8,6 +8,7 @@ import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
+import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import {
   useDeletePortfolioAsset,
   usePortfolioAssets,
@@ -22,16 +23,16 @@ import {
   ContributionsListDialog,
   ManualPriceDialog,
   PortfolioImportDialog,
-  QuickTransactionSheet,
 } from "../components";
 import { InvestmentWizard } from "../wizard";
-import type { AssetCurrency, PortfolioAsset, PortfolioTransactionType } from "@/types";
+import type { WizardMode } from "../wizard/wizard-state";
+import type { AssetCurrency, PortfolioAsset } from "@/types";
 import type { PriceSource } from "@/domain/portfolio";
 
 /**
- * Resumo da carteira (§F36 e §F41 unificada) — Posição Consolidada + Investment Wizard + Visão Dedicada:
+ * Resumo da carteira (§F36 e §F41 unificada) — Posição Consolidada + Investment Wizard (Modelo B) + Visão Dedicada:
  * KPIs executivos, gráfico unificado de distribuição da carteira, tabela de posições com Sheet de detalhes,
- * Investment Wizard (Novo Ativo / Aporte) e Quick Transaction Sheet.
+ * e Investment Wizard (Nova Operação centralizada: Compra, Venda, Provento, Split e Novo Ativo).
  */
 export function ResumoTab() {
   const position = usePortfolioPosition();
@@ -41,13 +42,23 @@ export function ResumoTab() {
   const syncQuotes = useSyncQuotes();
   const autoSyncedRef = useRef(false);
 
-  // Estados dos Novos Sheets e Wizards
+  // FAB contextual mobile (?novo=investimento) e abertura do Wizard
+  const { open: wizardDeepOpen, setOpen: setWizardDeepOpen } = useCreateDeepLink("investimento");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardInitialAsset, setWizardInitialAsset] = useState<PortfolioAsset | null>(null);
+  const [wizardInitialMode, setWizardInitialMode] = useState<WizardMode>("select");
+
+  const isWizardOpen = wizardOpen || wizardDeepOpen;
+  const handleWizardOpenChange = (next: boolean) => {
+    setWizardOpen(next);
+    setWizardDeepOpen(next);
+    if (!next) {
+      setWizardInitialAsset(null);
+      setWizardInitialMode("select");
+    }
+  };
 
   const [detailAsset, setDetailAsset] = useState<PortfolioAsset | null>(null);
-  const [quickOrderAsset, setQuickOrderAsset] = useState<PortfolioAsset | null>(null);
-  const [quickOrderType, setQuickOrderType] = useState<PortfolioTransactionType>("buy");
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
 
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
@@ -99,11 +110,16 @@ export function ResumoTab() {
     }
   };
 
-  const openQuickOrder = (assetId: string, type: PortfolioTransactionType = "buy") => {
+  const openWizardForAsset = (assetId: string, mode: WizardMode = "buy") => {
     const asset = assetById(assetId);
     if (asset) {
-      setQuickOrderAsset(asset);
-      setQuickOrderType(type);
+      if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
+        setCashDialogOpen(true);
+      } else {
+        setWizardInitialAsset(asset);
+        setWizardInitialMode(mode);
+        setWizardOpen(true);
+      }
     }
   };
 
@@ -261,9 +277,17 @@ export function ResumoTab() {
           description="Adicione seus investimentos ou registre seu saldo em caixa para iniciar o acompanhamento patrimonial."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button type="button" size="sm" onClick={() => { setWizardInitialAsset(null); setWizardOpen(true); }}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setWizardInitialAsset(null);
+                  setWizardInitialMode("select");
+                  setWizardOpen(true);
+                }}
+              >
                 <Plus aria-hidden="true" className="size-4" />
-                Adicionar Ativo
+                Nova Operação
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setCashDialogOpen(true)}>
                 Cadastrar Saldo em Caixa
@@ -376,12 +400,16 @@ export function ResumoTab() {
                   type="button"
                   size="sm"
                   className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1 shrink-0"
-                  onClick={() => { setWizardInitialAsset(null); setWizardOpen(true); }}
-                  title="Adicionar novo ativo"
-                  aria-label="Adicionar novo ativo"
+                  onClick={() => {
+                    setWizardInitialAsset(null);
+                    setWizardInitialMode("select");
+                    setWizardOpen(true);
+                  }}
+                  title="Nova operação em investimentos"
+                  aria-label="Nova operação em investimentos"
                 >
                   <Plus aria-hidden="true" className="size-4" />
-                  <span className="hidden sm:inline">Adicionar ativo</span>
+                  <span className="hidden sm:inline">Nova Operação</span>
                 </Button>
               </div>
             </div>
@@ -390,9 +418,9 @@ export function ResumoTab() {
               rows={investmentRows}
               sortable
               onListTransactions={openDetail}
-              onRegisterTransaction={(assetId) => openQuickOrder(assetId, "buy")}
+              onRegisterTransaction={(assetId) => openWizardForAsset(assetId, "buy")}
               onEditAsset={openEdit}
-              onSplitAsset={(assetId) => openQuickOrder(assetId, "split")}
+              onSplitAsset={(assetId) => openWizardForAsset(assetId, "split")}
               onSetManualPrice={(assetId, ticker, currency, priceBRL, source) => {
                 setPriceFor({ id: assetId, ticker, currency, priceBRL, source });
               }}
@@ -449,19 +477,12 @@ export function ResumoTab() {
         </>
       )}
 
-      {/* Investment Wizard Unificado (Novo Ativo + Aporte) */}
+      {/* Investment Wizard Unificado (Modelo B) */}
       <InvestmentWizard
-        open={wizardOpen}
-        onOpenChange={setWizardOpen}
+        open={isWizardOpen}
+        onOpenChange={handleWizardOpenChange}
         initialAsset={wizardInitialAsset}
-      />
-
-      {/* Quick Transaction Sheet */}
-      <QuickTransactionSheet
-        open={quickOrderAsset !== null}
-        onOpenChange={(open) => !open && setQuickOrderAsset(null)}
-        asset={quickOrderAsset}
-        initialType={quickOrderType}
+        initialMode={wizardInitialMode}
       />
 
       {/* Asset Detail Sheet (Visão Dedicada) */}
@@ -471,13 +492,9 @@ export function ResumoTab() {
         asset={detailAsset}
         onAction={(action, asset) => {
           setDetailAsset(null);
-          if (action === "buy") {
-            setWizardInitialAsset(asset);
-            setWizardOpen(true);
-          } else {
-            setQuickOrderAsset(asset);
-            setQuickOrderType(action);
-          }
+          const mode: WizardMode =
+            action === "sell" || action === "dividend" || action === "split" ? action : "buy";
+          openWizardForAsset(asset.id, mode);
         }}
       />
 
