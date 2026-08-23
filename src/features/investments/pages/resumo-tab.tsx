@@ -354,20 +354,15 @@ export function ResumoTab() {
 
           {/* Seção de Custódia e Posição Atual */}
           <section aria-label="Posições da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
+            <div className="mb-4 flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
                   <TrendingUp className="size-3.5" aria-hidden="true" />
                 </span>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-foreground">Posição Consolidada</h2>
-                  <Badge variant="muted" className="text-[11px] font-mono">
-                    {investmentRows.length} ativo(s)
-                  </Badge>
-                </div>
+                <h2 className="text-sm font-semibold text-foreground truncate">Posição Consolidada</h2>
               </div>
 
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <Button
                   type="button"
                   variant="outline"
