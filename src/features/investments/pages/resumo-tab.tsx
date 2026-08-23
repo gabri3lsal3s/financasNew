@@ -355,9 +355,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
           <section aria-label="Alocação da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-                  <PieChart className="size-3.5" aria-hidden="true" />
-                </span>
+                <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
                 <h2 className="text-sm font-semibold text-foreground">Distribuição Patrimonial</h2>
               </div>
 
@@ -404,9 +402,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
           <section aria-label="Posições da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-4 flex items-center justify-between gap-2 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-                  <TrendingUp className="size-3.5" aria-hidden="true" />
-                </span>
+                <TrendingUp className="size-4 text-portfolio shrink-0" aria-hidden="true" />
                 <h2 className="text-sm font-semibold text-foreground truncate">Posição Consolidada</h2>
               </div>
 
@@ -446,9 +442,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
           <section aria-label="Evolução Patrimonial" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-                  <LineChart className="size-3.5" aria-hidden="true" />
-                </span>
+                <LineChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
                 <h2 className="text-sm font-semibold text-foreground">Evolução Histórica (Snapshots Mensais)</h2>
               </div>
               <span className="text-xs text-muted-foreground">Últimos 6 meses</span>
@@ -513,9 +507,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border/80 bg-surface/70 px-4 py-3.5 shadow-xs transition-all hover:border-border"
       >
         <div className="flex items-center gap-2">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-portfolio/10 text-portfolio">
-            <Sparkles className="size-3.5" aria-hidden="true" />
-          </span>
+          <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Ferramentas & Inteligência da Carteira
           </h2>

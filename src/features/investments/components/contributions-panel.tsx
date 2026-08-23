@@ -103,9 +103,7 @@ export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
                   className="flex items-center justify-between gap-3 p-3.5 hover:bg-surface-hover/50 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 text-portfolio border border-portfolio/20">
-                      <Coins className="size-4" aria-hidden="true" />
-                    </span>
+                    <Coins className="size-4 shrink-0 text-portfolio" aria-hidden="true" />
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-foreground truncate">{ticker}</span>

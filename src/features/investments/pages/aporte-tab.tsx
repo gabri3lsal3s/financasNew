@@ -128,6 +128,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
           setSubTab(v as AporteSubTab);
           triggerSensory("selection");
         }}
+        variant="pills"
         items={[
           { value: "calculadora", label: "Calculadora" },
           { value: "metas", label: "Metas de Alocação" },

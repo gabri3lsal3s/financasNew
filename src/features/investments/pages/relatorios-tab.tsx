@@ -45,9 +45,7 @@ export function FerramentasTab() {
         {/* Card 1: Importação de Planilha */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
           <div className="flex flex-col gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio">
-              <Upload className="size-4.5" aria-hidden="true" />
-            </span>
+            <Upload className="size-5 text-portfolio" aria-hidden="true" />
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-foreground">Importar via Planilha</h3>
               <p className="text-xs text-muted-foreground">
@@ -70,9 +68,7 @@ export function FerramentasTab() {
         {/* Card 2: Relatório Executivo A4/PDF */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
           <div className="flex flex-col gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio">
-              <Printer className="size-4.5" aria-hidden="true" />
-            </span>
+            <Printer className="size-5 text-portfolio" aria-hidden="true" />
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-foreground">Relatório Executivo (A4/PDF)</h3>
               <p className="text-xs text-muted-foreground">
@@ -95,9 +91,7 @@ export function FerramentasTab() {
         {/* Card 3: Facilitador de IRPF */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
           <div className="flex flex-col gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-positive/10 border border-positive/20 text-positive-strong">
-              <Landmark className="size-4.5" aria-hidden="true" />
-            </span>
+            <Landmark className="size-5 text-positive-strong" aria-hidden="true" />
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-foreground">Facilitador de IRPF Anual</h3>
               <p className="text-xs text-muted-foreground">
@@ -120,9 +114,7 @@ export function FerramentasTab() {
         {/* Card 4: Monitor de DARF & Isenção de 20k */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
           <div className="flex flex-col gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong">
-              <FileSpreadsheet className="size-4.5" aria-hidden="true" />
-            </span>
+            <FileSpreadsheet className="size-5 text-primary-strong" aria-hidden="true" />
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-foreground">Monitor Mensal de DARF</h3>
               <p className="text-xs text-muted-foreground">

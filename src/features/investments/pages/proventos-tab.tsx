@@ -371,9 +371,7 @@ export function ProventosTab() {
             <section aria-label="Efeito Bola de Neve" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-                    <Sparkles className="size-3.5" aria-hidden="true" />
-                  </span>
+                  <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
                   <div>
                     <h2 className="text-sm font-semibold text-foreground">Efeito Bola de Neve (Renda Passiva)</h2>
                     <p className="text-xs text-muted-foreground">Progresso para que os proventos mensais comprem 1 nova cota inteira sozinhos.</p>
@@ -478,9 +476,7 @@ export function ProventosTab() {
       {/* Grid de Meses */}
       <section aria-label={`Calendário de proventos de ${year}`} className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
         <div className="mb-4 flex items-center gap-2">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-            <CalendarDays className="size-3.5" aria-hidden="true" />
-          </span>
+          <CalendarDays className="size-4 text-portfolio shrink-0" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-foreground">Calendário de {year}</h2>
         </div>
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">

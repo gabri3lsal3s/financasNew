@@ -106,9 +106,7 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
 
         {/* Informação contextual de regra de Caixa */}
         <div className="flex items-center gap-2.5 rounded-xl border border-portfolio/20 bg-portfolio/5 p-3 text-xs text-foreground">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 text-portfolio">
-            <Wallet className="size-4" aria-hidden="true" />
-          </span>
+          <Wallet className="size-4 shrink-0 text-portfolio" aria-hidden="true" />
           <div className="flex flex-col">
             <span className="font-semibold text-foreground">Ativo Único de Caixa</span>
             <span className="text-muted-foreground">

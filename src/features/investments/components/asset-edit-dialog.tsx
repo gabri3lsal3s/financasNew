@@ -222,6 +222,7 @@ export function AssetEditDialog({
       title="Editar Ativo"
       description={`Atualize as informações cadastrais de ${asset.ticker}`}
       size="lg"
+      showCalculator
     >
       <AssetEditFormContent
         key={asset.id}
