@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Info } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, GitFork, Info, Receipt } from "lucide-react";
 import {
   Alert,
   Button,
@@ -9,7 +9,6 @@ import {
   Modal,
   MoneyInput,
   Select,
-  Tabs,
 } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { todayISO } from "@/domain/debts";
@@ -17,6 +16,7 @@ import { numberToCents } from "@/domain/money";
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
 import { isCashAssetClass } from "@/domain/portfolio/valuation";
+import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import { usePortfolioAssets, useRecordOrder } from "@/state";
 import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
@@ -180,6 +180,33 @@ export function QuickTransactionSheet({
     label: `${a.ticker} (${a.asset_class ?? "Ativo"})`,
   }));
 
+  const operations = [
+    {
+      id: "buy",
+      label: "Compra / Aporte",
+      icon: ArrowUpRight,
+      activeClass: "border-primary bg-primary/10 text-primary-strong shadow-xs font-bold",
+    },
+    {
+      id: "sell",
+      label: "Venda / Resgate",
+      icon: ArrowDownLeft,
+      activeClass: "border-negative/60 bg-negative/10 text-negative-strong shadow-xs font-bold",
+    },
+    {
+      id: "dividend",
+      label: "Provento",
+      icon: Receipt,
+      activeClass: "border-positive/60 bg-positive/10 text-positive-strong shadow-xs font-bold",
+    },
+    {
+      id: "split",
+      label: "Split / Desdobro",
+      icon: GitFork,
+      activeClass: "border-warning/60 bg-warning/10 text-warning-strong shadow-xs font-bold",
+    },
+  ];
+
   return (
     <Modal
       open={open}
@@ -210,17 +237,31 @@ export function QuickTransactionSheet({
           </div>
         )}
 
-        {/* Abas de Operação */}
-        <Tabs
-          value={type}
-          onValueChange={(val) => setType(val as PortfolioTransactionType)}
-          items={[
-            { value: "buy", label: "Compra / Aporte" },
-            { value: "sell", label: "Venda / Resgate" },
-            { value: "dividend", label: "Provento" },
-            { value: "split", label: "Split" },
-          ]}
-        />
+        {/* Seletor em Grade 2x2 de Operação (Opção 1) */}
+        <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Tipo de Operação">
+          {operations.map((op) => {
+            const Icon = op.icon;
+            const isSelected = type === op.id;
+            return (
+              <button
+                key={op.id}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                onClick={() => setType(op.id as PortfolioTransactionType)}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
+                  isSelected
+                    ? op.activeClass
+                    : "border-border/80 bg-surface/60 text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                )}
+              >
+                <Icon className="size-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{op.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
         {/* 1. MODO COMPRA / APORTE */}
         {(type === "buy" || type === "subscription") && (
