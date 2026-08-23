@@ -281,7 +281,7 @@ export function QuickTransactionSheet({
                       onChange={(e) => setQuantityStr(e.target.value)}
                       placeholder="Ex: 10"
                       className="font-mono"
-                      autoFocus
+
                     />
                   </div>
 
@@ -307,7 +307,7 @@ export function QuickTransactionSheet({
                     cents={totalCents}
                     onCentsChange={setTotalCents}
                     placeholder="R$ 0,00"
-                    autoFocus
+
                   />
                 </div>
               )}
@@ -361,7 +361,7 @@ export function QuickTransactionSheet({
                   onChange={(e) => setQuantityStr(e.target.value)}
                   placeholder={`Máx: ${targetAsset?.quantity ?? 0}`}
                   className="font-mono"
-                  autoFocus
+
                 />
               </div>
 
@@ -425,7 +425,7 @@ export function QuickTransactionSheet({
                   cents={totalCents}
                   onCentsChange={setTotalCents}
                   placeholder="R$ 0,00"
-                  autoFocus
+
                 />
               </div>
 
@@ -460,7 +460,7 @@ export function QuickTransactionSheet({
                   value={splitFactor}
                   onChange={(e) => setSplitFactor(Number(e.target.value) || 2)}
                   className="font-mono"
-                  autoFocus
+
                 />
               </div>
 

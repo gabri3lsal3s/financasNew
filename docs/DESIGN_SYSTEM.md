@@ -187,6 +187,43 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 - Alvos de toque ≥ 44×44px (mobile); tabelas com scroll horizontal acessível por teclado.
 - Os 3 temas passam por auditoria (axe) na Fase 5 — nenhum token pode ser alterado sem revalidar contraste.
 
+### 9.1 Regra — Proibição de `autoFocus` em Modais
+
+**`autoFocus` é proibido em qualquer campo dentro de `Modal`, `Sheet` ou `ConfirmDialog`.** Motivo: em dispositivos móveis, `autoFocus` abre o teclado virtual automaticamente ao exibir o modal, empurrando o layout para cima, cortando conteúdo e perturbando a experiência do usuário antes mesmo que ele decida interagir. O usuário escolhe quando e qual campo quer preencher.
+
+- **Proibido:** `<Input autoFocus />`, `<MoneyInput autoFocus />`, `<Button autoFocus />` dentro de qualquer modal/sheet.
+- **Permitido:** focar programaticamente **após interação explícita** do usuário (ex.: ao clicar em "Editar inline" um item específico).
+- **ConfirmDialog:** o botão "Cancelar" **não** recebe `autoFocus` — no mobile isso abre o teclado sem motivo.
+
+### 9.2 Padrão — Sugestões Contextuais nos Wizards
+
+Blocos de sugestões inteligentes (habituais, recomendações de aporte) seguem o mesmo padrão visual em todos os wizards:
+
+**Cabeçalho do bloco:**
+```tsx
+<p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+  <IconName className="size-3" aria-hidden="true" />
+  Título da Seção
+</p>
+```
+
+**Cards de sugestão (items individuais com gap):**
+```tsx
+<div className="flex flex-col gap-1.5">
+  {items.map((item) => (
+    <button
+      key={item.id}
+      type="button"
+      className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface-raised px-3 py-2.5 text-left transition-colors hover:border-border hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {/* conteúdo */}
+    </button>
+  ))}
+</div>
+```
+
+> Sugestões com acento de marca (ex.: recomendações de aporte) usam `border-primary/20 bg-primary/5` com `hover:border-primary/40 hover:bg-primary/10` — nunca um container único com `divide-y`.
+
 ---
 
 ## 10. MAPEAMENTO PARA O CÓDIGO

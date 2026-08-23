@@ -87,7 +87,6 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           onChange={(e) => setTicker(e.target.value.toUpperCase().trim())}
           placeholder="Ex: WEGE3"
           className="font-mono uppercase font-bold"
-          autoFocus
         />
       </div>
 

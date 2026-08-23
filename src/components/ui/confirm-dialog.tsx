@@ -34,7 +34,7 @@ export function ConfirmDialog({
     <Modal open={open} onOpenChange={onOpenChange} title={title} description={description}>
       {children}
       <div className="mt-6 flex justify-end gap-2">
-        <Button type="button" variant="outline" autoFocus onClick={() => onOpenChange(false)}>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
           {cancelLabel}
         </Button>
         <Button

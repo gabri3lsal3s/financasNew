@@ -74,25 +74,22 @@ export function StepSelect({
             onChange={(e) => onChange({ searchQuery: e.target.value.toUpperCase() })}
             placeholder="Ex: PETR4, MXRF11, Tesouro Selic, Apple..."
             className="pl-9 font-mono uppercase"
-            autoFocus
           />
         </div>
       </div>
 
       {/* Lista unificada */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {!isSearching && aporteSuggestions.length > 0 && (
-            <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+            <Sparkles className="size-3" aria-hidden="true" />
           )}
-          <span className="text-xs font-medium text-muted-foreground">
-            {isSearching
-              ? "Resultados sugeridos"
-              : aporteSuggestions.length > 0
-                ? "Recomendados para aporte (por prioridade de meta)"
-                : "Seus ativos em carteira"}
-          </span>
-        </div>
+          {isSearching
+            ? "Resultados sugeridos"
+            : aporteSuggestions.length > 0
+              ? "Recomendados para aporte"
+              : "Seus ativos em carteira"}
+        </p>
 
         {/* Sem busca: recomendacoes enriquecidas ou lista de ativos existentes */}
         {!isSearching ? (
@@ -143,7 +140,7 @@ export function StepSelect({
               </div>
             )
           ) : (
-            <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
+            <div className="flex flex-col gap-1.5">
               {aporteSuggestions.map((item) => {
                 const asset = existingAssets.find((a) => a.id === item.assetId);
                 const name = asset?.notes ?? item.ticker;
@@ -152,7 +149,7 @@ export function StepSelect({
                     key={item.assetId}
                     type="button"
                     onClick={() => onSelectSuggestion(item)}
-                    className="flex items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-primary/5 active:scale-[0.99]"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
                   >
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <div className="flex items-center gap-2">

@@ -121,7 +121,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                     onChange={(e) => onChange({ quantityStr: e.target.value })}
                     placeholder="Ex: 10"
                     className="font-mono text-base"
-                    autoFocus
+
                   />
                 </div>
 
@@ -147,7 +147,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                   cents={state.totalCents}
                   onCentsChange={(totalCents) => onChange({ totalCents })}
                   placeholder="R$ 0,00"
-                  autoFocus
+
                 />
               </div>
             )}
@@ -230,7 +230,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 onChange={(e) => onChange({ quantityStr: e.target.value })}
                 placeholder={`Máx: ${state.selectedAsset?.quantity ?? 0}`}
                 className="font-mono text-base"
-                autoFocus
+
               />
             </div>
 
@@ -304,7 +304,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 cents={state.totalCents}
                 onCentsChange={(totalCents) => onChange({ totalCents })}
                 placeholder="R$ 0,00"
-                autoFocus
+
               />
             </div>
 
@@ -345,7 +345,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 value={state.splitFactor}
                 onChange={(e) => onChange({ splitFactor: Number(e.target.value) || 2 })}
                 className="font-mono text-base"
-                autoFocus
+
               />
             </div>
 

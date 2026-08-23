@@ -124,7 +124,6 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
             cents={balanceCents}
             onCentsChange={setBalanceCents}
             aria-label="Saldo disponível em caixa"
-            autoFocus
           />
         </label>
 

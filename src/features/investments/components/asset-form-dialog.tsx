@@ -300,7 +300,6 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   placeholder="Ex: 50"
                   inputMode="decimal"
                   aria-label="Quantidade a vender"
-                  autoFocus
                 />
               </label>
 
@@ -444,7 +443,6 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                 placeholder={isCashMode ? "CAIXA (padrão)" : "PETR4, MXRF11, AAPL, CDB…"}
                 maxLength={20}
                 aria-label={isCashMode ? "Nome do Caixa" : "Ticker do ativo"}
-                autoFocus={!isEdit}
               />
             </label>
 
