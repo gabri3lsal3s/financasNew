@@ -10,9 +10,9 @@ describe("BudgetProgressBar", () => {
     expect(screen.getByText(/50%/)).toBeInTheDocument();
   });
 
-  it("mostra o percentual acima de 100% quando ultrapassa o limite", () => {
+  it("mostra >100% quando ultrapassa o limite", () => {
     render(<BudgetProgressBar spentCents={12000} limitCents={10000} />);
-    expect(screen.getByText("120%")).toBeInTheDocument();
+    expect(screen.getByText(">100%")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
   });
 
