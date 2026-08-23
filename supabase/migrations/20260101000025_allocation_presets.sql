@@ -22,13 +22,33 @@ create table if not exists public.allocation_presets (
 -- RLS
 alter table public.allocation_presets enable row level security;
 
-create policy "allocation_presets_all_own"
-  on public.allocation_presets
-  for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'allocation_presets'
+      and policyname = 'allocation_presets_all_own'
+  ) then
+    create policy "allocation_presets_all_own"
+      on public.allocation_presets
+      for all
+      using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Função genérica de atualização de timestamp se não existir
+create or replace function public.update_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
 
 -- Trigger de updated_at
+drop trigger if exists trg_allocation_presets_updated_at on public.allocation_presets;
 create trigger trg_allocation_presets_updated_at
   before update on public.allocation_presets
   for each row execute function public.update_updated_at();
