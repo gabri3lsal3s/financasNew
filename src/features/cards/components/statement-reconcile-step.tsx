@@ -49,9 +49,6 @@ export function StatementReconcileStep({
   );
 
   // Contadores
-  const countExact = items.filter((it) => it.status === "exact_match").length;
-  const countProbable = items.filter((it) => it.status === "probable_match").length;
-  const countNew = items.filter((it) => it.status === "unmatched_new" && !it.ignoredByDefault).length;
   const countAppOnly = unmatchedAppExpenses.length;
 
   const filteredItems = useMemo(() => {
@@ -74,12 +71,12 @@ export function StatementReconcileStep({
   const allFilteredSelected = filteredItems.length > 0 && filteredItems.every((it) => it.selected);
 
   const tabsList = [
-    { value: "all", label: `Todos (${items.length})`, content: null },
-    { value: "new", label: `Novos (${countNew})`, content: null },
-    { value: "suggested", label: `Sugestões (${countProbable})`, content: null },
-    { value: "matched", label: `Conciliados (${countExact})`, content: null },
+    { value: "all", label: "Todos", content: null },
+    { value: "new", label: "Novos", content: null },
+    { value: "suggested", label: "Sugestões", content: null },
+    { value: "matched", label: "Conciliados", content: null },
     ...(countAppOnly > 0
-      ? [{ value: "app_only", label: `No App apenas (${countAppOnly})`, content: null }]
+      ? [{ value: "app_only", label: "No App apenas", content: null }]
       : []),
   ];
 

@@ -90,7 +90,7 @@ export function PortfolioTaxReport({
           items={[
             {
               value: "bens_direitos",
-              label: `Bens e Direitos (${bensDireitosReport.items.length})`,
+              label: "Bens e Direitos",
               content: (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">

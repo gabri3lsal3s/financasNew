@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   FileSpreadsheet,
-  FileText,
   Landmark,
   LineChart,
   PieChart,
@@ -9,7 +8,6 @@ import {
   Printer,
   RefreshCw,
   Shield,
-  ShieldCheck,
   Sparkles,
   TrendingUp,
   Upload,
@@ -505,10 +503,13 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
         </>
       )}
 
-      {/* Seção Discreta e Criativa: Ferramentas & Inteligência Fiscal da Carteira */}
-      <section aria-label="Ferramentas da carteira" className="flex flex-col gap-3 pt-2">
+      {/* Seção Compacta: Ferramentas & Inteligência Fiscal da Carteira (Barra de Ações Rápidas) */}
+      <section
+        aria-label="Ferramentas da carteira"
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border/80 bg-surface/70 px-4 py-3.5 shadow-xs transition-all hover:border-border"
+      >
         <div className="flex items-center gap-2">
-          <span className="flex size-6 items-center justify-center rounded-md bg-portfolio/10 text-portfolio">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-portfolio/10 text-portfolio">
             <Sparkles className="size-3.5" aria-hidden="true" />
           </span>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -516,106 +517,47 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Card 1: Importação de Planilha */}
-          <div className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-surface/80 p-4 transition-all hover:border-portfolio/40 hover:bg-surface hover:shadow-xs">
-            <div className="flex items-start gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 text-portfolio transition-transform group-hover:scale-105">
-                <Upload className="size-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-xs font-semibold text-foreground">Importar Planilha</h3>
-                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
-                  Carregue arquivos .xlsx ou .csv com posições e operações em lote.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setImportOpen(true)}
-              className="mt-3 text-xs h-7.5 w-full justify-center gap-1.5"
-            >
-              <Upload className="size-3" aria-hidden="true" />
-              <span>Importar Dados</span>
-            </Button>
-          </div>
-
-          {/* Card 2: Relatório Executivo A4 */}
-          <div className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-surface/80 p-4 transition-all hover:border-portfolio/40 hover:bg-surface hover:shadow-xs">
-            <div className="flex items-start gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 text-portfolio transition-transform group-hover:scale-105">
-                <Printer className="size-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-xs font-semibold text-foreground">Relatório Executivo</h3>
-                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
-                  Documento em padrão A4 com gráficos, KPIs e custódia consolidada.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setExecutiveReportOpen(true)}
-              className="mt-3 text-xs h-7.5 w-full justify-center gap-1.5"
-            >
-              <FileText className="size-3" aria-hidden="true" />
-              <span>Visualizar A4</span>
-            </Button>
-          </div>
-
-          {/* Card 3: Facilitador IRPF */}
-          <div className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-surface/80 p-4 transition-all hover:border-positive/40 hover:bg-surface hover:shadow-xs">
-            <div className="flex items-start gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong transition-transform group-hover:scale-105">
-                <Landmark className="size-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-xs font-semibold text-foreground">Facilitador de IRPF</h3>
-                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
-                  Fichas de Bens & Direitos e Rendimentos com cópia rápida para a Receita.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setTaxReportOpen(true)}
-              className="mt-3 text-xs h-7.5 w-full justify-center gap-1.5"
-            >
-              <ShieldCheck className="size-3 text-positive-strong" aria-hidden="true" />
-              <span>Fichas do IRPF</span>
-            </Button>
-          </div>
-
-          {/* Card 4: Monitor DARF */}
-          <div className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-surface/80 p-4 transition-all hover:border-primary/40 hover:bg-surface hover:shadow-xs">
-            <div className="flex items-start gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-strong transition-transform group-hover:scale-105">
-                <FileSpreadsheet className="size-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-xs font-semibold text-foreground">Monitor de DARF</h3>
-                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
-                  Controle de isenção de R$ 20k, alíquotas de FIIs e cálculo de impostos.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDarfMonitorOpen(true)}
-              className="mt-3 text-xs h-7.5 w-full justify-center gap-1.5"
-            >
-              <Sparkles className="size-3 text-primary-strong" aria-hidden="true" />
-              <span>Apuração DARF</span>
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setImportOpen(true)}
+            className="h-8 text-xs gap-1.5 shrink-0"
+          >
+            <Upload className="size-3.5 text-portfolio" aria-hidden="true" />
+            <span>Importar Planilha</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setExecutiveReportOpen(true)}
+            className="h-8 text-xs gap-1.5 shrink-0"
+          >
+            <Printer className="size-3.5 text-portfolio" aria-hidden="true" />
+            <span>Relatório A4</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setTaxReportOpen(true)}
+            className="h-8 text-xs gap-1.5 shrink-0"
+          >
+            <Landmark className="size-3.5 text-positive-strong" aria-hidden="true" />
+            <span>Fichas IRPF</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setDarfMonitorOpen(true)}
+            className="h-8 text-xs gap-1.5 shrink-0"
+          >
+            <FileSpreadsheet className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <span>Monitor DARF</span>
+          </Button>
         </div>
       </section>
 

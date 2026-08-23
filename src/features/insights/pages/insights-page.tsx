@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Activity,
   ArrowRight,
   Calendar,
   CheckCircle2,
@@ -7,6 +8,7 @@ import {
   ChevronUp,
   EyeOff,
   Flame,
+  LineChart,
   PiggyBank,
   Repeat,
   Sparkles,
@@ -361,6 +363,7 @@ export function InsightsPage() {
             {
               value: "diagnostics",
               label: "Diagnósticos",
+              icon: <Activity className="size-4" aria-hidden="true" />,
               content: (
                 <div className="flex flex-col gap-6 min-w-0">
                   {/* Bloco 1: Avisos e Recomendações Imediatas */}
@@ -474,6 +477,7 @@ export function InsightsPage() {
             {
               value: "recurrences",
               label: "Recorrências",
+              icon: <Repeat className="size-4" aria-hidden="true" />,
               content: (
                 <div className="flex flex-col gap-4">
                   {/* Card de Resumo de Recorrências */}
@@ -618,6 +622,7 @@ export function InsightsPage() {
             {
               value: "projection",
               label: "Projeção",
+              icon: <LineChart className="size-4" aria-hidden="true" />,
               content: (
                 <div className="flex flex-col gap-5">
                   {/* Bloco 1: Fechamento Projetado */}

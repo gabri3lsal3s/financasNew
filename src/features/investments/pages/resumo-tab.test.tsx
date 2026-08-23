@@ -196,9 +196,9 @@ describe("ResumoTab", () => {
   it("renderiza a seção de ferramentas da carteira no rodapé com atalhos de importação, relatório A4, IRPF e DARF", () => {
     renderResumo();
     expect(screen.getByText("Ferramentas & Inteligência da Carteira")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Importar Dados/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Visualizar A4/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Fichas do IRPF/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Apuração DARF/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Importar Planilha/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Relatório A4/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Fichas IRPF/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Monitor DARF/i })).toBeInTheDocument();
   });
 });

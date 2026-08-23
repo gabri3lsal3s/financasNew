@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Plus, Tags } from "lucide-react";
+import { Plus, Tags, TrendingDown, TrendingUp } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { CategoryIcon, HighlightRow } from "@/components/modules";
 import { cn } from "@/lib/utils";
@@ -159,11 +159,13 @@ export function CategoriesPage() {
             {
               value: "expense",
               label: "Despesas",
+              icon: <TrendingDown className="size-4" aria-hidden="true" />,
               content: renderCategoryList("expense"),
             },
             {
               value: "income",
               label: "Rendas",
+              icon: <TrendingUp className="size-4" aria-hidden="true" />,
               content: renderCategoryList("income"),
             },
           ]}

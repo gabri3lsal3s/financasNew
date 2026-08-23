@@ -1,4 +1,3 @@
-import { Progress } from "@/components/ui/progress";
 import { MoneyText } from "@/components/ui/money-text";
 
 export interface BudgetProgressBarProps {
@@ -9,10 +8,7 @@ export interface BudgetProgressBarProps {
 }
 
 /**
- * Progresso de orçamento — módulo de domínio reutilizável.
- * O `Progress` com `tone="auto"` aplica as faixas do DESIGN_SYSTEM §2.3
- * (≥ 85% crítico, ≥ 70% atenção); as faixas de orçamento 85/90/95% são
- * refinadas na entrega 2.7 (orçamentos).
+ * Resumo textual de uso de orçamento da categoria (restante/excesso e percentual).
  */
 export function BudgetProgressBar({ spentCents, limitCents, label }: BudgetProgressBarProps) {
   const percent = limitCents > 0 ? Math.min(100, (spentCents / limitCents) * 100) : 0;
@@ -45,7 +41,6 @@ export function BudgetProgressBar({ spentCents, limitCents, label }: BudgetProgr
           {limitCents > 0 ? (over ? ">100%" : `${Math.round(percent)}%`) : ""}
         </span>
       </div>
-      <Progress value={percent} tone="auto" className="h-1 bg-muted/60" aria-label={`Uso do orçamento: ${Math.round(percent)}%`} />
     </div>
   );
 }

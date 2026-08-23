@@ -27,7 +27,7 @@ export function RemindersPage() {
   const [mainTab, setMainTab] = useState<MainTab>("pending");
   const [subFilter, setSubFilter] = useState<SubFilter>("all");
 
-  const { allItems, totalCount, overdueCount, readCount, isLoading, error, preferences } = useReminders(today);
+  const { allItems, totalCount, overdueCount, isLoading, error, preferences } = useReminders(today);
   const statesQuery = useReminderStates();
   const setState = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
@@ -141,8 +141,8 @@ export function RemindersPage() {
             }}
             variant="underline"
             items={[
-              { value: "pending", label: `Pendentes (${totalCount})`, content: null },
-              { value: "read", label: `Lidas (${readCount})`, content: null },
+              { value: "pending", label: "Pendentes", icon: <Bell className="size-4" aria-hidden="true" />, content: null },
+              { value: "read", label: "Lidas", icon: <CheckCheck className="size-4" aria-hidden="true" />, content: null },
             ]}
           />
 

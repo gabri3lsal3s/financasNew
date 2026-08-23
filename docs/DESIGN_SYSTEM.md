@@ -427,4 +427,8 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Responsividade Inteligente:**
   - **Mobile (`< 640px`):** As abas tomam **100% da largura útil (`w-full`)** com divisão simétrica entre os botões (`flex-1 text-center`), garantindo toques confortáveis com o polegar (*thumb-friendly*), sem rolagem horizontal e sem cortes.
   - **Desktop (`≥ 640px`):** As abas ficam **alinhadas naturalmente à esquerda (`w-auto flex-initial sm:text-left`)**, ocupando apenas o espaço dos seus rótulos com espaçamento harmônico, sem se esticar artificialmente pela tela.
+- **Ícones em Abas (Nível 1 vs Nível 2):**
+  - **Nível 1 (`variant="underline"`):** Utilizam **ícones padronizados `lucide-react`** (`[&_svg]:size-3.5 sm:[&_svg]:size-4 shrink-0` com `aria-hidden="true"`), proporcionando reconhecimento visual imediato e refinamento estético em paridade entre todas as páginas.
+  - **Nível 2 (`variant="pills"`):** **Sem ícones (apenas texto)**, mantendo os segmentos leves, compactos e livres de poluição visual.
+
 

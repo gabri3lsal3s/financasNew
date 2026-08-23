@@ -537,36 +537,28 @@ export function OverviewPage() {
                         <div
                           key={row.category.id}
                           onClick={() => navigate("/orcamentos")}
-                          className="group flex flex-col gap-1.5 rounded-xl border border-border/50 bg-surface/50 p-2.5 hover:border-border hover:bg-surface-hover/50 transition-colors cursor-pointer"
+                          className="group flex items-center justify-between gap-2 rounded-xl border border-border/50 bg-surface/50 p-2.5 hover:border-border hover:bg-surface-hover/50 transition-colors cursor-pointer"
                         >
-                          <div className="flex items-center justify-between gap-2 min-w-0 text-xs">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <CategoryIcon icon={row.category.icon} color={row.category.color} className="size-5 shrink-0" />
-                              <span className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                                {row.category.name}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0 text-[11px]">
-                              <span className="text-muted-foreground">
-                                <MoneyText cents={row.spentCents} tone="default" className="font-medium text-foreground" />
-                                {" / "}
-                                <MoneyText cents={row.limitCents} tone="default" />
-                              </span>
-                              {isAttention ? (
-                                <Badge variant={isOver ? "critical" : "warning"} className="text-[9px] px-1 py-0">
-                                  {BUDGET_STATUS_LABELS[status]}
-                                </Badge>
-                              ) : (
-                                <span className="num text-muted-foreground font-medium">{Math.round(percent)}%</span>
-                              )}
-                            </div>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <CategoryIcon icon={row.category.icon} color={row.category.color} className="size-5 shrink-0" />
+                            <span className="font-medium text-foreground truncate group-hover:text-primary transition-colors text-xs">
+                              {row.category.name}
+                            </span>
                           </div>
-                          <Progress
-                            value={Math.min(100, percent)}
-                            tone={isOver ? "critical" : isAttention ? "warning" : "positive"}
-                            className="h-1.5"
-                            aria-label={`Uso da categoria ${row.category.name}: ${Math.round(percent)}%`}
-                          />
+                          <div className="flex items-center gap-2 shrink-0 text-[11px]">
+                            <span className="text-muted-foreground">
+                              <MoneyText cents={row.spentCents} tone="default" className="font-medium text-foreground" />
+                              {" / "}
+                              <MoneyText cents={row.limitCents} tone="default" />
+                            </span>
+                            {isAttention ? (
+                              <Badge variant={isOver ? "critical" : "warning"} className="text-[9px] px-1 py-0">
+                                {BUDGET_STATUS_LABELS[status]}
+                              </Badge>
+                            ) : (
+                              <span className="num text-muted-foreground font-medium">{Math.round(percent)}%</span>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

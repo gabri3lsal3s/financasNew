@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Wallet } from "lucide-react";
+import { Briefcase, Coins, Plus, TrendingUp, Wallet } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { ResumoTab } from "./resumo-tab";
@@ -87,6 +87,7 @@ export function InvestmentsPage() {
           {
             value: "resumo",
             label: "Carteira",
+            icon: <Briefcase className="size-4" aria-hidden="true" />,
             content: (
               <ResumoTab
                 onOpenWizard={handleOpenWizard}
@@ -97,11 +98,13 @@ export function InvestmentsPage() {
           {
             value: "aporte",
             label: "Aporte",
+            icon: <TrendingUp className="size-4" aria-hidden="true" />,
             content: <AporteTab onGoToPosition={() => setTab("resumo")} />,
           },
           {
             value: "proventos",
             label: "Proventos",
+            icon: <Coins className="size-4" aria-hidden="true" />,
             content: <ProventosTab />,
           },
         ]}

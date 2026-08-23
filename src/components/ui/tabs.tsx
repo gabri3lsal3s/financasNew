@@ -104,7 +104,7 @@ export function Tabs({
             value={item.value}
             aria-label={item.label}
             className={cn(
-              "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3.5 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0",
+              "inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap px-3.5 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0 [&_svg]:size-3.5 sm:[&_svg]:size-4 [&_svg]:shrink-0",
               isFullWidth ? "flex-1 text-center" : "flex-1 sm:flex-initial text-center sm:text-left",
               variant === "underline"
                 ? "border-b-2 border-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary-strong data-[state=active]:font-semibold"

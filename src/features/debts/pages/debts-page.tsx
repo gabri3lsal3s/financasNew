@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Calendar, Check, ChevronDown, ChevronUp, Coins, HandCoins, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Calendar, Check, ChevronDown, ChevronUp, Coins, HandCoins, Landmark, Plus } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow } from "@/components/modules";
@@ -222,20 +222,19 @@ export function DebtsPage() {
             Dívidas
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
-            Gestão de contas a pagar, a receber e financiamentos
+            Gestão de contas a pagar, a receber e contratos
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            aria-label="Financiamento"
+            aria-label="Novo contrato"
             className="flex-1 sm:flex-initial"
             onClick={() => setLoanFormOpen(true)}
           >
             <Coins aria-hidden="true" className="size-4" />
-            <span className="hidden sm:inline">Financiamento</span>
-            <span className="sm:hidden">Contrato</span>
+            Contrato
           </Button>
           <Button
             size="sm"
@@ -263,17 +262,20 @@ export function DebtsPage() {
           items={[
             {
               value: "payable",
-              label: `Pagar (${payableDebts.length})`,
+              label: "Pagar",
+              icon: <ArrowUpRight className="size-4" aria-hidden="true" />,
               content: null,
             },
             {
               value: "receivable",
-              label: `Receber (${receivableDebts.length})`,
+              label: "Receber",
+              icon: <ArrowDownLeft className="size-4" aria-hidden="true" />,
               content: null,
             },
             {
               value: "loans",
-              label: `Financiamentos (${loans.length})`,
+              label: "Contratos",
+              icon: <Landmark className="size-4" aria-hidden="true" />,
               content: null,
             },
           ]}
@@ -309,7 +311,7 @@ export function DebtsPage() {
         </div>
       )}
 
-      {/* Conteúdo de Financiamentos */}
+      {/* Conteúdo de Contratos */}
       {tab === "loans" && (
         <div className="flex flex-col gap-4">
           {loansQuery.isLoading ? (
@@ -320,7 +322,7 @@ export function DebtsPage() {
           ) : loans.length === 0 ? (
             <EmptyState
               icon={<Coins className="size-6" aria-hidden="true" />}
-              title="Nenhum financiamento ou empréstimo"
+              title="Nenhum contrato cadastrado"
               description="Cadastre seus contratos de crédito (Price ou SAC) para simular amortizações e acompanhar o saldo devedor."
               action={
                 <Button size="sm" onClick={() => setLoanFormOpen(true)}>

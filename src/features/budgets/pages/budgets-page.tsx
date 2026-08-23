@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Edit3, PiggyBank, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, Edit3, PiggyBank, Plus, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Progress, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
@@ -155,7 +155,7 @@ export function BudgetsPage() {
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Categorias & Orçamentos
+            Categorias
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
             Gestão de categorias, limites de gastos e expectativas de renda
@@ -178,8 +178,8 @@ export function BudgetsPage() {
         variant="underline"
         swipeable
         items={[
-          { value: "limits", label: "Despesas", content: null },
-          { value: "goals", label: "Rendas", content: null },
+          { value: "limits", label: "Despesas", icon: <TrendingDown className="size-4" aria-hidden="true" />, content: null },
+          { value: "goals", label: "Rendas", icon: <TrendingUp className="size-4" aria-hidden="true" />, content: null },
         ]}
       />
 
@@ -485,14 +485,6 @@ export function BudgetsPage() {
                           <span className="text-[11px] text-primary hover:underline">Toque para definir</span>
                         )}
                       </div>
-                      {expectedCents > 0 ? (
-                        <Progress
-                          value={percent}
-                          tone={status === "deficit" ? "warning" : "positive"}
-                          className="h-1.5"
-                          aria-label={`Realizado de ${category.name}: ${Math.round(percent)}%`}
-                        />
-                      ) : null}
                     </div>
                   </div>
                 );

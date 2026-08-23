@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChartPie, Printer, TrendingDown, TrendingUp } from "lucide-react";
+import { Calendar, CalendarDays, CalendarRange, ChartPie, Printer, TrendingDown, TrendingUp } from "lucide-react";
 import { Button, EmptyState, ErrorState, Modal, PrintSheet, Skeleton, Tabs } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
@@ -354,16 +354,19 @@ export function ReportsPage() {
           {
             value: "month",
             label: "Mês",
+            icon: <Calendar className="size-4" aria-hidden="true" />,
             content: <MonthPicker value={month} onValueChange={setMonth} />,
           },
           {
             value: "year",
             label: "Ano",
+            icon: <CalendarDays className="size-4" aria-hidden="true" />,
             content: <YearPicker value={year} onValueChange={setYear} />,
           },
           {
             value: "custom",
             label: "Custom",
+            icon: <CalendarRange className="size-4" aria-hidden="true" />,
             content: (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full sm:w-auto">

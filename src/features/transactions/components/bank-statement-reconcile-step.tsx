@@ -53,11 +53,7 @@ export function BankStatementReconcileStep({
     [categories],
   );
 
-  // Contadores
-  const countExpenses = items.filter((it) => it.kind === "expense").length;
-  const countIncomes = items.filter((it) => it.kind === "income").length;
-  const countNew = items.filter((it) => it.status === "unmatched_new" && !it.ignoredByDefault).length;
-  const countMatched = items.filter((it) => it.status === "exact_match" || it.status === "probable_match").length;
+
 
   const filteredItems = useMemo(() => {
     switch (filter) {
@@ -88,11 +84,11 @@ export function BankStatementReconcileStep({
   const allFilteredSelected = filteredItems.length > 0 && filteredItems.every((it) => it.selected);
 
   const tabsList = [
-    { value: "all", label: `Todos (${items.length})`, content: null },
-    { value: "expenses", label: `Despesas (${countExpenses})`, content: null },
-    { value: "incomes", label: `Receitas (${countIncomes})`, content: null },
-    { value: "new", label: `Novos (${countNew})`, content: null },
-    { value: "matched", label: `Conciliados (${countMatched})`, content: null },
+    { value: "all", label: "Todos", content: null },
+    { value: "expenses", label: "Despesas", content: null },
+    { value: "incomes", label: "Receitas", content: null },
+    { value: "new", label: "Novos", content: null },
+    { value: "matched", label: "Conciliados", content: null },
   ];
 
   return (
