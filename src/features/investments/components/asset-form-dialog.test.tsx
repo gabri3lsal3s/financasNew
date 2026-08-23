@@ -8,6 +8,7 @@ import type { PortfolioAsset } from "@/types";
 const createAssetMock = vi.fn();
 const updateAssetMock = vi.fn();
 const deleteAssetMock = vi.fn();
+const setManualPriceMock = vi.fn();
 const usePortfolioAssetsMock = vi.fn(() => ({ data: [] as PortfolioAsset[], isLoading: false, isError: false, error: null }));
 
 vi.mock("@/services/sensory", () => ({ triggerSensory: vi.fn() }));
@@ -17,7 +18,9 @@ vi.mock("@/state", () => ({
   useUpdatePortfolioAsset: () => ({ mutateAsync: updateAssetMock, isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: deleteAssetMock, isPending: false }),
   useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSetManualPrice: () => ({ mutateAsync: setManualPriceMock, isPending: false }),
   usePortfolioAssets: () => usePortfolioAssetsMock(),
+  useAssetPrices: () => ({ data: [], isLoading: false }),
 }));
 
 const existingAsset = {
@@ -35,6 +38,7 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
     createAssetMock.mockReset();
     updateAssetMock.mockReset();
     deleteAssetMock.mockReset();
+    setManualPriceMock.mockReset();
     vi.mocked(triggerSensory).mockClear();
   });
 
@@ -135,7 +139,7 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
     await user.click(screen.getByRole("button", { name: "Caixa" }));
 
     // Preenche apenas o valor do saldo em quantidade
-    await user.type(screen.getByLabelText("Quantidade ou saldo"), "5000");
+    await user.type(screen.getByLabelText("Saldo em caixa"), "5000");
 
     // O botão deve estar habilitado mesmo com o campo de nome vazio
     const submitBtn = screen.getByRole("button", { name: "Adicionar à carteira" });
@@ -148,6 +152,74 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
         asset_class: "Caixa",
         quantity: 5000,
         average_price: 1,
+      }),
+    );
+  });
+
+  it("cadastra ativo de Renda Fixa com preço inicial e atual (sem cotas)", async () => {
+    createAssetMock.mockResolvedValue({ id: "rf1", ticker: "CDB BANCO INTER" });
+    const user = userEvent.setup();
+    render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Ticker do ativo"), "CDB BANCO INTER");
+    await user.click(screen.getByRole("button", { name: "Renda Fixa" }));
+
+    expect(screen.getByText(/Posição de Custódia \(Renda Fixa\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Preço inicial investido")).toBeInTheDocument();
+    expect(screen.getByLabelText("Preço atual ou saldo")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Quantidade de cotas")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Preço inicial investido"), "1000000"); // 10.000,00
+
+    await user.click(screen.getByRole("button", { name: "Adicionar à carteira" }));
+
+    expect(createAssetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticker: "CDB BANCO INTER",
+        asset_class: "Renda Fixa",
+        quantity: 1,
+        average_price: 10000,
+      }),
+    );
+    expect(setManualPriceMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticker: "CDB BANCO INTER",
+        price: 10000,
+      }),
+    );
+  });
+
+  it("permite escolher modo de precificação para Tesouro Direto com padrão Valor Completo", async () => {
+    createAssetMock.mockResolvedValue({ id: "td1", ticker: "TESOURO SELIC" });
+    const user = userEvent.setup();
+    render(<AssetFormDialog open={true} onOpenChange={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Ticker do ativo"), "TESOURO SELIC");
+
+    // Deve exibir o seletor do Tesouro
+    expect(screen.getByText(/Modo de Precificação do Tesouro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Valor Completo \(Padrão RF\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Preço Médio \/ Cotas/i)).toBeInTheDocument();
+
+    // Padrão: campos de valor completo
+    expect(screen.getByLabelText("Preço inicial investido")).toBeInTheDocument();
+
+    // Alterna para Preço Médio / Cotas
+    await user.click(screen.getByText(/Preço Médio \/ Cotas/i));
+    expect(screen.getByLabelText("Quantidade de cotas")).toBeInTheDocument();
+    expect(screen.getByLabelText("Preço médio por cota")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Quantidade de cotas"), "0.5");
+    await user.type(screen.getByLabelText("Preço médio por cota"), "1400000"); // 14.000,00
+
+    await user.click(screen.getByRole("button", { name: "Adicionar à carteira" }));
+
+    expect(createAssetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticker: "TESOURO SELIC",
+        quantity: 0.5,
+        average_price: 14000,
+        notes: "[PRICING:UNIT]",
       }),
     );
   });

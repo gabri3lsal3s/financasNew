@@ -264,6 +264,7 @@ vi.mock("@/state", () => ({
   useSectorCaps: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutate: vi.fn(), isPending: false }),
+  useSetManualPrice: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
 }));
 
 

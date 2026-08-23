@@ -153,5 +153,17 @@ describe("domain/portfolio/snowball — Efeito Bola de Neve, YoC e Concentraçã
       expect(sum).toBe(100);
       expect(normalized.every((t) => t.targetPercentage === 25)).toBe(true);
     });
+
+    it("normaliza para um teto customizado (ex: 40%)", () => {
+      const targets = [
+        { id: "1", targetPercentage: 20 },
+        { id: "2", targetPercentage: 20 },
+      ];
+      const normalized = normalizeAllocationTargets(targets, 40);
+      const sum = normalized.reduce((acc, t) => acc + t.targetPercentage, 0);
+      expect(sum).toBe(40);
+      expect(normalized[0]?.targetPercentage).toBe(20);
+      expect(normalized[1]?.targetPercentage).toBe(20);
+    });
   });
 });

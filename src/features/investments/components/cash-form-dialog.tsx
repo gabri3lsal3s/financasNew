@@ -204,6 +204,7 @@ export function CashFormDialog({ open, onOpenChange, asset = null }: CashFormDia
       onOpenChange={onOpenChange}
       title={asset ? "Editar Saldo em Caixa" : "Cadastrar Saldo em Caixa"}
       description="Informe o valor disponível em conta ou corretora reservado para oportunidades e novos aportes."
+      showCalculator
     >
       {open ? (
         <CashFormContent

@@ -17,7 +17,7 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { calculateYieldOnCost } from "@/domain/portfolio/snowball";
-import { isCashAssetClass } from "@/domain/portfolio/valuation";
+import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
 import {
   useAssetPosition,
   useAssetPrices,
@@ -52,15 +52,22 @@ export function AssetDetailSheet({
 
   if (!asset) return null;
 
-  const isCash = isCashAssetClass(asset.asset_class);
+  const pricingMode = getAssetPricingMode({
+    ticker: asset.ticker,
+    asset_class: asset.asset_class,
+    notes: asset.notes,
+  });
+  const isCash = pricingMode === "cash" || isCashAssetClass(asset.asset_class);
+  const isTotalValue = pricingMode === "total_value";
+
   const prices = pricesQuery.data ?? [];
   const priceQuote = prices.find((p) => p.ticker.toUpperCase() === asset.ticker.toUpperCase());
   const currentPrice = priceQuote ? priceQuote.price : asset.average_price;
 
   const quantity = ledger ? ledger.quantity : asset.quantity;
   const averageCost = ledger ? ledger.averageCost : asset.average_price;
-  const totalCost = ledger ? ledger.totalCost : quantity * averageCost;
-  const currentValue = isCash ? quantity : quantity * currentPrice;
+  const totalCost = isTotalValue ? (averageCost > 0 ? averageCost : quantity) : ledger ? ledger.totalCost : quantity * averageCost;
+  const currentValue = isCash ? quantity : isTotalValue ? currentPrice : quantity * currentPrice;
   const totalDividends = ledger ? ledger.dividends : 0;
   const unrealizedPnl = isCash ? 0 : currentValue - totalCost;
   const unrealizedPnlPct = totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
@@ -107,6 +114,11 @@ export function AssetDetailSheet({
               <Badge variant="muted" className="text-xs">
                 {asset.currency}
               </Badge>
+              {isTotalValue && (
+                <Badge variant="muted" className="text-[10px]">
+                  Valor Completo
+                </Badge>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -118,7 +130,7 @@ export function AssetDetailSheet({
                 className="gap-1 text-xs text-primary"
               >
                 <Plus className="size-3.5" aria-hidden="true" />
-                Aportar
+                {isTotalValue ? "Aportar" : "Aportar"}
               </Button>
               <Button
                 type="button"
@@ -128,7 +140,7 @@ export function AssetDetailSheet({
                 className="gap-1 text-xs"
               >
                 <ArrowDownLeft className="size-3.5" aria-hidden="true" />
-                Vender
+                {isTotalValue ? "Resgatar" : "Vender"}
               </Button>
               <Button
                 type="button"
@@ -138,7 +150,7 @@ export function AssetDetailSheet({
                 className="gap-1 text-xs text-positive-strong"
               >
                 <Receipt className="size-3.5" aria-hidden="true" />
-                Provento
+                {isTotalValue ? "Rendimento" : "Provento"}
               </Button>
               <Button
                 type="button"
@@ -156,27 +168,33 @@ export function AssetDetailSheet({
           {/* Grid de Métricas Principais da Posição */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/80 p-3.5">
-              <span className="text-[11px] font-medium text-muted-foreground">Posição Total</span>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {isTotalValue ? "Saldo Atual" : "Posição Total"}
+              </span>
               <span className="font-mono text-base font-bold text-foreground">
                 <MoneyText cents={numberToCents(currentValue)} />
               </span>
               <span className="text-[10px] text-muted-foreground font-mono">
-                {quantity} cota(s)
+                {isTotalValue ? "Valor de mercado" : `${quantity} cota(s)`}
               </span>
             </div>
 
             <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/80 p-3.5">
-              <span className="text-[11px] font-medium text-muted-foreground">Preço Médio (PM)</span>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {isTotalValue ? "Preço Inicial" : "Preço Médio (PM)"}
+              </span>
               <span className="font-mono text-base font-bold text-foreground">
-                <MoneyText cents={numberToCents(averageCost)} />
+                <MoneyText cents={numberToCents(isTotalValue ? totalCost : averageCost)} />
               </span>
               <span className="text-[10px] text-muted-foreground font-mono">
-                Custo: <MoneyText cents={numberToCents(totalCost)} />
+                {isTotalValue ? "Valor aplicado" : <>Custo: <MoneyText cents={numberToCents(totalCost)} /></>}
               </span>
             </div>
 
             <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/80 p-3.5">
-              <span className="text-[11px] font-medium text-muted-foreground">Lucro Não Realizado</span>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {isTotalValue ? "Rendimento Total" : "Lucro Não Realizado"}
+              </span>
               <span
                 className={`font-mono text-base font-bold ${
                   unrealizedPnl >= 0 ? "text-positive-strong" : "text-negative-strong"

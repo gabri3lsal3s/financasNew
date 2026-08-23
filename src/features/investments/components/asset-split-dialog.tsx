@@ -68,6 +68,7 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
       title={`Ajuste Societário · ${asset.ticker}`}
       description="Desdobramento ou grupamento de cotas. O custo total investido permanece rigorosamente inalterado."
       size="md"
+      showCalculator
     >
       <div className="mt-4 flex flex-col gap-4">
         {error ? <Alert variant="error">{error}</Alert> : null}

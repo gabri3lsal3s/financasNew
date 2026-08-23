@@ -93,19 +93,42 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     expect(screen.getAllByText("PETR4")).toHaveLength(2);
   });
 
-  it("F28 — mobile: ações de linha disponíveis também nos cards", () => {
-    const onEditAsset = vi.fn();
+  it("aciona onListTransactions ao clicar no card mobile", async () => {
+    const onListTransactions = vi.fn();
+    const user = userEvent.setup();
     render(
       <PositionTable
         rows={rows}
-        onListTransactions={() => undefined}
-        onEditAsset={onEditAsset}
-        onDeleteAsset={() => undefined}
+        onListTransactions={onListTransactions}
       />,
     );
     const mobileList = screen.getByRole("list", { name: "Posições (visão móvel)" });
-    // O menu de ações aparece em cada card (mesma ação da tabela).
-    expect(within(mobileList).getAllByRole("button", { name: /Ações de/ })).toHaveLength(3);
+    const petr4Card = within(mobileList).getByRole("button", { name: /Ver detalhes de PETR4/i });
+    await user.click(petr4Card);
+    expect(onListTransactions).toHaveBeenCalledWith("a1", "PETR4");
+  });
+
+  it("aciona onListTransactions ao clicar na linha da tabela ou no botão do ativo no desktop", async () => {
+    const onListTransactions = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <PositionTable
+        rows={rows}
+        onListTransactions={onListTransactions}
+      />,
+    );
+
+    // Clicar no botão do ativo
+    const assetButtons = screen.getAllByRole("button", { name: "Ver detalhes de PETR4" });
+    // assetButtons[0] ou [1] (mobile / desktop)
+    await user.click(assetButtons[0]!);
+    expect(onListTransactions).toHaveBeenCalledWith("a1", "PETR4");
+
+    // Clicar na linha da tabela desktop
+    const rowsElements = screen.getAllByRole("row");
+    // Primeira linha de dados (índice 1, pois índice 0 é o header)
+    await user.click(rowsElements[1]!);
+    expect(onListTransactions).toHaveBeenCalledWith("a1", "PETR4");
   });
 
   it("F28 — mobile: mensagem vazia também no layout de cards", () => {
@@ -137,13 +160,15 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     expect(screen.queryByText("PETR4")).not.toBeInTheDocument();
   });
 
-  it("aciona onSetManualPrice ao clicar no botão de cotação", async () => {
+  it("aciona onSetManualPrice ao clicar no botão de cotação sem disparar onListTransactions", async () => {
     const onSetManualPrice = vi.fn();
+    const onListTransactions = vi.fn();
     const user = userEvent.setup();
     render(
       <PositionTable
         rows={rows}
         onSetManualPrice={onSetManualPrice}
+        onListTransactions={onListTransactions}
       />,
     );
 
@@ -152,6 +177,7 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     await user.click(priceButtons[0]!);
 
     expect(onSetManualPrice).toHaveBeenCalledWith("a1", "PETR4", "BRL", 42.5, "manual");
+    expect(onListTransactions).not.toHaveBeenCalled();
   });
 
   it("renderiza badge Zerada para ativos com quantidade igual a 0", () => {
@@ -168,30 +194,5 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
 
     render(<PositionTable rows={zeroedRows} />);
     expect(screen.getAllByText("Zerada").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("aciona onEditAsset e onDeleteAsset pelo menu contextual enxuto de ações", async () => {
-    const onEditAsset = vi.fn();
-    const onDeleteAsset = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <PositionTable
-        rows={rows}
-        onEditAsset={onEditAsset}
-        onDeleteAsset={onDeleteAsset}
-      />,
-    );
-
-    const actionsButtons = screen.getAllByRole("button", { name: /Ações de PETR4/ });
-    await user.click(actionsButtons[0]!);
-
-    const editOption = screen.getByRole("button", { name: /Editar cadastro/i });
-    await user.click(editOption);
-    expect(onEditAsset).toHaveBeenCalledWith("a1", "PETR4");
-
-    await user.click(actionsButtons[0]!);
-    const deleteOption = screen.getByRole("button", { name: /Excluir ativo/i });
-    await user.click(deleteOption);
-    expect(onDeleteAsset).toHaveBeenCalledWith("a1", "PETR4");
   });
 });

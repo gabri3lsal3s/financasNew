@@ -4,8 +4,11 @@ import {
   calculatePositionSummary,
   FALLBACK_USD_RATE,
   fallbackPriceFor,
+  getAssetPricingMode,
   inferCurrencyFromTicker,
   isCashAssetClass,
+  isFixedIncomeClass,
+  isTesouroAsset,
   normalizeClassName,
   positionPnl,
   resolvePrice,
@@ -211,6 +214,84 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(summary.valueBRL).toBe(6600); // 10 * 660
       expect(summary.unrealizedPnl).toBe(1100);
       expect(summary.unrealizedPct).toBe(20);
+    });
+
+    it("ativo de Renda Fixa em modo valor completo (sem cotas, apenas preço inicial e atual)", () => {
+      const summary = calculatePositionSummary({
+        quantity: 1,
+        averagePrice: 10000, // Preço inicial investido: R$ 10.000,00
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+        ticker: "CDB BANCO INTER",
+        resolvedPrice: { price: 10850, source: "manual" }, // Preço atual / saldo: R$ 10.850,00
+      });
+
+      expect(summary.pricingMode).toBe("total_value");
+      expect(summary.totalCost).toBe(10000);
+      expect(summary.priceBRL).toBe(10850);
+      expect(summary.valueBRL).toBe(10850);
+      expect(summary.unrealizedPnl).toBe(850);
+      expect(summary.unrealizedPct).toBe(8.5);
+      expect(summary.isCash).toBe(false);
+    });
+
+    it("ativo do Tesouro Direto com padrão valor completo e override por cotas", () => {
+      // Padrão: Tesouro Direto é total_value
+      const defaultTesouro = calculatePositionSummary({
+        quantity: 1,
+        averagePrice: 5000,
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+        ticker: "TESOURO-SELIC",
+        resolvedPrice: { price: 5200, source: "manual" },
+      });
+      expect(defaultTesouro.pricingMode).toBe("total_value");
+      expect(defaultTesouro.valueBRL).toBe(5200);
+      expect(defaultTesouro.unrealizedPnl).toBe(200);
+
+      // Com override [PRICING:UNIT]: Tesouro Direto em cotas/PM
+      const unitTesouro = calculatePositionSummary({
+        quantity: 0.5,
+        averagePrice: 10000, // PM unitário de R$ 10.000 -> Custo R$ 5.000
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+        ticker: "TESOURO-IPCA",
+        notes: "[PRICING:UNIT] Custódia em frações de título",
+        resolvedPrice: { price: 11000, source: "api" }, // PU R$ 11.000 -> Valor R$ 5.500
+      });
+      expect(unitTesouro.pricingMode).toBe("unit_price");
+      expect(unitTesouro.quantity).toBe(0.5);
+      expect(unitTesouro.totalCost).toBe(5000);
+      expect(unitTesouro.valueBRL).toBe(5500);
+      expect(unitTesouro.unrealizedPnl).toBe(500);
+    });
+  });
+
+  describe("isFixedIncomeClass & isTesouroAsset & getAssetPricingMode", () => {
+    it("identifica classes de renda fixa", () => {
+      expect(isFixedIncomeClass("Renda Fixa")).toBe(true);
+      expect(isFixedIncomeClass("CDB")).toBe(true);
+      expect(isFixedIncomeClass("LCI")).toBe(true);
+      expect(isFixedIncomeClass("LCA")).toBe(true);
+      expect(isFixedIncomeClass("Debêntures")).toBe(true);
+      expect(isFixedIncomeClass("Ações")).toBe(false);
+      expect(isFixedIncomeClass("FIIs")).toBe(false);
+    });
+
+    it("identifica ativos do Tesouro Direto", () => {
+      expect(isTesouroAsset("TESOURO-SELIC")).toBe(true);
+      expect(isTesouroAsset("TESOURO-IPCA")).toBe(true);
+      expect(isTesouroAsset("LFT")).toBe(true);
+      expect(isTesouroAsset("PETR4")).toBe(false);
+    });
+
+    it("determina modos de precificação padrão e customizados", () => {
+      expect(getAssetPricingMode({ asset_class: "Caixa" })).toBe("cash");
+      expect(getAssetPricingMode({ asset_class: "Renda Fixa", ticker: "CDB" })).toBe("total_value");
+      expect(getAssetPricingMode({ asset_class: "Renda Fixa", ticker: "TESOURO-SELIC" })).toBe("total_value");
+      expect(getAssetPricingMode({ asset_class: "Renda Fixa", ticker: "TESOURO-SELIC", notes: "[PRICING:UNIT]" })).toBe("unit_price");
+      expect(getAssetPricingMode({ asset_class: "Ações", ticker: "PETR4" })).toBe("unit_price");
+      expect(getAssetPricingMode({ asset_class: "Ações", ticker: "PETR4", notes: "[PRICING:TOTAL]" })).toBe("total_value");
     });
   });
 });

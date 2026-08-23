@@ -185,5 +185,70 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       expect(preview.newQuantity).toBe(200);
       expect(preview.newAveragePrice).toBe(15.0);
     });
+
+    it("valida e calcula Aporte em Renda Fixa / Tesouro Direto sem exigência de cotas", () => {
+      const rfAsset: PortfolioAsset = {
+        id: "rf-1",
+        user_id: "u-1",
+        ticker: "TESOURO-SELIC",
+        asset_class: "Renda Fixa",
+        currency: "BRL",
+        quantity: 1,
+        average_price: 1496.51,
+        notes: "",
+      };
+
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "buy",
+        step: 2,
+        selectedAsset: rfAsset,
+        ticker: "TESOURO-SELIC",
+        assetClass: "Renda Fixa",
+        quantityStr: "", // Sem cotas
+        priceCents: 19636, // R$ 196,36
+        totalCents: 19636,
+      };
+
+      // canProceed deve permitir avançar sem quantidade de cotas
+      expect(canProceed(state)).toBe(true);
+
+      // preview deve somar ao saldo aplicado
+      const preview = calculateInvestmentPreview(state);
+      expect(preview.currentAveragePrice).toBe(1496.51);
+      expect(preview.newAveragePrice).toBeCloseTo(1692.87, 2);
+      expect(preview.totalOrderValueBRL).toBe(196.36);
+    });
+
+    it("valida e calcula Resgate em Renda Fixa / Tesouro Direto", () => {
+      const rfAsset: PortfolioAsset = {
+        id: "rf-1",
+        user_id: "u-1",
+        ticker: "CDB 110% CDI",
+        asset_class: "Renda Fixa",
+        currency: "BRL",
+        quantity: 1,
+        average_price: 5000.0,
+      };
+
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "sell",
+        step: 2,
+        selectedAsset: rfAsset,
+        ticker: "CDB 110% CDI",
+        assetClass: "Renda Fixa",
+        totalCents: 200000, // R$ 2.000,00
+      };
+
+      expect(canProceed(state)).toBe(true);
+
+      const preview = calculateInvestmentPreview(state);
+      expect(preview.newAveragePrice).toBe(3000.0);
+      expect(preview.totalOrderValueBRL).toBe(2000.0);
+
+      // Bloqueia se valor do resgate for maior que o saldo aplicado
+      expect(canProceed({ ...state, totalCents: 600000 })).toBe(false);
+    });
   });
 });

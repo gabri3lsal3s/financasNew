@@ -6,21 +6,16 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
-  MoreHorizontal,
-  Pencil,
   Search,
-  SlidersHorizontal,
-  Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 import { Input } from "@/components/ui/input";
 import { MoneyText } from "@/components/ui/money-text";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { numberToCents } from "@/domain/money";
 import { calculateYieldOnCost } from "@/domain/portfolio";
-import type { PriceSource } from "@/domain/portfolio";
+import type { AssetPricingMode, PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
 import { formatSignedPct } from "@/services/masks/percent";
@@ -46,6 +41,7 @@ export interface PositionRow {
   /** Rentabilidade % sobre o custo (null quando não há custo — caixa; F14). */
   unrealizedPct: number | null;
   isCash: boolean;
+  pricingMode?: AssetPricingMode;
 }
 
 export interface PositionTableProps {
@@ -121,16 +117,15 @@ function SortableHeader({
 
 /**
  * Tabela de posições (§3.11.1 / §F17) — ledger derivado:
- * - Desktop (sm+): tabela completa com ordenação opcional por coluna.
+ * - Desktop (sm+): tabela completa com ordenação opcional por coluna e clique na linha para detalhes.
  * - Mobile (<sm): lista de cards empilhados sem scroll horizontal (F28).
- * - Ações contextuais: extrato de lançamentos, edição cadastral e exclusão em cascata.
+ * - Ações contextuais integradas aos modais de detalhes e ajuste de cotação.
  */
 export function PositionTable({
   rows,
   onListTransactions,
   onEditAsset,
   onSetManualPrice,
-  onDeleteAsset,
   emptyMessage,
   sortable = false,
 }: PositionTableProps) {
@@ -139,6 +134,8 @@ export function PositionTable({
   const [sort, setSort] = useState<SortState | null>(null);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
+
+  const handleOpen = onListTransactions ?? onEditAsset;
 
   const [pageSize, setPageSize] = useState<number>(() => {
     if (typeof window !== "undefined" && window.innerWidth < 640) {
@@ -233,15 +230,20 @@ export function PositionTable({
       key: "ticker",
       header: headerFor("ticker", "Ativo"),
       cell: (row) => {
-        const handleOpen = onListTransactions ?? onEditAsset;
         return handleOpen ? (
           <button
             type="button"
-            onClick={() => handleOpen(row.assetId, row.ticker)}
-            className="flex min-w-0 flex-col gap-0.5 text-left group hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpen(row.assetId, row.ticker);
+            }}
+            className="group inline-flex min-w-0 flex-col gap-0.5 rounded-md px-1.5 py-1 -ml-1.5 text-left transition-colors hover:bg-surface-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
             aria-label={`Ver detalhes de ${row.ticker}`}
+            title={`Ver detalhes de ${row.ticker}`}
           >
-            <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{row.ticker}</span>
+            <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              {row.ticker}
+            </span>
             {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
           </button>
         ) : (
@@ -258,7 +260,7 @@ export function PositionTable({
       align: "right",
       cell: (row) => (
         <span className="num text-sm text-muted-foreground">
-          {row.isCash ? (
+          {row.isCash || row.pricingMode === "total_value" ? (
             "—"
           ) : row.quantity === 0 ? (
             <span className="inline-flex items-center rounded-md bg-surface-hover/70 border border-border/60 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -407,26 +409,6 @@ export function PositionTable({
     },
   ];
 
-  const hasRowActions = Boolean(
-    onEditAsset || onSetManualPrice || onDeleteAsset,
-  );
-
-  if (hasRowActions) {
-    columns.push({
-      key: "actions",
-      header: <span className="sr-only">Ações</span>,
-      align: "right",
-      cell: (row) => (
-        <PositionRowActions
-          row={row}
-          onEditAsset={onEditAsset}
-          onSetManualPrice={onSetManualPrice}
-          onDeleteAsset={onDeleteAsset}
-        />
-      ),
-    });
-  }
-
   const hasFiltersActive = search.trim() !== "" || selectedClass !== null;
 
   return (
@@ -515,7 +497,6 @@ export function PositionTable({
             const yoc = (row.dividends && row.dividends > 0)
               ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
               : 0;
-            const handleOpen = onListTransactions ?? onEditAsset;
             const isClickable = Boolean(handleOpen);
             return (
               <li
@@ -539,7 +520,7 @@ export function PositionTable({
                   isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 )}
               >
-                {/* Linha 1: Ticker + Classe | Valor Total, Rentabilidade, YoC e Menu de Ações */}
+                {/* Linha 1: Ticker + Classe | Valor Total, Rentabilidade e YoC */}
                 <div className="flex items-center justify-between gap-2 min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
@@ -563,24 +544,24 @@ export function PositionTable({
                         </span>
                       ) : null}
                     </div>
-                    {hasRowActions ? (
-                      <div className="shrink-0 -mr-1" onClick={(e) => e.stopPropagation()}>
-                        <PositionRowActions
-                          row={row}
-                          onEditAsset={onEditAsset}
-                          onSetManualPrice={onSetManualPrice}
-                          onDeleteAsset={onDeleteAsset}
-                        />
-                      </div>
-                    ) : null}
                   </div>
                 </div>
 
                 {/* Linha 2: Métricas de Custódia em grid de 3 colunas legível */}
                 <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-border/40">
                   <div className="flex flex-col">
-                    <span className="text-[11px] text-muted-foreground">Quantidade</span>
-                    <span className="font-semibold text-foreground">{row.isCash ? "—" : formatQuantity(row.quantity)}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {row.pricingMode === "total_value" ? "Preço Inicial" : "Quantidade"}
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      {row.isCash ? (
+                        "—"
+                      ) : row.pricingMode === "total_value" ? (
+                        <MoneyText cents={numberToCents(row.averageCost)} currency={row.currency} tone="default" />
+                      ) : (
+                        formatQuantity(row.quantity)
+                      )}
+                    </span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[11px] text-muted-foreground">Preço</span>
@@ -640,6 +621,7 @@ export function PositionTable({
           rowKey={(row) => row.assetId}
           density={density === "compact" ? "compact" : "comfortable"}
           emptyMessage={hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
+          onRowClick={handleOpen ? (row) => handleOpen(row.assetId, row.ticker) : undefined}
         />
       </div>
 
@@ -725,92 +707,6 @@ export function PositionTable({
           </div>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-interface PositionRowActionsProps {
-  row: PositionRow;
-  onEditAsset?: (assetId: string, ticker: string) => void;
-  onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
-  onDeleteAsset?: (assetId: string, ticker: string) => void;
-}
-
-/** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28) com menu contextual enxuto. */
-function PositionRowActions({
-  row,
-  onEditAsset,
-  onSetManualPrice,
-  onDeleteAsset,
-}: PositionRowActionsProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const hasMenuActions = Boolean(
-    onEditAsset || (!row.isCash && onSetManualPrice) || onDeleteAsset,
-  );
-
-  if (!hasMenuActions) return null;
-
-  return (
-    <div className="flex items-center justify-end">
-      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="size-8 p-0 text-muted-foreground hover:text-foreground"
-            aria-label={`Ações de ${row.ticker}`}
-            title="Mais opções deste ativo"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreHorizontal className="size-4" aria-hidden="true" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-48 p-1.5 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
-          {onEditAsset ? (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-hover transition-colors text-left cursor-pointer"
-              onClick={() => {
-                setMenuOpen(false);
-                onEditAsset(row.assetId, row.ticker);
-              }}
-            >
-              <Pencil className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              Editar cadastro
-            </button>
-          ) : null}
-
-          {!row.isCash && onSetManualPrice ? (
-            <button
-              type="button"
-              aria-label={`Cotação de ${row.ticker}`}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-hover transition-colors text-left cursor-pointer"
-              onClick={() => {
-                setMenuOpen(false);
-                onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
-              }}
-            >
-              <SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              Ajustar cotação
-            </button>
-          ) : null}
-
-          {onDeleteAsset ? (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-negative-strong hover:bg-negative-surface/30 transition-colors text-left cursor-pointer border-t border-border/40 mt-0.5 pt-1.5"
-              onClick={() => {
-                setMenuOpen(false);
-                onDeleteAsset(row.assetId, row.ticker);
-              }}
-            >
-              <Trash2 className="size-3.5" aria-hidden="true" />
-              Excluir ativo
-            </button>
-          ) : null}
-        </PopoverContent>
-      </Popover>
     </div>
   );
 }

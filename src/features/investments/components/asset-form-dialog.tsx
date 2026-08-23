@@ -2,19 +2,28 @@ import { useState } from "react";
 import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
 import { Alert, Badge, Button, Checkbox, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
-import { calculateWeightedAveragePrice, isCashAssetClass, sellAssetPosition } from "@/domain/portfolio";
+import {
+  calculateWeightedAveragePrice,
+  isCashAssetClass,
+  isFixedIncomeClass,
+  isTesouroAsset,
+  sellAssetPosition,
+} from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
+  useAssetPrices,
   useCreatePortfolioAsset,
   useCreatePortfolioContribution,
   useDeletePortfolioAsset,
   usePortfolioAssets,
+  useSetManualPrice,
   useUpdatePortfolioAsset,
 } from "@/state";
 import { todayISO } from "@/domain/debts";
 import type { AssetCurrency, PortfolioAsset } from "@/types";
+import { cn } from "@/lib/utils";
 
 export interface AssetFormDialogProps {
   open: boolean;
@@ -52,7 +61,9 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const updateAsset = useUpdatePortfolioAsset();
   const deleteAsset = useDeletePortfolioAsset();
   const createContribution = useCreatePortfolioContribution();
+  const setManualPrice = useSetManualPrice();
   const allAssetsQuery = usePortfolioAssets();
+  const pricesQuery = useAssetPrices();
 
   const isEdit = asset !== null;
   const hasExistingQuantity = isEdit && (asset?.quantity ?? 0) > 0;
@@ -62,13 +73,46 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const [ticker, setTicker] = useState(asset?.ticker ?? "");
   const [assetClass, setAssetClass] = useState(asset?.asset_class ?? initialAssetClass ?? "");
   const [currency, setCurrency] = useState<AssetCurrency>(asset?.currency ?? "BRL");
-  const [quantityStr, setQuantityStr] = useState(asset?.quantity !== undefined && asset.quantity > 0 ? String(asset.quantity) : "");
-  const [averagePriceCents, setAveragePriceCents] = useState(asset?.average_price !== undefined ? numberToCents(asset.average_price) : 0);
-  const [notes, setNotes] = useState(asset?.notes ?? "");
 
-  // Saldo Direto 1:1 (caixa / renda fixa sem cotas)
-  const isDirectCash = isCashAssetClass(asset?.asset_class ?? initialAssetClass ?? "");
-  const [directBalanceMode, setDirectBalanceMode] = useState(isDirectCash);
+  const isCash = isCashAssetClass(assetClass) || ticker.trim().toUpperCase() === "CAIXA";
+  const isTesouro = isTesouroAsset(ticker, assetClass);
+  const isFixedIncome = isFixedIncomeClass(assetClass) || isTesouro;
+
+  // Modo Tesouro: "total_value" (padrão RF) ou "unit_price" (cotas / PM)
+  const initialTesouroMode = asset?.notes?.includes("[PRICING:UNIT]") ? "unit_price" : "total_value";
+  const [tesouroMode, setTesouroMode] = useState<"total_value" | "unit_price">(initialTesouroMode);
+
+  // Modo efetivo: se Renda Fixa (não-tesouro) ou (tesouro e modo total_value) -> total_value
+  const isTotalValueMode = !isCash && isFixedIncome && (!isTesouro || tesouroMode === "total_value");
+
+  // Preço inicial e atual para modo total_value (RF / Tesouro valor completo)
+  const priceQuote = (pricesQuery.data ?? []).find(
+    (p) => p.ticker.toUpperCase() === (asset?.ticker ?? ticker).trim().toUpperCase(),
+  );
+  const existingInitialPrice = asset
+    ? asset.average_price > 1
+      ? asset.average_price
+      : asset.quantity > 0
+        ? asset.quantity
+        : asset.average_price
+    : 0;
+  const existingCurrentPrice = priceQuote?.manual_price ?? priceQuote?.price ?? existingInitialPrice;
+
+  const [initialPriceCents, setInitialPriceCents] = useState(numberToCents(existingInitialPrice));
+  const [currentPriceCents, setCurrentPriceCents] = useState(numberToCents(existingCurrentPrice));
+
+  // Modo Cotas / Preço Médio (Ações, FIIs, etc. ou Tesouro cotas) e Caixa
+  const [quantityStr, setQuantityStr] = useState(
+    asset?.quantity !== undefined && asset.quantity > 0 ? String(asset.quantity) : "",
+  );
+  const [averagePriceCents, setAveragePriceCents] = useState(
+    asset?.average_price !== undefined ? numberToCents(asset.average_price) : 0,
+  );
+  const [notes, setNotes] = useState(
+    asset?.notes
+      ? asset.notes.replace("[PRICING:UNIT]", "").replace("[PRICING:TOTAL]", "").trim()
+      : "",
+  );
 
   // Helper de novo lote de compras
   const [showLotCalculator, setShowLotCalculator] = useState(false);
@@ -86,7 +130,12 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const pending = createAsset.isPending || updateAsset.isPending || deleteAsset.isPending || createContribution.isPending;
+  const pending =
+    createAsset.isPending ||
+    updateAsset.isPending ||
+    deleteAsset.isPending ||
+    createContribution.isPending ||
+    setManualPrice.isPending;
 
   const parseNumber = (raw: string): number => {
     const clean = raw.replace(/\s+/g, "").replace(",", ".");
@@ -94,8 +143,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     return Number.isFinite(val) ? val : 0;
   };
 
-  const parsedQuantity = parseNumber(quantityStr);
-  const parsedAvgPrice = directBalanceMode ? 1 : averagePriceCents / 100;
+  const parsedQuantity = isCash ? parseNumber(quantityStr) : parseNumber(quantityStr);
+  const parsedAvgPrice = averagePriceCents / 100;
 
   // Cálculo da prévia do helper de lote
   const parsedNewLotQty = parseNumber(newLotQtyStr);
@@ -138,8 +187,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     (a) => (isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA") && a.id !== asset?.id,
   );
 
-  const isCashMode = directBalanceMode || isCashAssetClass(assetClass);
-  const normalizedTicker = ticker.trim() === "" && isCashMode ? "CAIXA" : ticker.trim().toUpperCase();
+  const normalizedTicker = ticker.trim() === "" && isCash ? "CAIXA" : ticker.trim().toUpperCase();
   const canSubmit = normalizedTicker.length > 0 && !pending;
 
   const submit = async () => {
@@ -147,22 +195,44 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     setError(null);
 
     // Validação estrita de unicidade do Caixa: só é permitido 1 ativo de caixa na carteira
-    if (!isEdit && (isCashMode || normalizedTicker === "CAIXA") && existingCashAsset) {
+    if (!isEdit && (isCash || normalizedTicker === "CAIXA") && existingCashAsset) {
       setError("Já existe um ativo de Caixa cadastrado na carteira. Utilize o card de Saldo em Caixa no início da página para gerenciar o valor.");
       triggerSensory("error");
       return;
     }
 
     try {
-      const effectiveClass = assetClass.trim() === "" ? (isCashMode ? "Caixa" : null) : assetClass.trim();
+      const effectiveClass = assetClass.trim() === "" ? (isCash ? "Caixa" : null) : assetClass.trim();
+      let payloadQuantity = 0;
+      let payloadAvgPrice = 0;
+      let finalNotes = notes.trim() === "" ? null : notes.trim();
+
+      if (isCash) {
+        payloadQuantity = parsedQuantity;
+        payloadAvgPrice = 1;
+      } else if (isTotalValueMode) {
+        payloadQuantity = 1;
+        payloadAvgPrice = initialPriceCents / 100;
+        if (isTesouro) {
+          finalNotes = finalNotes ? `${finalNotes} [PRICING:TOTAL]` : "[PRICING:TOTAL]";
+        }
+      } else {
+        payloadQuantity = Math.max(0, parsedQuantity);
+        payloadAvgPrice = Math.max(0, parsedAvgPrice);
+        if (isTesouro && tesouroMode === "unit_price") {
+          finalNotes = finalNotes ? `${finalNotes} [PRICING:UNIT]` : "[PRICING:UNIT]";
+        }
+      }
+
       const payload = {
         ticker: normalizedTicker,
         asset_class: effectiveClass,
         currency,
-        quantity: directBalanceMode ? parsedQuantity : Math.max(0, parsedQuantity),
-        average_price: directBalanceMode ? 1 : Math.max(0, parsedAvgPrice),
-        notes: notes.trim() === "" ? null : notes.trim(),
+        quantity: payloadQuantity,
+        average_price: payloadAvgPrice,
+        notes: finalNotes,
       };
+
       let savedAssetId = asset?.id;
       if (isEdit && asset) {
         await updateAsset.mutateAsync({ id: asset.id, patch: payload });
@@ -170,6 +240,18 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
         const created = await createAsset.mutateAsync(payload);
         savedAssetId = created.id;
       }
+
+      // Se estiver em modo total_value, grava também o preço atual / saldo no cache/manual
+      if (isTotalValueMode) {
+        const priceToSave = currentPriceCents > 0 ? currentPriceCents / 100 : initialPriceCents / 100;
+        if (priceToSave > 0) {
+          await setManualPrice.mutateAsync({
+            ticker: normalizedTicker,
+            price: priceToSave,
+          });
+        }
+      }
+
       if (pendingLotContribution && pendingLotContribution.amount > 0) {
         await createContribution.mutateAsync({
           asset_id: savedAssetId ?? null,
@@ -284,22 +366,22 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
           <div className="rounded-xl border border-negative/20 bg-negative/5 p-3.5 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-foreground">
-                Custódia Disponível para Venda
+                Custódia Disponível para Venda / Resgate
               </span>
               <Badge variant="muted" className="text-xs">
-                {asset?.quantity} cotas @ {asset?.currency} {asset?.average_price?.toFixed(2)}
+                {asset?.quantity} {isTotalValueMode ? "posição" : "cotas"} @ {asset?.currency} {asset?.average_price?.toFixed(2)}
               </Badge>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                Quantidade a Vender
+                {isTotalValueMode ? "Valor a Resgatar" : "Quantidade a Vender"}
                 <Input
                   value={sellQtyStr}
                   onChange={(e) => setSellQtyStr(e.target.value)}
-                  placeholder="Ex: 50"
+                  placeholder={isTotalValueMode ? "Ex: 1000,00" : "Ex: 50"}
                   inputMode="decimal"
-                  aria-label="Quantidade a vender"
+                  aria-label={isTotalValueMode ? "Valor a resgatar" : "Quantidade a vender"}
                 />
               </label>
 
@@ -383,7 +465,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
                 <span className="text-muted-foreground">Posição após a venda:</span>
                 <span className="font-medium text-foreground">
-                  {sellResult.remainingQuantity} cotas (PM de {asset?.currency} {sellResult.remainingAveragePrice.toFixed(2)} inalterado)
+                  {sellResult.remainingQuantity} {isTotalValueMode ? "posição" : "cotas"} (PM de {asset?.currency} {sellResult.remainingAveragePrice.toFixed(2)} inalterado)
                 </span>
               </div>
 
@@ -436,13 +518,13 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              {isCashMode ? "Nome / Identificador do Caixa (opcional)" : "Ticker / Código do Ativo"}
+              {isCash ? "Nome / Identificador do Caixa (opcional)" : "Ticker / Código do Ativo"}
               <Input
                 value={ticker}
                 onChange={(event) => setTicker(event.target.value)}
-                placeholder={isCashMode ? "CAIXA (padrão)" : "PETR4, MXRF11, AAPL, CDB…"}
-                maxLength={20}
-                aria-label={isCashMode ? "Nome do Caixa" : "Ticker do ativo"}
+                placeholder={isCash ? "CAIXA (padrão)" : "PETR4, MXRF11, CDB Banco Inter, Tesouro Selic…"}
+                maxLength={40}
+                aria-label={isCash ? "Nome do Caixa" : "Ticker do ativo"}
               />
             </label>
 
@@ -450,13 +532,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               Classe
               <Input
                 value={assetClass}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  setAssetClass(val);
-                  if (isCashAssetClass(val)) {
-                    setDirectBalanceMode(true);
-                  }
-                }}
+                onChange={(event) => setAssetClass(event.target.value)}
                 placeholder="Ações, FIIs, Renda Fixa, Caixa…"
                 maxLength={40}
                 aria-label="Classe do ativo"
@@ -471,13 +547,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               <button
                 key={preset}
                 type="button"
-                onClick={() => {
-                  setAssetClass(preset);
-                  if (isCashAssetClass(preset)) {
-                    setDirectBalanceMode(true);
-                  }
-                }}
-                className="rounded-md border border-border/70 bg-surface-hover/50 px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover"
+                onClick={() => setAssetClass(preset)}
+                className="rounded-md border border-border/70 bg-surface-hover/50 px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover cursor-pointer"
               >
                 {preset}
               </button>
@@ -494,48 +565,157 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                 ariaLabel="Moeda do ativo"
               />
             </label>
-
-            <div className="flex flex-col justify-end pb-1">
-              <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
-                <Checkbox
-                  checked={directBalanceMode}
-                  onCheckedChange={(checked) => setDirectBalanceMode(Boolean(checked))}
-                />
-                <span>Modo Saldo Direto 1:1 (Renda Fixa / Caixa)</span>
-              </label>
-            </div>
           </div>
 
-          {/* Campos de Posição Consolidada */}
-          <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground">Posição Atual de Custódia</span>
-              {isEdit && !directBalanceMode && (
+          {/* Seletor de Modo de Precificação para Tesouro Direto */}
+          {isTesouro ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">Modo de Precificação do Tesouro</span>
+                <span className="text-[11px] text-muted-foreground">Padrão: Valor Completo</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowLotCalculator(!showLotCalculator)}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline cursor-pointer"
+                  onClick={() => {
+                    setTesouroMode("total_value");
+                    triggerSensory("selection");
+                  }}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
+                    tesouroMode === "total_value"
+                      ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
+                      : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  <Calculator className="size-3.5" aria-hidden="true" />
-                  <span>{showLotCalculator ? "Ocultar calculadora de lote" : "Adicionar novo lote de compra"}</span>
-                  {showLotCalculator ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                  <span className="text-xs font-semibold">Valor Completo (Padrão RF)</span>
+                  <span className="text-[10px] text-muted-foreground">Preço inicial e saldo atual (sem cotas)</span>
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTesouroMode("unit_price");
+                    triggerSensory("selection");
+                  }}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
+                    tesouroMode === "unit_price"
+                      ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
+                      : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <span className="text-xs font-semibold">Preço Médio / Cotas</span>
+                  <span className="text-[10px] text-muted-foreground">Frações de títulos e preço unitário</span>
+                </button>
+              </div>
             </div>
+          ) : null}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Campos de Posição Consolidada */}
+          {isCash ? (
+            <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">Saldo Disponível em Caixa</span>
+                <Badge variant="muted" className="text-[11px]">1:1</Badge>
+              </div>
               <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                {directBalanceMode ? "Saldo Total Investido (R$)" : "Quantidade Atual (Cotas / Unidades)"}
+                Saldo Atual (R$)
                 <Input
                   value={quantityStr}
                   onChange={(e) => setQuantityStr(e.target.value)}
-                  placeholder={directBalanceMode ? "10000,00" : "100"}
+                  placeholder="10000,00"
                   inputMode="decimal"
-                  aria-label="Quantidade ou saldo"
+                  aria-label="Saldo em caixa"
                 />
               </label>
+            </div>
+          ) : isTotalValueMode ? (
+            <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">
+                  {isTesouro ? "Posição de Custódia (Tesouro Direto)" : "Posição de Custódia (Renda Fixa)"}
+                </span>
+                <Badge variant="muted" className="text-[11px]">Valor Completo</Badge>
+              </div>
 
-              {!directBalanceMode ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                  Preço Inicial / Valor Aplicado ({currency})
+                  <MoneyInput
+                    cents={initialPriceCents}
+                    onCentsChange={(cents) => {
+                      setInitialPriceCents(cents);
+                      if (currentPriceCents === 0 || currentPriceCents === initialPriceCents) {
+                        setCurrentPriceCents(cents);
+                      }
+                    }}
+                    aria-label="Preço inicial investido"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                  Preço Atual / Saldo Final ({currency})
+                  <MoneyInput
+                    cents={currentPriceCents}
+                    onCentsChange={setCurrentPriceCents}
+                    aria-label="Preço atual ou saldo"
+                  />
+                </label>
+              </div>
+
+              {initialPriceCents > 0 && currentPriceCents > 0 ? (
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40 text-muted-foreground">
+                  <span>Rendimento Estimado:</span>
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      currentPriceCents >= initialPriceCents ? "text-positive-strong" : "text-negative-strong",
+                    )}
+                  >
+                    {currentPriceCents >= initialPriceCents ? "+" : ""}
+                    {((currentPriceCents - initialPriceCents) / 100).toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency,
+                    })}
+                    {" "}
+                    ({((currentPriceCents - initialPriceCents) / initialPriceCents * 100).toFixed(2)}%)
+                  </span>
+                </div>
+              ) : null}
+
+              <p className="text-[11px] text-muted-foreground">
+                Ativo de Renda Fixa precificado por valor investido e saldo atual (sem quantidade de cotas).
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">Posição Atual de Custódia</span>
+                {isEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setShowLotCalculator(!showLotCalculator)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline cursor-pointer"
+                  >
+                    <Calculator className="size-3.5" aria-hidden="true" />
+                    <span>{showLotCalculator ? "Ocultar calculadora de lote" : "Adicionar novo lote de compra"}</span>
+                    {showLotCalculator ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                  Quantidade Atual (Cotas / Unidades)
+                  <Input
+                    value={quantityStr}
+                    onChange={(e) => setQuantityStr(e.target.value)}
+                    placeholder="100"
+                    inputMode="decimal"
+                    aria-label="Quantidade de cotas"
+                  />
+                </label>
+
                 <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
                   Preço Médio por Cota ({currency})
                   <MoneyInput
@@ -544,68 +724,68 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                     aria-label="Preço médio por cota"
                   />
                 </label>
-              ) : null}
-            </div>
+              </div>
 
-            {/* Helper / Calculadora de Novo Lote de Compras */}
-            {showLotCalculator && !directBalanceMode && (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2.5 mt-1">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-                  <Sparkles className="size-3.5" aria-hidden="true" />
-                  <span>Calculadora de Novo Preço Médio Ponderado</span>
-                </div>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-                    Novas Cotas Adquiridas
-                    <Input
-                      value={newLotQtyStr}
-                      onChange={(e) => setNewLotQtyStr(e.target.value)}
-                      placeholder="Ex: 50"
-                      inputMode="decimal"
-                      className="h-8 text-xs"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
-                    Preço Unitário Pago ({currency})
-                    <MoneyInput
-                      cents={newLotPriceCents}
-                      onCentsChange={setNewLotPriceCents}
-                      className="h-8 text-xs"
-                    />
-                  </label>
-                </div>
-
-                {parsedNewLotQty > 0 && parsedNewLotPrice > 0 ? (
-                  <div className="flex flex-col gap-2 rounded-md bg-background/80 p-2.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-muted-foreground">Resultado após lote:</span>
-                        <span className="font-semibold text-foreground">
-                          {lotPreview.newQuantity} cotas com Preço Médio de {currency} {lotPreview.newAveragePrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                        </span>
-                      </div>
-                      <Button type="button" size="sm" onClick={handleApplyLot} className="h-7 text-xs">
-                        Aplicar
-                      </Button>
-                    </div>
-                    <label className="flex items-center gap-2 text-[11px] font-medium text-foreground cursor-pointer select-none pt-1 border-t border-border/40">
-                      <Checkbox
-                        checked={recordLotAsContribution}
-                        onCheckedChange={(checked) => setRecordLotAsContribution(Boolean(checked))}
+              {/* Helper / Calculadora de Novo Lote de Compras */}
+              {showLotCalculator && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2.5 mt-1">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                    <Sparkles className="size-3.5" aria-hidden="true" />
+                    <span>Calculadora de Novo Preço Médio Ponderado</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                      Novas Cotas Adquiridas
+                      <Input
+                        value={newLotQtyStr}
+                        onChange={(e) => setNewLotQtyStr(e.target.value)}
+                        placeholder="Ex: 50"
+                        inputMode="decimal"
+                        className="h-8 text-xs"
                       />
-                      <span>Registrar compra como aporte financeiro do mês (R$ {(parsedNewLotQty * parsedNewLotPrice).toFixed(2)})</span>
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                      Preço Unitário Pago ({currency})
+                      <MoneyInput
+                        cents={newLotPriceCents}
+                        onCentsChange={setNewLotPriceCents}
+                        className="h-8 text-xs"
+                      />
                     </label>
                   </div>
-                ) : null}
-              </div>
-            )}
 
-            {!isEdit && (
-              <p className="text-[11px] text-muted-foreground">
-                Cadastrado como <span className="font-medium text-foreground">Posição Inicial pré-existente</span> (não altera o valor de aportes do mês corrente na Home).
-              </p>
-            )}
-          </div>
+                  {parsedNewLotQty > 0 && parsedNewLotPrice > 0 ? (
+                    <div className="flex flex-col gap-2 rounded-md bg-background/80 p-2.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-muted-foreground">Resultado após lote:</span>
+                          <span className="font-semibold text-foreground">
+                            {lotPreview.newQuantity} cotas com Preço Médio de {currency} {lotPreview.newAveragePrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          </span>
+                        </div>
+                        <Button type="button" size="sm" onClick={handleApplyLot} className="h-7 text-xs">
+                          Aplicar
+                        </Button>
+                      </div>
+                      <label className="flex items-center gap-2 text-[11px] font-medium text-foreground cursor-pointer select-none pt-1 border-t border-border/40">
+                        <Checkbox
+                          checked={recordLotAsContribution}
+                          onCheckedChange={(checked) => setRecordLotAsContribution(Boolean(checked))}
+                        />
+                        <span>Registrar compra como aporte financeiro do mês (R$ {(parsedNewLotQty * parsedNewLotPrice).toFixed(2)})</span>
+                      </label>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {!isEdit && (
+                <p className="text-[11px] text-muted-foreground">
+                  Cadastrado como <span className="font-medium text-foreground">Posição Inicial pré-existente</span> (não altera o valor de aportes do mês corrente na Home).
+                </p>
+              )}
+            </div>
+          )}
 
           <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Notas / Observações (opcional)
@@ -683,6 +863,7 @@ export function AssetFormDialog({ open, onOpenChange, asset = null, initialAsset
             ? "Informe o valor disponível em caixa para oportunidades e novos aportes."
             : "Cadastre o ticker, classe e sua posição atual de custódia (quantidade e preço médio)."
       }
+      showCalculator
     >
       {open ? (
         <AssetFormContent

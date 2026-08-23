@@ -3,6 +3,7 @@ import { ArrowDownLeft, ArrowRight, ArrowUpRight, Calculator, GitFork, Info, Rec
 import { Badge, Checkbox, DatePicker, Input, MoneyInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
+import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { cn } from "@/lib/utils";
 import {
   calculateInvestmentPreview,
@@ -27,25 +28,34 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
   );
 
   const parsedQty = parseNumber(state.quantityStr);
-  const isCash = state.isCash;
+  const isCash = state.isCash || isCashAssetClass(state.assetClass);
+  const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
+  const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
+  const pricingMode = getAssetPricingMode(
+    state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
+  );
+  const isTotalValue =
+    !isCash &&
+    (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+
   const mode = state.mode;
 
   const operations = [
     {
       id: "buy",
-      label: "Compra / Aporte",
+      label: isTotalValue ? "Aporte / Aplicação" : "Compra / Aporte",
       icon: ArrowUpRight,
       activeClass: "border-primary bg-primary/10 text-primary-strong shadow-xs font-bold",
     },
     {
       id: "sell",
-      label: "Venda / Resgate",
+      label: isTotalValue ? "Resgate" : "Venda / Resgate",
       icon: ArrowDownLeft,
       activeClass: "border-negative/60 bg-negative/10 text-negative-strong shadow-xs font-bold",
     },
     {
       id: "dividend",
-      label: "Provento",
+      label: isTotalValue ? "Rendimento / Cupom" : "Provento",
       icon: Receipt,
       activeClass: "border-positive/60 bg-positive/10 text-positive-strong shadow-xs font-bold",
     },
@@ -57,6 +67,8 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
     },
   ];
 
+  const availableOperations = isTotalValue ? operations.filter((op) => op.id !== "split") : operations;
+
   return (
     <div className="flex flex-col gap-5">
       {/* Resumo do Ativo Selecionado */}
@@ -67,18 +79,32 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
             <Badge variant="muted" className="text-[10px]">
               {state.assetClass}
             </Badge>
+            {isTotalValue && (
+              <Badge variant="muted" className="text-[10px]">
+                Valor Completo
+              </Badge>
+            )}
           </div>
           <span className="text-xs text-muted-foreground">
-            Posição Atual: {state.selectedAsset?.quantity ?? 0} cotas · PM:{" "}
-            <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+            {isTotalValue ? (
+              <>
+                Saldo Aplicado:{" "}
+                <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+              </>
+            ) : (
+              <>
+                Posição Atual: {state.selectedAsset?.quantity ?? 0} cotas · PM:{" "}
+                <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+              </>
+            )}
           </span>
         </div>
       </div>
 
       {/* Seletor de Tipo de Operação quando o ativo já existe na carteira */}
       {!isCash && state.selectedAsset && (
-        <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Tipo de Operação">
-          {operations.map((op) => {
+        <div className={cn("grid gap-2", availableOperations.length === 3 ? "grid-cols-3" : "grid-cols-2")} role="tablist" aria-label="Tipo de Operação">
+          {availableOperations.map((op) => {
             const Icon = op.icon;
             const isSelected = mode === op.id || (op.id === "buy" && mode === "existing_aporte");
             return (
@@ -89,7 +115,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 aria-selected={isSelected}
                 onClick={() => onChange({ mode: op.id as WizardMode })}
                 className={cn(
-                  "flex items-center gap-2 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
+                  "flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
                   isSelected
                     ? op.activeClass
                     : "border-border/80 bg-surface/60 text-muted-foreground hover:bg-surface-hover hover:text-foreground",
@@ -107,7 +133,20 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
       {(mode === "buy" || mode === "existing_aporte") && (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {!isCash ? (
+            {isTotalValue ? (
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label htmlFor="wizard-order-rf-aporte" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Valor do Aporte / Aplicação ({state.currency})
+                </label>
+                <MoneyInput
+                  id="wizard-order-rf-aporte"
+                  cents={state.totalCents || state.priceCents}
+                  onCentsChange={(cents) => onChange({ totalCents: cents, priceCents: cents })}
+                  placeholder="R$ 0,00"
+                  aria-label="Valor do aporte em renda fixa"
+                />
+              </div>
+            ) : !isCash ? (
               <>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="wizard-order-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -164,7 +203,16 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
           </div>
 
           {/* Card de Impacto no Preço Médio em Tempo Real */}
-          {!isCash && parsedQty > 0 && state.priceCents > 0 && (
+          {isTotalValue && (state.totalCents > 0 || state.priceCents > 0) ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-4">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Saldo aplicado após o aporte:</span>
+                <span className="font-mono font-bold text-sm text-primary">
+                  <MoneyText cents={numberToCents((state.selectedAsset?.average_price ?? 0) + (state.totalCents || state.priceCents) / 100)} />
+                </span>
+              </div>
+            </div>
+          ) : !isCash && parsedQty > 0 && state.priceCents > 0 ? (
             <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-4">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                 <Calculator className="size-3.5 text-primary" aria-hidden="true" />
@@ -191,7 +239,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Sincronização com Caixa & Aporte do Mês */}
           <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-surface/40 p-3.5">
@@ -200,7 +248,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 checked={state.syncCash}
                 onCheckedChange={(checked) => onChange({ syncCash: !!checked })}
               />
-              <span className="text-foreground">Debitar do saldo de Caixa da carteira</span>
+              <span className="text-foreground">Debitar valor do Caixa (saldo: R$ {cashAvailableBRL.toFixed(2)})</span>
             </label>
 
             <label className="flex items-center gap-2.5 cursor-pointer text-xs">
@@ -218,37 +266,78 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
       {mode === "sell" && (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-sell-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Quantidade a Vender
-              </label>
-              <Input
-                id="wizard-sell-qty"
-                type="text"
-                inputMode="decimal"
-                value={state.quantityStr}
-                onChange={(e) => onChange({ quantityStr: e.target.value })}
-                placeholder={`Máx: ${state.selectedAsset?.quantity ?? 0}`}
-                className="font-mono text-base"
+            {isTotalValue ? (
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label htmlFor="wizard-sell-rf-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Valor a Resgatar ({state.currency})
+                </label>
+                <MoneyInput
+                  id="wizard-sell-rf-amount"
+                  cents={state.totalCents || state.priceCents}
+                  onCentsChange={(cents) => onChange({ totalCents: cents, priceCents: cents })}
+                  placeholder="R$ 0,00"
+                  aria-label="Valor a resgatar em renda fixa"
+                />
 
-              />
-            </div>
+                {/* Atalhos rápidos de percentual do saldo aplicado */}
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] text-muted-foreground">Resgatar:</span>
+                  {[
+                    { label: "25%", pct: 0.25 },
+                    { label: "50%", pct: 0.5 },
+                    { label: "75%", pct: 0.75 },
+                    { label: "100% (Total)", pct: 1 },
+                  ].map((s) => (
+                    <button
+                      key={s.label}
+                      type="button"
+                      onClick={() => {
+                        const balance = state.selectedAsset?.average_price ?? 0;
+                        const cents = Math.round(balance * s.pct * 100);
+                        onChange({ totalCents: cents, priceCents: cents });
+                      }}
+                      className="rounded-md border border-border/70 bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="wizard-sell-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Quantidade a Vender
+                  </label>
+                  <Input
+                    id="wizard-sell-qty"
+                    type="text"
+                    inputMode="decimal"
+                    value={state.quantityStr}
+                    onChange={(e) => onChange({ quantityStr: e.target.value })}
+                    placeholder={`Máx: ${state.selectedAsset?.quantity ?? 0}`}
+                    className="font-mono text-base"
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-sell-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Preço de Venda ({state.currency})
-              </label>
-              <MoneyInput
-                id="wizard-sell-price"
-                cents={state.priceCents}
-                onCentsChange={(priceCents) => onChange({ priceCents })}
-                placeholder="R$ 0,00"
-              />
-            </div>
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="wizard-sell-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Preço de Venda ({state.currency})
+                  </label>
+                  <MoneyInput
+                    id="wizard-sell-price"
+                    cents={state.priceCents}
+                    onCentsChange={(priceCents) => onChange({ priceCents })}
+                    placeholder="R$ 0,00"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Data da Venda
+                Data {isTotalValue ? "do Resgate" : "da Venda"}
               </label>
               <DatePicker
                 value={state.date}
@@ -258,7 +347,21 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
           </div>
 
           {/* Prévia de Ganho/Perda de Capital */}
-          {parsedQty > 0 && state.priceCents > 0 && preview.realizedPnl !== undefined && (
+          {isTotalValue && (state.totalCents > 0 || state.priceCents > 0) ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-4">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Saldo restante após resgate:</span>
+                <span className="font-mono font-bold text-sm text-foreground">
+                  <MoneyText
+                    cents={Math.max(
+                      0,
+                      numberToCents((state.selectedAsset?.average_price ?? 0) - (state.totalCents || state.priceCents) / 100),
+                    )}
+                  />
+                </span>
+              </div>
+            </div>
+          ) : parsedQty > 0 && state.priceCents > 0 && preview.realizedPnl !== undefined ? (
             <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-4">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Resultado Realizado:</span>
@@ -279,7 +382,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 </div>
               )}
             </div>
-          )}
+          ) : null}
 
           <label className="flex items-center gap-2.5 cursor-pointer text-xs rounded-xl border border-border/60 bg-surface/40 p-3.5">
             <Checkbox

@@ -428,8 +428,59 @@
   6. **Visão Dedicada de Ativos (`AssetDetailSheet` & `AssetEditDialog`):** Painel lateral com deep linking (`?asset=<id>`), KPIs da posição, Preço Médio, Lucro Não Realizado, Yield on Cost (YoC) e extrato cronológico integrado com exclusão individual de operações.
   7. **Centralização de Mutações (`src/state/mutations/use-portfolio-mutations.ts`):** Invalidação atômica e coordenada de cache com TanStack Query.
 
+## Evolução — Metas de Alocação: Normalização Contextual, Ações Rápidas 1/N, Espelhamento & Comparativo de Gap (2026-08-23)
+
+- **Problema:** (1) O botão de normalizar metas para 100% calculava a proporção na carteira inteira mesmo com filtros de classe ativos (gerando percentuais inesperados para os ativos visíveis); (2) Definir metas manuais para 20 a 100+ ativos era lento e exaustivo sem ferramentas de distribuição equiponderada ($1/N$) e espelhamento da carteira real; (3) Falta de campo de busca e ordenação por déficit/gap para priorizar aportes; (4) Aba de classes sem barra de validação de soma total nem ações em lote.
+- **Solução:**
+  1. **Domínio Puro (`src/domain/portfolio/`):**
+     - `normalizeAllocationTargets`: Aprimorado com suporte a `targetTotal` customizado (ex.: normalizar para a meta da classe de 40% ou global de 100%) e redistribuição inteligente.
+     - `distributeEquallyTargets`: Divisão $1/N$ rigorosa com compensação determinística de dízimas periódicas no último item para fechar a soma exata (ex.: $33.33, 33.33, 33.34$).
+     - `mirrorCurrentPositionTargets`: Transforma a alocação atual de mercado (`pct`) em metas ideais com 1 clique.
+     - `calculateAssetAllocationDelta`: Cálculo de $\Delta = Alvo\% - Atual\%$ e identificação de subalocação (`isUnderallocated`).
+  2. **Módulo `TargetEditor` (`src/components/modules/target-editor.tsx`):**
+     - **Barra de Ações de 1-Clique:** Botões para *Normalizar*, *Distribuir igualmente (1/N)*, *Espelhar carteira atual* e *Zerar metas*.
+     - **Busca Instantânea por Ticker/Classe:** Filtro em tempo real para navegação rápida em carteiras com muitos ativos.
+     - **Ordenação Inteligente:** Opções de ordenação por *Prioridade de aporte (Gap)*, *Maior meta %*, *Maior patrimônio* e *Ticker (A-Z)*.
+     - **Comparativo Visual ($\Delta$ Gap):** Badges contextuais (`+X.X% · Recebe aporte` ou `Alocado`).
+  3. **Página `TargetsTab` (`src/features/investments/pages/targets-tab.tsx`):**
+     - **Normalização e Distribuição Contextuais:** Ao filtrar por uma classe (ex.: *Ações* com meta de 60%), os botões adaptam-se para normalizar/distribuir apenas a classe visível para somar 60%, preservando as demais classes intactas.
+     - **Aba de Classes:** Barra de progresso com validação da soma ($\le 100\%$), botões de normalização/distribuição entre classes e botão de *Salvar todas as classes*.
+  4. **Qualidade & Testes:** Suíte de testes unitários e de integração dedicada em `allocation.test.ts`, `snowball.test.ts` e `targets-tab.test.tsx` (100% verde).
+
+## Evolução — Tabela de Posições: Clique na Linha, Hover no Ativo, Isolamento no Preço & Eliminação dos 3 Pontinhos (2026-08-23)
+
+- **Problema:** (1) A coluna de ações com menu popover de 3 pontinhos (`...`) gerava poluição visual e ocupava espaço horizontal na tabela desktop e nos cards mobile; (2) O clique na linha da tabela desktop não abria o modal de detalhes do ativo; (3) O botão do ativo não possuía feedback visual de hover evidente (ao contrário do botão de preço); (4) O menu de 3 pontinhos duplicava ações já disponíveis internamente no modal de detalhes (`AssetDetailSheet`).
+- **Solução:**
+  1. **Interatividade de Linha Inteira (`DataList` + `PositionTable`):** Suporte a `onRowClick` habilitado na `PositionTable`, permitindo que o clique em qualquer área neutra da linha (ou teclado `Enter`/`Espaço`) abra o modal de detalhes do ativo (`AssetDetailSheet`).
+  2. **Hover Padronizado no Ativo:** O botão de Ticker/Classe recebeu estilo de hover e affordance idêntica ao botão de preço (`hover:bg-surface-hover/80`, `rounded-md px-1.5 py-1 -ml-1.5`, transição de cor e `group-hover:text-primary`).
+  3. **Isolamento de Eventos no Preço:** `e.stopPropagation()` no clique da cotação garantindo que clicar no preço abra exclusivamente o modal de cotação manual (`ManualPriceDialog`), sem disparar o clique da linha.
+  4. **Remoção dos 3 Pontinhos:** Eliminação da coluna e do botão de 3 pontinhos no desktop e mobile, limpando a interface enquanto todas as ações de gestão (Editar, Excluir, Aportar, Resgatar, Rendimentos) permanecem centralizadas no `AssetDetailSheet`.
+## Evolução — Taxa de Poupança com Aportes, Precificação de Renda Fixa/Tesouro Direto & Calculadora Flutuante nos Modais (2026-08-23)
+
+- **Problema:**
+  1. A taxa de poupança zerava quando a renda disponível era destinada a aportes em investimentos, distorcendo o indicador patrimonial;
+  2. Ativos de Renda Fixa (CDB, LCI, LCA, CRI, CRA, Debêntures) e Tesouro Direto estavam forçando campos de cotas fracionárias e preço médio unitário no cadastro e nas ordens de aporte/venda, além de exibir a opção de *split* (que não faz sentido para renda fixa);
+  3. No Tesouro Direto não era possível escolher entre precificação em valor completo (padrão de RF) ou cotas fracionárias com preço médio;
+  4. Faltava o botão de calculadora flutuante (`FloatingCalculator`) nos cabeçalhos dos modais de investimentos que utilizam entradas financeiras (`MoneyInput`).
+- **Solução:**
+  1. **Taxa de Poupança & Fechamento Consolidado:**
+     - `computeOverview` (`src/domain/overview/index.ts`): Fórmula corrigida para $\text{savingsRate} = \frac{\text{income} - \text{expense}}{\text{income}} \times 100$, refletindo a renda líquida poupada/investida.
+     - `DailyFlowChart` (`OverviewPage`) e `closeTotals` (`ReportsPage`): Inclusão dos aportes de investimentos no fluxo diário do mês e no fechamento do período ativo.
+  2. **Domínio de Renda Fixa & Tesouro Direto (`src/domain/portfolio/valuation.ts`):**
+     - Criadas funções puras `isFixedIncomeClass`, `isTesouroAsset` e `getAssetPricingMode` com suporte ao modo `"total_value"`.
+     - Tesouro Direto com padrão **Valor Completo (Padrão RF)** e alternância para **Preço Médio / Cotas** persistida via tag `[PRICING:UNIT]`.
+  3. **Formulários & Modais Adaptados (`AssetFormDialog`, `StepNewPosition`, `StepOrder`, `QuickTransactionSheet`, `AssetDetailSheet`):**
+     - Renda Fixa e Tesouro (valor completo) exibem **Preço Inicial / Valor Aplicado** e **Preço Atual / Saldo Final**, sem campos de cotas ou PM.
+     - No Wizard e no `QuickTransactionSheet`, a operação de *Split* é ocultada para Renda Fixa, e as ordens de aporte e resgate utilizam entrada monetária direta (`MoneyInput`) com atalhos de percentual (25%, 50%, 75%, 100%) e validação em `canProceed`.
+  4. **Calculadora Flutuante nos Modais de Investimentos:**
+     - Propriedade `showCalculator` habilitada nos componentes `<Modal>` de `AssetFormDialog`, `InvestmentWizard`, `CashFormDialog`, `DividendFormDialog`, `QuickTransactionSheet` e `AssetSplitDialog`.
+     - Integração nativa com `MoneyInput` e `calculator-bridge` para injeção imediata de valores calculados no campo em foco.
+  5. **Qualidade e Testes:** Suíte completa com 1510 testes passando em 193 arquivos, com typecheck e lint estritos 100% limpos.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
 - **Verificação:** a cada fase — typecheck, lint, testes e build verdes antes do commit (regra do ciclo, `ROADMAP.md` §6.1).
+
+
 

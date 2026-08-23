@@ -256,8 +256,11 @@ export {
   applySpikeGuardrail,
   calculatePositionSummary,
   fallbackPriceFor,
+  getAssetPricingMode,
   inferCurrencyFromTicker,
   isCashAssetClass,
+  isFixedIncomeClass,
+  isTesouroAsset,
   normalizeClassName,
   positionPnl,
   resolvePrice,
@@ -265,6 +268,7 @@ export {
   valueAssetPosition,
 } from "./valuation";
 export type {
+  AssetPricingMode,
   AssetValuation,
   ConsolidatedPositionSummary,
   PositionPnl,
@@ -290,14 +294,18 @@ export type { AllocationTickerSlice, WeightedAveragePriceResult } from "./summar
 export { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "./dividends";
 export type { DividendEntry, DividendTransaction, MonthDividendSummary } from "./dividends";
 export {
+  calculateAssetAllocationDelta,
   clampTargetPercentage,
+  distributeEquallyTargets,
+  mirrorCurrentPositionTargets,
   parseTargetInput,
+  sanitizeTargetsForSave,
   sectorExposure,
   targetsSum,
   validateSectorCaps,
   validateTargetsSum,
 } from "./allocation";
-export type { SectorExposure, TargetDraft, TargetValidation } from "./allocation";
+export type { AssetAllocationDelta, SectorExposure, TargetDraft, TargetValidation } from "./allocation";
 export {
   classCapsFromSectorCaps,
   simulateCombinedAporte,

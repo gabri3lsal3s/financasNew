@@ -4,6 +4,12 @@ import { Badge } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import {
+  getAssetPricingMode,
+  isCashAssetClass,
+  isFixedIncomeClass,
+  isTesouroAsset,
+} from "@/domain/portfolio/valuation";
+import {
   calculateInvestmentPreview,
   parseNumber,
   type InvestmentWizardState,
@@ -22,6 +28,15 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
 
   const mode = state.mode;
   const parsedQty = parseNumber(state.quantityStr);
+  const isCash = state.isCash || isCashAssetClass(state.assetClass);
+  const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
+  const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
+  const pricingMode = getAssetPricingMode(
+    state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
+  );
+  const isTotalValue =
+    !isCash &&
+    (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
 
   const getModeBadge = () => {
     switch (mode) {
@@ -68,37 +83,65 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
             <div className="grid grid-cols-2 gap-3 py-3 text-xs">
               <div className="flex flex-col">
                 <span className="text-muted-foreground">
-                  {mode === "new_asset" ? "Cotas Iniciais" : "Cotas Adicionadas"}
+                  {isTotalValue
+                    ? mode === "new_asset"
+                      ? "Preço Inicial"
+                      : "Valor do Aporte"
+                    : mode === "new_asset"
+                      ? "Cotas Iniciais"
+                      : "Cotas Adicionadas"}
                 </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
-                  {state.isCash ? "—" : `${parsedQty} cotas`}
+                  {isTotalValue
+                    ? <MoneyText cents={state.totalCents || state.priceCents} />
+                    : state.isCash
+                      ? "—"
+                      : `${parsedQty} cotas`}
                 </span>
               </div>
 
               <div className="flex flex-col text-right">
                 <span className="text-muted-foreground">
-                  {mode === "new_asset" ? "Preço Médio Inicial" : "Preço do Aporte"}
+                  {isTotalValue
+                    ? "Saldo Atual Aplicado"
+                    : mode === "new_asset"
+                      ? "Preço Médio Inicial"
+                      : "Preço do Aporte"}
                 </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
-                  <MoneyText cents={state.priceCents} />
+                  {isTotalValue ? (
+                    <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+                  ) : (
+                    <MoneyText cents={state.priceCents} />
+                  )}
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 py-3 text-xs bg-surface-hover/30 -mx-4 px-4">
               <div className="flex flex-col">
-                <span className="text-muted-foreground">Nova Quantidade Total</span>
+                <span className="text-muted-foreground">
+                  {isTotalValue ? "Novo Saldo Aplicado" : "Nova Quantidade Total"}
+                </span>
                 <span className="font-mono text-sm font-bold text-primary">
-                  {state.isCash ? "—" : `${preview.newQuantity} cotas`}
+                  {isTotalValue ? (
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} />
+                  ) : state.isCash ? (
+                    "—"
+                  ) : (
+                    `${preview.newQuantity} cotas`
+                  )}
                 </span>
               </div>
 
-              <div className="flex flex-col text-right">
-                <span className="text-muted-foreground">Novo Preço Médio</span>
-                <span className="font-mono text-sm font-bold text-primary">
-                  <MoneyText cents={numberToCents(preview.newAveragePrice)} />
-                </span>
-              </div>
+              {!isTotalValue && (
+                <div className="flex flex-col text-right">
+                  <span className="text-muted-foreground">Novo Preço Médio</span>
+                  <span className="font-mono text-sm font-bold text-primary">
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} />
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="pt-3 flex flex-col gap-2 text-xs">
@@ -135,39 +178,59 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
           <>
             <div className="grid grid-cols-2 gap-3 py-3 text-xs">
               <div className="flex flex-col">
-                <span className="text-muted-foreground">Cotas Vendidas</span>
+                <span className="text-muted-foreground">
+                  {isTotalValue ? "Valor a Resgatar" : "Cotas Vendidas"}
+                </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
-                  {parsedQty} cotas
+                  {isTotalValue ? (
+                    <MoneyText cents={state.totalCents || state.priceCents} />
+                  ) : (
+                    `${parsedQty} cotas`
+                  )}
                 </span>
               </div>
 
               <div className="flex flex-col text-right">
-                <span className="text-muted-foreground">Preço de Venda</span>
+                <span className="text-muted-foreground">
+                  {isTotalValue ? "Saldo Anterior" : "Preço de Venda"}
+                </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
-                  <MoneyText cents={state.priceCents} />
+                  {isTotalValue ? (
+                    <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+                  ) : (
+                    <MoneyText cents={state.priceCents} />
+                  )}
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 py-3 text-xs bg-surface-hover/30 -mx-4 px-4">
               <div className="flex flex-col">
-                <span className="text-muted-foreground">Custódia Restante</span>
+                <span className="text-muted-foreground">
+                  {isTotalValue ? "Saldo Restante" : "Custódia Restante"}
+                </span>
                 <span className="font-mono text-sm font-bold text-foreground">
-                  {preview.newQuantity} cotas
+                  {isTotalValue ? (
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} />
+                  ) : (
+                    `${preview.newQuantity} cotas`
+                  )}
                 </span>
               </div>
 
-              <div className="flex flex-col text-right">
-                <span className="text-muted-foreground">Resultado Realizado</span>
-                <span
-                  className={`font-mono text-sm font-bold ${
-                    (preview.realizedPnl ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"
-                  }`}
-                >
-                  {(preview.realizedPnl ?? 0) >= 0 ? "+" : ""}
-                  <MoneyText cents={numberToCents(preview.realizedPnl ?? 0)} />
-                </span>
-              </div>
+              {!isTotalValue && (
+                <div className="flex flex-col text-right">
+                  <span className="text-muted-foreground">Resultado Realizado</span>
+                  <span
+                    className={`font-mono text-sm font-bold ${
+                      (preview.realizedPnl ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"
+                    }`}
+                  >
+                    {(preview.realizedPnl ?? 0) >= 0 ? "+" : ""}
+                    <MoneyText cents={numberToCents(preview.realizedPnl ?? 0)} />
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="pt-3 flex flex-col gap-2 text-xs">

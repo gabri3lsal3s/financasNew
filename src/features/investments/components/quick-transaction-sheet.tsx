@@ -15,7 +15,12 @@ import { todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
-import { isCashAssetClass } from "@/domain/portfolio/valuation";
+import {
+  getAssetPricingMode,
+  isCashAssetClass,
+  isFixedIncomeClass,
+  isTesouroAsset,
+} from "@/domain/portfolio/valuation";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import { usePortfolioAssets, useRecordOrder } from "@/state";
@@ -79,11 +84,19 @@ export function QuickTransactionSheet({
   }, [asset, selectedAssetId, allAssets]);
 
   const isCash = isCashAssetClass(targetAsset?.asset_class ?? null);
+  const isTesouro = targetAsset ? isTesouroAsset(targetAsset.ticker, targetAsset.asset_class) : false;
+  const isFixedIncome = targetAsset ? (isFixedIncomeClass(targetAsset.asset_class) || isTesouro) : false;
+  const pricingMode = targetAsset ? getAssetPricingMode(targetAsset) : "unit_price";
+  const isTotalValue =
+    !isCash &&
+    !!targetAsset &&
+    (pricingMode === "total_value" || (isFixedIncome && !isTesouro));
+
   const parsedQty = parseNumber(quantityStr);
 
   // Prévia de Recálculo de PM na Compra
   const buyPreview = useMemo(() => {
-    if (!targetAsset || isCash || parsedQty <= 0 || priceCents <= 0) return null;
+    if (!targetAsset || isCash || isTotalValue || parsedQty <= 0 || priceCents <= 0) return null;
     const unitPrice = priceCents / 100;
     return calculateWeightedAveragePrice(
       targetAsset.quantity,
@@ -91,11 +104,11 @@ export function QuickTransactionSheet({
       parsedQty,
       unitPrice,
     );
-  }, [targetAsset, isCash, parsedQty, priceCents]);
+  }, [targetAsset, isCash, isTotalValue, parsedQty, priceCents]);
 
   // Prévia de Venda
   const sellPreview = useMemo(() => {
-    if (!targetAsset || isCash || parsedQty <= 0 || priceCents <= 0) return null;
+    if (!targetAsset || isCash || isTotalValue || parsedQty <= 0 || priceCents <= 0) return null;
     const unitPrice = priceCents / 100;
     return sellAssetPosition({
       currentQuantity: targetAsset.quantity,
@@ -104,7 +117,7 @@ export function QuickTransactionSheet({
       sellPrice: unitPrice,
       assetClass: targetAsset.asset_class,
     });
-  }, [targetAsset, isCash, parsedQty, priceCents]);
+  }, [targetAsset, isCash, isTotalValue, parsedQty, priceCents]);
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
@@ -122,11 +135,28 @@ export function QuickTransactionSheet({
     const price = priceCents / 100;
     const total = isCash
       ? totalCents / 100
-      : type === "dividend" || type === "jcp" || type === "fii_yield"
-        ? totalCents / 100
-        : Math.round(parsedQty * price * 100) / 100;
+      : isTotalValue
+        ? (totalCents || priceCents) / 100
+        : type === "dividend" || type === "jcp" || type === "fii_yield"
+          ? totalCents / 100
+          : Math.round(parsedQty * price * 100) / 100;
 
-    if (type === "buy" || type === "sell") {
+    if (isTotalValue) {
+      if (type === "buy" && total <= 0) {
+        setError("Informe o valor do aporte.");
+        return;
+      }
+      if (type === "sell") {
+        if (total <= 0) {
+          setError("Informe o valor do resgate.");
+          return;
+        }
+        if (total > targetAsset.average_price) {
+          setError(`Valor excede o saldo aplicado atual (R$ ${targetAsset.average_price.toFixed(2)}).`);
+          return;
+        }
+      }
+    } else if (type === "buy" || type === "sell") {
       if (!isCash && parsedQty <= 0) {
         setError("Informe uma quantidade válida de cotas.");
         return;
@@ -160,8 +190,8 @@ export function QuickTransactionSheet({
         asset: targetAsset,
         type,
         date,
-        quantity: type === "split" || type === "reverse_split" ? splitFactor : parsedQty,
-        price,
+        quantity: isTotalValue ? 1 : type === "split" || type === "reverse_split" ? splitFactor : parsedQty,
+        price: isTotalValue ? total : price,
         total,
         syncCash,
         cashAsset,
@@ -183,19 +213,19 @@ export function QuickTransactionSheet({
   const operations = [
     {
       id: "buy",
-      label: "Compra / Aporte",
+      label: isTotalValue ? "Aporte / Aplicação" : "Compra / Aporte",
       icon: ArrowUpRight,
       activeClass: "border-primary bg-primary/10 text-primary-strong shadow-xs font-bold",
     },
     {
       id: "sell",
-      label: "Venda / Resgate",
+      label: isTotalValue ? "Resgate" : "Venda / Resgate",
       icon: ArrowDownLeft,
       activeClass: "border-negative/60 bg-negative/10 text-negative-strong shadow-xs font-bold",
     },
     {
       id: "dividend",
-      label: "Provento",
+      label: isTotalValue ? "Rendimento / Cupom" : "Provento",
       icon: Receipt,
       activeClass: "border-positive/60 bg-positive/10 text-positive-strong shadow-xs font-bold",
     },
@@ -206,6 +236,8 @@ export function QuickTransactionSheet({
       activeClass: "border-warning/60 bg-warning/10 text-warning-strong shadow-xs font-bold",
     },
   ];
+
+  const availableOperations = isTotalValue ? operations.filter((op) => op.id !== "split") : operations;
 
   return (
     <Modal
@@ -218,6 +250,7 @@ export function QuickTransactionSheet({
       }
       description="Registre compras, vendas, proventos ou eventos corporativos com atualização em tempo real da carteira."
       size="md"
+      showCalculator
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
         {error && <Alert variant="error">{error}</Alert>}
@@ -237,9 +270,9 @@ export function QuickTransactionSheet({
           </div>
         )}
 
-        {/* Seletor em Grade 2x2 de Operação (Opção 1) */}
-        <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Tipo de Operação">
-          {operations.map((op) => {
+        {/* Seletor de Operação */}
+        <div className={cn("grid gap-2", availableOperations.length === 3 ? "grid-cols-3" : "grid-cols-2")} role="tablist" aria-label="Tipo de Operação">
+          {availableOperations.map((op) => {
             const Icon = op.icon;
             const isSelected = type === op.id;
             return (
@@ -250,7 +283,7 @@ export function QuickTransactionSheet({
                 aria-selected={isSelected}
                 onClick={() => setType(op.id as PortfolioTransactionType)}
                 className={cn(
-                  "flex items-center gap-2 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
+                  "flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
                   isSelected
                     ? op.activeClass
                     : "border-border/80 bg-surface/60 text-muted-foreground hover:bg-surface-hover hover:text-foreground",
@@ -267,7 +300,23 @@ export function QuickTransactionSheet({
         {(type === "buy" || type === "subscription") && (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
-              {!isCash ? (
+              {isTotalValue ? (
+                <div className="flex flex-col gap-1.5 col-span-2">
+                  <label htmlFor="quick-rf-aporte-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Valor do Aporte / Aplicação ({targetAsset?.currency ?? "BRL"})
+                  </label>
+                  <MoneyInput
+                    id="quick-rf-aporte-amount"
+                    cents={totalCents || priceCents}
+                    onCentsChange={(cents) => {
+                      setTotalCents(cents);
+                      setPriceCents(cents);
+                    }}
+                    placeholder="R$ 0,00"
+                    aria-label="Valor do aporte em renda fixa"
+                  />
+                </div>
+              ) : !isCash ? (
                 <>
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="quick-buy-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -281,7 +330,6 @@ export function QuickTransactionSheet({
                       onChange={(e) => setQuantityStr(e.target.value)}
                       placeholder="Ex: 10"
                       className="font-mono"
-
                     />
                   </div>
 
@@ -307,7 +355,6 @@ export function QuickTransactionSheet({
                     cents={totalCents}
                     onCentsChange={setTotalCents}
                     placeholder="R$ 0,00"
-
                   />
                 </div>
               )}
@@ -320,8 +367,18 @@ export function QuickTransactionSheet({
               </div>
             </div>
 
+            {/* Prévia de Novo Saldo para RF */}
+            {isTotalValue && (totalCents > 0 || priceCents > 0) && (
+              <div className="flex items-center justify-between rounded-xl bg-surface-hover/60 p-3 text-xs">
+                <span className="text-muted-foreground">Saldo aplicado resultante:</span>
+                <span className="font-mono font-bold text-primary text-sm">
+                  <MoneyText cents={numberToCents((targetAsset?.average_price ?? 0) + (totalCents || priceCents) / 100)} />
+                </span>
+              </div>
+            )}
+
             {/* Prévia de Novo PM */}
-            {buyPreview && parsedQty > 0 && priceCents > 0 && (
+            {!isTotalValue && buyPreview && parsedQty > 0 && priceCents > 0 && (
               <div className="flex items-center justify-between rounded-xl bg-surface-hover/60 p-3 text-xs">
                 <span className="text-muted-foreground">Novo Preço Médio Resultante:</span>
                 <span className="font-mono font-bold text-primary text-sm">
@@ -349,44 +406,102 @@ export function QuickTransactionSheet({
         {type === "sell" && (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="quick-sell-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Quantidade a Vender
-                </label>
-                <Input
-                  id="quick-sell-qty"
-                  type="text"
-                  inputMode="decimal"
-                  value={quantityStr}
-                  onChange={(e) => setQuantityStr(e.target.value)}
-                  placeholder={`Máx: ${targetAsset?.quantity ?? 0}`}
-                  className="font-mono"
+              {isTotalValue ? (
+                <div className="flex flex-col gap-1.5 col-span-2">
+                  <label htmlFor="quick-rf-sell-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Valor a Resgatar ({targetAsset?.currency ?? "BRL"})
+                  </label>
+                  <MoneyInput
+                    id="quick-rf-sell-amount"
+                    cents={totalCents || priceCents}
+                    onCentsChange={(cents) => {
+                      setTotalCents(cents);
+                      setPriceCents(cents);
+                    }}
+                    placeholder="R$ 0,00"
+                    aria-label="Valor a resgatar em renda fixa"
+                  />
+                  {/* Atalhos rápidos de percentual do saldo aplicado */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-[11px] text-muted-foreground">Resgatar:</span>
+                    {[
+                      { label: "25%", pct: 0.25 },
+                      { label: "50%", pct: 0.5 },
+                      { label: "75%", pct: 0.75 },
+                      { label: "100% (Total)", pct: 1 },
+                    ].map((s) => (
+                      <button
+                        key={s.label}
+                        type="button"
+                        onClick={() => {
+                          const balance = targetAsset?.average_price ?? 0;
+                          const cents = Math.round(balance * s.pct * 100);
+                          setTotalCents(cents);
+                          setPriceCents(cents);
+                        }}
+                        className="rounded-md border border-border/70 bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="quick-sell-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Quantidade a Vender
+                    </label>
+                    <Input
+                      id="quick-sell-qty"
+                      type="text"
+                      inputMode="decimal"
+                      value={quantityStr}
+                      onChange={(e) => setQuantityStr(e.target.value)}
+                      placeholder={`Máx: ${targetAsset?.quantity ?? 0}`}
+                      className="font-mono"
+                    />
+                  </div>
 
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="quick-sell-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Preço de Venda
-                </label>
-                <MoneyInput
-                  id="quick-sell-price"
-                  cents={priceCents}
-                  onCentsChange={setPriceCents}
-                  placeholder="R$ 0,00"
-                />
-              </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="quick-sell-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Preço de Venda
+                    </label>
+                    <MoneyInput
+                      id="quick-sell-price"
+                      cents={priceCents}
+                      onCentsChange={setPriceCents}
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="flex flex-col gap-1.5 col-span-2">
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Data da Venda
+                  Data {isTotalValue ? "do Resgate" : "da Venda"}
                 </label>
                 <DatePicker value={date} onValueChange={setDate} />
               </div>
             </div>
 
+            {/* Prévia de Novo Saldo para RF */}
+            {isTotalValue && (totalCents > 0 || priceCents > 0) && (
+              <div className="flex items-center justify-between rounded-xl bg-surface-hover/60 p-3 text-xs">
+                <span className="text-muted-foreground">Saldo restante após resgate:</span>
+                <span className="font-mono font-bold text-foreground text-sm">
+                  <MoneyText
+                    cents={Math.max(
+                      0,
+                      numberToCents((targetAsset?.average_price ?? 0) - (totalCents || priceCents) / 100),
+                    )}
+                  />
+                </span>
+              </div>
+            )}
+
             {/* Prévia de Lucro/Prejuízo Realizado */}
-            {sellPreview && parsedQty > 0 && (
+            {!isTotalValue && sellPreview && parsedQty > 0 && (
               <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-3.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Resultado Realizado:</span>

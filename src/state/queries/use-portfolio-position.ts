@@ -13,6 +13,7 @@ import {
   isCashAssetClass,
   resolvePrice,
   usdRateFromPrices,
+  type AssetPricingMode,
   type PriceSource,
 } from "@/domain/portfolio";
 import { currentMonth } from "@/lib/date";
@@ -48,6 +49,8 @@ export interface PortfolioPositionRow {
   /** Rentabilidade % sobre o custo (null quando não há custo — caixa; F14). */
   unrealizedPct: number | null;
   isCash: boolean;
+  pricingMode: AssetPricingMode;
+  notes?: string | null;
 }
 
 export interface PortfolioPosition {
@@ -134,6 +137,8 @@ export function usePortfolioPosition(): PortfolioPosition {
       currency: asset.currency,
       resolvedPrice: resolved,
       usdRate,
+      ticker: asset.ticker,
+      notes: asset.notes,
     });
 
     totalBRL = round2(totalBRL + summary.valueBRL);
@@ -159,6 +164,8 @@ export function usePortfolioPosition(): PortfolioPosition {
       unrealizedPnl: summary.unrealizedPnl,
       unrealizedPct: summary.unrealizedPct,
       isCash,
+      pricingMode: summary.pricingMode,
+      notes: asset.notes,
     });
   }
 

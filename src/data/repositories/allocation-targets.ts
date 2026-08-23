@@ -1,6 +1,7 @@
 import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
 import { removeGroupTarget as removeGroupTargetRpc, setAllocationTargets, setGroupTarget } from "@/data/rpc";
+import { sanitizeTargetsForSave } from "@/domain/portfolio/allocation";
 import { AppError, classifyError } from "@/services/errors";
 import type { AllocationTarget, GroupTarget } from "@/types";
 
@@ -41,8 +42,9 @@ export async function listAllocationTargets(): Promise<AllocationTarget[]> {
  * valida a soma final ≤ 100% — excedeu, nada é salvo.
  */
 export async function saveAllocationTargets(targets: AllocationTargetInput[]): Promise<void> {
+  const sanitized = sanitizeTargetsForSave(targets);
   await setAllocationTargets(
-    targets.map((t) => ({ assetId: t.assetId, target: t.target })),
+    sanitized.map((t) => ({ assetId: t.assetId, target: t.target })),
   );
 }
 

@@ -252,10 +252,10 @@ describe("§3.5 — Categorias, orçamentos e metas", () => {
 });
 
 describe("§3.6 — Visão consolidada (Dia/Mês/Ano)", () => {
-  it("saldo = rendas − despesas − investimentos; savingsRate = saldo ÷ rendas", () => {
+  it("saldo = rendas − despesas − investimentos; savingsRate = (rendas − despesas) ÷ rendas", () => {
     const totals = computeOverview(500_000, 300_000, 50_000);
     expect(totals.balanceCents).toBe(150_000);
-    expect(totals.savingsRatePercent).toBe(30);
+    expect(totals.savingsRatePercent).toBe(40);
     expect(computeOverview(0, 10_000, 0).savingsRatePercent).toBe(0); // rendas 0 → sem taxa
   });
 

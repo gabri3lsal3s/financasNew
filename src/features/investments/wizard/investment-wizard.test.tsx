@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { InvestmentWizard } from "./investment-wizard";
+import { StepNewPosition } from "./step-new-position";
+import { defaultWizardState } from "./wizard-state";
 import type { PortfolioAsset } from "@/types";
 
 const mockAsset: PortfolioAsset = {
@@ -45,6 +47,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue(true),
     isPending: false,
   }),
+  useSetManualPrice: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
 }));
 
 describe("InvestmentWizard (Fase 41)", () => {
@@ -80,5 +86,48 @@ describe("InvestmentWizard (Fase 41)", () => {
       fireEvent.click(assetButton);
     }
     expect(screen.getByText("Quantidade de Cotas")).toBeInTheDocument();
+  });
+
+  it("StepNewPosition: exibe campos de Preço Inicial e Saldo para ativo de Renda Fixa (sem cotas)", () => {
+    const onChange = vi.fn();
+    render(
+      <StepNewPosition
+        state={{
+          ...defaultWizardState,
+          mode: "new_asset",
+          step: 2,
+          ticker: "CDB INTER",
+          assetClass: "Renda Fixa",
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByText(/Posição Inicial \(Renda Fixa\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Preço inicial investido")).toBeInTheDocument();
+    expect(screen.getByLabelText("Preço atual ou saldo")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Quantidade Inicial de Cotas")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Preço Médio de Aquisição (BRL)")).not.toBeInTheDocument();
+  });
+
+  it("StepNewPosition: exibe seletor de modo para Tesouro Direto com padrão Valor Completo", () => {
+    const onChange = vi.fn();
+    render(
+      <StepNewPosition
+        state={{
+          ...defaultWizardState,
+          mode: "new_asset",
+          step: 2,
+          ticker: "TESOURO SELIC",
+          assetClass: "Renda Fixa",
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByText(/Modo de Precificação do Tesouro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Valor Completo \(Padrão RF\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Preço Médio \/ Cotas/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Preço inicial investido")).toBeInTheDocument();
   });
 });

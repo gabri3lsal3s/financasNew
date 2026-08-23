@@ -162,6 +162,9 @@ export function OverviewPage() {
   const dailyItems = [
     ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: numberToCents(i.value * i.report_weight) })),
     ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: numberToCents(e.value * e.report_weight) })),
+    ...contributions
+      .filter((c) => c.date.startsWith(month))
+      .map((c) => ({ date: c.date, kind: "investment" as const, amountCents: numberToCents(c.amount) })),
   ];
   const dailyFlow = buildDailyFlow(month, dailyItems);
 

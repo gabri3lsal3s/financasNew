@@ -73,14 +73,89 @@ export function usdRateFromPrices(
 }
 
 const CASH_CLASS_ALIASES = new Set(["caixa", "reserva"]);
+const FIXED_INCOME_CLASS_ALIASES = new Set([
+  "renda fixa",
+  "rendafixa",
+  "rf",
+  "cdb",
+  "lci",
+  "lca",
+  "cri",
+  "cra",
+  "debenture",
+  "debentures",
+  "lc",
+  "rdb",
+  "tesouro",
+  "titulos",
+]);
 
 /**
  * Ativo de caixa/reserva (§3.11.2): valor 1:1 (quantidade = valor).
  * Reconhecido pela classe (normalizada, sem acento): "caixa"/"reserva".
  */
-export function isCashAssetClass(assetClass: string | null): boolean {
+export function isCashAssetClass(assetClass: string | null | undefined): boolean {
   if (!assetClass) return false;
   return CASH_CLASS_ALIASES.has(normalizeClassName(assetClass));
+}
+
+/**
+ * Ativo de Renda Fixa: CDB, LCI, LCA, CRI, CRA, Debêntures, Tesouro, etc.
+ */
+export function isFixedIncomeClass(assetClass: string | null | undefined): boolean {
+  if (!assetClass) return false;
+  const norm = normalizeClassName(assetClass);
+  return FIXED_INCOME_CLASS_ALIASES.has(norm) || norm.includes("renda fixa") || norm.includes("tesouro");
+}
+
+/**
+ * Identifica se o ativo é Tesouro Direto (pelo ticker ou pela classe).
+ */
+export function isTesouroAsset(ticker: string | null | undefined, assetClass?: string | null): boolean {
+  const normTicker = (ticker ?? "").trim().toUpperCase();
+  if (
+    normTicker.startsWith("TESOURO") ||
+    normTicker.includes("TESOURO") ||
+    normTicker === "LFT" ||
+    normTicker === "NTNB" ||
+    normTicker === "LTN"
+  ) {
+    return true;
+  }
+  if (assetClass) {
+    const normClass = normalizeClassName(assetClass);
+    if (normClass.includes("tesouro")) return true;
+  }
+  return false;
+}
+
+export type AssetPricingMode = "cash" | "total_value" | "unit_price";
+
+/**
+ * Determina o modo de precificação do ativo:
+ * - "cash": Caixa/Reserva 1:1
+ * - "total_value": Renda Fixa e Tesouro Direto (Preço Inicial e Preço Atual / Saldo)
+ * - "unit_price": Renda Variável (Ações, FIIs, etc. - Quantidade de Cotas e Preço Médio)
+ */
+export function getAssetPricingMode(asset: {
+  ticker?: string | null;
+  asset_class?: string | null;
+  notes?: string | null;
+}): AssetPricingMode {
+  if (isCashAssetClass(asset.asset_class)) {
+    return "cash";
+  }
+  const notes = asset.notes ?? "";
+  if (notes.includes("[PRICING:UNIT]")) {
+    return "unit_price";
+  }
+  if (notes.includes("[PRICING:TOTAL]")) {
+    return "total_value";
+  }
+  if (isFixedIncomeClass(asset.asset_class) || isTesouroAsset(asset.ticker, asset.asset_class)) {
+    return "total_value";
+  }
+  return "unit_price";
 }
 
 /** Preço de fallback por moeda (sem dado de cache nem manual). */
@@ -179,6 +254,7 @@ export interface ConsolidatedPositionSummary {
   unrealizedPnl: number;
   unrealizedPct: number | null;
   isCash: boolean;
+  pricingMode: AssetPricingMode;
 }
 
 /**
@@ -191,12 +267,33 @@ export function calculatePositionSummary(params: {
   currency: AssetCurrency;
   resolvedPrice: ResolvedPrice;
   usdRate?: number;
+  ticker?: string;
+  notes?: string | null;
+  pricingMode?: AssetPricingMode;
 }): ConsolidatedPositionSummary {
-  const { quantity, averagePrice, assetClass, currency, resolvedPrice, usdRate = FALLBACK_USD_RATE } = params;
-  const isCash = isCashAssetClass(assetClass);
+  const {
+    quantity,
+    averagePrice,
+    assetClass,
+    currency,
+    resolvedPrice,
+    usdRate = FALLBACK_USD_RATE,
+    ticker,
+    notes,
+    pricingMode: explicitPricingMode,
+  } = params;
+
+  const effectivePricingMode =
+    explicitPricingMode ??
+    getAssetPricingMode({
+      ticker,
+      asset_class: assetClass,
+      notes,
+    });
+
   const rate = currency === "USD" ? usdRate : 1;
 
-  if (isCash) {
+  if (effectivePricingMode === "cash") {
     const valueBRL = Math.round(quantity * 100) / 100;
     return {
       quantity,
@@ -210,6 +307,36 @@ export function calculatePositionSummary(params: {
       unrealizedPnl: 0,
       unrealizedPct: null,
       isCash: true,
+      pricingMode: "cash",
+    };
+  }
+
+  if (effectivePricingMode === "total_value") {
+    // Modo Valor Completo (Renda Fixa / Tesouro Direto):
+    // averagePrice é o Preço Inicial Investido (ou quantity se averagePrice for 1).
+    const initialCost = averagePrice > 0 && averagePrice !== 1 ? averagePrice : quantity > 0 ? quantity : averagePrice;
+    const currentPrice = resolvedPrice.price > 0 ? resolvedPrice.price : initialCost;
+
+    const totalCost = Math.round(initialCost * rate * 100) / 100;
+    const totalCostBRL = totalCost;
+    const averagePriceBRL = totalCost;
+    const priceBRL = Math.round(currentPrice * rate * 100) / 100;
+    const valueBRL = priceBRL;
+    const pnl = positionPnl(valueBRL, totalCostBRL);
+
+    return {
+      quantity: 1,
+      averagePrice: initialCost,
+      totalCost,
+      totalCostBRL,
+      averagePriceBRL,
+      priceBRL,
+      valueBRL,
+      source: resolvedPrice.source,
+      unrealizedPnl: pnl.unrealizedPnl,
+      unrealizedPct: pnl.unrealizedPct,
+      isCash: false,
+      pricingMode: "total_value",
     };
   }
 
@@ -232,5 +359,6 @@ export function calculatePositionSummary(params: {
     unrealizedPnl: pnl.unrealizedPnl,
     unrealizedPct: pnl.unrealizedPct,
     isCash: false,
+    pricingMode: "unit_price",
   };
 }

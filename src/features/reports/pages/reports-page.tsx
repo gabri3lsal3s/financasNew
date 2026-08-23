@@ -38,6 +38,7 @@ import {
   useExpensesByRange,
   useIncomes,
   useIncomesByRange,
+  usePortfolioContributions,
 } from "@/state";
 import { cn } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
@@ -99,6 +100,7 @@ export function ReportsPage() {
   const categoriesQuery = useCategories();
   const allPaymentsQuery = useAllCardPayments();
   const activeCardsQuery = useActiveCreditCards();
+  const contributionsQuery = usePortfolioContributions();
 
   const expenses =
     mode === "month"
@@ -280,7 +282,10 @@ export function ReportsPage() {
   // Mês, ano e período custom: as listas `incomes`/`expenses` já são as do modo.
   const closeIncomeCents = incomes.reduce((acc, i) => acc + numberToCents(i.value), 0);
   const closeExpenseCents = expenses.reduce((acc, e) => acc + numberToCents(e.value), 0);
-  const closeTotals = computeOverview(closeIncomeCents, closeExpenseCents, 0);
+  const closeInvestmentsCents = (contributionsQuery.data ?? [])
+    .filter((c) => c.date >= range.start && c.date < range.end)
+    .reduce((acc, c) => acc + numberToCents(c.amount), 0);
+  const closeTotals = computeOverview(closeIncomeCents, closeExpenseCents, closeInvestmentsCents);
   const closeCategories: MonthlyCloseCategory[] = byCategory
     .map((c) => ({
       name: c.name,

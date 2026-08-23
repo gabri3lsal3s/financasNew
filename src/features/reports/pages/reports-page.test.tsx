@@ -57,6 +57,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  usePortfolioContributions: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   useCreditCards: () => ({
     data: [],
     isLoading: false,

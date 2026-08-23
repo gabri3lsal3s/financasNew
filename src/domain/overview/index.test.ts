@@ -11,10 +11,11 @@ import {
 const TODAY = "2026-08-13";
 
 describe("computeOverview (§3.6 — KPIs fundamentais)", () => {
-  it("calcula saldo = rendas − despesas − investimentos", () => {
+  it("calcula saldo = rendas − despesas − investimentos e taxa de poupança com investimentos", () => {
     const totals = computeOverview(500000, 300000, 50000);
     expect(totals.balanceCents).toBe(150000);
-    expect(totals.savingsRatePercent).toBe(30); // 150.000 / 500.000
+    // Rendas 500k, Despesas 300k, Investimentos 50k -> Saldo 150k + Investido 50k = 200k poupado (40% de 500k)
+    expect(totals.savingsRatePercent).toBe(40);
   });
 
   it("savings rate pode ser negativo", () => {

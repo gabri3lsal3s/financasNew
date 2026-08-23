@@ -179,37 +179,51 @@ export interface TargetPercentageItem {
 }
 
 /**
- * Normaliza uma lista de metas percentuais para que a soma seja rigorosamente 100%:
+ * Normaliza uma lista de metas percentuais para que a soma seja rigorosamente o total especificado (targetTotal, padrão 100%):
  * Se todas forem 0, distribui de forma uniforme; caso contrário, ajusta proporcionalmente.
  */
-export function normalizeAllocationTargets<T extends TargetPercentageItem>(items: T[]): T[] {
+export function normalizeAllocationTargets<T extends TargetPercentageItem>(items: readonly T[], targetTotal = 100): T[] {
   if (items.length === 0) return [];
+  const clampedTotal = Math.min(100, Math.max(0, targetTotal));
+  if (clampedTotal === 0) {
+    return items.map((item) => ({ ...item, targetPercentage: 0 }));
+  }
 
   const currentSum = items.reduce((acc, item) => acc + Math.max(0, item.targetPercentage), 0);
 
   if (currentSum === 0) {
-    const equalShare = Math.floor(100 / items.length);
-    const remainder = 100 - equalShare * items.length;
+    const equalShare = Math.floor((clampedTotal / items.length) * 100) / 100;
+    let accumulated = 0;
 
-    return items.map((item, index) => ({
-      ...item,
-      targetPercentage: equalShare + (index === 0 ? remainder : 0),
-    }));
+    return items.map((item, index) => {
+      if (index === items.length - 1) {
+        return {
+          ...item,
+          targetPercentage: Math.max(0, Math.round((clampedTotal - accumulated) * 100) / 100),
+        };
+      }
+      accumulated = Math.round((accumulated + equalShare) * 100) / 100;
+      return {
+        ...item,
+        targetPercentage: equalShare,
+      };
+    });
   }
 
   let accumulated = 0;
+  const count = items.length;
   const normalized = items.map((item, index) => {
-    if (index === items.length - 1) {
-      // O último item recebe o complemento exato para fechar 100%
-      const finalVal = Math.max(0, Math.round((100 - accumulated) * 100) / 100);
+    if (index === count - 1) {
+      // O último item recebe o complemento exato para fechar targetTotal
+      const finalVal = Math.max(0, Math.round((clampedTotal - accumulated) * 100) / 100);
       return {
         ...item,
         targetPercentage: finalVal,
       };
     }
     const ratio = Math.max(0, item.targetPercentage) / currentSum;
-    const val = Math.round(ratio * 100 * 100) / 100;
-    accumulated += val;
+    const val = Math.round(ratio * clampedTotal * 100) / 100;
+    accumulated = Math.round((accumulated + val) * 100) / 100;
     return {
       ...item,
       targetPercentage: val,

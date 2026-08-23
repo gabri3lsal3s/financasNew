@@ -70,6 +70,7 @@ vi.mock("@/state", () => ({
   useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useAssetPosition: () => ({ data: [], isLoading: false, ledger: { dividends: 0 } }),
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useSetManualPrice: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
 }));
 
 function renderPage(entry = "/investments") {

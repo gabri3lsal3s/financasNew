@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, Button, ConfirmDialog, Modal, Stepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
-import { isCashAssetClass } from "@/domain/portfolio/valuation";
+import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import {
   useAllocationTargets,
   useCreatePortfolioAsset,
@@ -10,6 +10,7 @@ import {
   usePortfolioPosition,
   useRecordOrder,
   useSaveAllocationTargets,
+  useSetManualPrice,
 } from "@/state";
 import type { PortfolioAsset } from "@/types";
 import type { AllocationTargetInput } from "@/data/repositories/allocation-targets";
@@ -52,6 +53,7 @@ export function InvestmentWizard({
   const createAsset = useCreatePortfolioAsset();
   const recordOrder = useRecordOrder();
   const saveTargets = useSaveAllocationTargets();
+  const setManualPrice = useSetManualPrice();
 
   const existingAssets = assetsQuery.data ?? [];
   const targets = targetsQuery.data ?? [];
@@ -153,15 +155,32 @@ export function InvestmentWizard({
         if (!state.selectedAsset) throw new Error("Selecione um ativo");
         const parsedQty = parseNumber(state.quantityStr);
         const price = state.priceCents / 100;
-        const total = state.totalCents / 100 || parsedQty * price;
+        const total = state.totalCents / 100;
+
+        const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
+        const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
+        const pricingMode = getAssetPricingMode(
+          state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
+        );
+        const isTotalValue =
+          !state.isCash &&
+          (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+
+        const finalTotal = isTotalValue
+          ? total > 0
+            ? total
+            : price
+          : total > 0
+            ? total
+            : parsedQty * price;
 
         await recordOrder.mutateAsync({
           asset: state.selectedAsset,
           type: "buy",
           date: state.date,
-          quantity: state.isCash ? (total > 0 ? total : parsedQty) : parsedQty,
-          price: state.isCash ? 1 : price,
-          total: total > 0 ? total : parsedQty * price,
+          quantity: isTotalValue ? 1 : state.isCash ? (total > 0 ? total : parsedQty) : parsedQty,
+          price: isTotalValue ? finalTotal : state.isCash ? 1 : price,
+          total: finalTotal,
           syncCash: state.syncCash,
           cashAsset,
           recordContribution: state.recordContribution,
@@ -171,15 +190,30 @@ export function InvestmentWizard({
         if (!state.selectedAsset) throw new Error("Selecione um ativo");
         const parsedQty = parseNumber(state.quantityStr);
         const price = state.priceCents / 100;
-        const total = parsedQty * price;
+        const total = state.totalCents / 100;
+
+        const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
+        const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
+        const pricingMode = getAssetPricingMode(
+          state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
+        );
+        const isTotalValue =
+          !state.isCash &&
+          (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+
+        const finalTotal = isTotalValue
+          ? total > 0
+            ? total
+            : price
+          : parsedQty * price;
 
         await recordOrder.mutateAsync({
           asset: state.selectedAsset,
           type: "sell",
           date: state.date,
-          quantity: parsedQty,
-          price,
-          total,
+          quantity: isTotalValue ? 1 : parsedQty,
+          price: isTotalValue ? finalTotal : price,
+          total: finalTotal,
           syncCash: state.syncCash,
           cashAsset,
           notes: state.notes,
@@ -216,14 +250,46 @@ export function InvestmentWizard({
         const price = state.priceCents / 100;
         const total = state.totalCents / 100;
 
+        const isCash = state.isCash || isCashAssetClass(state.assetClass) || state.ticker.toUpperCase() === "CAIXA";
+        const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
+        const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
+        const isTotalValue = !isCash && isFixedIncome && (!isTesouro || state.pricingMode === "total_value" || !state.pricingMode);
+
+        let finalQuantity = parsedQty;
+        let finalAveragePrice = price;
+        let finalNotes = state.notes ? state.notes.trim() : null;
+
+        if (isCash) {
+          finalQuantity = total > 0 ? total : parsedQty;
+          finalAveragePrice = 1;
+        } else if (isTotalValue) {
+          finalQuantity = 1;
+          finalAveragePrice = price > 0 ? price : total;
+          if (isTesouro) {
+            finalNotes = finalNotes ? `${finalNotes} [PRICING:TOTAL]` : "[PRICING:TOTAL]";
+          }
+        } else {
+          if (isTesouro && state.pricingMode === "unit_price") {
+            finalNotes = finalNotes ? `${finalNotes} [PRICING:UNIT]` : "[PRICING:UNIT]";
+          }
+        }
+
         const newAsset = await createAsset.mutateAsync({
           ticker: state.ticker,
           asset_class: state.assetClass,
           currency: state.currency,
-          quantity: state.isCash ? (total > 0 ? total : parsedQty) : parsedQty,
-          average_price: state.isCash ? 1 : price,
-          notes: state.notes ? state.notes : null,
+          quantity: finalQuantity,
+          average_price: finalAveragePrice,
+          notes: finalNotes,
         });
+
+        // Se for modo total_value e tiver preço atual / saldo definido, salva override manual
+        if (isTotalValue && total > 0) {
+          await setManualPrice.mutateAsync({
+            ticker: state.ticker,
+            price: total,
+          });
+        }
 
         // Se foi definida meta de alocação % para o novo ativo, salva no repositório
         if (state.targetPercentage !== null && state.targetPercentage > 0) {
@@ -268,6 +334,7 @@ export function InvestmentWizard({
         title={getModalTitle()}
         description="Lance compras, vendas, proventos, splits ou cadastre novos ativos com atualização em tempo real."
         size="lg"
+        showCalculator
       >
         <div className="flex flex-col gap-6 pt-2">
           {/* Stepper com passos contextuais */}

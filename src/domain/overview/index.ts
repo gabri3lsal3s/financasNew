@@ -22,7 +22,7 @@ export interface OverviewTotals {
   investmentCents: number;
   /** saldo = rendas − despesas − investimentos. */
   balanceCents: number;
-  /** savingsRate = saldo ÷ rendas (percentual, pode ser negativo). */
+  /** savingsRate = (rendas − despesas) ÷ rendas (ou [saldo + investimentos] ÷ rendas, percentual, pode ser negativo). */
   savingsRatePercent: number;
 }
 
@@ -33,7 +33,8 @@ export function computeOverview(
   investmentCents: number,
 ): OverviewTotals {
   const balance = incomeCents - expenseCents - investmentCents;
-  const savingsRate = incomeCents > 0 ? (balance / incomeCents) * 100 : 0;
+  const savedCents = incomeCents - expenseCents;
+  const savingsRate = incomeCents > 0 ? (savedCents / incomeCents) * 100 : 0;
   return {
     incomeCents,
     expenseCents,

@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Save, Trash2 } from "lucide-react";
-import { Alert, Button, EmptyState, NumberStepperInput, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
+import { Equal, RotateCcw, Save, Scale, Trash2 } from "lucide-react";
+import { Alert, Button, EmptyState, NumberStepperInput, Progress, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
 import { TargetEditor } from "@/components/modules";
-import { normalizeAllocationTargets, parseTargetInput, validateTargetsSum } from "@/domain/portfolio";
+import {
+  distributeEquallyTargets,
+  mirrorCurrentPositionTargets,
+  normalizeAllocationTargets,
+  parseTargetInput,
+  validateTargetsSum,
+} from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
+import { cn } from "@/lib/utils";
 import {
   useAllocationTargets,
   useGroupTargets,
@@ -18,8 +25,8 @@ import {
 
 /**
  * Metas de alocação (§3.11.1 e §F39) — edição em lote por ativo com barra de soma
- * (≤ 100%, validada na UI e no banco via RPC), normalização em 1-clique,
- * metas por classe e travas setoriais (max_sector_acoes / max_sector_fiis).
+ * (≤ 100%, validada na UI e no banco via RPC), normalização em 1-clique contextual,
+ * distribuição 1/N, espelhamento da carteira real, metas por classe e travas setoriais.
  */
 export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
@@ -54,12 +61,15 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
 
   const [assetClassFilter, setAssetClassFilter] = useState<string | null>(null);
 
+  const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
+
   const assetRows = position.rows.map((row) => ({
     key: row.assetId,
     label: row.ticker,
     assetClass: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
     detail: `${formatCentsAsBRL(numberToCents(row.valueBRL))} · ${row.pct.toFixed(1)}% hoje`,
     target: assetTargetOf(row.assetId),
+    currentPct: row.pct,
   }));
 
   const assetSum = validateTargetsSum(assetRows.map((r) => ({ target: r.target })));
@@ -74,16 +84,127 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         .reduce((acc, r) => acc + r.target, 0)
     : null;
 
-  const handleNormalize = () => {
+  const otherClassesSum = assetClassFilter
+    ? assetRows
+        .filter((r) => r.assetClass !== assetClassFilter)
+        .reduce((acc, r) => acc + r.target, 0)
+    : 0;
+
+  const maxAllowedForThisClass = Math.max(0, Math.round((100 - otherClassesSum) * 100) / 100);
+
+  const selectedClassTarget = assetClassFilter
+    ? (classTargetOf(assetClassFilter) > 0 ? classTargetOf(assetClassFilter) : null)
+    : null;
+
+  const targetCeiling = selectedClassTarget !== null
+    ? selectedClassTarget
+    : (activeClassTargetSum !== null && activeClassTargetSum > 0
+        ? Math.min(activeClassTargetSum, maxAllowedForThisClass)
+        : (classes.length > 1 ? maxAllowedForThisClass : 100));
+
+  const normalizeLabel = assetClassFilter
+    ? `Normalizar ${assetClassFilter} para ${targetCeiling.toFixed(1)}%`
+    : "Normalizar para 100%";
+
+  const distributeLabel = assetClassFilter
+    ? `Distribuir igualmente (${targetCeiling.toFixed(1)}%)`
+    : "Distribuir igualmente (1/N)";
+
+  const handleNormalizeAll = () => {
+    setError(null);
+    setSaved(false);
     const items = position.rows.map((row) => ({
       id: row.assetId,
       targetPercentage: assetTargetOf(row.assetId),
     }));
-    const normalized = normalizeAllocationTargets(items);
+    const normalized = normalizeAllocationTargets(items, 100);
     const nextDraft: Record<string, number> = {};
     normalized.forEach((item) => {
       nextDraft[item.id] = item.targetPercentage;
     });
+    setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
+  };
+
+  const handleNormalize = () => {
+    setError(null);
+    setSaved(false);
+    if (assetClassFilter) {
+      const items = visibleAssetRows.map((r) => ({
+        id: r.key,
+        targetPercentage: r.target,
+      }));
+      const normalized = normalizeAllocationTargets(items, targetCeiling);
+      const nextDraft: Record<string, number> = {};
+      normalized.forEach((item) => {
+        nextDraft[item.id] = item.targetPercentage;
+      });
+      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
+    } else {
+      handleNormalizeAll();
+    }
+    triggerSensory("selection");
+  };
+
+  const handleDistributeEqually = () => {
+    setError(null);
+    setSaved(false);
+    if (assetClassFilter) {
+      const items = visibleAssetRows.map((r) => ({ id: r.key }));
+      const distributed = distributeEquallyTargets(items, targetCeiling);
+      const nextDraft: Record<string, number> = {};
+      distributed.forEach((item) => {
+        nextDraft[item.id] = item.targetPercentage;
+      });
+      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
+    } else {
+      const items = position.rows.map((row) => ({ id: row.assetId }));
+      const distributed = distributeEquallyTargets(items, 100);
+      const nextDraft: Record<string, number> = {};
+      distributed.forEach((item) => {
+        nextDraft[item.id] = item.targetPercentage;
+      });
+      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
+    }
+    triggerSensory("selection");
+  };
+
+  const handleMirrorPosition = () => {
+    setError(null);
+    setSaved(false);
+    if (assetClassFilter) {
+      const items = visibleAssetRows.map((r) => ({ id: r.key, currentPct: r.currentPct ?? 0 }));
+      const mirrored = mirrorCurrentPositionTargets(items, targetCeiling);
+      const nextDraft: Record<string, number> = {};
+      mirrored.forEach((item) => {
+        nextDraft[item.id] = item.targetPercentage;
+      });
+      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
+    } else {
+      const items = position.rows.map((row) => ({ id: row.assetId, currentPct: row.pct }));
+      const mirrored = mirrorCurrentPositionTargets(items, 100);
+      const nextDraft: Record<string, number> = {};
+      mirrored.forEach((item) => {
+        nextDraft[item.id] = item.targetPercentage;
+      });
+      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
+    }
+    triggerSensory("selection");
+  };
+
+  const handleResetZero = () => {
+    setError(null);
+    setSaved(false);
+    const nextDraft: Record<string, number> = {};
+    if (assetClassFilter) {
+      visibleAssetRows.forEach((r) => {
+        nextDraft[r.key] = 0;
+      });
+    } else {
+      position.rows.forEach((r) => {
+        nextDraft[r.assetId] = 0;
+      });
+    }
     setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
     triggerSensory("selection");
   };
@@ -143,7 +264,54 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading;
   const loadError = position.error ?? targetsQuery.error ?? classTargetsQuery.error;
 
-  const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
+  const classRows = classes.map((c) => ({ key: c, label: c, target: classTargetOf(c) }));
+  const classSum = validateTargetsSum(classRows.map((r) => ({ target: r.target })));
+
+  const handleNormalizeClasses = () => {
+    const items = classes.map((c) => ({ id: c, targetPercentage: classTargetOf(c) }));
+    const normalized = normalizeAllocationTargets(items, 100);
+    const nextDraft: Record<string, number> = {};
+    normalized.forEach((item) => {
+      nextDraft[item.id] = item.targetPercentage;
+    });
+    setClassDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
+  };
+
+  const handleDistributeClassesEqually = () => {
+    const items = classes.map((c) => ({ id: c }));
+    const distributed = distributeEquallyTargets(items, 100);
+    const nextDraft: Record<string, number> = {};
+    distributed.forEach((item) => {
+      nextDraft[item.id] = item.targetPercentage;
+    });
+    setClassDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
+  };
+
+  const handleResetClassesZero = () => {
+    const nextDraft: Record<string, number> = {};
+    classes.forEach((c) => {
+      nextDraft[c] = 0;
+    });
+    setClassDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
+  };
+
+  const saveAllClasses = async () => {
+    setError(null);
+    setSavingClass("all");
+    try {
+      for (const className of classes) {
+        await saveClassTarget.mutateAsync({ name: className, target: classTargetOf(className) });
+      }
+      triggerSensory("success");
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSavingClass(null);
+    }
+  };
 
   const [subTab, setSubTab] = useState<"assets" | "classes">("assets");
 
@@ -222,6 +390,9 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                       {activeClassTargetSum !== null ? (
                         <span className="text-xs text-muted-foreground">
                           Soma {assetClassFilter}: <strong className="text-foreground">{activeClassTargetSum.toFixed(1)}%</strong>
+                          {selectedClassTarget !== null ? (
+                            <span className="ml-1 text-muted-foreground">/ meta {selectedClassTarget.toFixed(1)}%</span>
+                          ) : null}
                         </span>
                       ) : null}
                     </div>
@@ -230,10 +401,18 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                   <TargetEditor
                     rows={visibleAssetRows}
                     heading="Metas por ativo (% do patrimônio)"
-                    onTargetChange={(key, value) =>
-                      setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }))
-                    }
+                    onTargetChange={(key, value) => {
+                      setError(null);
+                      setSaved(false);
+                      setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }));
+                    }}
                     onNormalize={handleNormalize}
+                    normalizeLabel={normalizeLabel}
+                    onNormalizeAll={handleNormalizeAll}
+                    onDistributeEqually={handleDistributeEqually}
+                    distributeLabel={distributeLabel}
+                    onMirrorPosition={handleMirrorPosition}
+                    onResetZero={handleResetZero}
                     onSave={() => void saveAssets()}
                     saving={saveTargets.isPending}
                     saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}
@@ -252,11 +431,73 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                   {classes.length > 0 ? (
                     <section aria-label="Metas por classe" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
                       <div className="flex items-center justify-between min-w-0">
-                        <h3 className="text-sm font-semibold text-foreground truncate">Metas por classe de ativo</h3>
-                        <span className="text-xs text-muted-foreground">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground truncate">Metas por classe de ativo</h3>
+                          <p className="text-xs text-muted-foreground">Defina a alocação macro ideal entre os tipos de investimentos.</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-mono font-medium">
                           {classes.length} {classes.length === 1 ? "classe" : "classes"}
                         </span>
                       </div>
+
+                      {/* Barra de Progresso e Validação da Soma de Classes */}
+                      <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-surface/70 p-4">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="font-medium">Soma das metas de classes</span>
+                          <span className={cn("num font-bold", classSum.error ? "text-critical" : classSum.sum > 0 ? "text-foreground" : "")}>
+                            {classSum.sum.toFixed(1)}% / 100%
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.min(100, Math.max(0, classSum.sum))}
+                          tone={classSum.error ? "critical" : "auto"}
+                          aria-label={`Soma das classes: ${classSum.sum.toFixed(1)}%`}
+                        />
+                        {classSum.error ? <p className="text-xs text-critical font-medium">{classSum.error}</p> : null}
+                        {classSum.error === null && classSum.sum < 100 ? (
+                          <p className="text-xs text-muted-foreground">
+                            Sobram {(100 - classSum.sum).toFixed(1)}% para caixa/reserva ou outras classes.
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {/* Ações Rápidas de Classes */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleNormalizeClasses}
+                          disabled={savingClass !== null}
+                          className="gap-1.5 text-xs"
+                        >
+                          <Scale className="size-3.5 shrink-0" aria-hidden="true" />
+                          Normalizar classes para 100%
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDistributeClassesEqually}
+                          disabled={savingClass !== null}
+                          className="gap-1.5 text-xs"
+                        >
+                          <Equal className="size-3.5 shrink-0" aria-hidden="true" />
+                          Distribuir igualmente (1/N)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleResetClassesZero}
+                          disabled={savingClass !== null}
+                          className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
+                          Zerar classes
+                        </Button>
+                      </div>
+
                       <div className="flex flex-col gap-2 min-w-0">
                         {classes.map((className) => {
                           const target = classTargetOf(className);
@@ -292,7 +533,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                                     type="button"
                                     size="sm"
                                     variant={target > 0 ? "secondary" : "outline"}
-                                    disabled={savingClass === className}
+                                    disabled={savingClass === className || savingClass === "all"}
                                     onClick={() => void saveClass(className)}
                                   >
                                     {savingClass === className ? "Salvando…" : "Salvar"}
@@ -303,7 +544,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                                       size="icon"
                                       variant="ghost"
                                       aria-label={`Remover meta da classe ${className}`}
-                                      disabled={savingClass === className}
+                                      disabled={savingClass === className || savingClass === "all"}
                                       onClick={() => void removeClass(className)}
                                     >
                                       <Trash2 className="size-4" aria-hidden="true" />
@@ -314,6 +555,17 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                             </div>
                           );
                         })}
+                      </div>
+
+                      {/* Botão de Salvar Todas as Classes */}
+                      <div className="flex items-center justify-end pt-2">
+                        <Button
+                          type="button"
+                          onClick={() => void saveAllClasses()}
+                          disabled={savingClass !== null || classSum.error !== null}
+                        >
+                          {savingClass === "all" ? "Salvando todas…" : "Salvar todas as classes"}
+                        </Button>
                       </div>
                     </section>
                   ) : null}

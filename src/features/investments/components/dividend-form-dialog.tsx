@@ -99,6 +99,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
       onOpenChange={onOpenChange}
       title="Registrar Provento Recebido"
       description="Cadastre rendimentos de dividendos, JCP ou FIIs creditados na sua conta."
+      showCalculator
     >
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
         {error ? <Alert variant="error">{error}</Alert> : null}
