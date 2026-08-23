@@ -356,7 +356,6 @@ export function InsightsPage() {
         <Tabs
           value={tab}
           onValueChange={setTab}
-          variant="pills"
           swipeable
           items={[
             {
@@ -474,7 +473,7 @@ export function InsightsPage() {
             },
             {
               value: "recurrences",
-              label: "Assinaturas & recorrências",
+              label: "Assinaturas",
               content: (
                 <div className="flex flex-col gap-4">
                   {/* Card de Resumo de Recorrências */}
@@ -618,7 +617,7 @@ export function InsightsPage() {
             },
             {
               value: "projection",
-              label: "Projeção & corte",
+              label: "Projeção",
               content: (
                 <div className="flex flex-col gap-5">
                   {/* Bloco 1: Fechamento Projetado */}

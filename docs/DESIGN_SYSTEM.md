@@ -405,16 +405,16 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Contêineres de gráficos SVG (`DailyFlowChart`, `Sparkline`, `CategoryDonut`) usam `overflow-hidden` e `w-full min-w-0` com limites de pontos/marcadores contidos (*clamped*), impedindo vazamento de traços vetoriais fora das margens do card.
 - **Espaçamento Responsivo:** Cards e contêineres adotam padding responsivo (`p-4 sm:p-5`, `px-3.5 sm:px-4`) para manter proporções ideais e máxima área útil em telas estreitas (≥ 320px).
 
-### 14.17 Abas e Sub-abas Harmônicas (Nomes Únicos, Pills Internas e Largura Total)
-- **Componente:** `src/components/ui/tabs.tsx` (`variant="pills"` e `variant="underline"`).
+### 14.17 Hierarquia de Abas, Rótulos Únicos & Alinhamento Responsivo (Underline Nível 1 & Pills Nível 2)
+- **Componente:** `src/components/ui/tabs.tsx` (`variant="underline"` e `variant="pills"`).
 - **Hierarquia Estrita de 2 Níveis:**
-  - **Nível 1 (Navegação Primária de Página):** `Tabs variant="underline"` (ou `variant="pills"` para páginas de nível único como Configurações, Categorias, Orçamentos, Dívidas, Lembretes, Insights).
-  - **Nível 2 (Sub-abas e Segmentações Internas):** **EXCLUSIVAMENTE `Tabs variant="pills"`** (ex.: dentro de Proventos *Extrato \| Calendário*, dentro de Metas *Ativos \| Classes*, dentro de Aporte *Calculadora \| Histórico*, e Agregações em Relatórios). É expressamente proibido o uso de `underline` aninhado dentro de `underline`.
-- **Rótulo Único de 1 Palavra por Aba (Zero nomes com `&` ou duplos):**
-  - Todo rótulo de aba/sub-aba é composto por **uma única palavra forte e objetiva** (ex.: `Limites`, `Metas`, `Aparência`, `Interface`, `Dados`, `Diagnósticos`, `Planejamento`, `Extrato`, `Calendário`, `Ativos`, `Classes`, `Pagar`, `Receber`, `Financiamentos`, `Mês`, `Ano`, `Custom`, `Categorias`, `Encargos`, `Formas`, `Dias`).
-  - Proibido o uso de `&`, conectivos ou preposições no rótulo das abas (*"Avisos & Diagnósticos"*, *"Conta & Dados"*, *"Por categoria"*).
-- **Largura Total (`w-full`) e Distribuição Simétrica:**
-  - Todas as abas expandem-se por padrão para 100% da largura útil (`isFullWidth = true`) com distribuição proporcional dos itens (`flex-1 text-center`), adaptando-se automaticamente à quantidade (50%/50%, 33.3%/33.3%/33.3%, 25%/25%/25%/25%).
-- **Tipografia Confortável e Acessibilidade:**
-  - Triggers usam tipografia nítida e confortável `text-sm font-medium` (14px) com `px-3 py-2`, acabando com textos minúsculos, cortes e necessidade de rolagem horizontal incômoda.
+  - **Nível 1 (Navegação Primária da Tela):** **Tabs Padronizadas (`variant="underline"`)** com borda inferior ativa de 2px na cor primária. É a primeira opção e o padrão oficial da aplicação em telas com navegação principal (Investimentos, Categorias, Orçamentos, Dívidas, Lembretes, Insights, Configurações, Relatórios).
+  - **Nível 2 (Subdivisões Internas de Conteúdo):** **Exclusivamente Pills (`variant="pills"`)**. Usado *apenas* quando uma aba de Nível 1 possui sub-divisões internas de dados (ex.: em Investimentos -> Proventos: *Extrato \| Calendário*, Metas: *Ativos \| Classes*, Aporte: *Calculadora \| Histórico*; em Relatórios -> Agregação: *Categorias \| Encargos \| Formas \| Dias*).
+  - **Regra Anti-Aninhamento:** Proibido `pills` dentro de `pills` e proibido `underline` dentro de `underline`.
+- **Rótulos Únicos & Tipografia Confortável:**
+  - Todo rótulo de aba utiliza **1 única palavra ou termo conciso** (zero nomes compostos com `&`, `e` ou preposições como *"Por..."*, *"Avisos &..."*, *"Conta &..."*).
+  - Tipografia confortável e nítida padronizada em **`text-sm font-medium` (14px)** em todos os dispositivos.
+- **Responsividade Inteligente:**
+  - **Mobile (`< 640px`):** As abas tomam **100% da largura útil (`w-full`)** com divisão simétrica entre os botões (`flex-1 text-center`), garantindo toques confortáveis com o polegar (*thumb-friendly*), sem rolagem horizontal e sem cortes.
+  - **Desktop (`≥ 640px`):** As abas ficam **alinhadas naturalmente à esquerda (`w-auto flex-initial sm:text-left`)**, ocupando apenas o espaço dos seus rótulos com espaçamento harmônico, sem se esticar artificialmente pela tela.
 

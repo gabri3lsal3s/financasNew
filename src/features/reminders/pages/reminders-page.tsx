@@ -139,7 +139,7 @@ export function RemindersPage() {
               setMainTab(val as MainTab);
               setSubFilter("all");
             }}
-            variant="pills"
+            variant="underline"
             items={[
               { value: "pending", label: `Pendentes (${totalCount})`, content: null },
               { value: "read", label: `Lidas (${readCount})`, content: null },

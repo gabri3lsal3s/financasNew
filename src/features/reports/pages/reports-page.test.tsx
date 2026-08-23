@@ -102,7 +102,7 @@ describe("ReportsPage (relatórios §3.6)", () => {
     expect(screen.getByText("Despesas")).toBeInTheDocument();
   });
 
-  it("permite alternar para a aba 'Por ano' e exibir dados anuais", async () => {
+  it("permite alternar para a aba 'Ano' e exibir dados anuais", async () => {
     const user = userEvent.setup();
     renderReports();
 

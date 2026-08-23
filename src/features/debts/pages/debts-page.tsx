@@ -258,7 +258,7 @@ export function DebtsPage() {
         <Tabs
           value={tab}
           onValueChange={(value) => handleTabChange(value as "payable" | "receivable" | "loans")}
-          variant="pills"
+          variant="underline"
           swipeable
           items={[
             {

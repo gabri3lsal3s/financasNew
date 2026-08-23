@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvestmentsPage } from "./investments-page";
@@ -97,9 +98,11 @@ describe("InvestmentsPage — F17 unificada", () => {
     };
   });
 
-  it("renderiza o header, abas e navegação padrão", () => {
+  it("renderiza o header com os botões de ação e abas de navegação", () => {
     renderPage();
     expect(screen.getByRole("heading", { name: "Investimentos", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Adicionar caixa" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nova operação" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Resumo" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Metas" })).toBeInTheDocument();
@@ -124,5 +127,24 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();
     expect(screen.getAllByText("R$ 8.000,00").length).toBeGreaterThan(0);
     expect(screen.getByText("Proventos deste Mês")).toBeInTheDocument();
+  });
+
+  it("abre o InvestmentWizard ao clicar no botão Nova Operação do header", async () => {
+    renderPage();
+    const novaOpBtn = screen.getByRole("button", { name: "Nova operação" });
+    await userEvent.click(novaOpBtn);
+    expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
+  });
+
+  it("abre o CashFormDialog ao clicar no botão Adicionar Caixa do header", async () => {
+    renderPage();
+    const addCashBtn = screen.getByRole("button", { name: "Adicionar caixa" });
+    await userEvent.click(addCashBtn);
+    expect(screen.getByRole("heading", { name: /Cadastrar Saldo em Caixa|Editar Saldo em Caixa/i })).toBeInTheDocument();
+  });
+
+  it("abre automaticamente o InvestmentWizard via deep link ?novo=investimento", () => {
+    renderPage("/investments?novo=investimento");
+    expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
   });
 });

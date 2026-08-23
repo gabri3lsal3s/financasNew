@@ -154,7 +154,6 @@ export function CategoriesPage() {
         <Tabs
           value={tab}
           onValueChange={(value) => handleTabChange(value as CategoryType)}
-          variant="pills"
           swipeable
           items={[
             {

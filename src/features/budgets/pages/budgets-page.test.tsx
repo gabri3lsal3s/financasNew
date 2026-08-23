@@ -131,7 +131,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("metas de renda: compara realizado × esperado", async () => {
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Metas" }));
+    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
     expect(screen.getByText("Salário")).toBeInTheDocument();
     // Realizado R$ 5.000 = meta R$ 5.000 → na meta
@@ -143,7 +143,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     setIncomeGoalMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Metas" }));
+    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
     await user.click(screen.getAllByRole("button", { name: "Editar meta de renda de Salário" })[0]!);
     const goalInput = screen.getByRole("textbox", { name: "Expectativa de renda mensal da categoria" });
@@ -161,7 +161,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     setIncomeGoalMock.mockRejectedValue(new Error("Falha de rede"));
     const user = userEvent.setup();
     render(<BudgetsPage />);
-    await user.click(screen.getByRole("tab", { name: "Metas" }));
+    await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
     await user.click(screen.getAllByRole("button", { name: "Editar meta de renda de Salário" })[0]!);
     const goalInput = screen.getByRole("textbox", { name: "Expectativa de renda mensal da categoria" });

@@ -176,11 +176,11 @@ export function BudgetsPage() {
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as "limits" | "goals")}
-        variant="pills"
+        variant="underline"
         swipeable
         items={[
-          { value: "limits", label: "Limites", content: null },
-          { value: "goals", label: "Metas", content: null },
+          { value: "limits", label: "Despesas", content: null },
+          { value: "goals", label: "Rendas", content: null },
         ]}
       />
 

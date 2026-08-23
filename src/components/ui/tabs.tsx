@@ -40,7 +40,7 @@ export function Tabs({
 }: TabsProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const currentIndex = Math.max(0, items.findIndex((item) => item.value === value));
-  const isFullWidth = fullWidth ?? true;
+  const isFullWidth = fullWidth ?? false;
 
   const swipe = useSwipeNavigation({
     onNavigate: (direction) => {
@@ -91,7 +91,7 @@ export function Tabs({
       <TabsPrimitive.List
         className={cn(
           "flex gap-1 overflow-x-auto no-scrollbar",
-          isFullWidth ? "w-full" : "w-auto",
+          isFullWidth ? "w-full" : "w-full sm:w-auto",
           variant === "underline"
             ? "border-b border-border"
             : "p-1 rounded-xl bg-muted/60 border border-border/50 backdrop-blur-sm",
@@ -104,15 +104,16 @@ export function Tabs({
             value={item.value}
             aria-label={item.label}
             className={cn(
-              "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0",
-              isFullWidth && "flex-1",
+              "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3.5 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0",
+              isFullWidth ? "flex-1 text-center" : "flex-1 sm:flex-initial text-center sm:text-left",
               variant === "underline"
                 ? "border-b-2 border-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary-strong data-[state=active]:font-semibold"
-                : "rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/50 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-sm data-[state=active]:shadow-black/5 text-center",
+                : "rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/50 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-sm data-[state=active]:shadow-black/5",
             )}
           >
             {item.icon}
-            <span className="truncate">{item.label}</span>
+            <span className={cn("truncate", item.shortLabel && "hidden sm:inline")}>{item.label}</span>
+            {item.shortLabel && <span aria-hidden="true" className="truncate sm:hidden">{item.shortLabel}</span>}
           </TabsPrimitive.Trigger>
         ))}
       </TabsPrimitive.List>

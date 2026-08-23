@@ -80,7 +80,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("lista assinaturas/recorrências e permite ignorar", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Assinaturas & recorrências" }));
+    await user.click(screen.getByRole("tab", { name: "Assinaturas" }));
     // Streaming com valor estável em 3 meses → assinatura.
     expect(screen.getByText("Streaming")).toBeInTheDocument();
 
@@ -96,7 +96,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("permite confirmar assinatura via botão animado", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Assinaturas & recorrências" }));
+    await user.click(screen.getByRole("tab", { name: "Assinaturas" }));
 
     const confirmButtons = screen.getAllByRole("button", { name: /Confirmar/ });
     expect(confirmButtons.length).toBeGreaterThan(0);
@@ -110,7 +110,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("renderiza projeção e corte com pendências", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Projeção & corte" }));
+    await user.click(screen.getByRole("tab", { name: "Projeção" }));
     expect(screen.getByText("Projeção de gastos")).toBeInTheDocument();
     expect(screen.getByText("Pendências do período")).toBeInTheDocument();
   });
@@ -141,7 +141,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
       { id: `${month}-1`, description: "Viagem", category_id: "c2", value: 60_000, report_weight: 1, date: `${month}-05`, installment_group_id: null },
     ];
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Projeção & corte" }));
+    await user.click(screen.getByRole("tab", { name: "Projeção" }));
     // O desafio individual aparece (corta 30% da Lazer).
     expect(screen.getByText(/Lazer — cortar 30%/)).toBeInTheDocument();
     // A linha agregada fica oculta (mesma base de 1 categoria — repetição).
@@ -155,7 +155,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
       { id: `${month}-2`, description: "Delivery", category_id: "c1", value: 55_000, report_weight: 1, date: `${month}-10`, installment_group_id: null },
     ];
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Projeção & corte" }));
+    await user.click(screen.getByRole("tab", { name: "Projeção" }));
     expect(screen.getByText("30% em não essenciais")).toBeInTheDocument();
   });
 

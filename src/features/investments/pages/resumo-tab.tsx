@@ -28,12 +28,17 @@ import type { WizardMode } from "../wizard/wizard-state";
 import type { AssetCurrency, PortfolioAsset } from "@/types";
 import type { PriceSource } from "@/domain/portfolio";
 
+export interface ResumoTabProps {
+  onOpenWizard?: (asset?: PortfolioAsset | null, mode?: WizardMode) => void;
+  onOpenCash?: () => void;
+}
+
 /**
  * Resumo da carteira (§F36 e §F41 unificada) — Posição Consolidada + Investment Wizard (Modelo B) + Visão Dedicada:
  * KPIs executivos, gráfico unificado de distribuição da carteira, tabela de posições com Sheet de detalhes,
  * e Investment Wizard (Nova Operação centralizada: Compra, Venda, Provento, Split e Novo Ativo).
  */
-export function ResumoTab() {
+export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
   const dividendsQuery = usePortfolioDividends();
@@ -41,7 +46,7 @@ export function ResumoTab() {
   const syncQuotes = useSyncQuotes();
   const autoSyncedRef = useRef(false);
 
-  // FAB contextual mobile (?novo=investimento) e abertura do Wizard
+  // FAB contextual mobile (?novo=investimento) e abertura do Wizard (modo standalone/fallback)
   const { open: wizardDeepOpen, setOpen: setWizardDeepOpen } = useCreateDeepLink("investimento");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardInitialAsset, setWizardInitialAsset] = useState<PortfolioAsset | null>(null);
@@ -54,6 +59,24 @@ export function ResumoTab() {
     if (!next) {
       setWizardInitialAsset(null);
       setWizardInitialMode("select");
+    }
+  };
+
+  const handleOpenWizard = (asset: PortfolioAsset | null = null, mode: WizardMode = "select") => {
+    if (onOpenWizard) {
+      onOpenWizard(asset, mode);
+    } else {
+      setWizardInitialAsset(asset);
+      setWizardInitialMode(mode);
+      setWizardOpen(true);
+    }
+  };
+
+  const handleOpenCash = () => {
+    if (onOpenCash) {
+      onOpenCash();
+    } else {
+      setCashDialogOpen(true);
     }
   };
 
@@ -101,7 +124,7 @@ export function ResumoTab() {
     const asset = assetById(assetId);
     if (asset) {
       if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
-        setCashDialogOpen(true);
+        handleOpenCash();
       } else {
         setDetailAsset(asset);
       }
@@ -112,11 +135,9 @@ export function ResumoTab() {
     const asset = assetById(assetId);
     if (asset) {
       if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
-        setCashDialogOpen(true);
+        handleOpenCash();
       } else {
-        setWizardInitialAsset(asset);
-        setWizardInitialMode(mode);
-        setWizardOpen(true);
+        handleOpenWizard(asset, mode);
       }
     }
   };
@@ -125,7 +146,7 @@ export function ResumoTab() {
     const asset = assetById(assetId);
     if (asset) {
       if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
-        setCashDialogOpen(true);
+        handleOpenCash();
       } else {
         setAssetEditing(asset);
       }
@@ -211,7 +232,7 @@ export function ResumoTab() {
               cashBRL={position.cashBRL}
               cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
               hasCashAsset={Boolean(cashAsset)}
-              onEdit={() => setCashDialogOpen(true)}
+              onEdit={handleOpenCash}
               onDelete={() => {
                 if (cashAsset) setAssetToDelete(cashAsset);
               }}
@@ -278,16 +299,12 @@ export function ResumoTab() {
               <Button
                 type="button"
                 size="sm"
-                onClick={() => {
-                  setWizardInitialAsset(null);
-                  setWizardInitialMode("select");
-                  setWizardOpen(true);
-                }}
+                onClick={() => handleOpenWizard(null, "select")}
               >
                 <Plus aria-hidden="true" className="size-4" />
                 Nova Operação
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => setCashDialogOpen(true)}>
+              <Button type="button" size="sm" variant="outline" onClick={handleOpenCash}>
                 Cadastrar Saldo em Caixa
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
@@ -377,22 +394,6 @@ export function ResumoTab() {
                   />
                   <span className="hidden md:inline">{syncQuotes.isPending ? "Atualizando…" : "Atualizar"}</span>
                 </Button>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1 shrink-0"
-                  onClick={() => {
-                    setWizardInitialAsset(null);
-                    setWizardInitialMode("select");
-                    setWizardOpen(true);
-                  }}
-                  title="Nova operação em investimentos"
-                  aria-label="Nova operação em investimentos"
-                >
-                  <Plus aria-hidden="true" className="size-4" />
-                  <span className="hidden sm:inline">Nova Operação</span>
-                </Button>
               </div>
             </div>
 
@@ -473,13 +474,15 @@ export function ResumoTab() {
         </>
       )}
 
-      {/* Investment Wizard Unificado (Modelo B) */}
-      <InvestmentWizard
-        open={isWizardOpen}
-        onOpenChange={handleWizardOpenChange}
-        initialAsset={wizardInitialAsset}
-        initialMode={wizardInitialMode}
-      />
+      {/* Investment Wizard Unificado (quando renderizado standalone) */}
+      {!onOpenWizard ? (
+        <InvestmentWizard
+          open={isWizardOpen}
+          onOpenChange={handleWizardOpenChange}
+          initialAsset={wizardInitialAsset}
+          initialMode={wizardInitialMode}
+        />
+      ) : null}
 
       {/* Asset Detail Sheet (Visão Dedicada) */}
       <AssetDetailSheet
@@ -503,11 +506,14 @@ export function ResumoTab() {
         />
       ) : null}
 
-      <CashFormDialog
-        open={cashDialogOpen}
-        onOpenChange={setCashDialogOpen}
-        asset={cashAsset ?? null}
-      />
+      {/* CashFormDialog (quando renderizado standalone) */}
+      {!onOpenCash ? (
+        <CashFormDialog
+          open={cashDialogOpen}
+          onOpenChange={setCashDialogOpen}
+          asset={cashAsset ?? null}
+        />
+      ) : null}
 
       {priceFor ? (
         <ManualPriceDialog

@@ -349,7 +349,7 @@ export function ReportsPage() {
       <Tabs
         value={mode}
         onValueChange={(value) => setMode(value as PeriodMode)}
-        variant="pills"
+        variant="underline"
         items={[
           {
             value: "month",

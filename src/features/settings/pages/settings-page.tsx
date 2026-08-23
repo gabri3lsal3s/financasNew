@@ -1446,8 +1446,9 @@ export function SettingsPage() {
                   </div>
                   <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    <LivePulseBeacon variant="positive" size="sm" />
-                    <span className="text-xs font-medium text-positive-strong">Sessão Segura Ativa</span>
+                    <Badge variant="positive" className="text-[10px] px-1.5 py-0">
+                      Sessão Ativa
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -1513,7 +1514,7 @@ export function SettingsPage() {
           value={activeTab}
           onValueChange={handleTabChange}
           items={tabItems}
-          variant="pills"
+          variant="underline"
           className="w-full"
         />
       </div>
