@@ -141,6 +141,10 @@ export function BottomNav() {
         {leftSlots.map((slot) => (
           <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
         ))}
+        {leftSlots.length < 2 &&
+          Array.from({ length: 2 - leftSlots.length }).map((_, i) => (
+            <div key={`left-empty-${i}`} className="flex min-h-11 items-center justify-center" aria-hidden="true" />
+          ))}
 
         {/* Slot Central: FAB ou preenchimento */}
         {create ? (
@@ -164,41 +168,48 @@ export function BottomNav() {
           <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
         ))}
 
-        {/* Slot 5: Menu Mais */}
-        <NavLink
-          to="/mais"
-          aria-label={moreSubItem ? `Mais (${moreSubItem.label})` : "Mais"}
-          onClick={(e) => {
-            if (location.pathname === "/mais") {
-              const scrolled = scrollToTop({ sensoryFeedback: true });
-              if (scrolled) {
-                e.preventDefault();
+        {/* Slot 5: Menu Mais (apenas quando houver itens secundários além dos slots principais) */}
+        {moreMenuSlots.length > 0 ? (
+          <NavLink
+            to="/mais"
+            aria-label={moreSubItem ? `Mais (${moreSubItem.label})` : "Mais"}
+            onClick={(e) => {
+              if (location.pathname === "/mais") {
+                const scrolled = scrollToTop({ sensoryFeedback: true });
+                if (scrolled) {
+                  e.preventDefault();
+                }
               }
-            }
-          }}
-          className={cn(
-            "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors relative",
-            isMoreActive ? "text-primary-strong" : "text-muted-foreground",
-          )}
-        >
-          <div className="relative">
-            <MoreIcon
-              key={moreSubItem?.path ?? "mais"}
-              className="size-5 animate-spring-pop transform-gpu"
-              aria-hidden="true"
-            />
-            {totalCount > 0 && (
-              <span
-                className={cn(
-                  "absolute -top-0.5 -right-1 size-2 rounded-full ring-2 ring-surface",
-                  urgentCount > 0 ? "bg-danger" : "bg-primary",
-                )}
-              />
+            }}
+            className={cn(
+              "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors relative",
+              isMoreActive ? "text-primary-strong" : "text-muted-foreground",
             )}
-          </div>
-          <span>Mais</span>
-        </NavLink>
+          >
+            <div className="relative">
+              <MoreIcon
+                key={moreSubItem?.path ?? "mais"}
+                className="size-5 animate-spring-pop transform-gpu"
+                aria-hidden="true"
+              />
+              {totalCount > 0 && (
+                <span
+                  className={cn(
+                    "absolute -top-0.5 -right-1 size-2 rounded-full ring-2 ring-surface",
+                    urgentCount > 0 ? "bg-danger" : "bg-primary",
+                  )}
+                />
+              )}
+            </div>
+            <span>Mais</span>
+          </NavLink>
+        ) : rightSlots.length < 2 ? (
+          Array.from({ length: 2 - rightSlots.length }).map((_, i) => (
+            <div key={`right-empty-${i}`} className="flex min-h-11 items-center justify-center" aria-hidden="true" />
+          ))
+        ) : null}
       </div>
     </nav>
   );
 }
+

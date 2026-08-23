@@ -30,10 +30,13 @@ export function TaxFacilitatorModal({
   const handlePrint = () => {
     setPrinting(true);
     setTimeout(() => {
-      window.print();
+      if (typeof window !== "undefined" && typeof window.print === "function") {
+        window.print();
+      }
       setPrinting(false);
     }, 100);
   };
+
 
   const nonCashAssets = assets.filter((a) => !isCashAssetClass(a.asset_class) && a.quantity > 0);
 

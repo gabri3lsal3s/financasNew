@@ -30,7 +30,7 @@ function renderNav(entry = "/") {
 }
 
 describe("BottomNav Dinâmica & Adaptativa", () => {
-  it("renderiza os slots principais promovidos e o FAB central", () => {
+  it("renderiza exatamente 5 slots (3 itens principais, FAB central e botão Mais) quando houver > 4 itens", () => {
     renderNav();
 
     const links = screen.getAllByRole("link");
@@ -40,10 +40,10 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
       "Transações",
       "Nova transação",
       "Cartões",
-      "Investimentos",
       "Mais",
     ]);
   });
+
 
   it("FAB central é contextual e preserva a rota ativa: na Início/Transações abre o wizard de lançamento", () => {
     const { unmount } = renderNav("/");

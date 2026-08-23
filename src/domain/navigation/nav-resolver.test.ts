@@ -17,18 +17,18 @@ describe("navigation domain resolver", () => {
     { label: "Administração", path: "/admin", adminOnly: true },
   ];
 
-  it("deve promover os primeiros 4 itens padrão para a barra inferior no perfil completo", () => {
+  it("deve promover os primeiros 3 itens prioritários e os demais para o menu Mais no perfil completo (>4 itens)", () => {
     const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(allItems);
 
-    expect(primarySlots).toHaveLength(4);
+    expect(primarySlots).toHaveLength(3);
     expect(primarySlots.map((i) => i.path)).toEqual([
       "/",
       "/transacoes",
       "/cartoes",
-      "/investments",
     ]);
 
     expect(moreMenuSlots.map((i) => i.path)).toEqual([
+      "/investments",
       "/dividas",
       "/relatorios",
       "/configuracoes",
@@ -36,7 +36,7 @@ describe("navigation domain resolver", () => {
     ]);
   });
 
-  it("deve promover itens de consultoria/investimentos quando o core financeiro estiver desativado", () => {
+  it("deve promover todos os itens diretamente para a barra sem botão Mais quando houver <= 4 itens", () => {
     const onlyWealthItems: NavItemConfig[] = [
       { label: "Investimentos", path: "/investments", featureKey: "investments" },
       { label: "Relatórios", path: "/relatorios", featureKey: "reports" },
@@ -46,14 +46,17 @@ describe("navigation domain resolver", () => {
 
     const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(onlyWealthItems);
 
+    expect(primarySlots).toHaveLength(4);
     expect(primarySlots.map((i) => i.path)).toEqual([
       "/investments",
       "/dividas",
       "/relatorios",
+      "/configuracoes",
     ]);
 
-    expect(moreMenuSlots.map((i) => i.path)).toEqual(["/configuracoes"]);
+    expect(moreMenuSlots).toHaveLength(0);
   });
+
 
   it("deve resolver a rota inicial landing correta para cada perfil de permissões", () => {
     // 1. Perfil completo com overview

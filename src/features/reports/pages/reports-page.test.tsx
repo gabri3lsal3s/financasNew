@@ -19,6 +19,9 @@ const expenses = [
 ];
 const incomes = [{ id: "i1", date: "2026-08-05", category_id: "c3", value: 5000, report_weight: 1 }];
 
+let mockHasFeature: (key: string) => boolean = () => true;
+
+
 vi.mock("@/state", () => ({
   useExpenses: (month: string) => ({
     data: month === "2026-08" ? expenses : [],
@@ -155,7 +158,17 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: (key: string) => mockHasFeature(key),
+    isLoading: false,
+  }),
 }));
+
+
 
 describe("ReportsPage (Central Unificada §F42)", () => {
   it("renderiza o Hub com o banner de exportação Excel e as 4 abas principais", () => {
@@ -255,5 +268,19 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     await user.click(screen.getByRole("tab", { name: /Balanço & Liberdade/i }));
     expect(screen.getByRole("button", { name: "Mensal" })).toBeInTheDocument();
   });
+
+  it("exibe apenas abas de investimentos e fiscal quando o core financeiro estiver desativado", () => {
+    mockHasFeature = (key) => key === "investments" || key === "reports";
+    renderReports();
+
+    expect(screen.queryByRole("tab", { name: /Finanças & DRE/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Balanço & Liberdade/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Investimentos & Carteira/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Fiscal & IRPF/i })).toBeInTheDocument();
+
+    mockHasFeature = () => true;
+  });
 });
+
+
 

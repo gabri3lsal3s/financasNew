@@ -27,10 +27,13 @@ export function ConsolidatedWealthModal({
   const handlePrint = () => {
     setPrinting(true);
     setTimeout(() => {
-      window.print();
+      if (typeof window !== "undefined" && typeof window.print === "function") {
+        window.print();
+      }
       setPrinting(false);
     }, 100);
   };
+
 
   const reportContent = (
     <div className="print-area flex flex-col gap-6 bg-surface text-foreground w-full max-w-full overflow-hidden print:overflow-visible">

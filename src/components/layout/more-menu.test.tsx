@@ -22,7 +22,7 @@ vi.mock("@/state", () => ({
 }));
 
 describe("MoreMenu", () => {
-  it("não renderiza itens promovidos para os slots principais da barra de navegação (Início, Transações, Cartões, Investimentos)", () => {
+  it("não renderiza itens promovidos para os slots principais da barra de navegação (Início, Transações, Cartões)", () => {
     render(
       <MemoryRouter>
         <MoreMenu />
@@ -32,16 +32,16 @@ describe("MoreMenu", () => {
     expect(screen.queryByText("Início")).not.toBeInTheDocument();
     expect(screen.queryByText("Transações")).not.toBeInTheDocument();
     expect(screen.queryByText("Cartões")).not.toBeInTheDocument();
-    expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
   });
 
-  it("renderiza as opções secundárias consolidadas", () => {
+  it("renderiza as opções secundárias consolidadas (incluindo Investimentos quando houver > 4 itens)", () => {
     render(
       <MemoryRouter>
         <MoreMenu />
       </MemoryRouter>,
     );
 
+    expect(screen.getByText("Investimentos")).toBeInTheDocument();
     expect(screen.getByText("Planejamento & Análise")).toBeInTheDocument();
     expect(screen.getByText("Notificações & Sistema")).toBeInTheDocument();
     expect(screen.getByText("Dívidas")).toBeInTheDocument();
@@ -51,6 +51,7 @@ describe("MoreMenu", () => {
     expect(screen.getByText("Lembretes")).toBeInTheDocument();
     expect(screen.getByText("Configurações")).toBeInTheDocument();
   });
+
 
   it("exibe badge de notificações em lembretes com contagem", () => {
     render(

@@ -46,8 +46,10 @@ describe("FinancialCloseReportModal (F42)", () => {
   });
 
   it("dispara window.print ao clicar no botão de impressão", () => {
+    vi.useFakeTimers();
+    const printSpy = vi.fn();
     const originalPrint = window.print;
-    window.print = vi.fn();
+    window.print = printSpy;
 
     render(
       <FinancialCloseReportModal
@@ -65,10 +67,11 @@ describe("FinancialCloseReportModal (F42)", () => {
     const printButton = screen.getByRole("button", { name: /Imprimir \/ Salvar PDF/i });
     fireEvent.click(printButton);
 
-    // O setTimeout do print deve disparar
-    setTimeout(() => {
-      expect(window.print).toHaveBeenCalled();
-      window.print = originalPrint;
-    }, 150);
+    vi.advanceTimersByTime(150);
+    expect(printSpy).toHaveBeenCalled();
+
+    window.print = originalPrint;
+    vi.useRealTimers();
   });
 });
+

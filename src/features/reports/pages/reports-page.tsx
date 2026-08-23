@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
+
 import {
   FileSpreadsheet,
   Flame,
@@ -47,7 +48,9 @@ import {
   usePortfolioContributions,
   usePortfolioDividends,
   usePortfolioPosition,
+  useUserAccess,
 } from "@/state";
+
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { ExpenseDetailDialog } from "@/features/transactions";
 import {
@@ -75,19 +78,107 @@ type AggregationTab = "category" | "method" | "weekday" | "charges";
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTabParam = (searchParams.get("aba") as MainTab) || "financas";
+  const { hasFeature } = useUserAccess();
+  const hasFinanceFeatures =
 
-  const [mainTab, setMainTab] = useState<MainTab>(
-    ["financas", "investimentos", "balanco", "fiscal"].includes(activeTabParam) ? activeTabParam : "financas",
-  );
+    hasFeature("transactions") ||
+    hasFeature("cards") ||
+    hasFeature("overview") ||
+    hasFeature("budgets") ||
+    hasFeature("debts");
+  const hasInvestmentsFeature = hasFeature("investments");
+
+  const tabItems = useMemo(() => {
+    const list: Array<{ value: MainTab; label: string; shortLabel?: string; icon: React.ReactNode }> = [];
+
+    if (hasFinanceFeatures) {
+      list.push({
+        value: "financas",
+        label: "Finanças & DRE",
+        shortLabel: "Finanças",
+        icon: <Landmark className="size-4" aria-hidden="true" />,
+      });
+    }
+
+    if (hasInvestmentsFeature) {
+      list.push({
+        value: "investimentos",
+        label: "Investimentos & Carteira",
+        shortLabel: "Investimentos",
+        icon: <TrendingUp className="size-4" aria-hidden="true" />,
+      });
+    }
+
+    if (hasFinanceFeatures) {
+      list.push({
+        value: "balanco",
+        label: "Balanço & Liberdade",
+        shortLabel: "Balanço",
+        icon: <Scale className="size-4" aria-hidden="true" />,
+      });
+    }
+
+    if (hasInvestmentsFeature) {
+      list.push({
+        value: "fiscal",
+        label: "Fiscal & IRPF",
+        shortLabel: "Fiscal",
+        icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
+      });
+    }
+
+    if (list.length === 0) {
+      return [
+        {
+          value: "financas" as MainTab,
+          label: "Finanças & DRE",
+          shortLabel: "Finanças",
+          icon: <Landmark className="size-4" aria-hidden="true" />,
+        },
+        {
+          value: "investimentos" as MainTab,
+          label: "Investimentos & Carteira",
+          shortLabel: "Investimentos",
+          icon: <TrendingUp className="size-4" aria-hidden="true" />,
+        },
+        {
+          value: "balanco" as MainTab,
+          label: "Balanço & Liberdade",
+          shortLabel: "Balanço",
+          icon: <Scale className="size-4" aria-hidden="true" />,
+        },
+        {
+          value: "fiscal" as MainTab,
+          label: "Fiscal & IRPF",
+          shortLabel: "Fiscal",
+          icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
+        },
+      ];
+    }
+
+    return list;
+  }, [hasFinanceFeatures, hasInvestmentsFeature]);
+
+  const [selectedTab, setSelectedTab] = useState<MainTab>(() => {
+    const validValues = new Set(tabItems.map((t) => t.value));
+    if (validValues.has(activeTabParam)) return activeTabParam;
+    return tabItems[0]?.value ?? "financas";
+  });
+
+  const validTabValues = useMemo(() => new Set(tabItems.map((t) => t.value)), [tabItems]);
+  const mainTab: MainTab = validTabValues.has(selectedTab)
+    ? selectedTab
+    : (tabItems[0]?.value ?? "financas");
 
   const handleTabChange = (val: string) => {
     const nextTab = val as MainTab;
-    setMainTab(nextTab);
+    setSelectedTab(nextTab);
     setSearchParams((prev) => {
       prev.set("aba", nextTab);
       return prev;
     });
   };
+
 
   // Filtros de Período da Aba Finanças
   const [month, setMonth] = useState(currentMonth());
@@ -109,6 +200,7 @@ export function ReportsPage() {
   const [dividendFreedomOpen, setDividendFreedomOpen] = useState(false);
   const [consolidatedWealthOpen, setConsolidatedWealthOpen] = useState(false);
   const [taxReportOpen, setTaxReportOpen] = useState(false);
+
 
 
   const range =
@@ -480,6 +572,16 @@ export function ReportsPage() {
     debts,
   ]);
 
+  const excelDescription = useMemo(() => {
+    if (!hasFinanceFeatures && hasInvestmentsFeature) {
+      return "Exportação completa das abas de Investimentos (Resumo Patrimonial, Custódia de Ativos, Proventos e Fiscal) com formatações e fórmulas nativas.";
+    }
+    if (hasFinanceFeatures && !hasInvestmentsFeature) {
+      return "Exportação completa das abas financeiras (Resumo Financeiro, DRE e Dívidas) com formatações e fórmulas nativas.";
+    }
+    return "Exportação completa em 5 abas (Resumo Patrimonial, Custódia de Ativos, Proventos, DRE e Dívidas) com formatações e fórmulas nativas.";
+  }, [hasFinanceFeatures, hasInvestmentsFeature]);
+
   if (loading) {
     return (
       <div className="flex flex-col gap-6 p-4 sm:p-6">
@@ -503,50 +605,29 @@ export function ReportsPage() {
     );
   }
 
-
-
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 pb-20">
+    <div className="flex flex-col gap-6 p-3.5 sm:p-6 pb-20">
       {/* Banner / Card de Exportação Excel */}
-      <ExcelExportCard workbookData={workbookData} />
+      <ExcelExportCard workbookData={workbookData} description={excelDescription} />
+
 
       {/* Navegação Principal do Hub de Relatórios */}
       <Tabs
         value={mainTab}
         onValueChange={handleTabChange}
         variant="pills"
-        items={[
-          {
-            value: "financas",
-            label: "Finanças & DRE",
-            icon: <Landmark className="size-4" aria-hidden="true" />,
-          },
-          {
-            value: "investimentos",
-            label: "Investimentos & Carteira",
-            icon: <TrendingUp className="size-4" aria-hidden="true" />,
-          },
-          {
-            value: "balanco",
-            label: "Balanço & Liberdade",
-            icon: <Scale className="size-4" aria-hidden="true" />,
-          },
-          {
-            value: "fiscal",
-            label: "Fiscal & IRPF",
-            icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
-          },
-        ]}
+        items={tabItems}
       />
 
       {/* Seletor Global de Período — Compartilhado por todas as abas */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3 shadow-xs">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-xs">
+        <div className="grid grid-cols-3 sm:flex items-center gap-1.5 w-full sm:w-auto">
           <Button
             type="button"
             variant={mode === "month" ? "default" : "outline"}
             size="sm"
             onClick={() => setMode("month")}
+            className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
           >
             Mensal
           </Button>
@@ -555,6 +636,7 @@ export function ReportsPage() {
             variant={mode === "year" ? "default" : "outline"}
             size="sm"
             onClick={() => setMode("year")}
+            className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
           >
             Anual
           </Button>
@@ -563,35 +645,38 @@ export function ReportsPage() {
             variant={mode === "custom" ? "default" : "outline"}
             size="sm"
             onClick={() => setMode("custom")}
+            className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
           >
             Personalizado
           </Button>
         </div>
 
-        {mode === "month" ? (
-          <MonthPicker value={month} onValueChange={setMonth} />
-        ) : mode === "year" ? (
-          <YearPicker value={year} onValueChange={setYear} />
-        ) : (
-          <div className="flex items-center gap-2">
-            <DatePicker value={customStart} onValueChange={setCustomStart} placeholder="Início" />
-            <span className="text-xs text-muted-foreground">até</span>
-            <DatePicker value={customEnd} onValueChange={setCustomEnd} placeholder="Fim" />
-          </div>
-        )}
+        <div className="flex items-center justify-center sm:justify-end w-full sm:w-auto">
+          {mode === "month" ? (
+            <MonthPicker value={month} onValueChange={setMonth} className="w-full sm:w-auto" />
+          ) : mode === "year" ? (
+            <YearPicker value={year} onValueChange={setYear} className="w-full sm:w-auto" />
+          ) : (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <DatePicker value={customStart} onValueChange={setCustomStart} placeholder="Início" className="w-full sm:w-auto" />
+              <span className="text-xs text-muted-foreground text-center">até</span>
+              <DatePicker value={customEnd} onValueChange={setCustomEnd} placeholder="Fim" className="w-full sm:w-auto" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ABA 1: FINANÇAS & DRE PESSOAL */}
       {mainTab === "financas" ? (
         <div className="flex flex-col gap-6">
           {/* Card Dossiê Executivo A4 de Finanças & DRE */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs">
-            <div className="flex flex-col gap-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <Landmark className="size-5 text-primary-strong" aria-hidden="true" />
-                <h3 className="text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais &amp; DRE (A4/PDF)</h3>
+                <Landmark className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
+                <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais &amp; DRE (A4/PDF)</h3>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Demonstração do Resultado do Exercício (DRE Pessoal), fluxo de caixa líquido, taxa de poupança e detalhamento de gastos.
               </p>
             </div>
@@ -599,7 +684,7 @@ export function ReportsPage() {
               type="button"
               variant="default"
               onClick={() => setFinancialReportOpen(true)}
-              className="gap-2 shrink-0"
+              className="gap-2 shrink-0 w-full sm:w-auto justify-center"
             >
               <Printer className="size-4" aria-hidden="true" />
               Visualizar &amp; Imprimir Dossiê A4
@@ -607,24 +692,24 @@ export function ReportsPage() {
           </div>
 
           {/* Cards de Resumo */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Receitas Totais</span>
-              <MoneyText cents={currentIncomeCents} tone="positive" className="text-xl font-bold font-display" />
+              <MoneyText cents={currentIncomeCents} tone="positive" className="text-lg sm:text-xl font-bold font-display truncate" />
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Despesas Totais</span>
-              <MoneyText cents={currentExpenseCents} tone="negative" className="text-xl font-bold font-display" />
+              <MoneyText cents={currentExpenseCents} tone="negative" className="text-lg sm:text-xl font-bold font-display truncate" />
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Poupança do Período</span>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <MoneyText
                   cents={currentIncomeCents - currentExpenseCents}
                   tone={currentIncomeCents >= currentExpenseCents ? "positive" : "negative"}
-                  className="text-xl font-bold font-display"
+                  className="text-lg sm:text-xl font-bold font-display truncate"
                 />
-                <span className="text-xs font-semibold text-muted-foreground">
+                <span className="text-xs font-semibold text-muted-foreground shrink-0">
                   {currentOverview.savingsRatePercent !== null ? `${currentOverview.savingsRatePercent.toFixed(1)}%` : "—"}
                 </span>
               </div>
@@ -633,14 +718,15 @@ export function ReportsPage() {
 
           {/* Agregações */}
           <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-foreground">Detalhamento de Despesas</h3>
-              <div className="flex gap-1.5">
+              <div className="grid grid-cols-3 sm:flex gap-1.5 w-full sm:w-auto">
                 <Button
                   type="button"
                   variant={aggregationTab === "category" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setAggregationTab("category")}
+                  className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
                 >
                   Categorias
                 </Button>
@@ -649,6 +735,7 @@ export function ReportsPage() {
                   variant={aggregationTab === "method" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setAggregationTab("method")}
+                  className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
                 >
                   Formas de Pgto
                 </Button>
@@ -657,9 +744,11 @@ export function ReportsPage() {
                   variant={aggregationTab === "weekday" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setAggregationTab("weekday")}
+                  className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
                 >
                   Dias da Semana
                 </Button>
+
               </div>
             </div>
 
@@ -705,13 +794,13 @@ export function ReportsPage() {
       {mainTab === "investimentos" ? (
         <div className="flex flex-col gap-6">
           {/* Card Dossiê Executivo A4 */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs">
-            <div className="flex flex-col gap-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <TrendingUp className="size-5 text-portfolio" aria-hidden="true" />
-                <h3 className="text-base font-bold text-foreground">Dossiê Executivo de Alocação &amp; Patrimônio (A4/PDF)</h3>
+                <TrendingUp className="size-5 text-portfolio shrink-0" aria-hidden="true" />
+                <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Alocação &amp; Patrimônio (A4/PDF)</h3>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Documento de consultoria patrimonial com diagnóstico de defasagem de metas (Target vs. Actual), risco de concentração e custódia.
               </p>
             </div>
@@ -719,7 +808,7 @@ export function ReportsPage() {
               type="button"
               variant="default"
               onClick={() => setTearSheetOpen(true)}
-              className="gap-2 shrink-0"
+              className="gap-2 shrink-0 w-full sm:w-auto justify-center"
             >
               <Printer className="size-4" aria-hidden="true" />
               Visualizar &amp; Imprimir Dossiê A4
@@ -727,30 +816,30 @@ export function ReportsPage() {
           </div>
 
           {/* Resumo da Alocação & Metas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Patrimônio Consolidado</span>
-              <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" className="text-xl font-bold font-display" />
+              <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" className="text-lg sm:text-xl font-bold font-display truncate" />
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Capital Investido</span>
-              <MoneyText cents={numberToCents(totalInvestedCostBRL)} tone="default" className="text-xl font-bold font-display" />
+              <MoneyText cents={numberToCents(totalInvestedCostBRL)} tone="default" className="text-lg sm:text-xl font-bold font-display truncate" />
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Aderência às Metas</span>
-              <span className="text-xl font-bold font-display text-primary-strong">{allocationAnalysis.alignmentScore}%</span>
+              <span className="text-lg sm:text-xl font-bold font-display text-primary-strong">{allocationAnalysis.alignmentScore}%</span>
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Top 5 Concentração</span>
-              <span className="text-xl font-bold font-display text-foreground">{concentrationRisk.top5Pct.toFixed(1)}%</span>
+              <span className="text-lg sm:text-xl font-bold font-display text-foreground">{concentrationRisk.top5Pct.toFixed(1)}%</span>
             </div>
           </div>
 
           {/* Tabela Resumida de Gaps de Classe */}
           <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
               <div className="flex items-center gap-2">
-                <PieChart className="size-4 text-portfolio" aria-hidden="true" />
+                <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
                 <h3 className="text-sm font-semibold text-foreground">Defasagem de Metas por Classe</h3>
               </div>
               {allocationAnalysis.topDeficitClass ? (
@@ -761,7 +850,7 @@ export function ReportsPage() {
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-border/80">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full min-w-[500px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
                     <th className="py-2.5 px-3">Classe</th>
@@ -805,13 +894,13 @@ export function ReportsPage() {
         <div className="flex flex-col gap-6">
           {/* Card Duplo de Dossiês A4 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs">
-              <div className="flex flex-col gap-1">
+            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+              <div className="flex flex-col gap-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <Scale className="size-5 text-primary-strong" aria-hidden="true" />
-                  <h3 className="text-base font-bold text-foreground">Balanço 360° &amp; DRE Pessoal</h3>
+                  <Scale className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
+                  <h3 className="text-sm sm:text-base font-bold text-foreground">Balanço 360° &amp; DRE Pessoal</h3>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Relatório consolidado unindo investimentos, contas, dívidas, poupança e fluxo de caixa.
                 </p>
               </div>
@@ -821,13 +910,13 @@ export function ReportsPage() {
               </Button>
             </div>
 
-            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs">
-              <div className="flex flex-col gap-1">
+            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+              <div className="flex flex-col gap-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <Flame className="size-5 text-positive-strong" aria-hidden="true" />
-                  <h3 className="text-base font-bold text-foreground">Dossiê de Liberdade Financeira</h3>
+                  <Flame className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+                  <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê de Liberdade Financeira</h3>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Análise da cobertura de custos por proventos, calendário 12M e efeito bola de neve.
                 </p>
               </div>
@@ -839,18 +928,18 @@ export function ReportsPage() {
           </div>
 
           {/* Cards de Patrimônio Líquido Real */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Patrimônio Líquido Real</span>
-              <MoneyText cents={numberToCents(consolidatedBalance.netWorthBRL)} tone="portfolio" className="text-xl font-bold font-display" />
+              <MoneyText cents={numberToCents(consolidatedBalance.netWorthBRL)} tone="portfolio" className="text-lg sm:text-xl font-bold font-display truncate" />
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Grau de Liberdade Financeira</span>
-              <span className="text-xl font-bold font-display text-positive-strong">{freedomAnalysis.freedomPct.toFixed(1)}%</span>
+              <span className="text-lg sm:text-xl font-bold font-display text-positive-strong">{freedomAnalysis.freedomPct.toFixed(1)}%</span>
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Autonomia de Reserva (Runway)</span>
-              <span className="text-xl font-bold font-display text-foreground">{freedomAnalysis.runwayMonths.toFixed(1)} meses</span>
+              <span className="text-lg sm:text-xl font-bold font-display text-foreground">{freedomAnalysis.runwayMonths.toFixed(1)} meses</span>
             </div>
           </div>
         </div>
@@ -859,13 +948,13 @@ export function ReportsPage() {
       {/* ABA 4: FISCAL & IRPF */}
       {mainTab === "fiscal" ? (
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs">
-            <div className="flex flex-col gap-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <Landmark className="size-5 text-positive-strong" aria-hidden="true" />
-                <h3 className="text-base font-bold text-foreground">Facilitador de Declaração de IRPF</h3>
+                <Landmark className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+                <h3 className="text-sm sm:text-base font-bold text-foreground">Facilitador de Declaração de IRPF</h3>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Textos prontos com 1-clique para cópia das Fichas de Bens e Direitos e Rendimentos Isentos/Exclusivos para o programa da Receita Federal.
               </p>
             </div>
@@ -873,7 +962,7 @@ export function ReportsPage() {
               type="button"
               variant="default"
               onClick={() => setTaxReportOpen(true)}
-              className="gap-2 shrink-0"
+              className="gap-2 shrink-0 w-full sm:w-auto justify-center"
             >
               <Printer className="size-4" aria-hidden="true" />
               Abrir Fichas de IRPF
@@ -881,6 +970,7 @@ export function ReportsPage() {
           </div>
         </div>
       ) : null}
+
 
       {/* Modais de Dossiês de Consultoria */}
       <FinancialCloseReportModal

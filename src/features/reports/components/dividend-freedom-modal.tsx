@@ -36,10 +36,13 @@ export function DividendFreedomModal({
   const handlePrint = () => {
     setPrinting(true);
     setTimeout(() => {
-      window.print();
+      if (typeof window !== "undefined" && typeof window.print === "function") {
+        window.print();
+      }
       setPrinting(false);
     }, 100);
   };
+
 
   // Matriz de 12 meses de proventos do ano corrente
   const monthlyTotals = Array.from({ length: 12 }, (_, idx) => {
