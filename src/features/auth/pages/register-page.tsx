@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, Navigate } from "react-router";
+import { Link, Navigate, useSearchParams } from "react-router";
 import { Alert, Button, Input } from "@/components/ui";
 import { signUpWithEmail } from "@/data/auth";
 import { AuthShell } from "@/features/auth/components/auth-shell";
@@ -9,9 +9,13 @@ import { getErrorMessage } from "@/services/errors";
 
 export function RegisterPage() {
   const { session, loading, configError } = useAuth();
+  const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState(
+    searchParams.get("convite") || searchParams.get("invite") || "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [pending, setPending] = useState(false);
@@ -27,7 +31,7 @@ export function RegisterPage() {
     setConfirmationSent(false);
     setPending(true);
     try {
-      const result = await signUpWithEmail(email, password, name);
+      const result = await signUpWithEmail(email, password, name, inviteCode);
       if (result.needsEmailConfirmation) {
         setConfirmationSent(true);
       }
@@ -90,10 +94,27 @@ export function RegisterPage() {
               placeholder="Mínimo de 6 caracteres"
             />
           </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="register-invite" className="text-sm font-medium">
+                Código de Convite
+              </label>
+              <span className="text-[11px] text-muted-foreground">Opcional</span>
+            </div>
+            <Input
+              id="register-invite"
+              type="text"
+              value={inviteCode}
+              onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
+              placeholder="Ex: GF-XXXX-XXXX"
+              className="font-mono uppercase text-xs"
+            />
+          </div>
           <Button type="submit" disabled={pending || Boolean(configError)}>
             {pending ? "Criando conta…" : "Criar conta"}
           </Button>
         </form>
+
 
         <div className="flex flex-col items-center gap-1.5 text-sm">
           <p className="text-muted-foreground">

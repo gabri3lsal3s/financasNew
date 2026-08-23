@@ -13,7 +13,16 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
 }));
+
 
 function renderSidebar(isCollapsed = false, onToggle = () => {}) {
   return render(

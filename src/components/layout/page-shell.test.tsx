@@ -30,9 +30,18 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
   useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 

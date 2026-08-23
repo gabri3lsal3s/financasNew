@@ -714,5 +714,184 @@ export async function executePortfolioBatchAporte(params: ExecutePortfolioBatchA
   );
 }
 
+// ---------------------------------------------------------------------------
+// SaaS & Administração (Fase 43)
+// ---------------------------------------------------------------------------
+
+/**
+ * Consulta o mapa de funcionalidades ativas/resolvidas para o usuário atual.
+ */
+export async function getMyFeatures(): Promise<Record<string, boolean>> {
+  return unwrapRpc(callRpc("get_my_features", {}));
+}
+
+export interface AdminListUsersParams {
+  search?: string | null;
+  status?: string | null;
+  role?: string | null;
+  limit?: number;
+  offset?: number;
+}
+
+export interface AdminUserRow {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: string;
+  status: string;
+  created_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  suspended_reason: string | null;
+  total_count: number;
+}
+
+/**
+ * Lista usuários para o painel administrativo com paginação e filtros.
+ */
+export async function adminListUsers(params: AdminListUsersParams = {}): Promise<AdminUserRow[]> {
+  return unwrapRpc(
+    callRpc("admin_list_users", {
+      p_search: params.search ?? null,
+      p_status: params.status ?? null,
+      p_role: params.role ?? null,
+      p_limit: params.limit ?? 50,
+      p_offset: params.offset ?? 0,
+    }),
+  );
+}
+
+/**
+ * Altera o status da conta de um usuário (Aprovação, Suspensão, Banimento, Reativação).
+ */
+export async function adminUpdateUserStatus(params: {
+  userId: string;
+  status: string;
+  reason?: string | null;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_update_user_status", {
+      p_user_id: params.userId,
+      p_status: params.status,
+      p_reason: params.reason ?? null,
+    }),
+    true,
+  );
+}
+
+/**
+ * Altera o papel / role de um usuário (Superadmin only).
+ */
+export async function adminSetUserRole(params: {
+  userId: string;
+  role: string;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_set_user_role", {
+      p_user_id: params.userId,
+      p_role: params.role,
+    }),
+    true,
+  );
+}
+
+/**
+ * Aplica um override personalizado de feature flag para um usuário.
+ */
+export async function adminSetFeatureOverride(params: {
+  userId: string;
+  featureKey: string;
+  enabled: boolean;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_set_feature_override", {
+      p_user_id: params.userId,
+      p_feature_key: params.featureKey,
+      p_enabled: params.enabled,
+    }),
+    true,
+  );
+}
+
+/**
+ * Remove o override de feature flag de um usuário (revertendo ao padrão global).
+ */
+export async function adminRemoveFeatureOverride(params: {
+  userId: string;
+  featureKey: string;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_remove_feature_override", {
+      p_user_id: params.userId,
+      p_feature_key: params.featureKey,
+    }),
+    true,
+  );
+}
+
+/**
+ * Alterna a ativação global de uma funcionalidade (Kill-Switch).
+ */
+export async function adminToggleGlobalFeature(params: {
+  featureKey: string;
+  enabled: boolean;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_toggle_global_feature", {
+      p_feature_key: params.featureKey,
+      p_enabled: params.enabled,
+    }),
+    true,
+  );
+}
+
+/**
+ * Cria um novo convite de acesso na allowlist.
+ */
+export async function adminCreateInvite(params: {
+  code: string;
+  maxUses?: number;
+  expiresAt?: string | null;
+  targetEmail?: string | null;
+}): Promise<string> {
+  return unwrapRpc(
+    callRpc("admin_create_invite", {
+      p_code: params.code,
+      p_max_uses: params.maxUses ?? 1,
+      p_expires_at: params.expiresAt ?? null,
+      p_target_email: params.targetEmail ?? null,
+    }),
+  );
+}
+
+/**
+ * Revoga um convite de acesso.
+ */
+export async function adminRevokeInvite(params: { inviteId: string }): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_revoke_invite", {
+      p_invite_id: params.inviteId,
+    }),
+    true,
+  );
+}
+
+export interface AdminMetricsResult {
+  total_users: number;
+  active_users: number;
+  pending_users: number;
+  suspended_users: number;
+  total_invites: number;
+  used_invites: number;
+}
+
+/**
+ * Obtém métricas executivas do SaaS para a aba de Visão Geral.
+ */
+export async function adminGetMetrics(): Promise<AdminMetricsResult> {
+  return unwrapRpc(callRpc("admin_get_metrics", {}));
+}
+
+
 
 

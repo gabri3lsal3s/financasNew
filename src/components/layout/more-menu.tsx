@@ -1,7 +1,8 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
-import { navGroups } from "@/components/layout/nav-items";
+import { navGroups, filterNavItems } from "@/components/layout/nav-items";
 import { InstallAppButton } from "@/components/modules/install-app-button";
-import { useReminders } from "@/state";
+import { useReminders, useUserAccess } from "@/state";
 import { cn } from "@/lib/utils";
 
 /** Itens fixos na BottomNav que não devem ser duplicados no menu "Mais". */
@@ -9,13 +10,21 @@ const BOTTOM_NAV_PATHS = new Set(["/", "/transacoes", "/cartoes"]);
 
 export function MoreMenu() {
   const { totalCount, urgentCount } = useReminders();
+  const { isAdmin, hasFeature } = useUserAccess();
 
-  const groups = navGroups
-    .map((group) => ({
-      title: group.title,
-      items: group.items.filter((item) => !BOTTOM_NAV_PATHS.has(item.path)),
-    }))
-    .filter((group) => group.items.length > 0);
+  const groups = useMemo(() => {
+    return navGroups
+      .map((group) => ({
+        title: group.title,
+        items: filterNavItems(
+          group.items.filter((item) => !BOTTOM_NAV_PATHS.has(item.path)),
+          isAdmin,
+          hasFeature,
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [isAdmin, hasFeature]);
+
 
   return (
     <div className="space-y-6">

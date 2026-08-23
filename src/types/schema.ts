@@ -63,6 +63,22 @@ export type AmortizationSystem = (typeof AMORTIZATION_SYSTEMS)[number];
 export const INSTALLMENT_DELETE_MODES = ["single", "all", "subsequent"] as const;
 export type InstallmentDeleteMode = (typeof INSTALLMENT_DELETE_MODES)[number];
 
+export const USER_ROLES = ["user", "admin", "superadmin"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const USER_STATUSES = ["pending_approval", "active", "suspended", "banned"] as const;
+export type UserStatus = (typeof USER_STATUSES)[number];
+
+export const SYSTEM_FEATURE_KEYS = [
+  "investments",
+  "debts",
+  "budgets",
+  "reports",
+  "insights",
+  "reminders",
+] as const;
+export type SystemFeatureKey = (typeof SYSTEM_FEATURE_KEYS)[number];
+
 export const ASSET_CURRENCIES = ["BRL", "USD"] as const;
 export type AssetCurrency = (typeof ASSET_CURRENCIES)[number];
 
@@ -80,8 +96,68 @@ export type Profile = {
   id: string;
   name: string | null;
   email: string | null;
+  role?: UserRole;
+  status?: UserStatus;
+  approved_at?: string | null;
+  approved_by?: string | null;
+  suspended_reason?: string | null;
   created_at: string;
 };
+
+export type AccessInvite = {
+  id: string;
+  code: string;
+  created_by?: string | null;
+  max_uses: number;
+  used_count: number;
+  target_email?: string | null;
+  expires_at?: string | null;
+  is_revoked: boolean;
+  created_at: string;
+};
+
+export type SystemFeature = {
+  key: string;
+  name: string;
+  description?: string | null;
+  is_globally_enabled: boolean;
+  default_enabled_for_new_users: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type UserFeatureOverride = {
+  id: string;
+  user_id: string;
+  feature_key: string;
+  is_enabled: boolean;
+  granted_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdminUserSummary = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: UserRole;
+  status: UserStatus;
+  created_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  suspended_reason: string | null;
+  total_count: number;
+};
+
+export type AdminMetrics = {
+  total_users: number;
+  active_users: number;
+  pending_users: number;
+  suspended_users: number;
+  total_invites: number;
+  used_invites: number;
+};
+
 
 export type UserCustomSettings = {
   density?: "comfortable" | "compact";

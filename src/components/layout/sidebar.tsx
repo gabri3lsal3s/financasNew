@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { NavLink, useLocation } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { navGroups } from "@/components/layout/nav-items";
+import { navGroups, filterNavItems } from "@/components/layout/nav-items";
 import { scrollToTop } from "@/services/scroll";
-import { useReminders } from "@/state";
+import { useReminders, useUserAccess } from "@/state";
+
 
 /** Atraso do hover-expand: evita disparos acidentais com mouse rápido (F25). */
 const HOVER_EXPAND_DELAY_MS = 120;
@@ -62,7 +63,18 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     leaveTimer.current = setTimeout(() => setHoverExpanded(false), HOVER_EXPAND_DELAY_MS);
   };
 
+  const { isAdmin, hasFeature } = useUserAccess();
   const expanded = !isCollapsed || hoverExpanded;
+
+  const visibleGroups = useMemo(() => {
+    return navGroups
+      .map((g) => ({
+        title: g.title,
+        items: filterNavItems(g.items, isAdmin, hasFeature),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [isAdmin, hasFeature]);
+
 
   return (
     <aside
@@ -80,7 +92,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto p-2.5" aria-label="Navegação principal">
-        {navGroups.map((group, groupIndex) => (
+        {visibleGroups.map((group, groupIndex) => (
           <div key={group.title} className="space-y-1">
             {expanded ? (
               <p className="px-3.5 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 animate-fade-slide-in">
@@ -91,6 +103,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             ) : null}
 
             {group.items.map((item) => {
+
               const isReminders = item.path === "/lembretes";
               const showBadge = isReminders && totalCount > 0;
               const isCurrent =

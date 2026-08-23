@@ -113,3 +113,30 @@ export { useGlobalSearchEntries } from "./queries/use-search";
 export { usePredictionHistory } from "./queries/use-prediction-history";
 export { useOnboardingCounts } from "./queries/use-onboarding";
 
+export { useUserAccess, USER_ACCESS_KEY, USER_FEATURES_KEY } from "./queries/use-user-access";
+export type { UserAccessResult } from "./queries/use-user-access";
+
+export {
+  useAdminMetrics,
+  useAdminUsers,
+  useAdminFeatures,
+  useAdminInvites,
+  useAdminAuditLogs,
+  ADMIN_METRICS_KEY,
+  ADMIN_USERS_KEY,
+  ADMIN_FEATURES_KEY,
+  ADMIN_INVITES_KEY,
+  ADMIN_AUDIT_KEY,
+} from "./queries/use-admin";
+
+export {
+  useAdminUpdateUserStatus,
+  useAdminSetUserRole,
+  useAdminSetFeatureOverride,
+  useAdminRemoveFeatureOverride,
+  useAdminToggleGlobalFeature,
+  useAdminCreateInvite,
+  useAdminRevokeInvite,
+} from "./mutations/use-admin-mutations";
+
+

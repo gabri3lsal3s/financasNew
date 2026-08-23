@@ -23,7 +23,9 @@ const pageLoaders: Record<string, () => Promise<PageModule>> = {
   "/lembretes": () => import("@/features/reminders/pages/reminders-page").then((m) => ({ default: m.RemindersPage })),
   "/configuracoes": () =>
     import("@/features/settings/pages/settings-page").then((m) => ({ default: m.SettingsPage })),
+  "/admin": () => import("@/features/admin/pages/admin-page").then((m) => ({ default: m.AdminPage })),
 };
+
 
 export interface AppRoute {
   path: string;

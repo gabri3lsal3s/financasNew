@@ -11,7 +11,16 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useUserAccess: () => ({
+    role: "user",
+    status: "active",
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+  }),
 }));
+
 
 describe("MoreMenu", () => {
   it("não renderiza Início, Transações nem Cartões (já presentes na barra de navegação)", () => {

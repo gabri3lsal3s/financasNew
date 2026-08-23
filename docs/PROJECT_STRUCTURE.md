@@ -117,6 +117,7 @@
     │   ├── insights/              #   Insights, projeção e corte
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)
+    │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: Gestão de Usuários, Moderação, Feature Flags, Convites, Auditoria)
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40):
     │   │                          #     hub de 5 abas (Resumo / Proventos / Metas / Aporte / Relatórios & IR)
     │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, relatorios-tab, investments-page
@@ -128,7 +129,9 @@
     │                              #     com simulador FIRE interativo, showcase, pricing e FAQ
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
+    │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags e validação de convites
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
+
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…) + penalty (mora/multa/desconto)

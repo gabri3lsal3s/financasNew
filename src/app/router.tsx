@@ -2,7 +2,14 @@ import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation } from "rea
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen, MoreMenu, PageShell } from "@/components/layout";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
-import { ForgotPasswordPage, LoginPage, RegisterPage } from "@/features/auth";
+import { RequireActiveAccount, RequireAdmin } from "@/components/routing";
+import {
+  ForgotPasswordPage,
+  LoginPage,
+  PendingApprovalPage,
+  RegisterPage,
+  SuspendedAccountPage,
+} from "@/features/auth";
 import { LandingPage } from "@/features/landing";
 import { useAuth } from "@/hooks/use-auth";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
@@ -63,22 +70,43 @@ export function AppRouter() {
         {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
         <Route path="/entrar" element={<LoginPage />} />
         <Route path="/cadastro" element={<RegisterPage />} />
+        <Route path="/criar-conta" element={<RegisterPage />} />
         <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
 
-        {/* Áreas autenticadas */}
+        {/* Telas de status da conta para usuários autenticados */}
         <Route element={<RequireAuth />}>
-          {/* Redirecionamento de compatibilidade para atalhos PWA / links legados / rotas unificadas */}
-          <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
-          <Route path="/categorias" element={<Navigate to="/orcamentos" replace />} />
-          <Route element={<PageShell />}>
-            {appRoutes.map((route) => (
-              <Route key={route.path} path={route.path} element={<route.Component />} />
-            ))}
-            <Route path="/mais" element={<MoreMenu />} />
-            <Route path="*" element={<MoreMenu />} />
+          <Route path="/aprovacao-pendente" element={<PendingApprovalPage />} />
+          <Route path="/conta-suspensa" element={<SuspendedAccountPage />} />
+
+          {/* Área protegida: Requer conta com status 'active' */}
+          <Route element={<RequireActiveAccount />}>
+            {/* Redirecionamento de compatibilidade para atalhos PWA / links legados / rotas unificadas */}
+            <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
+            <Route path="/categorias" element={<Navigate to="/orcamentos" replace />} />
+
+            <Route element={<PageShell />}>
+              {appRoutes
+                .filter((r) => r.path !== "/admin")
+                .map((route) => (
+                  <Route key={route.path} path={route.path} element={<route.Component />} />
+                ))}
+
+              {/* Rota restrita de administração */}
+              <Route element={<RequireAdmin />}>
+                {appRoutes
+                  .filter((r) => r.path === "/admin")
+                  .map((route) => (
+                    <Route key={route.path} path={route.path} element={<route.Component />} />
+                  ))}
+              </Route>
+
+              <Route path="/mais" element={<MoreMenu />} />
+              <Route path="*" element={<MoreMenu />} />
+            </Route>
           </Route>
         </Route>
       </Routes>
     </BrowserRouter>
   );
 }
+

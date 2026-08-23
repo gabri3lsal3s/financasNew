@@ -19,12 +19,20 @@ export async function signInWithEmail(email: string, password: string): Promise<
   }
 }
 
-export async function signUpWithEmail(email: string, password: string, name?: string): Promise<SignUpResult> {
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  name?: string,
+  inviteCode?: string,
+): Promise<SignUpResult> {
   const { data, error } = await getSupabase().auth.signUp({
     email,
     password,
     options: {
-      data: { name: name ?? "" },
+      data: {
+        name: name ?? "",
+        invite_code: inviteCode?.trim().toUpperCase() ?? "",
+      },
       emailRedirectTo: `${window.location.origin}/entrar`,
     },
   });
@@ -34,6 +42,7 @@ export async function signUpWithEmail(email: string, password: string, name?: st
   }
   return { needsEmailConfirmation: data.session === null };
 }
+
 
 export async function resetPasswordForEmail(email: string): Promise<void> {
   const { error } = await getSupabase().auth.resetPasswordForEmail(email, {

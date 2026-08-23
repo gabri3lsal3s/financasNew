@@ -1,4 +1,5 @@
 import type {
+  AccessInvite,
   AllocationPreset,
   AllocationTarget,
   AssetPrice,
@@ -26,6 +27,8 @@ import type {
   Profile,
   Recurrence,
   RecurrenceSkip,
+  SystemFeature,
+  UserFeatureOverride,
   UserPreferences,
 } from "./schema";
 
@@ -44,6 +47,9 @@ export interface Database {
     Tables: {
       profiles: Table<Profile>;
       user_preferences: Table<UserPreferences>;
+      access_invites: Table<AccessInvite>;
+      system_features: Table<SystemFeature>;
+      user_feature_overrides: Table<UserFeatureOverride>;
       categories: Table<Category>;
       incomes: Table<Income>;
       expenses: Table<Expense>;
@@ -70,6 +76,7 @@ export interface Database {
       asset_prices: Table<AssetPrice>;
       audit_events: Table<AuditEvent>;
     };
+
     Views: Record<string, never>;
     Functions: {
       create_expense_with_debt: {
@@ -317,6 +324,95 @@ export interface Database {
         };
         Returns: boolean;
       };
+      get_my_features: {
+        Args: Record<string, never>;
+        Returns: Record<string, boolean>;
+      };
+      admin_list_users: {
+        Args: {
+          p_search?: string | null;
+          p_status?: string | null;
+          p_role?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Array<{
+          id: string;
+          name: string | null;
+          email: string | null;
+          role: string;
+          status: string;
+          created_at: string;
+          approved_at: string | null;
+          approved_by: string | null;
+          suspended_reason: string | null;
+          total_count: number;
+        }>;
+      };
+      admin_update_user_status: {
+        Args: {
+          p_user_id: string;
+          p_status: string;
+          p_reason?: string | null;
+        };
+        Returns: void;
+      };
+      admin_set_user_role: {
+        Args: {
+          p_user_id: string;
+          p_role: string;
+        };
+        Returns: void;
+      };
+      admin_set_feature_override: {
+        Args: {
+          p_user_id: string;
+          p_feature_key: string;
+          p_enabled: boolean;
+        };
+        Returns: void;
+      };
+      admin_remove_feature_override: {
+        Args: {
+          p_user_id: string;
+          p_feature_key: string;
+        };
+        Returns: void;
+      };
+      admin_toggle_global_feature: {
+        Args: {
+          p_feature_key: string;
+          p_enabled: boolean;
+        };
+        Returns: void;
+      };
+      admin_create_invite: {
+        Args: {
+          p_code: string;
+          p_max_uses?: number;
+          p_expires_at?: string | null;
+          p_target_email?: string | null;
+        };
+        Returns: string;
+      };
+      admin_revoke_invite: {
+        Args: {
+          p_invite_id: string;
+        };
+        Returns: void;
+      };
+      admin_get_metrics: {
+        Args: Record<string, never>;
+        Returns: {
+          total_users: number;
+          active_users: number;
+          pending_users: number;
+          suspended_users: number;
+          total_invites: number;
+          used_invites: number;
+        };
+      };
     };
   };
 }
+
