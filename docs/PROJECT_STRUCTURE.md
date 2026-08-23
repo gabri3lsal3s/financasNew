@@ -113,7 +113,7 @@
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
-    │   ├── reports/               #   Relatórios
+    │   ├── reports/               #   Central Unificada de Relatórios (§F42: Finanças & DRE A4, Investimentos & Metas, Balanço 360°, Fiscal IRPF, Excel XLSX)
     │   ├── insights/              #   Insights, projeção e corte
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)

@@ -13,6 +13,7 @@ export interface DividendFreedomModalProps {
   freedomAnalysis: FreedomAnalysisResult;
   dividends: readonly PortfolioDividend[];
   yearDividendsBRL: number;
+  periodLabel?: string;
   appName?: string;
 }
 
@@ -24,10 +25,12 @@ export function DividendFreedomModal({
   freedomAnalysis,
   dividends,
   yearDividendsBRL,
+  periodLabel = "Exercício Anual",
   appName = "Finanças Pessoais",
 }: DividendFreedomModalProps) {
   const [printing, setPrinting] = useState(false);
   const generatedAt = new Date().toLocaleDateString("pt-BR");
+
   const currentYear = new Date().getFullYear();
 
   const handlePrint = () => {
@@ -63,9 +66,10 @@ export function DividendFreedomModal({
           </div>
         </div>
         <div className="flex flex-col items-start sm:items-end text-left sm:text-right text-xs text-muted-foreground print:items-end print:text-right">
-          <span className="font-medium text-foreground">Ano Fiscal {currentYear}</span>
+          <span className="font-medium text-foreground">{periodLabel}</span>
           <span>Emitido em {generatedAt}</span>
         </div>
+
       </header>
 
       {/* Grade de KPIs de Renda Passiva */}

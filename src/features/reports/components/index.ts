@@ -4,3 +4,5 @@ export { DividendFreedomModal, type DividendFreedomModalProps } from "./dividend
 export { ConsolidatedWealthModal, type ConsolidatedWealthModalProps } from "./consolidated-wealth-modal";
 export { TaxFacilitatorModal, type TaxFacilitatorModalProps } from "./tax-facilitator-modal";
 export { ExcelExportCard, type ExcelExportCardProps } from "./excel-export-card";
+export { FinancialCloseReportModal, type FinancialCloseReportModalProps } from "./financial-close-report-modal";
+

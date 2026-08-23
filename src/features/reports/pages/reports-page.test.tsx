@@ -226,4 +226,34 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     expect(screen.getByText("Segunda")).toBeInTheDocument();
     expect(screen.getByText("Sábado")).toBeInTheDocument();
   });
+
+  it("exibe o card executivo de Finanças & DRE e abre o modal ao clicar", async () => {
+    const user = userEvent.setup();
+    renderReports();
+
+    expect(screen.getByText("Dossiê Executivo de Finanças Pessoais & DRE (A4/PDF)")).toBeInTheDocument();
+    const openBtn = screen.getByRole("button", { name: /Visualizar & Imprimir Dossiê A4/i });
+    await user.click(openBtn);
+
+    expect(screen.getByText("Relatório Executivo de Finanças Pessoais & DRE")).toBeInTheDocument();
+    expect(screen.getByText("DRE Pessoal — Demonstração do Período")).toBeInTheDocument();
+  });
+
+  it("mantém a barra de controle de período visível ao navegar entre abas", async () => {
+    const user = userEvent.setup();
+    renderReports();
+
+    expect(screen.getByRole("button", { name: "Mensal" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anual" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Personalizado" })).toBeInTheDocument();
+
+    // Muda para Investimentos
+    await user.click(screen.getByRole("tab", { name: /Investimentos & Carteira/i }));
+    expect(screen.getByRole("button", { name: "Mensal" })).toBeInTheDocument();
+
+    // Muda para Balanço
+    await user.click(screen.getByRole("tab", { name: /Balanço & Liberdade/i }));
+    expect(screen.getByRole("button", { name: "Mensal" })).toBeInTheDocument();
+  });
 });
+

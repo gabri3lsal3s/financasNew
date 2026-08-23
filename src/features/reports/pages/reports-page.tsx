@@ -27,8 +27,8 @@ import {
   computeConsolidatedBalanceSheet,
   validateCustomPeriod,
   WEEKDAY_LABELS,
-  type ReportEntry,
 } from "@/domain/reports";
+
 import { isCashAssetClass } from "@/domain/portfolio";
 import { addDaysISO } from "@/domain/debts";
 import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
@@ -54,10 +54,12 @@ import {
   ConsolidatedWealthModal,
   DividendFreedomModal,
   ExcelExportCard,
+  FinancialCloseReportModal,
   ReportDetailDialog,
   TaxFacilitatorModal,
   WealthTearSheetModal,
 } from "../components";
+
 import type { Expense } from "@/types";
 import { numberToCents } from "@/domain/money";
 import type { ExcelWorkbookData } from "@/services/excel-export";
@@ -102,10 +104,12 @@ export function ReportsPage() {
   } | null>(null);
 
   // Modais de Dossiê de Consultoria
+  const [financialReportOpen, setFinancialReportOpen] = useState(false);
   const [tearSheetOpen, setTearSheetOpen] = useState(false);
   const [dividendFreedomOpen, setDividendFreedomOpen] = useState(false);
   const [consolidatedWealthOpen, setConsolidatedWealthOpen] = useState(false);
   const [taxReportOpen, setTaxReportOpen] = useState(false);
+
 
   const range =
     mode === "month"
@@ -145,22 +149,29 @@ export function ReportsPage() {
   const classTargetsQuery = useGroupTargets("class");
   const assetTargetsQuery = useAllocationTargets();
 
-  const expenses =
-    mode === "month"
-      ? monthlyExpenses.data ?? []
-      : mode === "year"
-        ? yearExpenses.data ?? []
-        : customValid
-          ? rangeExpenses.data ?? []
-          : [];
-  const incomes =
-    mode === "month"
-      ? monthlyIncomes.data ?? []
-      : mode === "year"
-        ? yearIncomes.data ?? []
-        : customValid
-          ? rangeIncomes.data ?? []
-          : [];
+  const expenses = useMemo(
+    () =>
+      mode === "month"
+        ? monthlyExpenses.data ?? []
+        : mode === "year"
+          ? yearExpenses.data ?? []
+          : customValid
+            ? rangeExpenses.data ?? []
+            : [],
+    [mode, monthlyExpenses.data, yearExpenses.data, customValid, rangeExpenses.data],
+  );
+
+  const incomes = useMemo(
+    () =>
+      mode === "month"
+        ? monthlyIncomes.data ?? []
+        : mode === "year"
+          ? yearIncomes.data ?? []
+          : customValid
+            ? rangeIncomes.data ?? []
+            : [],
+    [mode, monthlyIncomes.data, yearIncomes.data, customValid, rangeIncomes.data],
+  );
 
   const loading =
     (mode === "month"
@@ -193,11 +204,9 @@ export function ReportsPage() {
   const classTargets = useMemo(() => classTargetsQuery.data ?? [], [classTargetsQuery.data]);
   const assetTargets = useMemo(() => assetTargetsQuery.data ?? [], [assetTargetsQuery.data]);
 
-
   const totalPatrimonyBRL = positionQuery.totalBRL ?? 0;
   const cashBalanceBRL = positionQuery.cashBRL ?? 0;
   const totalInvestedCostBRL = positionQuery.totalCostBRL ?? 0;
-
 
   const currentYearNum = new Date().getFullYear();
   const yearDividendsBRL = useMemo(
@@ -207,7 +216,6 @@ export function ReportsPage() {
         .reduce((acc, d) => acc + d.amount, 0),
     [dividends, currentYearNum],
   );
-
 
   // Cálculos de Consultoria de Investimentos
   const allocationAnalysis = useMemo(() => {
@@ -223,7 +231,6 @@ export function ReportsPage() {
       assetTargets.map((at) => ({ assetId: at.asset_id, targetPercentage: at.target_percentage })),
     );
   }, [positionRows, classTargets, assetTargets]);
-
 
   const concentrationRisk = useMemo(() => {
     return calculateConcentrationRisk(
@@ -258,11 +265,37 @@ export function ReportsPage() {
     );
   }, [yearDividendsBRL, monthlyExpenses.data, cashBalanceBRL, assets]);
 
+  const periodLabel = useMemo(() => {
+    if (mode === "month") {
+      const parts = month.split("-");
+      const y = parts[0];
+      const m = parts[1];
+      if (y && m) {
+        const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+        const monthName = date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+        return monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      }
+      return month;
+    }
+    if (mode === "year") {
+      return `Exercício de ${year}`;
+    }
+    if (customStart && customEnd) {
+      return `${customStart} a ${customEnd}`;
+    }
+    return "Período Personalizado";
+  }, [mode, month, year, customStart, customEnd]);
+
   const consolidatedBalance = useMemo(() => {
-    const curMonthIncome = (monthlyIncomes.data ?? []).reduce((acc, i) => acc + i.value, 0);
-    const curMonthExpense = (monthlyExpenses.data ?? []).reduce((acc, e) => acc + e.value, 0);
+    const curMonthIncome = (incomes ?? []).reduce((acc, i) => acc + i.value, 0);
+    const curMonthExpense = (expenses ?? []).reduce((acc, e) => acc + e.value, 0);
     const curMonthContrib = contributions
-      .filter((c) => c.date.startsWith(month))
+      .filter((c) => {
+        if (mode === "month") return c.date.startsWith(month);
+        if (mode === "year") return c.date.startsWith(String(year));
+        if (customValid && customStart && customEnd) return c.date >= customStart && c.date <= customEnd;
+        return c.date.startsWith(month);
+      })
       .reduce((acc, c) => acc + c.amount, 0);
 
     return computeConsolidatedBalanceSheet({
@@ -279,7 +312,100 @@ export function ReportsPage() {
       monthlyExpensesBRL: curMonthExpense,
       monthlyContributionsBRL: curMonthContrib,
     });
-  }, [totalPatrimonyBRL, totalInvestedCostBRL, cashBalanceBRL, debts, monthlyIncomes.data, monthlyExpenses.data, contributions, month]);
+  }, [totalPatrimonyBRL, totalInvestedCostBRL, cashBalanceBRL, debts, incomes, expenses, contributions, mode, month, year, customValid, customStart, customEnd]);
+
+  // Conversão de dados da aba finanças
+  const expenseEntries = useMemo(() => {
+    return expenses.map((item) => {
+      const cat = categoryById.get(item.category_id);
+      return {
+        id: item.id,
+        date: item.date,
+        kind: "expense" as const,
+        categoryId: item.category_id,
+        categoryName: cat?.name ?? "Sem categoria",
+        categoryIcon: cat?.icon,
+        paymentMethod: item.payment_method,
+        baseCents: numberToCents(item.value),
+        weight: item.report_weight,
+      };
+    });
+  }, [expenses, categoryById]);
+
+  const incomeEntries = useMemo(() => {
+    return incomes.map((item) => {
+      const cat = categoryById.get(item.category_id);
+      return {
+        id: item.id,
+        date: item.date,
+        kind: "income" as const,
+        categoryId: item.category_id,
+        categoryName: cat?.name ?? "Sem categoria",
+        categoryIcon: cat?.icon,
+        paymentMethod: undefined,
+        baseCents: numberToCents(item.value),
+        weight: item.report_weight,
+      };
+    });
+  }, [incomes, categoryById]);
+
+  const byCategory = useMemo(() => aggregateByCategory(expenseEntries), [expenseEntries]);
+  const byMethod = useMemo(() => aggregateByPaymentMethod(expenseEntries), [expenseEntries]);
+  const byWeekday = useMemo(() => aggregateByWeekday(expenseEntries), [expenseEntries]);
+
+  const currentExpenseCents = useMemo(
+    () => expenseEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
+    [expenseEntries],
+  );
+  const currentIncomeCents = useMemo(
+    () => incomeEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
+    [incomeEntries],
+  );
+
+  const currentOverview = useMemo(
+    () => computeOverview(currentIncomeCents, currentExpenseCents, 0),
+    [currentIncomeCents, currentExpenseCents],
+  );
+
+  const financialDRE = useMemo(() => {
+    const grossIncomeCents = currentIncomeCents;
+    const totalExpensesCents = currentExpenseCents;
+    const operationalSavingsCents = grossIncomeCents - totalExpensesCents;
+    const savingsRatePct =
+      grossIncomeCents > 0 ? (operationalSavingsCents / grossIncomeCents) * 100 : 0;
+
+    const periodContribBRL = contributions
+      .filter((c) => {
+        if (mode === "month") return c.date.startsWith(month);
+        if (mode === "year") return c.date.startsWith(String(year));
+        if (customValid && customStart && customEnd)
+          return c.date >= customStart && c.date <= customEnd;
+        return c.date.startsWith(month);
+      })
+      .reduce((acc, c) => acc + c.amount, 0);
+
+    const investedAporteCents = numberToCents(periodContribBRL);
+    const netCashFlowCents = operationalSavingsCents - investedAporteCents;
+
+    return {
+      grossIncomeCents,
+      totalExpensesCents,
+      operationalSavingsCents,
+      savingsRatePct,
+      investedAporteCents,
+      netCashFlowCents,
+    };
+  }, [
+    currentIncomeCents,
+    currentExpenseCents,
+    contributions,
+    mode,
+    month,
+    year,
+    customValid,
+    customStart,
+    customEnd,
+  ]);
 
   // Estrutura Completa do Caderno Excel
   const workbookData: ExcelWorkbookData = useMemo(() => {
@@ -377,44 +503,7 @@ export function ReportsPage() {
     );
   }
 
-  // Conversão de dados da aba finanças
-  const toEntries = (
-    list: readonly {
-      id: string;
-      date: string;
-      category_id: string;
-      value: number;
-      report_weight: number;
-      payment_method?: string | null;
-    }[],
-    kind: "expense" | "income",
-  ): ReportEntry[] =>
-    list.map((item) => {
-      const cat = categoryById.get(item.category_id);
-      return {
-        id: item.id,
-        date: item.date,
-        kind,
-        categoryId: item.category_id,
-        categoryName: cat?.name ?? "Sem categoria",
-        categoryIcon: cat?.icon,
-        paymentMethod: item.payment_method,
-        baseCents: numberToCents(item.value),
-        weight: item.report_weight,
-      };
-    });
 
-  const expenseEntries = toEntries(expenses, "expense");
-  const incomeEntries = toEntries(incomes, "income");
-
-  const byCategory = aggregateByCategory(expenseEntries);
-  const byMethod = aggregateByPaymentMethod(expenseEntries);
-  const byWeekday = aggregateByWeekday(expenseEntries);
-
-  const currentExpenseCents = expenseEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0);
-  const currentIncomeCents = incomeEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0);
-
-  const currentOverview = computeOverview(currentIncomeCents, currentExpenseCents, 0);
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 pb-20">
@@ -450,49 +539,71 @@ export function ReportsPage() {
         ]}
       />
 
+      {/* Seletor Global de Período — Compartilhado por todas as abas */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3 shadow-xs">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={mode === "month" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setMode("month")}
+          >
+            Mensal
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "year" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setMode("year")}
+          >
+            Anual
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "custom" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setMode("custom")}
+          >
+            Personalizado
+          </Button>
+        </div>
+
+        {mode === "month" ? (
+          <MonthPicker value={month} onValueChange={setMonth} />
+        ) : mode === "year" ? (
+          <YearPicker value={year} onValueChange={setYear} />
+        ) : (
+          <div className="flex items-center gap-2">
+            <DatePicker value={customStart} onValueChange={setCustomStart} placeholder="Início" />
+            <span className="text-xs text-muted-foreground">até</span>
+            <DatePicker value={customEnd} onValueChange={setCustomEnd} placeholder="Fim" />
+          </div>
+        )}
+      </div>
+
       {/* ABA 1: FINANÇAS & DRE PESSOAL */}
       {mainTab === "financas" ? (
         <div className="flex flex-col gap-6">
-          {/* Seletor de Período */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3 shadow-xs">
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant={mode === "month" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMode("month")}
-              >
-                Mensal
-              </Button>
-              <Button
-                type="button"
-                variant={mode === "year" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMode("year")}
-              >
-                Anual
-              </Button>
-              <Button
-                type="button"
-                variant={mode === "custom" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMode("custom")}
-              >
-                Personalizado
-              </Button>
-            </div>
-
-            {mode === "month" ? (
-              <MonthPicker value={month} onValueChange={setMonth} />
-            ) : mode === "year" ? (
-              <YearPicker value={year} onValueChange={setYear} />
-            ) : (
+          {/* Card Dossiê Executivo A4 de Finanças & DRE */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs">
+            <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <DatePicker value={customStart} onValueChange={setCustomStart} placeholder="Início" />
-                <span className="text-xs text-muted-foreground">até</span>
-                <DatePicker value={customEnd} onValueChange={setCustomEnd} placeholder="Fim" />
+                <Landmark className="size-5 text-primary-strong" aria-hidden="true" />
+                <h3 className="text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais &amp; DRE (A4/PDF)</h3>
               </div>
-            )}
+              <p className="text-xs text-muted-foreground">
+                Demonstração do Resultado do Exercício (DRE Pessoal), fluxo de caixa líquido, taxa de poupança e detalhamento de gastos.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setFinancialReportOpen(true)}
+              className="gap-2 shrink-0"
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Visualizar &amp; Imprimir Dossiê A4
+            </Button>
           </div>
 
           {/* Cards de Resumo */}
@@ -772,9 +883,30 @@ export function ReportsPage() {
       ) : null}
 
       {/* Modais de Dossiês de Consultoria */}
+      <FinancialCloseReportModal
+        open={financialReportOpen}
+        onOpenChange={setFinancialReportOpen}
+        periodLabel={periodLabel}
+        dre={financialDRE}
+        categories={byCategory.map((c) => ({
+          name: c.name,
+          totalCents: c.totalCents,
+          pct: currentExpenseCents > 0 ? (c.totalCents / currentExpenseCents) * 100 : 0,
+        }))}
+        paymentMethods={byMethod.map((m) => ({
+          method: m.method,
+          label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
+          totalCents: m.totalCents,
+          pct: currentExpenseCents > 0 ? (m.totalCents / currentExpenseCents) * 100 : 0,
+        }))}
+        expenseCount={expenseEntries.length}
+        incomeCount={incomeEntries.length}
+      />
+
       <WealthTearSheetModal
         open={tearSheetOpen}
         onOpenChange={setTearSheetOpen}
+        periodLabel={periodLabel}
         rows={positionRows.map((r) => {
           const yoc = r.totalCostBRL > 0 ? (r.dividends / r.totalCostBRL) * 100 : 0;
           return {
@@ -804,6 +936,7 @@ export function ReportsPage() {
       <DividendFreedomModal
         open={dividendFreedomOpen}
         onOpenChange={setDividendFreedomOpen}
+        periodLabel={periodLabel}
         freedomAnalysis={freedomAnalysis}
         dividends={dividends}
         yearDividendsBRL={yearDividendsBRL}
@@ -812,6 +945,7 @@ export function ReportsPage() {
       <ConsolidatedWealthModal
         open={consolidatedWealthOpen}
         onOpenChange={setConsolidatedWealthOpen}
+        periodLabel={periodLabel}
         balanceSheet={consolidatedBalance}
       />
 
@@ -843,4 +977,5 @@ export function ReportsPage() {
     </div>
   );
 }
+
 

@@ -529,7 +529,7 @@
 @media print {
   @page {
     size: A4;
-    margin: 14mm;
+    margin: 0;
   }
 
   body {
@@ -584,9 +584,12 @@
     display: block !important;
     background: #ffffff !important;
     color: #1c1917 !important;
+    padding: 14mm !important;
+    box-sizing: border-box !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
+
 
   /* Tipografia única e padronizada: toda a folha usa a família sans (Inter)
      — o `.num` (mono) e o `font-display` (Sora) viram sans no documento,
