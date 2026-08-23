@@ -261,7 +261,6 @@ vi.mock("@/state", () => ({
   useRecordOrder: () => ({ mutateAsync: vi.fn().mockResolvedValue({ success: true }), isPending: false }),
   useAssetPosition: () => ({ data: [], isLoading: false, ledger: { dividends: 0 } }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
-  useSectorCaps: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutate: vi.fn(), isPending: false }),
   useSetManualPrice: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),

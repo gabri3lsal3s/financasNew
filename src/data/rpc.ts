@@ -684,4 +684,35 @@ export async function importBankTransactions(params: {
   );
 }
 
+export interface ExecuteBatchAporteItemInput {
+  asset_id: string;
+  quantity: number;
+  price: number;
+  total: number;
+}
+
+export interface ExecutePortfolioBatchAporteParams {
+  items: ExecuteBatchAporteItemInput[];
+  date: string;
+  totalAmount: number;
+  notes?: string | null;
+}
+
+/**
+ * Executa aporte em lote de forma transacional e atômica (§F36).
+ * Atualiza posições em `portfolio_assets`, insere compras em `portfolio_transactions`
+ * e grava a contribuição em `portfolio_contributions`.
+ */
+export async function executePortfolioBatchAporte(params: ExecutePortfolioBatchAporteParams): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("execute_portfolio_batch_aporte", {
+      p_items: params.items,
+      p_date: params.date,
+      p_total_amount: params.totalAmount,
+      p_notes: params.notes ?? null,
+    }),
+  );
+}
+
+
 

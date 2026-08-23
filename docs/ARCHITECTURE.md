@@ -229,11 +229,15 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - **Testes obrigatórios** (Vitest, colocalizados `*.test.ts`): parcelamento, competência, status derivado, projeções, insights, ledger e rebalanceamento.
 - Assinatura típica: `f(entradaTipada) → saídaTipada`, sem estado global.
 - **Cálculo no cliente, validação no servidor:** derivados gerados em TS (ex.: parcelas) são enviados prontos ao RPC, que valida invariantes (constraints/checks) antes de persistir — a lógica de cálculo não é duplicada em SQL.
-- **Motor de Investimentos & Posição Consolidada (F36):**
+- **Motor de Investimentos & Posição Consolidada (F36 / v1.75):**
   - Modelo de custódia direta em `portfolio_assets` (`quantity`, `average_price`), proporcionando valoração instantânea $O(1)$ (`calculatePositionSummary`) com conversão cambial USD/BRL e PnL não realizado.
   - Histórico patrimonial via snapshots mensais (`portfolio_snapshots`), gravados automaticamente e lidos em $O(1)$, dispensando o processamento de ledger transacional de ponta a ponta.
   - Aportes mensais (`portfolio_contributions`) e proventos (`portfolio_dividends`) desacoplados para integração direta com os fluxos da Overview e Insights.
-  - Rebalanceamento e simulação de aporte (`simulateSmartAporte`) com aplicação em 1-clique via novo preço médio ponderado (`calculateWeightedAveragePrice`).
+  - **Rebalanceamento Hierárquico Classe $\rightarrow$ Ativo (`simulateSmartAporte` / `simulateRebalanceAporte` / `simulateCombinedAporte`):**
+    1. *Nível Macro (Classe):* estabiliza primeiro as classes deficitárias com base no déficit relativo e travas setoriais (`max_sector_acoes` / `max_sector_fiis`);
+    2. *Nível Micro (Ativo):* a verba designada à classe é distribuída exclusivamente entre seus membros (com equiponderação $1/N$ e convergência balanceada);
+    3. *Transbordamento & Fracionários:* sobras internas de classe retornam ao pool para atender a próxima classe; suporte nativo a cotas decimais em Cripto (até 8 casas) e painel diagnóstico de ativos não contemplados;
+    4. *Gravação Atômica Transacional:* execução em 1-clique via RPC `execute_portfolio_batch_aporte`, atualizando posições em `portfolio_assets`, lançando compras individuais em `portfolio_transactions` e registrando a contribuição em `portfolio_contributions` numa única transação PostgreSQL.
 
 ---
 

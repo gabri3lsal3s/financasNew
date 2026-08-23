@@ -60,12 +60,78 @@ export function calculateSnowballProgress(input: SnowballProgressInput): Snowbal
 /**
  * Calcula o Yield on Cost (YoC) histórico acumulado:
  * Percentual que o total de proventos recebidos representa sobre o custo total investido.
+ * @deprecated Prefira `calculateYieldOnCostTotal` que incorpora proventos acumulados históricos.
  */
 export function calculateYieldOnCost(totalDividends: number, totalCost: number): number {
   if (totalCost <= 0 || totalDividends <= 0) return 0;
   const raw = (totalDividends / totalCost) * 100;
   return Math.round(raw * 100) / 100;
 }
+
+/**
+ * YoC total: soma dos proventos acumulados históricos (`accumulated_dividends` do ativo)
+ * com os proventos do extrato periódico (`portfolio_dividends`).
+ * Usa essa função em vez de `calculateYieldOnCost` quando o ativo possui acumulados históricos.
+ */
+export function calculateYieldOnCostTotal(
+  accumulatedDividends: number,
+  periodicDividends: number,
+  totalCost: number,
+): number {
+  const total = Math.max(0, accumulatedDividends) + Math.max(0, periodicDividends);
+  if (totalCost <= 0 || total <= 0) return 0;
+  return Math.round((total / totalCost) * 10000) / 100;
+}
+
+// ---------------------------------------------------------------------------
+// Resolução de Estimativa de Dividendo/Cota para a Bola de Neve
+// ---------------------------------------------------------------------------
+
+/**
+ * Resultado da resolução da estimativa de dividendo/cota mensal para a Bola de Neve.
+ */
+export interface ResolvedDividendPerShare {
+  /** Provento/cota mensal estimado a ser usado no cálculo da Bola de Neve. */
+  perShare: number;
+  /**
+   * Origem da estimativa:
+   * - "latest_tx"       : último lançamento periódico em `portfolio_dividends` (mais preciso).
+   * - "manual_estimate" : campo `estimated_monthly_dividend_per_share` do ativo (fallback manual).
+   * - "none"            : sem dados — ativo oculto da Bola de Neve.
+   */
+  source: "latest_tx" | "manual_estimate" | "none";
+}
+
+/**
+ * Resolve a estimativa de dividendo/cota mensal para o cálculo da Bola de Neve.
+ *
+ * Prioridade:
+ *  1. Último lançamento periódico em `portfolio_dividends` (mais recente e preciso).
+ *  2. Campo `estimated_monthly_dividend_per_share` do ativo (fallback manual — Cenário B).
+ *  3. Nenhum dado disponível → `source: "none"` (ativo não aparece na Bola de Neve).
+ *
+ * Cenários:
+ *  A — Ativo com lançamentos periódicos: usa latestTxAmount ÷ quantity.
+ *  B — Ativo só com acumulados (sem lançamentos): usa estimatedPerShare do campo do ativo.
+ *  C — Ativo com ambos: usa latestTxAmount (maior prioridade, mais recente).
+ */
+export function resolveMonthlyDividendPerShare(
+  /** Valor do último lançamento periódico em `portfolio_dividends` (null se não houver). */
+  latestTxAmount: number | null,
+  /** Quantidade atual de cotas em carteira. */
+  quantity: number,
+  /** Valor de `estimated_monthly_dividend_per_share` do ativo (0 se não configurado). */
+  estimatedPerShare: number,
+): ResolvedDividendPerShare {
+  if (latestTxAmount !== null && latestTxAmount > 0 && quantity > 0) {
+    return { perShare: Math.round((latestTxAmount / quantity) * 1000000) / 1000000, source: "latest_tx" };
+  }
+  if (estimatedPerShare > 0) {
+    return { perShare: estimatedPerShare, source: "manual_estimate" };
+  }
+  return { perShare: 0, source: "none" };
+}
+
 
 export interface BazinTargetPriceInput {
   /** Proventos anuais pagos por cota (últimos 12 meses ou média dos últimos 3 anos). */

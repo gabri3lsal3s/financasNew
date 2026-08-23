@@ -89,6 +89,7 @@ export {
   useUpdatePortfolioTransaction,
   useDeletePortfolioTransaction,
   useRecordOrder,
+  useExecutePortfolioBatchAporte,
   PORTFOLIO_QUERY_KEYS,
 } from "./queries/use-portfolio";
 export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";
@@ -101,9 +102,13 @@ export {
   useGroupTargets,
   useSaveGroupTarget,
   useRemoveGroupTarget,
-  useSectorCaps,
-  useUpdateSectorCaps,
 } from "./queries/use-allocation";
+export {
+  useAllocationPresets,
+  useCreateAllocationPreset,
+  useUpdateAllocationPreset,
+  useDeleteAllocationPreset,
+} from "./queries/use-allocation-presets";
 export { useGlobalSearchEntries } from "./queries/use-search";
 export { usePredictionHistory } from "./queries/use-prediction-history";
 export { useOnboardingCounts } from "./queries/use-onboarding";

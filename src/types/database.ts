@@ -1,4 +1,5 @@
 import type {
+  AllocationPreset,
   AllocationTarget,
   AssetPrice,
   AuditEvent,
@@ -63,6 +64,7 @@ export interface Database {
       portfolio_snapshots: Table<PortfolioSnapshot>;
       portfolio_transactions: Table<PortfolioTransaction>;
       allocation_targets: Table<AllocationTarget>;
+      allocation_presets: Table<AllocationPreset>;
       class_targets: Table<GroupTarget>;
       sector_targets: Table<GroupTarget>;
       asset_prices: Table<AssetPrice>;
@@ -305,6 +307,15 @@ export interface Database {
           incomes_inserted: number;
           incomes_skipped: number;
         };
+      };
+      execute_portfolio_batch_aporte: {
+        Args: {
+          p_items: unknown;
+          p_date: string;
+          p_total_amount: number;
+          p_notes?: string | null;
+        };
+        Returns: boolean;
       };
     };
   };

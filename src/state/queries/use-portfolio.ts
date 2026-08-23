@@ -100,6 +100,7 @@ export {
   useCreatePortfolioDividend,
   useDeletePortfolioDividend,
   useRecordOrder,
+  useExecutePortfolioBatchAporte,
   PORTFOLIO_QUERY_KEYS,
 } from "@/state/mutations/use-portfolio-mutations";
 

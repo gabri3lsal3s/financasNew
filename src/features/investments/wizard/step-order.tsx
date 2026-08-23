@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { ArrowDownLeft, ArrowRight, ArrowUpRight, Calculator, GitFork, Info, Receipt } from "lucide-react";
 import { Badge, Checkbox, DatePicker, Input, MoneyInput } from "@/components/ui";
+import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
+
 import { numberToCents } from "@/domain/money";
 import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { cn } from "@/lib/utils";
@@ -397,29 +399,64 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
       {/* 3. MODO PROVENTO */}
       {mode === "dividend" && (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <label htmlFor="wizard-div-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Valor Total Recebido (Líquido)
-              </label>
-              <MoneyInput
-                id="wizard-div-amount"
-                cents={state.totalCents}
-                onCentsChange={(totalCents) => onChange({ totalCents })}
-                placeholder="R$ 0,00"
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="wizard-div-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Valor Total Recebido (Liquido)
+            </label>
+            <MoneyInput
+              id="wizard-div-amount"
+              cents={state.totalCents}
+              onCentsChange={(totalCents) => onChange({ totalCents })}
+              placeholder="R$ 0,00"
+            />
+          </div>
 
-              />
+          {/* Alternador de Modo de Data: Diário vs Extrato do Mês */}
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Modo de Registro
+            </span>
+            <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/60">
+              <button
+                type="button"
+                onClick={() => onChange({ dividendEntryMode: "daily" })}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                  state.dividendEntryMode === "daily"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Diario (Data Exata)
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ dividendEntryMode: "monthly" })}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                  state.dividendEntryMode === "monthly"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Extrato do Mes
+              </button>
             </div>
 
-            <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Data do Pagamento
-              </label>
+            {state.dividendEntryMode === "daily" ? (
               <DatePicker
                 value={state.date}
                 onValueChange={(date) => onChange({ date })}
               />
-            </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <MonthPicker
+                  value={state.month}
+                  onValueChange={(month) => onChange({ month })}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Gravado como {state.month}-01 com tag [MENSAL]. Aparece no extrato e calendario do mes selecionado.
+                </p>
+              </div>
+            )}
           </div>
 
           <label className="flex items-center gap-2.5 cursor-pointer text-xs rounded-xl border border-border/60 bg-surface/40 p-3.5">
@@ -431,6 +468,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
           </label>
         </div>
       )}
+
 
       {/* 4. MODO SPLIT */}
       {mode === "split" && (

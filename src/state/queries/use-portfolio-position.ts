@@ -87,11 +87,19 @@ export function usePortfolioPosition(): PortfolioPosition {
   const usdRate = usdRateFromPrices(prices);
   const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
 
-  // Agrupa proventos por ativo
+  // Agrupa proventos periódicos por ativo (lançamentos em portfolio_dividends)
   const dividendsByAsset = new Map<string, number>();
   for (const d of dividendsQuery.data ?? []) {
     if (d.asset_id) {
       dividendsByAsset.set(d.asset_id, (dividendsByAsset.get(d.asset_id) ?? 0) + d.amount);
+    }
+  }
+  // Soma proventos acumulados históricos (anteriores ao extrato periódico).
+  // Alimentam YoC e Bola de Neve sem distorcer o calendário/extrato mensal.
+  for (const a of assetsQuery.data ?? []) {
+    const acc = a.accumulated_dividends ?? 0;
+    if (acc > 0) {
+      dividendsByAsset.set(a.id, (dividendsByAsset.get(a.id) ?? 0) + acc);
     }
   }
 

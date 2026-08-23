@@ -21,6 +21,8 @@ function mapAsset(row: PortfolioAsset): PortfolioAsset {
     ...row,
     quantity: Number(row.quantity ?? 0),
     average_price: Number(row.average_price ?? 0),
+    accumulated_dividends: Number(row.accumulated_dividends ?? 0),
+    estimated_monthly_dividend_per_share: Number(row.estimated_monthly_dividend_per_share ?? 0),
   };
 }
 

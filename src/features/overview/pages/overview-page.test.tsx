@@ -188,6 +188,10 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     // Comparativo com mês anterior (2.000 vs 1.000 → +100%)
     expect(screen.getByText("100,0%")).toBeInTheDocument();
 
+    // Saldo do mês exibe o operacional (1.900) e detalha o caixa pós-aportes (-100)
+    expect(screen.getByText("Caixa pós-aportes:")).toBeInTheDocument();
+    expect(screen.getByText("R$ 100,00")).toBeInTheDocument();
+
     // Clique no KPI navega para /carteira
     const kpiButton = screen.getByRole("button", { name: /Investimentos/i });
     await user.click(kpiButton);

@@ -20,7 +20,11 @@ export interface OverviewTotals {
   incomeCents: number;
   expenseCents: number;
   investmentCents: number;
-  /** saldo = rendas − despesas − investimentos. */
+  /** Saldo operacional = rendas − despesas (capacidade de poupança/resultado do mês). */
+  operatingBalanceCents: number;
+  /** Saldo de caixa líquido = rendas − despesas − investimentos (variação de caixa pós-aportes). */
+  cashFlowBalanceCents: number;
+  /** Saldo do mês = rendas − despesas (resultado operacional). */
   balanceCents: number;
   /** savingsRate = (rendas − despesas) ÷ rendas (ou [saldo + investimentos] ÷ rendas, percentual, pode ser negativo). */
   savingsRatePercent: number;
@@ -32,14 +36,16 @@ export function computeOverview(
   expenseCents: number,
   investmentCents: number,
 ): OverviewTotals {
-  const balance = incomeCents - expenseCents - investmentCents;
-  const savedCents = incomeCents - expenseCents;
-  const savingsRate = incomeCents > 0 ? (savedCents / incomeCents) * 100 : 0;
+  const operatingBalance = incomeCents - expenseCents;
+  const cashFlowBalance = incomeCents - expenseCents - investmentCents;
+  const savingsRate = incomeCents > 0 ? (operatingBalance / incomeCents) * 100 : 0;
   return {
     incomeCents,
     expenseCents,
     investmentCents,
-    balanceCents: balance,
+    operatingBalanceCents: operatingBalance,
+    cashFlowBalanceCents: cashFlowBalance,
+    balanceCents: operatingBalance,
     savingsRatePercent: savingsRate,
   };
 }

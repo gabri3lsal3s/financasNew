@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { executePortfolioBatchAporte, type ExecutePortfolioBatchAporteParams } from "@/data/rpc";
 import {
   createPortfolioAsset,
   createPortfolioContribution,
@@ -567,3 +568,36 @@ export function useRecordOrder() {
     },
   });
 }
+
+/**
+ * Executa o aporte inteligente em lote via RPC transacional (§F36).
+ * Atualiza posições, lança as compras em portfolio_transactions e registra a contribuição.
+ */
+export function useExecutePortfolioBatchAporte() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: ExecutePortfolioBatchAporteParams) => executePortfolioBatchAporte(params),
+    onSuccess: (_, params) => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      pushToast({
+        title: "Aportes aplicados à carteira",
+        description: `Posições de ${params.items.length} ativos atualizadas e compras lançadas com sucesso.`,
+        variant: "success",
+      });
+      triggerSensory("success");
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao aplicar aportes",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+      triggerSensory("destructive");
+    },
+  });
+}
+

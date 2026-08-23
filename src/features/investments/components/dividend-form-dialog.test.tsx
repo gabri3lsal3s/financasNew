@@ -47,7 +47,31 @@ describe("DividendFormDialog — Fase 39 Inteligência de Proventos", () => {
       asset_id: "a-1",
       date: expect.any(String),
       amount: 10,
-      notes: expect.stringContaining("R$ 0.10/cota × 100"),
+      notes: expect.stringContaining("R$ 0.10/cota x 100"),
+    });
+  });
+
+  it("permite alternar para 'Extrato do Mês' e salva com o primeiro dia do mês", async () => {
+    createDividendMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(<DividendFormDialog open={true} onOpenChange={vi.fn()} />);
+
+    // Alterna para o modo Extrato do Mês
+    await user.click(screen.getByRole("button", { name: "Extrato do Mes" }));
+
+    // Digita o valor total de R$ 50,00 (5000 centavos)
+    const amountInput = screen.getByLabelText("Valor do provento");
+    await user.type(amountInput, "5000");
+
+    // Salva o provento
+    await user.click(screen.getByRole("button", { name: "Salvar Provento" }));
+
+    expect(createDividendMock).toHaveBeenCalledWith({
+      asset_id: "a-1",
+      date: expect.stringMatching(/^\d{4}-\d{2}-01$/),
+      amount: 50,
+      notes: expect.stringContaining("[MENSAL]"),
     });
   });
 });
+

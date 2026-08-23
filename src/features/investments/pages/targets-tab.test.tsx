@@ -29,11 +29,6 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
-  useSectorCaps: () => ({
-    data: { max_sector_acoes: 25, max_sector_fiis: 30 },
-    isLoading: false,
-    error: null,
-  }),
   useSaveAllocationTargets: () => ({
     mutateAsync: saveTargetsMock,
     isPending: false,
@@ -46,8 +41,35 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
-  useUpdateSectorCaps: () => ({
-    mutateAsync: vi.fn(),
+  useAllocationPresets: () => ({
+    data: [
+      {
+        id: "p1",
+        user_id: "u1",
+        name: "Meu Cenário 50/50",
+        description: "Teste",
+        asset_targets: [
+          { asset_id: "a1", ticker: "PETR4", target_percentage: 50 },
+          { asset_id: "a2", ticker: "VALE3", target_percentage: 50 },
+        ],
+        class_targets: [{ name: "Ações", target_percentage: 100 }],
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ],
+    isLoading: false,
+    error: null,
+  }),
+  useCreateAllocationPreset: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "p2" }),
+    isPending: false,
+  }),
+  useUpdateAllocationPreset: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "p1" }),
+    isPending: false,
+  }),
+  useDeleteAllocationPreset: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(undefined),
     isPending: false,
   }),
 }));
@@ -57,10 +79,22 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
     saveTargetsMock.mockClear();
   });
 
-  it("renderiza a tabela de metas por ativo e exibe os botões de ações rápidas", async () => {
+  it("renderiza a aba Classes como padrão e permite salvar todas as classes", async () => {
+    render(<TargetsTab />);
+
+    expect(screen.getByText("Metas por classe de ativo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Normalizar classes para 100%" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Distribuir igualmente (1/N)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar todas as classes" })).toBeInTheDocument();
+  });
+
+  it("renderiza a tabela de metas por ativo e exibe os botões de ações rápidas ao abrir a aba Ativos", async () => {
     saveTargetsMock.mockResolvedValue({});
     const user = userEvent.setup();
     render(<TargetsTab />);
+
+    // Clica na aba Ativos
+    await user.click(screen.getByRole("tab", { name: "Ativos" }));
 
     expect(screen.getByText("Metas por ativo (% do patrimônio)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Normalizar para 100%" })).toBeInTheDocument();
@@ -87,6 +121,7 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
     const user = userEvent.setup();
     render(<TargetsTab />);
 
+    await user.click(screen.getByRole("tab", { name: "Ativos" }));
     await user.click(screen.getByRole("button", { name: "Distribuir igualmente (1/N)" }));
     await user.click(screen.getByRole("button", { name: "Salvar metas por ativo" }));
 
@@ -104,6 +139,7 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
     const user = userEvent.setup();
     render(<TargetsTab />);
 
+    await user.click(screen.getByRole("tab", { name: "Ativos" }));
     await user.click(screen.getByRole("button", { name: "Espelhar carteira atual" }));
     await user.click(screen.getByRole("button", { name: "Salvar metas por ativo" }));
 
@@ -120,6 +156,8 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
     saveTargetsMock.mockResolvedValue({});
     const user = userEvent.setup();
     render(<TargetsTab />);
+
+    await user.click(screen.getByRole("tab", { name: "Ativos" }));
 
     // Filtra para "Ações"
     await user.click(screen.getByRole("button", { name: "Ações" }));
@@ -138,5 +176,16 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
         expect.objectContaining({ assetId: "a3", target: 20 }),
       ]),
     );
+  });
+
+  it("renderiza a barra de cenários e permite abrir o modal de salvar cenário", async () => {
+    const user = userEvent.setup();
+    render(<TargetsTab />);
+
+    expect(screen.getByText(/Salvar como cenário/i)).toBeInTheDocument();
+    await user.click(screen.getByText(/Salvar como cenário/i));
+
+    expect(screen.getByText("Salvar Cenário de Alocação")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome do Cenário")).toBeInTheDocument();
   });
 });

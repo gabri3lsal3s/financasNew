@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { Alert, Button, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
+import { MonthPicker } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
+import { currentMonth } from "@/lib/date";
+import { resolveDividendDate, resolveDividendNote, type DividendEntryMode } from "@/domain/portfolio/dividends";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -26,7 +29,12 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
   const assets = assetsQuery.data ?? [];
   const [selectedAssetId, setSelectedAssetId] = useState(defaultAssetId ?? (assets[0]?.id ?? ""));
   const [type, setType] = useState("dividend");
+
+  // Modo de registro de data: Diário (data exata) ou Extrato do Mês (competência)
+  const [entryMode, setEntryMode] = useState<DividendEntryMode>("daily");
   const [date, setDate] = useState(todayISO());
+  const [month, setMonth] = useState(currentMonth());
+
   const [amountCents, setAmountCents] = useState(0);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -65,16 +73,21 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
     }
 
     try {
+      // Resolve data e nota conforme o modo de entrada
+      const rawDateValue = entryMode === "monthly" ? month : date;
+      const resolvedDate = resolveDividendDate(entryMode, rawDateValue);
+
       const perShareNote = inputMode === "per_share" && perShareCents > 0
-        ? ` (R$ ${(perShareCents / 100).toFixed(2)}/cota × ${effectiveQty})`
+        ? ` (R$ ${(perShareCents / 100).toFixed(2)}/cota x ${effectiveQty})`
         : "";
-      const baseNote = notes.trim() ? `${type.toUpperCase()}: ${notes.trim()}` : type.toUpperCase();
+      const userNote = notes.trim() ? `${notes.trim()}${perShareNote}` : perShareNote.trim();
+      const resolvedNote = resolveDividendNote(entryMode, userNote, type);
 
       await createDividend.mutateAsync({
         asset_id: selectedAsset.id,
-        date,
+        date: resolvedDate,
         amount: amountCents / 100,
-        notes: `${baseNote}${perShareNote}`,
+        notes: resolvedNote,
       });
 
       triggerSensory("success");
@@ -134,9 +147,51 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Data de Recebimento</span>
-          <DatePicker value={date} onValueChange={setDate} aria-label="Data do provento" />
+        {/* Alternador de Modo de Data: Diário vs Extrato do Mês */}
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Modo de Registro</span>
+          <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/60">
+            <button
+              type="button"
+              onClick={() => {
+                setEntryMode("daily");
+                triggerSensory("selection");
+              }}
+              className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                entryMode === "daily"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Diario (Data Exata)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEntryMode("monthly");
+                triggerSensory("selection");
+              }}
+              className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                entryMode === "monthly"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Extrato do Mes
+            </button>
+          </div>
+
+          {/* Campo de data conforme o modo selecionado */}
+          {entryMode === "daily" ? (
+            <DatePicker value={date} onValueChange={setDate} aria-label="Data do provento" />
+          ) : (
+            <div className="flex flex-col gap-1">
+              <MonthPicker value={month} onValueChange={setMonth} />
+              <p className="text-[10px] text-muted-foreground">
+                Gravado como {month}-01 com tag [MENSAL]. Aparece no extrato do mes selecionado.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Alternador de Modo de Entrada: Total vs Por Cota */}
@@ -234,7 +289,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
             Cancelar
           </Button>
           <Button type="submit" disabled={createDividend.isPending || amountCents <= 0}>
-            {createDividend.isPending ? "Salvando…" : "Salvar Provento"}
+            {createDividend.isPending ? "Salvando..." : "Salvar Provento"}
           </Button>
         </div>
       </form>

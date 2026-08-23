@@ -326,6 +326,16 @@ export type PortfolioAsset = {
   currency: AssetCurrency;
   quantity: number;
   average_price: number;
+  /**
+   * Proventos históricos acumulados anteriores ao extrato periódico (`portfolio_dividends`).
+   * Alimenta o YoC e a Bola de Neve sem distorcer o calendário/extrato mensal.
+   */
+  accumulated_dividends?: number;
+  /**
+   * Dividendo mensal estimado por cota (moeda nativa do ativo).
+   * Alimenta a Bola de Neve quando não há lançamentos periódicos (Cenário B).
+   */
+  estimated_monthly_dividend_per_share?: number;
   notes?: string | null;
   updated_at?: string;
 };
@@ -388,6 +398,28 @@ export type GroupTarget = {
   target_percentage: number;
 };
 
+export type PresetAssetTarget = {
+  ticker: string;
+  asset_id?: string;
+  target_percentage: number;
+};
+
+export type PresetClassTarget = {
+  name: string;
+  target_percentage: number;
+};
+
+export type AllocationPreset = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  asset_targets: PresetAssetTarget[];
+  class_targets: PresetClassTarget[];
+  created_at: string;
+  updated_at: string;
+};
+
 export type AssetPrice = {
   id: string;
   /** NULL = cache global da edge function; preenchido = override manual do usuário. */
@@ -410,9 +442,9 @@ export type AuditEvent = {
   created_at: string;
 };
 
-// ---------------------------------------------------------------------------
-// Helpers de Insert/Update (id/created_at têm default no banco)
-// ---------------------------------------------------------------------------
-
-export type DbInsert<T> = Omit<T, "id" | "created_at"> & { id?: string; created_at?: string };
+export type DbInsert<T> = Omit<T, "id" | "created_at" | "updated_at"> & {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
 export type DbUpdate<T> = Partial<DbInsert<T>>;

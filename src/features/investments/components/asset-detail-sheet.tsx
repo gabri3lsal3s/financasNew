@@ -16,7 +16,7 @@ import {
 } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { calculateYieldOnCost } from "@/domain/portfolio/snowball";
+import { calculateYieldOnCostTotal } from "@/domain/portfolio/snowball";
 import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
 import {
   useAssetPosition,
@@ -80,8 +80,10 @@ export function AssetDetailSheet({
   const unrealizedPnl = isCash ? 0 : currentValue - totalCost;
   const unrealizedPnlPct = totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
 
-  // Yield on Cost (%)
-  const yieldOnCostPct = calculateYieldOnCost(totalDividends, totalCost);
+  // Yield on Cost (%) — incorpora proventos acumulados históricos + extrato periódico
+  const accumulatedDividends = asset.accumulated_dividends ?? 0;
+  const periodicDividends = Math.max(0, totalDividends - accumulatedDividends);
+  const yieldOnCostPct = calculateYieldOnCostTotal(accumulatedDividends, periodicDividends, totalCost);
 
   const formatTxType = (type: PortfolioTransactionType) => {
     switch (type) {
@@ -226,10 +228,25 @@ export function AssetDetailSheet({
               <span className="font-mono text-base font-bold text-positive-strong">
                 {yieldOnCostPct.toFixed(2)}%
               </span>
-              <span className="text-[10px] text-muted-foreground font-mono">
-                Proventos: <MoneyText cents={numberToCents(totalDividends)} />
-              </span>
+              {accumulatedDividends > 0 ? (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    Extrato: <MoneyText cents={numberToCents(periodicDividends)} />
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    Acumulados: <MoneyText cents={numberToCents(accumulatedDividends)} />
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono font-semibold">
+                    Total: <MoneyText cents={numberToCents(totalDividends)} />
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  Proventos: <MoneyText cents={numberToCents(totalDividends)} />
+                </span>
+              )}
             </div>
+
           </div>
 
           {/* Histórico de Transações do Ledger */}

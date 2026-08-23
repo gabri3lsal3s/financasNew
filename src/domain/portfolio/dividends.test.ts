@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "./dividends";
+import {
+  dividendExtractForMonth,
+  dividendsByYear,
+  dividendsInMonth,
+  isDividendType,
+  resolveDividendDate,
+  resolveDividendNote,
+} from "./dividends";
+
 
 const txs = [
   { assetId: "a1", type: "dividend", date: "2026-08-10", total: 100 },
@@ -75,4 +83,32 @@ describe("dividends — motor puro de proventos (F18)", () => {
     const sum = yearly.reduce((acc, entry) => acc + entry.total, 0);
     expect(Math.round(sum * 100) / 100).toBe(265.75);
   });
+
+  describe("resolveDividendDate", () => {
+    it("mantém a data exata quando o modo é daily", () => {
+      expect(resolveDividendDate("daily", "2026-08-15")).toBe("2026-08-15");
+    });
+
+    it("converte competência YYYY-MM para o primeiro dia YYYY-MM-01 no modo monthly", () => {
+      expect(resolveDividendDate("monthly", "2026-08")).toBe("2026-08-01");
+    });
+
+    it("respeita data já completa se passada no modo monthly", () => {
+      expect(resolveDividendDate("monthly", "2026-08-20")).toBe("2026-08-01");
+    });
+  });
+
+  describe("resolveDividendNote", () => {
+    it("inclui tag [MENSAL] no modo monthly", () => {
+      const note = resolveDividendNote("monthly", "Rendimento do mês", "dividend");
+      expect(note).toContain("[MENSAL]");
+      expect(note).toContain("Rendimento do mês");
+    });
+
+    it("formata tipo em maiúsculo quando nota de usuário está vazia", () => {
+      expect(resolveDividendNote("daily", "", "dividend")).toBe("DIVIDEND");
+      expect(resolveDividendNote("monthly", "", "fii_yield")).toBe("[MENSAL] FII_YIELD");
+    });
+  });
 });
+

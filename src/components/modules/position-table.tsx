@@ -4,13 +4,20 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Building2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Coins,
+  Globe,
+  Landmark,
+  Layers,
   Search,
+  TrendingUp,
+  Wallet,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataList } from "@/components/ui/data-list";
 import { Input } from "@/components/ui/input";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -79,6 +86,83 @@ const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> 
 const formatQuantity = (quantity: number): string =>
   Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 
+export interface AssetClassMeta {
+  label: string;
+  badgeClass: string;
+  icon: typeof TrendingUp;
+}
+
+function getAssetClassMeta(className: string | null): AssetClassMeta {
+  const norm = (className ?? "").trim().toLowerCase();
+  if (norm.includes("ação") || norm.includes("acoes") || norm.includes("ações")) {
+    return {
+      label: className ?? "Ações",
+      badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      icon: TrendingUp,
+    };
+  }
+  if (norm.includes("fii")) {
+    return {
+      label: className ?? "FIIs",
+      badgeClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+      icon: Building2,
+    };
+  }
+  if (norm.includes("internacional") || norm.includes("global") || norm.includes("exterior")) {
+    return {
+      label: className ?? "Internacional",
+      badgeClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+      icon: Globe,
+    };
+  }
+  if (norm.includes("etf")) {
+    return {
+      label: className ?? "ETFs",
+      badgeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+      icon: Layers,
+    };
+  }
+  if (
+    norm.includes("renda fixa") ||
+    norm.includes("cdb") ||
+    norm.includes("tesouro") ||
+    norm.includes("lci") ||
+    norm.includes("lca") ||
+    norm.includes("cri") ||
+    norm.includes("cra") ||
+    norm.includes("debenture")
+  ) {
+    return {
+      label: className ?? "Renda Fixa",
+      badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+      icon: Landmark,
+    };
+  }
+  if (norm.includes("caixa") || norm.includes("cash") || norm.includes("moeda")) {
+    return {
+      label: className ?? "Caixa",
+      badgeClass: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+      icon: Wallet,
+    };
+  }
+  return {
+    label: className || "Outros",
+    badgeClass: "bg-surface-hover/80 text-muted-foreground border-border/40",
+    icon: Coins,
+  };
+}
+
+interface ClassGroup {
+  className: string;
+  rows: PositionRow[];
+  totalValueBRL: number;
+  totalPct: number;
+  totalPnl: number;
+  totalCostBRL: number;
+  unrealizedPct: number | null;
+  count: number;
+}
+
 function SortableHeader({
   label,
   active,
@@ -96,7 +180,7 @@ function SortableHeader({
       onClick={onClick}
       aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
       className={cn(
-        "inline-flex items-center gap-1 font-semibold text-foreground transition-colors hover:text-primary",
+        "inline-flex items-center gap-1 font-semibold text-foreground transition-colors hover:text-primary cursor-pointer",
         active && "text-primary",
       )}
       aria-label={`Ordenar por ${label} (${active ? (direction === "asc" ? "crescente" : "decrescente") : "clique para ordenar"})`}
@@ -117,9 +201,9 @@ function SortableHeader({
 
 /**
  * Tabela de posições (§3.11.1 / §F17) — ledger derivado:
- * - Desktop (sm+): tabela completa com ordenação opcional por coluna e clique na linha para detalhes.
- * - Mobile (<sm): lista de cards empilhados sem scroll horizontal (F28).
- * - Ações contextuais integradas aos modais de detalhes e ajuste de cotação.
+ * - Visão padrão agrupada por classe com subtotais consolidados e grupos colapsados por padrão.
+ * - Desktop (sm+): cabeçalho de colunas contextual dentro de cada grupo expandido com larguras proporcionais.
+ * - Mobile (<sm): cards empilhados organizados por categoria com cabeçalhos de subtotais.
  */
 export function PositionTable({
   rows,
@@ -134,6 +218,7 @@ export function PositionTable({
   const [sort, setSort] = useState<SortState | null>(null);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
 
   const handleOpen = onListTransactions ?? onEditAsset;
 
@@ -165,6 +250,13 @@ export function PositionTable({
     setPage(1);
   };
 
+  const toggleClassCollapse = (className: string) => {
+    setExpandedClasses((prev) => ({
+      ...prev,
+      [className]: !prev[className],
+    }));
+  };
+
   const filteredRows = rows.filter((row) => {
     const rowClass = row.isCash ? "Caixa" : row.assetClass;
     const matchesSearch =
@@ -183,27 +275,95 @@ export function PositionTable({
     });
   };
 
-  const sortedRows = [...filteredRows].sort((a, b) => {
-    if (!sort) return 0;
-    const { key, direction } = sort;
-    let cmp = 0;
-    if (key === "ticker") cmp = a.ticker.localeCompare(b.ticker);
-    else if (key === "quantity") cmp = a.quantity - b.quantity;
-    else if (key === "price") cmp = a.priceBRL - b.priceBRL;
-    else if (key === "averageCost") cmp = a.averageCost - b.averageCost;
-    else if (key === "value") cmp = a.valueBRL - b.valueBRL;
-    else if (key === "pct") cmp = a.pct - b.pct;
-    else if (key === "unrealizedPct") {
-      const aVal = a.unrealizedPct ?? -Infinity;
-      const bVal = b.unrealizedPct ?? -Infinity;
-      cmp = aVal - bVal;
+  const sortRows = (items: PositionRow[]): PositionRow[] => {
+    if (!sort) {
+      return items;
     }
-    return direction === "asc" ? cmp : -cmp;
-  });
+    const { key, direction } = sort;
+    return [...items].sort((a, b) => {
+      let cmp = 0;
+      if (key === "ticker") cmp = a.ticker.localeCompare(b.ticker);
+      else if (key === "quantity") cmp = a.quantity - b.quantity;
+      else if (key === "price") cmp = a.priceBRL - b.priceBRL;
+      else if (key === "averageCost") cmp = a.averageCost - b.averageCost;
+      else if (key === "value") cmp = a.valueBRL - b.valueBRL;
+      else if (key === "pct") cmp = a.pct - b.pct;
+      else if (key === "unrealizedPct") {
+        const aVal = a.unrealizedPct ?? -Infinity;
+        const bVal = b.unrealizedPct ?? -Infinity;
+        cmp = aVal - bVal;
+      }
+      return direction === "asc" ? cmp : -cmp;
+    });
+  };
+
+  const sortedRows = sortRows(filteredRows);
+
+  const isGroupedMode = selectedClass === null;
+
+  // Agrupamento por classe
+  const classGroups: ClassGroup[] = (() => {
+    if (!isGroupedMode) return [];
+    const groupsMap = new Map<string, PositionRow[]>();
+    for (const row of filteredRows) {
+      const cls = row.isCash ? "Caixa" : (row.assetClass || "Outros");
+      const list = groupsMap.get(cls) ?? [];
+      list.push(row);
+      groupsMap.set(cls, list);
+    }
+
+    const groups: ClassGroup[] = [];
+    for (const [className, groupRows] of groupsMap.entries()) {
+      const totalValueBRL = groupRows.reduce((sum, r) => sum + r.valueBRL, 0);
+      const totalPct = groupRows.reduce((sum, r) => sum + r.pct, 0);
+      const totalPnl = groupRows.reduce((sum, r) => sum + r.unrealizedPnl, 0);
+      const totalCostBRL = groupRows.reduce((sum, r) => {
+        const cost = r.totalCostBRL ?? r.totalCost ?? (r.valueBRL - r.unrealizedPnl);
+        return sum + (r.isCash ? 0 : Math.max(0, cost));
+      }, 0);
+      const unrealizedPct = totalCostBRL > 0 ? (totalPnl / totalCostBRL) * 100 : null;
+
+      groups.push({
+        className,
+        rows: sortRows(groupRows),
+        totalValueBRL,
+        totalPct,
+        totalPnl,
+        totalCostBRL,
+        unrealizedPct,
+        count: groupRows.length,
+      });
+    }
+
+    // Se houver ordenação ativa, ordena os grupos de acordo com a primeira linha de cada grupo
+    if (sort) {
+      const { key, direction } = sort;
+      groups.sort((a, b) => {
+        const firstA = a.rows[0];
+        const firstB = b.rows[0];
+        if (!firstA || !firstB) return 0;
+        let cmp = 0;
+        if (key === "ticker") cmp = firstA.ticker.localeCompare(firstB.ticker);
+        else if (key === "quantity") cmp = firstA.quantity - firstB.quantity;
+        else if (key === "price") cmp = firstA.priceBRL - firstB.priceBRL;
+        else if (key === "averageCost") cmp = firstA.averageCost - firstB.averageCost;
+        else if (key === "value") cmp = firstA.valueBRL - firstB.valueBRL;
+        else if (key === "pct") cmp = firstA.pct - firstB.pct;
+        else if (key === "unrealizedPct") {
+          const aVal = firstA.unrealizedPct ?? -Infinity;
+          const bVal = firstB.unrealizedPct ?? -Infinity;
+          cmp = aVal - bVal;
+        }
+        return direction === "asc" ? cmp : -cmp;
+      });
+    }
+
+    return groups;
+  })();
 
   const totalPages = pageSize === Infinity ? 1 : Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const paginatedRows =
+  const paginatedFlatRows =
     pageSize === Infinity
       ? sortedRows
       : sortedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -224,11 +384,13 @@ export function PositionTable({
     key: string;
     header: ReactNode;
     align?: "left" | "right";
+    className?: string;
     cell: (row: PositionRow) => ReactNode;
   }[] = [
     {
       key: "ticker",
       header: headerFor("ticker", "Ativo"),
+      className: "flex-[1.4]",
       cell: (row) => {
         return handleOpen ? (
           <button
@@ -244,12 +406,10 @@ export function PositionTable({
             <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
               {row.ticker}
             </span>
-            {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
           </button>
         ) : (
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
-            {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
           </div>
         );
       },
@@ -258,6 +418,7 @@ export function PositionTable({
       key: "quantity",
       header: headerFor("quantity", "Quantidade"),
       align: "right",
+      className: "flex-1",
       cell: (row) => (
         <span className="num text-sm text-muted-foreground">
           {row.isCash || row.pricingMode === "total_value" ? (
@@ -276,6 +437,7 @@ export function PositionTable({
       key: "price",
       header: headerFor("price", "Preço"),
       align: "right",
+      className: "flex-1",
       cell: (row) => {
         if (row.isCash) {
           return <span className="num text-sm text-foreground">1:1</span>;
@@ -345,6 +507,7 @@ export function PositionTable({
       key: "averageCost",
       header: headerFor("averageCost", "Custo médio"),
       align: "right",
+      className: "flex-1",
       cell: (row) =>
         row.isCash ? (
           <span className="num text-sm text-muted-foreground">—</span>
@@ -356,12 +519,14 @@ export function PositionTable({
       key: "value",
       header: headerFor("value", "Valor"),
       align: "right",
+      className: "flex-1",
       cell: (row) => <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />,
     },
     {
       key: "unrealizedPnl",
       header: "Lucro/Prejuízo",
       align: "right",
+      className: "flex-1",
       cell: (row) =>
         row.isCash ? (
           <span className="num text-sm text-muted-foreground">—</span>
@@ -373,6 +538,7 @@ export function PositionTable({
       key: "unrealizedPct",
       header: headerFor("unrealizedPct", "Rentab."),
       align: "right",
+      className: "flex-1",
       cell: (row) => {
         if (row.isCash || row.unrealizedPct === null) {
           return <span className="num text-sm text-muted-foreground">—</span>;
@@ -405,9 +571,201 @@ export function PositionTable({
       key: "pct",
       header: headerFor("pct", "% patrimônio"),
       align: "right",
+      className: "flex-[0.8]",
       cell: (row) => <span className="num text-sm text-muted-foreground">{row.pct.toFixed(1)}%</span>,
     },
   ];
+
+  const renderMobileCard = (row: PositionRow) => {
+    const pctLabel =
+      row.isCash || row.unrealizedPct === null
+        ? "—"
+        : formatSignedPct(row.unrealizedPct);
+    const pctTone =
+      row.isCash || row.unrealizedPct === null
+        ? "text-muted-foreground"
+        : row.unrealizedPct >= 0
+          ? "text-positive-strong"
+          : "text-negative-strong";
+    const yoc = (row.dividends && row.dividends > 0)
+      ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
+      : 0;
+    const isClickable = Boolean(handleOpen);
+
+    return (
+      <li
+        key={row.assetId}
+        role={isClickable ? "button" : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+        aria-label={isClickable ? `Ver detalhes de ${row.ticker}` : undefined}
+        onClick={isClickable ? () => handleOpen?.(row.assetId, row.ticker) : undefined}
+        onKeyDown={
+          isClickable
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleOpen?.(row.assetId, row.ticker);
+                }
+              }
+            : undefined
+        }
+        className={cn(
+          "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors",
+          isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        )}
+      >
+        {/* Linha 1: Ticker | Valor Total, Rentabilidade e YoC */}
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-col items-end gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
+                <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, row.unrealizedPct !== null && row.unrealizedPct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
+                  {pctLabel}
+                </span>
+              </div>
+              {yoc > 0 ? (
+                <span className="text-[10px] text-portfolio font-medium" title="Yield on Cost acumulado">
+                  YoC {yoc.toFixed(1)}%
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {/* Linha 2: Métricas de Custódia em grid de 3 colunas legível */}
+        <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-border/40">
+          <div className="flex flex-col">
+            <span className="text-[11px] text-muted-foreground">
+              {row.pricingMode === "total_value" ? "Preço Inicial" : "Quantidade"}
+            </span>
+            <span className="font-semibold text-foreground">
+              {row.isCash ? (
+                "—"
+              ) : row.pricingMode === "total_value" ? (
+                <MoneyText cents={numberToCents(row.averageCost)} currency={row.currency} tone="default" />
+              ) : (
+                formatQuantity(row.quantity)
+              )}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[11px] text-muted-foreground">Preço</span>
+            {row.isCash ? (
+              <span className="font-semibold text-foreground">1:1</span>
+            ) : onSetManualPrice ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
+                }}
+                aria-label={`Cotação de ${row.ticker}`}
+                className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+              >
+                <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
+                {row.source === "manual" ? (
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                    title="Preço manual"
+                  />
+                ) : null}
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
+                {row.source === "manual" ? (
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                    title="Preço manual"
+                  />
+                ) : null}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[11px] text-muted-foreground">Lucro/Prejuízo</span>
+            {row.isCash ? (
+              <span className="font-semibold text-muted-foreground">—</span>
+            ) : (
+              <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" className="font-semibold" />
+            )}
+          </div>
+        </div>
+      </li>
+    );
+  };
+
+  const renderDesktopHeader = (isSubHeader = false) => (
+    <div
+      role="row"
+      className={cn(
+        "flex items-center gap-3 px-4 py-2 border-b border-border/70",
+        isSubHeader ? "bg-surface-hover/30 text-muted-foreground/90" : "bg-surface text-muted-foreground",
+      )}
+    >
+      {columns.map((col) => (
+        <div
+          key={col.key}
+          role="columnheader"
+          className={cn(
+            "text-xs font-semibold uppercase tracking-wide",
+            col.className ?? "flex-1",
+            col.align === "right" ? "text-right" : "text-left",
+          )}
+        >
+          {col.header}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderDesktopRow = (row: PositionRow) => {
+    const isClickable = Boolean(handleOpen);
+    return (
+      <div
+        key={row.assetId}
+        role="row"
+        tabIndex={isClickable ? 0 : undefined}
+        onClick={isClickable ? () => handleOpen?.(row.assetId, row.ticker) : undefined}
+        onKeyDown={
+          isClickable
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleOpen?.(row.assetId, row.ticker);
+                }
+              }
+            : undefined
+        }
+        className={cn(
+          "flex items-center gap-3 border-b border-border/60 px-4 transition-colors last:border-b-0",
+          isClickable &&
+            "cursor-pointer hover:bg-muted/60 active:bg-muted/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
+          density === "compact" ? "py-2" : "py-3.5",
+        )}
+      >
+        {columns.map((col) => (
+          <div
+            key={col.key}
+            role="cell"
+            className={cn(
+              "text-sm text-foreground",
+              col.className ?? "flex-1",
+              col.align === "right" ? "text-right" : "text-left",
+            )}
+          >
+            {col.cell(row)}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const hasFiltersActive = search.trim() !== "" || selectedClass !== null;
 
@@ -443,190 +801,199 @@ export function PositionTable({
             ) : null}
           </div>
 
-          {availableClasses.length > 1 ? (
-            <div className="flex flex-wrap items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0">
-              <button
-                type="button"
-                onClick={() => handleClassChange(null)}
-                className={cn(
-                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                  selectedClass === null
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Todas
-              </button>
-              {availableClasses.map((cls) => (
+          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+            {availableClasses.length > 1 ? (
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0">
                 <button
-                  key={cls}
                   type="button"
-                  onClick={() => handleClassChange(selectedClass === cls ? null : cls)}
+                  onClick={() => handleClassChange(null)}
                   className={cn(
                     "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                    selectedClass === cls
-                      ? "bg-primary text-primary-foreground"
+                    selectedClass === null
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                       : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {cls}
+                  Todas
                 </button>
-              ))}
-            </div>
-          ) : null}
+                {availableClasses.map((cls) => {
+                  const isSelected = selectedClass === cls;
+                  return (
+                    <button
+                      key={cls}
+                      type="button"
+                      onClick={() => handleClassChange(isSelected ? null : cls)}
+                      className={cn(
+                        "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
+                        isSelected
+                          ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                          : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {cls}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
+      {/* Visão Mobile (sempre presente para telas < sm) */}
       <ul aria-label="Posições (visão móvel)" className="flex flex-col gap-2.5 sm:hidden">
-        {paginatedRows.length === 0 ? (
+        {filteredRows.length === 0 ? (
           <li className="rounded-xl border border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
             {hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
           </li>
-        ) : (
-          paginatedRows.map((row) => {
-            const pctLabel =
-              row.isCash || row.unrealizedPct === null
-                ? "—"
-                : formatSignedPct(row.unrealizedPct);
-            const pctTone =
-              row.isCash || row.unrealizedPct === null
+        ) : isGroupedMode && classGroups.length > 0 ? (
+          classGroups.map((group) => {
+            const isExpanded = Boolean(expandedClasses[group.className]);
+            const meta = getAssetClassMeta(group.className);
+            const Icon = meta.icon;
+            const rentabTone =
+              group.unrealizedPct === null
                 ? "text-muted-foreground"
-                : row.unrealizedPct >= 0
+                : group.unrealizedPct >= 0
                   ? "text-positive-strong"
                   : "text-negative-strong";
-            const yoc = (row.dividends && row.dividends > 0)
-              ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
-              : 0;
-            const isClickable = Boolean(handleOpen);
+
             return (
               <li
-                key={row.assetId}
-                role={isClickable ? "button" : undefined}
-                tabIndex={isClickable ? 0 : undefined}
-                aria-label={isClickable ? `Ver detalhes de ${row.ticker}` : undefined}
-                onClick={isClickable ? () => handleOpen?.(row.assetId, row.ticker) : undefined}
-                onKeyDown={
-                  isClickable
-                    ? (event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          handleOpen?.(row.assetId, row.ticker);
-                        }
-                      }
-                    : undefined
-                }
-                className={cn(
-                  "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors",
-                  isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                )}
+                key={group.className}
+                className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface p-3 shadow-xs"
               >
-                {/* Linha 1: Ticker + Classe | Valor Total, Rentabilidade e YoC */}
-                <div className="flex items-center justify-between gap-2 min-w-0">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
-                    {row.assetClass ? (
-                      <span className="truncate text-[11px] text-muted-foreground bg-surface-hover/80 px-2 py-0.5 rounded-md border border-border/40">
-                        {row.assetClass}
-                      </span>
-                    ) : null}
+                {/* Cabeçalho de Categoria Mobile */}
+                <button
+                  type="button"
+                  onClick={() => toggleClassCollapse(group.className)}
+                  aria-expanded={isExpanded}
+                  aria-label={`Classe ${group.className}, ${group.count} ativos, total de ${group.totalValueBRL} reais`}
+                  className="flex w-full items-center justify-between gap-2 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-md border", meta.badgeClass)}>
+                      <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                    </span>
+                    <div className="flex items-baseline gap-1.5 min-w-0">
+                      <span className="truncate text-sm font-bold text-foreground">{group.className}</span>
+                      <span className="text-xs text-muted-foreground">({group.count})</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex flex-col items-end gap-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
-                        <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, row.unrealizedPct !== null && row.unrealizedPct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
-                          {pctLabel}
-                        </span>
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1">
+                        <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="text-xs font-bold text-foreground" />
+                        <span className="text-[11px] text-muted-foreground">({group.totalPct.toFixed(1)}%)</span>
                       </div>
-                      {yoc > 0 ? (
-                        <span className="text-[10px] text-portfolio font-medium" title="Yield on Cost acumulado">
-                          YoC {yoc.toFixed(1)}%
+                      {group.unrealizedPct !== null ? (
+                        <span className={cn("text-[10px] font-bold", rentabTone)}>
+                          {formatSignedPct(group.unrealizedPct)}
                         </span>
                       ) : null}
                     </div>
+                    <span className="text-muted-foreground">
+                      {isExpanded ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
+                    </span>
                   </div>
-                </div>
+                </button>
 
-                {/* Linha 2: Métricas de Custódia em grid de 3 colunas legível */}
-                <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-border/40">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-muted-foreground">
-                      {row.pricingMode === "total_value" ? "Preço Inicial" : "Quantidade"}
-                    </span>
-                    <span className="font-semibold text-foreground">
-                      {row.isCash ? (
-                        "—"
-                      ) : row.pricingMode === "total_value" ? (
-                        <MoneyText cents={numberToCents(row.averageCost)} currency={row.currency} tone="default" />
-                      ) : (
-                        formatQuantity(row.quantity)
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-muted-foreground">Preço</span>
-                    {row.isCash ? (
-                      <span className="font-semibold text-foreground">1:1</span>
-                    ) : onSetManualPrice ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
-                        }}
-                        aria-label={`Cotação de ${row.ticker}`}
-                        className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
-                      >
-                        <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
-                        {row.source === "manual" ? (
-                          <span
-                            aria-hidden="true"
-                            className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                            title="Preço manual"
-                          />
-                        ) : null}
-                      </button>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-                        <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
-                        {row.source === "manual" ? (
-                          <span
-                            aria-hidden="true"
-                            className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                            title="Preço manual"
-                          />
-                        ) : null}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-muted-foreground">Lucro/Prejuízo</span>
-                    {row.isCash ? (
-                      <span className="font-semibold text-muted-foreground">—</span>
-                    ) : (
-                      <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" className="font-semibold" />
-                    )}
-                  </div>
-                </div>
+                {isExpanded ? (
+                  <ul className="flex flex-col gap-2 pt-2 border-t border-border/40">
+                    {group.rows.map(renderMobileCard)}
+                  </ul>
+                ) : null}
               </li>
             );
           })
+        ) : (
+          paginatedFlatRows.map(renderMobileCard)
         )}
       </ul>
 
+      {/* Visão Desktop (Tabela sm+) */}
       <div className="hidden sm:block">
-        <DataList
-          columns={columns}
-          rows={paginatedRows}
-          rowKey={(row) => row.assetId}
-          density={density === "compact" ? "compact" : "comfortable"}
-          emptyMessage={hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
-          onRowClick={handleOpen ? (row) => handleOpen(row.assetId, row.ticker) : undefined}
-        />
+        <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
+          <div role="table" aria-label="Lista de dados" className="min-w-full">
+            {/* Conteúdo da Tabela Desktop */}
+            {filteredRows.length === 0 ? (
+              <div className="px-4 py-12 text-center text-sm text-muted-foreground">
+                {hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
+              </div>
+            ) : isGroupedMode && classGroups.length > 0 ? (
+              classGroups.map((group) => {
+                const isExpanded = Boolean(expandedClasses[group.className]);
+                const meta = getAssetClassMeta(group.className);
+                const Icon = meta.icon;
+                const rentabTone =
+                  group.unrealizedPct === null
+                    ? "text-muted-foreground"
+                    : group.unrealizedPct >= 0
+                      ? "text-positive-strong"
+                      : "text-negative-strong";
+
+                return (
+                  <div key={group.className} className="border-b border-border/60 last:border-b-0">
+                    {/* Linha Cabeçalho de Categoria */}
+                    <button
+                      type="button"
+                      onClick={() => toggleClassCollapse(group.className)}
+                      aria-expanded={isExpanded}
+                      aria-label={`Classe ${group.className}, ${group.count} ativos, total de ${group.totalValueBRL} reais`}
+                      className="flex w-full items-center justify-between gap-3 bg-surface-hover/50 px-4 py-3 text-left transition-colors hover:bg-surface-hover cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring border-y border-border/40 first:border-t-0"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={cn("flex size-5 shrink-0 items-center justify-center rounded border", meta.badgeClass)}>
+                          <Icon className="size-3 shrink-0" aria-hidden="true" />
+                        </span>
+                        <span className="truncate text-xs font-bold uppercase tracking-wider text-foreground">
+                          {group.className}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          ({group.count} {group.count === 1 ? "ativo" : "ativos"})
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="font-bold text-foreground" />
+                            <span className="text-muted-foreground">({group.totalPct.toFixed(1)}%)</span>
+                          </div>
+                          {group.unrealizedPct !== null ? (
+                            <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded", rentabTone, group.unrealizedPct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
+                              {formatSignedPct(group.unrealizedPct)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="text-muted-foreground">
+                          {isExpanded ? <ChevronDown className="size-3.5" aria-hidden="true" /> : <ChevronRight className="size-3.5" aria-hidden="true" />}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Cabeçalho e Linhas dos Ativos da Categoria quando expandida */}
+                    {isExpanded ? (
+                      <div className="bg-surface/50 border-t border-border/50">
+                        {renderDesktopHeader(true)}
+                        {group.rows.map((row) => renderDesktopRow(row))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
+            ) : (
+              <>
+                {renderDesktopHeader(false)}
+                {paginatedFlatRows.map((row) => renderDesktopRow(row))}
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Paginação para carteiras com muitos ativos */}
-      {sortedRows.length > 5 ? (
+      {/* Paginação para carteiras com muitos ativos no modo lista plana (quando filtrado por classe individual) */}
+      {!isGroupedMode && sortedRows.length > 5 ? (
         <div className="flex items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <span>

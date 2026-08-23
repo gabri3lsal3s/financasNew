@@ -300,14 +300,24 @@ export {
   mirrorCurrentPositionTargets,
   parseTargetInput,
   sanitizeTargetsForSave,
-  sectorExposure,
   targetsSum,
-  validateSectorCaps,
   validateTargetsSum,
 } from "./allocation";
-export type { AssetAllocationDelta, SectorExposure, TargetDraft, TargetValidation } from "./allocation";
+export type { AssetAllocationDelta, TargetDraft, TargetValidation } from "./allocation";
 export {
-  classCapsFromSectorCaps,
+  SYSTEM_PRESET_TEMPLATES,
+  applyPresetToPosition,
+  createPresetSnapshot,
+  validatePresetInput,
+} from "./presets";
+export type {
+  AppliedPresetDraft,
+  PositionAssetReference,
+  PresetSnapshotInput,
+  SystemPresetTemplate,
+} from "./presets";
+export {
+  isFractionalAsset,
   simulateCombinedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
@@ -317,8 +327,10 @@ export type {
   AporteMode,
   AporteResult,
   AporteRoute,
-  ClassCapInput,
+  ClassAporteSummary,
   ClassTargetInput,
+  SkippedAssetDiagnostic,
+  SkippedReason,
 } from "./aporte";
 export {
   detectPortfolioColumns,

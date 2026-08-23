@@ -7,6 +7,8 @@ const totals: OverviewTotals = {
   incomeCents: 500000,
   expenseCents: 300000,
   investmentCents: 0,
+  operatingBalanceCents: 200000,
+  cashFlowBalanceCents: 200000,
   balanceCents: 200000,
   savingsRatePercent: 40,
 };

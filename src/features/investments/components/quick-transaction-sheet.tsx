@@ -11,10 +11,13 @@ import {
   Select,
 } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { MonthPicker } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
+import { currentMonth } from "@/lib/date";
 import { numberToCents } from "@/domain/money";
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
+import { resolveDividendDate, resolveDividendNote, type DividendEntryMode } from "@/domain/portfolio/dividends";
 import {
   getAssetPricingMode,
   isCashAssetClass,
@@ -69,6 +72,9 @@ export function QuickTransactionSheet({
   const [selectedAssetId, setSelectedAssetId] = useState<string>(() => asset?.id ?? (allAssets[0]?.id ?? ""));
   const [type, setType] = useState<PortfolioTransactionType>(initialType);
   const [date, setDate] = useState(() => todayISO());
+  const [month, setMonth] = useState(() => currentMonth());
+  // Modo de registro de provento: "daily" (data exata) ou "monthly" (extrato do mês)
+  const [dividendEntryMode, setDividendEntryMode] = useState<DividendEntryMode>("daily");
   const [quantityStr, setQuantityStr] = useState("");
   const [priceCents, setPriceCents] = useState(0);
   const [totalCents, setTotalCents] = useState(0);
@@ -76,6 +82,7 @@ export function QuickTransactionSheet({
   const [recordContribution, setRecordContribution] = useState(false);
   const [splitFactor, setSplitFactor] = useState(2);
   const [error, setError] = useState<string | null>(null);
+
 
   // Ativo Alvo
   const targetAsset = useMemo(() => {
@@ -186,16 +193,28 @@ export function QuickTransactionSheet({
     }
 
     try {
+      const isDividendType =
+        type === "dividend" || type === "jcp" || type === "fii_yield";
+
+      // Resolve data e nota para proventos conforme o modo de entrada
+      const resolvedDate = isDividendType
+        ? resolveDividendDate(dividendEntryMode, dividendEntryMode === "monthly" ? month : date)
+        : date;
+      const resolvedNotes = isDividendType
+        ? resolveDividendNote(dividendEntryMode, "", type)
+        : undefined;
+
       await recordOrder.mutateAsync({
         asset: targetAsset,
         type,
-        date,
+        date: resolvedDate,
         quantity: isTotalValue ? 1 : type === "split" || type === "reverse_split" ? splitFactor : parsedQty,
         price: isTotalValue ? total : price,
         total,
         syncCash,
         cashAsset,
         recordContribution,
+        notes: resolvedNotes,
       });
 
       handleOpenChange(false);
@@ -204,6 +223,7 @@ export function QuickTransactionSheet({
       setError(getErrorMessage(err));
     }
   };
+
 
   const assetOptions = allAssets.map((a) => ({
     value: a.id,
@@ -530,26 +550,58 @@ export function QuickTransactionSheet({
         {/* 3. MODO PROVENTO (DIVIDENDO / JCP / RENDIMENTO) */}
         {(type === "dividend" || type === "jcp" || type === "fii_yield") && (
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5 col-span-2">
-                <label htmlFor="quick-div-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Valor Total Recebido (Líquido)
-                </label>
-                <MoneyInput
-                  id="quick-div-amount"
-                  cents={totalCents}
-                  onCentsChange={setTotalCents}
-                  placeholder="R$ 0,00"
+            <div className="flex flex-col gap-1.5 col-span-2">
+              <label htmlFor="quick-div-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Valor Total Recebido (Liquido)
+              </label>
+              <MoneyInput
+                id="quick-div-amount"
+                cents={totalCents}
+                onCentsChange={setTotalCents}
+                placeholder="R$ 0,00"
+              />
+            </div>
 
-                />
+            {/* Alternador de Modo de Data */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Modo de Registro
+              </span>
+              <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setDividendEntryMode("daily")}
+                  className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                    dividendEntryMode === "daily"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Diario (Data Exata)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDividendEntryMode("monthly")}
+                  className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                    dividendEntryMode === "monthly"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Extrato do Mes
+                </button>
               </div>
 
-              <div className="flex flex-col gap-1.5 col-span-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Data do Pagamento
-                </label>
+              {dividendEntryMode === "daily" ? (
                 <DatePicker value={date} onValueChange={setDate} />
-              </div>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  <MonthPicker value={month} onValueChange={setMonth} />
+                  <p className="text-[10px] text-muted-foreground">
+                    Gravado como {month}-01 com tag [MENSAL].
+                  </p>
+                </div>
+              )}
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer text-xs rounded-xl border border-border/60 bg-surface/40 p-3">

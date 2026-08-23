@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  classCapsFromSectorCaps,
   simulateRebalanceAporte,
   simulateSmartAporte,
   type AporteAssetInput,
@@ -116,25 +115,10 @@ describe("simulateSmartAporte — por meta de ativo (§3.11.3)", () => {
     expect(result.routes[0]).toMatchObject({ ticker: "Y1", quantity: 8, allocatedBRL: 80 });
     expect(result.routes[1]).toMatchObject({ ticker: "X1", quantity: 12, allocatedBRL: 120 });
   });
-
-  it("trava setorial limita a alocação da classe (max_sector_acoes)", () => {
-    const result = simulateSmartAporte({
-      aporte: 2000,
-      assets: [
-        asset({ id: "a", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 1000, priceBRL: 100, targetPercentage: 80 }),
-        asset({ id: "c", ticker: "CAIXA", assetClass: "caixa", currentValueBRL: 1000, priceBRL: 1, targetPercentage: null }),
-      ],
-      classCaps: [{ className: "Ações", cap: 40 }],
-    });
-    // Patrimônio alvo = 2000 + 2000 = 4000. Teto da classe = 40% × 4000 = 1600.
-    // Atual 1000 → cabe no máximo 600 (6 cotas × 100).
-    expect(result.routes[0]).toMatchObject({ ticker: "PETR4", quantity: 6, allocatedBRL: 600 });
-    expect(result.leftover).toBe(1400);
-  });
 });
 
 describe("simulateRebalanceAporte — por meta de classe (§3.11.3)", () => {
-  it("distribui o déficit da classe proporcionalmente ao valor atual", () => {
+  it("distribui a meta da classe de forma equiponderada (1/N) estabilizando os ativos defasados", () => {
     const result = simulateRebalanceAporte({
       aporte: 6000,
       assets: [
@@ -144,15 +128,15 @@ describe("simulateRebalanceAporte — por meta de classe (§3.11.3)", () => {
       classTargets: [{ className: "Ações", targetPercentage: 60 }],
     });
     // Patrimônio alvo = 4000 + 6000 = 10000. Classe alvo 60% = 6000.
-    // A share 25% → alvo 1500 (gap 500); B share 75% → alvo 4500 (gap 1500).
+    // Equiponderado: cada ativo tem meta de 30% = 3000.
+    // A: atual 1000, alvo 3000 → gap 2000 (20 cotas).
+    // B: atual 3000, alvo 3000 → gap 0 (já estabilizado, não recebe aporte indevido).
     expect(result.mode).toBe("class");
-    expect(result.routes.map((r) => r.ticker)).toEqual(["B", "A"]); // gap desc dentro da classe
+    expect(result.routes.map((r) => r.ticker)).toEqual(["A"]);
     const a = result.routes.find((r) => r.ticker === "A");
-    const b = result.routes.find((r) => r.ticker === "B");
-    expect(a).toMatchObject({ targetValueBRL: 1500, quantity: 5, allocatedBRL: 500 });
-    expect(b).toMatchObject({ targetValueBRL: 4500, quantity: 7, allocatedBRL: 1400 });
-    expect(result.totalAllocated).toBe(1900);
-    expect(result.leftover).toBe(4100);
+    expect(a).toMatchObject({ targetValueBRL: 3000, quantity: 20, allocatedBRL: 2000 });
+    expect(result.totalAllocated).toBe(2000);
+    expect(result.leftover).toBe(4000);
   });
 
   it("classe sem meta não gera aporte; metas individuais são ignoradas", () => {
@@ -181,41 +165,60 @@ describe("simulateRebalanceAporte — por meta de classe (§3.11.3)", () => {
     expect(result.routes[0]).toMatchObject({ ticker: "A", targetValueBRL: 50 });
     expect(result.routes[1]).toMatchObject({ ticker: "B", targetValueBRL: 50 });
   });
-
-  it("trava setorial também vale no modo classe", () => {
-    const result = simulateRebalanceAporte({
-      aporte: 3000,
-      assets: [
-        asset({ id: "a", ticker: "FIIA", assetClass: "FIIs", currentValueBRL: 500, priceBRL: 100 }),
-        asset({ id: "c", ticker: "CAIXA", assetClass: "caixa", currentValueBRL: 500, priceBRL: 1 }),
-      ],
-      classTargets: [{ className: "FIIs", targetPercentage: 80 }],
-      classCaps: [{ className: "FIIs", cap: 30 }],
-    });
-    // Patrimônio alvo = 1000 + 3000 = 4000. Teto FIIs = 30% × 4000 = 1200.
-    // Atual 500 → máximo 700 (7 cotas × 100).
-    expect(result.routes[0]).toMatchObject({ ticker: "FIIA", quantity: 7, allocatedBRL: 700 });
-    expect(result.leftover).toBe(2300);
-  });
 });
 
-describe("classCapsFromSectorCaps — mapeamento das travas (§3.11.3.5)", () => {
-  it("aplica max_sector_acoes e max_sector_fiis às classes correspondentes", () => {
-    const caps = classCapsFromSectorCaps(["Ações", "FIIs", "Internacional"], 40, 25);
-    expect(caps).toContainEqual({ className: "Ações", cap: 40 });
-    expect(caps).toContainEqual({ className: "FIIs", cap: 25 });
-    expect(caps).toContainEqual({ className: "Internacional", cap: null });
+describe("Hierarquia Classe -> Ativo e Recursos Avançados", () => {
+  it("estabiliza a classe mais defasada antes de alocar na próxima classe", () => {
+    const result = simulateSmartAporte({
+      aporte: 2000,
+      assets: [
+        // Classe Ações: alvo 50% de 5000 = 2500; atual 500 → déficit 80% (gap 2000)
+        asset({ id: "a1", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 500, priceBRL: 50, targetPercentage: 50 }),
+        // Classe FIIs: alvo 50% de 5000 = 2500; atual 2500 → déficit 0% (gap 0)
+        asset({ id: "f1", ticker: "HGLG11", assetClass: "FIIs", currentValueBRL: 2500, priceBRL: 100, targetPercentage: 50 }),
+      ],
+    });
+    // Todo o aporte de 2000 vai para Ações
+    expect(result.routes).toHaveLength(1);
+    expect(result.routes[0]).toMatchObject({ ticker: "PETR4", quantity: 40, allocatedBRL: 2000 });
+    expect(result.totalAllocated).toBe(2000);
+    expect(result.leftover).toBe(0);
   });
 
-  it("é insensível a caixa/acento e deduplica classes", () => {
-    const caps = classCapsFromSectorCaps(["aÇÕES", "ações", "fundo imobiliário"], null, 30);
-    expect(caps).toHaveLength(2);
-    expect(caps[0]).toEqual({ className: "aÇÕES", cap: null }); // sem max_sector_acoes
-    expect(caps[1]).toEqual({ className: "fundo imobiliário", cap: 30 });
+  it("suporta compras fracionárias para criptoativos com precisão decimal", () => {
+    const result = simulateSmartAporte({
+      aporte: 500,
+      assets: [
+        asset({
+          id: "btc",
+          ticker: "BTC",
+          assetClass: "Cripto",
+          currentValueBRL: 0,
+          priceBRL: 300_000,
+          targetPercentage: 10,
+          isFractional: true,
+        }),
+      ],
+    });
+    // Patrimônio alvo = 500. Alvo BTC 10% = 50.
+    // 50 / 300000 = 0.00016666 BTC
+    expect(result.routes).toHaveLength(1);
+    expect(result.routes[0]?.ticker).toBe("BTC");
+    expect(result.routes[0]?.quantity).toBeCloseTo(0.00016666, 6);
+    expect(result.routes[0]?.allocatedBRL).toBe(50);
   });
 
-  it("sem trava configurada → todas as classes sem cap", () => {
-    const caps = classCapsFromSectorCaps(["Ações", "FIIs"], null, null);
-    expect(caps.every((c) => c.cap === null)).toBe(true);
+  it("reporta diagnóstico de ativos ignorados (sem preço, sem meta, acima da meta)", () => {
+    const result = simulateSmartAporte({
+      aporte: 1000,
+      assets: [
+        asset({ id: "1", ticker: "SEM_PRECO", assetClass: "Ações", currentValueBRL: 0, priceBRL: 0, targetPercentage: 10 }),
+        asset({ id: "2", ticker: "SEM_META", assetClass: "Ações", currentValueBRL: 100, priceBRL: 50, targetPercentage: null }),
+        asset({ id: "3", ticker: "ACIMA_META", assetClass: "Ações", currentValueBRL: 2000, priceBRL: 50, targetPercentage: 10 }),
+      ],
+    });
+    expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "SEM_PRECO", reason: "no_price" }));
+    expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "SEM_META", reason: "no_target" }));
+    expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "ACIMA_META", reason: "above_target" }));
   });
 });

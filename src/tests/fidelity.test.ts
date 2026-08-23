@@ -67,9 +67,7 @@ import {
 import {
   clampTargetPercentage,
   parseTargetInput,
-  sectorExposure,
   targetsSum,
-  validateSectorCaps,
   validateTargetsSum,
 } from "@/domain/portfolio/allocation";
 import { isFirstUse, onboardingProgress } from "@/domain/onboarding";
@@ -252,9 +250,11 @@ describe("§3.5 — Categorias, orçamentos e metas", () => {
 });
 
 describe("§3.6 — Visão consolidada (Dia/Mês/Ano)", () => {
-  it("saldo = rendas − despesas − investimentos; savingsRate = (rendas − despesas) ÷ rendas", () => {
+  it("saldo operacional = rendas − despesas; saldo caixa = rendas − despesas − investimentos; savingsRate = (rendas − despesas) ÷ rendas", () => {
     const totals = computeOverview(500_000, 300_000, 50_000);
-    expect(totals.balanceCents).toBe(150_000);
+    expect(totals.operatingBalanceCents).toBe(200_000);
+    expect(totals.cashFlowBalanceCents).toBe(150_000);
+    expect(totals.balanceCents).toBe(200_000);
     expect(totals.savingsRatePercent).toBe(40);
     expect(computeOverview(0, 10_000, 0).savingsRatePercent).toBe(0); // rendas 0 → sem taxa
   });
@@ -497,12 +497,6 @@ describe("§3.11 — Carteira: metas, ledger, valoração e aporte", () => {
     expect(validateTargetsSum([{ target: 30 }, { target: 80 }]).ok).toBe(false);
     expect(clampTargetPercentage(120)).toBe(100);
     expect(parseTargetInput("25,5")).toBe(25.5); // vírgula pt-BR
-  });
-
-  it("travas setoriais: exposição acima do teto é violação", () => {
-    const exposure = sectorExposure(60_000, 100_000, 50); // 60% > teto 50%
-    expect(exposure.exceeded).toBe(true);
-    expect(validateSectorCaps([{ pct: 60, cap: 50 }]).ok).toBe(false);
   });
 
   it("ledger: custo médio ponderado e caixa derivado (nunca armazenado)", () => {

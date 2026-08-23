@@ -49,6 +49,16 @@ export const newAssetSchema = z.object({
     .max(100, "A meta não pode ultrapassar 100%")
     .nullable()
     .optional(),
+  /** Proventos históricos acumulados anteriores ao extrato periódico. Alimenta YoC e Bola de Neve. */
+  accumulated_dividends: z
+    .number({ message: "Informe um valor válido para proventos acumulados" })
+    .min(0, "O valor de proventos acumulados não pode ser negativo")
+    .default(0),
+  /** Dividendo mensal estimado por cota para alimentar a Bola de Neve (Cenário B). */
+  estimated_monthly_dividend_per_share: z
+    .number({ message: "Informe um valor válido para o dividendo estimado por cota" })
+    .min(0, "O dividendo estimado por cota não pode ser negativo")
+    .default(0),
   notes: z
     .string()
     .max(500, "As notas devem ter no máximo 500 caracteres")
@@ -128,6 +138,16 @@ export const assetMetadataSchema = z.object({
   ticker: assetTickerSchema,
   asset_class: assetClassSchema,
   currency: assetCurrencySchema,
+  /** Proventos históricos acumulados anteriores ao extrato periódico. Alimenta YoC e Bola de Neve. */
+  accumulated_dividends: z
+    .number({ message: "Informe um valor válido para proventos acumulados" })
+    .min(0, "O valor de proventos acumulados não pode ser negativo")
+    .default(0),
+  /** Dividendo mensal estimado por cota para alimentar a Bola de Neve (Cenário B). */
+  estimated_monthly_dividend_per_share: z
+    .number({ message: "Informe um valor válido para o dividendo estimado por cota" })
+    .min(0, "O dividendo estimado por cota não pode ser negativo")
+    .default(0),
   notes: z
     .string()
     .max(500, "As notas devem ter no máximo 500 caracteres")

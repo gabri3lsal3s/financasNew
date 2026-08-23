@@ -328,13 +328,18 @@ export function OverviewPage() {
               />
               <KpiCard
                 label="Saldo do mês"
-                cents={totals.balanceCents}
-                tone={totals.balanceCents >= 0 ? "positive" : "negative"}
+                cents={totals.operatingBalanceCents}
+                tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
                 icon={<DollarSign className="size-4" aria-hidden="true" />}
                 hint={
                   totals.investmentCents > 0 ? (
-                    <span className="text-[10px] text-muted-foreground truncate">
-                      Deduz aportes do mês
+                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground truncate">
+                      <span>Caixa pós-aportes:</span>
+                      <MoneyText
+                        cents={totals.cashFlowBalanceCents}
+                        tone={totals.cashFlowBalanceCents >= 0 ? "default" : "negative"}
+                        className="text-[10px]"
+                      />
                     </span>
                   ) : undefined
                 }
@@ -364,6 +369,11 @@ export function OverviewPage() {
                       <span className="flex items-center gap-1.5 text-muted-foreground text-[11px] shrink-0">
                         <span className="size-2 rounded-full bg-negative-strong shrink-0" /> Despesas
                       </span>
+                      {totals.investmentCents > 0 && (
+                        <span className="flex items-center gap-1.5 text-muted-foreground text-[11px] shrink-0">
+                          <span className="size-2 rounded-full bg-portfolio shrink-0" /> Investimentos
+                        </span>
+                      )}
                     </div>
                   </div>
                   <DailyFlowChart days={dailyFlow} />

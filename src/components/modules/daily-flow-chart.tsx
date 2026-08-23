@@ -19,14 +19,20 @@ interface LinePoint {
   y: number;
 }
 
-/** Converte a série em pontos na escala do gráfico (min/max do mês, com folga). */
-function toLinePointList(values: readonly number[], width: number, height: number): LinePoint[] {
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
+/**
+ * Converte a série em pontos na escala sublinear do gráfico (com base no zero e no maior valor diário).
+ * Aplica uma transformação de potência suave (x^0.6) para manter a proporção confortável e evitar
+ * que despesas e aportes fiquem esmagados no chão na presença de picos pontuais de receita.
+ */
+function toLinePointList(values: readonly number[], width: number, height: number, globalMax: number): LinePoint[] {
+  const range = globalMax > 0 ? globalMax : 1;
+  const usableHeight = height - PAD * 2;
   return values.map((value, index) => {
     const x = values.length > 1 ? (index / (values.length - 1)) * width : width;
-    const y = PAD + (1 - (value - min) / range) * (height - PAD * 2);
+    const clampedValue = Math.max(0, value);
+    // Escala sublinear suave (power scale 0.6)
+    const normalized = Math.pow(clampedValue / range, 0.6);
+    const y = PAD + (1 - normalized) * usableHeight;
     return { x, y };
   });
 }
@@ -68,12 +74,37 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
 
   const incomeValues = useMemo(() => days.map((day) => day.incomeCents), [days]);
   const expenseValues = useMemo(() => days.map((day) => day.expenseCents), [days]);
+  const investmentValues = useMemo(() => days.map((day) => day.investmentCents), [days]);
+  const hasInvestments = useMemo(() => days.some((day) => day.investmentCents > 0), [days]);
 
-  const incomePointList = useMemo(() => toLinePointList(incomeValues, LINE_WIDTH, LINE_HEIGHT), [incomeValues]);
-  const expensePointList = useMemo(() => toLinePointList(expenseValues, LINE_WIDTH, LINE_HEIGHT), [expenseValues]);
+  const globalMax = useMemo(() => {
+    const allValues = [
+      ...incomeValues,
+      ...expenseValues,
+      ...(hasInvestments ? investmentValues : []),
+    ];
+    return Math.max(...allValues, 0);
+  }, [incomeValues, expenseValues, investmentValues, hasInvestments]);
+
+  const incomePointList = useMemo(
+    () => toLinePointList(incomeValues, LINE_WIDTH, LINE_HEIGHT, globalMax),
+    [incomeValues, globalMax],
+  );
+  const expensePointList = useMemo(
+    () => toLinePointList(expenseValues, LINE_WIDTH, LINE_HEIGHT, globalMax),
+    [expenseValues, globalMax],
+  );
+  const investmentPointList = useMemo(
+    () => (hasInvestments ? toLinePointList(investmentValues, LINE_WIDTH, LINE_HEIGHT, globalMax) : []),
+    [hasInvestments, investmentValues, globalMax],
+  );
 
   const incomePath = useMemo(() => toSmoothPath(incomePointList), [incomePointList]);
   const expensePath = useMemo(() => toSmoothPath(expensePointList), [expensePointList]);
+  const investmentPath = useMemo(
+    () => (hasInvestments ? toSmoothPath(investmentPointList) : ""),
+    [hasInvestments, investmentPointList],
+  );
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const el = containerRef.current;
@@ -87,10 +118,12 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   const scrubDay = scrubIndex !== null ? days[scrubIndex] : undefined;
   const scrubIncome = scrubIndex !== null ? incomePointList[scrubIndex] : undefined;
   const scrubExpense = scrubIndex !== null ? expensePointList[scrubIndex] : undefined;
+  const scrubInvestment = scrubIndex !== null && hasInvestments ? investmentPointList[scrubIndex] : undefined;
   const scrubLeft = scrubIndex !== null ? `${(scrubIndex / Math.max(1, days.length - 1)) * 100}%` : undefined;
 
   const lastIncome = incomePointList.length > 0 ? incomePointList[incomePointList.length - 1] : undefined;
   const lastExpense = expensePointList.length > 0 ? expensePointList[expensePointList.length - 1] : undefined;
+  const lastInvestment = hasInvestments && investmentPointList.length > 0 ? investmentPointList[investmentPointList.length - 1] : undefined;
 
   return (
     <div
@@ -127,6 +160,17 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
             strokeLinejoin="round"
             className="stroke-negative-strong"
           />
+          {hasInvestments ? (
+            <path
+              d={investmentPath}
+              fill="none"
+              vectorEffect="non-scaling-stroke"
+              strokeWidth={2.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="stroke-portfolio"
+            />
+          ) : null}
         </svg>
 
         {/* Ponto final das linhas (sem sombras) */}
@@ -142,6 +186,12 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
             style={{ left: `${Math.min(99, Math.max(1, (lastExpense.x / LINE_WIDTH) * 100))}%`, top: `${(lastExpense.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}
+        {lastInvestment ? (
+          <span
+            className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-portfolio ring-2 ring-surface pointer-events-none"
+            style={{ left: `${Math.min(99, Math.max(1, (lastInvestment.x / LINE_WIDTH) * 100))}%`, top: `${(lastInvestment.y / LINE_HEIGHT) * 100}%` }}
+          />
+        ) : null}
 
         {/* Pontos do dia sob scrubbing (sem sombras) */}
         {scrubIncome ? (
@@ -154,6 +204,12 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
           <span
             className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-negative-strong ring-2 ring-surface pointer-events-none"
             style={{ left: scrubLeft, top: `${(scrubExpense.y / LINE_HEIGHT) * 100}%` }}
+          />
+        ) : null}
+        {scrubInvestment ? (
+          <span
+            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-portfolio ring-2 ring-surface pointer-events-none"
+            style={{ left: scrubLeft, top: `${(scrubInvestment.y / LINE_HEIGHT) * 100}%` }}
           />
         ) : null}
       </div>
@@ -193,6 +249,14 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
               </span>
               <MoneyText cents={scrubDay.expenseCents} tone="negative" sign="explicit" className="privacy-mask text-[11px]" />
             </div>
+            {hasInvestments ? (
+              <div className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <span className="size-1.5 rounded-full bg-portfolio" /> Investimentos
+                </span>
+                <MoneyText cents={scrubDay.investmentCents} tone="portfolio" sign="explicit" className="privacy-mask text-[11px]" />
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -3,8 +3,6 @@ import { Calculator } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, RadioGroup, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
-  calculateWeightedAveragePrice,
-  classCapsFromSectorCaps,
   simulateCombinedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
@@ -15,15 +13,11 @@ import {
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
-import { pushToast } from "@/services/toast";
 import {
   useAllocationTargets,
-  useCreatePortfolioContribution,
+  useExecutePortfolioBatchAporte,
   useGroupTargets,
-  usePortfolioAssets,
   usePortfolioPosition,
-  useSectorCaps,
-  useUpdatePortfolioAsset,
 } from "@/state";
 import { ContributionsPanel } from "../components";
 import { TargetsTab } from "./targets-tab";
@@ -31,23 +25,21 @@ import { TargetsTab } from "./targets-tab";
 type AporteSubTab = "calculadora" | "metas" | "historico";
 
 /**
- * Calculadora de aporte (§F36) — simulação local (pura) em 2 modos:
- * por meta individual de ativo ou por meta de classe, com travas setoriais.
- * Ao aplicar o lote, atualiza a quantidade e preço médio ponderado dos ativos
- * e registra o aporte em `portfolio_contributions`.
+ * Calculadora de aporte (§F36) — simulação hierárquica (Classe -> Ativo) em 3 modos:
+ * combinado (padrão), por meta individual ou por meta de classe.
+ * Ao aplicar o lote, executa a transação atômica via RPC (`execute_portfolio_batch_aporte`)
+ * atualizando posições, registrando compras em `portfolio_transactions` e histórico em `portfolio_contributions`.
  *
  * Sub-tabs:
- * - Calculadora: rebalanceador interativo
+ * - Calculadora: rebalanceador interativo hierárquico
+ * - Metas: gestão visual de alocação por ativo e por classe
  * - Histórico: lista de aportes registrados por mês (§F37)
  */
 export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
-  const assetsQuery = usePortfolioAssets();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
-  const capsQuery = useSectorCaps();
-  const updateAsset = useUpdatePortfolioAsset();
-  const createContribution = useCreatePortfolioContribution();
+  const executeBatch = useExecutePortfolioBatchAporte();
 
   const [subTab, setSubTab] = useState<AporteSubTab>("calculadora");
   const [aporteCents, setAporteCents] = useState(0);
@@ -56,22 +48,16 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
 
-  const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? capsQuery.error;
-  const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || capsQuery.isLoading;
+  const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error;
+  const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading;
 
   const nonCashRows = position.rows.filter((r) => !r.isCash);
-  const classes = [...new Set(nonCashRows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
 
   const targetByAsset = new Map((targetsQuery.data ?? []).map((t) => [t.asset_id, t.target_percentage]));
   const classTargets: ClassTargetInput[] = (classTargetsQuery.data ?? []).map((t) => ({
     className: t.name,
     targetPercentage: t.target_percentage,
   }));
-  const classCaps = classCapsFromSectorCaps(
-    classes,
-    capsQuery.data?.maxSectorAcoes ?? null,
-    capsQuery.data?.maxSectorFiis ?? null,
-  );
 
   const assets: AporteAssetInput[] = nonCashRows.map((row) => ({
     id: row.assetId,
@@ -86,10 +72,10 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const result =
     aporteCents > 0 && assets.length > 0
       ? mode === "asset"
-        ? simulateSmartAporte({ aporte: aporteCents / 100, assets, classCaps })
+        ? simulateSmartAporte({ aporte: aporteCents / 100, assets })
         : mode === "class"
-          ? simulateRebalanceAporte({ aporte: aporteCents / 100, assets, classTargets, classCaps })
-          : simulateCombinedAporte({ aporte: aporteCents / 100, assets, classTargets, classCaps })
+          ? simulateRebalanceAporte({ aporte: aporteCents / 100, assets, classTargets })
+          : simulateCombinedAporte({ aporte: aporteCents / 100, assets, classTargets })
       : null;
 
   const routes: AporteRouteRow[] =
@@ -113,42 +99,21 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     setIsApplying(true);
     try {
       const date = todayISO();
-      const assetsList = assetsQuery.data ?? [];
-      let totalAllocatedBRL = 0;
+      const items = eligibleRoutes.map((r) => ({
+        asset_id: r.assetId,
+        quantity: r.quantity,
+        price: r.priceBRL,
+        total: r.allocatedBRL,
+      }));
+      const totalAmount = result?.totalAllocated ?? eligibleRoutes.reduce((acc, r) => acc + r.allocatedBRL, 0);
 
-      for (const r of eligibleRoutes) {
-        const currentAsset = assetsList.find((a) => a.id === r.assetId);
-        const currentQty = Number(currentAsset?.quantity ?? 0);
-        const currentAvgPrice = Number(currentAsset?.average_price ?? 0);
-
-        const newLotQty = r.quantity;
-        const newLotPrice = r.priceBRL;
-        const lotCalc = calculateWeightedAveragePrice(currentQty, currentAvgPrice, newLotQty, newLotPrice);
-
-        await updateAsset.mutateAsync({
-          id: r.assetId,
-          patch: {
-            quantity: lotCalc.newQuantity,
-            average_price: lotCalc.newAveragePrice,
-          },
-        });
-
-        totalAllocatedBRL += r.allocatedBRL;
-      }
-
-      // Registra a contribuição do aporte mensal
-      await createContribution.mutateAsync({
-        asset_id: null,
+      await executeBatch.mutateAsync({
+        items,
         date,
-        amount: Math.round(totalAllocatedBRL * 100) / 100,
+        totalAmount,
         notes: `Aporte inteligente (${eligibleRoutes.length} ativos)`,
       });
 
-      triggerSensory("success");
-      pushToast({
-        title: "Aportes aplicados à carteira",
-        description: `Posições de ${eligibleRoutes.length} ativos atualizadas com sucesso.`,
-      });
       setConfirmBatchOpen(false);
       setAporteCents(0);
       onGoToPosition?.();
@@ -242,6 +207,8 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
               totalAllocated={result.totalAllocated}
               leftover={result.leftover}
               routes={routes}
+              classSummaries={result.classSummaries}
+              skippedAssets={result.skippedAssets}
               onExecuteAporte={eligibleRoutes.length > 0 ? () => setConfirmBatchOpen(true) : undefined}
               executing={isApplying}
             />

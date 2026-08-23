@@ -221,6 +221,58 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
           placeholder="Ex: Tese de investimento, corretora..."
         />
       </div>
+
+      {/* Proventos Anteriores ao Cadastro — oculto para ativos de caixa */}
+      {!isCash && (
+        <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-surface/50 p-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-foreground">
+              Proventos Anteriores ao Cadastro (Opcional)
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              Informe proventos recebidos antes deste cadastro. Eles alimentam o Yield on Cost e a Bola de Neve, mas nao aparecem no extrato mensal nem no calendario.
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="wizard-accumulated-dividends"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Total Acumulado Recebido ({state.currency})
+              </label>
+              <MoneyInput
+                id="wizard-accumulated-dividends"
+                cents={state.accumulatedDividendsCents}
+                onCentsChange={(accumulatedDividendsCents) => onChange({ accumulatedDividendsCents })}
+                placeholder="R$ 0,00"
+                aria-label="Total de proventos acumulados anteriores ao cadastro"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="wizard-estimated-div-per-share"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Dividendo Estimado / Cota / Mes ({state.currency})
+              </label>
+              <MoneyInput
+                id="wizard-estimated-div-per-share"
+                cents={state.estimatedDividendPerShareCents}
+                onCentsChange={(estimatedDividendPerShareCents) => onChange({ estimatedDividendPerShareCents })}
+                placeholder="R$ 0,00"
+                aria-label="Dividendo mensal estimado por cota para calculo da Bola de Neve"
+              />
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground">
+            O dividendo estimado por cota e usado apenas quando nao ha lancamentos periodicos registrados para este ativo.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

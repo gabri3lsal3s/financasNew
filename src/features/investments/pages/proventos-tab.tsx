@@ -4,7 +4,8 @@ import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonTable, Tabs } 
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { calculateSnowballProgress, isCashAssetClass } from "@/domain/portfolio";
+import { calculateSnowballProgress, resolveMonthlyDividendPerShare } from "@/domain/portfolio/snowball";
+import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import {
@@ -64,30 +65,46 @@ export function ProventosTab() {
     .filter((a) => !isCashAssetClass(a.asset_class) && a.quantity > 0)
     .map((a) => {
       const assetDivs = dividends.filter((d) => d.asset_id === a.id);
-      if (assetDivs.length === 0) return null;
 
-      // Último provento recebido por cota
-      const latestDiv = assetDivs.sort((d1, d2) => d2.date.localeCompare(d1.date))[0];
-      const monthlyDividendPerShare = latestDiv && a.quantity > 0 ? latestDiv.amount / a.quantity : 0;
+      // Último provento periódico (null se não houver lançamentos em portfolio_dividends)
+      const latestDiv = assetDivs.length > 0
+        ? assetDivs.sort((d1, d2) => d2.date.localeCompare(d1.date))[0]
+        : null;
+
+      // Resolve a estimativa de dividendo/cota conforme prioridade:
+      // A — último lançamento periódico (mais preciso)
+      // B — estimated_monthly_dividend_per_share do ativo (fallback manual)
+      // none — ocultar da Bola de Neve
+      const resolved = resolveMonthlyDividendPerShare(
+        latestDiv?.amount ?? null,
+        a.quantity,
+        a.estimated_monthly_dividend_per_share ?? 0,
+      );
+
+      if (resolved.source === "none") return null;
+
       const row = position.rows.find((r) => r.assetId === a.id);
       const currentPrice = row && row.priceBRL > 0 ? row.priceBRL : a.average_price;
 
-      if (monthlyDividendPerShare <= 0 || currentPrice <= 0) return null;
+      if (currentPrice <= 0) return null;
 
       const progress = calculateSnowballProgress({
         quantity: a.quantity,
         currentPrice,
-        monthlyDividendPerShare,
+        monthlyDividendPerShare: resolved.perShare,
       });
 
       return {
         asset: a,
         currentPrice,
         progress,
+        /** Indica se a Bola de Neve está usando estimativa manual (sem lançamentos periódicos). */
+        dividendSource: resolved.source,
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
     .sort((a, b) => b.progress.progressPct - a.progress.progressPct);
+
 
   const hasAny = dividends.length > 0;
   const loading = dividendsQuery.isLoading || assetsQuery.isLoading;
@@ -218,7 +235,7 @@ export function ProventosTab() {
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {snowballItems.map(({ asset, currentPrice, progress }) => (
+                {snowballItems.map(({ asset, currentPrice, progress, dividendSource }) => (
                   <div
                     key={asset.id}
                     className={`flex flex-col gap-2.5 rounded-xl border p-3.5 transition-colors ${
@@ -232,15 +249,22 @@ export function ProventosTab() {
                         <strong className="text-sm font-bold text-foreground truncate">{asset.ticker}</strong>
                         <span className="text-[11px] text-muted-foreground">({asset.quantity} cotas)</span>
                       </div>
-                      {progress.isSnowballActive ? (
-                        <Badge variant="positive" className="text-[10px] px-1.5 py-0">
-                          Bola de Neve Ativa
-                        </Badge>
-                      ) : (
-                        <span className="text-[11px] font-semibold text-portfolio">
-                          {progress.progressPct}%
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {dividendSource === "manual_estimate" && (
+                          <Badge variant="muted" className="text-[10px] px-1.5 py-0">
+                            Estimado
+                          </Badge>
+                        )}
+                        {progress.isSnowballActive ? (
+                          <Badge variant="positive" className="text-[10px] px-1.5 py-0">
+                            Bola de Neve Ativa
+                          </Badge>
+                        ) : (
+                          <span className="text-[11px] font-semibold text-portfolio">
+                            {progress.progressPct}%
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
@@ -281,6 +305,7 @@ export function ProventosTab() {
                   </div>
                 ))}
               </div>
+
             </section>
           )}
         </>

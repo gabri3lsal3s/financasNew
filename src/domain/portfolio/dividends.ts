@@ -8,6 +8,11 @@
  *
  * Motor puro — testável isoladamente; a UI só formata os valores.
  * Provisionados (estimativa futura) ficam fora do escopo (decisão F18).
+ *
+ * Adicionado (F40+):
+ *   • DividendEntryMode — modo de registro: "daily" (data exata) ou "monthly" (extrato do mês).
+ *   • resolveDividendDate — resolve a data ISO a gravar conforme o modo.
+ *   • resolveDividendNote — gera a nota padrão com tag [MENSAL] quando aplicável.
  */
 
 const DIVIDEND_TYPES: ReadonlySet<string> = new Set(["dividend", "jcp", "fii_yield"]);
@@ -93,4 +98,51 @@ export function dividendsByYear(transactions: readonly DividendTransaction[], ye
   }
   const months = Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}`);
   return months.map((month) => ({ month, total: byMonth.get(month) ?? 0 }));
+}
+
+// ---------------------------------------------------------------------------
+// Modo de Registro de Provento — Diário vs. Extrato do Mês
+// ---------------------------------------------------------------------------
+
+/**
+ * Modo de registro de provento no formulário de lançamento:
+ * - "daily"  : data exata do recebimento (DatePicker → YYYY-MM-DD).
+ * - "monthly": competência mensal consolidada (MonthPicker → YYYY-MM).
+ *              A data gravada é sempre o primeiro dia do mês (YYYY-MM-01),
+ *              determinístico e previsível. A nota recebe a tag [MENSAL].
+ */
+export type DividendEntryMode = "daily" | "monthly";
+
+/**
+ * Resolve a data ISO a ser gravada em `portfolio_dividends` conforme o modo:
+ * - "daily"  : preserva a data exata (YYYY-MM-DD) informada pelo DatePicker.
+ * - "monthly": converte YYYY-MM (MonthPicker) → YYYY-MM-01.
+ */
+export function resolveDividendDate(mode: DividendEntryMode, value: string): string {
+  if (mode === "monthly") {
+    // Extrai YYYY-MM e fixa no primeiro dia do mês (YYYY-MM-01)
+    const monthKey = value.slice(0, 7);
+    return `${monthKey}-01`;
+  }
+  // value = "YYYY-MM-DD" vindo do DatePicker
+  return value;
+}
+
+
+/**
+ * Gera a nota padrão para o lançamento conforme o modo e inputs do usuário.
+ * - Modo "monthly": prefixa com "[MENSAL]" para rastreabilidade no extrato.
+ * - Modo "daily"  : usa a nota do usuário como está, sem prefixo.
+ * O tipo (ex: "DIVIDEND", "FII_YIELD") é usado como fallback quando não há nota.
+ */
+export function resolveDividendNote(
+  mode: DividendEntryMode,
+  userNote: string,
+  type: string,
+): string {
+  const base = userNote.trim() ? userNote.trim() : type.toUpperCase();
+  if (mode === "monthly") {
+    return `[MENSAL] ${base}`;
+  }
+  return base;
 }

@@ -3,6 +3,7 @@ import { Alert, Button, ConfirmDialog, Modal, Stepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
+import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/dividends";
 import {
   useAllocationTargets,
   useCreatePortfolioAsset,
@@ -39,14 +40,23 @@ export interface InvestmentWizardProps {
   initialMode?: WizardMode;
 }
 
-export function InvestmentWizard({
-  open = true,
+interface InvestmentWizardContentProps {
+  open: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onClose?: () => void;
+  onSuccess?: () => void;
+  initialAsset: PortfolioAsset | null;
+  initialMode: WizardMode;
+}
+
+function InvestmentWizardContent({
+  open,
   onOpenChange,
   onClose,
   onSuccess,
-  initialAsset = null,
-  initialMode = "select",
-}: InvestmentWizardProps) {
+  initialAsset,
+  initialMode,
+}: InvestmentWizardContentProps) {
   const assetsQuery = usePortfolioAssets();
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
@@ -222,16 +232,26 @@ export function InvestmentWizard({
         if (!state.selectedAsset) throw new Error("Selecione um ativo");
         const total = state.totalCents / 100;
 
+        const resolvedDate = resolveDividendDate(
+          state.dividendEntryMode,
+          state.dividendEntryMode === "monthly" ? state.month : state.date,
+        );
+        const resolvedNotes = resolveDividendNote(
+          state.dividendEntryMode,
+          state.notes,
+          "dividend",
+        );
+
         await recordOrder.mutateAsync({
           asset: state.selectedAsset,
           type: "dividend",
-          date: state.date,
+          date: resolvedDate,
           quantity: 0,
           price: 0,
           total,
           syncCash: state.syncCash,
           cashAsset,
-          notes: state.notes,
+          notes: resolvedNotes,
         });
       } else if (state.mode === "split") {
         if (!state.selectedAsset) throw new Error("Selecione um ativo");
@@ -280,6 +300,8 @@ export function InvestmentWizard({
           currency: state.currency,
           quantity: finalQuantity,
           average_price: finalAveragePrice,
+          accumulated_dividends: state.accumulatedDividendsCents / 100,
+          estimated_monthly_dividend_per_share: state.estimatedDividendPerShareCents / 100,
           notes: finalNotes,
         });
 
@@ -545,5 +567,28 @@ export function InvestmentWizard({
         onConfirm={handleClose}
       />
     </>
+  );
+}
+
+export function InvestmentWizard({
+  open = true,
+  onOpenChange,
+  onClose,
+  onSuccess,
+  initialAsset = null,
+  initialMode = "select",
+}: InvestmentWizardProps) {
+  if (!open) return null;
+
+  return (
+    <InvestmentWizardContent
+      key={`${initialAsset?.id ?? "none"}-${initialMode}`}
+      open={open}
+      onOpenChange={onOpenChange}
+      onClose={onClose}
+      onSuccess={onSuccess}
+      initialAsset={initialAsset}
+      initialMode={initialMode}
+    />
   );
 }

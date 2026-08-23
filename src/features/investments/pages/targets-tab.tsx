@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Equal, RotateCcw, Save, Scale, Trash2 } from "lucide-react";
 import { Alert, Button, EmptyState, NumberStepperInput, Progress, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
-import { TargetEditor } from "@/components/modules";
+import { PresetSelectorBar, SavePresetDialog, TargetEditor } from "@/components/modules";
 import {
+  SYSTEM_PRESET_TEMPLATES,
+  applyPresetToPosition,
+  createPresetSnapshot,
   distributeEquallyTargets,
   mirrorCurrentPositionTargets,
   normalizeAllocationTargets,
@@ -13,33 +16,46 @@ import { numberToCents } from "@/domain/money";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 import {
+  useAllocationPresets,
   useAllocationTargets,
+  useCreateAllocationPreset,
+  useDeleteAllocationPreset,
   useGroupTargets,
   usePortfolioPosition,
   useRemoveGroupTarget,
   useSaveAllocationTargets,
   useSaveGroupTarget,
+  useUpdateAllocationPreset,
 } from "@/state";
 
 /**
  * Metas de alocação (§3.11.1 e §F39) — edição em lote por ativo com barra de soma
  * (≤ 100%, validada na UI e no banco via RPC), normalização em 1-clique contextual,
- * distribuição 1/N, espelhamento da carteira real, metas por classe e travas setoriais.
+ * distribuição 1/N, espelhamento da carteira real, metas por classe, cenários estratégicos (presets)
+ * e travas setoriais.
  */
 export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
+  const presetsQuery = useAllocationPresets();
 
   const saveTargets = useSaveAllocationTargets();
   const saveClassTarget = useSaveGroupTarget("class");
   const removeClassTarget = useRemoveGroupTarget("class");
 
+  const createPreset = useCreateAllocationPreset();
+  const updatePreset = useUpdateAllocationPreset();
+  const deletePreset = useDeleteAllocationPreset();
+
   // Metas por ativo: edições locais sobrepõem o que veio do banco.
   const [assetDraft, setAssetDraft] = useState<Record<string, number>>({});
   const [classDraft, setClassDraft] = useState<Record<string, number>>({});
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>("official");
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [savingClass, setSavingClass] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -313,12 +329,177 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     }
   };
 
-  const [subTab, setSubTab] = useState<"assets" | "classes">("assets");
+  // -------------------------------------------------------------------------
+  // Handlers de Cenários (Presets)
+  // -------------------------------------------------------------------------
+  const isUserPreset = selectedPresetId?.startsWith("user_") ?? false;
+  const isSysPreset = selectedPresetId?.startsWith("sys_") ?? false;
+  const rawUserPresetId = isUserPreset ? selectedPresetId!.replace("user_", "") : null;
+  const rawSysPresetId = isSysPreset ? selectedPresetId!.replace("sys_", "") : null;
+
+  const currentActiveUserPreset = rawUserPresetId
+    ? (presetsQuery.data ?? []).find((p) => p.id === rawUserPresetId) ?? null
+    : null;
+
+  const currentActiveSysPreset = rawSysPresetId
+    ? SYSTEM_PRESET_TEMPLATES.find((s) => s.id === rawSysPresetId || s.id === selectedPresetId) ?? null
+    : null;
+
+  const activePresetName = currentActiveUserPreset?.name ?? currentActiveSysPreset?.name ?? null;
+  const activePresetDescription = currentActiveUserPreset?.description ?? currentActiveSysPreset?.description ?? null;
+  const isSimulating = selectedPresetId !== null && selectedPresetId !== "official";
+
+  const handleSelectPreset = (presetId: string) => {
+    setError(null);
+    setSaved(false);
+
+    if (presetId === "official") {
+      setSelectedPresetId("official");
+      setAssetDraft({});
+      setClassDraft({});
+      triggerSensory("selection");
+      return;
+    }
+
+    if (presetId.startsWith("sys_")) {
+      const rawId = presetId.replace("sys_", "");
+      const template = SYSTEM_PRESET_TEMPLATES.find((t) => t.id === rawId || t.id === presetId);
+      if (template) {
+        const applied = applyPresetToPosition(template, position.rows);
+        setAssetDraft(applied.assetDraft);
+        setClassDraft(applied.classDraft);
+        setSelectedPresetId(presetId);
+        triggerSensory("selection");
+      }
+      return;
+    }
+
+    if (presetId.startsWith("user_")) {
+      const rawId = presetId.replace("user_", "");
+      const preset = (presetsQuery.data ?? []).find((p) => p.id === rawId);
+      if (preset) {
+        const applied = applyPresetToPosition(preset, position.rows);
+        setAssetDraft(applied.assetDraft);
+        setClassDraft(applied.classDraft);
+        setSelectedPresetId(presetId);
+        triggerSensory("selection");
+      }
+    }
+  };
+
+  const handleSaveNewPreset = async (name: string, description?: string | null) => {
+    const snapshot = createPresetSnapshot({
+      name,
+      description,
+      assetRows: position.rows.map((r) => ({
+        assetId: r.assetId,
+        ticker: r.ticker,
+        target: assetTargetOf(r.assetId),
+      })),
+      classRows: classes.map((c) => ({
+        name: c,
+        target: classTargetOf(c),
+      })),
+    });
+
+    const created = await createPreset.mutateAsync(snapshot);
+    setSelectedPresetId(`user_${created.id}`);
+    triggerSensory("success");
+    pushToast({
+      title: "Cenário salvo",
+      description: `O cenário "${name}" foi salvo com sucesso.`,
+      variant: "success",
+    });
+  };
+
+  const handleOverwritePreset = async () => {
+    if (!currentActiveUserPreset) return;
+    setError(null);
+    try {
+      const snapshot = createPresetSnapshot({
+        name: currentActiveUserPreset.name,
+        description: currentActiveUserPreset.description,
+        assetRows: position.rows.map((r) => ({
+          assetId: r.assetId,
+          ticker: r.ticker,
+          target: assetTargetOf(r.assetId),
+        })),
+        classRows: classes.map((c) => ({
+          name: c,
+          target: classTargetOf(c),
+        })),
+      });
+
+      await updatePreset.mutateAsync({ id: currentActiveUserPreset.id, input: snapshot });
+      triggerSensory("success");
+      pushToast({
+        title: "Cenário atualizado",
+        description: `O cenário "${currentActiveUserPreset.name}" foi atualizado com as metas atuais.`,
+        variant: "success",
+      });
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
+  };
+
+  const handleDeletePreset = async (id: string) => {
+    setError(null);
+    try {
+      await deletePreset.mutateAsync(id);
+      setSelectedPresetId("official");
+      setAssetDraft({});
+      setClassDraft({});
+      triggerSensory("success");
+      pushToast({
+        title: "Cenário excluído",
+        description: "O cenário de metas foi removido.",
+        variant: "default",
+      });
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
+  };
+
+  const handleResetToOfficial = () => {
+    setSelectedPresetId("official");
+    setAssetDraft({});
+    setClassDraft({});
+    setError(null);
+    triggerSensory("selection");
+  };
+
+  const [subTab, setSubTab] = useState<"classes" | "assets">("classes");
 
   return (
     <div className="flex flex-col gap-6">
       {loadError ? <Alert variant="error">{getErrorMessage(loadError)}</Alert> : null}
       {error ? <Alert variant="error">{error}</Alert> : null}
+
+      {/* Barra de Controle de Cenários / Presets */}
+      {position.rows.length > 0 ? (
+        <PresetSelectorBar
+          userPresets={presetsQuery.data ?? []}
+          selectedPresetId={selectedPresetId}
+          onSelectPreset={handleSelectPreset}
+          onSaveNewPreset={() => setSavePresetOpen(true)}
+          onOverwritePreset={currentActiveUserPreset ? () => void handleOverwritePreset() : undefined}
+          onDeletePreset={(id) => void handleDeletePreset(id)}
+          onResetToOfficial={handleResetToOfficial}
+          isSimulating={isSimulating}
+          activePresetName={activePresetName}
+          activePresetDescription={activePresetDescription}
+        />
+      ) : null}
+
+      {/* Diálogo para salvar novo cenário */}
+      <SavePresetDialog
+        open={savePresetOpen}
+        onOpenChange={setSavePresetOpen}
+        onSave={handleSaveNewPreset}
+        assetCount={assetRows.filter((r) => r.target > 0).length}
+        classCount={classRows.filter((r) => r.target > 0).length}
+        saving={createPreset.isPending}
+      />
 
       {loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
@@ -343,86 +524,9 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       ) : (
         <Tabs
           value={subTab}
-          onValueChange={(val: string) => setSubTab(val as "assets" | "classes")}
+          onValueChange={(val: string) => setSubTab(val as "classes" | "assets")}
           variant="pills"
           items={[
-            {
-              value: "assets",
-              label: "Ativos",
-              content: (
-                <div className="flex flex-col gap-4">
-                  {classes.length > 1 ? (
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAssetClassFilter(null);
-                            triggerSensory("selection");
-                          }}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                            assetClassFilter === null
-                              ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                              : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          Todas as classes
-                        </button>
-                        {classes.map((cls) => (
-                          <button
-                            key={cls}
-                            type="button"
-                            onClick={() => {
-                              setAssetClassFilter((prev) => (prev === cls ? null : cls));
-                              triggerSensory("selection");
-                            }}
-                            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                              assetClassFilter === cls
-                                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                                : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            {cls}
-                          </button>
-                        ))}
-                      </div>
-
-                      {activeClassTargetSum !== null ? (
-                        <span className="text-xs text-muted-foreground">
-                          Soma {assetClassFilter}: <strong className="text-foreground">{activeClassTargetSum.toFixed(1)}%</strong>
-                          {selectedClassTarget !== null ? (
-                            <span className="ml-1 text-muted-foreground">/ meta {selectedClassTarget.toFixed(1)}%</span>
-                          ) : null}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <TargetEditor
-                    rows={visibleAssetRows}
-                    heading="Metas por ativo (% do patrimônio)"
-                    onTargetChange={(key, value) => {
-                      setError(null);
-                      setSaved(false);
-                      setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }));
-                    }}
-                    onNormalize={handleNormalize}
-                    normalizeLabel={normalizeLabel}
-                    onNormalizeAll={handleNormalizeAll}
-                    onDistributeEqually={handleDistributeEqually}
-                    distributeLabel={distributeLabel}
-                    onMirrorPosition={handleMirrorPosition}
-                    onResetZero={handleResetZero}
-                    onSave={() => void saveAssets()}
-                    saving={saveTargets.isPending}
-                    saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}
-                    sumPercent={assetSum.sum}
-                    sumError={assetSum.error}
-                    emptyMessage={assetClassFilter ? `Nenhum ativo na classe ${assetClassFilter}.` : "Nenhum ativo na carteira."}
-                  />
-                </div>
-              ),
-            },
             {
               value: "classes",
               label: "Classes",
@@ -569,6 +673,83 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                       </div>
                     </section>
                   ) : null}
+                </div>
+              ),
+            },
+            {
+              value: "assets",
+              label: "Ativos",
+              content: (
+                <div className="flex flex-col gap-4">
+                  {classes.length > 1 ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAssetClassFilter(null);
+                            triggerSensory("selection");
+                          }}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                            assetClassFilter === null
+                              ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                              : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Todas as classes
+                        </button>
+                        {classes.map((cls) => (
+                          <button
+                            key={cls}
+                            type="button"
+                            onClick={() => {
+                              setAssetClassFilter((prev) => (prev === cls ? null : cls));
+                              triggerSensory("selection");
+                            }}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                              assetClassFilter === cls
+                                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                                : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {cls}
+                          </button>
+                        ))}
+                      </div>
+
+                      {activeClassTargetSum !== null ? (
+                        <span className="text-xs text-muted-foreground">
+                          Soma {assetClassFilter}: <strong className="text-foreground">{activeClassTargetSum.toFixed(1)}%</strong>
+                          {selectedClassTarget !== null ? (
+                            <span className="ml-1 text-muted-foreground">/ meta {selectedClassTarget.toFixed(1)}%</span>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <TargetEditor
+                    rows={visibleAssetRows}
+                    heading="Metas por ativo (% do patrimônio)"
+                    onTargetChange={(key, value) => {
+                      setError(null);
+                      setSaved(false);
+                      setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }));
+                    }}
+                    onNormalize={handleNormalize}
+                    normalizeLabel={normalizeLabel}
+                    onNormalizeAll={handleNormalizeAll}
+                    onDistributeEqually={handleDistributeEqually}
+                    distributeLabel={distributeLabel}
+                    onMirrorPosition={handleMirrorPosition}
+                    onResetZero={handleResetZero}
+                    onSave={() => void saveAssets()}
+                    saving={saveTargets.isPending}
+                    saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}
+                    sumPercent={assetSum.sum}
+                    sumError={assetSum.error}
+                    emptyMessage={assetClassFilter ? `Nenhum ativo na classe ${assetClassFilter}.` : "Nenhum ativo na carteira."}
+                  />
                 </div>
               ),
             },

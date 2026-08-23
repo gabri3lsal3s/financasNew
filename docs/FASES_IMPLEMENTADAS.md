@@ -477,10 +477,50 @@
      - Integração nativa com `MoneyInput` e `calculator-bridge` para injeção imediata de valores calculados no campo em foco.
   5. **Qualidade e Testes:** Suíte completa com 1510 testes passando em 193 arquivos, com typecheck e lint estritos 100% limpos.
 
+## Evolução — Sistema de Cenários & Pré-definições de Metas de Alocação (Presets) (2026-08-23)
+
+- **Problema:**
+  1. O usuário não conseguia salvar estratégias ou cenários alternativos de alocação de carteira (ex.: *Foco em Dividendos*, *All-Weather / Ray Dalio*, *Boglehead 60/40*, *Agressiva / Growth*); qualquer alteração sobrescrevia as metas oficiais diretamente.
+  2. Um trigger legado no PostgreSQL (`trg_allocation_targets_check`) disparava exceção `BEFORE DELETE`, causando um bloqueio que impedia salvar ou limpar metas quando a soma anterior estivesse superior a 100%.
+- **Solução:**
+  1. **Banco de Dados & RLS (`supabase/migrations/20260101000024_fix_allocation_targets_trigger.sql` & `20260101000025_allocation_presets.sql`):**
+     - Remoção definitiva do trigger de linha `trg_allocation_targets_check` e substituição atômica no RPC `set_allocation_targets` (DELETE + INSERT).
+     - Nova tabela `public.allocation_presets` com RLS estrito por usuário (`auth.uid() = user_id`), campos JSONB para `asset_targets` e `class_targets`, trigger de `updated_at` e índices de consulta rápida.
+  2. **Domínio Puro (`src/domain/portfolio/presets.ts` & `src/domain/portfolio/presets.test.ts`):**
+     - Catálogo de templates pré-curados de mercado (`SYSTEM_PRESET_TEMPLATES`: *Ray Dalio*, *Boglehead*, *Foco em Dividendos*, *Arrojada*).
+     - Funções puras testadas com Vitest: `applyPresetToPosition` (mapeamento por Ticker e ID, distribuição 1/N de classes, resiliência a novos ativos e ativos excluídos), `createPresetSnapshot` e `validatePresetInput`.
+  3. **Camada de Dados & Estado (`src/data/repositories/allocation-presets.ts` & `src/state/queries/use-allocation-presets.ts`):**
+     - CRUD completo com TanStack Query (`useAllocationPresets`, `useCreateAllocationPreset`, `useUpdateAllocationPreset`, `useDeleteAllocationPreset`), invalidação automática de cache e toasts semânticos de feedback.
+  4. **Componentes Modulares & UI (`PresetSelectorBar` & `SavePresetDialog`):**
+     - Barra de controle no topo da aba de Metas com seletor categorizado (Metas Oficiais, Cenários Salvos e Modelos de Mercado).
+     - **Modo Simulação & Prévia:** Permite explorar qualquer cenário mantendo as metas oficiais intactas, com botão de *Restaurar Metas Oficiais*, *Sobrescrever Cenário* e *Excluir Cenário* com diálogo seguro de confirmação.
+     - Modal `SavePresetDialog` para nomear, descrever e pré-visualizar a quantidade de ativos/classes do snapshot.
+## Evolução — Proventos Acumulados Históricos, Modo Extrato do Mês & Bola de Neve (2026-08-23)
+
+- **Problema:**
+  1. O usuário não tinha como cadastrar o total de proventos recebidos em anos/meses anteriores ao uso do app sem poluir o calendário e o extrato mensal com datas antigas ou estimativas imprecisas;
+  2. O cálculo de *Yield on Cost* (YoC) ignorava o histórico anterior ao cadastro;
+  3. No cálculo do *Efeito Bola de Neve*, ativos que não possuíam lançamentos em `portfolio_dividends` (mas tinham proventos acumulados históricos) eram ocultados da listagem (`return null`), ficando invisíveis;
+  4. O usuário não conseguia escolher entre lançar proventos pontuais (data exata) ou lançar o extrato consolidado do mês de competência (extrato mensal) nos formulários e no Wizard.
+- **Solução:**
+  1. **Banco de Dados & Schema (`supabase/migrations/20260101000027_portfolio_accumulated_dividends.sql`):**
+     - Adicionadas colunas `accumulated_dividends numeric(14,2) NOT NULL DEFAULT 0` e `estimated_monthly_dividend_per_share numeric(12,6) NOT NULL DEFAULT 0` na tabela `portfolio_assets`.
+     - Validação e tipagem forte em `src/types/schema.ts` e `src/domain/portfolio/schemas.ts` com Zod.
+  2. **Domínio Puro (`src/domain/portfolio/dividends.ts` & `snowball.ts`):**
+     - Funções puras `resolveDividendDate` e `resolveDividendNote` para padronizar o registro no modo Extrato do Mês (`YYYY-MM-01` com tag `[MENSAL]`).
+     - Função `calculateYieldOnCostTotal` incorporando proventos acumulados históricos e periódicos no YoC.
+     - Função `resolveMonthlyDividendPerShare` com resolução hierárquica de fonte (Cenários A, B e C), garantindo que ativos com estimativa manual participem da Bola de Neve mesmo sem lançamentos periódicos.
+  3. **UI & Experiência do Usuário (`InvestmentWizard`, `DividendFormDialog`, `QuickTransactionSheet`, `AssetDetailSheet` & `ProventosTab`):**
+     - Seção de *Proventos Anteriores ao Cadastro* no Wizard e no `AssetEditDialog`.
+     - Alternador de modo (*Diário / Data Exata* vs. *Extrato do Mês* com `MonthPicker`) em todos os pontos de entrada de proventos.
+     - Badge informativo `"Estimado"` na Bola de Neve para ativos alimentados via estimativa cadastral.
+     - Fast-Track no Wizard: abertura direta no Passo 2 com dados do ativo pré-carregados ao clicar em ações de ativos (`Aportar`, `Vender`, `Provento`).
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
 - **Verificação:** a cada fase — typecheck, lint, testes e build verdes antes do commit (regra do ciclo, `ROADMAP.md` §6.1).
+
 
 
 

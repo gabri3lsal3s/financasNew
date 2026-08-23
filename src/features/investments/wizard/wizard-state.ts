@@ -7,7 +7,10 @@ import {
 } from "@/domain/portfolio/valuation";
 import { cleanTicker } from "@/domain/portfolio/tickers-catalog";
 import { todayISO } from "@/domain/debts";
+import { currentMonth } from "@/lib/date";
+import type { DividendEntryMode } from "@/domain/portfolio/dividends";
 import type { AssetCurrency, PortfolioAsset } from "@/types";
+
 
 export type WizardMode =
   | "select"
@@ -37,7 +40,15 @@ export interface InvestmentWizardState {
   priceCents: number;
   totalCents: number;
   date: string;
+  month: string;
+  dividendEntryMode: DividendEntryMode;
   splitFactor: number;
+
+  // Proventos Históricos (anteriores ao extrato periódico)
+  /** Total de proventos acumulados em centavos. Alimenta YoC sem distorcer calendário/extrato. */
+  accumulatedDividendsCents: number;
+  /** Dividendo mensal estimado por cota em centavos. Alimenta Bola de Neve (Cenário B). */
+  estimatedDividendPerShareCents: number;
 
   // Metas e Opções
   targetPercentage: number | null;
@@ -62,13 +73,20 @@ export const defaultWizardState: InvestmentWizardState = {
   priceCents: 0,
   totalCents: 0,
   date: todayISO(),
+  month: currentMonth(),
+  dividendEntryMode: "daily",
   splitFactor: 2,
+
+  accumulatedDividendsCents: 0,
+  estimatedDividendPerShareCents: 0,
 
   targetPercentage: null,
   syncCash: false,
   recordContribution: true,
   notes: "",
 };
+
+
 
 export const parseNumber = (raw: string): number => {
   if (!raw || typeof raw !== "string") return 0;

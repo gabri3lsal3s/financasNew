@@ -4,8 +4,11 @@ import {
   calculatePortfolioConcentration,
   calculateSnowballProgress,
   calculateYieldOnCost,
+  calculateYieldOnCostTotal,
   normalizeAllocationTargets,
+  resolveMonthlyDividendPerShare,
 } from "./snowball";
+
 
 describe("domain/portfolio/snowball — Efeito Bola de Neve, YoC e Concentração", () => {
   describe("calculateSnowballProgress", () => {
@@ -65,6 +68,53 @@ describe("domain/portfolio/snowball — Efeito Bola de Neve, YoC e Concentraçã
       expect(calculateYieldOnCost(500, 0)).toBe(0);
     });
   });
+
+  describe("calculateYieldOnCostTotal", () => {
+    it("soma proventos acumulados históricos e periódicos no YoC", () => {
+      // Acumulado: R$ 300, Periódico: R$ 200, Custo: R$ 5.000 -> (500 / 5000) * 100 = 10%
+      expect(calculateYieldOnCostTotal(300, 200, 5000)).toBe(10);
+    });
+
+    it("funciona quando há apenas proventos acumulados históricos (Cenário B)", () => {
+      // Acumulado: R$ 500, Periódico: R$ 0, Custo: R$ 5.000 -> 10%
+      expect(calculateYieldOnCostTotal(500, 0, 5000)).toBe(10);
+    });
+
+    it("funciona quando há apenas proventos periódicos (Cenário A)", () => {
+      // Acumulado: R$ 0, Periódico: R$ 500, Custo: R$ 5.000 -> 10%
+      expect(calculateYieldOnCostTotal(0, 500, 5000)).toBe(10);
+    });
+
+    it("retorna 0 se custo for zero ou não houver proventos", () => {
+      expect(calculateYieldOnCostTotal(0, 0, 5000)).toBe(0);
+      expect(calculateYieldOnCostTotal(300, 200, 0)).toBe(0);
+    });
+  });
+
+  describe("resolveMonthlyDividendPerShare", () => {
+    it("prioriza proventos periódicos reais quando disponíveis (Cenário A e C)", () => {
+      // Ativo tem 100 cotas, último provento foi R$ 50 (0,50/cota). Estimativa manual é R$ 0,40.
+      // Prioridade: latest_tx (0,50/cota)
+      const res = resolveMonthlyDividendPerShare(50, 100, 0.4);
+      expect(res.perShare).toBe(0.5);
+      expect(res.source).toBe("latest_tx");
+    });
+
+
+    it("usa estimativa manual quando não há proventos periódicos (Cenário B)", () => {
+      // Ativo não tem lançamentos periódicos (null), mas tem estimativa manual de R$ 0,40
+      const res = resolveMonthlyDividendPerShare(null, 100, 0.4);
+      expect(res.perShare).toBe(0.4);
+      expect(res.source).toBe("manual_estimate");
+    });
+
+    it("retorna source none quando não há proventos periódicos nem estimativa manual", () => {
+      const res = resolveMonthlyDividendPerShare(null, 100, 0);
+      expect(res.perShare).toBe(0);
+      expect(res.source).toBe("none");
+    });
+  });
+
 
   describe("calculateBazinTargetPrice", () => {
     it("calcula o preço teto com a taxa padrão de 6% a.a. e margem de segurança", () => {

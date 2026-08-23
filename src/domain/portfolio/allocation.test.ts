@@ -6,9 +6,7 @@ import {
   mirrorCurrentPositionTargets,
   parseTargetInput,
   sanitizeTargetsForSave,
-  sectorExposure,
   targetsSum,
-  validateSectorCaps,
   validateTargetsSum,
 } from "./allocation";
 
@@ -100,52 +98,6 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
       const sum = result.reduce((acc, t) => acc + t.target, 0);
       expect(sum).toBe(100);
       expect(result[1]?.target).toBe(49.99);
-    });
-  });
-
-  describe("sectorExposure — travas setoriais", () => {
-    it("exposição em % do patrimônio", () => {
-      const e = sectorExposure(3000, 10000, 40);
-      expect(e.pct).toBe(30);
-      expect(e.exceeded).toBe(false);
-    });
-
-    it("excede quando pct > cap", () => {
-      const e = sectorExposure(5000, 10000, 40);
-      expect(e.pct).toBe(50);
-      expect(e.exceeded).toBe(true);
-    });
-
-    it("sem trava (cap null) nunca excede", () => {
-      const e = sectorExposure(9000, 10000, null);
-      expect(e.exceeded).toBe(false);
-    });
-
-    it("patrimônio zero → exposição 0%", () => {
-      const e = sectorExposure(100, 0, 40);
-      expect(e.pct).toBe(0);
-    });
-  });
-
-  describe("validateSectorCaps", () => {
-    it("ok quando nenhum setor ultrapassa o teto", () => {
-      const result = validateSectorCaps([
-        { pct: 30, cap: 40 },
-        { pct: 50, cap: null },
-      ]);
-      expect(result.ok).toBe(true);
-      expect(result.violated).toHaveLength(0);
-    });
-
-    it("lista os setores violados", () => {
-      const result = validateSectorCaps([
-        { pct: 45, cap: 40 },
-        { pct: 20, cap: 30 },
-        { pct: 60, cap: null },
-      ]);
-      expect(result.ok).toBe(false);
-      expect(result.violated).toHaveLength(1);
-      expect(result.violated[0]).toContain("acima do teto");
     });
   });
 

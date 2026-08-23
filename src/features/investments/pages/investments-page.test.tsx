@@ -56,7 +56,6 @@ vi.mock("@/state", () => ({
   useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSaveAllocationTargets: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
-  useSectorCaps: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),

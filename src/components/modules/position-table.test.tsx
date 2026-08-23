@@ -52,45 +52,65 @@ const rows: PositionRow[] = [
   },
 ];
 
-describe("PositionTable (F17 — ordenação por coluna)", () => {
-  it("sem sortable mantém a ordem recebida", () => {
+describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe)", () => {
+  it("renderiza cabeçalhos das classes agrupadas e colapsadas por padrão", () => {
     render(<PositionTable rows={rows} />);
-    const tickers = screen.getAllByText(/PETR4|CAIXA|BOVA11/);
-    expect(tickers[0]).toHaveTextContent("PETR4");
+    const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
+    expect(acoesGroups.length).toBeGreaterThanOrEqual(1);
+    expect(acoesGroups[0]).toHaveAttribute("aria-expanded", "false");
+
+    const fiisGroups = screen.getAllByRole("button", { name: /Classe FIIs/i });
+    expect(fiisGroups.length).toBeGreaterThanOrEqual(1);
+
+    const caixaGroups = screen.getAllByRole("button", { name: /Classe Caixa/i });
+    expect(caixaGroups.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("sortable ordena por valor de mercado ascendente e alterna direção", async () => {
+  it("permite expandir e colapsar um grupo de classe ao clicar no cabeçalho", async () => {
+    const user = userEvent.setup();
+    render(<PositionTable rows={rows} />);
+
+    const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
+    expect(acoesGroups[0]).toHaveAttribute("aria-expanded", "false");
+
+    // Expandir grupo Ações
+    await user.click(acoesGroups[0]!);
+    expect(acoesGroups[0]).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
+
+    // Colapsar novamente
+    await user.click(acoesGroups[0]!);
+    expect(acoesGroups[0]).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("sortable ordena por valor de mercado e expõe aria-sort no cabeçalho ativo", async () => {
     const user = userEvent.setup();
     render(<PositionTable rows={rows} sortable />);
+
+    // Expandir grupo Ações para acessar os cabeçalhos de coluna
+    const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
+    await user.click(acoesGroups[1] ?? acoesGroups[0]!);
+
     const valorHeader = screen.getByRole("button", { name: /Valor/i });
-    await user.click(valorHeader); // asc: PETR4 (425) → BOVA11 (550) → CAIXA (1.000)
-    let tickers = screen.getAllByText(/PETR4|CAIXA|BOVA11/);
-    expect(tickers[0]).toHaveTextContent("PETR4");
-    expect(tickers[2]).toHaveTextContent("CAIXA");
-    await user.click(valorHeader); // desc: CAIXA → BOVA11 → PETR4
-    tickers = screen.getAllByText(/PETR4|CAIXA|BOVA11/);
-    expect(tickers[0]).toHaveTextContent("CAIXA");
-    expect(tickers[2]).toHaveTextContent("PETR4");
-  });
+    await user.click(valorHeader);
+    expect(valorHeader).toHaveAttribute("aria-sort", "ascending");
 
-  it("sortable expõe aria-sort no cabeçalho ativo", async () => {
-    const user = userEvent.setup();
-    render(<PositionTable rows={rows} sortable />);
     const pctHeader = screen.getByRole("button", { name: /Rentab/i });
     await user.click(pctHeader);
     expect(pctHeader).toHaveAttribute("aria-sort", "ascending");
   });
 
-  it("F28 — mobile: renderiza cards empilhados com valor, lucro e rentabilidade", () => {
+  it("F28 — mobile: renderiza cards empilhados ao expandir grupo", async () => {
+    const user = userEvent.setup();
     render(<PositionTable rows={rows} />);
+
+    // Expandir Ações
+    const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
+    await user.click(acoesGroups[0]!);
+
     const mobileList = screen.getByRole("list", { name: "Posições (visão móvel)" });
-    // Cards: ticker presente e o par valor/lucro-prejuízo em cada posição.
     expect(within(mobileList).getByText("PETR4")).toBeInTheDocument();
-    expect(within(mobileList).getAllByText("Lucro/Prejuízo")).toHaveLength(3);
-    // Caixa: sem rentabilidade → travessão.
-    expect(within(mobileList).getByText("CAIXA")).toBeInTheDocument();
-    // O mesmo conjunto de linhas aparece na tabela (sm+) — sem perda de dados.
-    expect(screen.getAllByText("PETR4")).toHaveLength(2);
+    expect(within(mobileList).getAllByText("Lucro/Prejuízo").length).toBeGreaterThanOrEqual(1);
   });
 
   it("aciona onListTransactions ao clicar no card mobile", async () => {
@@ -102,6 +122,11 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
         onListTransactions={onListTransactions}
       />,
     );
+
+    // Expandir Ações
+    const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
+    await user.click(acoesGroups[0]!);
+
     const mobileList = screen.getByRole("list", { name: "Posições (visão móvel)" });
     const petr4Card = within(mobileList).getByRole("button", { name: /Ver detalhes de PETR4/i });
     await user.click(petr4Card);
@@ -118,16 +143,13 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
       />,
     );
 
+    // Expandir Ações
+    const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
+    await user.click(acoesGroups[1] ?? acoesGroups[0]!);
+
     // Clicar no botão do ativo
     const assetButtons = screen.getAllByRole("button", { name: "Ver detalhes de PETR4" });
-    // assetButtons[0] ou [1] (mobile / desktop)
     await user.click(assetButtons[0]!);
-    expect(onListTransactions).toHaveBeenCalledWith("a1", "PETR4");
-
-    // Clicar na linha da tabela desktop
-    const rowsElements = screen.getAllByRole("row");
-    // Primeira linha de dados (índice 1, pois índice 0 é o header)
-    await user.click(rowsElements[1]!);
     expect(onListTransactions).toHaveBeenCalledWith("a1", "PETR4");
   });
 
@@ -144,19 +166,20 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     const searchInput = screen.getByPlaceholderText("Buscar por ticker ou classe…");
     await user.type(searchInput, "PETR");
 
-    expect(screen.getAllByText("PETR4")).toHaveLength(2); // desktop + mobile
-    expect(screen.queryByText("BOVA11")).not.toBeInTheDocument();
-    expect(screen.queryByText("CAIXA")).not.toBeInTheDocument();
+    // Apenas grupo de Ações deve estar presente
+    expect(screen.getAllByRole("button", { name: /Classe Ações/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: /Classe FIIs/i })).not.toBeInTheDocument();
   });
 
-  it("filtra posições ao clicar no botão da classe", async () => {
+  it("filtra posições ao clicar no botão da classe e exibe os ativos da classe diretamente", async () => {
     const user = userEvent.setup();
     render(<PositionTable rows={rows} />);
 
     const fiisFilter = screen.getByRole("button", { name: "FIIs" });
     await user.click(fiisFilter);
 
-    expect(screen.getAllByText("BOVA11")).toHaveLength(2);
+    // Quando filtrado por classe única, exibe diretamente a lista plana dos ativos daquela classe
+    expect(screen.getAllByText("BOVA11")).toHaveLength(2); // desktop + mobile
     expect(screen.queryByText("PETR4")).not.toBeInTheDocument();
   });
 
@@ -172,6 +195,10 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
       />,
     );
 
+    // Filtrar por Ações para ver os ativos diretamente
+    const acoesFilter = screen.getByRole("button", { name: "Ações" });
+    await user.click(acoesFilter);
+
     const priceButtons = screen.getAllByRole("button", { name: /Cotação de PETR4/ });
     expect(priceButtons[0]).toBeDefined();
     await user.click(priceButtons[0]!);
@@ -180,7 +207,8 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     expect(onListTransactions).not.toHaveBeenCalled();
   });
 
-  it("renderiza badge Zerada para ativos com quantidade igual a 0", () => {
+  it("renderiza badge Zerada para ativos com quantidade igual a 0", async () => {
+    const user = userEvent.setup();
     const zeroedRows: PositionRow[] = [
       {
         ...rows[0]!,
@@ -193,6 +221,9 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     ];
 
     render(<PositionTable rows={zeroedRows} />);
+    const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
+    await user.click(acoesGroups[0]!);
+
     expect(screen.getAllByText("Zerada").length).toBeGreaterThanOrEqual(1);
   });
 });
