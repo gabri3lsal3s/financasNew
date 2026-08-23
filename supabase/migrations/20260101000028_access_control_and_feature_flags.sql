@@ -161,7 +161,14 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
+declare
+  v_uid uuid := auth.uid();
 begin
+  -- Se executado diretamente pelo SQL Editor, Service Role ou superuser postgres (fora do contexto de requisição de cliente), permite
+  if v_uid is null or current_user in ('postgres', 'supabase_admin') or coalesce(auth.role(), '') = 'service_role' then
+    return new;
+  end if;
+
   -- Se o chamador não for admin ou superadmin, bloqueia alterações nos campos de segurança
   if not public.is_admin() then
     if new.role is distinct from old.role then
