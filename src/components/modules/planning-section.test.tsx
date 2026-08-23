@@ -3,13 +3,6 @@ import { describe, expect, it } from "vitest";
 import { PlanningSection } from "./planning-section";
 
 describe("PlanningSection (F24)", () => {
-  it("mostra o fundo de emergência com a faixa calculada", () => {
-    // Saldo R$ 12.000 ÷ despesa R$ 2.000 = 6 meses (adequado).
-    render(<PlanningSection balanceCents={1_200_000} monthlyExpensesCents={200_000} />);
-    expect(screen.getByText("Fundo de emergência")).toBeInTheDocument();
-    expect(screen.getByText("Adequado")).toBeInTheDocument();
-  });
-
   it("mostra a meta FIRE e o tempo até a meta com os padrões do mês", () => {
     render(<PlanningSection balanceCents={1_000_000} monthlyExpensesCents={200_000} />);
     expect(screen.getByText("Independência financeira (FIRE)")).toBeInTheDocument();

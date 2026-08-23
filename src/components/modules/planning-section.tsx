@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Rocket, ShieldAlert } from "lucide-react";
+import { Rocket } from "lucide-react";
 import { Input, MoneyInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { EmergencyFundGauge } from "./emergency-fund-gauge";
 import { FireProjectionChart } from "./fire-projection-chart";
-import { DEFAULT_REAL_RETURN_RATE, EMERGENCY_HEALTH_LABELS, emergencyFundMonths, fireProjection } from "@/domain/fire";
+import { DEFAULT_REAL_RETURN_RATE, fireProjection } from "@/domain/fire";
 import { cn } from "@/lib/utils";
 
 export interface PlanningSectionProps {
@@ -16,7 +15,7 @@ export interface PlanningSectionProps {
 }
 
 /**
- * PlanningSection (F24) — fundo de emergência + simulador FIRE.
+ * PlanningSection (F24) — simulador FIRE.
  *
  * 100% presentacional: recebe saldo/despesa do mês e mantém os inputs do
  * simulador (aporte, despesa e retorno real) em estado local de UI. Os
@@ -31,7 +30,6 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
   const effectiveExpenses = expensesCents ?? Math.max(0, monthlyExpensesCents);
   const realReturn = (Number(returnPct) || DEFAULT_REAL_RETURN_RATE * 100) / 100;
 
-  const emergency = emergencyFundMonths(balanceCents, effectiveExpenses);
   const projection = fireProjection({
     annualExpensesCents: effectiveExpenses * 12,
     initialCapitalCents: 0,
@@ -41,44 +39,7 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      {/* Fundo de emergência — card em linha cheia (uma linha cada) */}
-      <section
-        aria-label="Fundo de emergência"
-        className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:p-5 min-w-0 overflow-hidden"
-      >
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary-strong">
-            <ShieldAlert className="size-3.5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground">Fundo de emergência</h2>
-            <p className="truncate text-[11px] text-muted-foreground">Reserva para imprevistos — idealmente 6+ meses de despesa.</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-8 min-w-0">
-          <EmergencyFundGauge months={emergency.months} health={emergency.health} className="shrink-0" />
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3 text-xs min-w-0">
-              <div className="rounded-lg border border-border/60 bg-muted/30 p-3 min-w-0">
-                <p className="text-muted-foreground">Caixa (saldo do mês)</p>
-                <MoneyText cents={Math.max(0, balanceCents)} tone="default" className="text-sm truncate" />
-              </div>
-              <div className="rounded-lg border border-border/60 bg-muted/30 p-3 min-w-0">
-                <p className="text-muted-foreground">Despesa mensal</p>
-                <MoneyText cents={effectiveExpenses} tone="default" className="text-sm truncate" />
-              </div>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Reserva estimada pelo saldo líquido do mês (rendas − despesas − investimentos). Faixas:{" "}
-              {EMERGENCY_HEALTH_LABELS.critico} &lt; 3 · {EMERGENCY_HEALTH_LABELS.baixo} 3–5 ·{" "}
-              {EMERGENCY_HEALTH_LABELS.adequado} 6–11 · {EMERGENCY_HEALTH_LABELS.saudavel} ≥ 12 meses.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Simulador FIRE — card em linha cheia (uma linha cada) */}
+      {/* Simulador FIRE — card em linha cheia */}
       <section
         aria-label="Independência financeira"
         className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:p-5 min-w-0 overflow-hidden"

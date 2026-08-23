@@ -223,7 +223,7 @@ export function BudgetsPage() {
             <Progress
               value={globalPercent}
               tone={progressTone(globalPercent)}
-              className="h-2"
+              className="h-1.5"
               aria-label={`Uso global: ${Math.round(globalPercent)}%`}
             />
           </div>
@@ -274,7 +274,7 @@ export function BudgetsPage() {
               }
             />
           ) : (
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2">
               {rows.map((row) => {
                 const status = budgetStatus(row.spentCents, row.limitCents);
                 const isOver = status === "exceeded";
@@ -283,7 +283,7 @@ export function BudgetsPage() {
                 return (
                   <div
                     key={row.category.id}
-                    className="group flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-border hover:bg-surface min-w-0"
+                    className="group flex flex-col gap-2.5 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0"
                   >
                     <div className="flex items-center justify-between gap-3 min-w-0">
                       <div

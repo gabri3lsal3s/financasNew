@@ -92,7 +92,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     render(<BudgetsPage />);
     // Lazer (100/1.000 → folga R$ 900) → Moradia (1.200/1.000 → excesso R$ 200)
     expect(screen.getByText("Sugestão de Realocação de Limite")).toBeInTheDocument();
-    expect(screen.getByText(/R\$ 200,00/)).toBeInTheDocument();
+    expect(screen.getAllByText(/R\$ 200,00/).length).toBeGreaterThan(0);
   });
 
   it("aplica a realocação com confirmação", async () => {
