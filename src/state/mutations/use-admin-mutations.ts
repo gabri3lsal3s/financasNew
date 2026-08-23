@@ -14,7 +14,9 @@ import {
   ADMIN_INVITES_KEY,
   ADMIN_METRICS_KEY,
   ADMIN_USERS_KEY,
+  ADMIN_USER_OVERRIDES_KEY,
 } from "../queries/use-admin";
+
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
 import type { UserRole, UserStatus } from "@/types";
@@ -79,6 +81,7 @@ export function useAdminSetFeatureOverride() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
       void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USER_OVERRIDES_KEY });
       pushToast({
         title: "Override de funcionalidade salvo",
         description: "A configuração personalizada foi aplicada ao usuário.",
@@ -104,12 +107,14 @@ export function useAdminRemoveFeatureOverride() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
       void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_USER_OVERRIDES_KEY });
       pushToast({
         title: "Override removido",
         description: "O usuário voltou a seguir a regra global padrão da funcionalidade.",
         variant: "success",
       });
     },
+
     onError: (err) => {
       pushToast({
         title: "Erro ao remover override",

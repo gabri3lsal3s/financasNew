@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveAllFeatures, resolveFeatureState } from "./feature-flags";
+import { getFeatureStatusInfo, resolveAllFeatures, resolveFeatureState } from "./feature-flags";
 import type { SystemFeature, UserFeatureOverride } from "@/types";
 
 describe("feature flags domain engine", () => {
@@ -61,9 +61,21 @@ describe("feature flags domain engine", () => {
     ];
 
     const resolved = resolveAllFeatures(features, overrides);
+    expect(resolved.investments).toBe(true); // default true
+    expect(resolved.debts).toBe(true); // override true
+    expect(resolved.budgets).toBe(false); // globally false
+  });
 
-    expect(resolved.investments).toBe(true);
-    expect(resolved.debts).toBe(true);
-    expect(resolved.budgets).toBe(false);
+  it("deve retornar metadados corretos com getFeatureStatusInfo", () => {
+    const disabledGlobally: SystemFeature = { ...baseFeature, is_globally_enabled: false };
+    expect(getFeatureStatusInfo(disabledGlobally).kind).toBe("globally_disabled");
+
+    const overrideTrue: UserFeatureOverride = { id: "o1", user_id: "u1", feature_key: "investments", is_enabled: true };
+    expect(getFeatureStatusInfo(baseFeature, overrideTrue).kind).toBe("override_enabled");
+
+    const overrideFalse: UserFeatureOverride = { id: "o2", user_id: "u1", feature_key: "investments", is_enabled: false };
+    expect(getFeatureStatusInfo(baseFeature, overrideFalse).kind).toBe("override_disabled");
+
+    expect(getFeatureStatusInfo(baseFeature).kind).toBe("default_enabled");
   });
 });

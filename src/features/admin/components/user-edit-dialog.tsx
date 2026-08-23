@@ -1,22 +1,25 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
-import { Check, Shield, UserCheck, X } from "lucide-react";
+import { Check, RotateCcw, Shield, UserCheck, X } from "lucide-react";
 import { Button, Input, Modal, Select } from "@/components/ui";
 import {
   ROLE_LABELS,
   STATUS_LABELS,
   canManageRole,
   canManageUserStatus,
+  getFeatureStatusInfo,
 } from "@/domain/admin";
 import {
   useAdminFeatures,
+  useAdminRemoveFeatureOverride,
   useAdminSetFeatureOverride,
   useAdminSetUserRole,
   useAdminUpdateUserStatus,
   useUserAccess,
+  useUserOverrides,
 } from "@/state";
 import type { AdminUserRow } from "@/data/rpc";
-import type { UserRole, UserStatus } from "@/types";
+import type { UserFeatureOverride, UserRole, UserStatus } from "@/types";
 
 export interface UserEditDialogProps {
   user: AdminUserRow | null;
@@ -29,11 +32,21 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const updateStatusMutation = useAdminUpdateUserStatus();
   const setRoleMutation = useAdminSetUserRole();
   const setOverrideMutation = useAdminSetFeatureOverride();
+  const removeOverrideMutation = useAdminRemoveFeatureOverride();
   const featuresQuery = useAdminFeatures();
+  const overridesQuery = useUserOverrides(user?.id);
 
   const [status, setStatus] = useState<UserStatus>((user?.status as UserStatus) || "active");
   const [role, setRole] = useState<UserRole>((user?.role as UserRole) || "user");
   const [reason, setReason] = useState(user?.suspended_reason || "");
+
+  const overridesMap = useMemo(() => {
+    const map = new Map<string, UserFeatureOverride>();
+    for (const ov of overridesQuery.data ?? []) {
+      map.set(ov.feature_key, ov);
+    }
+    return map;
+  }, [overridesQuery.data]);
 
   if (!user) return null;
 
@@ -72,6 +85,13 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
       userId: user.id,
       featureKey,
       enabled,
+    });
+  };
+
+  const handleRemoveOverride = async (featureKey: string) => {
+    await removeOverrideMutation.mutateAsync({
+      userId: user.id,
+      featureKey,
     });
   };
 
@@ -167,47 +187,95 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
 
         {/* Overrides de Funcionalidades */}
         <div className="flex flex-col gap-2 pt-2 border-t border-border">
-          <span className="text-xs font-semibold text-foreground">
-            Acesso a Funcionalidades Específicas
-          </span>
-          <span className="text-[11px] text-muted-foreground">
-            Permite liberar ou restringir módulos individuais para este usuário independente do padrão global.
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-foreground">
+              Acesso a Funcionalidades Específicas
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              Veja o status efetivo do usuário para cada módulo e configure liberações ou bloqueios personalizados.
+            </span>
+          </div>
 
-          <div className="flex flex-col gap-1.5 pt-1">
-            {(featuresQuery.data ?? []).map((feature) => (
-              <div
-                key={feature.key}
-                className="flex items-center justify-between p-2.5 rounded-lg border border-border/70 bg-surface-hover/20 text-xs"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium text-foreground">{feature.name}</span>
-                  <span className="text-[10px] text-muted-foreground">{feature.description}</span>
+          <div className="flex flex-col gap-2 pt-1">
+            {(featuresQuery.data ?? []).map((feature) => {
+              const override = overridesMap.get(feature.key);
+              const statusInfo = getFeatureStatusInfo(feature, override);
+
+              return (
+                <div
+                  key={feature.key}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border/80 bg-surface/80 text-xs shadow-2xs"
+                >
+                  <div className="flex flex-col gap-1 max-w-sm">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-foreground">{feature.name}</span>
+                      <span
+                        className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                          statusInfo.badgeVariant === "positive"
+                            ? "bg-positive/10 text-positive-strong border border-positive/25 font-bold"
+                            : statusInfo.badgeVariant === "critical"
+                              ? "bg-critical/10 text-critical border border-critical/25 font-bold"
+                              : "bg-surface-hover text-muted-foreground border border-border"
+                        }`}
+                      >
+                        {statusInfo.label}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground leading-relaxed">{feature.description}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                    <Button
+                      type="button"
+                      variant={statusInfo.kind === "override_enabled" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleToggleUserFeature(feature.key, true)}
+                      disabled={setOverrideMutation.isPending || !feature.is_globally_enabled}
+                      className={`gap-1 text-xs h-7 px-2.5 ${
+                        statusInfo.kind === "override_enabled"
+                          ? "bg-positive text-white hover:bg-positive/90"
+                          : "text-positive-strong hover:bg-positive/10 border-positive/30"
+                      }`}
+                      title="Forçar liberação para este usuário"
+                    >
+                      <Check className="size-3.5" aria-hidden="true" />
+                      <span>Liberar</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant={statusInfo.kind === "override_disabled" ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={() => handleToggleUserFeature(feature.key, false)}
+                      disabled={setOverrideMutation.isPending || !feature.is_globally_enabled}
+                      className={`gap-1 text-xs h-7 px-2.5 ${
+                        statusInfo.kind === "override_disabled"
+                          ? "bg-critical text-white hover:bg-critical/90"
+                          : "text-critical hover:bg-critical/10 border-critical/30"
+                      }`}
+                      title="Forçar bloqueio para este usuário"
+                    >
+                      <X className="size-3.5" aria-hidden="true" />
+                      <span>Bloquear</span>
+                    </Button>
+
+                    {statusInfo.hasOverride && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveOverride(feature.key)}
+                        disabled={removeOverrideMutation.isPending}
+                        className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                        title="Restaurar regra padrão global"
+                      >
+                        <RotateCcw className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleUserFeature(feature.key, true)}
-                    className="size-7 p-0 text-positive-strong hover:bg-positive/10"
-                    title="Forçar ativação para o usuário"
-                  >
-                    <Check className="size-3.5" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleUserFeature(feature.key, false)}
-                    className="size-7 p-0 text-critical hover:bg-critical/10"
-                    title="Forçar bloqueio para o usuário"
-                  >
-                    <X className="size-3.5" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

@@ -122,12 +122,15 @@ export {
   useAdminFeatures,
   useAdminInvites,
   useAdminAuditLogs,
+  useUserOverrides,
   ADMIN_METRICS_KEY,
   ADMIN_USERS_KEY,
   ADMIN_FEATURES_KEY,
   ADMIN_INVITES_KEY,
   ADMIN_AUDIT_KEY,
+  ADMIN_USER_OVERRIDES_KEY,
 } from "./queries/use-admin";
+
 
 export {
   useAdminUpdateUserStatus,
