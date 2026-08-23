@@ -42,7 +42,7 @@ export function MonthPicker({ value, onValueChange, disabled, className }: Month
   };
 
   return (
-    <div className={cn("flex items-center justify-between gap-2", className)} role="group" aria-label="Selecionar mês">
+    <div className={cn("flex items-center justify-between gap-2 w-full", className)} role="group" aria-label="Selecionar mês">
       <Button
         type="button"
         variant="ghost"

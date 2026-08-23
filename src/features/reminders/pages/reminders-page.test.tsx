@@ -111,30 +111,34 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
     const user = userEvent.setup();
     render(<RemindersPage />);
 
-    // Fatura Nubank pendente → aparece
+    // Aba inicial: Pendentes → Fatura Nubank pendente aparece
     expect(screen.getByText(/Fatura Nubank/)).toBeInTheDocument();
-    // Prestação carro marcada como lida → aparece com indicador de lido
-    expect(screen.getByText("Prestação carro")).toBeInTheDocument();
-    expect(screen.getByText("Lido")).toBeInTheDocument();
     // Empréstimo vence dia 25 (fora da janela) → não aparece
     expect(screen.queryByText("Empréstimo")).not.toBeInTheDocument();
-
-    // Filtro "Pendentes" esconde as lidas
-    const pendingTab = screen.getByRole("tab", { name: /Pendentes/i });
-    await user.click(pendingTab);
+    // Prestação carro marcada como lida → não aparece na aba Pendentes
     expect(screen.queryByText("Prestação carro")).not.toBeInTheDocument();
-    expect(screen.getByText(/Fatura Nubank/)).toBeInTheDocument();
 
-    // Filtro "Lidas" exibe apenas as lidas
+    // Filtro "Lidas" exibe os itens concluídos
     const readTab = screen.getByRole("tab", { name: /Lidas/i });
     await user.click(readTab);
     expect(screen.getByText("Prestação carro")).toBeInTheDocument();
+    expect(screen.getByText("Lido")).toBeInTheDocument();
     expect(screen.queryByText(/Fatura Nubank/)).not.toBeInTheDocument();
+
+    // Volta para "Pendentes"
+    const pendingTab = screen.getByRole("tab", { name: /Pendentes/i });
+    await user.click(pendingTab);
+    expect(screen.getByText(/Fatura Nubank/)).toBeInTheDocument();
+    expect(screen.queryByText("Prestação carro")).not.toBeInTheDocument();
   });
 
   it("permite reabrir um lembrete lido", async () => {
     const user = userEvent.setup();
     render(<RemindersPage />);
+
+    // Alterna para a aba Lidas para visualizar o item lido e reabri-lo
+    const readTab = screen.getByRole("tab", { name: /Lidas/i });
+    await user.click(readTab);
 
     const reopenBtn = screen.getByRole("button", { name: /Reabrir lembrete Prestação carro/i });
     await user.click(reopenBtn);

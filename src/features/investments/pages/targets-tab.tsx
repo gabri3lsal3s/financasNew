@@ -180,7 +180,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           items={[
             {
               value: "assets",
-              label: "Metas por Ativo",
+              label: "Por Ativo",
               content: (
                 <div className="flex flex-col gap-4">
                   {classes.length > 1 ? (
@@ -246,7 +246,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
             },
             {
               value: "classes",
-              label: "Classes & Travas",
+              label: "Por Classe",
               content: (
                 <div className="flex flex-col gap-6">
                   {classes.length > 0 ? (

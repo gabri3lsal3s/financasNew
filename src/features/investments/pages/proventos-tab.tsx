@@ -160,7 +160,7 @@ export function ProventosTab() {
           {/* Extrato do Mês */}
           <section aria-label={`Extrato de ${monthLabel(month)}`} className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Extrato do mês</h3>
+              <h2 className="text-sm font-semibold text-foreground">Extrato do mês</h2>
               <Badge variant="muted" className="text-[11px]">
                 {monthLabel(month)}
               </Badge>
@@ -211,7 +211,7 @@ export function ProventosTab() {
                     <Sparkles className="size-3.5" aria-hidden="true" />
                   </span>
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">Efeito Bola de Neve (Renda Passiva)</h3>
+                    <h2 className="text-sm font-semibold text-foreground">Efeito Bola de Neve (Renda Passiva)</h2>
                     <p className="text-xs text-muted-foreground">Progresso para que os proventos mensais comprem 1 nova cota inteira sozinhos.</p>
                   </div>
                 </div>
@@ -309,7 +309,7 @@ export function ProventosTab() {
           <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
             <CalendarDays className="size-3.5" aria-hidden="true" />
           </span>
-          <h3 className="text-sm font-semibold text-foreground">Calendário de {year}</h3>
+          <h2 className="text-sm font-semibold text-foreground">Calendário de {year}</h2>
         </div>
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {yearly.map((entry) => {
@@ -366,12 +366,12 @@ export function ProventosTab() {
         items={[
           {
             value: "extrato",
-            label: "Extrato & Indicadores",
+            label: "Extrato",
             content: extratoContent,
           },
           {
             value: "calendario",
-            label: "Calendário Anual",
+            label: "Calendário",
             content: calendarioContent,
           },
         ]}

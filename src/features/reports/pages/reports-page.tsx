@@ -353,16 +353,19 @@ export function ReportsPage() {
           {
             value: "month",
             label: "Por mês",
+            shortLabel: "Mês",
             content: <MonthPicker value={month} onValueChange={setMonth} />,
           },
           {
             value: "year",
             label: "Por ano",
+            shortLabel: "Ano",
             content: <YearPicker value={year} onValueChange={setYear} />,
           },
           {
             value: "custom",
             label: "Período custom",
+            shortLabel: "Custom",
             content: (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full sm:w-auto">
@@ -452,11 +455,13 @@ export function ReportsPage() {
               <Tabs
                 value={aggregationTab}
                 onValueChange={(val) => setAggregationTab(val as AggregationTab)}
+                variant="pills"
                 swipeable
                 items={[
                   {
                     value: "category",
                     label: "Por categoria",
+                    shortLabel: "Categoria",
                     content: (
                       <ReportTable
                         title="Categoria"
@@ -479,6 +484,7 @@ export function ReportsPage() {
                   {
                     value: "charges",
                     label: "Por encargos",
+                    shortLabel: "Encargos",
                     content: (
                       <ReportTable
                         title="Natureza do gasto"
@@ -500,6 +506,7 @@ export function ReportsPage() {
                   {
                     value: "method",
                     label: "Por forma",
+                    shortLabel: "Forma",
                     content: (
                       <ReportTable
                         title="Forma de pagamento"
@@ -522,6 +529,7 @@ export function ReportsPage() {
                   {
                     value: "weekday",
                     label: "Por dia da semana",
+                    shortLabel: "Dia",
                     content: (
                       <ReportTable
                         title="Dia da semana"

@@ -405,12 +405,14 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Contêineres de gráficos SVG (`DailyFlowChart`, `Sparkline`, `CategoryDonut`) usam `overflow-hidden` e `w-full min-w-0` com limites de pontos/marcadores contidos (*clamped*), impedindo vazamento de traços vetoriais fora das margens do card.
 - **Espaçamento Responsivo:** Cards e contêineres adotam padding responsivo (`p-4 sm:p-5`, `px-3.5 sm:px-4`) para manter proporções ideais e máxima área útil em telas estreitas (≥ 320px).
 
-### 14.16 Ícone Dinâmico e Transição Spring Pop no Slot "Mais" da BottomNav
-- **Componente:** `src/components/layout/bottom-nav.tsx`.
-- **Mecânica Visual:**
-  - Ao navegar em subpáginas agrupadas sob o menu "Mais" (como `/dividas`, `/investments`, `/relatorios`, `/insights`, `/orcamentos`, `/lembretes`, `/configuracoes`), o 5º slot da BottomNav substitui dinamicamente os 3 pontinhos (`Ellipsis`) pelo ícone específico da tela ativa (`HandCoins`, `ChartLine`, `ChartPie`, `Lightbulb`, `PiggyBank`, `Bell`, `Settings`).
-  - O slot recebe o destaque ativo padronizado (`text-primary-strong`), alinhando-se visualmente às abas principais.
-  - A troca de ícone é animada via `animate-spring-pop transform-gpu` (micro-zoom com física elástica em ~300ms) disparada pela chave reativa `key={moreSubItem?.path ?? "mais"}`.
-  - Nas rotas principais (`/`, `/transacoes`, `/cartoes`) ou na raiz `/mais`, o ícone retorna para `Ellipsis`, mantendo o estilo inativo nas abas principais e ativo na raiz do menu.
-  - A acessibilidade respeita os modos `eco` e `reduced` (`html[data-motion]` e `prefers-reduced-motion: reduce`), suprimindo a animação para utilizadores sensíveis a movimento.
+### 14.17 Sub-abas Responsivas sem Rolagem Horizontal (Segmented Pills & Short Labels)
+- **Componente:** `src/components/ui/tabs.tsx` (`variant="pills"` e `variant="underline"`).
+- **Diretriz de UX:** É proibida a rolagem horizontal incômoda (`overflow-x-auto`) em sub-abas estruturais de navegação secundária. As opções devem preencher simetricamente a largura disponível (`w-full` com `flex-1`), proporcionando botões confortáveis ao toque do polegar (*thumb-friendly*).
+- **Proporção Ideal (2 a 3 Abas):**
+  - Sub-abas em formato pílula agrupam no máximo **2 a 3 itens** por barra (divisão de 50%/50% ou 33%/33%/33%).
+  - Telas que possuíam múltiplos filtros concorrentes foram unificadas em 2 abas estruturais limpas (ex.: Lembretes com `Pendentes` e `Histórico`).
+- **Rótulos Concisos & `shortLabel` Responsivo:**
+  - `TabItem` suporta a propriedade `shortLabel?: string` com renderização responsiva: em desktop exibe o nome descritivo completo e em smartphones (<640px) exibe o rótulo essencial (`shortLabel`) com `aria-label` preservado no trigger.
+  - Eliminação de preposições e palavras de preenchimento redundantes (*"Por..."*, *"Avisos e..."*, *"Metas de..."*).
+- **Espaçamento e Tipografia:** Triggers utilizam classes responsivas `px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm` com `truncate` e `min-w-0`, garantindo zero corte de texto em dispositivos móveis compactos (≥360px).
 

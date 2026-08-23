@@ -102,6 +102,7 @@ export function Tabs({
           <TabsPrimitive.Trigger
             key={item.value}
             value={item.value}
+            aria-label={item.label}
             className={cn(
               "inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0",
               isFullWidth && "flex-1",
@@ -112,7 +113,7 @@ export function Tabs({
           >
             {item.icon}
             <span className={cn("truncate", item.shortLabel && "hidden sm:inline")}>{item.label}</span>
-            {item.shortLabel && <span className="truncate sm:hidden">{item.shortLabel}</span>}
+            {item.shortLabel && <span aria-hidden="true" className="truncate sm:hidden">{item.shortLabel}</span>}
           </TabsPrimitive.Trigger>
         ))}
       </TabsPrimitive.List>

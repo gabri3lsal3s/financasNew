@@ -560,6 +560,7 @@ export function SettingsPage() {
     {
       value: "personalizacao",
       label: "Personalização",
+      shortLabel: "Aparência",
       icon: <Palette className="size-4" />,
       content: (
         <div className="space-y-6">
@@ -1428,6 +1429,7 @@ export function SettingsPage() {
     {
       value: "dados",
       label: "Conta & Dados",
+      shortLabel: "Conta",
       icon: <Database className="size-4" />,
       content: (
         <div className="space-y-6">

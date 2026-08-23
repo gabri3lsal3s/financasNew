@@ -71,7 +71,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("MXRF11").length).toBeGreaterThanOrEqual(1);
     // Sub-aba de calendário presente.
-    expect(screen.getByRole("tab", { name: "Calendário Anual" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Calendário" })).toBeInTheDocument();
   });
 
   it("navega o mês pelo MonthPicker e atualiza o extrato", async () => {
@@ -95,8 +95,8 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     const user = userEvent.setup();
     render(<ProventosTab />);
 
-    // Alterna para a sub-aba Calendário Anual
-    await user.click(screen.getByRole("tab", { name: "Calendário Anual" }));
+    // Alterna para a sub-aba Calendário
+    await user.click(screen.getByRole("tab", { name: "Calendário" }));
     expect(screen.getByText("Calendário de 2026")).toBeInTheDocument();
 
     // Botão de julho no calendário

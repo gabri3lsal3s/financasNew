@@ -361,6 +361,7 @@ export function InsightsPage() {
             {
               value: "diagnostics",
               label: "Avisos & Diagnósticos",
+              shortLabel: "Diagnósticos",
               content: (
                 <div className="flex flex-col gap-6 min-w-0">
                   {/* Bloco 1: Avisos e Recomendações Imediatas */}

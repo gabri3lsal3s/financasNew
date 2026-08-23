@@ -13,7 +13,8 @@ import {
   useMarkAllRemindersAsRead,
 } from "@/state";
 
-type ReminderFilter = "all" | "pending" | "overdue" | "bills" | "debts" | "read";
+type MainTab = "pending" | "read";
+type SubFilter = "all" | "overdue" | "bills" | "debts";
 
 /**
  * Central de lembretes (§3.10) — consolida faturas (saldo aberto por
@@ -23,7 +24,8 @@ type ReminderFilter = "all" | "pending" | "overdue" | "bills" | "debts" | "read"
 export function RemindersPage() {
   const navigate = useNavigate();
   const today = todayISO();
-  const [filter, setFilter] = useState<ReminderFilter>("all");
+  const [mainTab, setMainTab] = useState<MainTab>("pending");
+  const [subFilter, setSubFilter] = useState<SubFilter>("all");
 
   const { allItems, totalCount, overdueCount, readCount, isLoading, error, preferences } = useReminders(today);
   const statesQuery = useReminderStates();
@@ -52,12 +54,14 @@ export function RemindersPage() {
   const filteredItems = allItems
     .filter((item) => {
       const stateKind = stateMap.get(item.key) ?? null;
-      if (filter === "pending") return stateKind !== "read";
-      if (filter === "overdue") return item.status === "overdue" && stateKind !== "read";
-      if (filter === "bills") return item.kind === "bill";
-      if (filter === "debts") return item.kind === "debt";
-      if (filter === "read") return stateKind === "read";
-      return true;
+      if (mainTab === "pending") {
+        if (stateKind === "read") return false;
+        if (subFilter === "overdue") return item.status === "overdue";
+        if (subFilter === "bills") return item.kind === "bill";
+        if (subFilter === "debts") return item.kind === "debt";
+        return true;
+      }
+      return stateKind === "read";
     })
     .sort((a, b) => {
       const aState = stateMap.get(a.key) ?? null;
@@ -81,24 +85,15 @@ export function RemindersPage() {
     }
   };
 
-  const billsCount = allItems.filter((i) => i.kind === "bill").length;
-  const debtsCount = allItems.filter((i) => i.kind === "debt").length;
+  const billsCount = allItems.filter((i) => i.kind === "bill" && stateMap.get(i.key) !== "read").length;
+  const debtsCount = allItems.filter((i) => i.kind === "debt" && stateMap.get(i.key) !== "read").length;
 
   const getEmptyDescription = () => {
-    switch (filter) {
-      case "read":
-        return "Nenhum lembrete marcado como lido.";
-      case "overdue":
-        return "Nenhuma fatura ou dívida atrasada.";
-      case "bills":
-        return "Nenhuma fatura pendente ou recente.";
-      case "debts":
-        return "Nenhuma dívida pendente ou recente.";
-      case "pending":
-        return "Nenhuma pendência no momento.";
-      default:
-        return "Nenhuma fatura ou dívida encontrada.";
-    }
+    if (mainTab === "read") return "Nenhum lembrete no histórico de lidos.";
+    if (subFilter === "overdue") return "Nenhuma fatura ou dívida atrasada.";
+    if (subFilter === "bills") return "Nenhuma fatura pendente no momento.";
+    if (subFilter === "debts") return "Nenhuma dívida pendente no momento.";
+    return "Nenhuma pendência no momento. Todas as faturas e dívidas estão em dia.";
   };
 
   return (
@@ -134,23 +129,91 @@ export function RemindersPage() {
         )}
       </header>
 
-      {/* Tabs de Filtro */}
+      {/* Tabs Principais Unificadas (2 abas simétricas em Pills) */}
       {allItems.length > 0 && (
-        <Tabs
-          value={filter}
-          onValueChange={(val) => {
-            triggerHaptic("light");
-            setFilter(val as ReminderFilter);
-          }}
-          items={[
-            { value: "all", label: `Todas (${allItems.length})`, content: null },
-            { value: "pending", label: `Pendentes (${totalCount})`, content: null },
-            { value: "overdue", label: `Atrasadas (${overdueCount})`, content: null },
-            { value: "bills", label: `Faturas (${billsCount})`, content: null },
-            { value: "debts", label: `Dívidas (${debtsCount})`, content: null },
-            { value: "read", label: `Lidas (${readCount})`, content: null },
-          ]}
-        />
+        <div className="flex flex-col gap-3">
+          <Tabs
+            value={mainTab}
+            onValueChange={(val) => {
+              triggerHaptic("light");
+              setMainTab(val as MainTab);
+              setSubFilter("all");
+            }}
+            variant="pills"
+            items={[
+              { value: "pending", label: `Pendentes (${totalCount})`, content: null },
+              { value: "read", label: `Lidas (${readCount})`, content: null },
+            ]}
+          />
+
+          {/* Sub-filtros secundários compactos quando em Pendentes e há itens */}
+          {mainTab === "pending" && totalCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSubFilter("all");
+                }}
+                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                  subFilter === "all"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "bg-muted/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Todas ({totalCount})
+              </button>
+              {overdueCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setSubFilter("overdue");
+                  }}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                    subFilter === "overdue"
+                      ? "bg-critical text-critical-foreground font-semibold shadow-xs"
+                      : "bg-critical/10 text-critical hover:bg-critical/20"
+                  }`}
+                >
+                  Atrasadas ({overdueCount})
+                </button>
+              )}
+              {billsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setSubFilter("bills");
+                  }}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                    subFilter === "bills"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "bg-muted/60 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Faturas ({billsCount})
+                </button>
+              )}
+              {debtsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setSubFilter("debts");
+                  }}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                    subFilter === "debts"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "bg-muted/60 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Dívidas ({debtsCount})
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
