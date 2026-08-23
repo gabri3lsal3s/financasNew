@@ -8,6 +8,7 @@ import {
 } from "./use-portfolio";
 import { useAssetPrices } from "./use-asset-prices";
 import {
+  buildPortfolioMonthlySeries,
   calculatePortfolioTotalReturn,
   calculatePositionSummary,
   fallbackPriceFor,
@@ -15,6 +16,7 @@ import {
   resolvePrice,
   usdRateFromPrices,
   type AssetPricingMode,
+  type PortfolioMonthlySeriesPoint,
   type PriceSource,
 } from "@/domain/portfolio";
 import { currentMonth } from "@/lib/date";
@@ -82,9 +84,9 @@ export interface PortfolioPosition {
   /** Variação da cotação % consolidada da carteira (sem proventos). */
   unrealizedPct: number | null;
   /**
-   * Série mensal a partir de snapshots (F36).
+   * Série mensal a partir de snapshots com proventos integrados (F36 & F37).
    */
-  monthlySeries: { month: string; valueBRL: number; costBRL: number }[];
+  monthlySeries: PortfolioMonthlySeriesPoint[];
   /**
    * Aporte líquido do mês corrente em centavos (F19 & F36).
    */
@@ -220,31 +222,31 @@ export function usePortfolioPosition(): PortfolioPosition {
     }
   }
 
-  // Snapshots mensais reais (F37): apenas meses com dados verídicos gravados + mês corrente
-  const rawSnapshots = (snapshotsQuery.data ?? [])
-    .filter((s) => s.month < thisMonth)
-    .sort((a, b) => a.month.localeCompare(b.month));
+  // Snapshots mensais reais com proventos integrados (F36 & F37)
+  const initialAccumulatedDividends = (assetsQuery.data ?? []).reduce(
+    (acc, a) => acc + (a.accumulated_dividends ?? 0),
+    0,
+  );
 
-  const seriesPoints: { month: string; valueBRL: number; costBRL: number }[] = [];
-  for (const snap of rawSnapshots) {
-    seriesPoints.push({
-      month: snap.month,
-      valueBRL: Number(snap.total_value),
-      costBRL: Number(snap.total_cost),
-    });
-  }
+  const currentMonthPoint =
+    totalBRL > 0 || (assetsQuery.data && assetsQuery.data.length > 0)
+      ? { month: thisMonth, total_value: totalBRL, total_cost: totalCostBRL }
+      : null;
 
-  // Adiciona o mês corrente quando houver ativos ou patrimônio
-  if (totalBRL > 0 || (assetsQuery.data && assetsQuery.data.length > 0)) {
-    seriesPoints.push({
-      month: thisMonth,
-      valueBRL: totalBRL,
-      costBRL: totalCostBRL,
-    });
-  }
-
-  // Retém os últimos 6 meses da série real (sem preenchimento artificial de meses passados)
-  const monthlySeries = seriesPoints.slice(-6);
+  const monthlySeries = buildPortfolioMonthlySeries({
+    rawSnapshots: (snapshotsQuery.data ?? []).map((s) => ({
+      month: s.month,
+      total_value: Number(s.total_value),
+      total_cost: Number(s.total_cost),
+    })),
+    currentMonthPoint,
+    dividends: (dividendsQuery.data ?? []).map((d) => ({
+      date: d.date,
+      amount: Number(d.amount),
+    })),
+    initialAccumulatedDividends,
+    limit: 6,
+  });
 
   // Atualiza snapshot do mês corrente em background quando há dados carregados
   const lastUpdatedMonth = useRef<string | null>(null);

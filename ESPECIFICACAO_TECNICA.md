@@ -383,7 +383,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
   - `totalReturnPnl = (valueBRL - totalCostBRL) + totalDividends` (Resultado total)
   - `totalReturnPct = (totalReturnPnl / totalCostBRL) * 100` (Retorno Total % consolidado)
   - `yieldOnCostPct = (totalDividends / totalCostBRL) * 100` (Yield on Cost)
-- **Snapshots Patrimoniais:** histórico mensal gravado na tabela `portfolio_snapshots` (`month`, `total_value`, `total_cost`), com evolução visual dos últimos 6 meses.
+- **Snapshots Patrimoniais e Série Mensal Integrada (`buildPortfolioMonthlySeries`):** histórico mensal gravado na tabela `portfolio_snapshots` (`month`, `total_value`, `total_cost`), enriquecido de forma puramente determinística no cliente com a evolução temporal de proventos acumulados até cada mês ($\text{Retorno Total}_M = \text{Ganho de Capital}_M + \text{Proventos}_M$), garantindo consistência histórica e resiliência a lançamentos retroativos.
 - **Aportes Mensais (`portfolio_contributions`):** registros independentes de aportes financeiros integrados aos fluxos de caixa da Overview e dos Insights (sempre em BRL).
 - **Proventos (`portfolio_dividends`):** lançamentos desacoplados para extrato mensal e calendário anual, integrados ao Retorno Total e YoC (convertidos para BRL no consolidado quando o ativo for USD).
 - **Preço Médio Ponderado em Novos Lotes (`calculateWeightedAveragePrice`):**

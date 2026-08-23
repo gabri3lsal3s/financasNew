@@ -201,4 +201,12 @@ describe("ResumoTab", () => {
     expect(screen.getByRole("button", { name: /Fichas IRPF/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Monitor DARF/i })).toBeInTheDocument();
   });
+
+  it("renderiza a seção de Evolução Histórica (Snapshots Mensais) com os meses da série", () => {
+    renderResumo();
+    expect(screen.getByText("Evolução Histórica (Snapshots Mensais)")).toBeInTheDocument();
+    expect(screen.getByText("2026-07")).toBeInTheDocument();
+    expect(screen.getByText("2026-08")).toBeInTheDocument();
+    expect(screen.getAllByText("Resultado Total").length).toBeGreaterThan(0);
+  });
 });

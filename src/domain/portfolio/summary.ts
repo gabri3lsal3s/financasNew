@@ -99,6 +99,119 @@ export function portfolioReturnPct(
 }
 
 // ---------------------------------------------------------------------------
+// Série Mensal de Snapshots com Proventos Integrados (F36 / F37)
+// ---------------------------------------------------------------------------
+
+export interface PortfolioMonthlySeriesPoint {
+  /** Mês de competência (YYYY-MM). */
+  month: string;
+  /** Valor de mercado total da custódia em BRL. */
+  valueBRL: number;
+  /** Custo total aplicado em BRL. */
+  costBRL: number;
+  /** Proventos recebidos especificamente neste mês em BRL. */
+  monthDividendsBRL: number;
+  /** Proventos acumulados até o final deste mês em BRL (anteriores + periódicos). */
+  accumulatedDividendsBRL: number;
+  /** Ganho de capital não realizado em BRL (valor − custo). */
+  capitalGainPnl: number;
+  /** Variação da cotação % sobre o custo. */
+  capitalGainPct: number | null;
+  /** Resultado Total em BRL: (valor − custo) + proventos acumulados. */
+  totalReturnPnl: number;
+  /** Retorno Total % sobre o custo. */
+  totalReturnPct: number | null;
+}
+
+/**
+ * Constrói os pontos da série mensal combinando os snapshots patrimoniais
+ * com a evolução temporal de proventos recebidos (§F36 e §F37).
+ */
+export function buildPortfolioMonthlySeries(params: {
+  rawSnapshots: readonly { month: string; total_value: number; total_cost: number }[];
+  currentMonthPoint?: { month: string; total_value: number; total_cost: number } | null;
+  dividends: readonly { date: string; amount: number }[];
+  initialAccumulatedDividends?: number;
+  limit?: number;
+}): PortfolioMonthlySeriesPoint[] {
+  const {
+    rawSnapshots,
+    currentMonthPoint,
+    dividends,
+    initialAccumulatedDividends = 0,
+    limit = 6,
+  } = params;
+
+  const currentMonthStr = currentMonthPoint?.month ?? "";
+  const allMonthsMap = new Map<string, { total_value: number; total_cost: number }>();
+
+  for (const snap of rawSnapshots) {
+    if (snap.month < currentMonthStr || !currentMonthStr) {
+      allMonthsMap.set(snap.month, {
+        total_value: Number(snap.total_value),
+        total_cost: Number(snap.total_cost),
+      });
+    }
+  }
+
+  if (currentMonthPoint && (currentMonthPoint.total_value > 0 || currentMonthPoint.total_cost > 0)) {
+    allMonthsMap.set(currentMonthPoint.month, {
+      total_value: Number(currentMonthPoint.total_value),
+      total_cost: Number(currentMonthPoint.total_cost),
+    });
+  }
+
+  const sortedMonths = Array.from(allMonthsMap.entries()).sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+
+  const points: PortfolioMonthlySeriesPoint[] = [];
+
+  for (const [month, data] of sortedMonths) {
+    const valueBRL = Math.round(data.total_value * 100) / 100;
+    const costBRL = Math.round(data.total_cost * 100) / 100;
+
+    let monthDividends = 0;
+    let periodDividendsUntilMonth = 0;
+
+    for (const d of dividends) {
+      if (d.date.startsWith(month)) {
+        monthDividends += d.amount;
+      }
+      if (d.date <= `${month}-31`) {
+        periodDividendsUntilMonth += d.amount;
+      }
+    }
+
+    const monthDividendsBRL = Math.round(monthDividends * 100) / 100;
+    const accumulatedDividendsBRL =
+      Math.round((initialAccumulatedDividends + periodDividendsUntilMonth) * 100) / 100;
+
+    const capitalGainPnl = Math.round((valueBRL - costBRL) * 100) / 100;
+    const capitalGainPct =
+      costBRL > 0 ? Math.round((capitalGainPnl / costBRL) * 10000) / 100 : null;
+
+    const totalReturnPnl = Math.round((capitalGainPnl + accumulatedDividendsBRL) * 100) / 100;
+    const totalReturnPct =
+      costBRL > 0 ? Math.round((totalReturnPnl / costBRL) * 10000) / 100 : null;
+
+    points.push({
+      month,
+      valueBRL,
+      costBRL,
+      monthDividendsBRL,
+      accumulatedDividendsBRL,
+      capitalGainPnl,
+      capitalGainPct,
+      totalReturnPnl,
+      totalReturnPct,
+    });
+  }
+
+  return limit > 0 ? points.slice(-limit) : points;
+}
+
+// ---------------------------------------------------------------------------
 // Alocação por ticker
 // ---------------------------------------------------------------------------
 

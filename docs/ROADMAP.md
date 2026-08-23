@@ -1,5 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v1.79** registra a **Consolidação do Retorno Total (*Total Return*) em Investimentos e Snapshots com Proventos Integrados** (2026-08-23): **(1) Retorno Total no Domínio (`src/domain/portfolio/`)**: adoção do modelo de *Total Return* considerando ganho de capital não realizado + proventos recebidos (dividendos, JCP, rendimentos e histórico inicial acumulado) nas funções puras `positionPnl`, `calculatePositionSummary` e `calculatePortfolioTotalReturn`; **(2) Tabela de Posições & Cards Mobile (`PositionTable`)**: coluna *Rentab.* e cards mobile exibindo o Retorno Total (%) como grandeza primária, acompanhados de sub-linha com a variação de cotação colorida responsiva ao valor (`Cota ±X.X%`) e `YoC Y.Y%` em `text-portfolio`; **(3) Snapshots Mensais e Série Histórica Integrada (`buildPortfolioMonthlySeries`)**: enriquecimento funcional e determinístico dos snapshots patrimoniais com a evolução temporal de proventos acumulados até cada mês, garantindo resiliência a lançamentos retroativos e paridade exata nos cards de evolução de `ResumoTab`; **(4) Relatório Executivo & CSV**: sincronização de `portfolio-executive-report.tsx` e `csv.ts` com colunas de proventos e rentabilidade consolidada; **(5) Suíte de Testes 100% Verde**: 232 testes de escopo aprovados com zero erros de typecheck e lint.
 > **v1.78** registra a **Auditoria e Padronização Completa do Módulo de Investimentos** (2026-08-23): **(1) Iconografia Icon-Only Padronizada (§14.11)**: remoção de todos os containers decorativos (`bg-portfolio/10`, bordas e caixas arredondadas) nos cabeçalhos de seção de `ResumoTab`, `ProventosTab`, `RelatoriosTab`, `ContributionsPanel` e `CashFormDialog`, herdando diretamente a cor semântica do tema; **(2) Hierarquia Estrita de Abas (§14.17)**: configuração explícita de `variant="pills"` nas sub-divisões de Nível 2 de `AporteTab` (`Calculadora | Metas | Histórico`), mantendo paridade com `ProventosTab` e `TargetsTab` sem ícones redundantes no segundo nível; **(3) Calculadora Integrada em Todos os Modais Financeiros (§13)**: habilitação da prop `showCalculator` no `Modal` de `AssetEditDialog` para os campos de proventos acumulados e provento estimado por cota; **(4) Teclado, Acessibilidade e Zero AutoFocus Invasivo**: conformidade 100% com o bloqueio de autoFocus em modais/sheets e campos numéricos configurados com `inputMode="decimal"` / `inputMode="numeric"`; **(5) Suíte de Testes 100% Verde**: 195 arquivos / 1.541 testes aprovados, zero erros de lint e typecheck.
 > **v1.77** registra a **Consolidação de Proventos Históricos Iniciais, KPIs Vitalícios, Tabela por Ativo e Desbloqueio da Bola de Neve na Aba de Proventos** (2026-08-23): **(1) Visibilidade de Proventos Históricos Anteriores ao Cadastro**: cálculo e exibição de `historicalTotal` (soma de `accumulated_dividends` convertidos para BRL) e `lifetimeTotal` (histórico + periódicos) nos KPIs executivos da `ProventosTab`; **(2) Tabela Consolidada de Proventos por Ativo**: listagem discriminando Histórico Inicial, Proventos Lançados no App, Total Recebido e Yield on Cost (YoC) real consolidado via `calculateYieldOnCostTotal`; **(3) Desbloqueio e Preservação Estrita do Efeito Bola de Neve**: remoção do bloqueio global de tela por `EmptyState` quando houver estimativas (`estimated_monthly_dividend_per_share`) ou histórico cadastrado, mantendo o cálculo mensal da Bola de Neve matematicamente puro (sem misturar o total histórico acumulado com o rendimento mensal por cota); **(4) Testes Automatizados & Paridade**: 195 arquivos / 1.541 testes passando (100% verde) com cobertura completa de proventos históricos e estimativas.
 > **v1.76** registra a **Unificação no Modo Hierárquico (Macroclasse $\rightarrow$ Ativo) e Limpeza Definitiva de Travas Setoriais Legadas** (2026-08-23): **(1) Unificação Opinada da Calculadora de Aporte (`AporteTab`)**: eliminação do seletor `RadioGroup` e dos 3 modos manuais separados em favor da simulação hierárquica direta (`simulateCombinedAporte`), estabilizando primeiramente a classe mais deficitária e distribuindo entre os ativos pelas metas individuais ou equiponderação $1/N$; **(2) Sugestões Preditivas do Wizard Integradas à Hierarquia (`buildAporteSuggestions`)**: cards de "Recomendados para aporte" no Wizard de Investimentos (`InvestmentWizard`) atualizados para considerar metas de classe e priorizar ativos pela defasagem da macroclasse em paridade total com a calculadora; **(3) Limpeza Completa de Travas Legadas**: remoção de `max_sector_acoes`, `max_sector_fiis`, `SectorCaps`, `sectorExposure`, `validateSectorCaps`, `classCapsFromSectorCaps` e `sector_cap_reached` do domínio, repositórios, queries e testes, preservando a gestão de limites exclusivamente via metas cadastradas; **(4) Suíte 100% Verde**: 195 arquivos / 1.530 testes passando, zero erros de lint e typecheck.
@@ -1990,3 +1991,129 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Registro de ordens (compra/venda/provento/split) em 1 toque via `QuickTransactionSheet`.
 - Visão de detalhes do ativo com deep linking `?asset=<id>` e extrato de transações.
 - Typecheck (`tsc --noEmit`), lint (`npm run lint`) e suíte de testes 100% verdes.
+
+---
+
+### Fase 42 — Central Unificada de Relatórios de Consultoria Patrimonial & Exportação Institucional Multi-Abas (.xlsx / A4) (v1.79 — 2026-08-23)
+
+> **Status:** 🟡 Planejado — unificação e elevação da inteligência de relatórios do aplicativo para o padrão de Consultoria de Investimentos e Wealth Management (Family Office / Private Banking). Consolidação de **todos** os relatórios e exportações em um único Hub em `/relatorios`, eliminando fragmentação com a área de investimentos e introduzindo Dossiês Executivos A4, Caderno Excel Multi-Abas profissional com fórmulas e análises de alocação/risco/cobertura patrimonial.
+
+**Objetivo:** transformar a geração de relatórios e exportações em um centro de inteligência financeira integrado, intuitivo e com acabamento de consultoria de alta renda:
+1. **Consolidação no Hub `/relatorios` (Fonte Única da Verdade):**
+   - Unificação de todos os relatórios financeiros e patrimoniais na página `/relatorios` com 4 abas estruturadas (*Finanças & DRE Pessoal*, *Investimentos & Alocação*, *Balanço Patrimonial 360°*, *Fiscal & IRPF*);
+   - Descontinuação da aba duplicada de relatórios em `/investments` (que passa a manter foco 100% operacional em Posições, Aportes, Proventos e Importação de Custódia) com redirecionamento transparente de deep links;
+2. **Dossiê Executivo de Carteira & Rebalanceamento (Tear-Sheet A4 de 2 Páginas):**
+   - Diagnóstico de Alocação (*Target vs. Actual* por classe e ativo com defasagem em R$ e status visual);
+   - Matriz de Risco & Concentração (Índice Top 5/Top 10 e exposição cambial BRL vs. USD com alertas sutis);
+   - Tabela consolidada de custódia com PnL não realizado, Preço Médio e Yield on Cost (YoC);
+   - Parecer automatizado da consultoria com recomendações de aporte ordenadas por defasagem;
+3. **Dossiê de Proventos & Liberdade Financeira (Cash Flow & Runway):**
+   - Calendário Anual Consolidado (12 meses x ativos);
+   - Índice de Liberdade Financeira (% do custo de vida coberto por proventos da carteira);
+   - Diagnóstico do Efeito Bola de Neve (ativos que compram 1 cota de si mesmos todo mês);
+4. **Balanço Patrimonial Pessoal & DRE Integrada:**
+   - Balanço consolidado: Ativos (Investimentos + Caixa) vs. Passivos (Dívidas + Financiamentos) = Patrimônio Líquido Real;
+   - DRE Pessoal estruturada (Receitas $\rightarrow$ (-) Despesas $\rightarrow$ (=) Poupança $\rightarrow$ (-) Aportes $\rightarrow$ (=) Saldo Operacional);
+   - Indicador de Runway / Reserva de Emergência (meses de custo de vida cobertos por liquidez);
+5. **Caderno Excel Profissional Multi-Abas (`.xlsx` com Fórmulas):**
+   - Geração client-side assíncrona com dynamic `import()` em `src/services/excel-export.ts` (zero impacto no bundle inicial):
+     - *Aba 1:* Resumo Patrimonial & KPIs com formatação financeira;
+     - *Aba 2:* Custódia & Ativos com fórmulas de PnL e YoC;
+     - *Aba 3:* Extrato Anual de Proventos;
+     - *Aba 4:* DRE Financeiro (Receitas e Despesas Mês a Mês);
+     - *Aba 5:* Dívidas & Passivos;
+6. **Facilitador de IRPF Focado na Posição (Bens & Direitos e Rendimentos):**
+   - Ficha de Bens e Direitos com discriminação pronta para cópia em 1-clique;
+   - Ficha de Rendimentos Isentos (FIIs/Dividendos) e Tributação Exclusiva (JCP) agrupados por fonte/ano.
+
+**Organização da Implementação em 5 Etapas:**
+1. **Etapa 42.1 — Motores Puros de Domínio & Métricas de Consultoria (`src/domain/reports/`):**
+   - Motores puros com testes unitários: `calculateAllocationGaps`, `calculateConcentrationRisk`, `calculateFreedomIndex`, `computeConsolidatedBalanceSheet`, `buildTearSheetData`.
+   - Guardas defensivas contra divisão por zero (`divideSafe`) e tratamento de cenários sem histórico.
+2. **Etapa 42.2 — Gerador de Caderno Excel Multi-Abas (`src/services/excel-export.ts`):**
+   - Serviço de exportação `.xlsx` com carregamento dinâmico assíncrono (zero inchaço de bundle no boot).
+   - Formatações financeiras pt-BR, abas nomeadas e fórmulas de soma/percentual automáticas.
+3. **Etapa 42.3 — Componentes de Dossiê A4 Editorial & Print Views:**
+   - Redesenho e modernização de `PortfolioExecutiveReport` para padrão Tear-Sheet de 2 páginas.
+   - Criação de `ConsolidatedWealthReport` (Balanço Patrimonial + DRE Integrada).
+   - Criação de `DividendFreedomReport` (Calendário 12M + Bola de Neve + Liberdade Financeira).
+   - Regras CSS estritas de impressão (`break-inside: avoid`, larguras proporcionais, sem corte de tabelas).
+4. **Etapa 42.4 — Central Unificada de Relatórios (`src/features/reports/`):**
+   - Reestruturação da `ReportsPage` no Hub `/relatorios` com as 4 abas integradas e botão master *"Exportar Caderno Excel (.xlsx)"*.
+   - Limpeza e redirecionamento da antiga aba de relatórios em `/investments` para o Hub central.
+5. **Etapa 42.5 — Validação de Governança, Testes e Documentação:**
+   - Suíte de testes unitários e de renderização 100% verde.
+   - Typecheck (`tsc --noEmit`), ESLint sem emojis e atualização dos documentos de arquitetura.
+
+**Arquivos:** `src/domain/reports/allocation-gaps.ts` (+ testes) · `src/domain/reports/concentration-risk.ts` (+ testes) · `src/domain/reports/freedom-index.ts` (+ testes) · `src/domain/reports/consolidated-balance.ts` (+ testes) · `src/domain/reports/index.ts` · `src/services/excel-export.ts` (+ testes) · `src/features/reports/pages/reports-page.tsx` · `src/features/reports/components/*` · `src/features/investments/components/portfolio-executive-report.tsx` · `src/features/investments/components/portfolio-tax-report.tsx` · `src/features/investments/pages/investments-page.tsx` · `docs/ROADMAP.md` · `docs/ARCHITECTURE.md`.
+
+**✅ DoD (critérios de aceite):**
+- 100% dos relatórios centralizados na rota `/relatorios`, com interface limpa, sem poluição visual e com suporte aos 4 temas.
+- Exportação em 1-clique do Caderno Excel (.xlsx Multi-Abas) com 5 abas formatadas e fórmulas ativas.
+- Dossiês de impressão A4 renderizando perfeitamente sem quebras de linha ou cortes em PDF no desktop e mobile.
+- Cálculos de rebalanceamento, risco de concentração, taxa de poupança e liberdade financeira 100% testados com dados parciais ou vazios (zero `NaN` ou erros de renderização).
+- Descontinuação da aba duplicada de relatórios em `/investments`, mantendo DRY estrito.
+- Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
+
+---
+
+### Fase 43 — Preparação para SaaS: Painel Administrativo, Controle de Acesso (RBAC), Gestão de Onboarding/Sessão & Feature Flags (v1.80 — 2026-08-23)
+
+> **Status:** 🟡 Planejado — preparação da arquitetura do aplicativo para o modelo SaaS com governança administrativa completa: controle estrito de onboarding (allowlist/convites e fila de aprovação), gestão e moderação de usuários (aprovação, suspensão/banimento e encerramento de sessões ativas), motor granular de Feature Flags (3 níveis: kill-switch global, override por usuário e default da feature) com adaptação reativa da UI/navegação e proteção de rotas/RPCs.
+
+**Objetivo:** transformar a aplicação em uma plataforma SaaS segura, flexível e escalável, sem brechas de escalação de privilégios e com gerenciamento operacional centralizado:
+1. **Fundação de Segurança & RLS Inviolável:** enums `user_status` (`pending_approval`, `active`, `suspended`, `banned`) e `user_role` (`user`, `admin`, `superadmin`), trigger de proteção contra escalação de privilégios em `profiles`, auto-promoção do primeiro usuário para `superadmin`, validação de `is_current_user_active()` nas políticas de escrita e RPCs financeiras;
+2. **Onboarding & Ciclo de Vida de Contas:** cadastro via código/link de convite (`access_invites`) com consumo atômico, fila de aprovação para cadastros espontâneos, páginas dedicadas `PendingApprovalPage` e `SuspendedAccountPage`, guards `RequireActiveAccount` e `RequireAdmin`;
+3. **Invalidação de Sessão Forçada:** RPC administrativa que atualiza o status, revoga refresh tokens e encerra conexões ativas do usuário alvo, combinada com broadcast via Supabase Realtime para desconexão imediata no cliente;
+4. **Motor de Feature Flags & UI Reativa:** catálogo `system_features` e overrides `user_feature_overrides`, hook `useUserAccess()`, componente declarativo `<FeatureGate />`, guard `RequireFeature` no roteador e filtragem dinâmica de itens na `Sidebar`, `BottomNav` e `MoreMenu`;
+5. **Painel de Gestão `/admin`:** área administrativa completa e responsiva dividida em 5 abas (*Visão Geral & Métricas, Gestão de Usuários & Moderação, Matriz de Funcionalidades, Gestão de Convites & Allowlist, Logs de Auditoria*), utilizando estritamente os componentes do Design System existente, sem emojis e com suporte a todos os temas.
+
+**Organização da Implementação em 5 Etapas:**
+1. **Etapa 43.1 — Fundação de Dados, Segurança e RLS (PostgreSQL/Supabase):**
+   - Migration `0028_access_control_and_feature_flags.sql`:
+     - Enums `public.user_status` e `public.user_role`.
+     - Colunas `role`, `status`, `approved_at`, `approved_by`, `suspended_reason` em `public.profiles`.
+     - Trigger `trg_protect_profile_security_fields` bloqueando modificações indevidas de role/status fora de RPCs de administração.
+     - Tabelas `public.access_invites`, `public.system_features` e `public.user_feature_overrides`.
+     - Funções SQL `is_admin()`, `is_superadmin()`, `is_current_user_active()`, `get_user_features(uid)`.
+     - Refatoração do trigger `handle_new_user()` com suporte a primeiro usuário como superadmin + consumo de convites da allowlist.
+     - Hardening de RLS e RPCs financeiras com `is_current_user_active()`.
+     - RPCs administrativas transacionais (`admin_list_users`, `admin_update_user_status`, `admin_set_user_role`, `admin_set_feature_override`, `admin_toggle_global_feature`, `admin_create_invite`, `admin_revoke_invite`).
+2. **Etapa 43.2 — Onboarding, Convites & Guards de Conta (Auth & Client):**
+   - Contratos TypeScript em `src/types/schema.ts` e `src/types/database.ts`.
+   - Repositórios `src/data/repositories/access.ts` e `src/data/repositories/admin.ts`.
+   - Hook de estado `useUserAccess()` no TanStack Query com canal Supabase Realtime em `profiles` e `user_feature_overrides`.
+   - Telas de estado da conta: `PendingApprovalPage` e `SuspendedAccountPage`.
+   - Suporte a código de convite no `RegisterPage` (`?convite=CODIGO` ou campo de entrada).
+   - Guards no roteador: `RequireActiveAccount` e `RequireAdmin`.
+3. **Etapa 43.3 — Motor de Feature Flags e Proteção Granular de Rotas/UI:**
+   - Hook puro `useFeatureFlag(featureKey)` e componente `<FeatureGate />` em `src/components/modules/feature-gate.tsx`.
+   - Mapeamento de `featureKey` nas rotas em `src/app/routes.tsx` e guard `RequireFeature` no `src/app/router.tsx`.
+   - Filtragem dinâmica de navegação em `src/components/layout/nav-items.tsx`, `Sidebar`, `BottomNav` e `MoreMenu`.
+4. **Etapa 43.4 — Interface do Painel Administrativo (`/admin`):**
+   - Rota e layout base `src/features/admin/`.
+   - **Aba 1 (Visão Geral & Métricas):** KPIs do SaaS (ativos, pendentes, bloqueados, convites) e fila rápida de aprovação.
+   - **Aba 2 (Gestão de Usuários):** busca por nome/email, filtros de status/role, modais de aprovação, recusa, suspensão/banimento, alteração de role, reset de sessão e overrides.
+   - **Aba 3 (Matriz de Funcionalidades):** catálogo de módulos com toggles de Kill-Switch global, padrões para novos usuários e overrides individuais.
+   - **Aba 4 (Gestão de Convites & Allowlist):** criador de convites (código, limite de usos, expiração, e-mail) e tabela com link copiável e revogação.
+   - **Aba 5 (Logs de Auditoria):** visualizador paginado de `audit_events` com filtros por ator e tipo de evento.
+5. **Etapa 43.5 — Testes Automatizados, Hardening & Documentação:**
+   - Testes unitários de domínio e componentes (`FeatureGate`, guards, modais de admin).
+   - Validação de governança: typecheck (`tsc --noEmit`), lint sem emojis (`npm run lint`), suíte 100% verde.
+   - Atualização de `docs/ARCHITECTURE.md`, `docs/PROJECT_STRUCTURE.md` e `ESPECIFICACAO_TECNICA.md`.
+
+**Arquivos:** `supabase/migrations/20260101000028_access_control_and_feature_flags.sql` · `src/types/schema.ts` · `src/types/database.ts` · `src/data/repositories/access.ts` (+ testes) · `src/data/repositories/admin.ts` (+ testes) · `src/state/queries/use-user-access.ts` · `src/state/mutations/use-admin-mutations.ts` · `src/features/admin/*` · `src/features/auth/pages/pending-approval-page.tsx` · `src/features/auth/pages/suspended-account-page.tsx` · `src/components/modules/feature-gate.tsx` · `src/app/router.tsx` · `src/app/routes.tsx` · `src/components/layout/nav-items.tsx` · `docs/ROADMAP.md` · `docs/ARCHITECTURE.md` · `docs/PROJECT_STRUCTURE.md`.
+
+**✅ DoD (critérios de aceite):**
+- Zero brechas de escalação de privilégios (impossível para um usuário alterar seu próprio status ou role via cliente).
+- Primeiro usuário cadastrado na base promovido automaticamente a `superadmin` e `active`.
+- Usuários sem convite entram como `pending_approval` e são direcionados para `PendingApprovalPage`.
+- Usuários com convite válido entram como `active` e consomem 1 uso do código.
+- Usuários banidos/suspensos são desconectados imediatamente e bloqueados pelo RLS/RPCs mesmo que possuam JWT ativo.
+- Módulos desativados por Feature Flag são ocultados da navegação e inacessíveis por URL direta (redirecionam com feedback).
+- Painel `/admin` 100% responsivo, acessível apenas para `admin`/`superadmin`, com todas as 5 abas operacionais.
+- Total conformidade com o Design System existente e governança: zero emojis, ícones `lucide-react`, pt-BR.
+- Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
+
+
+

@@ -2,10 +2,85 @@ import { describe, expect, it } from "vitest";
 import {
   allocationByTicker,
   assetYieldOnCostPct,
+  buildPortfolioMonthlySeries,
   calculatePortfolioTotalReturn,
   calculateWeightedAveragePrice,
   portfolioReturnPct,
 } from "./summary";
+
+describe("buildPortfolioMonthlySeries — Snapshots patrimoniais com proventos acumulados (§F36 e §F37)", () => {
+  it("calcula ganho de capital e retorno total integrando proventos até cada mês", () => {
+    const rawSnapshots = [
+      { month: "2026-01", total_value: 10000, total_cost: 10000 },
+      { month: "2026-02", total_value: 10500, total_cost: 10000 },
+      { month: "2026-03", total_value: 9800, total_cost: 10000 },
+    ];
+    const dividends = [
+      { date: "2026-01-15", amount: 100 },
+      { date: "2026-02-15", amount: 150 },
+      { date: "2026-03-15", amount: 200 },
+    ];
+
+    const series = buildPortfolioMonthlySeries({
+      rawSnapshots,
+      dividends,
+      initialAccumulatedDividends: 50,
+      limit: 6,
+    });
+
+    expect(series).toHaveLength(3);
+
+    // Mês 1: Custo 10k, Valor 10k, Proventos no mês 100, Acumulado 50 + 100 = 150
+    expect(series[0]!.month).toBe("2026-01");
+    expect(series[0]!.valueBRL).toBe(10000);
+    expect(series[0]!.costBRL).toBe(10000);
+    expect(series[0]!.monthDividendsBRL).toBe(100);
+    expect(series[0]!.accumulatedDividendsBRL).toBe(150);
+    expect(series[0]!.capitalGainPnl).toBe(0);
+    expect(series[0]!.capitalGainPct).toBe(0);
+    expect(series[0]!.totalReturnPnl).toBe(150); // 0 + 150
+    expect(series[0]!.totalReturnPct).toBe(1.5); // 150 / 10000 = 1.5%
+
+    // Mês 2: Custo 10k, Valor 10.5k, Proventos no mês 150, Acumulado 150 + 150 = 300
+    expect(series[1]!.month).toBe("2026-02");
+    expect(series[1]!.valueBRL).toBe(10500);
+    expect(series[1]!.monthDividendsBRL).toBe(150);
+    expect(series[1]!.accumulatedDividendsBRL).toBe(300);
+    expect(series[1]!.capitalGainPnl).toBe(500);
+    expect(series[1]!.capitalGainPct).toBe(5);
+    expect(series[1]!.totalReturnPnl).toBe(800); // 500 + 300
+    expect(series[1]!.totalReturnPct).toBe(8); // 800 / 10000 = 8%
+
+    // Mês 3: Custo 10k, Valor 9.8k (queda de cotação), Proventos 200, Acumulado 300 + 200 = 500
+    expect(series[2]!.month).toBe("2026-03");
+    expect(series[2]!.valueBRL).toBe(9800);
+    expect(series[2]!.monthDividendsBRL).toBe(200);
+    expect(series[2]!.accumulatedDividendsBRL).toBe(500);
+    expect(series[2]!.capitalGainPnl).toBe(-200);
+    expect(series[2]!.capitalGainPct).toBe(-2);
+    expect(series[2]!.totalReturnPnl).toBe(300); // -200 + 500 = +300
+    expect(series[2]!.totalReturnPct).toBe(3); // 300 / 10000 = +3% (Retorno Total positivo mesmo com queda de cotação)
+  });
+
+  it("inclui ponto do mês corrente e respeita limite", () => {
+    const rawSnapshots = [
+      { month: "2026-01", total_value: 1000, total_cost: 1000 },
+      { month: "2026-02", total_value: 1100, total_cost: 1000 },
+    ];
+    const currentMonthPoint = { month: "2026-03", total_value: 1200, total_cost: 1000 };
+
+    const series = buildPortfolioMonthlySeries({
+      rawSnapshots,
+      currentMonthPoint,
+      dividends: [],
+      limit: 2,
+    });
+
+    expect(series).toHaveLength(2);
+    expect(series[0]!.month).toBe("2026-02");
+    expect(series[1]!.month).toBe("2026-03");
+  });
+});
 
 describe("calculatePortfolioTotalReturn — Retorno Total consolidado da carteira (§F17)", () => {
   it("calcula ganho de capital e retorno total somando proventos", () => {

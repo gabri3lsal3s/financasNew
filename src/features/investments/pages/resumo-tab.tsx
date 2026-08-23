@@ -451,8 +451,10 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3 pt-2">
               {series.map((point) => {
                 const isCurrent = point.month === month;
-                const gain = point.valueBRL - point.costBRL;
-                const gainPct = point.costBRL > 0 ? (gain / point.costBRL) * 100 : 0;
+                const effectiveGain = point.totalReturnPnl !== undefined ? point.totalReturnPnl : (point.valueBRL - point.costBRL);
+                const effectivePct = point.totalReturnPct !== undefined ? point.totalReturnPct : (point.costBRL > 0 ? ((point.valueBRL - point.costBRL) / point.costBRL) * 100 : 0);
+                const hasDividends = Boolean(point.accumulatedDividendsBRL && point.accumulatedDividendsBRL > 0);
+
                 return (
                   <div
                     key={point.month}
@@ -482,15 +484,30 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
                         className="text-muted-foreground tabular-nums font-medium whitespace-nowrap"
                       />
                     </div>
+                    {hasDividends ? (
+                      <div className="flex items-center justify-between text-xs text-muted-foreground gap-2 min-w-0">
+                        <span className="shrink-0 font-medium">Proventos acum.</span>
+                        <MoneyText
+                          cents={numberToCents(point.accumulatedDividendsBRL)}
+                          tone="positive"
+                          className="tabular-nums font-medium whitespace-nowrap"
+                        />
+                      </div>
+                    ) : null}
                     <div className="flex items-center justify-between text-xs gap-2 min-w-0">
-                      <span className="text-muted-foreground shrink-0 font-medium">Resultado</span>
+                      <span className="text-muted-foreground shrink-0 font-medium">Resultado Total</span>
                       <span
                         className={cn(
                           "num font-bold tabular-nums shrink-0",
-                          gain >= 0 ? "text-positive-strong" : "text-negative-strong",
+                          effectiveGain >= 0 ? "text-positive-strong" : "text-negative-strong",
                         )}
+                        title={
+                          hasDividends && point.capitalGainPct !== null && point.capitalGainPct !== undefined
+                            ? `Retorno Total: ${effectivePct !== null && effectivePct >= 0 ? "+" : ""}${effectivePct?.toFixed(1)}% (Cotação: ${point.capitalGainPct >= 0 ? "+" : ""}${point.capitalGainPct.toFixed(1)}% + Proventos: R$ ${point.accumulatedDividendsBRL.toFixed(2)})`
+                            : undefined
+                        }
                       >
-                        {gainPct >= 0 ? "+" : ""}{gainPct.toFixed(1)}%
+                        {effectivePct !== null ? `${effectivePct >= 0 ? "+" : ""}${effectivePct.toFixed(1)}%` : "—"}
                       </span>
                     </div>
                   </div>
