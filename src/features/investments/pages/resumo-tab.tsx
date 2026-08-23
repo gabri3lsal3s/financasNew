@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   FileSpreadsheet,
   Landmark,
@@ -55,7 +56,9 @@ export interface ResumoTabProps {
  * e Investment Wizard (Nova Operação centralizada: Compra, Venda, Provento, Split e Novo Ativo).
  */
 export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
+  const navigate = useNavigate();
   const position = usePortfolioPosition();
+
   const assetsQuery = usePortfolioAssets();
   const dividendsQuery = usePortfolioDividends();
   const deleteAsset = useDeletePortfolioAsset();
@@ -535,21 +538,21 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setImportOpen(true)}
-            className="h-8 text-xs gap-1.5 shrink-0"
+            onClick={() => navigate("/relatorios?aba=investimentos")}
+            className="h-8 text-xs gap-1.5 shrink-0 font-medium text-portfolio hover:text-portfolio"
           >
-            <Upload className="size-3.5 text-portfolio" aria-hidden="true" />
-            <span>Importar Planilha</span>
+            <Printer className="size-3.5" aria-hidden="true" />
+            <span>Central de Relatórios</span>
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setExecutiveReportOpen(true)}
+            onClick={() => setImportOpen(true)}
             className="h-8 text-xs gap-1.5 shrink-0"
           >
-            <Printer className="size-3.5 text-portfolio" aria-hidden="true" />
-            <span>Relatório A4</span>
+            <Upload className="size-3.5 text-portfolio" aria-hidden="true" />
+            <span>Importar Planilha</span>
           </Button>
           <Button
             type="button"

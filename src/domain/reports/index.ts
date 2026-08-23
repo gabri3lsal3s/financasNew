@@ -291,3 +291,45 @@ export {
   type DetailedCloseExpenseInput,
   type DetailedCloseResolvers,
 } from "./detailed-close";
+
+// ---------------------------------------------------------------------------
+// Consultoria Patrimonial & Relatórios Executivos (§F42)
+// ---------------------------------------------------------------------------
+
+export {
+  calculateAllocationGaps,
+  type AllocationPositionInput,
+  type ClassTargetInput,
+  type AssetTargetInput,
+  type ClassAllocationGap,
+  type AssetAllocationGap,
+  type AllocationAnalysisResult,
+  type GapStatus,
+} from "./allocation-gaps";
+
+export {
+  calculateConcentrationRisk,
+  type PositionRiskInput,
+  type CurrencyExposure,
+  type RiskAlert,
+  type RiskAlertLevel,
+  type ConcentrationRiskResult,
+} from "./concentration-risk";
+
+export {
+  calculateFreedomIndex,
+  getFreedomStage,
+  type SnowballAssetInput,
+  type SnowballAssetAnalysis,
+  type FreedomStage,
+  type FreedomAnalysisResult,
+} from "./freedom-index";
+
+export {
+  computeConsolidatedBalanceSheet,
+  type DebtBalanceItem,
+  type ConsolidatedBalanceInput,
+  type PersonalDRE,
+  type ConsolidatedBalanceSheetResult,
+} from "./consolidated-balance";
+

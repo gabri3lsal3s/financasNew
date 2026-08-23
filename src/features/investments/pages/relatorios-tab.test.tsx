@@ -1,23 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import { FerrantasTab } from "./relatorios-tab";
+import { FerramentasTab } from "./relatorios-tab";
 
 // Barrel de componentes da feature — todos com dependências transitivas são mockados aqui.
 vi.mock("../components", () => ({
   PortfolioImportDialog: ({ open }: { open: boolean }) =>
     open ? <div>dialog-importar</div> : null,
-  PortfolioExecutiveReport: ({ open }: { open: boolean }) =>
-    open ? <div>Relatório Executivo</div> : null,
-  PortfolioTaxReport: ({ open }: { open: boolean }) =>
-    open
-      ? (
-        <div>
-          <div>Facilitador de IRPF / Declaração Anual</div>
-          <div>100 cotas/ações de PETR4</div>
-        </div>
-      )
-      : null,
   PortfolioDarfMonitor: ({ open }: { open: boolean }) =>
     open
       ? (
@@ -30,38 +20,9 @@ vi.mock("../components", () => ({
 }));
 
 vi.mock("@/state", () => ({
-  usePortfolioPosition: () => ({
-    rows: [
-      {
-        assetId: "a1",
-        ticker: "PETR4",
-        assetClass: "Ações",
-        currency: "BRL",
-        quantity: 100,
-        averageCost: 30,
-        priceBRL: 35,
-        valueBRL: 3500,
-        pct: 70,
-        unrealizedPnl: 500,
-        unrealizedPct: 16.67,
-        isCash: false,
-      },
-    ],
-    totalBRL: 5000,
-    cashBRL: 1500,
-    isLoading: false,
-    error: null,
-  }),
   usePortfolioAssets: () => ({
     data: [
       { id: "a1", user_id: "u1", ticker: "PETR4", asset_class: "Ações", currency: "BRL", quantity: 100, average_price: 30 },
-    ],
-    isLoading: false,
-    error: null,
-  }),
-  usePortfolioDividends: () => ({
-    data: [
-      { id: "d1", user_id: "u1", asset_id: "a1", date: "2026-08-15", amount: 200, notes: "DIVIDENDO" },
     ],
     isLoading: false,
     error: null,
@@ -75,34 +36,42 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-describe("FerrantasTab — Ferramentas de Investimentos", () => {
-  it("renderiza a grade de 4 ferramentas com Relatório Executivo, IRPF e Monitor de DARF", () => {
-    render(<FerrantasTab />);
+describe("FerramentasTab — Ferramentas da Carteira", () => {
+  it("renderiza a grade de 4 ferramentas com Importação, Dossiê Executivo, IRPF e Monitor de DARF", () => {
+    render(
+      <MemoryRouter>
+        <FerramentasTab />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText("Importar via Planilha")).toBeInTheDocument();
-    expect(screen.getByText("Relatório Executivo (A4/PDF)")).toBeInTheDocument();
+    expect(screen.getByText("Dossiê Executivo A4")).toBeInTheDocument();
     expect(screen.getByText("Facilitador de IRPF Anual")).toBeInTheDocument();
     expect(screen.getByText("Monitor Mensal de DARF")).toBeInTheDocument();
   });
 
-  it("abre o facilitador de IRPF e exibe a discriminação do ativo", async () => {
+  it("abre o diálogo de importação de carteira via planilha", async () => {
     const user = userEvent.setup();
-    render(<FerrantasTab />);
+    render(
+      <MemoryRouter>
+        <FerramentasTab />
+      </MemoryRouter>,
+    );
 
-    await user.click(screen.getByRole("button", { name: "Abrir Fichas do IRPF" }));
-
-    expect(screen.getByText("Facilitador de IRPF / Declaração Anual")).toBeInTheDocument();
-    expect(screen.getByText(/100 cotas\/ações de PETR4/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Importar Carteira/i }));
+    expect(screen.getByText("dialog-importar")).toBeInTheDocument();
   });
 
-  it("abre o monitor de DARF com status de isenção de 20k", async () => {
+  it("abre o monitor de DARF", async () => {
     const user = userEvent.setup();
-    render(<FerrantasTab />);
+    render(
+      <MemoryRouter>
+        <FerramentasTab />
+      </MemoryRouter>,
+    );
 
-    await user.click(screen.getByRole("button", { name: "Consultar Apuração Mensal" }));
-
+    await user.click(screen.getByRole("button", { name: /Abrir Monitor DARF/i }));
     expect(screen.getByText("Monitor Mensal de DARF & Isenção de 20k")).toBeInTheDocument();
     expect(screen.getByText("Sem DARF a recolher no período")).toBeInTheDocument();
   });
 });
-

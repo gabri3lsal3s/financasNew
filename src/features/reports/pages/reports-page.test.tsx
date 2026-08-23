@@ -42,8 +42,8 @@ vi.mock("@/state", () => ({
   }),
   useDebts: () => ({
     data: [
-      { id: "d1", name: "Paga", type: "receivable", amount: 1000, due_date: "2026-08-10", paid_at: "2026-08-11" },
-      { id: "d2", name: "Pendente", type: "payable", amount: 200, due_date: "2026-08-20", paid_at: null },
+      { id: "d1", description: "Paga", type: "receivable", remaining_amount: 1000, total_amount: 1000, due_date: "2026-08-10" },
+      { id: "d2", description: "Pendente", type: "payable", remaining_amount: 200, total_amount: 200, due_date: "2026-08-20" },
     ],
     isLoading: false,
     error: null,
@@ -59,6 +59,72 @@ vi.mock("@/state", () => ({
   }),
   usePortfolioContributions: () => ({
     data: [],
+    isLoading: false,
+    error: null,
+  }),
+  usePortfolioPosition: () => ({
+    data: {
+      totalBRL: 80000,
+      totalCostBRL: 70000,
+      cashBRL: 15000,
+      rows: [
+        {
+          assetId: "a1",
+          ticker: "PETR4",
+          name: "Petrobras PN",
+          assetClass: "acoes",
+          currency: "BRL",
+          quantity: 100,
+          averagePrice: 30,
+          currentPrice: 38.5,
+          valueBRL: 3850,
+          unrealizedPnl: 850,
+          unrealizedPnlPct: 28.33,
+          totalDividends: 450,
+          yieldOnCost: 15.0,
+          isCash: false,
+        },
+      ],
+    },
+    isLoading: false,
+    error: null,
+  }),
+  usePortfolioAssets: () => ({
+    data: [
+      {
+        id: "a1",
+        ticker: "PETR4",
+        name: "Petrobras PN",
+        asset_class: "acoes",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 30,
+        is_cash: false,
+      },
+    ],
+    isLoading: false,
+    error: null,
+  }),
+  usePortfolioDividends: () => ({
+    data: [
+      {
+        id: "div1",
+        asset_id: "a1",
+        date: "2026-08-15",
+        amount: 450,
+        notes: "Proventos",
+      },
+    ],
+    isLoading: false,
+    error: null,
+  }),
+  useGroupTargets: () => ({
+    data: [{ id: "g1", name: "acoes", target: 50 }],
+    isLoading: false,
+    error: null,
+  }),
+  useAllocationTargets: () => ({
+    data: [{ asset_id: "a1", target_percentage: 50 }],
     isLoading: false,
     error: null,
   }),
@@ -91,98 +157,73 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-describe("ReportsPage (relatórios §3.6)", () => {
-  it("agrega por categoria com totais e merge de dívidas pagas", () => {
+describe("ReportsPage (Central Unificada §F42)", () => {
+  it("renderiza o Hub com o banner de exportação Excel e as 4 abas principais", () => {
     renderReports();
-    // Categorias nas agregações.
+    expect(screen.getByText("Caderno de Relatórios em Excel (.xlsx)")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Finanças & DRE/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Investimentos & Carteira/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Balanço & Liberdade/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Fiscal & IRPF/i })).toBeInTheDocument();
+  });
+
+  it("exibe os dados financeiros da aba Finanças & DRE por padrão", () => {
+    renderReports();
+    expect(screen.getByText("Receitas Totais")).toBeInTheDocument();
+    expect(screen.getByText("Despesas Totais")).toBeInTheDocument();
     expect(screen.getByText("Alimentação")).toBeInTheDocument();
     expect(screen.getByText("Lazer")).toBeInTheDocument();
-    // Resumo: rendas 5.000 + recebível pago 1.000 = 6.000
-    expect(screen.getByText("R$ 6.000,00")).toBeInTheDocument();
   });
 
-  it("mostra comparativo com o mês anterior", () => {
-    renderReports();
-    expect(screen.getByText("Rendas")).toBeInTheDocument();
-    expect(screen.getByText("Despesas")).toBeInTheDocument();
-  });
-
-  it("permite alternar para a aba 'Ano' e exibir dados anuais", async () => {
+  it("permite alternar para a aba Investimentos & Carteira", async () => {
     const user = userEvent.setup();
     renderReports();
 
-    const yearTab = screen.getByRole("tab", { name: "Ano" });
-    await user.click(yearTab);
+    const investTab = screen.getByRole("tab", { name: /Investimentos & Carteira/i });
+    await user.click(investTab);
 
-    // Deve exibir o seletor de ano
-    expect(screen.getByRole("group", { name: "Selecionar ano" })).toBeInTheDocument();
-    expect(screen.getByText("2026")).toBeInTheDocument();
-
-    // Dados anuais agregados
-    expect(screen.getByText("Alimentação")).toBeInTheDocument();
-    expect(screen.getByText("R$ 6.000,00")).toBeInTheDocument();
-
-    // Navega para o ano anterior
-    await user.click(screen.getByRole("button", { name: "Ano anterior" }));
-    expect(screen.getByText("2025")).toBeInTheDocument();
+    expect(screen.getByText("Dossiê Executivo de Alocação & Patrimônio (A4/PDF)")).toBeInTheDocument();
+    expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
+    expect(screen.getByText("Defasagem de Metas por Classe")).toBeInTheDocument();
   });
 
-  it("permite alternar entre as abas de agregação (Categorias, Formas, Dias)", async () => {
+  it("permite alternar para a aba Balanço & Liberdade", async () => {
     const user = userEvent.setup();
     renderReports();
 
-    // Aba Categoria ativa por padrão
-    expect(screen.getByText("Alimentação")).toBeInTheDocument();
+    const balancoTab = screen.getByRole("tab", { name: /Balanço & Liberdade/i });
+    await user.click(balancoTab);
 
-    // Clica na aba Formas
-    const formaTab = screen.getByRole("tab", { name: "Formas" });
-    await user.click(formaTab);
+    expect(screen.getByText("Balanço 360° & DRE Pessoal")).toBeInTheDocument();
+    expect(screen.getByText("Dossiê de Liberdade Financeira")).toBeInTheDocument();
+    expect(screen.getByText("Patrimônio Líquido Real")).toBeInTheDocument();
+  });
+
+  it("permite alternar para a aba Fiscal & IRPF", async () => {
+    const user = userEvent.setup();
+    renderReports();
+
+    const fiscalTab = screen.getByRole("tab", { name: /Fiscal & IRPF/i });
+    await user.click(fiscalTab);
+
+    expect(screen.getByText("Facilitador de Declaração de IRPF")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Abrir Fichas de IRPF/i })).toBeInTheDocument();
+  });
+
+  it("permite alternar as agregações de despesas (Categorias, Formas de Pgto, Dias da Semana)", async () => {
+    const user = userEvent.setup();
+    renderReports();
+
+    // Clica em Formas de Pgto
+    const formaButton = screen.getByRole("button", { name: "Formas de Pgto" });
+    await user.click(formaButton);
     expect(screen.getByText("Cartão de crédito")).toBeInTheDocument();
     expect(screen.getByText("Pix")).toBeInTheDocument();
 
-    // Clica na aba Dias
-    const weekdayTab = screen.getByRole("tab", { name: "Dias" });
-    await user.click(weekdayTab);
+    // Clica em Dias da Semana
+    const weekdayButton = screen.getByRole("button", { name: "Dias da Semana" });
+    await user.click(weekdayButton);
     expect(screen.getByText("Segunda")).toBeInTheDocument();
     expect(screen.getByText("Sábado")).toBeInTheDocument();
-  });
-
-  it("abre o modal de detalhamento ao clicar em uma categoria", async () => {
-    const user = userEvent.setup();
-    renderReports();
-
-    const alimentacaoRow = screen.getByText("Alimentação");
-    await user.click(alimentacaoRow);
-
-    expect(screen.getByText("Despesas — Alimentação")).toBeInTheDocument();
-    expect(screen.getByText("1 despesa")).toBeInTheDocument();
-  });
-
-  it("abre o modal de detalhamento ao clicar em uma forma de pagamento", async () => {
-    const user = userEvent.setup();
-    renderReports();
-
-    const formaTab = screen.getByRole("tab", { name: "Formas" });
-    await user.click(formaTab);
-
-    const pixRow = screen.getByText("Pix");
-    await user.click(pixRow);
-
-    expect(screen.getByText("Despesas — Pix")).toBeInTheDocument();
-    expect(screen.getByText("1 despesa")).toBeInTheDocument();
-  });
-
-  it("abre o modal de detalhamento ao clicar em um dia da semana", async () => {
-    const user = userEvent.setup();
-    renderReports();
-
-    const weekdayTab = screen.getByRole("tab", { name: "Dias" });
-    await user.click(weekdayTab);
-
-    const segundaRow = screen.getByText("Segunda");
-    await user.click(segundaRow);
-
-    expect(screen.getByText("Despesas — Segunda")).toBeInTheDocument();
-    expect(screen.getByText("1 despesa")).toBeInTheDocument();
   });
 });
