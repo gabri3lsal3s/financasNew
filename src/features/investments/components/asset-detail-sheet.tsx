@@ -115,13 +115,12 @@ export function AssetDetailSheet({
         onOpenChange={onOpenChange}
         title={currentAsset.ticker}
         description={currentAsset.asset_class ?? "Ativo em Carteira"}
-        size="lg"
+        size="xl"
       >
-        <div className="flex flex-col gap-6 pt-2">
-          {/* Header com Ações Rápidas */}
-          <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xl font-bold text-foreground">{currentAsset.ticker}</span>
+        <div className="flex flex-col gap-5 pt-1">
+          {/* Header de Metadados & Ações Rápidas */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-4">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               <Badge variant="muted" className="text-xs">
                 {currentAsset.asset_class ?? "Sem classe"}
               </Badge>
@@ -135,44 +134,45 @@ export function AssetDetailSheet({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => onAction?.("buy", currentAsset)}
-                className="gap-1 text-xs text-primary"
+                className="gap-1 text-xs text-primary flex-1 sm:flex-initial"
               >
                 <Plus className="size-3.5" aria-hidden="true" />
-                {isTotalValue ? "Aportar" : "Aportar"}
+                <span>Aportar</span>
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => onAction?.("sell", currentAsset)}
-                className="gap-1 text-xs"
+                className="gap-1 text-xs flex-1 sm:flex-initial"
               >
                 <ArrowDownLeft className="size-3.5" aria-hidden="true" />
-                {isTotalValue ? "Resgatar" : "Vender"}
+                <span>{isTotalValue ? "Resgatar" : "Vender"}</span>
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => onAction?.("dividend", currentAsset)}
-                className="gap-1 text-xs text-positive-strong"
+                className="gap-1 text-xs text-positive-strong flex-1 sm:flex-initial"
               >
                 <Receipt className="size-3.5" aria-hidden="true" />
-                {isTotalValue ? "Rendimento" : "Provento"}
+                <span>{isTotalValue ? "Rendimento" : "Provento"}</span>
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
                 onClick={() => setEditOpen(true)}
-                className="size-8 p-0 text-muted-foreground"
+                className="size-8 p-0 text-muted-foreground shrink-0"
                 title="Editar Ativo"
+                aria-label="Editar Ativo"
               >
                 <Edit2 className="size-3.5" aria-hidden="true" />
               </Button>
@@ -180,37 +180,37 @@ export function AssetDetailSheet({
           </div>
 
           {/* Grid de Métricas Principais da Posição */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/80 p-3.5">
-              <span className="text-[11px] font-medium text-muted-foreground">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 sm:gap-3">
+            <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <span className="text-[11px] font-medium text-muted-foreground truncate">
                 {isTotalValue ? "Saldo Atual" : "Posição Total"}
               </span>
-              <span className="font-mono text-base font-bold text-foreground">
+              <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate" title={currentValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}>
                 <MoneyText cents={numberToCents(currentValue)} />
               </span>
-              <span className="text-[10px] text-muted-foreground font-mono">
+              <span className="text-[10px] text-muted-foreground font-mono truncate">
                 {isTotalValue ? "Valor de mercado" : `${quantity} cota(s)`}
               </span>
             </div>
 
-            <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/80 p-3.5">
-              <span className="text-[11px] font-medium text-muted-foreground">
+            <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <span className="text-[11px] font-medium text-muted-foreground truncate">
                 {isTotalValue ? "Preço Inicial" : "Preço Médio (PM)"}
               </span>
-              <span className="font-mono text-base font-bold text-foreground">
+              <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
                 <MoneyText cents={numberToCents(isTotalValue ? totalCost : averageCost)} />
               </span>
-              <span className="text-[10px] text-muted-foreground font-mono">
+              <span className="text-[10px] text-muted-foreground font-mono truncate">
                 {isTotalValue ? "Valor aplicado" : <>Custo: <MoneyText cents={numberToCents(totalCost)} /></>}
               </span>
             </div>
 
-            <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/80 p-3.5">
-              <span className="text-[11px] font-medium text-muted-foreground">
+            <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <span className="text-[11px] font-medium text-muted-foreground truncate">
                 {isTotalValue ? "Rendimento Total" : "Lucro Não Realizado"}
               </span>
               <span
-                className={`font-mono text-base font-bold ${
+                className={`font-mono text-sm sm:text-base font-bold truncate ${
                   unrealizedPnl >= 0 ? "text-positive-strong" : "text-negative-strong"
                 }`}
               >
@@ -218,7 +218,7 @@ export function AssetDetailSheet({
                 <MoneyText cents={numberToCents(unrealizedPnl)} />
               </span>
               <span
-                className={`text-[10px] font-mono ${
+                className={`text-[10px] font-mono truncate ${
                   unrealizedPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
                 }`}
               >
@@ -227,25 +227,25 @@ export function AssetDetailSheet({
               </span>
             </div>
 
-            <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/80 p-3.5">
-              <span className="text-[11px] font-medium text-muted-foreground">Yield on Cost (YoC)</span>
-              <span className="font-mono text-base font-bold text-positive-strong">
+            <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <span className="text-[11px] font-medium text-muted-foreground truncate">Yield on Cost (YoC)</span>
+              <span className="font-mono text-sm sm:text-base font-bold text-positive-strong truncate">
                 {yieldOnCostPct.toFixed(2)}%
               </span>
               {accumulatedDividends > 0 ? (
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] text-muted-foreground font-mono">
+                <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
+                  <span className="text-[10px] text-muted-foreground font-mono truncate">
                     Extrato: <MoneyText cents={numberToCents(periodicDividends)} />
                   </span>
-                  <span className="text-[10px] text-muted-foreground font-mono">
+                  <span className="text-[10px] text-muted-foreground font-mono truncate">
                     Acumulados: <MoneyText cents={numberToCents(accumulatedDividends)} />
                   </span>
-                  <span className="text-[10px] text-muted-foreground font-mono font-semibold">
+                  <span className="text-[10px] text-muted-foreground font-mono font-semibold truncate">
                     Total: <MoneyText cents={numberToCents(totalDividends)} />
                   </span>
                 </div>
               ) : (
-                <span className="text-[10px] text-muted-foreground font-mono">
+                <span className="text-[10px] text-muted-foreground font-mono truncate">
                   Proventos: <MoneyText cents={numberToCents(totalDividends)} />
                 </span>
               )}
@@ -282,19 +282,19 @@ export function AssetDetailSheet({
                       key={tx.id}
                       className="flex items-center justify-between p-3 text-xs hover:bg-surface-hover/60 transition-colors"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Badge variant={txInfo.variant} className="text-[10px] px-1.5 py-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Badge variant={txInfo.variant} className="text-[10px] px-1.5 py-0 shrink-0">
                           {txInfo.label}
                         </Badge>
-                        <span className="font-mono text-muted-foreground">{tx.date}</span>
+                        <span className="font-mono text-muted-foreground shrink-0">{tx.date}</span>
                         {tx.quantity > 0 && !isTotalValue && (
-                          <span className="text-muted-foreground font-mono">
+                          <span className="text-muted-foreground font-mono truncate">
                             ({tx.quantity} un @ <MoneyText cents={numberToCents(tx.price)} />)
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 shrink-0 ml-2">
                         <span className="font-mono font-semibold text-foreground">
                           <MoneyText cents={numberToCents(tx.total)} />
                         </span>
@@ -305,6 +305,7 @@ export function AssetDetailSheet({
                           onClick={() => setTxToDelete(tx.id)}
                           className="size-7 p-0 text-muted-foreground hover:text-negative-strong"
                           title="Excluir lançamento"
+                          aria-label="Excluir lançamento"
                         >
                           <Trash2 className="size-3.5" aria-hidden="true" />
                         </Button>

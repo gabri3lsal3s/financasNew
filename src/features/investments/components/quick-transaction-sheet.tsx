@@ -269,9 +269,10 @@ export function QuickTransactionSheet({
           : "Lançamento Rápido em Investimentos"
       }
       description="Registre compras, vendas, proventos ou eventos corporativos com atualização em tempo real da carteira."
-      size="md"
+      size="lg"
       showCalculator
     >
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
         {error && <Alert variant="error">{error}</Alert>}
 

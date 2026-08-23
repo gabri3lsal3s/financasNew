@@ -221,7 +221,7 @@ export function AssetEditDialog({
       onOpenChange={onOpenChange}
       title="Editar Ativo"
       description={`Atualize as informações cadastrais de ${asset.ticker}`}
-      size="md"
+      size="lg"
     >
       <AssetEditFormContent
         key={asset.id}
@@ -229,5 +229,6 @@ export function AssetEditDialog({
         onClose={() => onOpenChange(false)}
       />
     </Modal>
+
   );
 }
