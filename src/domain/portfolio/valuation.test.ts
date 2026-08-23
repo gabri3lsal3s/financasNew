@@ -233,6 +233,22 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(summary.unrealizedPnl).toBe(850);
       expect(summary.unrealizedPct).toBe(8.5);
       expect(summary.isCash).toBe(false);
+
+      // Caso com quantidade acumulada pós-ordem:
+      const summaryAccumulated = calculatePositionSummary({
+        quantity: 2,
+        averagePrice: 846.44, // 2 * 846.44 = 1692.88
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+        ticker: "TESOURO-SELIC",
+        resolvedPrice: { price: 1767.42, source: "manual" },
+      });
+
+      expect(summaryAccumulated.pricingMode).toBe("total_value");
+      expect(summaryAccumulated.totalCost).toBe(1692.88);
+      expect(summaryAccumulated.valueBRL).toBe(1767.42);
+      expect(summaryAccumulated.unrealizedPnl).toBe(74.54);
+      expect(summaryAccumulated.unrealizedPct).toBeCloseTo(4.4, 1);
     });
 
     it("ativo do Tesouro Direto com padrão valor completo e override por cotas", () => {

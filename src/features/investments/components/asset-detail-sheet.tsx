@@ -66,7 +66,15 @@ export function AssetDetailSheet({
 
   const quantity = ledger ? ledger.quantity : asset.quantity;
   const averageCost = ledger ? ledger.averageCost : asset.average_price;
-  const totalCost = isTotalValue ? (averageCost > 0 ? averageCost : quantity) : ledger ? ledger.totalCost : quantity * averageCost;
+  const totalCost = isTotalValue
+    ? asset.quantity > 1 && asset.average_price > 0
+      ? Math.round(asset.quantity * asset.average_price * 100) / 100
+      : averageCost > 0
+        ? averageCost
+        : quantity
+    : ledger
+      ? ledger.totalCost
+      : quantity * averageCost;
   const currentValue = isCash ? quantity : isTotalValue ? currentPrice : quantity * currentPrice;
   const totalDividends = ledger ? ledger.dividends : 0;
   const unrealizedPnl = isCash ? 0 : currentValue - totalCost;

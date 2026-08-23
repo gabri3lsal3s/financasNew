@@ -14,7 +14,10 @@ import {
 } from "@/data/repositories/portfolio";
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
-import { isCashAssetClass } from "@/domain/portfolio/valuation";
+import {
+  getAssetPricingMode,
+  isCashAssetClass,
+} from "@/domain/portfolio/valuation";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -372,12 +375,31 @@ export function useRecordOrder() {
       // 2. Se for Compra ou Subscrição: atualiza o Preço Médio ponderado e quantidade
       if (type === "buy" || type === "subscription") {
         const isCash = isCashAssetClass(asset.asset_class);
+        const pricingMode = getAssetPricingMode(asset);
+        const isTotalValue = !isCash && pricingMode === "total_value";
+
         if (isCash) {
           await updateAsset.mutateAsync({
             id: asset.id,
             patch: {
               quantity: asset.quantity + (total > 0 ? total : quantity),
               average_price: 1,
+            },
+          });
+        } else if (isTotalValue) {
+          const currentCost =
+            asset.quantity > 1 && asset.average_price > 0
+              ? Math.round(asset.quantity * asset.average_price * 100) / 100
+              : asset.average_price > 0
+                ? asset.average_price
+                : asset.quantity;
+          const orderAmount = total > 0 ? total : price;
+          const newTotalApplied = Math.round((currentCost + orderAmount) * 100) / 100;
+          await updateAsset.mutateAsync({
+            id: asset.id,
+            patch: {
+              quantity: 1,
+              average_price: newTotalApplied,
             },
           });
         } else {
@@ -424,12 +446,31 @@ export function useRecordOrder() {
       // 3. Se for Venda: reduz a quantidade mantendo o PM e opcionalmente credita Caixa
       if (type === "sell") {
         const isCash = isCashAssetClass(asset.asset_class);
+        const pricingMode = getAssetPricingMode(asset);
+        const isTotalValue = !isCash && pricingMode === "total_value";
+
         if (isCash) {
           await updateAsset.mutateAsync({
             id: asset.id,
             patch: {
               quantity: Math.max(0, asset.quantity - (total > 0 ? total : quantity)),
               average_price: 1,
+            },
+          });
+        } else if (isTotalValue) {
+          const currentCost =
+            asset.quantity > 1 && asset.average_price > 0
+              ? Math.round(asset.quantity * asset.average_price * 100) / 100
+              : asset.average_price > 0
+                ? asset.average_price
+                : asset.quantity;
+          const orderAmount = total > 0 ? total : price;
+          const newTotalApplied = Math.round(Math.max(0, currentCost - orderAmount) * 100) / 100;
+          await updateAsset.mutateAsync({
+            id: asset.id,
+            patch: {
+              quantity: newTotalApplied > 0 ? 1 : 0,
+              average_price: newTotalApplied,
             },
           });
         } else {

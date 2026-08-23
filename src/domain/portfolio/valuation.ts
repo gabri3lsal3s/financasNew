@@ -313,8 +313,16 @@ export function calculatePositionSummary(params: {
 
   if (effectivePricingMode === "total_value") {
     // Modo Valor Completo (Renda Fixa / Tesouro Direto):
-    // averagePrice é o Preço Inicial Investido (ou quantity se averagePrice for 1).
-    const initialCost = averagePrice > 0 && averagePrice !== 1 ? averagePrice : quantity > 0 ? quantity : averagePrice;
+    // Se o ativo possui quantity > 1 e averagePrice > 0 (acumulado pós-ordem), o custo total acumulado é quantity * averagePrice.
+    // Caso quantity seja 1 ou 0, initialCost é averagePrice (ou quantity se averagePrice for 0).
+    const initialCost =
+      quantity > 1 && averagePrice > 0
+        ? Math.round(quantity * averagePrice * 100) / 100
+        : averagePrice > 0 && averagePrice !== 1
+          ? averagePrice
+          : quantity > 0
+            ? quantity
+            : averagePrice;
     const currentPrice = resolvedPrice.price > 0 ? resolvedPrice.price : initialCost;
 
     const totalCost = Math.round(initialCost * rate * 100) / 100;
