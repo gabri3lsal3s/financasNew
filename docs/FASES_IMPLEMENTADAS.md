@@ -411,6 +411,18 @@
      - O `CashFormDialog` atualiza idempotentemente o saldo do caixa existente caso já cadastrado.
   4. **Harmonização da Grade de KPIs:** Remoção do card "Ativos em carteira", resultando em 4 colunas equilibradas no desktop: Saldo em Caixa (2 colunas) + Patrimônio Total (1 coluna) + Proventos no Mês (1 coluna).
 
+## F41 — Arquitetura Unificada de Investimentos: Investment Wizard, Quick Transaction Sheet & Visão Dedicada de Ativos (2026-08-22)
+
+- **Problema:** Sobrecarga de modais sobrepostos e fluxos redundantes no ecossistema de investimentos (diálogos aninhados `AssetFormDialog`, `TransactionListDialog`, `TransactionFormDialog`, `AssetSplitDialog`, `DividendFormDialog`), além de atrito cognitivo entre cadastrar novo ativo versus aportar em ativo existente.
+- **Solução:**
+  1. **Domínio Puro & Schemas Zod (`src/domain/portfolio/schemas.ts`):** `newAssetSchema`, `quickTransactionSchema`, `assetMetadataSchema` e validação com regex padronizada de tickers (`TICKER_REGEX`).
+  2. **Catálogo Curado de Tickers (`src/domain/portfolio/tickers-catalog.ts`):** Autocomplete instantâneo com mais de 60 ativos pré-curados (Ibovespa, IFIX, BDRs, ETFs, Renda Fixa, Cripto, Globais) e gerador de sugestões preditivas de aporte orientadas por metas com déficit (`buildAporteSuggestions`).
+  3. **Padronização Estrita de Tickers em Caixa Alta (UPPERCASE):** Todos os formulários e estados forçam caixa alta (`font-mono uppercase` e `.toUpperCase()`), mantendo total consistência com os padrões de mercado da B3 e corretoras.
+  4. **Investment Wizard Unificado (`src/features/investments/wizard/`):** Máquina de estados pura com bifurcação inteligente entre *Novo Ativo* e *Aporte em Posição Existente* (com fast-track a partir da tabela e cálculo de novo Preço Médio ponderado em tempo real).
+  5. **Quick Transaction Sheet (`QuickTransactionSheet`):** Bottom sheet ágil e mobile-first para lançamentos atômicos em 1 toque (Compra com recálculo de PM, Venda com apuração de ganho de capital e monitor de isenção de 20k, Proventos e Splits).
+  6. **Visão Dedicada de Ativos (`AssetDetailSheet` & `AssetEditDialog`):** Painel lateral com deep linking (`?asset=<id>`), KPIs da posição, Preço Médio, Lucro Não Realizado, Yield on Cost (YoC) e extrato cronológico integrado com exclusão individual de operações.
+  7. **Centralização de Mutações (`src/state/mutations/use-portfolio-mutations.ts`):** Invalidação atômica e coordenada de cache com TanStack Query.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
