@@ -10,23 +10,88 @@
  */
 
 // ---------------------------------------------------------------------------
-// Rentabilidade ponderada
+// Rentabilidade da carteira (Retorno Total & Ganho de Capital)
 // ---------------------------------------------------------------------------
 
+export interface PortfolioConsolidatedReturn {
+  /** Valor de mercado total em BRL dos ativos com custo (exclui caixa 1:1). */
+  totalValueBRL: number;
+  /** Custo total em BRL dos ativos com custo. */
+  totalCostBRL: number;
+  /** Proventos totais em BRL acumulados na carteira. */
+  totalDividendsBRL: number;
+  /** Ganho de capital não realizado em BRL (valor − custo). */
+  capitalGainPnl: number;
+  /** Variação da cotação % ((valor − custo) ÷ custo). */
+  capitalGainPct: number | null;
+  /** Resultado total em BRL: (valor − custo) + proventos. */
+  totalReturnPnl: number;
+  /** Retorno Total % da carteira: ((valor − custo) + proventos) ÷ custo. */
+  totalReturnPct: number | null;
+}
+
 /**
- * Rentabilidade não realizada da carteira, ponderada pelo valor de mercado:
- *   Σ (unrealizedPct_i × valueBRL_i) ÷ Σ valueBRL_i
+ * Rentabilidade consolidada da carteira (§F17): calcula o Retorno Total real
+ * (valor de mercado − custo total + proventos) e o ganho de capital sobre o custo.
+ * Ignora ativos de caixa/sem custo (onde totalCostBRL <= 0 ou isCash).
+ */
+export function calculatePortfolioTotalReturn(
+  rows: readonly {
+    valueBRL: number;
+    totalCostBRL: number;
+    dividends?: number;
+    isCash?: boolean;
+  }[],
+): PortfolioConsolidatedReturn {
+  let totalValueBRL = 0;
+  let totalCostBRL = 0;
+  let totalDividendsBRL = 0;
+
+  for (const row of rows) {
+    if (row.isCash || row.totalCostBRL <= 0) continue;
+    totalValueBRL += row.valueBRL;
+    totalCostBRL += row.totalCostBRL;
+    totalDividendsBRL += Math.max(0, row.dividends ?? 0);
+  }
+
+  totalValueBRL = Math.round(totalValueBRL * 100) / 100;
+  totalCostBRL = Math.round(totalCostBRL * 100) / 100;
+  totalDividendsBRL = Math.round(totalDividendsBRL * 100) / 100;
+
+  const capitalGainPnl = Math.round((totalValueBRL - totalCostBRL) * 100) / 100;
+  const capitalGainPct =
+    totalCostBRL > 0 ? Math.round((capitalGainPnl / totalCostBRL) * 10000) / 100 : null;
+
+  const totalReturnPnl = Math.round((capitalGainPnl + totalDividendsBRL) * 100) / 100;
+  const totalReturnPct =
+    totalCostBRL > 0 ? Math.round((totalReturnPnl / totalCostBRL) * 10000) / 100 : null;
+
+  return {
+    totalValueBRL,
+    totalCostBRL,
+    totalDividendsBRL,
+    capitalGainPnl,
+    capitalGainPct,
+    totalReturnPnl,
+    totalReturnPct,
+  };
+}
+
+/**
+ * Rentabilidade não realizada / total da carteira ponderada pelo valor de mercado:
+ *   Σ (pct_i × valueBRL_i) ÷ Σ valueBRL_i
  * sobre os ativos com custo (caixa/sem custo ficam fora — `unrealizedPct` null).
  * Retorna `null` quando não há base (carteira vazia ou só caixa).
  */
 export function portfolioReturnPct(
-  rows: readonly { valueBRL: number; unrealizedPct: number | null }[],
+  rows: readonly { valueBRL: number; unrealizedPct?: number | null; totalReturnPct?: number | null }[],
 ): number | null {
   let weightedSum = 0;
   let totalValue = 0;
   for (const row of rows) {
-    if (row.unrealizedPct === null) continue;
-    weightedSum += row.unrealizedPct * row.valueBRL;
+    const effectivePct = row.totalReturnPct !== undefined ? row.totalReturnPct : row.unrealizedPct;
+    if (effectivePct === null || effectivePct === undefined) continue;
+    weightedSum += effectivePct * row.valueBRL;
     totalValue += row.valueBRL;
   }
   if (totalValue <= 0) return null;

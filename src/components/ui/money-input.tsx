@@ -3,6 +3,7 @@ import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { useCurrencyInput } from "@/hooks/use-currency-input";
 import { registerCalculatorTarget, unregisterCalculatorTarget } from "@/services/calculator-bridge";
+import type { AssetCurrency } from "@/types";
 
 /**
  * MoneyInput — entrada monetária progressiva (padrão Nubank).
@@ -22,6 +23,8 @@ export interface MoneyInputProps
   cents?: number;
   /** Notifica o pai sempre que o valor muda (em centavos). */
   onCentsChange?: (cents: number) => void;
+  /** Moeda da entrada (default "BRL"). */
+  currency?: AssetCurrency;
   /** Variante de tamanho. "lg" para o passo de valor do wizard (D10). */
   size?: "sm" | "md" | "lg";
 }
@@ -35,13 +38,14 @@ const sizeClasses: Record<NonNullable<MoneyInputProps["size"]>, string> = {
 export function MoneyInput({
   cents = 0,
   onCentsChange,
+  currency: currencyProp = "BRL",
   size = "md",
   className,
   disabled,
   ...rest
 }: MoneyInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const currency = useCurrencyInput({ initialCents: cents });
+  const currency = useCurrencyInput({ initialCents: cents, currency: currencyProp });
 
   // Campo ativo da calculadora (F9): registrado no MOUNT — o FAB aparece assim
   // que o modal abre, sem depender de foco — e removido apenas no unmount

@@ -45,7 +45,7 @@ describe("ManualPriceDialog", () => {
     expect(screen.getByText("Cotação · PETR4")).toBeInTheDocument();
     expect(screen.getByText("Cotação API")).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Preço manual do ativo"), "40.50");
+    await user.type(screen.getByRole("textbox", { name: /Preço manual do ativo/ }), "40.50");
     await user.click(screen.getByRole("button", { name: "Salvar preço" }));
 
     expect(setManualMock).toHaveBeenCalledTimes(1);

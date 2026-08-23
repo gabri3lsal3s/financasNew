@@ -287,10 +287,11 @@ export type { ParsedQuote, QuoteCurrency } from "./quotes";
 export {
   allocationByTicker,
   assetYieldOnCostPct,
+  calculatePortfolioTotalReturn,
   calculateWeightedAveragePrice,
   portfolioReturnPct,
 } from "./summary";
-export type { AllocationTickerSlice, WeightedAveragePriceResult } from "./summary";
+export type { AllocationTickerSlice, PortfolioConsolidatedReturn, WeightedAveragePriceResult } from "./summary";
 export { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendType } from "./dividends";
 export type { DividendEntry, DividendTransaction, MonthDividendSummary } from "./dividends";
 export {

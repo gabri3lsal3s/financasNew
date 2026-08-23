@@ -90,12 +90,17 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     setIsApplying(true);
     try {
       const date = todayISO();
-      const items = eligibleRoutes.map((r) => ({
-        asset_id: r.assetId,
-        quantity: r.quantity,
-        price: r.priceBRL,
-        total: r.allocatedBRL,
-      }));
+      const items = eligibleRoutes.map((r) => {
+        const row = position.rows.find((p) => p.assetId === r.assetId);
+        const isUSD = row?.currency === "USD";
+        const rate = isUSD ? (row?.usdRate || 5.25) : 1;
+        return {
+          asset_id: r.assetId,
+          quantity: r.quantity,
+          price: isUSD ? Math.round((r.priceBRL / rate) * 100) / 100 : r.priceBRL,
+          total: isUSD ? Math.round((r.allocatedBRL / rate) * 100) / 100 : r.allocatedBRL,
+        };
+      });
       const totalAmount = result?.totalAllocated ?? eligibleRoutes.reduce((acc, r) => acc + r.allocatedBRL, 0);
 
       await executeBatch.mutateAsync({

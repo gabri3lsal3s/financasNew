@@ -76,9 +76,11 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
       // Resolve data e nota conforme o modo de entrada
       const rawDateValue = entryMode === "monthly" ? month : date;
       const resolvedDate = resolveDividendDate(entryMode, rawDateValue);
+      const assetCurrency = selectedAsset.currency ?? "BRL";
+      const symbol = assetCurrency === "USD" ? "$" : "R$";
 
       const perShareNote = inputMode === "per_share" && perShareCents > 0
-        ? ` (R$ ${(perShareCents / 100).toFixed(2)}/cota x ${effectiveQty})`
+        ? ` (${symbol} ${(perShareCents / 100).toFixed(2)}/cota x ${effectiveQty})`
         : "";
       const userNote = notes.trim() ? `${notes.trim()}${perShareNote}` : perShareNote.trim();
       const resolvedNote = resolveDividendNote(entryMode, userNote, type);
@@ -93,7 +95,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
       triggerSensory("success");
       pushToast({
         title: "Provento registrado",
-        description: `${selectedAsset.ticker} · R$ ${(amountCents / 100).toFixed(2)} registrado com sucesso.`,
+        description: `${selectedAsset.ticker} · ${symbol} ${(amountCents / 100).toFixed(2)} registrado com sucesso.`,
       });
 
       onOpenChange(false);
@@ -105,6 +107,8 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
       setError(getErrorMessage(err));
     }
   };
+
+  const assetCurrency = selectedAsset?.currency ?? "BRL";
 
   return (
     <Modal
@@ -233,12 +237,14 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="dividend-pershare" className="text-xs font-medium text-primary">
-                Valor por Cota (R$)
+                Valor por Cota ({assetCurrency})
               </label>
               <MoneyInput
                 id="dividend-pershare"
                 cents={perShareCents}
+                currency={assetCurrency}
                 onCentsChange={handlePerShareChange}
+                placeholder={assetCurrency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Valor por cota"
               />
             </div>
@@ -257,18 +263,20 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
             </div>
             <div className="col-span-full flex items-center justify-between text-xs text-primary pt-1 border-t border-primary/20">
               <span>Total Calculado:</span>
-              <MoneyText cents={amountCents} tone="portfolio" className="font-semibold text-sm" />
+              <MoneyText cents={amountCents} currency={assetCurrency} tone="portfolio" className="font-semibold text-sm" />
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
             <label htmlFor="dividend-amount" className="text-xs font-medium text-muted-foreground">
-              Valor Total Recebido
+              Valor Total Recebido ({assetCurrency})
             </label>
             <MoneyInput
               id="dividend-amount"
               cents={amountCents}
+              currency={assetCurrency}
               onCentsChange={setAmountCents}
+              placeholder={assetCurrency === "USD" ? "$ 0.00" : "R$ 0,00"}
               aria-label="Valor do provento"
             />
           </div>

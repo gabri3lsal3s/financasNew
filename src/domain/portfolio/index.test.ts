@@ -178,6 +178,15 @@ describe("positionPnl — rentabilidade não realizada (F14, DoD)", () => {
     expect(pnl.unrealizedPnl).toBe(0.06);
     expect(pnl.unrealizedPct).toBe(0.01); // 0,06 ÷ 999,99 × 100 ≈ 0,006% → 0,01%
   });
+
+  it("calcula Retorno Total somando proventos recebidos", () => {
+    const pnl = positionPnl(980, 1000, 120);
+    expect(pnl.unrealizedPnl).toBe(-20);
+    expect(pnl.unrealizedPct).toBe(-2);
+    expect(pnl.totalDividends).toBe(120);
+    expect(pnl.totalReturnPnl).toBe(100);
+    expect(pnl.totalReturnPct).toBe(10);
+  });
 });
 
 describe("portfolioMonthlySeries — série mensal derivada (F14)", () => {

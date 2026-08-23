@@ -135,8 +135,9 @@ export function PortfolioExecutiveReport({
             </thead>
             <tbody className="divide-y divide-border/60">
               {investmentRows.map((r) => {
-                const rentabLabel = r.unrealizedPct !== null ? formatSignedPct(r.unrealizedPct) : "—";
-                const rentabTone = r.unrealizedPct !== null && r.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong";
+                const effectiveRentab = r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPct;
+                const rentabLabel = effectiveRentab !== null ? formatSignedPct(effectiveRentab) : "—";
+                const rentabTone = effectiveRentab !== null && effectiveRentab >= 0 ? "text-positive-strong" : "text-negative-strong";
 
                 return (
                   <tr key={r.assetId} className="hover:bg-surface-hover/30 transition-colors">
@@ -144,10 +145,10 @@ export function PortfolioExecutiveReport({
                     <td className="py-2.5 px-3 text-muted-foreground">{r.assetClass ?? "Geral"}</td>
                     <td className="py-2.5 px-3 text-right num">{formatQuantity(r.quantity)}</td>
                     <td className="py-2.5 px-3 text-right">
-                      <MoneyText cents={numberToCents(r.averageCost)} tone="default" />
+                      <MoneyText cents={numberToCents(r.averageCost)} currency={r.currency} tone="default" />
                     </td>
                     <td className="py-2.5 px-3 text-right">
-                      <MoneyText cents={numberToCents(r.priceBRL)} tone="default" />
+                      <MoneyText cents={numberToCents(r.priceQuote || r.priceBRL)} currency={r.currency} tone="default" />
                     </td>
                     <td className="py-2.5 px-3 text-right font-semibold">
                       <MoneyText cents={numberToCents(r.valueBRL)} tone="default" />

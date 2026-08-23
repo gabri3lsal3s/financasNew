@@ -49,6 +49,29 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
       expect(report.items[0]?.discrimination).toContain("100 cotas/ações de MXRF11");
       expect(report.items[0]?.discrimination).toContain("R$ 1.050,00");
     });
+
+    it("gera relatório de bens e direitos para ativos internacionais em USD com conversão cambial", () => {
+      const assets: PortfolioAsset[] = [
+        {
+          id: "a2",
+          user_id: "u1",
+          ticker: "AAPL",
+          asset_class: "Internacional",
+          currency: "USD",
+          quantity: 10,
+          average_price: 150.0,
+        },
+      ];
+
+      const report = generateAnnualBensDireitosReport(assets, 2026, 5.0);
+      expect(report.year).toBe(2026);
+      expect(report.items).toHaveLength(1);
+      // 10 * 150 = $1500 * 5.0 = R$ 7.500,00 = 750000 cents
+      expect(report.totalCostCents).toBe(750000);
+      expect(report.items[0]?.discrimination).toContain("$ 1500.00");
+      expect(report.items[0]?.discrimination).toContain("R$ 7.500,00");
+      expect(report.items[0]?.discrimination).toContain("R$ 5.00");
+    });
   });
 
   describe("classifyAnnualDividendsReport", () => {
@@ -67,6 +90,21 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
       expect(report.exemptDividends.totalCents).toBe(15000);
       expect(report.exclusiveJCP.totalCents).toBe(5000);
       expect(report.totalDividendsCents).toBe(20000);
+    });
+
+    it("converte proventos de ativos em USD para reais com a taxa informada", () => {
+      const assets: PortfolioAsset[] = [
+        { id: "a2", user_id: "u1", ticker: "AAPL", asset_class: "Internacional", currency: "USD", quantity: 10, average_price: 150 },
+      ];
+
+      const dividends: PortfolioDividend[] = [
+        { id: "d3", user_id: "u1", asset_id: "a2", date: "2026-05-15", amount: 20, notes: "DIVIDEND" },
+      ];
+
+      const report = classifyAnnualDividendsReport(dividends, assets, 2026, 5.0);
+      // $20 * 5.0 = R$ 100,00 = 10000 cents
+      expect(report.exemptDividends.totalCents).toBe(10000);
+      expect(report.totalDividendsCents).toBe(10000);
     });
   });
 

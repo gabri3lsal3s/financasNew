@@ -19,14 +19,15 @@ export interface StepOrderProps {
   state: InvestmentWizardState;
   onChange: (patch: Partial<InvestmentWizardState>) => void;
   cashAsset?: PortfolioAsset | null;
+  usdRate?: number;
 }
 
-export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
+export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProps) {
   const cashAvailableBRL = cashAsset?.quantity ?? 0;
 
   const preview = useMemo(
-    () => calculateInvestmentPreview(state, cashAvailableBRL),
-    [state, cashAvailableBRL],
+    () => calculateInvestmentPreview(state, cashAvailableBRL, usdRate),
+    [state, cashAvailableBRL, usdRate],
   );
 
   const parsedQty = parseNumber(state.quantityStr);
@@ -91,12 +92,12 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
             {isTotalValue ? (
               <>
                 Saldo Aplicado:{" "}
-                <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+                <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
               </>
             ) : (
               <>
                 Posição Atual: {state.selectedAsset?.quantity ?? 0} cotas · PM:{" "}
-                <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+                <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
               </>
             )}
           </span>
@@ -143,8 +144,9 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 <MoneyInput
                   id="wizard-order-rf-aporte"
                   cents={state.totalCents || state.priceCents}
+                  currency={state.currency}
                   onCentsChange={(cents) => onChange({ totalCents: cents, priceCents: cents })}
-                  placeholder="R$ 0,00"
+                  placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                   aria-label="Valor do aporte em renda fixa"
                 />
               </div>
@@ -162,7 +164,6 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                     onChange={(e) => onChange({ quantityStr: e.target.value })}
                     placeholder="Ex: 10"
                     className="font-mono text-base"
-
                   />
                 </div>
 
@@ -173,8 +174,9 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                   <MoneyInput
                     id="wizard-order-price"
                     cents={state.priceCents}
+                    currency={state.currency}
                     onCentsChange={(priceCents) => onChange({ priceCents })}
-                    placeholder="R$ 0,00"
+                    placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                   />
                 </div>
               </>
@@ -186,9 +188,9 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 <MoneyInput
                   id="wizard-cash-total"
                   cents={state.totalCents}
+                  currency="BRL"
                   onCentsChange={(totalCents) => onChange({ totalCents })}
                   placeholder="R$ 0,00"
-
                 />
               </div>
             )}
@@ -210,7 +212,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Saldo aplicado após o aporte:</span>
                 <span className="font-mono font-bold text-sm text-primary">
-                  <MoneyText cents={numberToCents((state.selectedAsset?.average_price ?? 0) + (state.totalCents || state.priceCents) / 100)} />
+                  <MoneyText cents={numberToCents((state.selectedAsset?.average_price ?? 0) + (state.totalCents || state.priceCents) / 100)} currency={state.currency} />
                 </span>
               </div>
             </div>
@@ -225,19 +227,32 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 <div className="flex flex-col gap-1 rounded-lg bg-surface-hover/50 p-2.5">
                   <span className="text-[11px] text-muted-foreground">Preço Médio</span>
                   <div className="flex items-center gap-1.5 font-mono font-semibold text-foreground">
-                    <MoneyText cents={numberToCents(preview.currentAveragePrice)} />
+                    <MoneyText cents={numberToCents(preview.currentAveragePrice)} currency={state.currency} />
                     <ArrowRight className="size-3 text-muted-foreground" aria-hidden="true" />
                     <span className="text-primary font-bold">
-                      <MoneyText cents={numberToCents(preview.newAveragePrice)} />
+                      <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
                     </span>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-1 rounded-lg bg-surface-hover/50 p-2.5">
                   <span className="text-[11px] text-muted-foreground">Total Investido na Ordem</span>
-                  <span className="font-mono text-sm font-bold text-foreground">
-                    <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} />
-                  </span>
+                  <div className="flex flex-col">
+                    {state.currency === "USD" && preview.totalOrderValueNative !== undefined ? (
+                      <>
+                        <span className="font-mono text-sm font-bold text-foreground">
+                          <MoneyText cents={numberToCents(preview.totalOrderValueNative)} currency="USD" />
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          (≈ <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />)
+                        </span>
+                      </>
+                    ) : (
+                      <span className="font-mono text-sm font-bold text-foreground">
+                        <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -276,8 +291,9 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 <MoneyInput
                   id="wizard-sell-rf-amount"
                   cents={state.totalCents || state.priceCents}
+                  currency={state.currency}
                   onCentsChange={(cents) => onChange({ totalCents: cents, priceCents: cents })}
-                  placeholder="R$ 0,00"
+                  placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                   aria-label="Valor a resgatar em renda fixa"
                 />
 
@@ -319,7 +335,6 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                     onChange={(e) => onChange({ quantityStr: e.target.value })}
                     placeholder={`Máx: ${state.selectedAsset?.quantity ?? 0}`}
                     className="font-mono text-base"
-
                   />
                 </div>
 
@@ -330,8 +345,9 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                   <MoneyInput
                     id="wizard-sell-price"
                     cents={state.priceCents}
+                    currency={state.currency}
                     onCentsChange={(priceCents) => onChange({ priceCents })}
-                    placeholder="R$ 0,00"
+                    placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                   />
                 </div>
               </>
@@ -359,6 +375,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                       0,
                       numberToCents((state.selectedAsset?.average_price ?? 0) - (state.totalCents || state.priceCents) / 100),
                     )}
+                    currency={state.currency}
                   />
                 </span>
               </div>
@@ -373,11 +390,11 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                   }`}
                 >
                   {preview.realizedPnl >= 0 ? "+" : ""}
-                  <MoneyText cents={numberToCents(preview.realizedPnl)} /> ({preview.realizedPnlPct?.toFixed(1)}%)
+                  <MoneyText cents={numberToCents(preview.realizedPnl)} currency={state.currency} /> ({preview.realizedPnlPct?.toFixed(1)}%)
                 </span>
               </div>
 
-              {state.assetClass === "Ações" && (
+              {state.assetClass === "Ações" && state.currency === "BRL" && (
                 <div className="flex items-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
                   <Info className="size-3.5 text-primary shrink-0" aria-hidden="true" />
                   <span>Isenção de IRPF se o total de vendas de ações no mês for até R$ 20.000,00.</span>
@@ -391,7 +408,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
               checked={state.syncCash}
               onCheckedChange={(checked) => onChange({ syncCash: !!checked })}
             />
-            <span className="text-foreground">Creditar o valor da venda diretamente no Caixa da carteira</span>
+            <span className="text-foreground">Creditar o valor da venda diretamente no Caixa da carteira (R$)</span>
           </label>
         </div>
       )}
@@ -401,13 +418,14 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="wizard-div-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Valor Total Recebido (Liquido)
+              Valor Total Recebido ({state.currency})
             </label>
             <MoneyInput
               id="wizard-div-amount"
               cents={state.totalCents}
+              currency={state.currency}
               onCentsChange={(totalCents) => onChange({ totalCents })}
-              placeholder="R$ 0,00"
+              placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
             />
           </div>
 
@@ -464,7 +482,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
               checked={state.syncCash}
               onCheckedChange={(checked) => onChange({ syncCash: !!checked })}
             />
-            <span className="text-foreground">Creditar o rendimento diretamente no Caixa da carteira</span>
+            <span className="text-foreground">Creditar o rendimento diretamente no Caixa da carteira (R$)</span>
           </label>
         </div>
       )}
@@ -486,7 +504,6 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 value={state.splitFactor}
                 onChange={(e) => onChange({ splitFactor: Number(e.target.value) || 2 })}
                 className="font-mono text-base"
-
               />
             </div>
 
@@ -508,6 +525,7 @@ export function StepOrder({ state, onChange, cashAsset }: StepOrderProps) {
                 {state.selectedAsset.quantity * state.splitFactor} cotas a{" "}
                 <MoneyText
                   cents={numberToCents(state.selectedAsset.average_price / state.splitFactor)}
+                  currency={state.currency}
                 />
               </span>
               <span className="text-[10px] text-muted-foreground">

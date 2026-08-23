@@ -250,5 +250,68 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       // Bloqueia se valor do resgate for maior que o saldo aplicado
       expect(canProceed({ ...state, totalCents: 600000 })).toBe(false);
     });
+
+    it("calcula preview de compra de ativo em USD convertendo impacto em caixa e aporte para BRL", () => {
+      const usdAsset: PortfolioAsset = {
+        id: "usd-1",
+        user_id: "u-1",
+        ticker: "AAPL",
+        asset_class: "Internacional",
+        currency: "USD",
+        quantity: 10,
+        average_price: 150.0,
+      };
+
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "buy",
+        selectedAsset: usdAsset,
+        currency: "USD",
+        quantityStr: "5",
+        priceCents: 20000, // $ 200.00
+        syncCash: true,
+        recordContribution: true,
+      };
+
+      // usdRate = 5.0 -> Ordem: 5 * $200 = $1,000.00 -> BRL: R$ 5.000,00
+      // Caixa disponível: R$ 3.000,00 -> Débito: R$ 3.000,00 -> Aporte adicional: R$ 2.000,00
+      // Novo PM: (10 * 150 + 5 * 200) / 15 = $ 166.67
+      const preview = calculateInvestmentPreview(state, 3000, 5.0);
+      expect(preview.currentQuantity).toBe(10);
+      expect(preview.currentAveragePrice).toBe(150.0);
+      expect(preview.newQuantity).toBe(15);
+      expect(preview.newAveragePrice).toBeCloseTo(166.67, 2);
+      expect(preview.totalOrderValueNative).toBe(1000.0);
+      expect(preview.totalOrderValueBRL).toBe(5000.0);
+      expect(preview.cashDebitBRL).toBe(3000.0);
+      expect(preview.contributionBRL).toBe(2000.0);
+    });
+
+    it("calcula preview de provento de ativo em USD convertendo total para BRL", () => {
+      const usdAsset: PortfolioAsset = {
+        id: "usd-1",
+        user_id: "u-1",
+        ticker: "AAPL",
+        asset_class: "Internacional",
+        currency: "USD",
+        quantity: 10,
+        average_price: 150.0,
+      };
+
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "dividend",
+        selectedAsset: usdAsset,
+        currency: "USD",
+        totalCents: 5000, // $ 50.00
+        syncCash: true,
+      };
+
+      // usdRate = 5.20 -> $50.00 * 5.20 = R$ 260.00
+      const preview = calculateInvestmentPreview(state, 0, 5.2);
+      expect(preview.totalOrderValueNative).toBe(50.0);
+      expect(preview.totalOrderValueBRL).toBe(260.0);
+      expect(preview.cashCreditBRL).toBe(260.0);
+    });
   });
 });

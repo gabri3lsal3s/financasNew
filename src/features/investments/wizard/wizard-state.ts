@@ -1,6 +1,7 @@
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
 import {
+  FALLBACK_USD_RATE,
   getAssetPricingMode,
   isFixedIncomeClass,
   isTesouroAsset,
@@ -247,15 +248,12 @@ export function canProceed(state: InvestmentWizardState): boolean {
       }
       return parsedQty > 0 && price > 0;
     }
-    // Passo 3: Meta de Alocação (opcional, mas se informada deve ser 0-100)
     if (state.step === 3) {
       if (state.targetPercentage === null) return true;
       return state.targetPercentage >= 0 && state.targetPercentage <= 100;
     }
-    // Passo 4: Revisão
     return true;
   }
-
   return false;
 }
 
@@ -264,6 +262,7 @@ export interface InvestmentPreviewResult {
   currentAveragePrice: number;
   newQuantity: number;
   newAveragePrice: number;
+  totalOrderValueNative?: number;
   totalOrderValueBRL: number;
   cashDebitBRL: number;
   cashCreditBRL?: number;
@@ -272,12 +271,10 @@ export interface InvestmentPreviewResult {
   realizedPnlPct?: number;
 }
 
-/**
- * Calcula a prévia instantânea do impacto patrimonial e do novo preço médio ponderado.
- */
 export function calculateInvestmentPreview(
   state: InvestmentWizardState,
   cashAvailableBRL = 0,
+  usdRate = FALLBACK_USD_RATE,
 ): InvestmentPreviewResult {
   const parsedQty = parseNumber(state.quantityStr);
   const inputPrice = state.priceCents / 100;
@@ -285,17 +282,15 @@ export function calculateInvestmentPreview(
 
   const currentQty = state.selectedAsset?.quantity ?? 0;
   const currentAvgPrice = state.selectedAsset?.average_price ?? 0;
+  const rate = state.currency === "USD" ? usdRate : 1;
 
   const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
   const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
   const pricingMode = getAssetPricingMode(
     state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
   );
-  const isTotalValue =
-    !state.isCash &&
-    (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+  const isTotalValue = !state.isCash && (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
 
-  // 1. Caixa
   if (state.isCash) {
     const amount = inputTotal > 0 ? inputTotal : parsedQty;
     return {
@@ -303,47 +298,47 @@ export function calculateInvestmentPreview(
       currentAveragePrice: 1,
       newQuantity: currentQty + amount,
       newAveragePrice: 1,
+      totalOrderValueNative: amount,
       totalOrderValueBRL: amount,
       cashDebitBRL: 0,
       contributionBRL: amount,
     };
   }
 
-  // 2. Renda Fixa / Modo Valor Completo (Aporte ou Venda/Resgate)
   if (isTotalValue) {
-    const amount = inputTotal > 0 ? inputTotal : inputPrice;
+    const amountNative = inputTotal > 0 ? inputTotal : inputPrice;
+    const amountBRL = Math.round(amountNative * rate * 100) / 100;
     if (state.mode === "sell") {
       return {
         currentQuantity: 1,
         currentAveragePrice: currentAvgPrice,
-        newQuantity: amount >= currentAvgPrice ? 0 : 1,
-        newAveragePrice: Math.max(0, currentAvgPrice - amount),
-        totalOrderValueBRL: amount,
+        newQuantity: amountNative >= currentAvgPrice ? 0 : 1,
+        newAveragePrice: Math.max(0, currentAvgPrice - amountNative),
+        totalOrderValueNative: amountNative,
+        totalOrderValueBRL: amountBRL,
         cashDebitBRL: 0,
-        cashCreditBRL: state.syncCash ? amount : 0,
+        cashCreditBRL: state.syncCash ? amountBRL : 0,
         contributionBRL: 0,
       };
     }
-
     let cashDebitBRL = 0;
-    let contributionBRL = amount;
+    let contributionBRL = amountBRL;
     if (state.syncCash && cashAvailableBRL > 0) {
-      cashDebitBRL = Math.min(cashAvailableBRL, amount);
-      contributionBRL = Math.max(0, amount - cashDebitBRL);
+      cashDebitBRL = Math.min(cashAvailableBRL, amountBRL);
+      contributionBRL = Math.max(0, amountBRL - cashDebitBRL);
     }
-
     return {
       currentQuantity: 1,
       currentAveragePrice: currentAvgPrice,
       newQuantity: 1,
-      newAveragePrice: currentAvgPrice + amount,
-      totalOrderValueBRL: amount,
-      cashDebitBRL,
-      contributionBRL,
+      newAveragePrice: currentAvgPrice + amountNative,
+      totalOrderValueNative: amountNative,
+      totalOrderValueBRL: amountBRL,
+      cashDebitBRL: Math.round(cashDebitBRL * 100) / 100,
+      contributionBRL: Math.round(contributionBRL * 100) / 100,
     };
   }
 
-  // 3. Venda
   if (state.mode === "sell") {
     const sellRes = sellAssetPosition({
       currentQuantity: currentQty,
@@ -352,37 +347,39 @@ export function calculateInvestmentPreview(
       sellPrice: inputPrice,
       assetClass: state.assetClass,
     });
-    const orderTotal = parsedQty * inputPrice;
-
+    const orderTotalNative = parsedQty * inputPrice;
+    const orderTotalBRL = Math.round(orderTotalNative * rate * 100) / 100;
     return {
       currentQuantity: currentQty,
       currentAveragePrice: currentAvgPrice,
       newQuantity: sellRes.remainingQuantity,
       newAveragePrice: sellRes.remainingAveragePrice,
-      totalOrderValueBRL: Math.round(orderTotal * 100) / 100,
+      totalOrderValueNative: Math.round(orderTotalNative * 100) / 100,
+      totalOrderValueBRL: orderTotalBRL,
       cashDebitBRL: 0,
-      cashCreditBRL: state.syncCash ? Math.round(orderTotal * 100) / 100 : 0,
+      cashCreditBRL: state.syncCash ? orderTotalBRL : 0,
       contributionBRL: 0,
       realizedPnl: sellRes.realizedPnl,
       realizedPnlPct: sellRes.realizedPnlPct,
     };
   }
 
-  // 4. Provento
   if (state.mode === "dividend") {
+    const dividendNative = inputTotal;
+    const dividendBRL = Math.round(dividendNative * rate * 100) / 100;
     return {
       currentQuantity: currentQty,
       currentAveragePrice: currentAvgPrice,
       newQuantity: currentQty,
       newAveragePrice: currentAvgPrice,
-      totalOrderValueBRL: Math.round(inputTotal * 100) / 100,
+      totalOrderValueNative: Math.round(dividendNative * 100) / 100,
+      totalOrderValueBRL: dividendBRL,
       cashDebitBRL: 0,
-      cashCreditBRL: state.syncCash ? Math.round(inputTotal * 100) / 100 : 0,
+      cashCreditBRL: state.syncCash ? dividendBRL : 0,
       contributionBRL: 0,
     };
   }
 
-  // 5. Split
   if (state.mode === "split") {
     const newQty = currentQty * state.splitFactor;
     const newAvg = currentAvgPrice / state.splitFactor;
@@ -391,29 +388,24 @@ export function calculateInvestmentPreview(
       currentAveragePrice: currentAvgPrice,
       newQuantity: newQty,
       newAveragePrice: newAvg,
+      totalOrderValueNative: 0,
       totalOrderValueBRL: 0,
       cashDebitBRL: 0,
       contributionBRL: 0,
     };
   }
 
-  // 6. Compra / Novo Ativo
   const orderPrice = inputPrice > 0 ? inputPrice : parsedQty > 0 ? inputTotal / parsedQty : 0;
-  const orderTotal = inputTotal > 0 ? inputTotal : parsedQty * orderPrice;
+  const orderTotalNative = inputTotal > 0 ? inputTotal : parsedQty * orderPrice;
+  const orderTotalBRL = Math.round(orderTotalNative * rate * 100) / 100;
 
-  const lot = calculateWeightedAveragePrice(
-    currentQty,
-    currentAvgPrice,
-    parsedQty,
-    orderPrice,
-  );
-
+  const lot = calculateWeightedAveragePrice(currentQty, currentAvgPrice, parsedQty, orderPrice);
   let cashDebitBRL = 0;
-  let contributionBRL = orderTotal;
+  let contributionBRL = orderTotalBRL;
 
   if (state.syncCash && cashAvailableBRL > 0) {
-    cashDebitBRL = Math.min(cashAvailableBRL, orderTotal);
-    contributionBRL = Math.max(0, orderTotal - cashDebitBRL);
+    cashDebitBRL = Math.min(cashAvailableBRL, orderTotalBRL);
+    contributionBRL = Math.max(0, orderTotalBRL - cashDebitBRL);
   }
 
   return {
@@ -421,7 +413,8 @@ export function calculateInvestmentPreview(
     currentAveragePrice: currentAvgPrice,
     newQuantity: lot.newQuantity,
     newAveragePrice: lot.newAveragePrice,
-    totalOrderValueBRL: Math.round(orderTotal * 100) / 100,
+    totalOrderValueNative: Math.round(orderTotalNative * 100) / 100,
+    totalOrderValueBRL: orderTotalBRL,
     cashDebitBRL: Math.round(cashDebitBRL * 100) / 100,
     cashCreditBRL: 0,
     contributionBRL: state.recordContribution ? Math.round(contributionBRL * 100) / 100 : 0,

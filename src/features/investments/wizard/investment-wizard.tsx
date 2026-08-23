@@ -182,6 +182,8 @@ function InvestmentWizardContent({
             ? total
             : parsedQty * price;
 
+        const usdRate = position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25;
+
         await recordOrder.mutateAsync({
           asset: state.selectedAsset,
           type: "buy",
@@ -193,6 +195,7 @@ function InvestmentWizardContent({
           cashAsset,
           recordContribution: state.recordContribution,
           notes: state.notes,
+          usdRate,
         });
       } else if (state.mode === "sell") {
         if (!state.selectedAsset) throw new Error("Selecione um ativo");
@@ -215,6 +218,8 @@ function InvestmentWizardContent({
             : price
           : parsedQty * price;
 
+        const usdRate = position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25;
+
         await recordOrder.mutateAsync({
           asset: state.selectedAsset,
           type: "sell",
@@ -225,6 +230,7 @@ function InvestmentWizardContent({
           syncCash: state.syncCash,
           cashAsset,
           notes: state.notes,
+          usdRate,
         });
       } else if (state.mode === "dividend") {
         if (!state.selectedAsset) throw new Error("Selecione um ativo");
@@ -240,6 +246,8 @@ function InvestmentWizardContent({
           "dividend",
         );
 
+        const usdRate = position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25;
+
         await recordOrder.mutateAsync({
           asset: state.selectedAsset,
           type: "dividend",
@@ -250,6 +258,7 @@ function InvestmentWizardContent({
           syncCash: state.syncCash,
           cashAsset,
           notes: resolvedNotes,
+          usdRate,
         });
       } else if (state.mode === "split") {
         if (!state.selectedAsset) throw new Error("Selecione um ativo");
@@ -494,6 +503,7 @@ function InvestmentWizardContent({
               state={state}
               onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
               cashAsset={cashAsset}
+              usdRate={position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25}
             />
           )}
 
@@ -502,6 +512,7 @@ function InvestmentWizardContent({
             <StepReview
               state={state}
               cashAvailableBRL={cashAsset?.quantity ?? 0}
+              usdRate={position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25}
             />
           )}
 

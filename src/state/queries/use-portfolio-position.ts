@@ -8,6 +8,7 @@ import {
 } from "./use-portfolio";
 import { useAssetPrices } from "./use-asset-prices";
 import {
+  calculatePortfolioTotalReturn,
   calculatePositionSummary,
   fallbackPriceFor,
   isCashAssetClass,
@@ -35,19 +36,28 @@ export interface PortfolioPositionRow {
   totalCostBRL: number;
   /** Custo médio convertido para BRL. */
   averageCostBRL: number;
+  /** Total de proventos recebidos em BRL (dividendos + jcp + rendimentos + acumulados históricos). */
   dividends: number;
+  /** Preço unitário na moeda nativa do ativo (USD ou BRL). */
+  priceQuote: number;
   /** Preço unitário em BRL (caixa = 1). */
   priceBRL: number;
+  /** Taxa de câmbio USD/BRL utilizada. */
+  usdRate: number;
   /** Fonte do preço usado (manual / api / fallback). */
   source: PriceSource;
   /** Valor de mercado em BRL (caixa = quantidade × 1). */
   valueBRL: number;
   /** % do patrimônio (0–100). */
   pct: number;
-  /** Lucro/prejuízo não realizado em BRL (valor − custo; F14). */
+  /** Lucro/prejuízo de capital não realizado em BRL (valor − custo; F14). */
   unrealizedPnl: number;
-  /** Rentabilidade % sobre o custo (null quando não há custo — caixa; F14). */
+  /** Variação da cotação % sobre o custo (null quando não há custo — caixa; F14). */
   unrealizedPct: number | null;
+  /** Resultado total em BRL ((valor − custo) + proventos). */
+  totalReturnPnl: number;
+  /** Retorno Total % sobre o custo (null quando não há custo — caixa). */
+  totalReturnPct: number | null;
   isCash: boolean;
   pricingMode: AssetPricingMode;
   notes?: string | null;
@@ -61,6 +71,16 @@ export interface PortfolioPosition {
   totalCostBRL: number;
   /** Caixa derivado/alocado (valor dos ativos com classe caixa/reserva). */
   cashBRL: number;
+  /** Proventos totais recebidos na carteira em BRL. */
+  totalDividendsBRL: number;
+  /** Resultado total consolidado em BRL ((patrimônio − custo) + proventos). */
+  totalReturnPnlBRL: number;
+  /** Retorno Total % consolidado da carteira (com proventos). */
+  totalReturnPct: number | null;
+  /** Ganho de capital não realizado consolidado em BRL (patrimônio − custo). */
+  unrealizedPnlBRL: number;
+  /** Variação da cotação % consolidada da carteira (sem proventos). */
+  unrealizedPct: number | null;
   /**
    * Série mensal a partir de snapshots (F36).
    */
@@ -138,6 +158,8 @@ export function usePortfolioPosition(): PortfolioPosition {
       fallbackPrice: effectiveFallback,
     });
 
+    const assetDividends = dividendsByAsset.get(asset.id) ?? 0;
+
     const summary = calculatePositionSummary({
       quantity,
       averagePrice: averageCost,
@@ -147,6 +169,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       usdRate,
       ticker: asset.ticker,
       notes: asset.notes,
+      totalDividends: assetDividends,
     });
 
     totalBRL = round2(totalBRL + summary.valueBRL);
@@ -165,12 +188,16 @@ export function usePortfolioPosition(): PortfolioPosition {
       totalCost: summary.totalCost,
       totalCostBRL: summary.totalCostBRL,
       averageCostBRL: summary.averagePriceBRL,
-      dividends: dividendsByAsset.get(asset.id) ?? 0,
+      dividends: summary.totalDividends,
+      priceQuote: summary.priceQuote,
       priceBRL: summary.priceBRL,
+      usdRate,
       source: summary.source,
       valueBRL: summary.valueBRL,
       unrealizedPnl: summary.unrealizedPnl,
       unrealizedPct: summary.unrealizedPct,
+      totalReturnPnl: summary.totalReturnPnl,
+      totalReturnPct: summary.totalReturnPct,
       isCash,
       pricingMode: summary.pricingMode,
       notes: asset.notes,
@@ -181,6 +208,8 @@ export function usePortfolioPosition(): PortfolioPosition {
     ...row,
     pct: totalBRL > 0 ? Math.round((row.valueBRL / totalBRL) * 10000) / 100 : 0,
   }));
+
+  const consolidatedReturn = calculatePortfolioTotalReturn(rawRows);
 
   // Aporte líquido do mês corrente a partir de portfolio_contributions
   const thisMonth = currentMonth();
@@ -244,6 +273,11 @@ export function usePortfolioPosition(): PortfolioPosition {
     totalBRL,
     totalCostBRL,
     cashBRL,
+    totalDividendsBRL: consolidatedReturn.totalDividendsBRL,
+    totalReturnPnlBRL: consolidatedReturn.totalReturnPnl,
+    totalReturnPct: consolidatedReturn.totalReturnPct,
+    unrealizedPnlBRL: consolidatedReturn.capitalGainPnl,
+    unrealizedPct: consolidatedReturn.capitalGainPct,
     monthlySeries,
     monthlyContributionCents: Math.round(contributionBRL * 100),
     isLoading: assetsQuery.isLoading || pricesQuery.isLoading,

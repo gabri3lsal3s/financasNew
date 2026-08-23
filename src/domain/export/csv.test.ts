@@ -133,6 +133,9 @@ describe("domain/export — CSV", () => {
         valueBRL: 4025,
         unrealizedPnl: 575,
         unrealizedPct: 16.67,
+        dividends: 100,
+        totalReturnPnl: 675,
+        totalReturnPct: 19.57,
         pct: 40.25,
       },
       {
@@ -145,10 +148,13 @@ describe("domain/export — CSV", () => {
         valueBRL: 6000,
         unrealizedPnl: 0,
         unrealizedPct: null,
+        dividends: 0,
+        totalReturnPnl: 0,
+        totalReturnPct: null,
         pct: 60,
       },
     ]);
-    expect(csv).toContain("ITUB4;Ações;BRL;100;34,50;40,25;4025,00;575,00;16,67;40,25");
-    expect(csv).toContain("Caixa;;BRL;6.000;1,00;1,00;6000,00;0,00;;60");
+    expect(csv).toContain("ITUB4;Ações;BRL;100;34,50;40,25;4025,00;575,00;100,00;19,57;40,25");
+    expect(csv).toContain("Caixa;;BRL;6.000;1,00;1,00;6000,00;0,00;0,00;;60");
   });
 });

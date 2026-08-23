@@ -16,7 +16,9 @@ export interface ManualPriceDialogProps {
     id: string;
     ticker: string;
     currency: AssetCurrency;
+    priceQuote?: number;
     priceBRL: number;
+    usdRate?: number;
     source: PriceSource;
     pricingMode?: string;
   } | null;
@@ -31,7 +33,13 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
   const setManual = useSetManualPrice();
   const removeManual = useRemoveManualPrice();
 
-  const [priceInput, setPriceInput] = useState(() => (asset.source === "manual" ? String(asset.priceBRL) : ""));
+  const nativePrice =
+    asset.priceQuote ??
+    (asset.currency === "USD" && asset.usdRate && asset.usdRate > 0
+      ? Math.round((asset.priceBRL / asset.usdRate) * 10000) / 10000
+      : asset.priceBRL);
+
+  const [priceInput, setPriceInput] = useState(() => (asset.source === "manual" ? String(nativePrice) : ""));
   const [error, setError] = useState<string | null>(null);
 
   const pending = setManual.isPending || removeManual.isPending;
@@ -83,9 +91,16 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
       <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface-hover/30 p-3">
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">Preço atual considerado</span>
-          <span className="num text-sm font-semibold text-foreground">
-            <MoneyText cents={numberToCents(asset.priceBRL)} tone="default" />
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="num text-sm font-semibold text-foreground">
+              <MoneyText cents={numberToCents(nativePrice)} currency={asset.currency} tone="default" />
+            </span>
+            {asset.currency === "USD" ? (
+              <span className="text-xs text-muted-foreground font-mono">
+                (<MoneyText cents={numberToCents(asset.priceBRL)} currency="BRL" tone="default" />)
+              </span>
+            ) : null}
+          </div>
         </div>
         <Badge variant={asset.source === "manual" ? "portfolio" : "muted"}>
           {asset.source === "manual" ? "Manual" : asset.source === "api" ? "Cotação API" : "Fallback"}
@@ -93,14 +108,22 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
       </div>
 
       <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        {asset.pricingMode === "total_value" ? `Preço Atual / Saldo (${asset.currency})` : `Preço unitário manual (${asset.currency})`}
+        {asset.pricingMode === "total_value"
+          ? `Preço Atual / Saldo (${asset.currency})`
+          : `Preço unitário manual (${asset.currency})`}
         <NumberStepperInput
           value={priceInput}
           step={0.01}
           min={0}
           onValueChange={setPriceInput}
-          placeholder={asset.pricingMode === "total_value" ? "Ex.: 10500,00" : "Ex.: 42,50"}
-          ariaLabel="Preço manual do ativo"
+          placeholder={
+            asset.pricingMode === "total_value"
+              ? "Ex.: 10500,00"
+              : asset.currency === "USD"
+                ? "Ex.: 150.00"
+                : "Ex.: 42,50"
+          }
+          ariaLabel={`Preço manual do ativo em ${asset.currency}`}
         />
       </label>
 
@@ -145,12 +168,12 @@ export function ManualPriceDialog({ open, onOpenChange, asset }: ManualPriceDial
       open={open}
       onOpenChange={onOpenChange}
       title={`Cotação · ${asset?.ticker ?? ""}`}
-      description="Defina um preço fixo manual ou restaure a cotação automática da API de mercado."
+      description={`Defina o preço unitário em ${asset?.currency ?? "BRL"} ou restaure a cotação automática.`}
       showCalculator
     >
       {open && asset ? (
         <ManualPriceContent
-          key={`${asset.id}-${asset.source}-${asset.priceBRL}`}
+          key={`${asset.id}-${asset.source}-${asset.priceBRL}-${asset.priceQuote ?? ""}`}
           asset={asset}
           onClose={() => onOpenChange(false)}
         />

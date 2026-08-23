@@ -179,7 +179,29 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(summary.valueBRL).toBe(3500);
       expect(summary.unrealizedPnl).toBe(500);
       expect(summary.unrealizedPct).toBe(16.67);
+      expect(summary.totalDividends).toBe(0);
+      expect(summary.totalReturnPnl).toBe(500);
+      expect(summary.totalReturnPct).toBe(16.67);
       expect(summary.isCash).toBe(false);
+    });
+
+    it("ativo BRL com proventos calcula Retorno Total (cotação + proventos)", () => {
+      const summary = calculatePositionSummary({
+        quantity: 100,
+        averagePrice: 10,
+        assetClass: "FIIs",
+        currency: "BRL",
+        resolvedPrice: { price: 9.8, source: "api" },
+        totalDividends: 120,
+      });
+
+      expect(summary.totalCostBRL).toBe(1000);
+      expect(summary.valueBRL).toBe(980);
+      expect(summary.unrealizedPnl).toBe(-20); // cotação caiu R$ 20
+      expect(summary.unrealizedPct).toBe(-2);
+      expect(summary.totalDividends).toBe(120);
+      expect(summary.totalReturnPnl).toBe(100); // -20 + 120 = +100
+      expect(summary.totalReturnPct).toBe(10); // +100 / 1000 = +10%
     });
 
     it("ativo de caixa/reserva com valor 1:1", () => {

@@ -39,14 +39,20 @@ export interface PositionRow {
   totalCostBRL?: number;
   averageCostBRL?: number;
   dividends?: number;
+  priceQuote?: number;
   priceBRL: number;
+  usdRate?: number;
   source: PriceSource;
   valueBRL: number;
   pct: number;
   /** Lucro/prejuízo não realizado em BRL (valor − custo; F14). */
   unrealizedPnl: number;
-  /** Rentabilidade % sobre o custo (null quando não há custo — caixa; F14). */
+  /** Variação da cotação % sobre o custo (null quando não há custo — caixa; F14). */
   unrealizedPct: number | null;
+  /** Resultado total em BRL ((valor − custo) + proventos). */
+  totalReturnPnl?: number;
+  /** Retorno Total % sobre o custo (null quando não há custo — caixa). */
+  totalReturnPct?: number | null;
   isCash: boolean;
   pricingMode?: AssetPricingMode;
 }
@@ -58,7 +64,16 @@ export interface PositionTableProps {
   /** Abre o formulário de edição cadastral do ativo (ticker/classe/moeda). */
   onEditAsset?: (assetId: string, ticker: string) => void;
   /** Abre o diálogo de preço manual/cotação do ativo. */
-  onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
+  onSetManualPrice?: (
+    assetId: string,
+    ticker: string,
+    currency: AssetCurrency,
+    priceBRL: number,
+    source: PriceSource,
+    priceQuote?: number,
+    pricingMode?: AssetPricingMode,
+    usdRate?: number,
+  ) => void;
   /** Confirma a exclusão do ativo (transações e metas em cascata). */
   onDeleteAsset?: (assetId: string, ticker: string) => void;
   emptyMessage?: string;
@@ -159,6 +174,9 @@ interface ClassGroup {
   totalPct: number;
   totalPnl: number;
   totalCostBRL: number;
+  totalDividends: number;
+  totalReturnPnl: number;
+  totalReturnPct: number | null;
   unrealizedPct: number | null;
   count: number;
 }
@@ -289,8 +307,8 @@ export function PositionTable({
       else if (key === "value") cmp = a.valueBRL - b.valueBRL;
       else if (key === "pct") cmp = a.pct - b.pct;
       else if (key === "unrealizedPct") {
-        const aVal = a.unrealizedPct ?? -Infinity;
-        const bVal = b.unrealizedPct ?? -Infinity;
+        const aVal = a.totalReturnPct ?? a.unrealizedPct ?? -Infinity;
+        const bVal = b.totalReturnPct ?? b.unrealizedPct ?? -Infinity;
         cmp = aVal - bVal;
       }
       return direction === "asc" ? cmp : -cmp;
@@ -317,11 +335,14 @@ export function PositionTable({
       const totalValueBRL = groupRows.reduce((sum, r) => sum + r.valueBRL, 0);
       const totalPct = groupRows.reduce((sum, r) => sum + r.pct, 0);
       const totalPnl = groupRows.reduce((sum, r) => sum + r.unrealizedPnl, 0);
+      const totalDividends = groupRows.reduce((sum, r) => sum + (r.dividends ?? 0), 0);
       const totalCostBRL = groupRows.reduce((sum, r) => {
         const cost = r.totalCostBRL ?? r.totalCost ?? (r.valueBRL - r.unrealizedPnl);
         return sum + (r.isCash ? 0 : Math.max(0, cost));
       }, 0);
       const unrealizedPct = totalCostBRL > 0 ? (totalPnl / totalCostBRL) * 100 : null;
+      const totalReturnPnl = Math.round((totalPnl + totalDividends) * 100) / 100;
+      const totalReturnPct = totalCostBRL > 0 ? (totalReturnPnl / totalCostBRL) * 100 : null;
 
       groups.push({
         className,
@@ -330,6 +351,9 @@ export function PositionTable({
         totalPct,
         totalPnl,
         totalCostBRL,
+        totalDividends,
+        totalReturnPnl,
+        totalReturnPct,
         unrealizedPct,
         count: groupRows.length,
       });
@@ -350,8 +374,8 @@ export function PositionTable({
         else if (key === "value") cmp = firstA.valueBRL - firstB.valueBRL;
         else if (key === "pct") cmp = firstA.pct - firstB.pct;
         else if (key === "unrealizedPct") {
-          const aVal = firstA.unrealizedPct ?? -Infinity;
-          const bVal = firstB.unrealizedPct ?? -Infinity;
+          const aVal = firstA.totalReturnPct ?? firstA.unrealizedPct ?? -Infinity;
+          const bVal = firstB.totalReturnPct ?? firstB.unrealizedPct ?? -Infinity;
           cmp = aVal - bVal;
         }
         return direction === "asc" ? cmp : -cmp;
@@ -452,7 +476,16 @@ export function PositionTable({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
+                onSetManualPrice(
+                  row.assetId,
+                  row.ticker,
+                  row.currency,
+                  row.priceBRL,
+                  row.source,
+                  row.priceQuote,
+                  row.pricingMode,
+                  row.usdRate,
+                );
               }}
               aria-label={`Cotação de ${row.ticker}`}
               className="group inline-flex items-center justify-end gap-1.5 rounded-md px-1.5 py-0.5 -mr-1.5 transition-colors hover:bg-surface-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
@@ -540,10 +573,11 @@ export function PositionTable({
       align: "right",
       className: "flex-1",
       cell: (row) => {
-        if (row.isCash || row.unrealizedPct === null) {
+        const effectivePct = row.totalReturnPct !== undefined ? row.totalReturnPct : row.unrealizedPct;
+        if (row.isCash || effectivePct === null) {
           return <span className="num text-sm text-muted-foreground">—</span>;
         }
-        const tone = row.unrealizedPct >= 0 ? "positive" : "negative";
+        const tone = effectivePct >= 0 ? "positive" : "negative";
         const yoc = (row.dividends && row.dividends > 0)
           ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
           : 0;
@@ -555,13 +589,34 @@ export function PositionTable({
                 "num text-sm font-semibold",
                 tone === "positive" ? "text-positive-strong" : "text-negative-strong",
               )}
+              title={
+                row.totalReturnPct !== undefined && row.unrealizedPct !== null
+                  ? `Retorno Total: ${formatSignedPct(effectivePct)} (Cotação: ${formatSignedPct(row.unrealizedPct)}${yoc > 0 ? ` + Proventos/YoC: ${yoc.toFixed(1)}%` : ""})`
+                  : undefined
+              }
             >
-              {formatSignedPct(row.unrealizedPct)}
+              {formatSignedPct(effectivePct)}
             </span>
             {yoc > 0 ? (
-              <span className="text-[10px] text-portfolio font-medium" title="Yield on Cost acumulado">
-                YoC {yoc.toFixed(1)}%
-              </span>
+              <div className="flex items-center gap-1.5 text-[10px]">
+                {row.unrealizedPct !== null ? (
+                  <span
+                    className={cn(
+                      "font-medium",
+                      row.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                    )}
+                    title={`Variação da cotação: ${formatSignedPct(row.unrealizedPct)}`}
+                  >
+                    Cota {formatSignedPct(row.unrealizedPct)}
+                  </span>
+                ) : null}
+                <span
+                  className="text-portfolio font-medium"
+                  title={`Yield on Cost acumulado: ${(row.dividends ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+                >
+                  YoC {yoc.toFixed(1)}%
+                </span>
+              </div>
             ) : null}
           </div>
         );
@@ -577,14 +632,15 @@ export function PositionTable({
   ];
 
   const renderMobileCard = (row: PositionRow) => {
+    const effectivePct = row.totalReturnPct !== undefined ? row.totalReturnPct : row.unrealizedPct;
     const pctLabel =
-      row.isCash || row.unrealizedPct === null
+      row.isCash || effectivePct === null
         ? "—"
-        : formatSignedPct(row.unrealizedPct);
+        : formatSignedPct(effectivePct);
     const pctTone =
-      row.isCash || row.unrealizedPct === null
+      row.isCash || effectivePct === null
         ? "text-muted-foreground"
-        : row.unrealizedPct >= 0
+        : effectivePct >= 0
           ? "text-positive-strong"
           : "text-negative-strong";
     const yoc = (row.dividends && row.dividends > 0)
@@ -623,14 +679,30 @@ export function PositionTable({
             <div className="flex flex-col items-end gap-0.5">
               <div className="flex items-center gap-1.5">
                 <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
-                <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, row.unrealizedPct !== null && row.unrealizedPct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
+                <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, effectivePct !== null && effectivePct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
                   {pctLabel}
                 </span>
               </div>
               {yoc > 0 ? (
-                <span className="text-[10px] text-portfolio font-medium" title="Yield on Cost acumulado">
-                  YoC {yoc.toFixed(1)}%
-                </span>
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  {row.unrealizedPct !== null ? (
+                    <span
+                      className={cn(
+                        "font-medium",
+                        row.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                      )}
+                      title={`Variação da cotação: ${formatSignedPct(row.unrealizedPct)}`}
+                    >
+                      Cota {formatSignedPct(row.unrealizedPct)}
+                    </span>
+                  ) : null}
+                  <span
+                    className="text-portfolio font-medium"
+                    title={`Yield on Cost acumulado: ${(row.dividends ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+                  >
+                    YoC {yoc.toFixed(1)}%
+                  </span>
+                </div>
               ) : null}
             </div>
           </div>
@@ -661,7 +733,16 @@ export function PositionTable({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSetManualPrice(row.assetId, row.ticker, row.currency, row.priceBRL, row.source);
+                  onSetManualPrice(
+                    row.assetId,
+                    row.ticker,
+                    row.currency,
+                    row.priceBRL,
+                    row.source,
+                    row.priceQuote,
+                    row.pricingMode,
+                    row.usdRate,
+                  );
                 }}
                 aria-label={`Cotação de ${row.ticker}`}
                 className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
@@ -851,10 +932,11 @@ export function PositionTable({
             const isExpanded = Boolean(expandedClasses[group.className]);
             const meta = getAssetClassMeta(group.className);
             const Icon = meta.icon;
+            const groupRentab = group.totalReturnPct !== null ? group.totalReturnPct : group.unrealizedPct;
             const rentabTone =
-              group.unrealizedPct === null
+              groupRentab === null
                 ? "text-muted-foreground"
-                : group.unrealizedPct >= 0
+                : groupRentab >= 0
                   ? "text-positive-strong"
                   : "text-negative-strong";
 
@@ -886,9 +968,9 @@ export function PositionTable({
                         <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="text-xs font-bold text-foreground" />
                         <span className="text-[11px] text-muted-foreground">({group.totalPct.toFixed(1)}%)</span>
                       </div>
-                      {group.unrealizedPct !== null ? (
+                      {groupRentab !== null ? (
                         <span className={cn("text-[10px] font-bold", rentabTone)}>
-                          {formatSignedPct(group.unrealizedPct)}
+                          {formatSignedPct(groupRentab)}
                         </span>
                       ) : null}
                     </div>
@@ -925,10 +1007,11 @@ export function PositionTable({
                 const isExpanded = Boolean(expandedClasses[group.className]);
                 const meta = getAssetClassMeta(group.className);
                 const Icon = meta.icon;
+                const groupRentab = group.totalReturnPct !== null ? group.totalReturnPct : group.unrealizedPct;
                 const rentabTone =
-                  group.unrealizedPct === null
+                  groupRentab === null
                     ? "text-muted-foreground"
-                    : group.unrealizedPct >= 0
+                    : groupRentab >= 0
                       ? "text-positive-strong"
                       : "text-negative-strong";
 
@@ -960,9 +1043,9 @@ export function PositionTable({
                             <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="font-bold text-foreground" />
                             <span className="text-muted-foreground">({group.totalPct.toFixed(1)}%)</span>
                           </div>
-                          {group.unrealizedPct !== null ? (
-                            <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded", rentabTone, group.unrealizedPct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
-                              {formatSignedPct(group.unrealizedPct)}
+                          {groupRentab !== null ? (
+                            <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded", rentabTone, groupRentab >= 0 ? "bg-positive/10" : "bg-negative/10")}>
+                              {formatSignedPct(groupRentab)}
                             </span>
                           ) : null}
                         </div>

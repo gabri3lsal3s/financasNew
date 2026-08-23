@@ -203,7 +203,16 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     expect(priceButtons[0]).toBeDefined();
     await user.click(priceButtons[0]!);
 
-    expect(onSetManualPrice).toHaveBeenCalledWith("a1", "PETR4", "BRL", 42.5, "manual");
+    expect(onSetManualPrice).toHaveBeenCalledWith(
+      "a1",
+      "PETR4",
+      "BRL",
+      42.5,
+      "manual",
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(onListTransactions).not.toHaveBeenCalled();
   });
 

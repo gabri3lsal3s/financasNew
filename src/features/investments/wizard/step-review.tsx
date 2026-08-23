@@ -18,12 +18,13 @@ import {
 export interface StepReviewProps {
   state: InvestmentWizardState;
   cashAvailableBRL?: number;
+  usdRate?: number;
 }
 
-export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
+export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewProps) {
   const preview = useMemo(
-    () => calculateInvestmentPreview(state, cashAvailableBRL),
-    [state, cashAvailableBRL],
+    () => calculateInvestmentPreview(state, cashAvailableBRL, usdRate),
+    [state, cashAvailableBRL, usdRate],
   );
 
   const mode = state.mode;
@@ -93,7 +94,7 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
                 </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
                   {isTotalValue
-                    ? <MoneyText cents={state.totalCents || state.priceCents} />
+                    ? <MoneyText cents={state.totalCents || state.priceCents} currency={state.currency} />
                     : state.isCash
                       ? "—"
                       : `${parsedQty} cotas`}
@@ -110,9 +111,9 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
                 </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
                   {isTotalValue ? (
-                    <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+                    <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
                   ) : (
-                    <MoneyText cents={state.priceCents} />
+                    <MoneyText cents={state.priceCents} currency={state.currency} />
                   )}
                 </span>
               </div>
@@ -125,7 +126,7 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
                 </span>
                 <span className="font-mono text-sm font-bold text-primary">
                   {isTotalValue ? (
-                    <MoneyText cents={numberToCents(preview.newAveragePrice)} />
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
                   ) : state.isCash ? (
                     "—"
                   ) : (
@@ -138,7 +139,7 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
                 <div className="flex flex-col text-right">
                   <span className="text-muted-foreground">Novo Preço Médio</span>
                   <span className="font-mono text-sm font-bold text-primary">
-                    <MoneyText cents={numberToCents(preview.newAveragePrice)} />
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
                   </span>
                 </div>
               )}
@@ -147,25 +148,38 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
             <div className="pt-3 flex flex-col gap-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Valor Total da Operação:</span>
-                <span className="font-mono text-base font-bold text-foreground">
-                  <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} />
-                </span>
+                <div className="flex flex-col items-end">
+                  {state.currency === "USD" && preview.totalOrderValueNative !== undefined ? (
+                    <>
+                      <span className="font-mono text-base font-bold text-foreground">
+                        <MoneyText cents={numberToCents(preview.totalOrderValueNative)} currency="USD" />
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        (≈ <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />)
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-mono text-base font-bold text-foreground">
+                      <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />
+                    </span>
+                  )}
+                </div>
               </div>
 
               {preview.cashDebitBRL > 0 && (
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                  <span>Débito do Caixa:</span>
+                  <span>Débito do Caixa (R$):</span>
                   <span className="font-mono text-negative-strong">
-                    - <MoneyText cents={numberToCents(preview.cashDebitBRL)} />
+                    - <MoneyText cents={numberToCents(preview.cashDebitBRL)} currency="BRL" />
                   </span>
                 </div>
               )}
 
               {preview.contributionBRL > 0 && (
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                  <span>Registrado como Aporte do Mês:</span>
+                  <span>Registrado como Aporte do Mês (R$):</span>
                   <span className="font-mono text-positive-strong">
-                    + <MoneyText cents={numberToCents(preview.contributionBRL)} />
+                    + <MoneyText cents={numberToCents(preview.contributionBRL)} currency="BRL" />
                   </span>
                 </div>
               )}
@@ -183,7 +197,7 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
                 </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
                   {isTotalValue ? (
-                    <MoneyText cents={state.totalCents || state.priceCents} />
+                    <MoneyText cents={state.totalCents || state.priceCents} currency={state.currency} />
                   ) : (
                     `${parsedQty} cotas`
                   )}
@@ -196,9 +210,9 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
                 </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
                   {isTotalValue ? (
-                    <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} />
+                    <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
                   ) : (
-                    <MoneyText cents={state.priceCents} />
+                    <MoneyText cents={state.priceCents} currency={state.currency} />
                   )}
                 </span>
               </div>
@@ -211,7 +225,7 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
                 </span>
                 <span className="font-mono text-sm font-bold text-foreground">
                   {isTotalValue ? (
-                    <MoneyText cents={numberToCents(preview.newAveragePrice)} />
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
                   ) : (
                     `${preview.newQuantity} cotas`
                   )}
@@ -227,7 +241,7 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
                     }`}
                   >
                     {(preview.realizedPnl ?? 0) >= 0 ? "+" : ""}
-                    <MoneyText cents={numberToCents(preview.realizedPnl ?? 0)} />
+                    <MoneyText cents={numberToCents(preview.realizedPnl ?? 0)} currency={state.currency} />
                   </span>
                 </div>
               )}
@@ -235,17 +249,30 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
 
             <div className="pt-3 flex flex-col gap-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Valor Total Bruto:</span>
-                <span className="font-mono text-base font-bold text-foreground">
-                  <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} />
-                </span>
+                <span className="text-muted-foreground">Valor Total da Venda:</span>
+                <div className="flex flex-col items-end">
+                  {state.currency === "USD" && preview.totalOrderValueNative !== undefined ? (
+                    <>
+                      <span className="font-mono text-base font-bold text-foreground">
+                        <MoneyText cents={numberToCents(preview.totalOrderValueNative)} currency="USD" />
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        (≈ <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />)
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-mono text-base font-bold text-foreground">
+                      <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />
+                    </span>
+                  )}
+                </div>
               </div>
 
               {state.syncCash && (
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                  <span>Crédito em Caixa:</span>
+                  <span>Crédito em Caixa (R$):</span>
                   <span className="font-mono text-positive-strong">
-                    + <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} />
+                    + <MoneyText cents={numberToCents(preview.cashCreditBRL ?? preview.totalOrderValueBRL)} currency="BRL" />
                   </span>
                 </div>
               )}
@@ -258,9 +285,22 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
           <div className="pt-3 flex flex-col gap-2 text-xs">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Valor Total Recebido:</span>
-              <span className="font-mono text-base font-bold text-positive-strong">
-                <MoneyText cents={state.totalCents} />
-              </span>
+              <div className="flex flex-col items-end">
+                {state.currency === "USD" ? (
+                  <>
+                    <span className="font-mono text-base font-bold text-positive-strong">
+                      <MoneyText cents={state.totalCents} currency="USD" />
+                    </span>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      (≈ <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />)
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-mono text-base font-bold text-positive-strong">
+                    <MoneyText cents={state.totalCents} currency="BRL" />
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-muted-foreground text-[11px]">
@@ -270,9 +310,9 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
 
             {state.syncCash && (
               <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                <span>Crédito em Caixa:</span>
+                <span>Crédito em Caixa (R$):</span>
                 <span className="font-mono text-positive-strong">
-                  + <MoneyText cents={state.totalCents} />
+                  + <MoneyText cents={numberToCents(preview.cashCreditBRL ?? preview.totalOrderValueBRL)} currency="BRL" />
                 </span>
               </div>
             )}
@@ -298,7 +338,7 @@ export function StepReview({ state, cashAvailableBRL = 0 }: StepReviewProps) {
               <div className="flex flex-col text-right">
                 <span className="text-muted-foreground">Novo Preço Médio</span>
                 <span className="font-mono font-bold text-primary">
-                  <MoneyText cents={numberToCents(preview.newAveragePrice)} />
+                  <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
                 </span>
               </div>
             </div>

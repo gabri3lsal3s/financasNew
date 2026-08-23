@@ -93,17 +93,29 @@ export function getBensDireitosClassification(assetClass: string | null, ticker:
 /**
  * Gera a declaração anual consolidada de Bens e Direitos (em 31/12).
  */
-export function generateAnnualBensDireitosReport(assets: PortfolioAsset[], year: number): AnnualBensDireitosReport {
+export function generateAnnualBensDireitosReport(
+  assets: PortfolioAsset[],
+  year: number,
+  usdRate = 5.25,
+): AnnualBensDireitosReport {
   const items: TaxAssetItem[] = assets
     .filter((a) => a.quantity > 0)
     .map((a) => {
       const classification = getBensDireitosClassification(a.asset_class, a.ticker);
-      const totalCost = Math.round(a.quantity * a.average_price * 100) / 100;
-      const totalCostCents = Math.round(totalCost * 100);
-      const formattedCost = formatCentsAsBRL(totalCostCents).replace(/\u00A0/g, " ");
-      const formattedUnitPrice = formatCentsAsBRL(Math.round(a.average_price * 100)).replace(/\u00A0/g, " ");
+      const isUSD = a.currency === "USD";
+      const rate = isUSD ? usdRate : 1;
+      const totalCostNative = Math.round(a.quantity * a.average_price * 100) / 100;
+      const totalCostBRL = Math.round(totalCostNative * rate * 100) / 100;
+      const totalCostCents = Math.round(totalCostBRL * 100);
+      const formattedCostBRL = formatCentsAsBRL(totalCostCents).replace(/\u00A0/g, " ");
 
-      const discrimination = `${a.quantity} cotas/ações de ${a.ticker} (${classification.itemName}) adquiridas pelo custo total de ${formattedCost} (preço médio unitário de ${formattedUnitPrice}), custodiadas em conta própria da corretora.`;
+      let discrimination: string;
+      if (isUSD) {
+        discrimination = `${a.quantity} cotas/ações de ${a.ticker} (${classification.itemName}) adquiridas pelo custo total de $ ${totalCostNative.toFixed(2)} (${formattedCostBRL}, cotação de referência R$ ${rate.toFixed(2)}), preço médio de $ ${a.average_price.toFixed(2)}, custodiadas no exterior em conta própria.`;
+      } else {
+        const formattedUnitPrice = formatCentsAsBRL(Math.round(a.average_price * 100)).replace(/\u00A0/g, " ");
+        discrimination = `${a.quantity} cotas/ações de ${a.ticker} (${classification.itemName}) adquiridas pelo custo total de ${formattedCostBRL} (preço médio unitário de ${formattedUnitPrice}), custodiadas em conta própria da corretora.`;
+      }
 
       return {
         assetId: a.id,
@@ -159,17 +171,21 @@ export function classifyAnnualDividendsReport(
   dividends: PortfolioDividend[],
   assets: PortfolioAsset[],
   year: number,
+  usdRate = 5.25,
 ): AnnualDividendsTaxReport {
   const yearPrefix = String(year);
   const yearDividends = dividends.filter((d) => d.date.startsWith(yearPrefix));
-  const tickerMap = new Map(assets.map((a) => [a.id, a.ticker]));
+  const assetMap = new Map(assets.map((a) => [a.id, a]));
 
   const exemptItemsMap = new Map<string, { ticker: string; cents: number }>();
   const jcpItemsMap = new Map<string, { ticker: string; cents: number }>();
 
   for (const div of yearDividends) {
-    const ticker = (div.asset_id ? tickerMap.get(div.asset_id) : null) ?? div.ticker ?? "Ativo";
-    const amountCents = Math.round(div.amount * 100);
+    const asset = div.asset_id ? assetMap.get(div.asset_id) : null;
+    const ticker = asset?.ticker ?? div.ticker ?? "Ativo";
+    const isUSD = asset?.currency === "USD";
+    const rate = isUSD ? usdRate : 1;
+    const amountCents = Math.round(div.amount * rate * 100);
     const noteUpper = (div.notes ?? "").toUpperCase();
     const isJCP = noteUpper.includes("JCP") || noteUpper.includes("JUROS SOBRE CAPITAL");
 

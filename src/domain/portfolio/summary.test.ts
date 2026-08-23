@@ -2,9 +2,36 @@ import { describe, expect, it } from "vitest";
 import {
   allocationByTicker,
   assetYieldOnCostPct,
+  calculatePortfolioTotalReturn,
   calculateWeightedAveragePrice,
   portfolioReturnPct,
 } from "./summary";
+
+describe("calculatePortfolioTotalReturn — Retorno Total consolidado da carteira (§F17)", () => {
+  it("calcula ganho de capital e retorno total somando proventos", () => {
+    const res = calculatePortfolioTotalReturn([
+      { valueBRL: 980, totalCostBRL: 1000, dividends: 120, isCash: false },
+      { valueBRL: 2500, totalCostBRL: 2000, dividends: 0, isCash: false },
+      { valueBRL: 500, totalCostBRL: 500, dividends: 0, isCash: true }, // caixa — fora
+    ]);
+
+    expect(res.totalValueBRL).toBe(3480);
+    expect(res.totalCostBRL).toBe(3000);
+    expect(res.totalDividendsBRL).toBe(120);
+    expect(res.capitalGainPnl).toBe(480); // (3480 - 3000) = +480
+    expect(res.capitalGainPct).toBe(16); // 480 / 3000 = 16%
+    expect(res.totalReturnPnl).toBe(600); // 480 + 120 = +600
+    expect(res.totalReturnPct).toBe(20); // 600 / 3000 = 20%
+  });
+
+  it("retorna nulo nos percentuais quando não há ativos com custo", () => {
+    const res = calculatePortfolioTotalReturn([
+      { valueBRL: 1000, totalCostBRL: 1000, isCash: true },
+    ]);
+    expect(res.totalReturnPct).toBeNull();
+    expect(res.capitalGainPct).toBeNull();
+  });
+});
 
 describe("portfolioReturnPct — rentabilidade ponderada pelo valor (§F17)", () => {
   it("pondera os percentuais pelo valor de mercado e ignora caixa", () => {
@@ -15,6 +42,15 @@ describe("portfolioReturnPct — rentabilidade ponderada pelo valor (§F17)", ()
     ]);
     // (6000×20 + 2000×5) ÷ 8000 = 130000/8000 = 16,25
     expect(pct).toBe(16.25);
+  });
+
+  it("prioriza totalReturnPct se disponível", () => {
+    const pct = portfolioReturnPct([
+      { valueBRL: 6000, unrealizedPct: -5, totalReturnPct: 15 },
+      { valueBRL: 2000, unrealizedPct: 10, totalReturnPct: 25 },
+    ]);
+    // (6000×15 + 2000×25) ÷ 8000 = (90000 + 50000) / 8000 = 140000 / 8000 = 17.5
+    expect(pct).toBe(17.5);
   });
 
   it("retorna null sem base (vazio ou só caixa)", () => {

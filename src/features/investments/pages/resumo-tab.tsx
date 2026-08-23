@@ -110,8 +110,11 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
     id: string;
     ticker: string;
     currency: AssetCurrency;
+    priceQuote?: number;
     priceBRL: number;
+    usdRate?: number;
     source: PriceSource;
+    pricingMode?: string;
   } | null>(null);
 
   const transactionsQuery = useAllPortfolioTransactions();
@@ -227,10 +230,11 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
   const activeSlices = allocationMode === "asset" ? assetSlices : classSlices;
 
   const series = position.monthlySeries;
-  const unrealizedPnlBRL = position.totalBRL - position.totalCostBRL;
-  const unrealizedCents = numberToCents(unrealizedPnlBRL);
-  const unrealizedPct =
-    position.totalCostBRL > 0 ? (unrealizedPnlBRL / position.totalCostBRL) * 100 : null;
+  const totalReturnPnlBRL = position.totalReturnPnlBRL;
+  const totalReturnCents = numberToCents(totalReturnPnlBRL);
+  const totalReturnPct = position.totalReturnPct;
+  const unrealizedPnlBRL = position.unrealizedPnlBRL;
+  const capitalGainPct = position.unrealizedPct;
 
   // Termômetro de Concentração
   const concentration = calculatePortfolioConcentration(
@@ -274,17 +278,17 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
                 <span
                   className={cn(
                     "inline-flex items-center gap-1 font-mono text-[11px] font-medium truncate max-w-full",
-                    unrealizedPnlBRL > 0
+                    totalReturnPnlBRL > 0
                       ? "text-positive-strong"
-                      : unrealizedPnlBRL < 0
+                      : totalReturnPnlBRL < 0
                         ? "text-negative-strong"
                         : "text-foreground",
                   )}
-                  title={`Resultado acumulado: ${unrealizedPnlBRL >= 0 ? "+" : ""}${unrealizedPnlBRL.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${unrealizedPct != null ? ` (${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(1)}%)` : ""}`}
+                  title={`Resultado acumulado (Retorno Total): ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${(totalReturnPnlBRL ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${(unrealizedPnlBRL ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos: +${(position.totalDividendsBRL ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
                 >
-                  <MoneyText cents={unrealizedCents} tone="auto" />
-                  {unrealizedPct != null
-                    ? ` (${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(1)}%)`
+                  <MoneyText cents={totalReturnCents} tone="auto" />
+                  {totalReturnPct != null
+                    ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)`
                     : ""}
                 </span>
               }
@@ -431,8 +435,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
               sortable
               onListTransactions={openDetail}
               onEditAsset={openEdit}
-              onSetManualPrice={(assetId, ticker, currency, priceBRL, source) => {
-                setPriceFor({ id: assetId, ticker, currency, priceBRL, source });
+              onSetManualPrice={(assetId, ticker, currency, priceBRL, source, priceQuote, pricingMode, usdRate) => {
+                setPriceFor({ id: assetId, ticker, currency, priceQuote, priceBRL, usdRate, source, pricingMode });
               }}
               onDeleteAsset={openDelete}
             />

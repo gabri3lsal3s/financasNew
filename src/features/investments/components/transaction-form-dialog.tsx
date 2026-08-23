@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, ConfirmDialog, Modal, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, Modal, MoneyInput, MoneyText, NumberStepperInput, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
@@ -159,15 +159,22 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
               />
             </label>
             <p className="num text-xs text-muted-foreground">
-              Total: <span className="font-semibold text-foreground">{totalPreview.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+              Total: <span className="font-semibold text-foreground"><MoneyText cents={numberToCents(totalPreview)} currency={asset.currency} /></span>
             </p>
           </>
         ) : null}
 
         {withAmount ? (
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Valor do provento
-            <MoneyInput cents={amountCents} onCentsChange={setAmountCents} aria-label="Valor do provento" />
+          <label htmlFor="transaction-dividend-amount" className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Valor do provento ({asset.currency})
+            <MoneyInput
+              id="transaction-dividend-amount"
+              cents={amountCents}
+              currency={asset.currency}
+              onCentsChange={setAmountCents}
+              placeholder={asset.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
+              aria-label="Valor do provento"
+            />
           </label>
         ) : null}
 

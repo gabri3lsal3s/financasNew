@@ -84,10 +84,57 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     expect(screen.getAllByText("R$ 40,00").length).toBeGreaterThan(0);
   });
 
-  it("estado vazio sem nenhum provento", () => {
+  it("estado vazio sem nenhum provento nem estimativa", () => {
     dividendsMock.mockReturnValue([]);
+    assetsMock.mockReturnValue([
+      { id: "a1", user_id: "u1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" as const, quantity: 100, average_price: 30 },
+    ]);
     render(<ProventosTab />);
     expect(screen.getByText("Sem proventos ainda")).toBeInTheDocument();
+  });
+
+  it("exibe proventos históricos iniciais mesmo sem lançamentos periódicos", () => {
+    dividendsMock.mockReturnValue([]);
+    assetsMock.mockReturnValue([
+      {
+        id: "a1",
+        user_id: "u1",
+        ticker: "PETR4",
+        asset_class: "Ações",
+        currency: "BRL" as const,
+        quantity: 100,
+        average_price: 30,
+        accumulated_dividends: 1200,
+      },
+    ]);
+    render(<ProventosTab />);
+
+    expect(screen.queryByText("Sem proventos ainda")).not.toBeInTheDocument();
+    expect(screen.getByText("Histórico Anterior")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 1.200,00").length).toBeGreaterThan(0);
+    expect(screen.getByText("Proventos por Ativo")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum provento recebido neste mês.")).toBeInTheDocument();
+  });
+
+  it("exibe a Bola de Neve usando dividendo estimado quando não há lançamentos periódicos", () => {
+    dividendsMock.mockReturnValue([]);
+    assetsMock.mockReturnValue([
+      {
+        id: "a2",
+        user_id: "u1",
+        ticker: "MXRF11",
+        asset_class: "FIIs",
+        currency: "BRL" as const,
+        quantity: 100,
+        average_price: 10,
+        estimated_monthly_dividend_per_share: 0.1,
+      },
+    ]);
+    render(<ProventosTab />);
+
+    expect(screen.queryByText("Sem proventos ainda")).not.toBeInTheDocument();
+    expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
+    expect(screen.getByText("Estimado")).toBeInTheDocument();
   });
 
   it("clica em um mês do calendário e atualiza o extrato", async () => {

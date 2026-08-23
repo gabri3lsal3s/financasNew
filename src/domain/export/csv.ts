@@ -110,6 +110,9 @@ export interface ExportPositionRow {
   valueBRL: number;
   unrealizedPnl: number;
   unrealizedPct: number | null;
+  dividends?: number;
+  totalReturnPnl?: number;
+  totalReturnPct?: number | null;
   /** % do patrimônio (0–100). */
   pct: number;
 }
@@ -212,23 +215,28 @@ const POSITION_HEADERS = [
   "Preço atual (R$)",
   "Valor (R$)",
   "Lucro/Prejuízo (R$)",
+  "Proventos (R$)",
   "Rentabilidade %",
   "% do patrimônio",
 ];
 
 /** Posições da carteira em CSV (padrão pt-BR + BOM). */
 export function serializePositionsCsv(rows: readonly ExportPositionRow[]): string {
-  const data = rows.map((r) => [
-    r.ticker,
-    r.assetClass ?? "",
-    r.currency,
-    formatCsvFloat(r.quantity, 8),
-    formatCsvDecimal(Math.round(r.averageCost * 100)),
-    formatCsvDecimal(Math.round(r.priceBRL * 100)),
-    formatCsvDecimal(Math.round(r.valueBRL * 100)),
-    formatCsvDecimal(Math.round(r.unrealizedPnl * 100)),
-    r.unrealizedPct === null ? "" : formatCsvFloat(r.unrealizedPct, 2),
-    formatCsvFloat(r.pct, 2),
-  ]);
+  const data = rows.map((r) => {
+    const effectivePct = r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPct;
+    return [
+      r.ticker,
+      r.assetClass ?? "",
+      r.currency,
+      formatCsvFloat(r.quantity, 8),
+      formatCsvDecimal(Math.round(r.averageCost * 100)),
+      formatCsvDecimal(Math.round(r.priceBRL * 100)),
+      formatCsvDecimal(Math.round(r.valueBRL * 100)),
+      formatCsvDecimal(Math.round(r.unrealizedPnl * 100)),
+      formatCsvDecimal(Math.round((r.dividends ?? 0) * 100)),
+      effectivePct === null ? "" : formatCsvFloat(effectivePct, 2),
+      formatCsvFloat(r.pct, 2),
+    ];
+  });
   return csvWithBom(toCsv(POSITION_HEADERS, data));
 }

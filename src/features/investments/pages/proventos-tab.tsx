@@ -4,7 +4,7 @@ import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonTable, Tabs } 
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { calculateSnowballProgress, resolveMonthlyDividendPerShare } from "@/domain/portfolio/snowball";
+import { calculateSnowballProgress, calculateYieldOnCostTotal, resolveMonthlyDividendPerShare } from "@/domain/portfolio/snowball";
 import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -23,7 +23,7 @@ type ProventosSubTab = "extrato" | "calendario";
  * a partir de `portfolio_dividends`, indicador do Efeito Bola de Neve e calendário anual.
  *
  * Sub-tabs:
- * - Extrato & Indicadores: barra de filtros, KPIs do mês/ano, extrato mensal e Bola de Neve.
+ * - Extrato & Indicadores: barra de filtros, KPIs do mês/ano/histórico, extrato mensal e Bola de Neve.
  * - Calendário Anual: visualização dos 12 meses com barras proporcionais de rendimento.
  */
 export function ProventosTab() {
@@ -38,12 +38,21 @@ export function ProventosTab() {
 
   const dividends = dividendsQuery.data ?? [];
   const assets = assetsQuery.data ?? [];
-  const tickerByAssetId = new Map(assets.map((asset) => [asset.id, asset.ticker]));
+  const assetById = new Map(assets.map((asset) => [asset.id, asset]));
+  const rowByAssetId = new Map(position.rows.map((row) => [row.assetId, row]));
   const year = month.slice(0, 4);
+
+  const getDividendAmountBRL = (d: PortfolioDividend) => {
+    const asset = d.asset_id ? assetById.get(d.asset_id) : null;
+    const row = d.asset_id ? rowByAssetId.get(d.asset_id) : null;
+    const isUSD = asset?.currency === "USD" || row?.currency === "USD";
+    const rate = isUSD ? (row?.usdRate || 5.25) : 1;
+    return d.amount * rate;
+  };
 
   // Filtra proventos do mês
   const extract = dividends.filter((d) => d.date.startsWith(month));
-  const monthTotal = extract.reduce((acc, d) => acc + d.amount, 0);
+  const monthTotal = extract.reduce((acc, d) => acc + getDividendAmountBRL(d), 0);
 
   // Proventos por mês do ano corrente
   const allMonthsOfYear = Array.from({ length: 12 }, (_, i) => {
@@ -54,11 +63,51 @@ export function ProventosTab() {
   const yearly = allMonthsOfYear.map((m) => {
     const total = dividends
       .filter((d) => d.date.startsWith(m))
-      .reduce((acc, d) => acc + d.amount, 0);
+      .reduce((acc, d) => acc + getDividendAmountBRL(d), 0);
     return { month: m, total };
   });
 
   const yearTotal = yearly.reduce((acc, e) => acc + e.total, 0);
+
+  // Proventos históricos iniciais acumulados cadastrados nos ativos
+  const historicalTotal = assets.reduce((acc, a) => {
+    const row = rowByAssetId.get(a.id);
+    const isUSD = a.currency === "USD" || row?.currency === "USD";
+    const rate = isUSD ? (row?.usdRate || 5.25) : 1;
+    return acc + (a.accumulated_dividends ?? 0) * rate;
+  }, 0);
+
+  // Total geral vitalício (proventos periódicos de toda a história + histórico anterior)
+  const allPeriodicDividendsTotal = dividends.reduce((acc, d) => acc + getDividendAmountBRL(d), 0);
+  const lifetimeTotal = allPeriodicDividendsTotal + historicalTotal;
+
+  // Consolidação de proventos por ativo (histórico + periódicos)
+  const assetsWithDividends = assets
+    .map((a) => {
+      const row = rowByAssetId.get(a.id);
+      const isUSD = a.currency === "USD" || row?.currency === "USD";
+      const rate = isUSD ? (row?.usdRate || 5.25) : 1;
+      const initialHistorical = a.accumulated_dividends ?? 0;
+      const assetDivs = dividends.filter((d) => d.asset_id === a.id);
+      const periodicAmount = assetDivs.reduce((acc, d) => acc + d.amount, 0);
+      const totalAmount = initialHistorical + periodicAmount;
+      const totalAmountBRL = totalAmount * rate;
+      const totalCost = row ? row.totalCost : a.quantity * a.average_price;
+      const yoc = calculateYieldOnCostTotal(initialHistorical, periodicAmount, totalCost);
+
+      return {
+        asset: a,
+        isUSD,
+        rate,
+        initialHistorical,
+        periodicAmount,
+        totalAmount,
+        totalAmountBRL,
+        yoc,
+      };
+    })
+    .filter((item) => item.totalAmount > 0)
+    .sort((a, b) => b.totalAmountBRL - a.totalAmountBRL);
 
   // Calcula o progresso da Bola de Neve para ativos com proventos
   const snowballItems = assets
@@ -83,8 +132,11 @@ export function ProventosTab() {
 
       if (resolved.source === "none") return null;
 
-      const row = position.rows.find((r) => r.assetId === a.id);
-      const currentPrice = row && row.priceBRL > 0 ? row.priceBRL : a.average_price;
+      const row = rowByAssetId.get(a.id);
+      const isUSD = a.currency === "USD" || row?.currency === "USD";
+      const currentPrice = row && (row.priceQuote ?? row.priceBRL) > 0
+        ? (isUSD ? (row.priceQuote || row.priceBRL) : row.priceBRL)
+        : a.average_price;
 
       if (currentPrice <= 0) return null;
 
@@ -106,7 +158,7 @@ export function ProventosTab() {
     .sort((a, b) => b.progress.progressPct - a.progress.progressPct);
 
 
-  const hasAny = dividends.length > 0;
+  const hasAny = dividends.length > 0 || historicalTotal > 0 || snowballItems.length > 0;
   const loading = dividendsQuery.isLoading || assetsQuery.isLoading;
   const error = dividendsQuery.error ?? assetsQuery.error;
 
@@ -154,9 +206,9 @@ export function ProventosTab() {
         />
       ) : (
         <>
-          {/* KPIs do mês e acumulado */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+          {/* KPIs consolidados: mês, ano, histórico inicial e vitalício */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
               <p className="text-xs text-muted-foreground">Recebido em {monthLabel(month)}</p>
               <p className="num mt-1 text-2xl font-bold tracking-tight text-foreground">
                 <MoneyText cents={numberToCents(monthTotal)} tone="positive" />
@@ -165,14 +217,96 @@ export function ProventosTab() {
                 {extract.length} {extract.length === 1 ? "provento" : "proventos"}
               </p>
             </div>
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
               <p className="text-xs text-muted-foreground">Total em {year}</p>
               <p className="num mt-1 text-2xl font-bold tracking-tight text-foreground">
                 <MoneyText cents={numberToCents(yearTotal)} tone="positive" />
               </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">Acumulado do ano (só recebidos)</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Acumulado do ano (convertido em R$)</p>
+            </div>
+            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
+              <p className="text-xs text-muted-foreground">Histórico Anterior</p>
+              <p className="num mt-1 text-2xl font-bold tracking-tight text-foreground">
+                <MoneyText cents={numberToCents(historicalTotal)} tone="positive" />
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Proventos cadastrados nos ativos</p>
+            </div>
+            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
+              <p className="text-xs text-muted-foreground">Total Geral Vitalício</p>
+              <p className="num mt-1 text-2xl font-bold tracking-tight text-foreground">
+                <MoneyText cents={numberToCents(lifetimeTotal)} tone="positive" />
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Histórico inicial + lançamentos</p>
             </div>
           </div>
+
+          {/* Proventos Acumulados por Ativo (Histórico Inicial + Periódicos) */}
+          {assetsWithDividends.length > 0 && (
+            <section aria-label="Proventos por Ativo" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">Proventos por Ativo</h2>
+                  <p className="text-xs text-muted-foreground">Consolidação de proventos iniciais anteriores ao cadastro e lançamentos no app.</p>
+                </div>
+                <Badge variant="muted" className="text-[11px]">
+                  {assetsWithDividends.length} {assetsWithDividends.length === 1 ? "ativo" : "ativos"}
+                </Badge>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-border/80">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-surface-hover/50 text-muted-foreground border-b border-border/70">
+                    <tr>
+                      <th className="py-2.5 px-3 font-semibold">Ativo</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">Histórico Inicial</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">Lançado no App</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">Total Recebido</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">Yield on Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {assetsWithDividends.map(({ asset, isUSD, initialHistorical, periodicAmount, totalAmount, totalAmountBRL, yoc }) => (
+                      <tr key={asset.id} className="hover:bg-surface-hover/30 transition-colors">
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-bold text-foreground">{asset.ticker}</span>
+                            {asset.asset_class && (
+                              <span className="text-[10px] text-muted-foreground">({asset.asset_class})</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-muted-foreground">
+                          {initialHistorical > 0 ? (
+                            <MoneyText cents={numberToCents(initialHistorical)} currency={asset.currency} />
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-muted-foreground">
+                          {periodicAmount > 0 ? (
+                            <MoneyText cents={numberToCents(periodicAmount)} currency={asset.currency} />
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-semibold text-positive-strong">
+                          <MoneyText cents={numberToCents(totalAmount)} currency={asset.currency} tone="positive" />
+                          {isUSD && totalAmountBRL > 0 && (
+                            <div className="text-[10px] text-muted-foreground font-mono">
+                              (≈ <MoneyText cents={numberToCents(totalAmountBRL)} currency="BRL" />)
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-medium text-foreground">
+                          {yoc > 0 ? `${yoc}%` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           {/* Extrato do Mês */}
           <section aria-label={`Extrato de ${monthLabel(month)}`} className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
@@ -188,7 +322,13 @@ export function ProventosTab() {
             ) : (
               <ul className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/80 overflow-hidden">
                 {extract.map((entry) => {
-                  const ticker = (entry.asset_id ? tickerByAssetId.get(entry.asset_id) : null) ?? entry.ticker ?? "Ativo";
+                  const asset = entry.asset_id ? assetById.get(entry.asset_id) : null;
+                  const row = entry.asset_id ? rowByAssetId.get(entry.asset_id) : null;
+                  const currency = asset?.currency ?? row?.currency ?? "BRL";
+                  const ticker = asset?.ticker ?? entry.ticker ?? "Ativo";
+                  const rate = currency === "USD" ? (row?.usdRate || 5.25) : 1;
+                  const amountBRL = entry.amount * rate;
+
                   return (
                     <li key={entry.id} className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-surface-hover/40 transition-colors">
                       <div className="flex min-w-0 flex-col gap-0.5">
@@ -198,9 +338,16 @@ export function ProventosTab() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="num shrink-0 text-sm font-semibold text-foreground">
-                          <MoneyText cents={numberToCents(entry.amount)} tone="positive" />
-                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className="num shrink-0 text-sm font-semibold text-foreground">
+                            <MoneyText cents={numberToCents(entry.amount)} currency={currency} tone="positive" />
+                          </span>
+                          {currency === "USD" && (
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              (≈ <MoneyText cents={numberToCents(amountBRL)} currency="BRL" />)
+                            </span>
+                          )}
+                        </div>
                         <Button
                           type="button"
                           variant="ghost"
@@ -270,14 +417,14 @@ export function ProventosTab() {
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
                       <span className="text-muted-foreground">Renda mensal estimada</span>
                       <span className="font-semibold text-positive-strong">
-                        <MoneyText cents={numberToCents(progress.currentMonthlyIncome)} tone="positive" />
+                        <MoneyText cents={numberToCents(progress.currentMonthlyIncome)} currency={asset.currency} tone="positive" />
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">Custo de 1 cota</span>
                       <span className="font-semibold text-foreground">
-                        <MoneyText cents={numberToCents(currentPrice)} tone="default" />
+                        <MoneyText cents={numberToCents(currentPrice)} currency={asset.currency} tone="default" />
                       </span>
                     </div>
 

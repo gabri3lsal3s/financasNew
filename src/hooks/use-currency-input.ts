@@ -6,23 +6,26 @@ import {
   digitsFromCents,
   extractDigits,
 } from "@/domain/money";
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsCurrency } from "@/services/masks";
+import type { AssetCurrency } from "@/types";
 
 export interface UseCurrencyInputOptions {
   /** Valor inicial em centavos (default 0). */
   initialCents?: number;
   /** Limite de dígitos (default CURRENCY_INPUT_MAX_DIGITS = 12). */
   maxDigits?: number;
+  /** Moeda da entrada (default "BRL"). */
+  currency?: AssetCurrency;
 }
 
 export interface UseCurrencyInputReturn {
-  /** String de dígitos crus (ex.: "1500" = R$ 15,00). */
+  /** String de dígitos crus (ex.: "1500" = R$ 15,00 ou $ 15.00). */
   digits: string;
   /** Valor em centavos (inteiro). */
   valueCents: number;
-  /** Valor em reais (number). */
+  /** Valor em reais/dólares (number). */
   value: number;
-  /** Texto formatado para exibição (ex.: "R$ 15,00") — nunca vazio. */
+  /** Texto formatado para exibição (ex.: "R$ 15,00" ou "$ 15.00") — nunca vazio. */
   display: string;
   /** True quando não há dígitos digitados. */
   isEmpty: boolean;
@@ -32,17 +35,17 @@ export interface UseCurrencyInputReturn {
   handleKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   /** Define o valor programaticamente a partir de centavos (reset/controle). */
   setCents: (cents: number) => void;
-  /** Limpa o valor (volta para R$ 0,00). */
+  /** Limpa o valor (volta para R$ 0,00 ou $ 0.00). */
   clear: () => void;
 }
 
 export function useCurrencyInput(options: UseCurrencyInputOptions = {}): UseCurrencyInputReturn {
-  const { initialCents = 0, maxDigits = CURRENCY_INPUT_MAX_DIGITS } = options;
+  const { initialCents = 0, maxDigits = CURRENCY_INPUT_MAX_DIGITS, currency = "BRL" } = options;
 
   const [digits, setDigits] = useState<string>(() => digitsFromCents(initialCents, maxDigits));
 
   const valueCents = useMemo(() => centsFromDigits(digits), [digits]);
-  const display = useMemo(() => formatCentsAsBRL(valueCents), [valueCents]);
+  const display = useMemo(() => formatCentsAsCurrency(valueCents, currency), [valueCents, currency]);
   const isEmpty = digits.length === 0;
 
   const handleChange = useCallback(

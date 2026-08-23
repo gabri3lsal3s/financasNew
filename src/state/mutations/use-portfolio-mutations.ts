@@ -345,6 +345,7 @@ export interface RecordOrderParams {
   cashAsset?: PortfolioAsset | null;
   recordContribution?: boolean;
   notes?: string | null;
+  usdRate?: number;
 }
 
 /**
@@ -361,9 +362,11 @@ export function useRecordOrder() {
 
   return useMutation({
     mutationFn: async (params: RecordOrderParams) => {
-      const { asset, type, date, quantity, price, total, syncCash, cashAsset, recordContribution, notes } = params;
+      const { asset, type, date, quantity, price, total, syncCash, cashAsset, recordContribution, notes, usdRate } = params;
+      const rate = asset.currency === "USD" ? (usdRate ?? 5.25) : 1;
+      const totalBRL = Math.round(total * rate * 100) / 100;
 
-      // 1. Grava no ledger de transações
+      // 1. Grava no ledger de transações (na moeda nativa do ativo)
       await createTx.mutateAsync({
         asset_id: asset.id,
         type,
@@ -419,9 +422,9 @@ export function useRecordOrder() {
           });
         }
 
-        // Debita do caixa se solicitado e disponível
-        if (syncCash && cashAsset && total > 0) {
-          const cashDebit = Math.min(cashAsset.quantity, total);
+        // Debita do caixa em BRL se solicitado e disponível
+        if (syncCash && cashAsset && totalBRL > 0) {
+          const cashDebit = Math.min(cashAsset.quantity, totalBRL);
           if (cashDebit > 0) {
             await updateAsset.mutateAsync({
               id: cashAsset.id,
@@ -433,18 +436,18 @@ export function useRecordOrder() {
           }
         }
 
-        // Registra aporte financeiro no mês se solicitado
-        if (recordContribution && total > 0) {
+        // Registra aporte financeiro no mês em BRL se solicitado
+        if (recordContribution && totalBRL > 0) {
           await createContrib.mutateAsync({
-            amount: total,
+            amount: totalBRL,
             date,
             asset_id: asset.id,
-            notes: notes ?? `Aporte em ${asset.ticker}`,
+            notes: notes ?? (asset.currency === "USD" ? `Aporte em ${asset.ticker} ($${total.toFixed(2)})` : `Aporte em ${asset.ticker}`),
           });
         }
       }
 
-      // 3. Se for Venda: reduz a quantidade mantendo o PM e opcionalmente credita Caixa
+      // 3. Se for Venda: reduz a quantidade mantendo o PM e opcionalmente credita Caixa em BRL
       if (type === "sell") {
         const isCash = isCashAssetClass(asset.asset_class);
         const pricingMode = getAssetPricingMode(asset);
@@ -490,12 +493,12 @@ export function useRecordOrder() {
           });
         }
 
-        // Credita no caixa se solicitado
-        if (syncCash && cashAsset && total > 0) {
+        // Credita no caixa em BRL se solicitado
+        if (syncCash && cashAsset && totalBRL > 0) {
           await updateAsset.mutateAsync({
             id: cashAsset.id,
             patch: {
-              quantity: cashAsset.quantity + total,
+              quantity: cashAsset.quantity + totalBRL,
               average_price: 1,
             },
           });
@@ -512,12 +515,12 @@ export function useRecordOrder() {
           notes: notes ?? `Rendimento de ${asset.ticker}`,
         });
 
-        // Credita no caixa se solicitado
-        if (syncCash && cashAsset && total > 0) {
+        // Credita no caixa em BRL se solicitado
+        if (syncCash && cashAsset && totalBRL > 0) {
           await updateAsset.mutateAsync({
             id: cashAsset.id,
             patch: {
-              quantity: cashAsset.quantity + total,
+              quantity: cashAsset.quantity + totalBRL,
               average_price: 1,
             },
           });

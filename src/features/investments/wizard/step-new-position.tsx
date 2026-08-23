@@ -145,13 +145,14 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
               <MoneyInput
                 id="wizard-new-initial-price"
                 cents={state.priceCents}
+                currency={state.currency}
                 onCentsChange={(priceCents) => {
                   onChange({
                     priceCents,
                     totalCents: state.totalCents === 0 || state.totalCents === state.priceCents ? priceCents : state.totalCents,
                   });
                 }}
-                placeholder="R$ 0,00"
+                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço inicial investido"
               />
             </div>
@@ -163,8 +164,9 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
               <MoneyInput
                 id="wizard-new-current-price"
                 cents={state.totalCents}
+                currency={state.currency}
                 onCentsChange={(totalCents) => onChange({ totalCents })}
-                placeholder="R$ 0,00"
+                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço atual ou saldo"
               />
             </div>
@@ -201,8 +203,9 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
               <MoneyInput
                 id="wizard-new-avgprice"
                 cents={state.priceCents}
+                currency={state.currency}
                 onCentsChange={(priceCents) => onChange({ priceCents })}
-                placeholder="R$ 0,00"
+                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
               />
             </div>
           </div>
@@ -245,8 +248,9 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
               <MoneyInput
                 id="wizard-accumulated-dividends"
                 cents={state.accumulatedDividendsCents}
+                currency={state.currency}
                 onCentsChange={(accumulatedDividendsCents) => onChange({ accumulatedDividendsCents })}
-                placeholder="R$ 0,00"
+                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Total de proventos acumulados anteriores ao cadastro"
               />
             </div>
@@ -261,8 +265,9 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
               <MoneyInput
                 id="wizard-estimated-div-per-share"
                 cents={state.estimatedDividendPerShareCents}
+                currency={state.currency}
                 onCentsChange={(estimatedDividendPerShareCents) => onChange({ estimatedDividendPerShareCents })}
-                placeholder="R$ 0,00"
+                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Dividendo mensal estimado por cota para calculo da Bola de Neve"
               />
             </div>

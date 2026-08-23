@@ -88,6 +88,13 @@ export function AssetDetailSheet({
   const periodicDividends = Math.max(0, totalDividends - accumulatedDividends);
   const yieldOnCostPct = calculateYieldOnCostTotal(accumulatedDividends, periodicDividends, totalCost);
 
+  const totalReturnPnl = positionRow
+    ? positionRow.totalReturnPnl
+    : (isCash ? 0 : unrealizedPnl + totalDividends);
+  const totalReturnPct = positionRow
+    ? (positionRow.totalReturnPct ?? 0)
+    : totalCost > 0 ? (totalReturnPnl / totalCost) * 100 : 0;
+
   const formatTxType = (type: PortfolioTransactionType) => {
     switch (type) {
       case "buy":
@@ -198,33 +205,39 @@ export function AssetDetailSheet({
                 {isTotalValue ? "Preço Inicial" : "Preço Médio (PM)"}
               </span>
               <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
-                <MoneyText cents={numberToCents(isTotalValue ? totalCost : averageCost)} />
+                <MoneyText cents={numberToCents(isTotalValue ? totalCost : averageCost)} currency={isTotalValue ? "BRL" : currentAsset.currency} />
               </span>
               <span className="text-[10px] text-muted-foreground font-mono truncate">
-                {isTotalValue ? "Valor aplicado" : <>Custo: <MoneyText cents={numberToCents(totalCost)} /></>}
+                {isTotalValue ? "Valor aplicado" : <>Custo: <MoneyText cents={numberToCents(totalCost)} currency="BRL" /></>}
               </span>
             </div>
 
             <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
               <span className="text-[11px] font-medium text-muted-foreground truncate">
-                {isTotalValue ? "Rendimento Total" : "Lucro Não Realizado"}
+                {isTotalValue ? "Rendimento Total" : "Resultado Total"}
               </span>
               <span
                 className={`font-mono text-sm sm:text-base font-bold truncate ${
-                  unrealizedPnl >= 0 ? "text-positive-strong" : "text-negative-strong"
+                  (totalReturnPnl ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"
                 }`}
+                title={`Retorno Total: ${(totalReturnPnl ?? 0) >= 0 ? "+" : ""}${(totalReturnPnl ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} (${(totalReturnPct ?? 0).toFixed(2)}%)`}
               >
-                {unrealizedPnl >= 0 ? "+" : ""}
-                <MoneyText cents={numberToCents(unrealizedPnl)} />
+                {(totalReturnPnl ?? 0) >= 0 ? "+" : ""}
+                <MoneyText cents={numberToCents(totalReturnPnl ?? 0)} />
               </span>
-              <span
-                className={`text-[10px] font-mono truncate ${
-                  unrealizedPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
-                }`}
-              >
-                {unrealizedPnlPct >= 0 ? "+" : ""}
-                {unrealizedPnlPct.toFixed(2)}%
-              </span>
+              <div className="flex items-center gap-1.5 text-[10px] font-mono truncate">
+                <span
+                  className={(totalReturnPct ?? 0) >= 0 ? "text-positive-strong font-semibold" : "text-negative-strong font-semibold"}
+                >
+                  {(totalReturnPct ?? 0) >= 0 ? "+" : ""}
+                  {(totalReturnPct ?? 0).toFixed(2)}%
+                </span>
+                {totalDividends > 0 && !isTotalValue ? (
+                  <span className="text-muted-foreground text-[9px] truncate" title={`Cotação: ${(unrealizedPnlPct ?? 0) >= 0 ? "+" : ""}${(unrealizedPnlPct ?? 0).toFixed(2)}% | Proventos: +${(yieldOnCostPct ?? 0).toFixed(2)}%`}>
+                    (Cotação {(unrealizedPnlPct ?? 0) >= 0 ? "+" : ""}${(unrealizedPnlPct ?? 0).toFixed(1)}%)
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
@@ -289,14 +302,14 @@ export function AssetDetailSheet({
                         <span className="font-mono text-muted-foreground shrink-0">{tx.date}</span>
                         {tx.quantity > 0 && !isTotalValue && (
                           <span className="text-muted-foreground font-mono truncate">
-                            ({tx.quantity} un @ <MoneyText cents={numberToCents(tx.price)} />)
+                            ({tx.quantity} un @ <MoneyText cents={numberToCents(tx.price)} currency={currentAsset.currency} />)
                           </span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-3 shrink-0 ml-2">
                         <span className="font-mono font-semibold text-foreground">
-                          <MoneyText cents={numberToCents(tx.total)} />
+                          <MoneyText cents={numberToCents(tx.total)} currency={currentAsset.currency} />
                         </span>
                         <Button
                           type="button"

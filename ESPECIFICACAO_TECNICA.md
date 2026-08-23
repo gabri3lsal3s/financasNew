@@ -374,17 +374,26 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 #### 3.11.2 Posição Atual (Posição Consolidada & Snapshots — F36)
 
 - **Modelo de Custódia Direta:** posições mantidas diretamente em `portfolio_assets` (`quantity`, `average_price`, `notes`), permitindo valoração instantânea $O(1)$ (`calculatePositionSummary`).
-- **Valoração e Rentabilidade:**
+- **Valoração e Rentabilidade (Retorno Total / Total Return):**
   - `totalCost = quantity * average_price`
   - `valueBRL = quantity * priceBRL` (com conversão USD via `USDBRL=X` quando aplicável)
-  - `unrealizedPnl = valueBRL - totalCostBRL`
-  - `unrealizedPct = (unrealizedPnl / totalCostBRL) * 100`
+  - `unrealizedPnl = valueBRL - totalCostBRL` (Ganho de capital não realizado)
+  - `unrealizedPct = (unrealizedPnl / totalCostBRL) * 100` (Variação da cotação %)
+  - `totalDividends = accumulated_dividends + sum(portfolio_dividends)` (Proventos totais recebidos)
+  - `totalReturnPnl = (valueBRL - totalCostBRL) + totalDividends` (Resultado total)
+  - `totalReturnPct = (totalReturnPnl / totalCostBRL) * 100` (Retorno Total % consolidado)
+  - `yieldOnCostPct = (totalDividends / totalCostBRL) * 100` (Yield on Cost)
 - **Snapshots Patrimoniais:** histórico mensal gravado na tabela `portfolio_snapshots` (`month`, `total_value`, `total_cost`), com evolução visual dos últimos 6 meses.
-- **Aportes Mensais (`portfolio_contributions`):** registros independentes de aportes financeiros integrados aos fluxos de caixa da Overview e dos Insights.
-- **Proventos (`portfolio_dividends`):** lançamentos desacoplados para extrato mensal e calendário anual.
+- **Aportes Mensais (`portfolio_contributions`):** registros independentes de aportes financeiros integrados aos fluxos de caixa da Overview e dos Insights (sempre em BRL).
+- **Proventos (`portfolio_dividends`):** lançamentos desacoplados para extrato mensal e calendário anual, integrados ao Retorno Total e YoC (convertidos para BRL no consolidado quando o ativo for USD).
 - **Preço Médio Ponderado em Novos Lotes (`calculateWeightedAveragePrice`):**
   - $\text{Novo PM} = \frac{(\text{Qtd Atual} \times \text{PM Atual}) + (\text{Qtd Nova} \times \text{Preço Novo})}{\text{Qtd Atual} + \text{Qtd Nova}}$
-- Tickers de caixa/renda fixa operam em modo Saldo Direto 1:1 (quantidade = valor, PM = 1,00).
+- **Tratamento de Multi-Moeda (Ativos USD vs BRL):**
+  - Custódia e Preço Médio são mantidos estritamente na moeda nativa do ativo (`currency: "USD"` ou `"BRL"`).
+  - Cotações manuais e de mercado são precificadas na moeda nativa (`priceQuote`).
+  - O Caixa da carteira e o registro de aportes no fluxo mensal são mantidos em Reais (BRL).
+  - Operações de compra, venda e provento em USD com sincronização de caixa (`syncCash = true`) ou registro de aporte (`recordContribution = true`) convertem o valor da ordem para BRL pela taxa de câmbio USD/BRL (`usdRate`), sem inflar o preço médio nem duplicar conversões no recálculo patrimonial.
+- Tickers de caixa/renda fixa operam em modo Saldo Direto 1:1 (quantidade = valor, PM = 1,00, rentabilidade nula).
 #### 3.11.3 Algoritmo de Aporte Hierárquico (`simulateCombinedAporte`)
 
 1. **Defasagem macro por classe:** classe com maior déficit relativo recebe prioridade de orçamentação.

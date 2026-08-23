@@ -113,7 +113,13 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
                         </span>
                       </div>
                       <span className="num text-sm font-semibold text-foreground shrink-0">
-                        {isDividend ? <MoneyText cents={numberToCents(tx.total)} tone="positive" /> : isSplit ? "—" : <MoneyText cents={numberToCents(tx.total)} tone="default" />}
+                        {isDividend ? (
+                          <MoneyText cents={numberToCents(tx.total)} currency={asset?.currency ?? "BRL"} tone="positive" />
+                        ) : isSplit ? (
+                          "—"
+                        ) : (
+                          <MoneyText cents={numberToCents(tx.total)} currency={asset?.currency ?? "BRL"} tone="default" />
+                        )}
                       </span>
                     </button>
                     <div className="flex shrink-0 items-center">

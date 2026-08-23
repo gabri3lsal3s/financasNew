@@ -207,23 +207,46 @@ export function inferCurrencyFromTicker(ticker: string): AssetCurrency {
 }
 
 export interface PositionPnl {
-  /** Lucro/prejuízo não realizado em BRL: valor de mercado − custo total. */
+  /** Lucro/prejuízo de capital não realizado em BRL: valor de mercado − custo total. */
   unrealizedPnl: number;
   /**
-   * Rentabilidade % sobre o custo (÷ custo total). `null` quando não há
+   * Variação % da cotação sobre o custo (÷ custo total). `null` quando não há
    * custo (ex.: caixa/reserva 1:1 — o conceito de rentabilidade não se aplica).
    */
   unrealizedPct: number | null;
+  /** Total de proventos recebidos em BRL (dividendos, JCP, rendimentos). */
+  totalDividends: number;
+  /** Resultado total acumulado em BRL: (valor de mercado − custo total) + proventos. */
+  totalReturnPnl: number;
+  /**
+   * Retorno Total % sobre o custo: ((valor − custo) + proventos) ÷ custo.
+   * `null` quando não há custo (ex.: caixa).
+   */
+  totalReturnPct: number | null;
 }
 
 /**
- * Rentabilidade de uma posição (§F14): valor de mercado − custo total e
- * percentual sobre o custo. Função pura — a UI só exibe os valores.
+ * Rentabilidade de uma posição (§F14): valor de mercado − custo total,
+ * variação de cotação e Retorno Total considerando proventos recebidos.
+ * Função pura — a UI só exibe os valores.
  */
-export function positionPnl(valueBRL: number, totalCost: number): PositionPnl {
+export function positionPnl(
+  valueBRL: number,
+  totalCost: number,
+  totalDividends: number = 0,
+): PositionPnl {
   const unrealizedPnl = Math.round((valueBRL - totalCost) * 100) / 100;
   const unrealizedPct = totalCost > 0 ? Math.round((unrealizedPnl / totalCost) * 10000) / 100 : null;
-  return { unrealizedPnl, unrealizedPct };
+  const safeDividends = Math.max(0, Math.round(totalDividends * 100) / 100);
+  const totalReturnPnl = Math.round((unrealizedPnl + safeDividends) * 100) / 100;
+  const totalReturnPct = totalCost > 0 ? Math.round((totalReturnPnl / totalCost) * 10000) / 100 : null;
+  return {
+    unrealizedPnl,
+    unrealizedPct,
+    totalDividends: safeDividends,
+    totalReturnPnl,
+    totalReturnPct,
+  };
 }
 
 /**
@@ -248,11 +271,16 @@ export interface ConsolidatedPositionSummary {
   totalCost: number;
   totalCostBRL: number;
   averagePriceBRL: number;
+  /** Preço de mercado na moeda nativa do ativo (USD ou BRL). */
+  priceQuote: number;
   priceBRL: number;
   valueBRL: number;
   source: PriceSource;
   unrealizedPnl: number;
   unrealizedPct: number | null;
+  totalDividends: number;
+  totalReturnPnl: number;
+  totalReturnPct: number | null;
   isCash: boolean;
   pricingMode: AssetPricingMode;
 }
@@ -270,6 +298,7 @@ export function calculatePositionSummary(params: {
   ticker?: string;
   notes?: string | null;
   pricingMode?: AssetPricingMode;
+  totalDividends?: number;
 }): ConsolidatedPositionSummary {
   const {
     quantity,
@@ -281,6 +310,7 @@ export function calculatePositionSummary(params: {
     ticker,
     notes,
     pricingMode: explicitPricingMode,
+    totalDividends = 0,
   } = params;
 
   const effectivePricingMode =
@@ -301,11 +331,15 @@ export function calculatePositionSummary(params: {
       totalCost: valueBRL,
       totalCostBRL: valueBRL,
       averagePriceBRL: 1,
+      priceQuote: 1,
       priceBRL: 1,
       valueBRL,
       source: "fallback",
       unrealizedPnl: 0,
       unrealizedPct: null,
+      totalDividends: 0,
+      totalReturnPnl: 0,
+      totalReturnPct: null,
       isCash: true,
       pricingMode: "cash",
     };
@@ -330,7 +364,7 @@ export function calculatePositionSummary(params: {
     const averagePriceBRL = totalCost;
     const priceBRL = Math.round(currentPrice * rate * 100) / 100;
     const valueBRL = priceBRL;
-    const pnl = positionPnl(valueBRL, totalCostBRL);
+    const pnl = positionPnl(valueBRL, totalCostBRL, totalDividends);
 
     return {
       quantity: 1,
@@ -338,11 +372,15 @@ export function calculatePositionSummary(params: {
       totalCost,
       totalCostBRL,
       averagePriceBRL,
+      priceQuote: currentPrice,
       priceBRL,
       valueBRL,
       source: resolvedPrice.source,
       unrealizedPnl: pnl.unrealizedPnl,
       unrealizedPct: pnl.unrealizedPct,
+      totalDividends: pnl.totalDividends,
+      totalReturnPnl: pnl.totalReturnPnl,
+      totalReturnPct: pnl.totalReturnPct,
       isCash: false,
       pricingMode: "total_value",
     };
@@ -353,7 +391,7 @@ export function calculatePositionSummary(params: {
   const totalCostBRL = Math.round(totalCost * rate * 100) / 100;
   const averagePriceBRL = Math.round(averagePrice * rate * 100) / 100;
   const valueBRL = Math.round(quantity * priceBRL * 100) / 100;
-  const pnl = positionPnl(valueBRL, totalCostBRL);
+  const pnl = positionPnl(valueBRL, totalCostBRL, totalDividends);
 
   return {
     quantity,
@@ -361,11 +399,15 @@ export function calculatePositionSummary(params: {
     totalCost,
     totalCostBRL,
     averagePriceBRL,
+    priceQuote: resolvedPrice.price,
     priceBRL,
     valueBRL,
     source: resolvedPrice.source,
     unrealizedPnl: pnl.unrealizedPnl,
     unrealizedPct: pnl.unrealizedPct,
+    totalDividends: pnl.totalDividends,
+    totalReturnPnl: pnl.totalReturnPnl,
+    totalReturnPct: pnl.totalReturnPct,
     isCash: false,
     pricingMode: "unit_price",
   };
