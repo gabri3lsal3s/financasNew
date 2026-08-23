@@ -349,23 +349,21 @@ export function ReportsPage() {
       <Tabs
         value={mode}
         onValueChange={(value) => setMode(value as PeriodMode)}
+        variant="pills"
         items={[
           {
             value: "month",
-            label: "Por mês",
-            shortLabel: "Mês",
+            label: "Mês",
             content: <MonthPicker value={month} onValueChange={setMonth} />,
           },
           {
             value: "year",
-            label: "Por ano",
-            shortLabel: "Ano",
+            label: "Ano",
             content: <YearPicker value={year} onValueChange={setYear} />,
           },
           {
             value: "custom",
-            label: "Período custom",
-            shortLabel: "Custom",
+            label: "Custom",
             content: (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full sm:w-auto">
@@ -460,8 +458,7 @@ export function ReportsPage() {
                 items={[
                   {
                     value: "category",
-                    label: "Por categoria",
-                    shortLabel: "Categoria",
+                    label: "Categorias",
                     content: (
                       <ReportTable
                         title="Categoria"
@@ -483,8 +480,7 @@ export function ReportsPage() {
                   },
                   {
                     value: "charges",
-                    label: "Por encargos",
-                    shortLabel: "Encargos",
+                    label: "Encargos",
                     content: (
                       <ReportTable
                         title="Natureza do gasto"
@@ -505,8 +501,7 @@ export function ReportsPage() {
                   },
                   {
                     value: "method",
-                    label: "Por forma",
-                    shortLabel: "Forma",
+                    label: "Formas",
                     content: (
                       <ReportTable
                         title="Forma de pagamento"
@@ -528,8 +523,7 @@ export function ReportsPage() {
                   },
                   {
                     value: "weekday",
-                    label: "Por dia da semana",
-                    shortLabel: "Dia",
+                    label: "Dias",
                     content: (
                       <ReportTable
                         title="Dia da semana"

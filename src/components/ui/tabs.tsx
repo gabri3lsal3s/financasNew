@@ -40,7 +40,7 @@ export function Tabs({
 }: TabsProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const currentIndex = Math.max(0, items.findIndex((item) => item.value === value));
-  const isFullWidth = fullWidth ?? (variant === "pills");
+  const isFullWidth = fullWidth ?? true;
 
   const swipe = useSwipeNavigation({
     onNavigate: (direction) => {
@@ -104,7 +104,7 @@ export function Tabs({
             value={item.value}
             aria-label={item.label}
             className={cn(
-              "inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0",
+              "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0",
               isFullWidth && "flex-1",
               variant === "underline"
                 ? "border-b-2 border-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary-strong data-[state=active]:font-semibold"
@@ -112,8 +112,7 @@ export function Tabs({
             )}
           >
             {item.icon}
-            <span className={cn("truncate", item.shortLabel && "hidden sm:inline")}>{item.label}</span>
-            {item.shortLabel && <span aria-hidden="true" className="truncate sm:hidden">{item.shortLabel}</span>}
+            <span className="truncate">{item.label}</span>
           </TabsPrimitive.Trigger>
         ))}
       </TabsPrimitive.List>

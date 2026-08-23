@@ -356,12 +356,12 @@ export function InsightsPage() {
         <Tabs
           value={tab}
           onValueChange={setTab}
+          variant="pills"
           swipeable
           items={[
             {
               value: "diagnostics",
-              label: "Avisos & Diagnósticos",
-              shortLabel: "Diagnósticos",
+              label: "Diagnósticos",
               content: (
                 <div className="flex flex-col gap-6 min-w-0">
                   {/* Bloco 1: Avisos e Recomendações Imediatas */}

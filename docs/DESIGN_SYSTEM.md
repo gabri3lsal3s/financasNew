@@ -405,14 +405,16 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Contêineres de gráficos SVG (`DailyFlowChart`, `Sparkline`, `CategoryDonut`) usam `overflow-hidden` e `w-full min-w-0` com limites de pontos/marcadores contidos (*clamped*), impedindo vazamento de traços vetoriais fora das margens do card.
 - **Espaçamento Responsivo:** Cards e contêineres adotam padding responsivo (`p-4 sm:p-5`, `px-3.5 sm:px-4`) para manter proporções ideais e máxima área útil em telas estreitas (≥ 320px).
 
-### 14.17 Sub-abas Responsivas sem Rolagem Horizontal (Segmented Pills & Short Labels)
+### 14.17 Abas e Sub-abas Harmônicas (Nomes Únicos, Pills Internas e Largura Total)
 - **Componente:** `src/components/ui/tabs.tsx` (`variant="pills"` e `variant="underline"`).
-- **Diretriz de UX:** É proibida a rolagem horizontal incômoda (`overflow-x-auto`) em sub-abas estruturais de navegação secundária. As opções devem preencher simetricamente a largura disponível (`w-full` com `flex-1`), proporcionando botões confortáveis ao toque do polegar (*thumb-friendly*).
-- **Proporção Ideal (2 a 3 Abas):**
-  - Sub-abas em formato pílula agrupam no máximo **2 a 3 itens** por barra (divisão de 50%/50% ou 33%/33%/33%).
-  - Telas que possuíam múltiplos filtros concorrentes foram unificadas em 2 abas estruturais limpas (ex.: Lembretes com `Pendentes` e `Histórico`).
-- **Rótulos Concisos & `shortLabel` Responsivo:**
-  - `TabItem` suporta a propriedade `shortLabel?: string` com renderização responsiva: em desktop exibe o nome descritivo completo e em smartphones (<640px) exibe o rótulo essencial (`shortLabel`) com `aria-label` preservado no trigger.
-  - Eliminação de preposições e palavras de preenchimento redundantes (*"Por..."*, *"Avisos e..."*, *"Metas de..."*).
-- **Espaçamento e Tipografia:** Triggers utilizam classes responsivas `px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm` com `truncate` e `min-w-0`, garantindo zero corte de texto em dispositivos móveis compactos (≥360px).
+- **Hierarquia Estrita de 2 Níveis:**
+  - **Nível 1 (Navegação Primária de Página):** `Tabs variant="underline"` (ou `variant="pills"` para páginas de nível único como Configurações, Categorias, Orçamentos, Dívidas, Lembretes, Insights).
+  - **Nível 2 (Sub-abas e Segmentações Internas):** **EXCLUSIVAMENTE `Tabs variant="pills"`** (ex.: dentro de Proventos *Extrato \| Calendário*, dentro de Metas *Ativos \| Classes*, dentro de Aporte *Calculadora \| Histórico*, e Agregações em Relatórios). É expressamente proibido o uso de `underline` aninhado dentro de `underline`.
+- **Rótulo Único de 1 Palavra por Aba (Zero nomes com `&` ou duplos):**
+  - Todo rótulo de aba/sub-aba é composto por **uma única palavra forte e objetiva** (ex.: `Limites`, `Metas`, `Aparência`, `Interface`, `Dados`, `Diagnósticos`, `Planejamento`, `Extrato`, `Calendário`, `Ativos`, `Classes`, `Pagar`, `Receber`, `Financiamentos`, `Mês`, `Ano`, `Custom`, `Categorias`, `Encargos`, `Formas`, `Dias`).
+  - Proibido o uso de `&`, conectivos ou preposições no rótulo das abas (*"Avisos & Diagnósticos"*, *"Conta & Dados"*, *"Por categoria"*).
+- **Largura Total (`w-full`) e Distribuição Simétrica:**
+  - Todas as abas expandem-se por padrão para 100% da largura útil (`isFullWidth = true`) com distribuição proporcional dos itens (`flex-1 text-center`), adaptando-se automaticamente à quantidade (50%/50%, 33.3%/33.3%/33.3%, 25%/25%/25%/25%).
+- **Tipografia Confortável e Acessibilidade:**
+  - Triggers usam tipografia nítida e confortável `text-sm font-medium` (14px) com `px-3 py-2`, acabando com textos minúsculos, cortes e necessidade de rolagem horizontal incômoda.
 

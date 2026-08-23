@@ -120,7 +120,7 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
   it("alterna entre as abas a pagar / a receber", async () => {
     const user = userEvent.setup();
     render(<DebtsPage />);
-    await user.click(screen.getByRole("tab", { name: /a receber/i }));
+    await user.click(screen.getByRole("tab", { name: /receber/i }));
     expect(screen.getByText("Empréstimo ao João")).toBeInTheDocument();
     expect(screen.queryByText("Conta de luz")).not.toBeInTheDocument();
   });
@@ -176,7 +176,7 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     const user = userEvent.setup();
     render(<DebtsPage />);
 
-    await user.click(screen.getByRole("tab", { name: /a receber/i }));
+    await user.click(screen.getByRole("tab", { name: /receber/i }));
     await user.click(screen.getByRole("button", { name: "Quitar Empréstimo ao João" }));
     await user.click(screen.getByText("Receber e criar renda"));
 
@@ -198,7 +198,7 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     const user = userEvent.setup();
     render(<DebtsPage />);
 
-    await user.click(screen.getByRole("tab", { name: /a receber/i }));
+    await user.click(screen.getByRole("tab", { name: /receber/i }));
     await user.click(screen.getByRole("button", { name: "Quitar Recebível integrado" }));
 
     // Sugestão automática: despesa R$ 1.000,00 − dívida R$ 300,00 = R$ 700,00

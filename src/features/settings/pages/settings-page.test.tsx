@@ -101,9 +101,9 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     renderSettings();
 
     expect(screen.getByRole("heading", { level: 1, name: "Configurações" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Personalização/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Interface/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Conta & Dados/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Interface" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Dados" })).toBeInTheDocument();
   });
 
   it("permite alternar entre opções de tema visual e emite toast de confirmação", async () => {

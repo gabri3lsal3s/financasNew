@@ -559,8 +559,7 @@ export function SettingsPage() {
   const tabItems = [
     {
       value: "personalizacao",
-      label: "Personalização",
-      shortLabel: "Aparência",
+      label: "Aparência",
       icon: <Palette className="size-4" />,
       content: (
         <div className="space-y-6">
@@ -1428,8 +1427,7 @@ export function SettingsPage() {
     },
     {
       value: "dados",
-      label: "Conta & Dados",
-      shortLabel: "Conta",
+      label: "Dados",
       icon: <Database className="size-4" />,
       content: (
         <div className="space-y-6">

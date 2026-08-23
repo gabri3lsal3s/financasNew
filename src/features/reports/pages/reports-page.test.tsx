@@ -106,7 +106,7 @@ describe("ReportsPage (relatórios §3.6)", () => {
     const user = userEvent.setup();
     renderReports();
 
-    const yearTab = screen.getByRole("tab", { name: /Por ano/i });
+    const yearTab = screen.getByRole("tab", { name: "Ano" });
     await user.click(yearTab);
 
     // Deve exibir o seletor de ano
@@ -122,21 +122,21 @@ describe("ReportsPage (relatórios §3.6)", () => {
     expect(screen.getByText("2025")).toBeInTheDocument();
   });
 
-  it("permite alternar entre as abas de agregação (Categoria, Forma, Dia da semana)", async () => {
+  it("permite alternar entre as abas de agregação (Categorias, Formas, Dias)", async () => {
     const user = userEvent.setup();
     renderReports();
 
     // Aba Categoria ativa por padrão
     expect(screen.getByText("Alimentação")).toBeInTheDocument();
 
-    // Clica na aba Por forma
-    const formaTab = screen.getByRole("tab", { name: /Por forma/i });
+    // Clica na aba Formas
+    const formaTab = screen.getByRole("tab", { name: "Formas" });
     await user.click(formaTab);
     expect(screen.getByText("Cartão de crédito")).toBeInTheDocument();
     expect(screen.getByText("Pix")).toBeInTheDocument();
 
-    // Clica na aba Por dia da semana
-    const weekdayTab = screen.getByRole("tab", { name: /Por dia da semana/i });
+    // Clica na aba Dias
+    const weekdayTab = screen.getByRole("tab", { name: "Dias" });
     await user.click(weekdayTab);
     expect(screen.getByText("Segunda")).toBeInTheDocument();
     expect(screen.getByText("Sábado")).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe("ReportsPage (relatórios §3.6)", () => {
     const user = userEvent.setup();
     renderReports();
 
-    const formaTab = screen.getByRole("tab", { name: /Por forma/i });
+    const formaTab = screen.getByRole("tab", { name: "Formas" });
     await user.click(formaTab);
 
     const pixRow = screen.getByText("Pix");
@@ -171,7 +171,7 @@ describe("ReportsPage (relatórios §3.6)", () => {
     const user = userEvent.setup();
     renderReports();
 
-    const weekdayTab = screen.getByRole("tab", { name: /Por dia da semana/i });
+    const weekdayTab = screen.getByRole("tab", { name: "Dias" });
     await user.click(weekdayTab);
 
     const segundaRow = screen.getByText("Segunda");

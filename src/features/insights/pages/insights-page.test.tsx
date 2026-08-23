@@ -68,10 +68,10 @@ vi.mock("@/state", () => ({
 }));
 
 describe("InsightsPage (motor de insights §3.7)", () => {
-  it("renderiza a aba unificada 'Avisos & Diagnósticos' como primeira", () => {
+  it("renderiza a aba unificada 'Diagnósticos' como primeira", () => {
     render(<InsightsPage />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs[0]).toHaveAccessibleName("Avisos & Diagnósticos");
+    expect(tabs[0]).toHaveAccessibleName("Diagnósticos");
     // Alertas convertidos em avisos + KPIs de diagnóstico na mesma aba.
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("renderiza diagnósticos com tendência de gastos (F19 — motor §3.7.6)", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Avisos & Diagnósticos" }));
+    await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
     // Mês atual igual ao anterior (fixture) → variação 0.0% (não significativa).
@@ -128,7 +128,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("diagnósticos: gastos de fim de semana comparáveis exibem a razão e sem alerta absurdo (F27)", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Avisos & Diagnósticos" }));
+    await user.click(screen.getByRole("tab", { name: "Diagnósticos" }));
     // Fixture: despesas só em dias úteis → razão 0.0× (comparável, sem alerta).
     expect(screen.getByText("0.0×")).toBeInTheDocument();
     expect(screen.queryByText(/gastos de fim de semana.*maiores/i)).not.toBeInTheDocument();

@@ -263,20 +263,17 @@ export function DebtsPage() {
           items={[
             {
               value: "payable",
-              label: `A pagar (${payableDebts.length})`,
-              shortLabel: `A Pagar (${payableDebts.length})`,
+              label: `Pagar (${payableDebts.length})`,
               content: null,
             },
             {
               value: "receivable",
-              label: `A receber (${receivableDebts.length})`,
-              shortLabel: `A Receber (${receivableDebts.length})`,
+              label: `Receber (${receivableDebts.length})`,
               content: null,
             },
             {
               value: "loans",
               label: `Financiamentos (${loans.length})`,
-              shortLabel: `Financ. (${loans.length})`,
               content: null,
             },
           ]}

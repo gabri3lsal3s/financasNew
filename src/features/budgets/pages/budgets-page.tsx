@@ -179,8 +179,8 @@ export function BudgetsPage() {
         variant="pills"
         swipeable
         items={[
-          { value: "limits", label: "Despesas & Limites", shortLabel: "Limites", content: null },
-          { value: "goals", label: "Rendas & Metas", shortLabel: "Metas", content: null },
+          { value: "limits", label: "Limites", content: null },
+          { value: "goals", label: "Metas", content: null },
         ]}
       />
 
