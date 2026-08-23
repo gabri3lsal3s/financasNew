@@ -20,9 +20,10 @@ import { calculateYieldOnCostTotal } from "@/domain/portfolio/snowball";
 import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
 import {
   useAssetPosition,
-  useAssetPrices,
   useDeletePortfolioAsset,
   useDeletePortfolioTransaction,
+  usePortfolioAssets,
+  usePortfolioPosition,
 } from "@/state";
 import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
 import { AssetEditDialog } from "./asset-edit-dialog";
@@ -41,8 +42,9 @@ export function AssetDetailSheet({
   onAction,
 }: AssetDetailSheetProps) {
   const assetId = asset?.id ?? null;
-  const { data: txs, isLoading: txLoading, ledger } = useAssetPosition(assetId);
-  const pricesQuery = useAssetPrices();
+  const { data: txs, isLoading: txLoading } = useAssetPosition(assetId);
+  const assetsQuery = usePortfolioAssets();
+  const position = usePortfolioPosition();
   const deleteAsset = useDeletePortfolioAsset();
   const deleteTx = useDeletePortfolioTransaction();
 
@@ -52,36 +54,37 @@ export function AssetDetailSheet({
 
   if (!asset) return null;
 
+  // Busca a versão mais recente do ativo e a linha consolidada de posição
+  const currentAsset = (assetsQuery.data ?? []).find((a) => a.id === asset.id) ?? asset;
+  const positionRow = position.rows.find((r) => r.assetId === currentAsset.id);
+
   const pricingMode = getAssetPricingMode({
-    ticker: asset.ticker,
-    asset_class: asset.asset_class,
-    notes: asset.notes,
+    ticker: currentAsset.ticker,
+    asset_class: currentAsset.asset_class,
+    notes: currentAsset.notes,
   });
-  const isCash = pricingMode === "cash" || isCashAssetClass(asset.asset_class);
+  const isCash = pricingMode === "cash" || isCashAssetClass(currentAsset.asset_class);
   const isTotalValue = pricingMode === "total_value";
 
-  const prices = pricesQuery.data ?? [];
-  const priceQuote = prices.find((p) => p.ticker.toUpperCase() === asset.ticker.toUpperCase());
-  const currentPrice = priceQuote ? priceQuote.price : asset.average_price;
-
-  const quantity = ledger ? ledger.quantity : asset.quantity;
-  const averageCost = ledger ? ledger.averageCost : asset.average_price;
-  const totalCost = isTotalValue
-    ? asset.quantity > 1 && asset.average_price > 0
-      ? Math.round(asset.quantity * asset.average_price * 100) / 100
-      : averageCost > 0
-        ? averageCost
-        : quantity
-    : ledger
-      ? ledger.totalCost
+  // Valores consolidados em tempo real
+  const quantity = positionRow ? positionRow.quantity : Number(currentAsset.quantity ?? 0);
+  const averageCost = positionRow ? positionRow.averageCost : Number(currentAsset.average_price ?? 0);
+  const totalCost = positionRow
+    ? positionRow.totalCostBRL
+    : isTotalValue
+      ? averageCost > 0 ? averageCost : quantity
       : quantity * averageCost;
-  const currentValue = isCash ? quantity : isTotalValue ? currentPrice : quantity * currentPrice;
-  const totalDividends = ledger ? ledger.dividends : 0;
-  const unrealizedPnl = isCash ? 0 : currentValue - totalCost;
-  const unrealizedPnlPct = totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
 
-  // Yield on Cost (%) — incorpora proventos acumulados históricos + extrato periódico
-  const accumulatedDividends = asset.accumulated_dividends ?? 0;
+  const currentPrice = positionRow ? positionRow.priceBRL : averageCost;
+  const currentValue = positionRow ? positionRow.valueBRL : (isCash ? quantity : quantity * currentPrice);
+  const unrealizedPnl = positionRow ? positionRow.unrealizedPnl : (isCash ? 0 : currentValue - totalCost);
+  const unrealizedPnlPct = positionRow
+    ? (positionRow.unrealizedPct ?? 0)
+    : totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
+
+  // Proventos consolidados (acumulados históricos + lançamentos periódicos)
+  const totalDividends = positionRow ? positionRow.dividends : (currentAsset.accumulated_dividends ?? 0);
+  const accumulatedDividends = currentAsset.accumulated_dividends ?? 0;
   const periodicDividends = Math.max(0, totalDividends - accumulatedDividends);
   const yieldOnCostPct = calculateYieldOnCostTotal(accumulatedDividends, periodicDividends, totalCost);
 
@@ -110,22 +113,23 @@ export function AssetDetailSheet({
       <Modal
         open={open}
         onOpenChange={onOpenChange}
-        title={asset.ticker}
-        description={asset.notes || `${asset.asset_class ?? "Ativo"} · ${asset.currency}`}
+        title={currentAsset.ticker}
+        description={currentAsset.asset_class ?? "Ativo em Carteira"}
         size="lg"
       >
         <div className="flex flex-col gap-6 pt-2">
-          {/* Header de Ações Rápidas */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-4">
+          {/* Header com Ações Rápidas */}
+          <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-4">
             <div className="flex items-center gap-2">
-              <Badge variant="default" className="text-xs font-mono">
-                {asset.asset_class ?? "Outros"}
+              <span className="font-mono text-xl font-bold text-foreground">{currentAsset.ticker}</span>
+              <Badge variant="muted" className="text-xs">
+                {currentAsset.asset_class ?? "Sem classe"}
               </Badge>
               <Badge variant="muted" className="text-xs">
-                {asset.currency}
+                {currentAsset.currency}
               </Badge>
               {isTotalValue && (
-                <Badge variant="muted" className="text-[10px]">
+                <Badge variant="muted" className="text-xs">
                   Valor Completo
                 </Badge>
               )}
@@ -136,7 +140,7 @@ export function AssetDetailSheet({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => onAction?.("buy", asset)}
+                onClick={() => onAction?.("buy", currentAsset)}
                 className="gap-1 text-xs text-primary"
               >
                 <Plus className="size-3.5" aria-hidden="true" />
@@ -146,7 +150,7 @@ export function AssetDetailSheet({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => onAction?.("sell", asset)}
+                onClick={() => onAction?.("sell", currentAsset)}
                 className="gap-1 text-xs"
               >
                 <ArrowDownLeft className="size-3.5" aria-hidden="true" />
@@ -156,7 +160,7 @@ export function AssetDetailSheet({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => onAction?.("dividend", asset)}
+                onClick={() => onAction?.("dividend", currentAsset)}
                 className="gap-1 text-xs text-positive-strong"
               >
                 <Receipt className="size-3.5" aria-hidden="true" />
@@ -246,7 +250,6 @@ export function AssetDetailSheet({
                 </span>
               )}
             </div>
-
           </div>
 
           {/* Histórico de Transações do Ledger */}
@@ -277,36 +280,34 @@ export function AssetDetailSheet({
                   return (
                     <div
                       key={tx.id}
-                      className="flex items-center justify-between p-3 text-xs transition-colors hover:bg-surface-hover/50"
+                      className="flex items-center justify-between p-3 text-xs hover:bg-surface-hover/60 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <Badge variant={txInfo.variant} className="text-[10px] shrink-0">
+                      <div className="flex items-center gap-2.5">
+                        <Badge variant={txInfo.variant} className="text-[10px] px-1.5 py-0">
                           {txInfo.label}
                         </Badge>
-                        <div className="flex flex-col">
-                          <span className="font-mono text-[11px] text-muted-foreground">
-                            {tx.date}
+                        <span className="font-mono text-muted-foreground">{tx.date}</span>
+                        {tx.quantity > 0 && !isTotalValue && (
+                          <span className="text-muted-foreground font-mono">
+                            ({tx.quantity} un @ <MoneyText cents={numberToCents(tx.price)} />)
                           </span>
-                          <span className="font-mono text-xs font-medium text-foreground">
-                            {tx.quantity > 0 ? `${tx.quantity} cota(s) · ` : ""}
-                            <MoneyText cents={numberToCents(tx.price > 0 ? tx.price : tx.total / (tx.quantity || 1))} />
-                          </span>
-                        </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-xs font-bold text-foreground">
+                        <span className="font-mono font-semibold text-foreground">
                           <MoneyText cents={numberToCents(tx.total)} />
                         </span>
-
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setTxToDelete(tx.id)}
-                          className="size-6 text-muted-foreground hover:text-negative-strong transition-colors"
+                          className="size-7 p-0 text-muted-foreground hover:text-negative-strong"
                           title="Excluir lançamento"
                         >
-                          <Trash2 className="size-3" aria-hidden="true" />
-                        </button>
+                          <Trash2 className="size-3.5" aria-hidden="true" />
+                        </Button>
                       </div>
                     </div>
                   );
@@ -315,18 +316,26 @@ export function AssetDetailSheet({
             )}
           </div>
 
-          {/* Zona de Perigo / Exclusão */}
+          {/* Rodapé: Exclusão do Ativo da Carteira */}
           <div className="flex items-center justify-between border-t border-border/80 pt-4">
-            <span className="text-xs text-muted-foreground">Remover ativo e histórico</span>
             <Button
               type="button"
-              variant="destructive"
+              variant="outline"
               size="sm"
               onClick={() => setDeleteConfirmOpen(true)}
-              className="gap-1 text-xs"
+              className="text-xs text-negative-strong hover:bg-negative-surface/40"
             >
-              <Trash2 className="size-3.5" aria-hidden="true" />
-              Excluir Ativo
+              <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
+              Excluir Ativo da Carteira
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Fechar
             </Button>
           </div>
         </div>
@@ -334,7 +343,7 @@ export function AssetDetailSheet({
 
       {/* Diálogo de Edição Cadastral */}
       <AssetEditDialog
-        asset={asset}
+        asset={currentAsset}
         open={editOpen}
         onOpenChange={setEditOpen}
       />
@@ -343,14 +352,12 @@ export function AssetDetailSheet({
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
-        title={`Excluir ${asset.ticker}?`}
-        description="Esta ação removerá o ativo da carteira e todas as transações vinculadas a ele."
-        confirmLabel="Excluir Permanentemente"
+        title={`Excluir ${currentAsset.ticker}?`}
+        description="Esta ação removerá o ativo da sua carteira, incluindo todas as transações vinculadas. Essa operação não pode ser desfeita."
+        confirmLabel="Sim, excluir ativo"
         variant="destructive"
-        confirmPending={deleteAsset.isPending}
         onConfirm={async () => {
-          await deleteAsset.mutateAsync(asset.id);
-          setDeleteConfirmOpen(false);
+          await deleteAsset.mutateAsync(currentAsset.id);
           onOpenChange(false);
         }}
       />
@@ -359,11 +366,10 @@ export function AssetDetailSheet({
       <ConfirmDialog
         open={txToDelete !== null}
         onOpenChange={(next) => !next && setTxToDelete(null)}
-        title="Excluir lançamento?"
-        description="O registro será removido do histórico da posição."
+        title="Excluir movimentação?"
+        description="Esta operação será removida do histórico do ativo."
         confirmLabel="Excluir"
         variant="destructive"
-        confirmPending={deleteTx.isPending}
         onConfirm={async () => {
           if (txToDelete) {
             await deleteTx.mutateAsync(txToDelete);

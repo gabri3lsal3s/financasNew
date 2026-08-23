@@ -37,8 +37,36 @@ vi.mock("@/state", () => ({
       cash: 0,
     },
   }),
+  usePortfolioAssets: () => ({
+    data: [mockAsset],
+    isLoading: false,
+  }),
+  usePortfolioPosition: () => ({
+    rows: [
+      {
+        assetId: "asset-1",
+        ticker: "PETR4",
+        assetClass: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        averageCost: 30.0,
+        totalCostBRL: 3000.0,
+        priceBRL: 35.0,
+        valueBRL: 3500.0,
+        unrealizedPnl: 500.0,
+        unrealizedPct: 16.67,
+        dividends: 150.0,
+        isCash: false,
+        source: "api" as const,
+        pct: 100,
+      },
+    ],
+    totalBRL: 3500,
+    totalCostBRL: 3000,
+    isLoading: false,
+  }),
   useAssetPrices: () => ({
-    data: [{ ticker: "PETR4", price_cents: 3500 }],
+    data: [{ ticker: "PETR4", price: 35.0, price_cents: 3500 }],
     isLoading: false,
   }),
   useDeletePortfolioAsset: () => ({
@@ -55,10 +83,11 @@ vi.mock("@/state", () => ({
   }),
 }));
 
+
 describe("AssetDetailSheet (Fase 41)", () => {
   it("renderiza os KPIs do ativo, YoC e histórico de lançamentos", () => {
     render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} />);
-    expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(screen.getAllByText("PETR4").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/100 cota/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Yield on Cost/i)).toBeInTheDocument();
     expect(screen.getByText(/Histórico de Operações/i)).toBeInTheDocument();
