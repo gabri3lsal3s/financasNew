@@ -70,6 +70,9 @@ export const USER_STATUSES = ["pending_approval", "active", "suspended", "banned
 export type UserStatus = (typeof USER_STATUSES)[number];
 
 export const SYSTEM_FEATURE_KEYS = [
+  "overview",
+  "transactions",
+  "cards",
   "investments",
   "debts",
   "budgets",
@@ -78,6 +81,7 @@ export const SYSTEM_FEATURE_KEYS = [
   "reminders",
 ] as const;
 export type SystemFeatureKey = (typeof SYSTEM_FEATURE_KEYS)[number];
+
 
 export const ASSET_CURRENCIES = ["BRL", "USD"] as const;
 export type AssetCurrency = (typeof ASSET_CURRENCIES)[number];

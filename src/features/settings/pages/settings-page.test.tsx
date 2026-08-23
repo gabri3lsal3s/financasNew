@@ -63,7 +63,24 @@ vi.mock("@/state", () => ({
     mutate: mockUpdateCustomSettings,
     isPending: false,
   }),
+  useUserAccess: () => ({
+    profile: null,
+    role: "user",
+    status: "active",
+    features: {},
+    isPendingApproval: false,
+    isActive: true,
+    isSuspended: false,
+    isBanned: false,
+    isAdmin: false,
+    isSuperAdmin: false,
+    hasFeature: () => true,
+    isLoading: false,
+    error: null,
+    refetch: () => Promise.resolve(),
+  }),
 }));
+
 
 function renderSettings() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 import { useUserAccess } from "@/state";
 import { Skeleton } from "@/components/ui";
+import { resolveLandingPath } from "@/domain/navigation";
 import type { SystemFeatureKey } from "@/types";
 
 export interface RequireFeatureProps {
@@ -10,9 +11,10 @@ export interface RequireFeatureProps {
 
 /**
  * Guarda de rota que valida se uma Feature Flag está ativa para o usuário (§F43).
+ * Se desabilitada, redireciona de forma inteligente para a primeira rota permitida.
  */
-export function RequireFeature({ featureKey, redirectTo = "/" }: RequireFeatureProps) {
-  const { hasFeature, isLoading } = useUserAccess();
+export function RequireFeature({ featureKey, redirectTo }: RequireFeatureProps) {
+  const { hasFeature, isAdmin, isLoading } = useUserAccess();
 
   if (isLoading) {
     return (
@@ -26,7 +28,8 @@ export function RequireFeature({ featureKey, redirectTo = "/" }: RequireFeatureP
   }
 
   if (!hasFeature(featureKey)) {
-    return <Navigate to={redirectTo} replace />;
+    const target = redirectTo ?? resolveLandingPath(hasFeature, isAdmin);
+    return <Navigate to={target} replace />;
   }
 
   return <Outlet />;

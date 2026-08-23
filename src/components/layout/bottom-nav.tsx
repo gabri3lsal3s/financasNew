@@ -1,49 +1,59 @@
 import { NavLink, useLocation } from "react-router";
 import { Ellipsis, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { navItems } from "@/components/layout/nav-items";
+import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
+import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
 import { scrollToTop } from "@/services/scroll";
-import { useReminders } from "@/state";
-
-/** Resolve um slot obrigatório da BottomNav a partir da fonte única de navegação. */
-function requiredSlot(path: string): NavItem {
-  const item = navItems.find((candidate) => candidate.path === path);
-  if (item === undefined) {
-    throw new Error(`BottomNav: slot de navegação ausente em navItems: ${path}`);
-  }
-  return item;
-}
-
-/** Grid de 5 posições simétrico (F7.1): Início | Transações | FAB Novo | Cartões | Mais. */
-const inicio = requiredSlot("/");
-const transacoes = requiredSlot("/transacoes");
-const cartoes = requiredSlot("/cartoes");
+import { useReminders, useUserAccess } from "@/state";
 
 /**
- * Ação do FAB por página (F12): o + abre a criação do contexto atual em overlay
- * (sem desviar de rota ou perder o contexto da tela ativa).
- * - /dividas -> ?novo=divida
- * - /categorias -> ?novo=categoria
- * - Demais páginas (/, /cartoes, /transacoes, /orcamentos, /relatorios, /insights, /investments, /lembretes, /configuracoes) -> ?novo=transacao
+ * Resolve a ação do FAB de acordo com o contexto da página e as permissões ativas do usuário.
  */
-function getFabAction(pathname: string, search = ""): { to: string; label: string } {
+function getFabAction(
+  pathname: string,
+  search: string,
+  hasFeature: (key: string) => boolean,
+): { to: string; label: string } | null {
   const params = new URLSearchParams(search);
-  if (pathname === "/dividas") {
+
+  if (pathname === "/dividas" && hasFeature("debts")) {
     params.set("novo", "divida");
     return { to: `${pathname}?${params.toString()}`, label: "Nova dívida" };
   }
-  if (pathname === "/categorias") {
+
+  if (pathname === "/categorias" && hasFeature("budgets")) {
     params.set("novo", "categoria");
     return { to: `${pathname}?${params.toString()}`, label: "Nova categoria" };
   }
-  if (pathname === "/investments" || pathname === "/investimentos") {
+
+  if ((pathname === "/investments" || pathname === "/investimentos") && hasFeature("investments")) {
     params.set("novo", "investimento");
     return { to: `${pathname}?${params.toString()}`, label: "Novo investimento" };
   }
-  params.set("novo", "transacao");
-  return { to: `${pathname}?${params.toString()}`, label: "Nova transação" };
+
+  if (hasFeature("transactions")) {
+    params.set("novo", "transacao");
+    return { to: `${pathname}?${params.toString()}`, label: "Nova transação" };
+  }
+
+  if (hasFeature("investments")) {
+    params.set("novo", "investimento");
+    return { to: `${pathname}?${params.toString()}`, label: "Novo investimento" };
+  }
+
+  if (hasFeature("debts")) {
+    params.set("novo", "divida");
+    return { to: `${pathname}?${params.toString()}`, label: "Nova dívida" };
+  }
+
+  if (hasFeature("budgets")) {
+    params.set("novo", "categoria");
+    return { to: `${pathname}?${params.toString()}`, label: "Nova categoria" };
+  }
+
+  return null;
 }
 
 function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
@@ -74,20 +84,29 @@ function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
       }
     >
       <item.icon className="size-5" aria-hidden="true" />
-      <span>{item.label}</span>
+      <span className="truncate max-w-[64px] text-center">{item.label}</span>
     </NavLink>
   );
 }
 
 export function BottomNav() {
   const location = useLocation();
-  const create = getFabAction(location.pathname, location.search);
+  const { hasFeature, isAdmin } = useUserAccess();
   const { totalCount, urgentCount } = useReminders();
 
-  const moreSubItem = navItems.find((candidate) => {
-    if (candidate.path === "/" || candidate.path === "/transacoes" || candidate.path === "/cartoes") {
-      return false;
-    }
+  const allowedItems = filterNavItems(navItems, isAdmin, hasFeature);
+  const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(allowedItems);
+
+  const create = getFabAction(location.pathname, location.search, hasFeature);
+
+  // Divide os slots primários ao redor do FAB
+  const leftSlots = primarySlots.slice(0, 2);
+  const rightSlots = primarySlots.slice(2, 4);
+
+  // Verifica se a rota atual pertence a algum item do menu "Mais"
+  const primaryPaths = new Set(primarySlots.map((s) => s.path));
+  const moreSubItem = moreMenuSlots.find((candidate) => {
+    if (primaryPaths.has(candidate.path)) return false;
     if (location.pathname === candidate.path || location.pathname.startsWith(`${candidate.path}/`)) {
       return true;
     }
@@ -119,27 +138,33 @@ export function BottomNav() {
       aria-label="Navegação principal"
     >
       <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
-        <SlotLink item={inicio} end />
-        <SlotLink item={transacoes} />
+        {leftSlots.map((slot) => (
+          <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
+        ))}
 
-        {/* FAB central elevado: criação do contexto da página atual (F12 —
-            sem botões "Novo X" duplicados no mobile). Haptic leve (F8 — Decisão 3). */}
-        <NavLink
-          to={create.to}
-          aria-label={create.label}
-          className="flex min-h-11 items-center justify-center"
-          onClick={() => triggerSensory("action")}
-        >
-          {/* FAB com fundo na cor do tema e contorno nítido suave (sem serrilhamento de box-shadow ring) */}
-          <span className="-mt-6 flex size-14 items-center justify-center rounded-full bg-background shadow-xs transform-gpu">
-            <span className="flex size-12 items-center justify-center rounded-full border-[1.5px] border-primary bg-surface text-primary shadow-sm transition-transform active:scale-95 hover:border-primary-strong hover:text-primary-strong transform-gpu">
-              <Plus className="size-6" aria-hidden="true" />
+        {/* Slot Central: FAB ou preenchimento */}
+        {create ? (
+          <NavLink
+            to={create.to}
+            aria-label={create.label}
+            className="flex min-h-11 items-center justify-center"
+            onClick={() => triggerSensory("action")}
+          >
+            <span className="-mt-6 flex size-14 items-center justify-center rounded-full bg-background shadow-xs transform-gpu">
+              <span className="flex size-12 items-center justify-center rounded-full border-[1.5px] border-primary bg-surface text-primary shadow-sm transition-transform active:scale-95 hover:border-primary-strong hover:text-primary-strong transform-gpu">
+                <Plus className="size-6" aria-hidden="true" />
+              </span>
             </span>
-          </span>
-        </NavLink>
+          </NavLink>
+        ) : (
+          <div className="flex min-h-11 items-center justify-center" />
+        )}
 
-        <SlotLink item={cartoes} />
+        {rightSlots.map((slot) => (
+          <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
+        ))}
 
+        {/* Slot 5: Menu Mais */}
         <NavLink
           to="/mais"
           aria-label={moreSubItem ? `Mais (${moreSubItem.label})` : "Mais"}

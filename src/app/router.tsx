@@ -2,7 +2,7 @@ import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation } from "rea
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen, MoreMenu, PageShell } from "@/components/layout";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
-import { RequireActiveAccount, RequireAdmin } from "@/components/routing";
+import { RequireActiveAccount, RequireAdmin, RequireFeature } from "@/components/routing";
 import {
   ForgotPasswordPage,
   LoginPage,
@@ -14,6 +14,19 @@ import { LandingPage } from "@/features/landing";
 import { useAuth } from "@/hooks/use-auth";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
+
+/** Mapeamento de rotas para suas respectivas Feature Flags (§F43). */
+const ROUTE_FEATURE_MAP: Record<string, string> = {
+  "/": "overview",
+  "/transacoes": "transactions",
+  "/cartoes": "cards",
+  "/dividas": "debts",
+  "/orcamentos": "budgets",
+  "/relatorios": "reports",
+  "/insights": "insights",
+  "/investments": "investments",
+  "/lembretes": "reminders",
+};
 
 /**
  * Guard de autenticação:
@@ -50,8 +63,7 @@ function RequireAuth() {
 
   return (
     <div key={session.user.id} className="contents">
-      {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas,
-          incluindo modais e drawers em overlay. */}
+      {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas */}
       <FloatingCalculator />
       <Outlet />
     </div>
@@ -87,9 +99,17 @@ export function AppRouter() {
             <Route element={<PageShell />}>
               {appRoutes
                 .filter((r) => r.path !== "/admin")
-                .map((route) => (
-                  <Route key={route.path} path={route.path} element={<route.Component />} />
-                ))}
+                .map((route) => {
+                  const featureKey = ROUTE_FEATURE_MAP[route.path];
+                  if (featureKey) {
+                    return (
+                      <Route key={route.path} element={<RequireFeature featureKey={featureKey} />}>
+                        <Route path={route.path} element={<route.Component />} />
+                      </Route>
+                    );
+                  }
+                  return <Route key={route.path} path={route.path} element={<route.Component />} />;
+                })}
 
               {/* Rota restrita de administração */}
               <Route element={<RequireAdmin />}>
@@ -109,4 +129,3 @@ export function AppRouter() {
     </BrowserRouter>
   );
 }
-

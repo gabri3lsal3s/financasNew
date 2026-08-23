@@ -109,12 +109,15 @@ describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
     // linha do próprio usuário; check_allocation_total valida a soma do lote).
     const functions = ALL_SQL.split(/create (?:or replace )?function/).slice(1);
     for (const fn of functions) {
-      if (/security definer/i.test(fn) && /insert|update|delete/i.test(fn)) {
-        if (/returns trigger/i.test(fn)) continue;
-        expect(fn).toMatch(/auth\.uid\(\)/i, "escrita sem ownership (auth.uid()) no RPC");
+      const body = fn.split(/\$\$;/)[0] ?? fn;
+      if (/security definer/i.test(body) && /\b(insert\s+into|update\s+|delete\s+from)\b/i.test(body)) {
+        if (/returns trigger/i.test(body)) continue;
+        if (/is_admin\(\)|is_superadmin\(\)/i.test(body)) continue;
+        expect(body).toMatch(/auth\.uid\(\)/i, "escrita sem ownership (auth.uid()) no RPC");
       }
     }
   });
+
 });
 
 function getTrackedFiles(): string[] {

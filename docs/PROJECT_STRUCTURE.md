@@ -130,7 +130,9 @@
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags e validação de convites
+    │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
+
 
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Database, Download, FileJson, FileSpreadsheet, RefreshCcw } from "lucide-react";
+import { Database, Download, FileSpreadsheet, RefreshCcw } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,8 @@ export interface ExportDataHubProps {
   onRestore: (file: File) => Promise<RestoreSummary>;
   /** Executa a restauração (2ª etapa, após confirmação). */
   onConfirmRestore: (file: File) => Promise<void>;
+  /** Tipos de CSV disponíveis para exportação de acordo com os módulos permitidos. */
+  availableCsvKinds?: ExportCsvKind[];
 }
 
 type RestoreStep =
@@ -67,7 +69,13 @@ const SUMMARY_LABELS: Record<string, string> = {
 };
 
 /** Hub de Exportação e Dados (F22) — composição 100% presentacional. */
-export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmRestore }: ExportDataHubProps) {
+export function ExportDataHub({
+  onExportJson,
+  onExportCsv,
+  onRestore,
+  onConfirmRestore,
+  availableCsvKinds,
+}: ExportDataHubProps) {
   const [exportingJson, setExportingJson] = useState(false);
   const [csvBusy, setCsvBusy] = useState<ExportCsvKind | null>(null);
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -80,16 +88,23 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
 
   const periodValid =
     periodMode === "month" ||
-    (customStart !== "" && customEnd !== "" && customStart <= customEnd);
+    (customStart.length === 10 &&
+      customEnd.length === 10 &&
+      customStart <= customEnd);
 
-  const resolveRange = (): ExportRange =>
-    periodMode === "month"
-      ? monthRange(month)
-      : { start: customStart, end: customEnd ? addDaysISO(customEnd, 1) : "" };
+  const getRange = (): ExportRange => {
+    if (periodMode === "month") {
+      return monthRange(month);
+    }
+    return {
+      start: customStart,
+      end: addDaysISO(customEnd, 1),
+    };
+  };
 
-  const handleExportJson = async (): Promise<void> => {
-    setJsonError(null);
+  const handleExportJson = async () => {
     setExportingJson(true);
+    setJsonError(null);
     try {
       await onExportJson();
       triggerSensory("success");
@@ -101,12 +116,12 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
     }
   };
 
-  const handleExportCsv = async (kind: ExportCsvKind): Promise<void> => {
-    if (csvBusy !== null || !periodValid) return;
-    setCsvError(null);
+  const handleExportCsv = async (kind: ExportCsvKind) => {
+    if (!periodValid) return;
     setCsvBusy(kind);
+    setCsvError(null);
     try {
-      await onExportCsv(kind, resolveRange());
+      await onExportCsv(kind, getRange());
       triggerSensory("success");
     } catch (error) {
       triggerSensory("error");
@@ -116,7 +131,7 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
     }
   };
 
-  const handleFiles = async (files: File[]): Promise<void> => {
+  const handleFiles = async (files: File[]) => {
     const file = files[0];
     if (!file) return;
     setRestore({ step: "validating" });
@@ -155,6 +170,10 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
       .map(([key, count]) => [SUMMARY_LABELS[key] ?? key, count]);
 
   const previewSummary = restore.step === "preview" ? restore.summary : null;
+
+  const renderedCsvActions = availableCsvKinds
+    ? CSV_ACTIONS.filter((action) => availableCsvKinds.includes(action.kind))
+    : CSV_ACTIONS;
 
   return (
     <div className="space-y-6">
@@ -225,97 +244,99 @@ export function ExportDataHub({ onExportJson, onExportCsv, onRestore, onConfirmR
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            <FileSpreadsheet className="size-4 inline-block mr-2 -mt-0.5 text-muted-foreground" aria-hidden="true" />
-            Extratos CSV
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <RadioGroup
-            value={periodMode}
-            onValueChange={(value) => setPeriodMode(value as "month" | "custom")}
-            name="periodo-exportacao"
-            options={[
-              { value: "month", label: "Por mês" },
-              { value: "custom", label: "Intervalo customizado" },
-            ]}
-            className="flex-row gap-4"
-          />
+      {renderedCsvActions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              <FileSpreadsheet className="size-4 inline-block mr-2 -mt-0.5 text-muted-foreground" aria-hidden="true" />
+              Extratos CSV
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <RadioGroup
+              value={periodMode}
+              onValueChange={(value) => setPeriodMode(value as "month" | "custom")}
+              name="periodo-exportacao"
+              options={[
+                { value: "month", label: "Por mês" },
+                { value: "custom", label: "Intervalo customizado" },
+              ]}
+              className="flex-row gap-4"
+            />
 
-          <div className="flex flex-col gap-3">
-            {periodMode === "month" ? (
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-medium text-muted-foreground">Mês</span>
-                <MonthPicker value={month} onValueChange={setMonth} disabled={busy} />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">De</span>
-                  <DatePicker value={customStart} onValueChange={setCustomStart} ariaLabel="Data inicial" disabled={busy} />
+            <div className="flex flex-col gap-3">
+              {periodMode === "month" ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-muted-foreground">Mês</span>
+                  <MonthPicker value={month} onValueChange={setMonth} disabled={busy} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">Até</span>
-                  <DatePicker value={customEnd} onValueChange={setCustomEnd} ariaLabel="Data final" disabled={busy} />
+              ) : (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">De</span>
+                    <DatePicker value={customStart} onValueChange={setCustomStart} ariaLabel="Data inicial" disabled={busy} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">Até</span>
+                    <DatePicker value={customEnd} onValueChange={setCustomEnd} ariaLabel="Data final" disabled={busy} />
+                  </div>
                 </div>
-              </div>
-            )}
-            {!periodValid ? (
-              <p className="text-xs text-critical">Informe um intervalo válido (início antes ou igual ao fim).</p>
-            ) : null}
-          </div>
+              )}
+              {!periodValid ? (
+                <p className="text-xs text-critical">Informe um intervalo válido (início antes ou igual ao fim).</p>
+              ) : null}
+            </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {CSV_ACTIONS.map(({ kind, label }) => (
-              <Button
-                key={kind}
-                type="button"
-                variant="outline"
-                size="sm"
-                loading={csvBusy === kind}
-                disabled={!periodValid || (busy && csvBusy !== kind)}
-                onClick={() => void handleExportCsv(kind)}
-                className="justify-start gap-2"
-              >
-                <FileJson className="size-4" aria-hidden="true" />
-                <span>CSV de {label}</span>
-              </Button>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {renderedCsvActions.map(({ kind, label }) => (
+                <Button
+                  key={kind}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  loading={csvBusy === kind}
+                  disabled={!periodValid || (busy && csvBusy !== kind)}
+                  onClick={() => void handleExportCsv(kind)}
+                  className="justify-start gap-2"
+                >
+                  <Download className="size-4" aria-hidden="true" />
+                  <span>CSV de {label}</span>
+                </Button>
+              ))}
+            </div>
+
+            {csvError && <Alert variant="error">{csvError}</Alert>}
+            {jsonError && <Alert variant="error">{jsonError}</Alert>}
+          </CardContent>
+        </Card>
+      )}
+
+      {previewSummary && (
+        <ConfirmDialog
+          open={restore.step === "preview"}
+          onOpenChange={(open) => {
+            if (!open && restore.step === "preview") {
+              setRestore({ step: "idle" });
+            }
+          }}
+          title="Resumo do backup"
+          description="Esta ação substituirá todos os seus dados atuais pelo conteúdo do backup. Verifique a contagem de registros:"
+          confirmLabel="Restaurar backup"
+          cancelLabel="Cancelar"
+          variant="destructive"
+          onConfirm={handleConfirmRestore}
+        >
+
+          <div className="mt-2 space-y-1 text-xs">
+            {summaryEntries(previewSummary).map(([label, count]) => (
+              <div key={label} className="flex justify-between py-0.5 text-muted-foreground">
+                <span>{label}</span>
+                <span className="font-mono text-foreground">{count}</span>
+              </div>
             ))}
           </div>
-
-          {csvError ? <Alert variant="error">{csvError}</Alert> : null}
-          {jsonError ? <Alert variant="error">{jsonError}</Alert> : null}
-        </CardContent>
-      </Card>
-
-      <ConfirmDialog
-        open={previewSummary !== null}
-        onOpenChange={(open) => {
-          if (!open && previewSummary !== null) setRestore({ step: "idle" });
-        }}
-        title="Restaurar backup"
-        description="Todos os dados atuais serão substituídos pelo conteúdo do arquivo. Esta ação não pode ser desfeita."
-        confirmLabel="Restaurar"
-        variant="destructive"
-        confirmPending={restore.step === "restoring"}
-        onConfirm={handleConfirmRestore}
-      >
-        <div className="rounded-xl border border-border bg-muted/30 p-3.5">
-          <div className="text-xs font-medium text-muted-foreground mb-2">Resumo do backup</div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-            {previewSummary !== null
-              ? summaryEntries(previewSummary).map(([label, count]) => (
-                  <div key={label} className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">{label}</span>
-                    <span className="font-semibold text-foreground tabular-nums">{count}</span>
-                  </div>
-                ))
-              : null}
-          </div>
-        </div>
-      </ConfirmDialog>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

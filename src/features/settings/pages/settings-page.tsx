@@ -71,7 +71,8 @@ import { numberToCents } from "@/domain/money";
 import { BACKUP_TABLE_KEYS, parseBackupPayload } from "@/domain/export";
 import type { ExportExpenseRow, ExportIncomeRow, ExportInvoiceRow, ExportPositionRow, RestoreSummary } from "@/domain/export";
 import { serializeExpensesCsv, serializeIncomesCsv, serializeInvoicesCsv, serializePositionsCsv } from "@/domain/export";
-import { usePortfolioPosition, useUserPreferences, useUpdateReminderPreferences, useUpdateCustomSettings } from "@/state";
+import { usePortfolioPosition, useUserPreferences, useUpdateReminderPreferences, useUpdateCustomSettings, useUserAccess } from "@/state";
+
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useSearchParams } from "react-router";
 import { pushToast } from "@/services/toast";
@@ -186,7 +187,9 @@ export function SettingsPage() {
   const privacyMasked = usePrivacyMask();
   const visual = useVisualCustomization();
   const { user } = useAuth();
+  const { hasFeature } = useUserAccess();
   const queryClient = useQueryClient();
+
   const { signOut } = useSignOut();
   const portfolioPosition = usePortfolioPosition();
   const preferencesQuery = useUserPreferences();
@@ -1222,206 +1225,215 @@ export function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                <span>Widgets Visíveis na Visão Geral</span>
-                <span className="text-xs text-muted-foreground font-normal">Personalize seu Início</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {(() => {
-                const activeWidgetsCount = Object.values(visual.dashboardWidgets).filter(Boolean).length;
-                return [
-                  { key: "kpis" as const, label: "Resumo de Saldo & KPIs (com Sparklines)", desc: "Entradas, Saídas, Investimentos e Saldo Geral" },
-                  { key: "summary" as const, label: "Saldo Líquido de Contas & Poupança", desc: "A receber, a pagar, faturas abertas e taxa de poupança" },
-                  { key: "flow" as const, label: "Gráfico de Fluxo Diário", desc: "Curva acumulada de receitas versus despesas no mês" },
-                  { key: "donut" as const, label: "Distribuição por Categorias", desc: "Gráfico donut com os maiores destinos do seu dinheiro" },
-                  { key: "budgets" as const, label: "Acompanhamento de Orçamentos", desc: "Barras de consumo e limites por categoria" },
-                  { key: "contextBanners" as const, label: "Banners Contextuais de Atenção & Ritmo", desc: "Avisos inteligentes quando o ritmo de gastos estiver acelerado ou com risco de déficit" },
-                ].map((w) => {
-                  const isChecked = visual.dashboardWidgets[w.key];
-                  const isMinThresholdReached = isChecked && activeWidgetsCount <= 3;
-                  return (
-                    <div
-                      key={w.key}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleToggleDashboardWidget(w.key, w.label, !isChecked)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleToggleDashboardWidget(w.key, w.label, !isChecked);
-                        }
-                      }}
-                      className={cn(
-                        "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
-                        isChecked
-                          ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                          : "border-border bg-surface hover:bg-surface-hover",
-                        isMinThresholdReached ? "opacity-90" : "",
-                      )}
-                    >
-                      <div className="pr-4">
-                        <div className="font-semibold text-sm text-foreground">{w.label}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{w.desc}</div>
+          {hasFeature("overview") && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>Widgets Visíveis na Visão Geral</span>
+                  <span className="text-xs text-muted-foreground font-normal">Personalize seu Início</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {(() => {
+                  const activeWidgetsCount = Object.values(visual.dashboardWidgets).filter(Boolean).length;
+                  return [
+                    { key: "kpis" as const, label: "Resumo de Saldo & KPIs (com Sparklines)", desc: "Entradas, Saídas, Investimentos e Saldo Geral" },
+                    { key: "summary" as const, label: "Saldo Líquido de Contas & Poupança", desc: "A receber, a pagar, faturas abertas e taxa de poupança" },
+                    { key: "flow" as const, label: "Gráfico de Fluxo Diário", desc: "Curva acumulada de receitas versus despesas no mês" },
+                    { key: "donut" as const, label: "Distribuição por Categorias", desc: "Gráfico donut com os maiores destinos do seu dinheiro" },
+                    { key: "budgets" as const, label: "Acompanhamento de Orçamentos", desc: "Barras de consumo e limites por categoria" },
+                    { key: "contextBanners" as const, label: "Banners Contextuais de Atenção & Ritmo", desc: "Avisos inteligentes quando o ritmo de gastos estiver acelerado ou com risco de déficit" },
+                  ].map((w) => {
+                    const isChecked = visual.dashboardWidgets[w.key];
+                    const isMinThresholdReached = isChecked && activeWidgetsCount <= 3;
+                    return (
+                      <div
+                        key={w.key}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleToggleDashboardWidget(w.key, w.label, !isChecked)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleToggleDashboardWidget(w.key, w.label, !isChecked);
+                          }
+                        }}
+                        className={cn(
+                          "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
+                          isChecked
+                            ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                            : "border-border bg-surface hover:bg-surface-hover",
+                          isMinThresholdReached ? "opacity-90" : "",
+                        )}
+                      >
+                        <div className="pr-4">
+                          <div className="font-semibold text-sm text-foreground">{w.label}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">{w.desc}</div>
+                        </div>
+                        <Checkbox
+                          checked={isChecked}
+                          disabled={isMinThresholdReached}
+                          onCheckedChange={(checked) => handleToggleDashboardWidget(w.key, w.label, Boolean(checked))}
+                          aria-label={w.label}
+                        />
                       </div>
-                      <Checkbox
-                        checked={isChecked}
-                        disabled={isMinThresholdReached}
-                        onCheckedChange={(checked) => handleToggleDashboardWidget(w.key, w.label, Boolean(checked))}
-                        aria-label={w.label}
-                      />
-                    </div>
-                  );
-                });
-              })()}
-              <p className="text-xs text-muted-foreground px-0.5 leading-relaxed">
-                Mantenha ao menos 3 widgets ativos para que a tela de Visão Geral exiba uma composição equilibrada de informações.
-              </p>
-            </CardContent>
-          </Card>
+                    );
+                  });
+                })()}
+                <p className="text-xs text-muted-foreground px-0.5 leading-relaxed">
+                  Mantenha ao menos 3 widgets ativos para que a tela de Visão Geral exiba uma composição equilibrada de informações.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Lembretes & Notificações Automáticas */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
-                <span className="min-w-0">Lembretes & Notificações Automáticas</span>
-                <Badge variant={remindersEnabled ? "positive" : "muted"} className="shrink-0">
-                  {remindersEnabled ? "Ativado" : "Desativado"}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => handleToggleReminders(!remindersEnabled)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleToggleReminders(!remindersEnabled);
-                  }
-                }}
-                className={cn(
-                  "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
-                  remindersEnabled
-                    ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                    : "border-border bg-surface hover:bg-surface-hover",
+          {hasFeature("reminders") && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
+                  <span className="min-w-0">Lembretes & Notificações Automáticas</span>
+                  <Badge variant={remindersEnabled ? "positive" : "muted"} className="shrink-0">
+                    {remindersEnabled ? "Ativado" : "Desativado"}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleToggleReminders(!remindersEnabled)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleToggleReminders(!remindersEnabled);
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer select-none",
+                    remindersEnabled
+                      ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                      : "border-border bg-surface hover:bg-surface-hover",
+                  )}
+                >
+                  <div className="pr-4">
+                    <div className="font-semibold text-sm text-foreground">
+                      Habilitar Lembretes no Aplicativo
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Calcula e exibe alertas de faturas de cartão e dívidas no sininho do header e na central de lembretes.
+                    </div>
+                  </div>
+                  <Checkbox
+                    checked={remindersEnabled}
+                    onCheckedChange={handleToggleReminders}
+                    aria-label="Habilitar Lembretes no Aplicativo"
+                  />
+                </div>
+
+                {remindersEnabled && (
+                  <div className="grid gap-4 pt-2 sm:grid-cols-2">
+                    {/* Card: Antecedência para Faturas */}
+                    {hasFeature("cards") && (
+                      <div className="p-4 rounded-xl border border-border bg-surface space-y-4">
+                        <div>
+                          <div className="font-semibold text-sm text-foreground">
+                            Antecedência para Faturas de Cartão
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Momento em que a fatura em aberto entra no radar de atenção antes do vencimento.
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Select
+                            value={
+                              REMINDER_DAYS_OPTIONS.some((o) => o.value === String(billDaysBefore))
+                                ? String(billDaysBefore)
+                                : "custom"
+                            }
+                            onValueChange={(val) => {
+                              if (val !== "custom") {
+                                handleUpdateBillDays(val);
+                              }
+                            }}
+                            options={
+                              REMINDER_DAYS_OPTIONS.some((o) => o.value === String(billDaysBefore))
+                                ? REMINDER_DAYS_OPTIONS
+                                : [...REMINDER_DAYS_OPTIONS, { value: "custom", label: `${billDaysBefore} dias (Personalizado)` }]
+                            }
+                            ariaLabel="Seletor de dias de antecedência para faturas"
+                          />
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <span className="text-xs text-muted-foreground shrink-0">Ajuste fino (dias):</span>
+                            <div className="w-full sm:w-40">
+                              <NumberStepperInput
+                                value={billDaysBefore}
+                                onValueChange={handleUpdateBillDays}
+                                min={0}
+                                max={30}
+                                step={1}
+                                ariaLabel="Dias de antecedência para faturas"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Card: Antecedência para Dívidas */}
+                    {hasFeature("debts") && (
+                      <div className="p-4 rounded-xl border border-border bg-surface space-y-4">
+                        <div>
+                          <div className="font-semibold text-sm text-foreground">
+                            Antecedência para Dívidas
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Prazo de antecedência para alertar sobre parcelas e empréstimos pendentes.
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Select
+                            value={
+                              REMINDER_DAYS_OPTIONS.some((o) => o.value === String(debtDaysBefore))
+                                ? String(debtDaysBefore)
+                                : "custom"
+                            }
+                            onValueChange={(val) => {
+                              if (val !== "custom") {
+                                handleUpdateDebtDays(val);
+                              }
+                            }}
+                            options={
+                              REMINDER_DAYS_OPTIONS.some((o) => o.value === String(debtDaysBefore))
+                                ? REMINDER_DAYS_OPTIONS
+                                : [...REMINDER_DAYS_OPTIONS, { value: "custom", label: `${debtDaysBefore} dias (Personalizado)` }]
+                            }
+                            ariaLabel="Seletor de dias de antecedência para dívidas"
+                          />
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <span className="text-xs text-muted-foreground shrink-0">Ajuste fino (dias):</span>
+                            <div className="w-full sm:w-40">
+                              <NumberStepperInput
+                                value={debtDaysBefore}
+                                onValueChange={handleUpdateDebtDays}
+                                min={0}
+                                max={30}
+                                step={1}
+                                ariaLabel="Dias de antecedência para dívidas"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-              >
-                <div className="pr-4">
-                  <div className="font-semibold text-sm text-foreground">
-                    Habilitar Lembretes no Aplicativo
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Calcula e exibe alertas de faturas de cartão e dívidas no sininho do header e na central de lembretes.
-                  </div>
-                </div>
-                <Checkbox
-                  checked={remindersEnabled}
-                  onCheckedChange={handleToggleReminders}
-                  aria-label="Habilitar Lembretes no Aplicativo"
-                />
-              </div>
+              </CardContent>
+            </Card>
+          )}
 
-              {remindersEnabled && (
-                <div className="grid gap-4 pt-2 sm:grid-cols-2">
-                  {/* Card: Antecedência para Faturas */}
-                  <div className="p-4 rounded-xl border border-border bg-surface space-y-4">
-                    <div>
-                      <div className="font-semibold text-sm text-foreground">
-                        Antecedência para Faturas de Cartão
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Momento em que a fatura em aberto entra no radar de atenção antes do vencimento.
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Select
-                        value={
-                          REMINDER_DAYS_OPTIONS.some((o) => o.value === String(billDaysBefore))
-                            ? String(billDaysBefore)
-                            : "custom"
-                        }
-                        onValueChange={(val) => {
-                          if (val !== "custom") {
-                            handleUpdateBillDays(val);
-                          }
-                        }}
-                        options={
-                          REMINDER_DAYS_OPTIONS.some((o) => o.value === String(billDaysBefore))
-                            ? REMINDER_DAYS_OPTIONS
-                            : [...REMINDER_DAYS_OPTIONS, { value: "custom", label: `${billDaysBefore} dias (Personalizado)` }]
-                        }
-                        ariaLabel="Seletor de dias de antecedência para faturas"
-                      />
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <span className="text-xs text-muted-foreground shrink-0">Ajuste fino (dias):</span>
-                        <div className="w-full sm:w-40">
-                          <NumberStepperInput
-                            value={billDaysBefore}
-                            onValueChange={handleUpdateBillDays}
-                            min={0}
-                            max={30}
-                            step={1}
-                            ariaLabel="Dias de antecedência para faturas"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card: Antecedência para Dívidas */}
-                  <div className="p-4 rounded-xl border border-border bg-surface space-y-4">
-                    <div>
-                      <div className="font-semibold text-sm text-foreground">
-                        Antecedência para Dívidas
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Prazo de antecedência para alertar sobre parcelas e empréstimos pendentes.
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Select
-                        value={
-                          REMINDER_DAYS_OPTIONS.some((o) => o.value === String(debtDaysBefore))
-                            ? String(debtDaysBefore)
-                            : "custom"
-                        }
-                        onValueChange={(val) => {
-                          if (val !== "custom") {
-                            handleUpdateDebtDays(val);
-                          }
-                        }}
-                        options={
-                          REMINDER_DAYS_OPTIONS.some((o) => o.value === String(debtDaysBefore))
-                            ? REMINDER_DAYS_OPTIONS
-                            : [...REMINDER_DAYS_OPTIONS, { value: "custom", label: `${debtDaysBefore} dias (Personalizado)` }]
-                        }
-                        ariaLabel="Seletor de dias de antecedência para dívidas"
-                      />
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <span className="text-xs text-muted-foreground shrink-0">Ajuste fino (dias):</span>
-                        <div className="w-full sm:w-40">
-                          <NumberStepperInput
-                            value={debtDaysBefore}
-                            onValueChange={handleUpdateDebtDays}
-                            min={0}
-                            max={30}
-                            step={1}
-                            ariaLabel="Dias de antecedência para dívidas"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       ),
     },
@@ -1467,7 +1479,13 @@ export function SettingsPage() {
             onExportCsv={handleExportCsv}
             onRestore={handleRestoreFile}
             onConfirmRestore={handleConfirmRestore}
+            availableCsvKinds={[
+              ...(hasFeature("transactions") ? (["expenses", "incomes"] as const) : []),
+              ...(hasFeature("cards") ? (["invoices"] as const) : []),
+              ...(hasFeature("investments") ? (["positions"] as const) : []),
+            ]}
           />
+
 
           <Card>
             <CardHeader>

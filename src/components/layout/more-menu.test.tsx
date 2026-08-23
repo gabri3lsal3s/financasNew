@@ -21,9 +21,8 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-
 describe("MoreMenu", () => {
-  it("não renderiza Início, Transações nem Cartões (já presentes na barra de navegação)", () => {
+  it("não renderiza itens promovidos para os slots principais da barra de navegação (Início, Transações, Cartões, Investimentos)", () => {
     render(
       <MemoryRouter>
         <MoreMenu />
@@ -33,6 +32,7 @@ describe("MoreMenu", () => {
     expect(screen.queryByText("Início")).not.toBeInTheDocument();
     expect(screen.queryByText("Transações")).not.toBeInTheDocument();
     expect(screen.queryByText("Cartões")).not.toBeInTheDocument();
+    expect(screen.queryByText("Investimentos")).not.toBeInTheDocument();
   });
 
   it("renderiza as opções secundárias consolidadas", () => {
@@ -45,7 +45,6 @@ describe("MoreMenu", () => {
     expect(screen.getByText("Planejamento & Análise")).toBeInTheDocument();
     expect(screen.getByText("Notificações & Sistema")).toBeInTheDocument();
     expect(screen.getByText("Dívidas")).toBeInTheDocument();
-    expect(screen.getByText("Investimentos")).toBeInTheDocument();
     expect(screen.getByText("Relatórios")).toBeInTheDocument();
     expect(screen.getByText("Insights")).toBeInTheDocument();
     expect(screen.getByText("Categorias")).toBeInTheDocument();

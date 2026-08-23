@@ -1,30 +1,31 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { navGroups, filterNavItems } from "@/components/layout/nav-items";
+import { navGroups, filterNavItems, navItems } from "@/components/layout/nav-items";
+import { resolveBottomNavSlots } from "@/domain/navigation";
 import { InstallAppButton } from "@/components/modules/install-app-button";
 import { useReminders, useUserAccess } from "@/state";
 import { cn } from "@/lib/utils";
-
-/** Itens fixos na BottomNav que não devem ser duplicados no menu "Mais". */
-const BOTTOM_NAV_PATHS = new Set(["/", "/transacoes", "/cartoes"]);
 
 export function MoreMenu() {
   const { totalCount, urgentCount } = useReminders();
   const { isAdmin, hasFeature } = useUserAccess();
 
   const groups = useMemo(() => {
+    const allowedItems = filterNavItems(navItems, isAdmin, hasFeature);
+    const { primarySlots } = resolveBottomNavSlots(allowedItems);
+    const bottomNavPaths = new Set(primarySlots.map((s) => s.path));
+
     return navGroups
       .map((group) => ({
         title: group.title,
         items: filterNavItems(
-          group.items.filter((item) => !BOTTOM_NAV_PATHS.has(item.path)),
+          group.items.filter((item) => !bottomNavPaths.has(item.path)),
           isAdmin,
           hasFeature,
         ),
       }))
       .filter((group) => group.items.length > 0);
   }, [isAdmin, hasFeature]);
-
 
   return (
     <div className="space-y-6">
@@ -74,5 +75,3 @@ export function MoreMenu() {
     </div>
   );
 }
-
-

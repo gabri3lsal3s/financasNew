@@ -12,12 +12,13 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { SystemFeatureKey } from "@/types";
 
 export interface NavItem {
   label: string;
   path: string;
   icon: LucideIcon;
-  featureKey?: string;
+  featureKey?: SystemFeatureKey | string;
   adminOnly?: boolean;
 }
 
@@ -28,9 +29,9 @@ export interface NavGroup {
 
 /** Fonte única da navegação — usada pela Sidebar, BottomNav e menu "Mais". */
 export const navItems: NavItem[] = [
-  { label: "Início", path: "/", icon: House },
-  { label: "Transações", path: "/transacoes", icon: ArrowLeftRight },
-  { label: "Cartões", path: "/cartoes", icon: CreditCard },
+  { label: "Início", path: "/", icon: House, featureKey: "overview" },
+  { label: "Transações", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
+  { label: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
   { label: "Dívidas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
   { label: "Investimentos", path: "/investments", icon: ChartLine, featureKey: "investments" },
   { label: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
@@ -46,9 +47,9 @@ export const navGroups: NavGroup[] = [
   {
     title: "Dia a Dia",
     items: [
-      { label: "Início", path: "/", icon: House },
-      { label: "Transações", path: "/transacoes", icon: ArrowLeftRight },
-      { label: "Cartões", path: "/cartoes", icon: CreditCard },
+      { label: "Início", path: "/", icon: House, featureKey: "overview" },
+      { label: "Transações", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
+      { label: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
     ],
   },
   {
