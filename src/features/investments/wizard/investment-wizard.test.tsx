@@ -35,6 +35,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useGroupTargets: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   useCreatePortfolioAsset: () => ({
     mutateAsync: vi.fn().mockResolvedValue({ id: "new-asset-id", ticker: "WEGE3" }),
     isPending: false,

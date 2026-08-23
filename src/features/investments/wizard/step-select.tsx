@@ -25,6 +25,7 @@ export interface StepSelectProps {
     assetClass?: string | null;
   }[];
   targets: readonly AllocationTarget[];
+  classTargets?: readonly { name: string; target_percentage: number }[];
   totalPortfolioBRL: number;
   onSelectResult: (result: TickerSearchResult) => void;
   onSelectSuggestion: (item: AporteSuggestionItem) => void;
@@ -36,6 +37,7 @@ export function StepSelect({
   existingAssets,
   assetRows,
   targets,
+  classTargets,
   totalPortfolioBRL,
   onSelectResult,
   onSelectSuggestion,
@@ -45,10 +47,10 @@ export function StepSelect({
     [state.searchQuery, existingAssets],
   );
 
-  // Top 3 recomendações baseadas em metas (maior gap = maior prioridade)
+  // Top 3 recomendações baseadas no motor hierárquico (classe -> ativo)
   const aporteSuggestions = useMemo(
-    () => buildAporteSuggestions(existingAssets, assetRows, targets, totalPortfolioBRL, 3),
-    [existingAssets, assetRows, targets, totalPortfolioBRL],
+    () => buildAporteSuggestions(existingAssets, assetRows, targets, totalPortfolioBRL, 3, classTargets),
+    [existingAssets, assetRows, targets, classTargets, totalPortfolioBRL],
   );
 
   // Mapa de sugestão por assetId para enriquecer resultados de busca

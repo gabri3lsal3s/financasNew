@@ -1,13 +1,10 @@
 import { useState } from "react";
-import { Calculator } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, RadioGroup, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
+import { Calculator, Sparkles } from "lucide-react";
+import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
   simulateCombinedAporte,
-  simulateRebalanceAporte,
-  simulateSmartAporte,
   type AporteAssetInput,
-  type AporteMode,
   type ClassTargetInput,
 } from "@/domain/portfolio";
 import { todayISO } from "@/domain/debts";
@@ -25,8 +22,7 @@ import { TargetsTab } from "./targets-tab";
 type AporteSubTab = "calculadora" | "metas" | "historico";
 
 /**
- * Calculadora de aporte (§F36) — simulação hierárquica (Classe -> Ativo) em 3 modos:
- * combinado (padrão), por meta individual ou por meta de classe.
+ * Calculadora de aporte (§F36) — simulação hierárquica unificada (Classe -> Ativo).
  * Ao aplicar o lote, executa a transação atômica via RPC (`execute_portfolio_batch_aporte`)
  * atualizando posições, registrando compras em `portfolio_transactions` e histórico em `portfolio_contributions`.
  *
@@ -43,7 +39,6 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
 
   const [subTab, setSubTab] = useState<AporteSubTab>("calculadora");
   const [aporteCents, setAporteCents] = useState(0);
-  const [mode, setMode] = useState<AporteMode>("both");
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
@@ -71,11 +66,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
 
   const result =
     aporteCents > 0 && assets.length > 0
-      ? mode === "asset"
-        ? simulateSmartAporte({ aporte: aporteCents / 100, assets })
-        : mode === "class"
-          ? simulateRebalanceAporte({ aporte: aporteCents / 100, assets, classTargets })
-          : simulateCombinedAporte({ aporte: aporteCents / 100, assets, classTargets })
+      ? simulateCombinedAporte({ aporte: aporteCents / 100, assets, classTargets })
       : null;
 
   const routes: AporteRouteRow[] =
@@ -124,95 +115,95 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     }
   };
 
-  const calculadoraContent = (
-    <div className="flex flex-col gap-6">
-      {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
-      {batchError ? <Alert variant="error">{batchError}</Alert> : null}
+  return (
+    <div className="flex flex-col gap-5">
+      <Tabs
+        value={subTab}
+        onValueChange={(v) => {
+          setSubTab(v as AporteSubTab);
+          triggerSensory("selection");
+        }}
+        items={[
+          { value: "calculadora", label: "Calculadora" },
+          { value: "metas", label: "Metas de Alocação" },
+          { value: "historico", label: "Histórico de Aportes" },
+        ]}
+      />
 
-      {loading ? (
-        <div className="flex flex-col gap-3" aria-hidden="true">
-          <SkeletonKpi />
-          <SkeletonChart />
-        </div>
-      ) : assets.length === 0 ? (
-        <EmptyState
-          icon={<Calculator className="size-6" aria-hidden="true" />}
-          title="Carteira vazia"
-          description="Adicione ativos na aba Resumo antes de simular o aporte."
-          tone="portfolio"
-          headingLevel="h2"
-          action={
-            onGoToPosition ? (
-              <Button type="button" onClick={onGoToPosition}>
-                Ir para Resumo
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
+      {subTab === "metas" && <TargetsTab onGoToPosition={onGoToPosition} />}
+
+      {subTab === "historico" && <ContributionsPanel />}
+
+      {subTab === "calculadora" && (
         <>
-          <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-w-0">
-              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground min-w-0">
-                Valor do aporte
-                <MoneyInput
-                  cents={aporteCents}
-                  onCentsChange={setAporteCents}
-                  size="md"
-                  aria-label="Valor do aporte"
-                  placeholder="R$ 0,00"
-                />
-                {position.cashBRL > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAporteCents(Math.round(position.cashBRL * 100));
-                      triggerSensory("selection");
-                    }}
-                    className="self-start text-[11px] text-portfolio hover:underline font-medium cursor-pointer pt-0.5"
-                  >
-                    Usar saldo em caixa (R$ {position.cashBRL.toFixed(2)})
-                  </button>
-                ) : null}
-              </label>
-              <fieldset className="flex flex-col gap-1 text-xs font-medium text-muted-foreground min-w-0">
-                <legend className="text-xs font-medium text-muted-foreground mb-1">Modo de simulação</legend>
-                <RadioGroup
-                  name="aporte-mode"
-                  value={mode}
-                  onValueChange={(val) => setMode(val as AporteMode)}
-                  options={[
-                    {
-                      value: "both",
-                      label: "Ativo e classe",
-                    },
-                    {
-                      value: "asset",
-                      label: "Meta por ativo",
-                    },
-                    {
-                      value: "class",
-                      label: "Meta por classe",
-                    },
-                  ]}
-                />
-              </fieldset>
-            </div>
-          </section>
+          {batchError ? <Alert variant="error">{batchError}</Alert> : null}
 
-          {result ? (
-            <AporteResult
-              mode={mode}
-              aporte={result.aporte}
-              totalAllocated={result.totalAllocated}
-              leftover={result.leftover}
-              routes={routes}
-              classSummaries={result.classSummaries}
-              skippedAssets={result.skippedAssets}
-              onExecuteAporte={eligibleRoutes.length > 0 ? () => setConfirmBatchOpen(true) : undefined}
-              executing={isApplying}
+          {loading ? (
+            <div className="flex flex-col gap-4">
+              <SkeletonKpi />
+              <SkeletonChart />
+            </div>
+          ) : error ? (
+            <Alert variant="error">{getErrorMessage(error)}</Alert>
+          ) : nonCashRows.length === 0 ? (
+            <EmptyState
+              icon={<Calculator className="size-6" />}
+              title="Nenhum ativo investido para simular aporte"
+              description="Cadastre ativos e metas na aba 'Metas' para que a calculadora distribua seu aporte de forma ideal."
+              action={
+                <Button variant="default" onClick={() => setSubTab("metas")}>
+                  Configurar Metas
+                </Button>
+              }
             />
-          ) : null}
+          ) : (
+            <>
+              <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full min-w-0">
+                  Valor do aporte
+                  <MoneyInput
+                    cents={aporteCents}
+                    onCentsChange={setAporteCents}
+                    size="md"
+                    aria-label="Valor do aporte"
+                    placeholder="R$ 0,00"
+                  />
+                  {position.cashBRL > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAporteCents(Math.round(position.cashBRL * 100));
+                        triggerSensory("selection");
+                      }}
+                      className="self-start text-[11px] text-portfolio hover:underline font-medium cursor-pointer pt-0.5"
+                    >
+                      Usar saldo em caixa (R$ {position.cashBRL.toFixed(2)})
+                    </button>
+                  ) : null}
+                </label>
+                <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
+                  <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+                  <span>
+                    <strong className="font-semibold text-foreground">Motor Hierárquico:</strong> Estabiliza primeiro a macroclasse com maior déficit e depois distribui pelas metas dos ativos.
+                  </span>
+                </div>
+              </section>
+
+              {result ? (
+                <AporteResult
+                  mode="both"
+                  aporte={result.aporte}
+                  totalAllocated={result.totalAllocated}
+                  leftover={result.leftover}
+                  routes={routes}
+                  classSummaries={result.classSummaries}
+                  skippedAssets={result.skippedAssets}
+                  onExecuteAporte={eligibleRoutes.length > 0 ? () => setConfirmBatchOpen(true) : undefined}
+                  executing={isApplying}
+                />
+              ) : null}
+            </>
+          )}
         </>
       )}
 
@@ -226,30 +217,5 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         onConfirm={() => void handleExecuteBatch()}
       />
     </div>
-  );
-
-  return (
-    <Tabs
-      value={subTab}
-      onValueChange={(value) => setSubTab(value as AporteSubTab)}
-      variant="pills"
-      items={[
-        {
-          value: "calculadora",
-          label: "Calculadora",
-          content: calculadoraContent,
-        },
-        {
-          value: "metas",
-          label: "Metas",
-          content: <TargetsTab onGoToPosition={onGoToPosition} />,
-        },
-        {
-          value: "historico",
-          label: "Histórico",
-          content: <ContributionsPanel />,
-        },
-      ]}
-    />
   );
 }

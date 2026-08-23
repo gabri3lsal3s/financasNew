@@ -117,7 +117,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 | Tabela | Colunas-chave | Constraints / Notas |
 |---|---|---|
 | `profiles` | id (PK = auth.users.id), name, email, created_at | Criada no signup (trigger) |
-| `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled, max_sector_acoes, max_sector_fiis | — |
+| `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled | — |
 | `categories` | id, user_id, type (`expense \| income`), name, icon, color, is_reserved (ex.: "Estorno"), is_active | Nome único por (user, type); reservadas não são editáveis/excluíveis nos fluxos normais |
 | `incomes` | id, user_id, value, date, category_id (FK), receive_type (`cash \| pix \| transfer \| other`), description, report_weight (default 1, 0–1), source_ref (para rendas automáticas `[REFUND]`), created_at | Check: value > 0; date ≥ APP_START_DATE; report_weight 0–1; rendas com `source_ref` = somente-leitura |
 | `expenses` | id, user_id, value, date, category_id, payment_method (`cash \| debit \| credit_card \| pix \| transfer \| other`), card_id (FK nullable), installments_total (1–60), installment_number, installment_group_id (UUID, nullable), bill_competence (`YYYY-MM` snapshot, nullable), report_weight, base_amount (valor original p/ auditoria de pesos), description, created_at | Check: value > 0; date ≥ APP_START_DATE; installments 1–60; **card_id NOT NULL quando payment_method = `credit_card`**; `installment_group_id` presente sse installments_total > 1 |
@@ -385,20 +385,18 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Preço Médio Ponderado em Novos Lotes (`calculateWeightedAveragePrice`):**
   - $\text{Novo PM} = \frac{(\text{Qtd Atual} \times \text{PM Atual}) + (\text{Qtd Nova} \times \text{Preço Novo})}{\text{Qtd Atual} + \text{Qtd Nova}}$
 - Tickers de caixa/renda fixa operam em modo Saldo Direto 1:1 (quantidade = valor, PM = 1,00).
-- `pctAtual = valorAtual ÷ patrimônioTotal × 100`; `gapPct = target − pctAtual`; `gapFinanceiro = gapPct% × patrimônioTotal`.
+#### 3.11.3 Algoritmo de Aporte Hierárquico (`simulateCombinedAporte`)
 
-#### 3.11.3 Algoritmo de Aporte (`simulateSmartAporte` / `simulateRebalanceAporte`)
+1. **Defasagem macro por classe:** classe com maior déficit relativo recebe prioridade de orçamentação.
+2. **Distribuição micro por ativo:** a verba da classe é distribuída entre seus membros com base no gap das metas individuais ou cota equiponderada ($1/N$).
+3. **Elegibilidade:** meta definida (individual ou de classe), cotação disponível, abaixo da meta (gap > 0).
+4. **Ordenação:** prioridade da classe com maior déficit relativo desc; dentro da classe, gap financeiro desc.
+5. **Transbordamento:** sobras internas de classe retornam ao pool para atender a próxima classe defasada.
+6. **Quantidades inteiras e fracionárias:** suporte a cotas inteiras para ativos convencionais e decimais para criptoativos.
+7. **Sobra:** não alocada (arredondamento/preço mínimo) → caixa/reserva.
+8. **Log de roteamento:** por ativo — valor alvo, atual, aporte sugerido, quantidade, preço; sobra final e diagnósticos.
 
-1. **Defasagem macro por classe:** classe com maior déficit relativo recebe prioridade.
-2. **Elegibilidade:** meta definida, não zerada, folga no limite absoluto.
-3. **Ordenação:** gap financeiro desc (maior déficit primeiro), respeitando prioridade da classe.
-4. **Distribuição:** aloca até cobrir cada gap (respeitando limite absoluto = meta individual ou fração da meta da classe).
-5. **Travas setoriais:** `max_sector_acoes` / `max_sector_fiis` impedem alocação acima do teto.
-6. **Quantidades inteiras:** preço × quantidade ≤ valor alocado; excedente vai para o próximo ativo.
-7. **Sobra:** não alocada (teto/trava/arredondamento) → caixa/reserva.
-8. **Log de roteamento:** por ativo — valor alvo, atual, aporte sugerido, quantidade, preço; sobra final.
-
-**Consistência:** soma dos aportes nunca excede o aporte informado; ativo sem meta não recebe aporte; aporte só para ativos **abaixo** da meta (gap > 0); modos **por meta de ativo** ou **por meta de classe**.
+**Consistência:** soma dos aportes nunca excede o aporte informado; ativo sem meta não recebe aporte; aporte só para ativos **abaixo** da meta (gap > 0); motor hierárquico único e opinado.
 
 ---
 

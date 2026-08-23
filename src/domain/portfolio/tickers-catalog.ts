@@ -251,8 +251,8 @@ export function searchTickers(
 }
 
 /**
- * Gera sugestões preditivas de aporte baseadas nas maiores defasagens (gaps)
- * em relação às metas cadastradas na carteira.
+ * Gera sugestões preditivas de aporte baseadas na lógica hierárquica
+ * (defasagem macro da classe -> maior gap financeiro do ativo em relação às metas).
  */
 export function buildAporteSuggestions(
   assets: readonly PortfolioAsset[],
@@ -266,16 +266,78 @@ export function buildAporteSuggestions(
   targets: readonly { asset_id: string; target_percentage: number }[],
   totalPortfolioBRL: number,
   limit = 3,
+  classTargets?: readonly { name: string; target_percentage: number }[],
 ): AporteSuggestionItem[] {
-  if (totalPortfolioBRL <= 0 || targets.length === 0) return [];
+  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0);
+  if (totalPortfolioBRL <= 0 || !hasTargets) return [];
 
   const targetMap = new Map(targets.map((t) => [t.asset_id, t.target_percentage]));
+  const classTargetMap = new Map((classTargets ?? []).map((t) => [t.name, t.target_percentage]));
   const rowMap = new Map(assetRows.map((r) => [r.assetId, r]));
 
-  const suggestions: AporteSuggestionItem[] = [];
+  // Agrupamento por classe
+  const assetsByClass = new Map<string, PortfolioAsset[]>();
+  for (const asset of assets) {
+    const key = asset.asset_class ?? "";
+    const list = assetsByClass.get(key) ?? [];
+    list.push(asset);
+    assetsByClass.set(key, list);
+  }
 
+  // Resolução de metas efetivas hierárquicas
+  const effectiveTargetMap = new Map<string, number>();
+
+  // 1. Metas individuais diretas
   for (const asset of assets) {
     const targetPct = targetMap.get(asset.id);
+    if (targetPct && targetPct > 0) {
+      effectiveTargetMap.set(asset.id, targetPct);
+    }
+  }
+
+  // 2. Metas de classe distribuídas equiponderadamente para ativos sem meta própria
+  for (const [className, members] of assetsByClass) {
+    const classTargetPct = classTargetMap.get(className) ?? 0;
+    if (!(classTargetPct > 0)) continue;
+
+    const unassigned = members.filter((a) => !effectiveTargetMap.has(a.id));
+    if (unassigned.length === 0) continue;
+
+    const assignedSum = members
+      .filter((a) => effectiveTargetMap.has(a.id))
+      .reduce((acc, a) => acc + (targetMap.get(a.id) ?? 0), 0);
+
+    const remainingClassPct = Math.max(0, classTargetPct - assignedSum);
+    if (remainingClassPct > 0) {
+      const share = remainingClassPct / unassigned.length;
+      for (const member of unassigned) {
+        effectiveTargetMap.set(member.id, share);
+      }
+    }
+  }
+
+  // Estatísticas macro por classe para ordenação hierárquica
+  const classDeficitMap = new Map<string, number>();
+  for (const [className, members] of assetsByClass) {
+    const classTargetPct = classTargetMap.get(className) ?? 0;
+    const classTargetValueBRL = (totalPortfolioBRL * classTargetPct) / 100;
+    const classCurrentValueBRL = members.reduce((acc, a) => acc + (rowMap.get(a.id)?.valueBRL ?? 0), 0);
+
+    const deficitRel =
+      classTargetValueBRL > 0
+        ? Math.max(0, (classTargetValueBRL - classCurrentValueBRL) / classTargetValueBRL)
+        : 0;
+    classDeficitMap.set(className, deficitRel);
+  }
+
+  interface SuggestionWithPriority extends AporteSuggestionItem {
+    classDeficitRel: number;
+  }
+
+  const suggestions: SuggestionWithPriority[] = [];
+
+  for (const asset of assets) {
+    const targetPct = effectiveTargetMap.get(asset.id);
     if (!targetPct || targetPct <= 0) continue;
 
     const row = rowMap.get(asset.id);
@@ -285,25 +347,44 @@ export function buildAporteSuggestions(
     const gapBRL = targetValueBRL - currentValueBRL;
 
     if (gapBRL > 0) {
+      const className = asset.asset_class ?? "Ações";
       suggestions.push({
         assetId: asset.id,
         ticker: cleanTicker(asset.ticker),
-        assetClass: asset.asset_class ?? "Ações",
+        assetClass: className,
         currentValueBRL,
         targetValueBRL,
         gapBRL: Math.round(gapBRL * 100) / 100,
         targetPercentage: targetPct,
         currentPercentage: currentPct,
+        classDeficitRel: classDeficitMap.get(asset.asset_class ?? "") ?? 0,
       });
     }
   }
 
-  return suggestions.sort((a, b) => b.gapBRL - a.gapBRL).slice(0, limit);
+  return suggestions
+    .sort((a, b) => {
+      if (Math.abs(b.classDeficitRel - a.classDeficitRel) > 0.001) {
+        return b.classDeficitRel - a.classDeficitRel;
+      }
+      return b.gapBRL - a.gapBRL;
+    })
+    .slice(0, limit)
+    .map((item) => ({
+      assetId: item.assetId,
+      ticker: item.ticker,
+      assetClass: item.assetClass,
+      currentValueBRL: item.currentValueBRL,
+      targetValueBRL: item.targetValueBRL,
+      gapBRL: item.gapBRL,
+      targetPercentage: item.targetPercentage,
+      currentPercentage: item.currentPercentage,
+    }));
 }
 
 /**
- * Retorna os ativos que possuem metas definidas, ordenados por maior gap de aporte
- * (maior defasagem em relação à meta = maior prioridade), no formato TickerSearchResult.
+ * Retorna os ativos que possuem metas definidas, ordenados pela lógica hierárquica
+ * (classe mais defasada -> maior gap de aporte), no formato TickerSearchResult.
  * Usado na lista "recomendados" do wizard quando não há busca ativa.
  */
 export function buildTopSuggestionResults(
@@ -318,10 +399,12 @@ export function buildTopSuggestionResults(
   targets: readonly { asset_id: string; target_percentage: number }[],
   totalPortfolioBRL: number,
   limit = 5,
+  classTargets?: readonly { name: string; target_percentage: number }[],
 ): TickerSearchResult[] {
-  if (targets.length === 0) return [];
+  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0);
+  if (!hasTargets) return [];
 
-  const suggestions = buildAporteSuggestions(assets, assetRows, targets, totalPortfolioBRL, limit);
+  const suggestions = buildAporteSuggestions(assets, assetRows, targets, totalPortfolioBRL, limit, classTargets);
 
   return suggestions.map((item) => {
     const asset = assets.find((a) => a.id === item.assetId);
@@ -338,3 +421,4 @@ export function buildTopSuggestionResults(
     };
   });
 }
+

@@ -112,6 +112,39 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
       expect(suggestions[0]!.targetValueBRL).toBe(2000);
     });
 
+    it("suporta metas de classe distribuídas equiponderadamente para ativos sem meta individual", () => {
+      const suggestions = buildAporteSuggestions(
+        mockAssets,
+        mockRows,
+        [], // sem metas individuais
+        10000,
+        3,
+        [{ name: "FIIs", target_percentage: 20 }], // Classe FIIs com 20% = 2.000 (MXRF11 atual 500 -> gap 1.500)
+      );
+      expect(suggestions.length).toBe(1);
+      expect(suggestions[0]!.ticker).toBe("MXRF11");
+      expect(suggestions[0]!.gapBRL).toBe(1500);
+    });
+
+    it("prioriza a classe com maior déficit relativo", () => {
+      const assetsWithTwoClasses: PortfolioAsset[] = [
+        { id: "a-1", user_id: "u-1", ticker: "PETR4", asset_class: "Ações", currency: "BRL", quantity: 10, average_price: 10 },
+        { id: "a-2", user_id: "u-1", ticker: "HGLG11", asset_class: "FIIs", currency: "BRL", quantity: 10, average_price: 10 },
+      ];
+      const rows = [
+        { assetId: "a-1", ticker: "PETR4", valueBRL: 100, pct: 10, assetClass: "Ações" },
+        { assetId: "a-2", ticker: "HGLG11", valueBRL: 30, pct: 3, assetClass: "FIIs" },
+      ];
+      // Ações: alvo 200, atual 100 -> déficit rel 50%, gap 100
+      // FIIs: alvo 100, atual 30 -> déficit rel 70%, gap 70
+      const classTargets = [
+        { name: "Ações", target_percentage: 20 },
+        { name: "FIIs", target_percentage: 10 },
+      ];
+      const suggestions = buildAporteSuggestions(assetsWithTwoClasses, rows, [], 1000, 3, classTargets);
+      expect(suggestions.map((s) => s.ticker)).toEqual(["HGLG11", "PETR4"]);
+    });
+
     it("retorna lista vazia quando não há metas ou patrimônio zerado", () => {
       expect(buildAporteSuggestions(mockAssets, mockRows, [], 10000)).toEqual([]);
       expect(buildAporteSuggestions(mockAssets, mockRows, mockTargets, 0)).toEqual([]);

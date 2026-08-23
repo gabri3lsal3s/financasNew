@@ -7,6 +7,7 @@ import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/div
 import {
   useAllocationTargets,
   useCreatePortfolioAsset,
+  useGroupTargets,
   usePortfolioAssets,
   usePortfolioPosition,
   useRecordOrder,
@@ -40,13 +41,8 @@ export interface InvestmentWizardProps {
   initialMode?: WizardMode;
 }
 
-interface InvestmentWizardContentProps {
+export interface InvestmentWizardContentProps extends InvestmentWizardProps {
   open: boolean;
-  onOpenChange?: (open: boolean) => void;
-  onClose?: () => void;
-  onSuccess?: () => void;
-  initialAsset: PortfolioAsset | null;
-  initialMode: WizardMode;
 }
 
 function InvestmentWizardContent({
@@ -60,6 +56,7 @@ function InvestmentWizardContent({
   const assetsQuery = usePortfolioAssets();
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
+  const classTargetsQuery = useGroupTargets("class");
   const createAsset = useCreatePortfolioAsset();
   const recordOrder = useRecordOrder();
   const saveTargets = useSaveAllocationTargets();
@@ -67,11 +64,12 @@ function InvestmentWizardContent({
 
   const existingAssets = assetsQuery.data ?? [];
   const targets = targetsQuery.data ?? [];
+  const classTargets = classTargetsQuery.data ?? [];
   const cashAsset = existingAssets.find((a) => isCashAssetClass(a.asset_class)) ?? null;
 
   const [state, setState] = useState<InvestmentWizardState>(() => {
     if (initialAsset) {
-      const mode: WizardMode = initialMode !== "select" ? initialMode : "buy";
+      const mode: WizardMode = initialMode && initialMode !== "select" ? initialMode : "buy";
       return {
         ...defaultWizardState,
         mode,
@@ -377,6 +375,7 @@ function InvestmentWizardContent({
               existingAssets={existingAssets}
               assetRows={position.rows}
               targets={targets}
+              classTargets={classTargets}
               totalPortfolioBRL={position.totalBRL}
               onSelectResult={(res) => {
                 const isCash = isCashAssetClass(res.assetClass);
@@ -437,6 +436,7 @@ function InvestmentWizardContent({
               existingAssets={existingAssets}
               assetRows={position.rows}
               targets={targets}
+              classTargets={classTargets}
               totalPortfolioBRL={position.totalBRL}
               onSelectResult={(res) => {
                 const isCash = isCashAssetClass(res.assetClass);

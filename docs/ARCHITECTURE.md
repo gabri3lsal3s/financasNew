@@ -233,9 +233,9 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
   - Modelo de custódia direta em `portfolio_assets` (`quantity`, `average_price`), proporcionando valoração instantânea $O(1)$ (`calculatePositionSummary`) com conversão cambial USD/BRL e PnL não realizado.
   - Histórico patrimonial via snapshots mensais (`portfolio_snapshots`), gravados automaticamente e lidos em $O(1)$, dispensando o processamento de ledger transacional de ponta a ponta.
   - Aportes mensais (`portfolio_contributions`) e proventos (`portfolio_dividends`) desacoplados para integração direta com os fluxos da Overview e Insights.
-  - **Rebalanceamento Hierárquico Classe $\rightarrow$ Ativo (`simulateSmartAporte` / `simulateRebalanceAporte` / `simulateCombinedAporte`):**
-    1. *Nível Macro (Classe):* estabiliza primeiro as classes deficitárias com base no déficit relativo e travas setoriais (`max_sector_acoes` / `max_sector_fiis`);
-    2. *Nível Micro (Ativo):* a verba designada à classe é distribuída exclusivamente entre seus membros (com equiponderação $1/N$ e convergência balanceada);
+  - **Rebalanceamento Hierárquico Unificado Classe $\rightarrow$ Ativo (`simulateCombinedAporte`):**
+    1. *Nível Macro (Classe):* estabiliza primeiro as classes deficitárias com base no déficit relativo das metas de classe;
+    2. *Nível Micro (Ativo):* a verba designada à classe é distribuída exclusivamente entre seus membros com base no gap das metas individuais ou equiponderação $1/N$;
     3. *Transbordamento & Fracionários:* sobras internas de classe retornam ao pool para atender a próxima classe; suporte nativo a cotas decimais em Cripto (até 8 casas) e painel diagnóstico de ativos não contemplados;
     4. *Gravação Atômica Transacional:* execução em 1-clique via RPC `execute_portfolio_batch_aporte`, atualizando posições em `portfolio_assets`, lançando compras individuais em `portfolio_transactions` e registrando a contribuição em `portfolio_contributions` numa única transação PostgreSQL.
 
