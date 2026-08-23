@@ -407,9 +407,19 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 
 ### 14.17 Hierarquia de Abas, Rótulos Únicos & Alinhamento Responsivo (Underline Nível 1 & Pills Nível 2)
 - **Componente:** `src/components/ui/tabs.tsx` (`variant="underline"` e `variant="pills"`).
-- **Hierarquia Estrita de 2 Níveis:**
-  - **Nível 1 (Navegação Primária da Tela):** **Tabs Padronizadas (`variant="underline"`)** com borda inferior ativa de 2px na cor primária. É a primeira opção e o padrão oficial da aplicação em telas com navegação principal (Investimentos, Categorias, Orçamentos, Dívidas, Lembretes, Insights, Configurações, Relatórios).
-  - **Nível 2 (Subdivisões Internas de Conteúdo):** **Exclusivamente Pills (`variant="pills"`)**. Usado *apenas* quando uma aba de Nível 1 possui sub-divisões internas de dados (ex.: em Investimentos -> Proventos: *Extrato \| Calendário*, Metas: *Ativos \| Classes*, Aporte: *Calculadora \| Histórico*; em Relatórios -> Agregação: *Categorias \| Encargos \| Formas \| Dias*).
+- **Hierarquia Estrita de 2 Níveis e Limite de 3 Abas Principais:**
+  - **Nível 1 (Navegação Primária da Tela):** **Tabs Padronizadas (`variant="underline"`)** com borda inferior ativa de 2px na cor primária. É a primeira opção e o padrão oficial da aplicação em todas as telas principais, configuradas com no máximo **3 abas** para ergonomia visual:
+    - *Investimentos:* `Carteira`, `Aporte`, `Proventos` (com ferramentas no rodapé da Carteira).
+    - *Insights:* `Diagnósticos`, `Recorrências`, `Projeção` (com planejamento de longo prazo integrado em Projeção).
+    - *Configurações:* `Aparência`, `Interface`, `Dados`.
+    - *Dívidas:* `Pagar`, `Receber`, `Financiamentos`.
+    - *Relatórios:* `Mês`, `Ano`, `Custom`.
+    - *Orçamentos / Categorias:* `Despesas`, `Rendas`.
+    - *Lembretes:* `Pendentes`, `Lidas`.
+  - **Nível 2 (Subdivisões Internas de Conteúdo):** **Exclusivamente Pills (`variant="pills"`)**. Usado *apenas* quando uma aba de Nível 1 possui sub-divisões internas de dados:
+    - Em *Investimentos -> Aporte:* `Calculadora` | `Metas` | `Histórico`.
+    - Em *Investimentos -> Proventos:* `Extrato` | `Calendário`.
+    - Em *Relatórios -> Agregação:* `Categorias` | `Encargos` | `Formas` | `Dias`.
   - **Regra Anti-Aninhamento:** Proibido `pills` dentro de `pills` e proibido `underline` dentro de `underline`.
 - **Rótulos Únicos & Tipografia Confortável:**
   - Todo rótulo de aba utiliza **1 única palavra ou termo conciso** (zero nomes compostos com `&`, `e` ou preposições como *"Por..."*, *"Avisos &..."*, *"Conta &..."*).

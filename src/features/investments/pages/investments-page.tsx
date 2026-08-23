@@ -5,20 +5,17 @@ import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { ResumoTab } from "./resumo-tab";
 import { ProventosTab } from "./proventos-tab";
 import { AporteTab } from "./aporte-tab";
-import { TargetsTab } from "./targets-tab";
-import { FerramentasTab } from "./relatorios-tab";
 import { CashFormDialog } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
 import type { PortfolioAsset } from "@/types";
 
-type InvestmentsTab = "resumo" | "metas" | "aporte" | "proventos" | "ferramentas";
+type InvestmentsTab = "resumo" | "aporte" | "proventos";
 
 /**
  * Investimentos — área única de consolidação da carteira (unificação /carteira
- * + dashboard): Resumo (posição executiva + operação), Proventos (extrato e
- * calendário de rendimentos — F18), Metas (limites por ativo/classe + travas
- * setoriais), Aporte (rebalanceamento) e Ferramentas (Importação + Relatórios & IR — F40).
+ * + dashboard): Carteira (posição executiva + operação + ferramentas no rodapé),
+ * Aporte (rebalanceamento + metas integradas) e Proventos (extrato e calendário).
  */
 export function InvestmentsPage() {
   const [tab, setTab] = useState<InvestmentsTab>("resumo");
@@ -89,7 +86,7 @@ export function InvestmentsPage() {
         items={[
           {
             value: "resumo",
-            label: "Resumo",
+            label: "Carteira",
             content: (
               <ResumoTab
                 onOpenWizard={handleOpenWizard}
@@ -98,24 +95,14 @@ export function InvestmentsPage() {
             ),
           },
           {
-            value: "proventos",
-            label: "Proventos",
-            content: <ProventosTab />,
-          },
-          {
-            value: "metas",
-            label: "Metas",
-            content: <TargetsTab onGoToPosition={() => setTab("resumo")} />,
-          },
-          {
             value: "aporte",
             label: "Aporte",
             content: <AporteTab onGoToPosition={() => setTab("resumo")} />,
           },
           {
-            value: "ferramentas",
-            label: "Ferramentas",
-            content: <FerramentasTab />,
+            value: "proventos",
+            label: "Proventos",
+            content: <ProventosTab />,
           },
         ]}
       />

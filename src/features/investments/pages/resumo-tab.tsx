@@ -1,5 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { LineChart, PieChart, Plus, RefreshCw, Shield, TrendingUp } from "lucide-react";
+import {
+  FileSpreadsheet,
+  FileText,
+  Landmark,
+  LineChart,
+  PieChart,
+  Plus,
+  Printer,
+  RefreshCw,
+  Shield,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  Upload,
+} from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonKpi } from "@/components/ui";
 import { CategoryDonut, CashKpiCard, KpiCard, PositionTable } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
@@ -10,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import {
+  useAllPortfolioTransactions,
   useDeletePortfolioAsset,
   usePortfolioAssets,
   usePortfolioDividends,
@@ -21,7 +36,10 @@ import {
   AssetEditDialog,
   CashFormDialog,
   ManualPriceDialog,
+  PortfolioDarfMonitor,
+  PortfolioExecutiveReport,
   PortfolioImportDialog,
+  PortfolioTaxReport,
 } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
@@ -86,6 +104,9 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
+  const [taxReportOpen, setTaxReportOpen] = useState(false);
+  const [darfMonitorOpen, setDarfMonitorOpen] = useState(false);
   const [allocationMode, setAllocationMode] = useState<"asset" | "class">("class");
   const [priceFor, setPriceFor] = useState<{
     id: string;
@@ -94,6 +115,16 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
     priceBRL: number;
     source: PriceSource;
   } | null>(null);
+
+  const transactionsQuery = useAllPortfolioTransactions();
+  const assets = assetsQuery.data ?? [];
+  const dividends = dividendsQuery.data ?? [];
+  const transactions = transactionsQuery.data ?? [];
+
+  const currentYear = new Date().getFullYear();
+  const yearDividends = dividends
+    .filter((d) => d.date.startsWith(String(currentYear)))
+    .reduce((acc, d) => acc + d.amount, 0);
 
   const rows = position.rows;
   const investmentRows = rows.filter((r) => !r.isCash);
@@ -474,6 +505,120 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
         </>
       )}
 
+      {/* Seção Discreta e Criativa: Ferramentas & Inteligência Fiscal da Carteira */}
+      <section aria-label="Ferramentas da carteira" className="flex flex-col gap-3 pt-2">
+        <div className="flex items-center gap-2">
+          <span className="flex size-6 items-center justify-center rounded-md bg-portfolio/10 text-portfolio">
+            <Sparkles className="size-3.5" aria-hidden="true" />
+          </span>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Ferramentas & Inteligência da Carteira
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Card 1: Importação de Planilha */}
+          <div className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-surface/80 p-4 transition-all hover:border-portfolio/40 hover:bg-surface hover:shadow-xs">
+            <div className="flex items-start gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 text-portfolio transition-transform group-hover:scale-105">
+                <Upload className="size-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold text-foreground">Importar Planilha</h3>
+                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                  Carregue arquivos .xlsx ou .csv com posições e operações em lote.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+              className="mt-3 text-xs h-7.5 w-full justify-center gap-1.5"
+            >
+              <Upload className="size-3" aria-hidden="true" />
+              <span>Importar Dados</span>
+            </Button>
+          </div>
+
+          {/* Card 2: Relatório Executivo A4 */}
+          <div className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-surface/80 p-4 transition-all hover:border-portfolio/40 hover:bg-surface hover:shadow-xs">
+            <div className="flex items-start gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 text-portfolio transition-transform group-hover:scale-105">
+                <Printer className="size-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold text-foreground">Relatório Executivo</h3>
+                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                  Documento em padrão A4 com gráficos, KPIs e custódia consolidada.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setExecutiveReportOpen(true)}
+              className="mt-3 text-xs h-7.5 w-full justify-center gap-1.5"
+            >
+              <FileText className="size-3" aria-hidden="true" />
+              <span>Visualizar A4</span>
+            </Button>
+          </div>
+
+          {/* Card 3: Facilitador IRPF */}
+          <div className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-surface/80 p-4 transition-all hover:border-positive/40 hover:bg-surface hover:shadow-xs">
+            <div className="flex items-start gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong transition-transform group-hover:scale-105">
+                <Landmark className="size-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold text-foreground">Facilitador de IRPF</h3>
+                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                  Fichas de Bens & Direitos e Rendimentos com cópia rápida para a Receita.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setTaxReportOpen(true)}
+              className="mt-3 text-xs h-7.5 w-full justify-center gap-1.5"
+            >
+              <ShieldCheck className="size-3 text-positive-strong" aria-hidden="true" />
+              <span>Fichas do IRPF</span>
+            </Button>
+          </div>
+
+          {/* Card 4: Monitor DARF */}
+          <div className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-surface/80 p-4 transition-all hover:border-primary/40 hover:bg-surface hover:shadow-xs">
+            <div className="flex items-start gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-strong transition-transform group-hover:scale-105">
+                <FileSpreadsheet className="size-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold text-foreground">Monitor de DARF</h3>
+                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                  Controle de isenção de R$ 20k, alíquotas de FIIs e cálculo de impostos.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDarfMonitorOpen(true)}
+              className="mt-3 text-xs h-7.5 w-full justify-center gap-1.5"
+            >
+              <Sparkles className="size-3 text-primary-strong" aria-hidden="true" />
+              <span>Apuração DARF</span>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Investment Wizard Unificado (quando renderizado standalone) */}
       {!onOpenWizard ? (
         <InvestmentWizard
@@ -529,6 +674,28 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
         onOpenChange={setImportOpen}
       />
 
+      <PortfolioExecutiveReport
+        open={executiveReportOpen}
+        onOpenChange={setExecutiveReportOpen}
+        rows={position.rows}
+        totalBRL={position.totalBRL}
+        cashBRL={position.cashBRL}
+        yearDividendsBRL={yearDividends}
+      />
+
+      <PortfolioTaxReport
+        open={taxReportOpen}
+        onOpenChange={setTaxReportOpen}
+        assets={assets}
+        dividends={dividends}
+      />
+
+      <PortfolioDarfMonitor
+        open={darfMonitorOpen}
+        onOpenChange={setDarfMonitorOpen}
+        assets={assets}
+        transactions={transactions}
+      />
 
       {/* Confirmação de Exclusão */}
       <ConfirmDialog

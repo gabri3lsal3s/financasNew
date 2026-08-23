@@ -80,7 +80,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("lista assinaturas/recorrências e permite ignorar", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Assinaturas" }));
+    await user.click(screen.getByRole("tab", { name: "Recorrências" }));
     // Streaming com valor estável em 3 meses → assinatura.
     expect(screen.getByText("Streaming")).toBeInTheDocument();
 
@@ -96,7 +96,7 @@ describe("InsightsPage (motor de insights §3.7)", () => {
   it("permite confirmar assinatura via botão animado", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
-    await user.click(screen.getByRole("tab", { name: "Assinaturas" }));
+    await user.click(screen.getByRole("tab", { name: "Recorrências" }));
 
     const confirmButtons = screen.getAllByRole("button", { name: /Confirmar/ });
     expect(confirmButtons.length).toBeGreaterThan(0);

@@ -26,8 +26,9 @@ import {
   useUpdatePortfolioAsset,
 } from "@/state";
 import { ContributionsPanel } from "../components";
+import { TargetsTab } from "./targets-tab";
 
-type AporteSubTab = "calculadora" | "historico";
+type AporteSubTab = "calculadora" | "metas" | "historico";
 
 /**
  * Calculadora de aporte (§F36) — simulação local (pura) em 2 modos:
@@ -270,6 +271,11 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
           value: "calculadora",
           label: "Calculadora",
           content: calculadoraContent,
+        },
+        {
+          value: "metas",
+          label: "Metas",
+          content: <TargetsTab onGoToPosition={onGoToPosition} />,
         },
         {
           value: "historico",

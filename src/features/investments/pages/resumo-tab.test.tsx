@@ -193,8 +193,12 @@ describe("ResumoTab", () => {
     expect(screen.getByRole("heading", { name: /Editar Saldo em Caixa/i })).toBeInTheDocument();
   });
 
-  it("abre automaticamente o InvestmentWizard quando a rota contiver ?novo=investimento", () => {
-    renderResumo("/investments?novo=investimento");
-    expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
+  it("renderiza a seção de ferramentas da carteira no rodapé com atalhos de importação, relatório A4, IRPF e DARF", () => {
+    renderResumo();
+    expect(screen.getByText("Ferramentas & Inteligência da Carteira")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Importar Dados/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Visualizar A4/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Fichas do IRPF/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Apuração DARF/i })).toBeInTheDocument();
   });
 });

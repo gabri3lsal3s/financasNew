@@ -473,7 +473,7 @@ export function InsightsPage() {
             },
             {
               value: "recurrences",
-              label: "Assinaturas",
+              label: "Recorrências",
               content: (
                 <div className="flex flex-col gap-4">
                   {/* Card de Resumo de Recorrências */}
@@ -739,13 +739,11 @@ export function InsightsPage() {
                       )}
                     </div>
                   </section>
+
+                  {/* Bloco 4: Planejamento Financeiro de Longo Prazo */}
+                  <PlanningSection balanceCents={balanceCents} monthlyExpensesCents={Math.max(1, expenseCents)} />
                 </div>
               ),
-            },
-            {
-              value: "planning",
-              label: "Planejamento",
-              content: <PlanningSection balanceCents={balanceCents} monthlyExpensesCents={Math.max(1, expenseCents)} />,
             },
           ]}
         />

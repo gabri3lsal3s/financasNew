@@ -103,11 +103,9 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByRole("heading", { name: "Investimentos", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Adicionar caixa" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nova operação" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Resumo" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Metas" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Carteira" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aporte" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Ferramentas" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
   });
 
   it("estado vazio quando não há ativos", () => {
