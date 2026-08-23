@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Alert, Button, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { InsightList, PlanningSection, ProjectionLine } from "@/components/modules";
+import { InsightList, ProjectionLine } from "@/components/modules";
 import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
 import { partitionFeedback, type FeedbackDecision } from "@/domain/insights/feedback";
@@ -744,9 +744,6 @@ export function InsightsPage() {
                       )}
                     </div>
                   </section>
-
-                  {/* Bloco 4: Planejamento Financeiro de Longo Prazo */}
-                  <PlanningSection balanceCents={balanceCents} monthlyExpensesCents={Math.max(1, expenseCents)} />
                 </div>
               ),
             },
