@@ -84,8 +84,8 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(screen.getByText("R$ 2.000,00")).toBeInTheDocument();
     // "Moradia" aparece na linha da categoria e na sugestão de realocação
     expect(screen.getAllByText("Moradia").length).toBeGreaterThan(0);
-    // Moradia 1.200/1.000 → excedida
-    expect(screen.getByText("Excedida")).toBeInTheDocument();
+    // Moradia 1.200/1.000 → acima do limite
+    expect(screen.getByText("acima do limite")).toBeInTheDocument();
   });
 
   it("recomenda realocação da maior folga para o maior excesso", () => {

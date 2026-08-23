@@ -42,7 +42,7 @@ export function BudgetProgressBar({ spentCents, limitCents, label }: BudgetProgr
           )}
         </span>
         <span className={over ? "num shrink-0 text-xs font-semibold text-critical" : "num shrink-0 text-xs font-medium text-muted-foreground"}>
-          {over ? "Excedido" : `${Math.round(percent)}%`}
+          {limitCents > 0 ? `${Math.round((spentCents / limitCents) * 100)}%` : ""}
         </span>
       </div>
       <Progress value={percent} tone="auto" className="h-1 bg-muted/60" aria-label={`Uso do orçamento: ${Math.round(percent)}%`} />

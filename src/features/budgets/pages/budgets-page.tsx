@@ -5,7 +5,6 @@ import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import {
-  BUDGET_STATUS_LABELS,
   budgetLimitsByCategory,
   budgetStatus,
   globalUsedPercent,
@@ -276,10 +275,6 @@ export function BudgetsPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {rows.map((row) => {
-                const status = budgetStatus(row.spentCents, row.limitCents);
-                const isOver = status === "exceeded";
-                const isAttention = status !== "ok";
-
                 return (
                   <div
                     key={row.category.id}
@@ -319,12 +314,6 @@ export function BudgetsPage() {
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {row.limitCents > 0 && isAttention ? (
-                          <Badge variant={isOver ? "critical" : "warning"} className="text-[10px] px-1.5 py-0">
-                            {BUDGET_STATUS_LABELS[status]}
-                          </Badge>
-                        ) : null}
-
                         <Button
                           type="button"
                           size="icon"
