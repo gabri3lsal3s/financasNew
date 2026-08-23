@@ -189,40 +189,67 @@ export function BudgetsPage() {
         <>
           <MonthPicker value={month} onValueChange={setMonth} />
 
-          {/* Resumo do Orçamento Geral (§3.5.2) */}
+          {/* Resumo do Orçamento Geral (§3.5.2) — Opção 1: Régua de 3 Métricas */}
           <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
+            {/* Cabeçalho do Card */}
             <div className="flex items-center justify-between gap-2 min-w-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary-strong">
                   <PiggyBank className="size-3.5" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">Orçamento do Mês</h2>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                    Orçamento do Mês
+                  </h2>
                   <p className="text-[11px] text-muted-foreground">
                     {activeRows.length} {activeRows.length === 1 ? "categoria ativa" : "categorias ativas"}
                     {attentionCount > 0 ? ` · ${attentionCount} em atenção` : ""}
                   </p>
                 </div>
               </div>
-              <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-xs shrink-0">
+              <Badge
+                variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"}
+                className="text-xs shrink-0"
+              >
                 {Math.round(globalPercent)}% utilizado
               </Badge>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
-              <div className="flex items-baseline gap-2">
-                <MoneyText cents={totalLimitsCents} variant="hero" className="text-2xl sm:text-3xl" />
-                <span className="text-xs text-muted-foreground font-normal">teto planejado</span>
+            {/* Régua de Valores em 3 Colunas */}
+            <div className="grid grid-cols-3 gap-2 border-y border-border/50 py-3 text-left">
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Total Gasto</p>
+                <MoneyText
+                  cents={totalExpensesCents}
+                  tone="default"
+                  className="text-base sm:text-lg font-bold text-foreground truncate block mt-0.5"
+                />
               </div>
-              <div className="text-xs text-muted-foreground">
-                Total gasto: <MoneyText cents={totalExpensesCents} tone="default" className="font-semibold text-foreground" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Teto Planejado</p>
+                <MoneyText
+                  cents={totalLimitsCents}
+                  tone="default"
+                  className="text-base sm:text-lg font-semibold text-muted-foreground truncate block mt-0.5"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+                  {totalLimitsCents >= totalExpensesCents ? "Disponível" : "Excedido"}
+                </p>
+                <MoneyText
+                  cents={Math.abs(totalLimitsCents - totalExpensesCents)}
+                  tone={totalLimitsCents >= totalExpensesCents ? "positive" : "negative"}
+                  className="text-base sm:text-lg font-bold truncate block mt-0.5"
+                />
               </div>
             </div>
 
+            {/* Barra de Progresso */}
             <Progress
               value={globalPercent}
               tone={progressTone(globalPercent)}
-              className="h-1.5"
+              className="h-2"
               aria-label={`Uso global: ${Math.round(globalPercent)}%`}
             />
           </div>
