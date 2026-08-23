@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { triggerHaptic } from "@/services/haptics";
 import { isValidMonthKey } from "@/domain/competence";
+import { cn } from "@/lib/utils";
 
 export interface MonthPickerProps {
   /** YYYY-MM */
@@ -41,32 +42,30 @@ export function MonthPicker({ value, onValueChange, disabled, className }: Month
   };
 
   return (
-    <div className={className}>
-      <div className="flex items-center justify-between gap-2" role="group" aria-label="Selecionar mês">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Mês anterior"
-          disabled={disabled}
-          onClick={() => handleChange(-1)}
-        >
-          <ChevronLeft aria-hidden="true" />
-        </Button>
-        <span key={value} className="min-w-32 text-center text-sm font-medium capitalize text-foreground animate-fade-slide-in">
-          {monthLabel(value)}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Próximo mês"
-          disabled={disabled}
-          onClick={() => handleChange(1)}
-        >
-          <ChevronRight aria-hidden="true" />
-        </Button>
-      </div>
+    <div className={cn("flex items-center justify-between gap-2", className)} role="group" aria-label="Selecionar mês">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label="Mês anterior"
+        disabled={disabled}
+        onClick={() => handleChange(-1)}
+      >
+        <ChevronLeft aria-hidden="true" />
+      </Button>
+      <span key={value} className="flex-1 min-w-32 text-center text-sm font-medium capitalize text-foreground animate-fade-slide-in">
+        {monthLabel(value)}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label="Próximo mês"
+        disabled={disabled}
+        onClick={() => handleChange(1)}
+      >
+        <ChevronRight aria-hidden="true" />
+      </Button>
     </div>
   );
 }

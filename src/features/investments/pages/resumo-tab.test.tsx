@@ -179,6 +179,7 @@ describe("ResumoTab", () => {
 
     // Card removido
     expect(screen.queryByText("Ativos em carteira")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rentabilidade Global")).not.toBeInTheDocument();
   });
 
   it("permite abrir o diálogo de edição do caixa ao clicar no botão de editar", async () => {

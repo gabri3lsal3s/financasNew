@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Coins, LineChart, PieChart, Plus, RefreshCw, Shield, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonKpi } from "@/components/ui";
-import { CategoryDonut, CashKpiCard, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
+import { CategoryDonut, CashKpiCard, KpiCard, PositionTable } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { calculatePortfolioConcentration, isCashAssetClass } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
@@ -179,10 +179,8 @@ export function ResumoTab() {
   const activeSlices = allocationMode === "asset" ? assetSlices : classSlices;
 
   const series = position.monthlySeries;
-  const previousPoint = series.length > 1 ? series[series.length - 2] : undefined;
-  const previousCents = previousPoint ? numberToCents(previousPoint.valueBRL) : 0;
-
   const unrealizedPnlBRL = position.totalBRL - position.totalCostBRL;
+  const unrealizedCents = numberToCents(unrealizedPnlBRL);
   const unrealizedPct =
     position.totalCostBRL > 0 ? (unrealizedPnlBRL / position.totalCostBRL) * 100 : null;
 
@@ -201,43 +199,16 @@ export function ResumoTab() {
         <Alert variant="error">{getErrorMessage(position.error)}</Alert>
       ) : null}
 
-      {/* Grid de KPIs da Carteira */}
+      {/* Grid de KPIs da Carteira — Saldo em Caixa ocupa 2 colunas à esquerda */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {position.isLoading ? (
           <>
-            <SkeletonKpi />
-            <SkeletonKpi />
+            <SkeletonKpi className="sm:col-span-2 lg:col-span-2" />
             <SkeletonKpi />
             <SkeletonKpi />
           </>
         ) : (
           <>
-            <KpiCard
-              label="Patrimônio Total"
-              cents={numberToCents(position.totalBRL)}
-              hint={
-                <DeltaHint
-                  currentCents={numberToCents(position.totalBRL)}
-                  previousCents={previousCents}
-                />
-              }
-            />
-            <KpiCard
-              label="Rentabilidade Global"
-              cents={numberToCents(unrealizedPnlBRL)}
-              tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"}
-              hint={
-                unrealizedPct != null
-                  ? `${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(2)}% sobre o custo total`
-                  : undefined
-              }
-            />
-            <KpiCard
-              label="Proventos deste Mês"
-              cents={dividendsCents}
-              tone={dividendsCents > 0 ? "positive" : "default"}
-              hint="Dividendos / JCP / Rendimentos"
-            />
             <CashKpiCard
               cashBRL={position.cashBRL}
               cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
@@ -246,6 +217,35 @@ export function ResumoTab() {
               onDelete={() => {
                 if (cashAsset) setAssetToDelete(cashAsset);
               }}
+              className="sm:col-span-2 lg:col-span-2"
+            />
+            <KpiCard
+              label="Patrimônio Total"
+              cents={numberToCents(position.totalBRL)}
+              hint={
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 font-mono text-[11px] font-medium truncate max-w-full",
+                    unrealizedPnlBRL > 0
+                      ? "text-positive-strong"
+                      : unrealizedPnlBRL < 0
+                        ? "text-negative-strong"
+                        : "text-foreground",
+                  )}
+                  title={`Resultado acumulado: ${unrealizedPnlBRL >= 0 ? "+" : ""}${unrealizedPnlBRL.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${unrealizedPct != null ? ` (${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(1)}%)` : ""}`}
+                >
+                  <MoneyText cents={unrealizedCents} tone="auto" />
+                  {unrealizedPct != null
+                    ? ` (${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(1)}%)`
+                    : ""}
+                </span>
+              }
+            />
+            <KpiCard
+              label="Proventos deste Mês"
+              cents={dividendsCents}
+              tone={dividendsCents > 0 ? "positive" : "default"}
+              hint="Dividendos / JCP / Rendimentos"
             />
           </>
         )}
@@ -418,9 +418,7 @@ export function ResumoTab() {
               rows={investmentRows}
               sortable
               onListTransactions={openDetail}
-              onRegisterTransaction={(assetId) => openWizardForAsset(assetId, "buy")}
               onEditAsset={openEdit}
-              onSplitAsset={(assetId) => openWizardForAsset(assetId, "split")}
               onSetManualPrice={(assetId, ticker, currency, priceBRL, source) => {
                 setPriceFor({ id: assetId, ticker, currency, priceBRL, source });
               }}

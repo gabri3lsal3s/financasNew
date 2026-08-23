@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { ContributionsListDialog } from "./contributions-list-dialog";
 
 const mockDelete = vi.fn().mockResolvedValue(undefined);
-const mockCreate = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/state", () => ({
   usePortfolioContributions: () => ({
@@ -16,10 +15,6 @@ vi.mock("@/state", () => ({
   usePortfolioAssets: () => ({
     data: [{ id: "a-1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" }],
     isLoading: false,
-  }),
-  useCreatePortfolioContribution: () => ({
-    mutateAsync: mockCreate,
-    isPending: false,
   }),
   useDeletePortfolioContribution: () => ({
     mutateAsync: mockDelete,

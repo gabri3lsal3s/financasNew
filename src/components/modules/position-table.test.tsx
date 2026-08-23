@@ -94,19 +94,18 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
   });
 
   it("F28 — mobile: ações de linha disponíveis também nos cards", () => {
-    const onRegister = vi.fn();
+    const onEditAsset = vi.fn();
     render(
       <PositionTable
         rows={rows}
-        onRegisterTransaction={onRegister}
         onListTransactions={() => undefined}
-        onEditAsset={() => undefined}
+        onEditAsset={onEditAsset}
         onDeleteAsset={() => undefined}
       />,
     );
     const mobileList = screen.getByRole("list", { name: "Posições (visão móvel)" });
-    // O CTA "Movimentar" aparece em cada card (mesma ação da tabela).
-    expect(within(mobileList).getAllByRole("button", { name: /Registrar transação/ })).toHaveLength(3);
+    // O menu de ações aparece em cada card (mesma ação da tabela).
+    expect(within(mobileList).getAllByRole("button", { name: /Ações de/ })).toHaveLength(3);
   });
 
   it("F28 — mobile: mensagem vazia também no layout de cards", () => {
@@ -171,22 +170,28 @@ describe("PositionTable (F17 — ordenação por coluna)", () => {
     expect(screen.getAllByText("Zerada").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("aciona onSplitAsset pelo menu contextual de ações", async () => {
-    const onSplitAsset = vi.fn();
+  it("aciona onEditAsset e onDeleteAsset pelo menu contextual enxuto de ações", async () => {
+    const onEditAsset = vi.fn();
+    const onDeleteAsset = vi.fn();
     const user = userEvent.setup();
     render(
       <PositionTable
         rows={rows}
-        onSplitAsset={onSplitAsset}
+        onEditAsset={onEditAsset}
+        onDeleteAsset={onDeleteAsset}
       />,
     );
 
     const actionsButtons = screen.getAllByRole("button", { name: /Ações de PETR4/ });
     await user.click(actionsButtons[0]!);
 
-    const splitOption = screen.getByRole("button", { name: /Desdobramento \/ Split/i });
-    await user.click(splitOption);
+    const editOption = screen.getByRole("button", { name: /Editar cadastro/i });
+    await user.click(editOption);
+    expect(onEditAsset).toHaveBeenCalledWith("a1", "PETR4");
 
-    expect(onSplitAsset).toHaveBeenCalledWith("a1", "PETR4");
+    await user.click(actionsButtons[0]!);
+    const deleteOption = screen.getByRole("button", { name: /Excluir ativo/i });
+    await user.click(deleteOption);
+    expect(onDeleteAsset).toHaveBeenCalledWith("a1", "PETR4");
   });
 });

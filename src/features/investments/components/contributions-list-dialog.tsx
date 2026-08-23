@@ -1,28 +1,21 @@
 import { useState } from "react";
-import { Coins, Plus, Trash2 } from "lucide-react";
+import { Coins, Trash2 } from "lucide-react";
 import {
-  Alert,
   Badge,
   Button,
   ConfirmDialog,
-  DatePicker,
   EmptyState,
-  Input,
   Modal,
-  MoneyInput,
-  Select,
   SkeletonTable,
 } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
-import { todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 import { currentMonth, formatDateBR } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
-  useCreatePortfolioContribution,
   useDeletePortfolioContribution,
   usePortfolioAssets,
   usePortfolioContributions,
@@ -41,17 +34,10 @@ export function ContributionsListDialog({
   defaultMonth,
 }: ContributionsListDialogProps) {
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [amountCents, setAmountCents] = useState(0);
-  const [date, setDate] = useState(() => todayISO());
-  const [notes, setNotes] = useState("");
-  const [selectedAssetId, setSelectedAssetId] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
   const [contributionToDelete, setContributionToDelete] = useState<PortfolioContribution | null>(null);
 
   const contributionsQuery = usePortfolioContributions();
   const assetsQuery = usePortfolioAssets();
-  const createContribution = useCreatePortfolioContribution();
   const deleteContribution = useDeletePortfolioContribution();
 
   const contributions = contributionsQuery.data ?? [];
@@ -60,36 +46,6 @@ export function ContributionsListDialog({
 
   const filtered = contributions.filter((c) => c.date.startsWith(month));
   const monthTotalCents = filtered.reduce((acc, c) => acc + numberToCents(c.amount), 0);
-
-  const handleCreateContribution = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (amountCents <= 0) {
-      setError("Informe o valor do aporte.");
-      return;
-    }
-    setError(null);
-    try {
-      await createContribution.mutateAsync({
-        asset_id: selectedAssetId.trim() ? selectedAssetId : null,
-        date,
-        amount: amountCents / 100,
-        notes: notes.trim() ? notes.trim() : null,
-      });
-
-      triggerSensory("success");
-      pushToast({
-        title: "Aporte registrado",
-        description: `R$ ${(amountCents / 100).toFixed(2)} lançado com sucesso no mês.`,
-      });
-
-      setAmountCents(0);
-      setNotes("");
-      setSelectedAssetId("");
-      setShowAddForm(false);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
-  };
 
   const handleDeleteContribution = async () => {
     if (!contributionToDelete) return;
@@ -116,81 +72,13 @@ export function ContributionsListDialog({
         open={open}
         onOpenChange={onOpenChange}
         title="Gerenciar Aportes do Mês"
-        description="Visualize, adicione ou remova lançamentos de aporte financeiro que alimentam a Visão Geral e os Insights."
+        description="Visualize ou remova lançamentos de aporte financeiro que alimentam a Visão Geral e os Insights."
         size="lg"
       >
         <div className="mt-4 flex flex-col gap-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês dos aportes" />
-            <Button
-              type="button"
-              size="sm"
-              variant={showAddForm ? "outline" : "default"}
-              onClick={() => {
-                setShowAddForm(!showAddForm);
-                setError(null);
-              }}
-              className="gap-1.5 shrink-0"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              {showAddForm ? "Cancelar cadastro" : "Lançar aporte manual"}
-            </Button>
+          <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface/60 p-1.5 w-full">
+            <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês dos aportes" className="w-full" />
           </div>
-
-          {error ? <Alert variant="error">{error}</Alert> : null}
-
-          {/* Formulário inline para novo aporte */}
-          {showAddForm && (
-            <form
-              onSubmit={handleCreateContribution}
-              className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3"
-            >
-              <span className="text-xs font-semibold text-primary">Registrar Novo Aporte Financeiro</span>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                  Valor do Aporte
-                  <MoneyInput
-                    cents={amountCents}
-                    onCentsChange={setAmountCents}
-                    aria-label="Valor do aporte"
-                    autoFocus
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                  Data do Aporte
-                  <DatePicker value={date} onValueChange={setDate} aria-label="Data do aporte" />
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                  Ativo Vinculado (opcional)
-                  <Select
-                    value={selectedAssetId}
-                    onValueChange={setSelectedAssetId}
-                    options={[
-                      { value: "", label: "Aporte Geral / Caixa Corretora" },
-                      ...assets.map((a) => ({ value: a.id, label: a.ticker })),
-                    ]}
-                    ariaLabel="Ativo vinculado ao aporte"
-                  />
-                </label>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                <label className="flex-1 flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                  Observações (opcional)
-                  <Input
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Transferência TED, aporte rebalanceado…"
-                    maxLength={100}
-                    aria-label="Observações do aporte"
-                  />
-                </label>
-                <Button type="submit" disabled={createContribution.isPending} size="sm" className="h-9">
-                  {createContribution.isPending ? "Gravando…" : "Salvar aporte"}
-                </Button>
-              </div>
-            </form>
-          )}
 
           {/* Resumo do mês */}
           <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface/80 px-4 py-3">

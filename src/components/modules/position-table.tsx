@@ -6,8 +6,6 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
-  Divide,
-  List,
   MoreHorizontal,
   Pencil,
   Search,
@@ -52,14 +50,10 @@ export interface PositionRow {
 
 export interface PositionTableProps {
   rows: PositionRow[];
-  /** Ação por linha (ex.: registrar transação) — omita para ocultar a coluna. */
-  onRegisterTransaction?: (assetId: string, ticker: string) => void;
-  /** Abre a lista de lançamentos do ativo (CRUD completo — editar/excluir). */
+  /** Abre a lista de lançamentos / detalhes do ativo. */
   onListTransactions?: (assetId: string, ticker: string) => void;
-  /** Abre o formulário de edição do ativo (ticker/classe/moeda). */
+  /** Abre o formulário de edição cadastral do ativo (ticker/classe/moeda). */
   onEditAsset?: (assetId: string, ticker: string) => void;
-  /** Abre o diálogo de desdobramento/grupamento de cotas (splits). */
-  onSplitAsset?: (assetId: string, ticker: string) => void;
   /** Abre o diálogo de preço manual/cotação do ativo. */
   onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
   /** Confirma a exclusão do ativo (transações e metas em cascata). */
@@ -129,15 +123,12 @@ function SortableHeader({
  * Tabela de posições (§3.11.1 / §F17) — ledger derivado:
  * - Desktop (sm+): tabela completa com ordenação opcional por coluna.
  * - Mobile (<sm): lista de cards empilhados sem scroll horizontal (F28).
- * - Ações contextuais: registrar transação (compra/venda), extrato de lançamentos,
- *   edição cadastral e exclusão em cascata.
+ * - Ações contextuais: extrato de lançamentos, edição cadastral e exclusão em cascata.
  */
 export function PositionTable({
   rows,
-  onRegisterTransaction,
   onListTransactions,
   onEditAsset,
-  onSplitAsset,
   onSetManualPrice,
   onDeleteAsset,
   emptyMessage,
@@ -241,13 +232,14 @@ export function PositionTable({
     {
       key: "ticker",
       header: headerFor("ticker", "Ativo"),
-      cell: (row) =>
-        onEditAsset ? (
+      cell: (row) => {
+        const handleOpen = onListTransactions ?? onEditAsset;
+        return handleOpen ? (
           <button
             type="button"
-            onClick={() => onEditAsset(row.assetId, row.ticker)}
+            onClick={() => handleOpen(row.assetId, row.ticker)}
             className="flex min-w-0 flex-col gap-0.5 text-left group hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:underline"
-            aria-label={`Editar ${row.ticker}`}
+            aria-label={`Ver detalhes de ${row.ticker}`}
           >
             <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{row.ticker}</span>
             {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
@@ -257,7 +249,8 @@ export function PositionTable({
             <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
             {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
           </div>
-        ),
+        );
+      },
     },
     {
       key: "quantity",
@@ -414,7 +407,9 @@ export function PositionTable({
     },
   ];
 
-  const hasRowActions = Boolean(onRegisterTransaction || onListTransactions || onEditAsset || onSplitAsset || onSetManualPrice || onDeleteAsset);
+  const hasRowActions = Boolean(
+    onEditAsset || onSetManualPrice || onDeleteAsset,
+  );
 
   if (hasRowActions) {
     columns.push({
@@ -424,10 +419,7 @@ export function PositionTable({
       cell: (row) => (
         <PositionRowActions
           row={row}
-          onRegisterTransaction={onRegisterTransaction}
-          onListTransactions={onListTransactions}
           onEditAsset={onEditAsset}
-          onSplitAsset={onSplitAsset}
           onSetManualPrice={onSetManualPrice}
           onDeleteAsset={onDeleteAsset}
         />
@@ -523,20 +515,21 @@ export function PositionTable({
             const yoc = (row.dividends && row.dividends > 0)
               ? calculateYieldOnCost(row.dividends, row.totalCostBRL ?? row.totalCost ?? 0)
               : 0;
-            const isClickable = Boolean(onEditAsset);
+            const handleOpen = onListTransactions ?? onEditAsset;
+            const isClickable = Boolean(handleOpen);
             return (
               <li
                 key={row.assetId}
                 role={isClickable ? "button" : undefined}
                 tabIndex={isClickable ? 0 : undefined}
-                aria-label={isClickable ? `Editar ${row.ticker}` : undefined}
-                onClick={isClickable ? () => onEditAsset?.(row.assetId, row.ticker) : undefined}
+                aria-label={isClickable ? `Ver detalhes de ${row.ticker}` : undefined}
+                onClick={isClickable ? () => handleOpen?.(row.assetId, row.ticker) : undefined}
                 onKeyDown={
                   isClickable
                     ? (event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          onEditAsset?.(row.assetId, row.ticker);
+                          handleOpen?.(row.assetId, row.ticker);
                         }
                       }
                     : undefined
@@ -574,10 +567,7 @@ export function PositionTable({
                       <div className="shrink-0 -mr-1" onClick={(e) => e.stopPropagation()}>
                         <PositionRowActions
                           row={row}
-                          onRegisterTransaction={onRegisterTransaction}
-                          onListTransactions={onListTransactions}
                           onEditAsset={onEditAsset}
-                          onSplitAsset={onSplitAsset}
                           onSetManualPrice={onSetManualPrice}
                           onDeleteAsset={onDeleteAsset}
                         />
@@ -741,36 +731,27 @@ export function PositionTable({
 
 interface PositionRowActionsProps {
   row: PositionRow;
-  onRegisterTransaction?: (assetId: string, ticker: string) => void;
-  onListTransactions?: (assetId: string, ticker: string) => void;
   onEditAsset?: (assetId: string, ticker: string) => void;
-  onSplitAsset?: (assetId: string, ticker: string) => void;
   onSetManualPrice?: (assetId: string, ticker: string, currency: AssetCurrency, priceBRL: number, source: PriceSource) => void;
   onDeleteAsset?: (assetId: string, ticker: string) => void;
 }
 
-/** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28) com menu contextual Popover limpo. */
-function PositionRowActions({ row, onRegisterTransaction, onListTransactions, onEditAsset, onSplitAsset, onSetManualPrice, onDeleteAsset }: PositionRowActionsProps) {
+/** Ações por linha (compartilhadas entre a tabela e os cards mobile — F28) com menu contextual enxuto. */
+function PositionRowActions({
+  row,
+  onEditAsset,
+  onSetManualPrice,
+  onDeleteAsset,
+}: PositionRowActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const hasMenuActions = Boolean(
+    onEditAsset || (!row.isCash && onSetManualPrice) || onDeleteAsset,
+  );
+
+  if (!hasMenuActions) return null;
 
   return (
-    <div className="flex items-center justify-end gap-1">
-      {onRegisterTransaction ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-8 px-2.5 text-xs text-primary font-medium"
-          aria-label={`Registrar transação de ${row.ticker}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRegisterTransaction(row.assetId, row.ticker);
-          }}
-        >
-          Movimentar
-        </Button>
-      ) : null}
-
+    <div className="flex items-center justify-end">
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -785,7 +766,7 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
             <MoreHorizontal className="size-4" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-52 p-1.5 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+        <PopoverContent align="end" className="w-48 p-1.5 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
           {onEditAsset ? (
             <button
               type="button"
@@ -796,35 +777,7 @@ function PositionRowActions({ row, onRegisterTransaction, onListTransactions, on
               }}
             >
               <Pencil className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              Editar / Compras / Vendas
-            </button>
-          ) : null}
-
-          {!row.isCash && onSplitAsset && row.quantity > 0 ? (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-hover transition-colors text-left cursor-pointer"
-              onClick={() => {
-                setMenuOpen(false);
-                onSplitAsset(row.assetId, row.ticker);
-              }}
-            >
-              <Divide className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              Desdobramento / Split
-            </button>
-          ) : null}
-
-          {onListTransactions ? (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-hover transition-colors text-left cursor-pointer"
-              onClick={() => {
-                setMenuOpen(false);
-                onListTransactions(row.assetId, row.ticker);
-              }}
-            >
-              <List className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              Extrato de transações
+              Editar cadastro
             </button>
           ) : null}
 
