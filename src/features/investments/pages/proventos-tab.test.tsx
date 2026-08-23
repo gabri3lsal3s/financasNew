@@ -29,6 +29,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useRecordOrder: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+    isPending: false,
+  }),
   usePortfolioPosition: () => ({
     rows: [
       { assetId: "a1", ticker: "PETR4", priceBRL: 30, valueBRL: 3000, isCash: false },

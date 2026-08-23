@@ -10,6 +10,9 @@ vi.mock("@/state", () => ({
   usePortfolioPosition: () => ({
     totalBRL: 15000,
     cashBRL: 5000,
+    investedBRL: 10000,
+    unrealizedPnlBRL: 500,
+    unrealizedPct: 16.67,
     rows: [
       {
         assetId: "c1",
@@ -109,6 +112,31 @@ vi.mock("@/state", () => ({
     data: [],
     isLoading: false,
   }),
+  useAllocationTargets: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  useSaveAllocationTargets: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useRecordOrder: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+    isPending: false,
+  }),
+  useAssetPrices: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  useAssetPosition: () => ({
+    data: [],
+    isLoading: false,
+    ledger: { dividends: 0, quantity: 0, averageCost: 0, totalCost: 0, cash: 0 },
+  }),
+  useDeletePortfolioTransaction: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useDeletePortfolioContribution: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -137,8 +165,8 @@ describe("ResumoTab", () => {
     expect(screen.getByRole("button", { name: /Excluir ativo de caixa/i })).toBeInTheDocument();
 
     // Outros KPIs
-    expect(screen.getByText("Patrimônio total")).toBeInTheDocument();
-    expect(screen.getByText("Proventos no mês")).toBeInTheDocument();
+    expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();
+    expect(screen.getByText("Proventos deste Mês")).toBeInTheDocument();
 
     // Card removido
     expect(screen.queryByText("Ativos em carteira")).not.toBeInTheDocument();

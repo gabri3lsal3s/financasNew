@@ -13,7 +13,7 @@ import {
   usePortfolioDividends,
   usePortfolioPosition,
 } from "@/state";
-import { DividendFormDialog } from "@/features/investments/components";
+import { QuickTransactionSheet } from "@/features/investments/components";
 import type { PortfolioDividend } from "@/types";
 
 /**
@@ -342,7 +342,11 @@ export function ProventosTab() {
         </>
       )}
 
-      <DividendFormDialog open={dividendOpen} onOpenChange={setDividendOpen} />
+      <QuickTransactionSheet
+        open={dividendOpen}
+        onOpenChange={setDividendOpen}
+        initialType="dividend"
+      />
 
       <ConfirmDialog
         open={dividendToDelete !== null}

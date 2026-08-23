@@ -12,6 +12,10 @@ export { PortfolioStatementDialog } from "./portfolio-statement-dialog";
 export { PortfolioTaxReport } from "./portfolio-tax-report";
 export { TransactionFormDialog } from "./transaction-form-dialog";
 export { TransactionListDialog } from "./transaction-list-dialog";
+export { AssetDetailSheet } from "./asset-detail-sheet";
+export { AssetEditDialog } from "./asset-edit-dialog";
+export { QuickTransactionSheet } from "./quick-transaction-sheet";
+
 export type { AssetFormDialogProps } from "./asset-form-dialog";
 export type { AssetSplitDialogProps } from "./asset-split-dialog";
 export type { CashFormDialogProps } from "./cash-form-dialog";
@@ -25,4 +29,6 @@ export type { PortfolioStatementDialogProps } from "./portfolio-statement-dialog
 export type { PortfolioTaxReportProps } from "./portfolio-tax-report";
 export type { TransactionFormDialogProps } from "./transaction-form-dialog";
 export type { TransactionListDialogProps } from "./transaction-list-dialog";
-
+export type { AssetDetailSheetProps } from "./asset-detail-sheet";
+export type { AssetEditDialogProps } from "./asset-edit-dialog";
+export type { QuickTransactionSheetProps } from "./quick-transaction-sheet";

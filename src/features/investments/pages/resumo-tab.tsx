@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Coins, LineChart, PieChart, Plus, RefreshCw, Shield, Sparkles, TrendingUp } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonChart, SkeletonKpi } from "@/components/ui";
+import { Coins, LineChart, PieChart, Plus, RefreshCw, Shield, TrendingUp } from "lucide-react";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonKpi } from "@/components/ui";
 import { CategoryDonut, CashKpiCard, DeltaHint, KpiCard, PositionTable } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { calculatePortfolioConcentration, isCashAssetClass } from "@/domain/portfolio";
@@ -16,21 +16,22 @@ import {
   useSyncQuotes,
 } from "@/state";
 import {
-  AssetFormDialog,
-  AssetSplitDialog,
+  AssetDetailSheet,
+  AssetEditDialog,
   CashFormDialog,
   ContributionsListDialog,
   ManualPriceDialog,
   PortfolioImportDialog,
+  QuickTransactionSheet,
 } from "../components";
-import type { AssetCurrency, PortfolioAsset } from "@/types";
+import { InvestmentWizard } from "../wizard";
+import type { AssetCurrency, PortfolioAsset, PortfolioTransactionType } from "@/types";
 import type { PriceSource } from "@/domain/portfolio";
 
 /**
- * Resumo da carteira (§F36 unificada) — Posição Consolidada + Operação Ágil:
- * KPIs (patrimônio com Δ, rentabilidade ponderada, proventos do mês),
- * gráfico unificado de distribuição da carteira em tela cheia com alternador por ativo/classe,
- * tabela de posições com paginação e menu contextual, e evolução histórica.
+ * Resumo da carteira (§F36 e §F41 unificada) — Posição Consolidada + Investment Wizard + Visão Dedicada:
+ * KPIs executivos, gráfico unificado de distribuição da carteira, tabela de posições com Sheet de detalhes,
+ * Investment Wizard (Novo Ativo / Aporte) e Quick Transaction Sheet.
  */
 export function ResumoTab() {
   const position = usePortfolioPosition();
@@ -40,10 +41,16 @@ export function ResumoTab() {
   const syncQuotes = useSyncQuotes();
   const autoSyncedRef = useRef(false);
 
-  const [assetOpen, setAssetOpen] = useState(false);
-  const [cashDialogOpen, setCashDialogOpen] = useState(false);
+  // Estados dos Novos Sheets e Wizards
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardInitialAsset, setWizardInitialAsset] = useState<PortfolioAsset | null>(null);
+
+  const [detailAsset, setDetailAsset] = useState<PortfolioAsset | null>(null);
+  const [quickOrderAsset, setQuickOrderAsset] = useState<PortfolioAsset | null>(null);
+  const [quickOrderType, setQuickOrderType] = useState<PortfolioTransactionType>("buy");
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
-  const [assetToSplit, setAssetToSplit] = useState<PortfolioAsset | null>(null);
+
+  const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [contributionsOpen, setContributionsOpen] = useState(false);
@@ -78,7 +85,27 @@ export function ResumoTab() {
     }
   }, [assetsQuery.data, assetsQuery.isLoading, rows, syncQuotes]);
 
-  const assetById = (assetId: string): PortfolioAsset | undefined => (assetsQuery.data ?? []).find((a) => a.id === assetId);
+  const assetById = (assetId: string): PortfolioAsset | undefined =>
+    (assetsQuery.data ?? []).find((a) => a.id === assetId);
+
+  const openDetail = (assetId: string) => {
+    const asset = assetById(assetId);
+    if (asset) {
+      if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
+        setCashDialogOpen(true);
+      } else {
+        setDetailAsset(asset);
+      }
+    }
+  };
+
+  const openQuickOrder = (assetId: string, type: PortfolioTransactionType = "buy") => {
+    const asset = assetById(assetId);
+    if (asset) {
+      setQuickOrderAsset(asset);
+      setQuickOrderType(type);
+    }
+  };
 
   const openEdit = (assetId: string) => {
     const asset = assetById(assetId);
@@ -104,7 +131,7 @@ export function ResumoTab() {
     .reduce((acc, d) => acc + d.amount, 0);
   const dividendsCents = numberToCents(dividendsThisMonth);
 
-  // Agrupamento por classe de ativos (F16)
+  // Agrupamento por classe de ativos
   const classMap = new Map<string, number>();
   for (const row of rows) {
     const label = row.assetClass?.trim() || (row.isCash ? "Caixa" : "Sem classe");
@@ -121,16 +148,16 @@ export function ResumoTab() {
     .filter((s) => s.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents);
 
-  // Fatias individuais de cada ativo com clique interativo para ver/editar
+  // Fatias individuais de cada ativo com clique interativo para ver detalhes
   const assetSlices = rows
     .filter((row) => row.valueBRL > 0)
     .sort((a, b) => b.valueBRL - a.valueBRL)
     .map((row) => ({
       key: row.assetId,
       label: row.ticker,
-      subtitle: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
       valueCents: Math.round(row.valueBRL * 100),
-      onClick: () => openEdit(row.assetId),
+      subtitle: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
+      onClick: () => openDetail(row.assetId),
     }));
 
   const activeSlices = allocationMode === "asset" ? assetSlices : classSlices;
@@ -139,157 +166,184 @@ export function ResumoTab() {
   const previousPoint = series.length > 1 ? series[series.length - 2] : undefined;
   const previousCents = previousPoint ? numberToCents(previousPoint.valueBRL) : 0;
 
-  const cashPct = position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0;
-  const concentration = calculatePortfolioConcentration(rows, 25);
+  const unrealizedPnlBRL = position.totalBRL - position.totalCostBRL;
+  const unrealizedPct =
+    position.totalCostBRL > 0 ? (unrealizedPnlBRL / position.totalCostBRL) * 100 : null;
+
+  // Termômetro de Concentração
+  const concentration = calculatePortfolioConcentration(
+    investmentRows.map((r) => ({
+      assetId: r.assetId,
+      ticker: r.ticker,
+      valueBRL: r.valueBRL,
+    })),
+  );
 
   return (
-    <div className="flex flex-col gap-6 min-w-0">
-      {position.error ? <Alert variant="error">{getErrorMessage(position.error)}</Alert> : null}
+    <div className="flex flex-col gap-6">
+      {position.error ? (
+        <Alert variant="error">{getErrorMessage(position.error)}</Alert>
+      ) : null}
 
-      {position.isLoading ? (
-        <div className="flex flex-col gap-4" aria-hidden="true">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div className="col-span-2">
-              <SkeletonKpi />
-            </div>
+      {/* Grid de KPIs da Carteira */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {position.isLoading ? (
+          <>
             <SkeletonKpi />
             <SkeletonKpi />
+            <SkeletonKpi />
+            <SkeletonKpi />
+          </>
+        ) : (
+          <>
+            <KpiCard
+              label="Patrimônio Total"
+              cents={numberToCents(position.totalBRL)}
+              hint={
+                <DeltaHint
+                  currentCents={numberToCents(position.totalBRL)}
+                  previousCents={previousCents}
+                />
+              }
+            />
+            <KpiCard
+              label="Rentabilidade Global"
+              cents={numberToCents(unrealizedPnlBRL)}
+              tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"}
+              hint={
+                unrealizedPct != null
+                  ? `${unrealizedPct >= 0 ? "+" : ""}${unrealizedPct.toFixed(2)}% sobre o custo total`
+                  : undefined
+              }
+            />
+            <KpiCard
+              label="Proventos deste Mês"
+              cents={dividendsCents}
+              tone={dividendsCents > 0 ? "positive" : "default"}
+              hint="Dividendos / JCP / Rendimentos"
+            />
+            <CashKpiCard
+              cashBRL={position.cashBRL}
+              cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
+              hasCashAsset={Boolean(cashAsset)}
+              onEdit={() => setCashDialogOpen(true)}
+              onDelete={() => {
+                if (cashAsset) setAssetToDelete(cashAsset);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Alerta de Concentração Elevada */}
+      {concentration.isConcentrated && (
+        <div className="flex items-start gap-2.5 rounded-2xl border border-negative/30 bg-negative/5 p-4 text-xs text-foreground shadow-xs">
+          <Shield className="size-4 shrink-0 text-negative-strong mt-0.5" aria-hidden="true" />
+          <div className="flex flex-col gap-1">
+            <span className="font-semibold text-negative-strong">Alerta de Concentração na Carteira</span>
+            <span className="text-muted-foreground">
+              Seu maior ativo ({concentration.concentratedAssets[0]?.ticker}) representa{" "}
+              <strong className="font-mono text-foreground">
+                {concentration.concentratedAssets[0]?.pct.toFixed(1)}%
+              </strong>{" "}
+              do patrimônio investido. Considere diversificar nos próximos aportes.
+            </span>
           </div>
-          <SkeletonChart />
         </div>
-      ) : !hasInvestments ? (
+      )}
+
+      {/* Estado Vazio de Investimentos */}
+      {!position.isLoading && !hasInvestments && (
         <EmptyState
-          icon={<TrendingUp className="size-6" aria-hidden="true" />}
-          title="Sem investimentos cadastrados"
-          description="Cadastre seus ativos com quantidade e preço médio para acompanhar seu patrimônio consolidado e projeção de independência financeira."
-          tone="portfolio"
+          icon={<TrendingUp className="size-6" />}
+          title="Nenhum ativo cadastrado"
           headingLevel="h2"
+          description="Adicione seus investimentos ou registre seu saldo em caixa para iniciar o acompanhamento patrimonial."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button type="button" onClick={() => setAssetOpen(true)}>
+              <Button type="button" size="sm" onClick={() => { setWizardInitialAsset(null); setWizardOpen(true); }}>
                 <Plus aria-hidden="true" className="size-4" />
-                Adicionar primeiro ativo
+                Adicionar Ativo
               </Button>
-              <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
-                <Sparkles aria-hidden="true" className="size-4 text-portfolio" />
-                Importar custódia / texto
+              <Button type="button" size="sm" variant="outline" onClick={() => setCashDialogOpen(true)}>
+                Cadastrar Saldo em Caixa
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+                Importar Carteira
               </Button>
             </div>
           }
         />
-      ) : (
-        <>
-          {/* KPIs: Caixa ocupa 2 colunas em primeiro lugar, seguido de Patrimônio e Proventos */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <CashKpiCard
-              className="col-span-2"
-              cashBRL={position.cashBRL}
-              cashPct={cashPct > 0 ? cashPct : undefined}
-              hasCashAsset={Boolean(cashAsset)}
-              onEdit={() => setCashDialogOpen(true)}
-              onDelete={() => {
-                if (cashAsset) {
-                  openDelete(cashAsset.id);
-                }
-              }}
-            />
-            <KpiCard
-              label="Patrimônio total"
-              cents={numberToCents(position.totalBRL)}
-              tone="portfolio"
-              hint={<DeltaHint currentCents={numberToCents(position.totalBRL)} previousCents={previousCents} />}
-            />
-            <KpiCard label="Proventos no mês" cents={dividendsCents} tone="positive" hint={`Recebidos em ${month}`} />
-          </div>
+      )}
 
-          {/* Gráfico Unificado de Distribuição da Carteira em Largura Total */}
-          <section aria-label="Distribuição da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
+      {/* Conteúdo com Ativos Cadastrados */}
+      {!position.isLoading && hasInvestments && (
+        <>
+          {/* Seção Gráfica: Alocação Visual */}
+          <section aria-label="Alocação da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
                   <PieChart className="size-3.5" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-semibold text-foreground truncate">Distribuição da Carteira</h2>
-                <Badge variant="muted" className="hidden sm:inline-flex text-[11px] shrink-0">
-                  {allocationMode === "asset"
-                    ? `${assetSlices.length} ${assetSlices.length === 1 ? "ativo" : "ativos"}`
-                    : `${classSlices.length} ${classSlices.length === 1 ? "classe" : "classes"}`}
-                </Badge>
+                <h2 className="text-sm font-semibold text-foreground">Distribuição Patrimonial</h2>
               </div>
 
-              <div className="flex items-center gap-1 rounded-xl bg-surface-hover/80 p-1 border border-border/60 self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setAllocationMode("class")}
-                  className={cn(
-                    "rounded-lg px-3 py-1 text-xs font-medium transition-colors cursor-pointer",
-                    allocationMode === "class"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  Por Classe
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAllocationMode("asset")}
-                  className={cn(
-                    "rounded-lg px-3 py-1 text-xs font-medium transition-colors cursor-pointer",
-                    allocationMode === "asset"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  Por Ativo
-                </button>
+              <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                <div className="inline-flex rounded-lg border border-border/80 bg-surface p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setAllocationMode("class")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      allocationMode === "class"
+                        ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Por Classe
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAllocationMode("asset")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      allocationMode === "asset"
+                        ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Por Ativo
+                  </button>
+                </div>
               </div>
             </div>
 
-            <CategoryDonut
-              slices={activeSlices}
-              className="w-full min-w-0"
-              listClassName="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 w-full max-h-[28rem] overflow-y-auto pr-1"
-            />
+            <div className="flex flex-col items-center">
+              <CategoryDonut
+                slices={activeSlices}
+                totalCents={numberToCents(position.totalBRL)}
+                className="w-full max-w-full"
+              />
+            </div>
           </section>
 
-          {/* Termômetro de Concentração & Risco (§F39) */}
-          {concentration.isConcentrated && (
-            <div className="flex flex-col gap-2 rounded-2xl border border-warning-border/80 bg-warning-surface/30 p-4 text-xs text-foreground">
-              <div className="flex items-center gap-2 font-semibold text-warning-strong">
-                <Shield className="size-4 shrink-0" aria-hidden="true" />
-                <span>Termômetro de Concentração de Carteira</span>
+          {/* Seção de Custódia e Posição Atual */}
+          <section aria-label="Posições da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
+                  <TrendingUp className="size-3.5" aria-hidden="true" />
+                </span>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-foreground">Posição Consolidada</h2>
+                  <Badge variant="muted" className="text-[11px] font-mono">
+                    {investmentRows.length} ativo(s)
+                  </Badge>
+                </div>
               </div>
-              <p className="text-muted-foreground">
-                {concentration.concentratedAssets.map((a) => `${a.ticker} (${a.pct}%)`).join(", ")}{" "}
-                {concentration.concentratedAssets.length === 1 ? "ultrapassa" : "ultrapassam"} 25% do patrimônio em custódia de mercado. Considere direcionar novos aportes para equilibrar os demais ativos da carteira.
-              </p>
-            </div>
-          )}
 
-          {/* Seção principal: Posições da Carteira */}
-          <section aria-label="Posições" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-            <div className="mb-3 flex items-center justify-between gap-2 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <h2 className="text-sm font-semibold text-foreground truncate">
-                  Posições<span className="hidden min-[380px]:inline"> em Carteira</span>
-                </h2>
-                <Badge variant="muted" className="hidden sm:inline-flex text-[11px] shrink-0">
-                  {investmentRows.length} {investmentRows.length === 1 ? "ativo" : "ativos"}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setImportOpen(true)}
-                  className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1.5 shrink-0"
-                  title="Importar custódia via planilha ou texto livre"
-                  aria-label="Importar custódia"
-                >
-                  <Sparkles aria-hidden="true" className="size-3.5 text-portfolio" />
-                  <span className="hidden md:inline">Importar</span>
-                </Button>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
                 <Button
                   type="button"
                   variant="outline"
@@ -322,7 +376,7 @@ export function ResumoTab() {
                   type="button"
                   size="sm"
                   className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1 shrink-0"
-                  onClick={() => setAssetOpen(true)}
+                  onClick={() => { setWizardInitialAsset(null); setWizardOpen(true); }}
                   title="Adicionar novo ativo"
                   aria-label="Adicionar novo ativo"
                 >
@@ -331,14 +385,14 @@ export function ResumoTab() {
                 </Button>
               </div>
             </div>
+
             <PositionTable
               rows={investmentRows}
               sortable
+              onListTransactions={openDetail}
+              onRegisterTransaction={(assetId) => openQuickOrder(assetId, "buy")}
               onEditAsset={openEdit}
-              onSplitAsset={(assetId) => {
-                const asset = assetById(assetId);
-                if (asset) setAssetToSplit(asset);
-              }}
+              onSplitAsset={(assetId) => openQuickOrder(assetId, "split")}
               onSetManualPrice={(assetId, ticker, currency, priceBRL, source) => {
                 setPriceFor({ id: assetId, ticker, currency, priceBRL, source });
               }}
@@ -395,28 +449,53 @@ export function ResumoTab() {
         </>
       )}
 
-      <AssetFormDialog open={assetOpen} onOpenChange={setAssetOpen} />
+      {/* Investment Wizard Unificado (Novo Ativo + Aporte) */}
+      <InvestmentWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        initialAsset={wizardInitialAsset}
+      />
+
+      {/* Quick Transaction Sheet */}
+      <QuickTransactionSheet
+        open={quickOrderAsset !== null}
+        onOpenChange={(open) => !open && setQuickOrderAsset(null)}
+        asset={quickOrderAsset}
+        initialType={quickOrderType}
+      />
+
+      {/* Asset Detail Sheet (Visão Dedicada) */}
+      <AssetDetailSheet
+        open={detailAsset !== null}
+        onOpenChange={(open) => !open && setDetailAsset(null)}
+        asset={detailAsset}
+        onAction={(action, asset) => {
+          setDetailAsset(null);
+          if (action === "buy") {
+            setWizardInitialAsset(asset);
+            setWizardOpen(true);
+          } else {
+            setQuickOrderAsset(asset);
+            setQuickOrderType(action);
+          }
+        }}
+      />
+
+      {/* Diálogo de Edição Cadastral */}
+      {assetEditing ? (
+        <AssetEditDialog
+          open={assetEditing !== null}
+          onOpenChange={(open) => !open && setAssetEditing(null)}
+          asset={assetEditing}
+        />
+      ) : null}
+
       <CashFormDialog
         open={cashDialogOpen}
         onOpenChange={setCashDialogOpen}
         asset={cashAsset ?? null}
       />
-      {assetEditing ? (
-        <AssetFormDialog
-          key={assetEditing.id}
-          open={assetEditing !== null}
-          onOpenChange={(next) => !next && setAssetEditing(null)}
-          asset={assetEditing}
-        />
-      ) : null}
-      {assetToSplit ? (
-        <AssetSplitDialog
-          key={assetToSplit.id}
-          open={assetToSplit !== null}
-          onOpenChange={(next) => !next && setAssetToSplit(null)}
-          asset={assetToSplit}
-        />
-      ) : null}
+
       {priceFor ? (
         <ManualPriceDialog
           key={priceFor.id}
@@ -425,14 +504,18 @@ export function ResumoTab() {
           asset={priceFor}
         />
       ) : null}
+
       <PortfolioImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
       />
+
       <ContributionsListDialog
         open={contributionsOpen}
         onOpenChange={setContributionsOpen}
       />
+
+      {/* Confirmação de Exclusão */}
       <ConfirmDialog
         open={assetToDelete !== null}
         onOpenChange={(next) => !next && setAssetToDelete(null)}

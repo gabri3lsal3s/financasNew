@@ -81,6 +81,11 @@
 | **F34** | Importação Inteligente de Extratos Bancários | Reconciliação bidirecional de conta corrente (PIX/TED/Débito) com anti-double counting | Extratos Bancários |
 | **F35** | Valoração Multimoeda, Cotações Resilientes & Importação de Investimentos | PnL em USD/BRL exato, cotações/câmbio resilientes, parser de linguagem natural/CSV para carteira e Extrato Geral | Investimentos Completo |
 | **F36** | Posição Consolidada, Snapshots Patrimoniais & Simplificação de Aportes | Posição direta por ativo, snapshots mensais de histórico, aportes/proventos desacoplados e UX 1-Passo | Investimentos Simplificado |
+| **F37** | Fidelidade de Dados, Posição Inicial & Gestão de Aportes | Segregação de posição inicial vs aporte financeiro, histórico de aportes e expurgo | Gestão de Aportes |
+| **F38** | Operações de Custódia: Vendas, Resgates, Splits & Ativo de Caixa | Vendas com ganho de capital, isenção de 20k em ações, splits e ativo Caixa 1:1 | Custódia & Vendas |
+| **F39** | Inteligência de Proventos, Bola de Neve & Margem de Segurança | Efeito Bola de Neve, Yield on Cost, termômetro de concentração e normalização | Proventos Inteligentes |
+| **F40** | Central de Relatórios de Investimentos & Facilitador de IR/IRPF | Relatório Executivo A4/PDF, 4 fichas da Receita Federal e Monitor Mensal de DARF | Relatórios & Fiscal |
+| **F41** | Arquitetura Unificada de Investimentos: Investment Wizard & Quick Sheet | Investment Wizard unificado (Novo Ativo + Aporte), Autocomplete de tickers, Quick Sheet e Visão Dedicada | Investimentos Unificado |
 
 ---
 
@@ -1938,7 +1943,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 41 — Arquitetura Unificada de Investimentos: Investment Wizard (Novo Ativo & Aporte), Quick Transaction Sheet, Autocomplete de Tickers & Visão Dedicada de Ativos (v1.71 — 2026-08-22)
 
-> **Status:** ⏳ Planejado / Em Andamento — eliminação definitiva de modais sobrepostos e fluxos redundantes na carteira de investimentos, introdução do **Investment Wizard Unificado** (inclusão guiada de novos ativos e fluxo rápido de aporte em ativos existentes com cálculo de PM), **Autocomplete Inteligente de Tickers** com catálogo B3/Global, **Sugestões Preditivas de Aporte baseadas em Metas**, Bottom Sheet ágil para ordens e visão dedicada para gestão de ativos com deep linking.
+> **Status:** ✅ Concluído — eliminação definitiva de modais sobrepostos e fluxos redundantes na carteira de investimentos, introdução do **Investment Wizard Unificado** (inclusão guiada de novos ativos e fluxo rápido de aporte em ativos existentes com cálculo de PM), **Autocomplete Inteligente de Tickers** com catálogo B3/Global, **Sugestões Preditivas de Aporte baseadas em Metas**, Bottom Sheet ágil para ordens e visão dedicada para gestão de ativos com deep linking.
 
 **Objetivo:** unificar a arquitetura e a experiência do usuário do módulo de investimentos com foco em usabilidade mobile-first e fluxo guiado inteligente:
 1. **Autocomplete Inteligente de Tickers (`tickers-catalog.ts`):** catálogo puro dos principais ativos B3 (Ações, FIIs, BDRs, ETFs), Renda Fixa, Cripto e Globais com inferência automática de classe e moeda (BRL/USD) durante a digitação;

@@ -7,6 +7,9 @@ let positionMock = {
   totalBRL: 0,
   totalCostBRL: 0,
   cashBRL: 0,
+  investedBRL: 0,
+  unrealizedPnlBRL: 0,
+  unrealizedPct: 0 as number | null,
   monthlySeries: [] as { month: string; valueBRL: number; costBRL: number }[],
   monthlyContributionCents: 0,
   isLoading: false,
@@ -53,6 +56,7 @@ vi.mock("@/state", () => ({
   usePortfolioContributions: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   usePortfolioSnapshots: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSaveAllocationTargets: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSectorCaps: () => ({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -64,7 +68,9 @@ vi.mock("@/state", () => ({
   useCreatePortfolioTransactionsBatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRecordOrder: () => ({ mutateAsync: vi.fn().mockResolvedValue({ success: true }), isPending: false }),
   useAssetPrices: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useAssetPosition: () => ({ data: [], isLoading: false, ledger: { dividends: 0 } }),
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
@@ -75,6 +81,9 @@ describe("InvestmentsPage — F17 unificada", () => {
       totalBRL: 0,
       totalCostBRL: 0,
       cashBRL: 0,
+      investedBRL: 0,
+      unrealizedPnlBRL: 0,
+      unrealizedPct: 0,
       monthlySeries: [],
       monthlyContributionCents: 0,
       isLoading: false,
@@ -95,7 +104,7 @@ describe("InvestmentsPage — F17 unificada", () => {
 
   it("estado vazio quando não há ativos", () => {
     render(<InvestmentsPage />);
-    expect(screen.getByText("Sem investimentos cadastrados")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum ativo cadastrado")).toBeInTheDocument();
   });
 
   it("com ativos, exibe KPIs e tabela de posições", () => {
@@ -107,8 +116,8 @@ describe("InvestmentsPage — F17 unificada", () => {
     render(<InvestmentsPage />);
 
     expect(screen.getByText("Saldo em caixa")).toBeInTheDocument();
-    expect(screen.getByText("Patrimônio total")).toBeInTheDocument();
+    expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();
     expect(screen.getAllByText("R$ 8.000,00").length).toBeGreaterThan(0);
-    expect(screen.getByText("Proventos no mês")).toBeInTheDocument();
+    expect(screen.getByText("Proventos deste Mês")).toBeInTheDocument();
   });
 });
