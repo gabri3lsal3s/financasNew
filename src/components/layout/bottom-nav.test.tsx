@@ -107,4 +107,38 @@ describe("BottomNav 5 slots (F7.1)", () => {
 
     expect(main.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
   });
+
+  it("exibe o ícone correspondente e ativa o slot Mais quando em subpáginas do Mais", () => {
+    const routesAndIcons = [
+      { path: "/dividas", iconClass: "lucide-hand-coins", label: "Mais (Dívidas)" },
+      { path: "/investments", iconClass: "lucide-chart-line", label: "Mais (Investimentos)" },
+      { path: "/relatorios", iconClass: "lucide-chart-pie", label: "Mais (Relatórios)" },
+      { path: "/insights", iconClass: "lucide-lightbulb", label: "Mais (Insights)" },
+      { path: "/orcamentos", iconClass: "lucide-piggy-bank", label: "Mais (Categorias)" },
+      { path: "/lembretes", iconClass: "lucide-bell", label: "Mais (Lembretes)" },
+      { path: "/configuracoes", iconClass: "lucide-settings", label: "Mais (Configurações)" },
+    ];
+
+    for (const { path, iconClass, label } of routesAndIcons) {
+      const { container, unmount } = renderNav(path);
+      const moreLink = screen.getByRole("link", { name: label });
+      expect(moreLink).toHaveClass("text-primary-strong");
+      expect(container.querySelector(`.${iconClass}`)).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("exibe os 3 pontinhos (Ellipsis) no slot Mais quando em páginas principais ou na própria /mais", () => {
+    const { container: rootContainer, unmount: unmountRoot } = renderNav("/");
+    const rootMoreLink = screen.getByRole("link", { name: "Mais" });
+    expect(rootMoreLink).not.toHaveClass("text-primary-strong");
+    expect(rootContainer.querySelector(".lucide-ellipsis")).toBeInTheDocument();
+    unmountRoot();
+
+    const { container: moreContainer, unmount: unmountMore } = renderNav("/mais");
+    const moreMenuLink = screen.getByRole("link", { name: "Mais" });
+    expect(moreMenuLink).toHaveClass("text-primary-strong");
+    expect(moreContainer.querySelector(".lucide-ellipsis")).toBeInTheDocument();
+    unmountMore();
+  });
 });

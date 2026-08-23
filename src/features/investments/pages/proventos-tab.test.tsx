@@ -70,8 +70,8 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     expect(screen.getAllByText("R$ 150,25").length).toBeGreaterThan(0);
     expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("MXRF11").length).toBeGreaterThanOrEqual(1);
-    // Calendário anual presente (12 meses).
-    expect(screen.getByText("Calendário de 2026")).toBeInTheDocument();
+    // Sub-aba de calendário presente.
+    expect(screen.getByRole("tab", { name: "Calendário Anual" })).toBeInTheDocument();
   });
 
   it("navega o mês pelo MonthPicker e atualiza o extrato", async () => {
@@ -95,11 +95,15 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     const user = userEvent.setup();
     render(<ProventosTab />);
 
-    // Botão de julho no calendário (aria-pressed marca o mês ativo).
+    // Alterna para a sub-aba Calendário Anual
+    await user.click(screen.getByRole("tab", { name: "Calendário Anual" }));
+    expect(screen.getByText("Calendário de 2026")).toBeInTheDocument();
+
+    // Botão de julho no calendário
     const julyButton = screen.getByRole("button", { name: /jul/i });
     await user.click(julyButton);
+    // Ao clicar em julho, o calendário navega de volta para o extrato de julho
     expect(screen.getAllByText("R$ 40,00").length).toBeGreaterThan(0);
-    expect(julyButton).toHaveAttribute("aria-pressed", "true");
   });
 
   it("exibe o indicador do Efeito Bola de Neve para ativos com proventos", () => {

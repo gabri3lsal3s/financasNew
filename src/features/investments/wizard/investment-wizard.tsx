@@ -93,6 +93,7 @@ export function InvestmentWizard({
   const handleClose = () => {
     setState(defaultWizardState);
     setError(null);
+    setConfirmClose(false);
     onClose?.();
     onOpenChange?.(false);
   };
@@ -319,6 +320,9 @@ export function InvestmentWizard({
               }}
               onSelectSuggestion={(item) => {
                 const asset = existingAssets.find((a) => a.id === item.assetId);
+                const row = position.rows.find((r) => r.assetId === item.assetId);
+                const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
+                const suggestedQty = priceBRL > 0 ? Math.floor(item.gapBRL / priceBRL) : 0;
                 setState((prev) => ({
                   ...prev,
                   mode: "buy",
@@ -328,6 +332,8 @@ export function InvestmentWizard({
                   assetClass: item.assetClass,
                   currency: asset?.currency ?? "BRL",
                   isCash: false,
+                  priceCents: Math.round(priceBRL * 100),
+                  quantityStr: suggestedQty > 0 ? String(suggestedQty) : "",
                   totalCents: Math.round(item.gapBRL * 100),
                 }));
               }}
@@ -356,6 +362,9 @@ export function InvestmentWizard({
               }}
               onSelectSuggestion={(item) => {
                 const asset = existingAssets.find((a) => a.id === item.assetId);
+                const row = position.rows.find((r) => r.assetId === item.assetId);
+                const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
+                const suggestedQty = priceBRL > 0 ? Math.floor(item.gapBRL / priceBRL) : 0;
                 setState((prev) => ({
                   ...prev,
                   mode: "buy",
@@ -365,6 +374,8 @@ export function InvestmentWizard({
                   assetClass: item.assetClass,
                   currency: asset?.currency ?? "BRL",
                   isCash: false,
+                  priceCents: Math.round(priceBRL * 100),
+                  quantityStr: suggestedQty > 0 ? String(suggestedQty) : "",
                   totalCents: Math.round(item.gapBRL * 100),
                 }));
               }}

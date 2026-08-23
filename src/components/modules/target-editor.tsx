@@ -81,13 +81,13 @@ export function TargetEditor({
           {rows.map((row) => (
             <div
               key={row.key}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3 min-w-0"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 shadow-2xs"
             >
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <p className="truncate text-sm font-medium text-foreground">{row.label}</p>
                 {row.detail ? <p className="truncate text-xs text-muted-foreground">{row.detail}</p> : null}
               </div>
-              <div className="flex w-full sm:w-44 shrink-0 items-center gap-2">
+              <div className="flex w-full sm:w-52 shrink-0 items-center gap-2 min-w-0">
                 <NumberStepperInput
                   value={Number.isFinite(row.target) ? row.target : 0}
                   min={0}
@@ -95,9 +95,9 @@ export function TargetEditor({
                   step={0.5}
                   ariaLabel={`Meta de ${row.label} em %`}
                   onValueChange={(next) => onTargetChange(row.key, Number(next))}
-                  className="flex-1 [&_input]:text-right"
+                  className="flex-1 min-w-0 [&_input]:text-right"
                 />
-                <span className="text-sm text-muted-foreground shrink-0">%</span>
+                <span className="text-sm font-semibold text-muted-foreground shrink-0 select-none">%</span>
               </div>
             </div>
           ))}

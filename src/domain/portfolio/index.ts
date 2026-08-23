@@ -300,6 +300,7 @@ export {
 export type { SectorExposure, TargetDraft, TargetValidation } from "./allocation";
 export {
   classCapsFromSectorCaps,
+  simulateCombinedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
 } from "./aporte";

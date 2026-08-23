@@ -34,7 +34,7 @@ import { normalizeClassName } from "./valuation";
 // Tipos
 // ---------------------------------------------------------------------------
 
-export type AporteMode = "asset" | "class";
+export type AporteMode = "asset" | "class" | "both";
 
 export interface AporteAssetInput {
   id: string;
@@ -178,6 +178,47 @@ function simulateAporte(opts: {
         const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
         const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL)));
         effective.set(asset.id, { targetPct, targetValueBRL, gapBRL });
+      }
+    }
+  } else if (opts.mode === "both") {
+    // Modo combinado: meta individual tem prioridade; se o ativo não tiver meta
+    // individual mas a sua classe tiver meta de classe, distribui proporcionalmente
+    // dentro da classe entre os membros sem meta individual.
+    for (const asset of opts.assets) {
+      const targetPct = nonNegative(asset.targetPercentage ?? 0);
+      if (targetPct > 0) {
+        const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
+        const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL)));
+        effective.set(asset.id, { targetPct, targetValueBRL, gapBRL });
+      }
+    }
+    // Para ativos sem meta individual, tenta distribuir via meta de classe
+    for (const classTarget of opts.classTargets) {
+      const membersWithoutIndividual = opts.assets.filter(
+        (a) => a.assetClass === classTarget.className && !effective.has(a.id),
+      );
+      if (membersWithoutIndividual.length === 0) continue;
+      const classTargetPct = nonNegative(classTarget.targetPercentage);
+      if (!(classTargetPct > 0)) continue;
+      // Desconta a fatia já coberta por metas individuais dentro desta classe
+      const individualPctInClass = opts.assets
+        .filter((a) => a.assetClass === classTarget.className && effective.has(a.id))
+        .reduce((acc, a) => acc + nonNegative(a.targetPercentage ?? 0), 0);
+      const remainingClassPct = Math.max(0, classTargetPct - individualPctInClass);
+      if (!(remainingClassPct > 0)) continue;
+      const classValue = membersWithoutIndividual.reduce(
+        (acc, m) => acc + nonNegative(m.currentValueBRL),
+        0,
+      );
+      for (const member of membersWithoutIndividual) {
+        const share =
+          classValue > 0 && member.currentValueBRL > 0
+            ? nonNegative(member.currentValueBRL) / classValue
+            : 1 / membersWithoutIndividual.length;
+        const targetPct = round2(remainingClassPct * share);
+        const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
+        const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
+        if (targetPct > 0) effective.set(member.id, { targetPct, targetValueBRL, gapBRL });
       }
     }
   } else {
@@ -325,6 +366,26 @@ export function simulateRebalanceAporte(opts: {
 }): AporteResult {
   return simulateAporte({
     mode: "class",
+    aporte: opts.aporte,
+    assets: opts.assets,
+    classTargets: opts.classTargets,
+    classCaps: opts.classCaps ?? [],
+  });
+}
+
+/**
+ * Modo combinado (§3.11.3) — usa meta individual quando disponível e recorre
+ * à meta de classe como fallback para ativos sem meta própria.
+ * É o modo padrão recomendado para carteiras mistas.
+ */
+export function simulateCombinedAporte(opts: {
+  aporte: number;
+  assets: readonly AporteAssetInput[];
+  classTargets: readonly ClassTargetInput[];
+  classCaps?: readonly ClassCapInput[];
+}): AporteResult {
+  return simulateAporte({
+    mode: "both",
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: opts.classTargets,

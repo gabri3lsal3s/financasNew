@@ -8,6 +8,7 @@ import { useSwipeNavigation } from "@/hooks/use-swipe-navigation";
 export interface TabItem {
   value: string;
   label: string;
+  shortLabel?: string;
   icon?: ReactNode;
   content?: ReactNode;
 }
@@ -17,6 +18,7 @@ export interface TabsProps {
   onValueChange: (value: string) => void;
   items: TabItem[];
   variant?: "underline" | "pills";
+  fullWidth?: boolean;
   className?: string;
   /**
    * F20 — navegação por gesto: swipe horizontal na área de conteúdo alterna
@@ -32,11 +34,13 @@ export function Tabs({
   onValueChange,
   items,
   variant = "underline",
+  fullWidth,
   className,
   swipeable = false,
 }: TabsProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const currentIndex = Math.max(0, items.findIndex((item) => item.value === value));
+  const isFullWidth = fullWidth ?? (variant === "pills");
 
   const swipe = useSwipeNavigation({
     onNavigate: (direction) => {
@@ -87,6 +91,7 @@ export function Tabs({
       <TabsPrimitive.List
         className={cn(
           "flex gap-1 overflow-x-auto no-scrollbar",
+          isFullWidth ? "w-full" : "w-auto",
           variant === "underline"
             ? "border-b border-border"
             : "p-1 rounded-xl bg-muted/60 border border-border/50 backdrop-blur-sm",
@@ -98,14 +103,16 @@ export function Tabs({
             key={item.value}
             value={item.value}
             className={cn(
-              "inline-flex items-center justify-center gap-2 whitespace-nowrap px-3.5 py-2 text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98]",
+              "inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0",
+              isFullWidth && "flex-1",
               variant === "underline"
                 ? "border-b-2 border-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary-strong data-[state=active]:font-semibold"
-                : "rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/50 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-sm data-[state=active]:shadow-black/5",
+                : "rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/50 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-sm data-[state=active]:shadow-black/5 text-center",
             )}
           >
             {item.icon}
-            <span>{item.label}</span>
+            <span className={cn("truncate", item.shortLabel && "hidden sm:inline")}>{item.label}</span>
+            {item.shortLabel && <span className="truncate sm:hidden">{item.shortLabel}</span>}
           </TabsPrimitive.Trigger>
         ))}
       </TabsPrimitive.List>

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CalendarDays, Plus, Sparkles, Trash2, TrendingUp } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonTable } from "@/components/ui";
+import { CalendarDays, Sparkles, Trash2, TrendingUp } from "lucide-react";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonTable, Tabs } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -13,12 +13,17 @@ import {
   usePortfolioDividends,
   usePortfolioPosition,
 } from "@/state";
-import { QuickTransactionSheet } from "@/features/investments/components";
 import type { PortfolioDividend } from "@/types";
+
+type ProventosSubTab = "extrato" | "calendario";
 
 /**
  * Proventos da carteira (§F36 e §F39) — extrato mensal dos rendimentos RECEBIDOS
- * a partir de `portfolio_dividends`, calendário anual e indicador do Efeito Bola de Neve.
+ * a partir de `portfolio_dividends`, indicador do Efeito Bola de Neve e calendário anual.
+ *
+ * Sub-tabs:
+ * - Extrato & Indicadores: barra de filtros, KPIs do mês/ano, extrato mensal e Bola de Neve.
+ * - Calendário Anual: visualização dos 12 meses com barras proporcionais de rendimento.
  */
 export function ProventosTab() {
   const dividendsQuery = usePortfolioDividends();
@@ -26,8 +31,8 @@ export function ProventosTab() {
   const position = usePortfolioPosition();
   const deleteDividend = useDeletePortfolioDividend();
 
+  const [subTab, setSubTab] = useState<ProventosSubTab>("extrato");
   const [month, setMonth] = useState(() => currentMonth());
-  const [dividendOpen, setDividendOpen] = useState(false);
   const [dividendToDelete, setDividendToDelete] = useState<PortfolioDividend | null>(null);
 
   const dividends = dividendsQuery.data ?? [];
@@ -100,20 +105,11 @@ export function ProventosTab() {
 
   const maxMonthTotal = Math.max(...yearly.map((e) => e.total), 1);
 
-  return (
+  const extratoContent = (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Proventos recebidos</h2>
-          <p className="text-xs text-muted-foreground">Extrato e calendário de rendimentos de dividendos, JCP e FIIs.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês dos proventos" />
-          <Button type="button" size="sm" onClick={() => setDividendOpen(true)} className="gap-1.5 shrink-0">
-            <Plus className="size-4" aria-hidden="true" />
-            Registrar provento
-          </Button>
-        </div>
+      {/* Barra utilitária limpa: Seletor de mês */}
+      <div className="flex items-center min-w-0">
+        <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês dos proventos" />
       </div>
 
       {error ? (
@@ -138,15 +134,10 @@ export function ProventosTab() {
           description="Registre os rendimentos e dividendos recebidos das suas cotas para acompanhar o extrato e calendário anual."
           tone="portfolio"
           headingLevel="h2"
-          action={
-            <Button type="button" size="sm" onClick={() => setDividendOpen(true)} className="gap-1.5">
-              <Plus className="size-4" aria-hidden="true" />
-              Registrar provento
-            </Button>
-          }
         />
       ) : (
         <>
+          {/* KPIs do mês e acumulado */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
               <p className="text-xs text-muted-foreground">Recebido em {monthLabel(month)}</p>
@@ -166,9 +157,54 @@ export function ProventosTab() {
             </div>
           </div>
 
-          {/* Seção do Efeito Bola de Neve (Renda Passiva) */}
+          {/* Extrato do Mês */}
+          <section aria-label={`Extrato de ${monthLabel(month)}`} className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Extrato do mês</h3>
+              <Badge variant="muted" className="text-[11px]">
+                {monthLabel(month)}
+              </Badge>
+            </div>
+
+            {extract.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum provento recebido neste mês.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/80 overflow-hidden">
+                {extract.map((entry) => {
+                  const ticker = (entry.asset_id ? tickerByAssetId.get(entry.asset_id) : null) ?? entry.ticker ?? "Ativo";
+                  return (
+                    <li key={entry.id} className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-surface-hover/40 transition-colors">
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="truncate text-sm font-medium text-foreground">{ticker}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {formatDateBR(entry.date)} {entry.notes ? `· ${entry.notes}` : ""}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="num shrink-0 text-sm font-semibold text-foreground">
+                          <MoneyText cents={numberToCents(entry.amount)} tone="positive" />
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-negative-strong"
+                          title="Excluir lançamento de provento"
+                          onClick={() => setDividendToDelete(entry)}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {/* Efeito Bola de Neve */}
           {snowballItems.length > 0 && (
-            <section aria-label="Efeito Bola de Neve" className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+            <section aria-label="Efeito Bola de Neve" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
@@ -247,105 +283,98 @@ export function ProventosTab() {
               </div>
             </section>
           )}
-
-          <section aria-label={`Extrato de ${monthLabel(month)}`} className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Extrato do mês</h3>
-              <Badge variant="muted" className="text-[11px]">
-                {monthLabel(month)}
-              </Badge>
-            </div>
-
-            {extract.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum provento recebido neste mês.</p>
-            ) : (
-              <ul className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/80">
-                {extract.map((entry) => {
-                  const ticker = (entry.asset_id ? tickerByAssetId.get(entry.asset_id) : null) ?? entry.ticker ?? "Ativo";
-                  return (
-                    <li key={entry.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="truncate text-sm font-medium text-foreground">{ticker}</span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {formatDateBR(entry.date)} {entry.notes ? `· ${entry.notes}` : ""}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="num shrink-0 text-sm font-semibold text-foreground">
-                          <MoneyText cents={numberToCents(entry.amount)} tone="positive" />
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-negative-strong"
-                          title="Excluir lançamento de provento"
-                          onClick={() => setDividendToDelete(entry)}
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-
-          <section aria-label={`Calendário de proventos de ${year}`} className="rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
-            <div className="mb-4 flex items-center gap-2">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-                <CalendarDays className="size-3.5" aria-hidden="true" />
-              </span>
-              <h3 className="text-sm font-semibold text-foreground">Calendário de {year}</h3>
-            </div>
-            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {yearly.map((entry) => {
-                const active = entry.month === month;
-                const hasValue = entry.total > 0;
-                return (
-                  <li key={entry.month}>
-                    <button
-                      type="button"
-                      onClick={() => setMonth(entry.month)}
-                      aria-pressed={active}
-                      className={`flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer ${
-                        active
-                          ? "border-portfolio/40 bg-portfolio/10"
-                          : "border-border/80 bg-transparent hover:border-border"
-                      }`}
-                    >
-                      <div className="flex w-full items-center justify-between gap-2">
-                        <span className="text-xs font-medium capitalize text-foreground">{monthLabel(entry.month)}</span>
-                        {hasValue ? (
-                          <span className="num text-xs font-semibold text-positive-strong">
-                            <MoneyText cents={numberToCents(entry.total)} tone="positive" />
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground">—</span>
-                        )}
-                      </div>
-                      {hasValue ? (
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-border/40" aria-hidden="true">
-                          <div
-                            className="h-full rounded-full bg-positive-strong transition-all duration-300"
-                            style={{ width: `${Math.max(4, Math.min(100, (entry.total / maxMonthTotal) * 100))}%` }}
-                          />
-                        </div>
-                      ) : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
         </>
       )}
+    </div>
+  );
 
-      <QuickTransactionSheet
-        open={dividendOpen}
-        onOpenChange={setDividendOpen}
-        initialType="dividend"
+  const calendarioContent = (
+    <div className="flex flex-col gap-6">
+      {/* Resumo Anual */}
+      <div className="flex items-center justify-between rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+        <div>
+          <span className="text-xs text-muted-foreground">Total de Proventos em {year}</span>
+          <p className="num mt-1 text-2xl font-bold tracking-tight text-foreground">
+            <MoneyText cents={numberToCents(yearTotal)} tone="positive" />
+          </p>
+        </div>
+        <Badge variant="muted" className="text-xs">
+          Ano {year}
+        </Badge>
+      </div>
+
+      {/* Grid de Meses */}
+      <section aria-label={`Calendário de proventos de ${year}`} className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+        <div className="mb-4 flex items-center gap-2">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
+            <CalendarDays className="size-3.5" aria-hidden="true" />
+          </span>
+          <h3 className="text-sm font-semibold text-foreground">Calendário de {year}</h3>
+        </div>
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {yearly.map((entry) => {
+            const active = entry.month === month;
+            const hasValue = entry.total > 0;
+            return (
+              <li key={entry.month}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMonth(entry.month);
+                    setSubTab("extrato");
+                  }}
+                  aria-pressed={active}
+                  className={`flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                    active
+                      ? "border-portfolio/40 bg-portfolio/10"
+                      : "border-border/80 bg-transparent hover:border-border hover:bg-surface-hover/30"
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <span className="text-xs font-medium capitalize text-foreground">{monthLabel(entry.month)}</span>
+                    {hasValue ? (
+                      <span className="num text-xs font-semibold text-positive-strong">
+                        <MoneyText cents={numberToCents(entry.total)} tone="positive" />
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">—</span>
+                    )}
+                  </div>
+                  {hasValue ? (
+                    <div className="h-1 w-full overflow-hidden rounded-full bg-border/40" aria-hidden="true">
+                      <div
+                        className="h-full rounded-full bg-positive-strong transition-all duration-300"
+                        style={{ width: `${Math.max(4, Math.min(100, (entry.total / maxMonthTotal) * 100))}%` }}
+                      />
+                    </div>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </div>
+  );
+
+  return (
+    <>
+      <Tabs
+        value={subTab}
+        onValueChange={(value) => setSubTab(value as ProventosSubTab)}
+        variant="pills"
+        items={[
+          {
+            value: "extrato",
+            label: "Extrato & Indicadores",
+            content: extratoContent,
+          },
+          {
+            value: "calendario",
+            label: "Calendário Anual",
+            content: calendarioContent,
+          },
+        ]}
       />
 
       <ConfirmDialog
@@ -358,6 +387,7 @@ export function ProventosTab() {
         confirmPending={deleteDividend.isPending}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </>
   );
 }
+

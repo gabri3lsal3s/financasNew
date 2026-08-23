@@ -84,6 +84,35 @@ export function BottomNav() {
   const create = getFabAction(location.pathname, location.search);
   const { totalCount, urgentCount } = useReminders();
 
+  const moreSubItem = navItems.find((candidate) => {
+    if (candidate.path === "/" || candidate.path === "/transacoes" || candidate.path === "/cartoes") {
+      return false;
+    }
+    if (location.pathname === candidate.path || location.pathname.startsWith(`${candidate.path}/`)) {
+      return true;
+    }
+    if (
+      candidate.path === "/orcamentos" &&
+      (location.pathname === "/categorias" || location.pathname.startsWith("/categorias/"))
+    ) {
+      return true;
+    }
+    if (
+      candidate.path === "/investments" &&
+      (location.pathname === "/investimentos" ||
+        location.pathname.startsWith("/investimentos/") ||
+        location.pathname === "/carteira" ||
+        location.pathname.startsWith("/carteira/"))
+    ) {
+      return true;
+    }
+    return false;
+  });
+
+  const isMoreRoot = location.pathname === "/mais" || location.pathname.startsWith("/mais/");
+  const isMoreActive = isMoreRoot || Boolean(moreSubItem);
+  const MoreIcon = moreSubItem ? moreSubItem.icon : Ellipsis;
+
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur lg:hidden"
@@ -113,6 +142,7 @@ export function BottomNav() {
 
         <NavLink
           to="/mais"
+          aria-label={moreSubItem ? `Mais (${moreSubItem.label})` : "Mais"}
           onClick={(e) => {
             if (location.pathname === "/mais") {
               const scrolled = scrollToTop({ sensoryFeedback: true });
@@ -121,15 +151,17 @@ export function BottomNav() {
               }
             }
           }}
-          className={({ isActive }) =>
-            cn(
-              "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors relative",
-              isActive ? "text-primary-strong" : "text-muted-foreground",
-            )
-          }
+          className={cn(
+            "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors relative",
+            isMoreActive ? "text-primary-strong" : "text-muted-foreground",
+          )}
         >
           <div className="relative">
-            <Ellipsis className="size-5" aria-hidden="true" />
+            <MoreIcon
+              key={moreSubItem?.path ?? "mais"}
+              className="size-5 animate-spring-pop transform-gpu"
+              aria-hidden="true"
+            />
             {totalCount > 0 && (
               <span
                 className={cn(

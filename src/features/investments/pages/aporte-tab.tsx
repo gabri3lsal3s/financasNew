@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Calculator } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, RadioGroup, SkeletonChart, SkeletonKpi } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, RadioGroup, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
   calculateWeightedAveragePrice,
   classCapsFromSectorCaps,
+  simulateCombinedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
   type AporteAssetInput,
@@ -24,12 +25,19 @@ import {
   useSectorCaps,
   useUpdatePortfolioAsset,
 } from "@/state";
+import { ContributionsPanel } from "../components";
+
+type AporteSubTab = "calculadora" | "historico";
 
 /**
  * Calculadora de aporte (§F36) — simulação local (pura) em 2 modos:
  * por meta individual de ativo ou por meta de classe, com travas setoriais.
  * Ao aplicar o lote, atualiza a quantidade e preço médio ponderado dos ativos
  * e registra o aporte em `portfolio_contributions`.
+ *
+ * Sub-tabs:
+ * - Calculadora: rebalanceador interativo
+ * - Histórico: lista de aportes registrados por mês (§F37)
  */
 export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
@@ -40,8 +48,9 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const updateAsset = useUpdatePortfolioAsset();
   const createContribution = useCreatePortfolioContribution();
 
+  const [subTab, setSubTab] = useState<AporteSubTab>("calculadora");
   const [aporteCents, setAporteCents] = useState(0);
-  const [mode, setMode] = useState<AporteMode>("asset");
+  const [mode, setMode] = useState<AporteMode>("both");
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
@@ -77,7 +86,9 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     aporteCents > 0 && assets.length > 0
       ? mode === "asset"
         ? simulateSmartAporte({ aporte: aporteCents / 100, assets, classCaps })
-        : simulateRebalanceAporte({ aporte: aporteCents / 100, assets, classTargets, classCaps })
+        : mode === "class"
+          ? simulateRebalanceAporte({ aporte: aporteCents / 100, assets, classTargets, classCaps })
+          : simulateCombinedAporte({ aporte: aporteCents / 100, assets, classTargets, classCaps })
       : null;
 
   const routes: AporteRouteRow[] =
@@ -147,7 +158,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     }
   };
 
-  return (
+  const calculadoraContent = (
     <div className="flex flex-col gap-6">
       {error ? <Alert variant="error">{getErrorMessage(error)}</Alert> : null}
       {batchError ? <Alert variant="error">{batchError}</Alert> : null}
@@ -206,6 +217,10 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
                   onValueChange={(val) => setMode(val as AporteMode)}
                   options={[
                     {
+                      value: "both",
+                      label: "Ativo e classe",
+                    },
+                    {
                       value: "asset",
                       label: "Meta por ativo",
                     },
@@ -243,5 +258,25 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         onConfirm={() => void handleExecuteBatch()}
       />
     </div>
+  );
+
+  return (
+    <Tabs
+      value={subTab}
+      onValueChange={(value) => setSubTab(value as AporteSubTab)}
+      variant="pills"
+      items={[
+        {
+          value: "calculadora",
+          label: "Calculadora",
+          content: calculadoraContent,
+        },
+        {
+          value: "historico",
+          label: "Histórico",
+          content: <ContributionsPanel />,
+        },
+      ]}
+    />
   );
 }

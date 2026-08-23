@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileSpreadsheet, FileText, Landmark, Printer, ShieldCheck, Sparkles } from "lucide-react";
+import { FileSpreadsheet, FileText, Landmark, Printer, ShieldCheck, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui";
 import {
   useAllPortfolioTransactions,
@@ -10,18 +10,21 @@ import {
 import {
   PortfolioDarfMonitor,
   PortfolioExecutiveReport,
+  PortfolioImportDialog,
   PortfolioTaxReport,
 } from "../components";
 
 /**
- * Aba de Relatórios Executivos e Inteligência Fiscal / IRPF (§F40).
+ * Aba de Ferramentas: Importação de Carteira + Relatórios Executivos e Inteligência Fiscal (§F40).
+ * Grade balanceada e direta sem cabeçalhos redundantes.
  */
-export function RelatoriosTab() {
+export function FerramentasTab() {
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
   const dividendsQuery = usePortfolioDividends();
   const transactionsQuery = useAllPortfolioTransactions();
 
+  const [importOpen, setImportOpen] = useState(false);
   const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
   const [taxReportOpen, setTaxReportOpen] = useState(false);
   const [darfMonitorOpen, setDarfMonitorOpen] = useState(false);
@@ -37,15 +40,34 @@ export function RelatoriosTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">Relatórios & Inteligência Fiscal</h2>
-        <p className="text-xs text-muted-foreground">
-          Documentos executivos em A4/PDF, facilitador para o IRPF da Receita Federal e apuração de DARF.
-        </p>
-      </div>
+      {/* Grade de Ferramentas & Relatórios */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+        {/* Card 1: Importação de Planilha */}
+        <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
+          <div className="flex flex-col gap-3">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio">
+              <Upload className="size-4.5" aria-hidden="true" />
+            </span>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-semibold text-foreground">Importar via Planilha</h3>
+              <p className="text-xs text-muted-foreground">
+                Carregue arquivos .xlsx ou .csv com posições e histórico de operações para popular a carteira em lote.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setImportOpen(true)}
+            className="mt-4 gap-1.5 w-full justify-center"
+          >
+            <Upload className="size-3.5" aria-hidden="true" />
+            Importar Carteira
+          </Button>
+        </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {/* Card 1: Relatório Executivo A4/PDF */}
+        {/* Card 2: Relatório Executivo A4/PDF */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
           <div className="flex flex-col gap-3">
             <span className="flex size-9 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio">
@@ -54,7 +76,7 @@ export function RelatoriosTab() {
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-foreground">Relatório Executivo (A4/PDF)</h3>
               <p className="text-xs text-muted-foreground">
-                Documento de acompanhamento da carteira consolidada em padrão imprimível com gráficos, KPIs e detalhamento de custódia.
+                Documento de acompanhamento da carteira consolidada em padrão imprimível com gráficos, KPIs e custódia.
               </p>
             </div>
           </div>
@@ -70,7 +92,7 @@ export function RelatoriosTab() {
           </Button>
         </div>
 
-        {/* Card 2: Facilitador de IRPF */}
+        {/* Card 3: Facilitador de IRPF */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
           <div className="flex flex-col gap-3">
             <span className="flex size-9 items-center justify-center rounded-xl bg-positive/10 border border-positive/20 text-positive-strong">
@@ -79,7 +101,7 @@ export function RelatoriosTab() {
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-foreground">Facilitador de IRPF Anual</h3>
               <p className="text-xs text-muted-foreground">
-                Fichas de Bens e Direitos (em 31/12) e Rendimentos Isentos/Exclusivos com botão de 1-clique para copiar a discriminação.
+                Fichas de Bens e Direitos e Rendimentos com botão de 1-clique para copiar a discriminação para a Receita.
               </p>
             </div>
           </div>
@@ -95,7 +117,7 @@ export function RelatoriosTab() {
           </Button>
         </div>
 
-        {/* Card 3: Monitor de DARF & Isenção de 20k */}
+        {/* Card 4: Monitor de DARF & Isenção de 20k */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs transition-all hover:border-border">
           <div className="flex flex-col gap-3">
             <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong">
@@ -122,6 +144,8 @@ export function RelatoriosTab() {
       </div>
 
       {/* Diálogos Modais e Folhas de Impressão */}
+      <PortfolioImportDialog open={importOpen} onOpenChange={setImportOpen} />
+
       <PortfolioExecutiveReport
         open={executiveReportOpen}
         onOpenChange={setExecutiveReportOpen}
@@ -147,3 +171,7 @@ export function RelatoriosTab() {
     </div>
   );
 }
+
+/** Alias para manter compatibilidade com testes e referências legadas */
+export const FerrantasTab = FerramentasTab;
+

@@ -1,7 +1,33 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { RelatoriosTab } from "./relatorios-tab";
+import { FerrantasTab } from "./relatorios-tab";
+
+// Barrel de componentes da feature — todos com dependências transitivas são mockados aqui.
+vi.mock("../components", () => ({
+  PortfolioImportDialog: ({ open }: { open: boolean }) =>
+    open ? <div>dialog-importar</div> : null,
+  PortfolioExecutiveReport: ({ open }: { open: boolean }) =>
+    open ? <div>Relatório Executivo</div> : null,
+  PortfolioTaxReport: ({ open }: { open: boolean }) =>
+    open
+      ? (
+        <div>
+          <div>Facilitador de IRPF / Declaração Anual</div>
+          <div>100 cotas/ações de PETR4</div>
+        </div>
+      )
+      : null,
+  PortfolioDarfMonitor: ({ open }: { open: boolean }) =>
+    open
+      ? (
+        <div>
+          <div>Monitor Mensal de DARF &amp; Isenção de 20k</div>
+          <div>Sem DARF a recolher no período</div>
+        </div>
+      )
+      : null,
+}));
 
 vi.mock("@/state", () => ({
   usePortfolioPosition: () => ({
@@ -49,11 +75,11 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-describe("RelatoriosTab — Fase 40 Relatórios & IR", () => {
-  it("renderiza os cards de Relatório Executivo, IRPF e Monitor de DARF", () => {
-    render(<RelatoriosTab />);
+describe("FerrantasTab — Ferramentas de Investimentos", () => {
+  it("renderiza a grade de 4 ferramentas com Relatório Executivo, IRPF e Monitor de DARF", () => {
+    render(<FerrantasTab />);
 
-    expect(screen.getByText("Relatórios & Inteligência Fiscal")).toBeInTheDocument();
+    expect(screen.getByText("Importar via Planilha")).toBeInTheDocument();
     expect(screen.getByText("Relatório Executivo (A4/PDF)")).toBeInTheDocument();
     expect(screen.getByText("Facilitador de IRPF Anual")).toBeInTheDocument();
     expect(screen.getByText("Monitor Mensal de DARF")).toBeInTheDocument();
@@ -61,7 +87,7 @@ describe("RelatoriosTab — Fase 40 Relatórios & IR", () => {
 
   it("abre o facilitador de IRPF e exibe a discriminação do ativo", async () => {
     const user = userEvent.setup();
-    render(<RelatoriosTab />);
+    render(<FerrantasTab />);
 
     await user.click(screen.getByRole("button", { name: "Abrir Fichas do IRPF" }));
 
@@ -71,7 +97,7 @@ describe("RelatoriosTab — Fase 40 Relatórios & IR", () => {
 
   it("abre o monitor de DARF com status de isenção de 20k", async () => {
     const user = userEvent.setup();
-    render(<RelatoriosTab />);
+    render(<FerrantasTab />);
 
     await user.click(screen.getByRole("button", { name: "Consultar Apuração Mensal" }));
 
@@ -79,3 +105,4 @@ describe("RelatoriosTab — Fase 40 Relatórios & IR", () => {
     expect(screen.getByText("Sem DARF a recolher no período")).toBeInTheDocument();
   });
 });
+

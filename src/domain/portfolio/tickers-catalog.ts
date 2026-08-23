@@ -300,3 +300,41 @@ export function buildAporteSuggestions(
 
   return suggestions.sort((a, b) => b.gapBRL - a.gapBRL).slice(0, limit);
 }
+
+/**
+ * Retorna os ativos que possuem metas definidas, ordenados por maior gap de aporte
+ * (maior defasagem em relação à meta = maior prioridade), no formato TickerSearchResult.
+ * Usado na lista "recomendados" do wizard quando não há busca ativa.
+ */
+export function buildTopSuggestionResults(
+  assets: readonly PortfolioAsset[],
+  assetRows: readonly {
+    assetId: string;
+    ticker: string;
+    valueBRL: number;
+    pct: number;
+    assetClass?: string | null;
+  }[],
+  targets: readonly { asset_id: string; target_percentage: number }[],
+  totalPortfolioBRL: number,
+  limit = 5,
+): TickerSearchResult[] {
+  if (targets.length === 0) return [];
+
+  const suggestions = buildAporteSuggestions(assets, assetRows, targets, totalPortfolioBRL, limit);
+
+  return suggestions.map((item) => {
+    const asset = assets.find((a) => a.id === item.assetId);
+    const catalogMatch = CURATED_TICKERS_CATALOG.find((c) => c.ticker === item.ticker);
+    return {
+      ticker: item.ticker,
+      name: catalogMatch?.name ?? asset?.notes ?? item.ticker,
+      assetClass: item.assetClass,
+      currency: asset?.currency ?? catalogMatch?.currency ?? "BRL",
+      isExisting: true,
+      existingAssetId: item.assetId,
+      currentQuantity: asset?.quantity,
+      currentAveragePrice: asset?.average_price,
+    };
+  });
+}

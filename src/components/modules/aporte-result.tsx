@@ -21,7 +21,7 @@ export interface AporteRouteRow {
 }
 
 export interface AporteResultProps {
-  mode: "asset" | "class";
+  mode: "asset" | "class" | "both";
   aporte: number;
   totalAllocated: number;
   leftover: number;
@@ -34,6 +34,7 @@ export interface AporteResultProps {
 const MODE_LABEL: Record<AporteResultProps["mode"], string> = {
   asset: "por meta de ativo",
   class: "por meta de classe",
+  both: "por ativo e classe",
 };
 
 /**

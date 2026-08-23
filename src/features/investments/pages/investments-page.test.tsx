@@ -104,7 +104,7 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Metas" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aporte" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Relatórios & IR" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Ferramentas" })).toBeInTheDocument();
   });
 
   it("estado vazio quando não há ativos", () => {

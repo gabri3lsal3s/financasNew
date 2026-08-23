@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Coins, LineChart, PieChart, Plus, RefreshCw, Shield, TrendingUp } from "lucide-react";
+import { LineChart, PieChart, Plus, RefreshCw, Shield, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonKpi } from "@/components/ui";
 import { CategoryDonut, CashKpiCard, KpiCard, PositionTable } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
@@ -20,7 +20,6 @@ import {
   AssetDetailSheet,
   AssetEditDialog,
   CashFormDialog,
-  ContributionsListDialog,
   ManualPriceDialog,
   PortfolioImportDialog,
 } from "../components";
@@ -64,7 +63,6 @@ export function ResumoTab() {
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [contributionsOpen, setContributionsOpen] = useState(false);
   const [allocationMode, setAllocationMode] = useState<"asset" | "class">("class");
   const [priceFor, setPriceFor] = useState<{
     id: string;
@@ -379,18 +377,7 @@ export function ResumoTab() {
                   />
                   <span className="hidden md:inline">{syncQuotes.isPending ? "Atualizando…" : "Atualizar"}</span>
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setContributionsOpen(true)}
-                  className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1.5 shrink-0"
-                  title="Gerenciar lançamentos de aportes financeiros do mês"
-                  aria-label="Gerenciar aportes do mês"
-                >
-                  <Coins aria-hidden="true" className="size-3.5 text-portfolio" />
-                  <span className="hidden md:inline">Aportes</span>
-                </Button>
+
                 <Button
                   type="button"
                   size="sm"
@@ -433,7 +420,7 @@ export function ResumoTab() {
               <span className="text-xs text-muted-foreground">Últimos 6 meses</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-2">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3 pt-2">
               {series.map((point) => {
                 const isCurrent = point.month === month;
                 const gain = point.valueBRL - point.costBRL;
@@ -441,24 +428,40 @@ export function ResumoTab() {
                 return (
                   <div
                     key={point.month}
-                    className={`rounded-xl border p-3 flex flex-col gap-1 transition-colors ${
+                    className={cn(
+                      "rounded-xl border p-4 flex flex-col gap-2.5 transition-colors shadow-2xs min-w-0",
                       isCurrent
-                        ? "border-portfolio/40 bg-portfolio/5"
-                        : "border-border/60 bg-surface-hover/30"
-                    }`}
+                        ? "border-portfolio/40 bg-portfolio/5 ring-1 ring-portfolio/20"
+                        : "border-border/60 bg-surface-hover/30 hover:border-border/80",
+                    )}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <span className="text-xs font-semibold text-foreground">{point.month}</span>
-                      {isCurrent ? <Badge variant="portfolio" className="text-[10px] px-1.5 py-0">atual</Badge> : null}
+                      {isCurrent ? <Badge variant="portfolio" className="text-[10px] px-1.5 py-0 shrink-0">atual</Badge> : null}
                     </div>
-                    <MoneyText cents={numberToCents(point.valueBRL)} tone="default" className="text-sm font-semibold" />
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
-                      <span>Custo</span>
-                      <MoneyText cents={numberToCents(point.costBRL)} tone="default" className="text-muted-foreground" />
+                    <div className="min-w-0">
+                      <MoneyText
+                        cents={numberToCents(point.valueBRL)}
+                        tone="default"
+                        className="text-base sm:text-lg font-bold text-foreground tabular-nums whitespace-nowrap block"
+                      />
                     </div>
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-muted-foreground">Resultado</span>
-                      <span className={`num font-medium ${gain >= 0 ? "text-positive-strong" : "text-negative-strong"}`}>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40 gap-2 min-w-0">
+                      <span className="shrink-0 font-medium">Custo</span>
+                      <MoneyText
+                        cents={numberToCents(point.costBRL)}
+                        tone="default"
+                        className="text-muted-foreground tabular-nums font-medium whitespace-nowrap"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs gap-2 min-w-0">
+                      <span className="text-muted-foreground shrink-0 font-medium">Resultado</span>
+                      <span
+                        className={cn(
+                          "num font-bold tabular-nums shrink-0",
+                          gain >= 0 ? "text-positive-strong" : "text-negative-strong",
+                        )}
+                      >
                         {gainPct >= 0 ? "+" : ""}{gainPct.toFixed(1)}%
                       </span>
                     </div>
@@ -520,10 +523,6 @@ export function ResumoTab() {
         onOpenChange={setImportOpen}
       />
 
-      <ContributionsListDialog
-        open={contributionsOpen}
-        onOpenChange={setContributionsOpen}
-      />
 
       {/* Confirmação de Exclusão */}
       <ConfirmDialog
