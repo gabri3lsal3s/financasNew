@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui";
+import { todayISO } from "@/domain/debts";
 import { exportMultiSheetExcel, type ExcelWorkbookData } from "@/services/excel-export";
 import { pushToast } from "@/services/toast";
 
@@ -18,7 +19,7 @@ export function ExcelExportCard({
   const handleExport = () => {
     setDownloading(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       exportMultiSheetExcel(`Caderno_Relatorios_Financeiro_${today}`, workbookData);
       pushToast({
         title: "Download iniciado",

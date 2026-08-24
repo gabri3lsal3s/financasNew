@@ -146,17 +146,17 @@ export function TaxFacilitatorModal({
       </section>
 
       {/* 4. Seção: Ficha de Rendimentos Recebidos */}
-      <section aria-label="Rendimentos Recebidos" className="flex flex-col gap-3 pt-2">
+      <section aria-label="Rendimentos Recebidos" className="break-inside-avoid flex flex-col gap-3 pt-2">
         <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-foreground">
           Ficha: Rendimentos Isentos &amp; Exclusivos ({calendarYear})
         </h3>
-        <div className="overflow-x-auto rounded-xl border border-border/80">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
+          <table className="w-full text-left text-xs border-collapse print:table-fixed">
             <thead>
               <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
-                <th className="py-2.5 px-3">Ticker</th>
-                <th className="py-2.5 px-3">Tipo / Ficha</th>
-                <th className="py-2.5 px-3 text-right">Total Recebido (R$)</th>
+                <th className="py-2.5 px-3 print:w-[25%]">Ticker</th>
+                <th className="py-2.5 px-3 print:w-[45%]">Tipo / Ficha</th>
+                <th className="py-2.5 px-3 text-right print:w-[30%]">Total Recebido (R$)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -174,8 +174,8 @@ export function TaxFacilitatorModal({
 
                 return (
                   <tr key={`div-${asset.id}`} className="hover:bg-muted/20">
-                    <td className="py-2 px-3 font-semibold text-foreground">{asset.ticker}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{tipoRendimento}</td>
+                    <td className="py-2 px-3 font-semibold text-foreground truncate">{asset.ticker}</td>
+                    <td className="py-2 px-3 text-muted-foreground truncate">{tipoRendimento}</td>
                     <td className="py-2 px-3 text-right num font-mono font-medium text-positive-strong">
                       <MoneyText cents={numberToCents(assetDividends)} />
                     </td>

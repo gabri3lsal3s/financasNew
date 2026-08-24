@@ -51,14 +51,17 @@ export function ReportTable({
     {
       key: "label",
       header: title,
-      className: "flex-1 min-w-[120px]",
-      cell: (row) => <span className="text-sm font-medium text-foreground">{row.label}</span>,
+      className: "flex-1 min-w-[100px]",
+      cell: (row) => <span className="text-sm font-medium text-foreground truncate block">{row.label}</span>,
     },
     {
       key: "bruto",
       header: hasDualMetrics ? "Valor Bruto" : "Total",
       align: "right",
-      cell: (row) => <MoneyText cents={row.brutoCents ?? row.valueCents} tone="default" className="font-semibold" />,
+      className: "w-24 sm:w-28 shrink-0 text-right",
+      cell: (row) => (
+        <MoneyText cents={row.brutoCents ?? row.valueCents} tone="default" className="font-semibold text-xs sm:text-sm" />
+      ),
     },
     ...(hasDualMetrics
       ? [
@@ -66,6 +69,7 @@ export function ReportTable({
             key: "ponderado",
             header: "Ponderado",
             align: "right" as const,
+            className: "w-20 sm:w-24 shrink-0 text-right",
             cell: (row: ReportRow) => (
               <MoneyText cents={row.ponderadoCents ?? row.valueCents} tone="default" className="text-xs text-muted-foreground" />
             ),
@@ -76,6 +80,7 @@ export function ReportTable({
       key: "percent",
       header: "Part.",
       align: "right",
+      className: "w-12 sm:w-14 shrink-0 text-right",
       cell: (row) => (
         <span className="num text-xs text-muted-foreground">{row.percent.toFixed(0)}%</span>
       ),

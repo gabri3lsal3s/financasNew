@@ -625,7 +625,7 @@ export function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-6 p-4 sm:p-6">
+      <div className="flex flex-col gap-6 w-full min-w-0">
         <Skeleton className="h-20 w-full rounded-2xl" />
         <Skeleton className="h-10 w-80" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -640,14 +640,30 @@ export function ReportsPage() {
 
   if (error) {
     return (
-      <div className="p-6">
-        <ErrorState message={getErrorMessage(error)} onRetry={() => window.location.reload()} />
+      <div className="flex flex-col gap-6 w-full min-w-0">
+        <ErrorState
+          message={getErrorMessage(error)}
+          onRetry={() => {
+            void Promise.all([
+              monthlyExpenses.refetch(),
+              monthlyIncomes.refetch(),
+              prevExpenses.refetch(),
+              prevIncomes.refetch(),
+              yearExpenses.refetch(),
+              yearIncomes.refetch(),
+              debtsQuery.refetch(),
+              categoriesQuery.refetch(),
+              positionQuery.refetch(),
+              assetsQuery.refetch(),
+            ]);
+          }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 p-3.5 sm:p-6 pb-20">
+    <div className="flex flex-col gap-6 w-full min-w-0">
       {/* Banner / Card de Exportação Excel */}
       <ExcelExportCard workbookData={workbookData} description={excelDescription} />
 

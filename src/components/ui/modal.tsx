@@ -31,6 +31,8 @@ export interface ModalProps {
   elevated?: boolean;
   /** Exibe o botão de calculadora no cabeçalho do modal (default false). Use apenas em modais com campos de valor monetário. */
   showCalculator?: boolean;
+  /** Ações contextuais adicionais renderizadas no cabeçalho antes do botão fechar. */
+  headerActions?: ReactNode;
 }
 
 /** Distância (px) de arrasto que dispara o fechamento do bottom sheet. */
@@ -66,6 +68,7 @@ export function Modal({
   size = "md",
   elevated = false,
   showCalculator = false,
+  headerActions,
 }: ModalProps) {
   const z = elevated ? "z-floating-tools" : "z-modal";
   const displayCalculator = showCalculator && !elevated;
@@ -185,7 +188,8 @@ export function Modal({
                 </DialogPrimitive.Description>
               ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1.5">
+              {headerActions}
               {displayCalculator ? (
                 <Button
                   type="button"

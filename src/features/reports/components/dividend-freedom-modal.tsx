@@ -148,7 +148,7 @@ export function DividendFreedomModal({
       />
 
       {/* 5. Diagnóstico do Efeito Bola de Neve */}
-      <section aria-label="Efeito Bola de Neve" className="flex flex-col gap-3 pt-2">
+      <section aria-label="Efeito Bola de Neve" className="break-inside-avoid flex flex-col gap-3 pt-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary-strong" aria-hidden="true" />
@@ -162,21 +162,21 @@ export function DividendFreedomModal({
         </div>
 
         {freedomAnalysis.snowballAssets.length > 0 ? (
-          <div className="overflow-x-auto rounded-xl border border-border/80">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
+            <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
                 <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
-                  <th className="py-2.5 px-3">Ticker</th>
-                  <th className="py-2.5 px-3 text-right">Preço Atual</th>
-                  <th className="py-2.5 px-3 text-right">Renda Mensal Gerada</th>
-                  <th className="py-2.5 px-3 text-right">Cotas Compradas / Mês</th>
-                  <th className="py-2.5 px-3 text-center">Status da Bola de Neve</th>
+                  <th className="py-2.5 px-3 print:w-[18%]">Ticker</th>
+                  <th className="py-2.5 px-3 text-right print:w-[18%]">Preço Atual</th>
+                  <th className="py-2.5 px-3 text-right print:w-[22%]">Renda Mensal Gerada</th>
+                  <th className="py-2.5 px-3 text-right print:w-[20%]">Cotas Compradas / Mês</th>
+                  <th className="py-2.5 px-3 text-center print:w-[22%]">Status da Bola de Neve</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {freedomAnalysis.snowballAssets.map((sb) => (
                   <tr key={sb.ticker} className="hover:bg-muted/20">
-                    <td className="py-2 px-3 font-semibold text-foreground">{sb.ticker}</td>
+                    <td className="py-2 px-3 font-semibold text-foreground truncate">{sb.ticker}</td>
                     <td className="py-2 px-3 text-right num font-mono">
                       <MoneyText cents={numberToCents(sb.currentPriceBRL)} />
                     </td>

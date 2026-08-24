@@ -179,7 +179,7 @@ export function WealthTearSheetModal({
       />
 
       {/* 3. Seção: Diagnóstico de Alocação por Classe */}
-      <section aria-label="Matriz de Rebalanceamento" className="flex flex-col gap-3">
+      <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <PieChart className="size-4 text-primary-strong" aria-hidden="true" />
           <h3 className="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider">
@@ -195,16 +195,16 @@ export function WealthTearSheetModal({
         />
 
         {/* Tabela de Classes e Gaps */}
-        <div className="overflow-x-auto rounded-xl border border-border/80">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
+          <table className="w-full text-left text-xs border-collapse print:table-fixed">
             <thead>
               <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
-                <th className="py-2.5 px-3">Classe</th>
-                <th className="py-2.5 px-3 text-right">Atual (R$)</th>
-                <th className="py-2.5 px-3 text-right">Atual (%)</th>
-                <th className="py-2.5 px-3 text-right">Meta (%)</th>
-                <th className="py-2.5 px-3 text-right">Gap (R$)</th>
-                <th className="py-2.5 px-3 text-center">Status</th>
+                <th className="py-2.5 px-3 print:w-[22%]">Classe</th>
+                <th className="py-2.5 px-3 text-right print:w-[18%]">Atual (R$)</th>
+                <th className="py-2.5 px-3 text-right print:w-[14%]">Atual (%)</th>
+                <th className="py-2.5 px-3 text-right print:w-[14%]">Meta (%)</th>
+                <th className="py-2.5 px-3 text-right print:w-[18%]">Gap (R$)</th>
+                <th className="py-2.5 px-3 text-center print:w-[14%]">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -219,19 +219,11 @@ export function WealthTearSheetModal({
                     {cg.targetPct > 0 ? `${cg.targetPct.toFixed(1)}%` : "—"}
                   </td>
                   <td className="py-2 px-3 text-right num font-mono">
-                    <span
-                      className={
-                        cg.gapBRL > 0
-                          ? "text-primary-strong font-semibold"
-                          : cg.gapBRL < 0
-                            ? "text-muted-foreground"
-                            : ""
-                      }
-                    >
-                      {cg.gapBRL > 0
-                        ? `+ R$ ${cg.gapBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-                        : "—"}
-                    </span>
+                    {cg.gapBRL > 0 ? (
+                      <MoneyText cents={numberToCents(cg.gapBRL)} tone="primary" className="font-semibold" />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="py-2 px-3 text-center">
                     <span
@@ -266,7 +258,7 @@ export function WealthTearSheetModal({
       </section>
 
       {/* 4. Seção: Termômetro de Risco e Concentração */}
-      <section aria-label="Risco e Concentração" className="flex flex-col gap-3">
+      <section aria-label="Risco e Concentração" className="break-inside-avoid flex flex-col gap-3">
         <ReportRiskGauge
           topItemName={topDominance.ticker}
           topItemPct={topDominance.pct}
@@ -321,12 +313,11 @@ export function WealthTearSheetModal({
               <p>
                 <strong>Prioridade de Aporte:</strong> A classe{" "}
                 <strong>{allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}</strong> está com a maior defasagem patrimonial, demandando aproximadamente{" "}
-                <strong>
-                  R${" "}
-                  {allocationAnalysis.topDeficitClass.gapBRL.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                  })}
-                </strong>{" "}
+                <MoneyText
+                  cents={numberToCents(allocationAnalysis.topDeficitClass.gapBRL)}
+                  tone="primary"
+                  className="font-bold inline"
+                />{" "}
                 para restabelecer o equilíbrio das suas metas.
               </p>
             ) : (
@@ -348,25 +339,25 @@ export function WealthTearSheetModal({
         <h3 className="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider">
           Custódia Consolidada de Ativos ({investmentRows.length})
         </h3>
-        <div className="overflow-x-auto rounded-xl border border-border/80">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
+          <table className="w-full text-left text-xs border-collapse print:table-fixed">
             <thead>
               <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
-                <th className="py-2.5 px-3">Ticker</th>
-                <th className="py-2.5 px-3">Classe</th>
-                <th className="py-2.5 px-3 text-right">Qtd</th>
-                <th className="py-2.5 px-3 text-right">Preço Médio</th>
-                <th className="py-2.5 px-3 text-right">Cotação</th>
-                <th className="py-2.5 px-3 text-right">Total (R$)</th>
-                <th className="py-2.5 px-3 text-right">PnL (%)</th>
-                <th className="py-2.5 px-3 text-right">YoC (%)</th>
+                <th className="py-2.5 px-3 print:w-[14%]">Ticker</th>
+                <th className="py-2.5 px-3 print:w-[12%]">Classe</th>
+                <th className="py-2.5 px-3 text-right print:w-[10%]">Qtd</th>
+                <th className="py-2.5 px-3 text-right print:w-[13%]">Preço Médio</th>
+                <th className="py-2.5 px-3 text-right print:w-[13%]">Cotação</th>
+                <th className="py-2.5 px-3 text-right print:w-[16%]">Total (R$)</th>
+                <th className="py-2.5 px-3 text-right print:w-[11%]">PnL (%)</th>
+                <th className="py-2.5 px-3 text-right print:w-[11%]">YoC (%)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {investmentRows.map((r) => (
                 <tr key={r.ticker} className="hover:bg-muted/20">
-                  <td className="py-2 px-3 font-semibold text-foreground">{r.ticker}</td>
-                  <td className="py-2 px-3 capitalize text-muted-foreground">{r.assetClass}</td>
+                  <td className="py-2 px-3 font-semibold text-foreground truncate">{r.ticker}</td>
+                  <td className="py-2 px-3 capitalize text-muted-foreground truncate">{r.assetClass}</td>
                   <td className="py-2 px-3 text-right num font-mono">{formatQuantity(r.quantity)}</td>
                   <td className="py-2 px-3 text-right num font-mono">
                     <MoneyText cents={numberToCents(r.averagePrice)} />

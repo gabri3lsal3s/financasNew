@@ -630,14 +630,26 @@
     background-color: #f5f5f4 !important;
   }
 
-  /* Quebra de página limpa: linhas de tabela nunca são cortadas no meio e o
+  /* Quebra de página limpa: linhas de tabela e blocos nunca são cortados no meio e o
      cabeçalho das tabelas repete em cada página (comportamento nativo do
      `<thead>` em fluxo normal — mantido pelo PrintSheet). */
-  .print-sheet tr {
-    break-inside: avoid;
+  .print-sheet tr,
+  .print-sheet .break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .print-sheet thead {
-    display: table-header-group;
+    display: table-header-group !important;
+  }
+
+  .print-sheet table {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .print-sheet .overflow-x-auto {
+    overflow: visible !important;
   }
 }
+
