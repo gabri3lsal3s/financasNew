@@ -199,14 +199,14 @@ create policy "audit_events_select_own" on public.audit_events
 -- 2. Hardening de search_path em Funções de Sistema & Triggers
 -- ----------------------------------------------------------------
 
--- Recriação das triggers e utilitários com search_path explícito
-alter function public.protect_profile_security_fields() set search_path = public, pg_temp;
-alter function public.handle_new_user() set search_path = public, pg_temp;
-alter function public.log_audit_event(text, text, uuid, jsonb) set search_path = public, pg_temp;
-
--- Validação de invariantes em lote para amortizações e parcelamentos
 do $$
 begin
+  if exists (select 1 from pg_proc where proname = 'protect_profile_security_fields') then
+    alter function public.protect_profile_security_fields() set search_path = public, pg_temp;
+  end if;
+  if exists (select 1 from pg_proc where proname = 'handle_new_user') then
+    alter function public.handle_new_user() set search_path = public, pg_temp;
+  end if;
   if exists (select 1 from pg_proc where proname = 'admin_update_user_role') then
     alter function public.admin_update_user_role(uuid, public.user_role) set search_path = public, pg_temp;
   end if;
