@@ -80,16 +80,17 @@ export function ReportDetailDialog({
             </span>
           </div>
           <div className="flex flex-col items-end text-right">
+            <span className="text-sm font-semibold text-foreground">
+              {hasDualMetrics ? "Total Bruto: " : "Total: "}
+              <MoneyText cents={totalBrutoCents} tone="negative" />
+            </span>
             {hasDualMetrics ? (
               <span className="text-xs text-muted-foreground">
-                Nominal: <MoneyText cents={totalBrutoCents} tone="default" />
+                Ponderado: <MoneyText cents={totalPonderadoCents} tone="default" />
               </span>
             ) : null}
-            <span className="text-sm font-semibold text-foreground">
-              {hasDualMetrics ? "Ponderado: " : "Total: "}
-              <MoneyText cents={totalPonderadoCents} tone="negative" />
-            </span>
           </div>
+
           <Button
             type="button"
             variant="ghost"

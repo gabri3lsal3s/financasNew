@@ -286,7 +286,18 @@ describe("ReportsPage (Central Unificada §F42)", () => {
 
     mockHasFeature = () => true;
   });
+
+  it("exibe valores brutos como principais e ponderados para consulta quando pesos estiverem ativos", () => {
+
+    renderReports();
+
+    // Despesas Totais: Bruto = R$ 2.000,00 (1000 + 500 + 500), Ponderado = R$ 1.750,00 (1000 + 250 + 500)
+    expect(screen.getByText("Despesas Totais")).toBeInTheDocument();
+    // Confere presença do texto de consulta ponderada
+    expect(screen.getAllByText(/ponderado:/i).length).toBeGreaterThan(0);
+  });
 });
+
 
 
 

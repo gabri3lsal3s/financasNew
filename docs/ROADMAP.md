@@ -1,6 +1,8 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v1.95** registra a **Hierarquia Estrita de Valores em Relatórios: Valor Bruto Principal & Ponderado de Consulta** (2026-08-23): **(1) Regra de Negócio de Apresentação**: estabelecimento da regra canônica de que em todas as visões e dossiês de relatórios onde métricas ponderadas forem relevantes, o valor principal e de maior destaque visual é **sempre o valor bruto nominal (100%)**, enquanto o valor ponderado é apresentado como **dado de consulta analítica**; **(2) Cards de Resumo de Finanças (`ReportsPage`)**: Receitas Totais, Despesas Totais e Poupança do Período exibem o valor bruto nominal em destaque principal (`text-lg font-bold`) e o valor ponderado com badge/sub-linha de consulta (`ponderado: R$ X,XX`) quando houver divergência; **(3) Agregações e Tabelas (`ReportTable`)**: coluna principal exibindo o "Valor Bruto" nominal com participação percentual calculada sobre o total nominal, e coluna secundária "Ponderado" para consulta analítica lado a lado; **(4) Detalhes de Agrupamento (`ReportDetailDialog`)**: exibição do "Total Bruto" como valor primário e "Ponderado" como métrica secundária; **(5) Dossiê Executivo de Finanças Pessoais & DRE (`FinancialCloseReportModal`)**: KPIs de topo, estrutura contábil da DRE e tabelas de categorias/meios de pagamento alinhados com o valor bruto nominal como valor contábil de face e linha de consulta ponderada; **(6) Suíte 100% Verde**: 215 arquivos / 1.602 testes passando, zero erros de lint e typecheck.
 > **v1.94** registra a **Responsividade Mobile Completa do Painel Administrativo (`/admin`), Abas Pills com `shortLabel` & Tabelas Fluidas com Scroll Protegido** (2026-08-23): **(1) Navegação por Abas Mobile-First (`AdminPage`)**: aplicação de `variant="pills"` e `shortLabel` nas 5 abas (*Geral, Usuários, Módulos, Convites, Auditoria*), garantindo toque fluido sem quebra de linhas em smartphones; **(2) Visão Geral & Métricas (`OverviewTab`)**: grid de 6 KPIs com valores truncados seguros (`truncate text-lg sm:text-xl`), espaçamento responsivo `gap-2.5 sm:gap-3` e tabela de aprovação imediata com `min-w-[520px]`; **(3) Gestão de Usuários & Convites (`UsersTab` & `InvitesTab`)**: tabelas administrativas com contêiner `overflow-x-auto rounded-xl border border-border/80` e larguras mínimas protegidas (`min-w-[560px..580px]`), filtros responsivos e botões em largura total no mobile (`w-full sm:w-auto justify-center`); **(4) Catálogo de Feature Flags (`FeatureToggleCard`)**: reestruturação do card em layout flexível com badge de status bem posicionado e botão "Ativar/Desativar Módulo" em largura total no mobile; **(5) Diálogos Administrativos (`UserEditDialog` & `CreateInviteDialog`)**: lista de permissões e overrides por usuário em layout empilhado responsivo com botões claros de liberar/bloquear/restaurar e rodapés com botões adaptados para toque; **(6) Suíte 100% Verde**: 214 arquivos / 1.598 testes passando, zero erros de lint e typecheck.
+
 > **v1.93** registra a **Correção da Geração de PDFs Limpos (A4) via Hook `usePrint` & Suporte Consistente a Valores Ponderados em Relatórios** (2026-08-23): **(1) Correção Definitiva de PDFs Vazios (`usePrint`)**: substituição do padrão inconsistente de `setTimeout(100ms)` pelo novo hook reativo `src/components/ui/use-print.ts` com sincronização garantida no commit do DOM via `useEffect` e próximo frame de pintura do navegador (`requestAnimationFrame`), eliminando impressões em branco em todos os 4 modais de dossiê (`FinancialCloseReportModal`, `WealthTearSheetModal`, `DividendFreedomModal`, `ConsolidatedWealthModal`); **(2) Suporte Completo à Preferência de Pesos de Relatório (`report_weights_enabled`)**: consumo reativo de `useUserPreferences()` na página central `ReportsPage`, neutralizando automaticamente os pesos (`weight = 1`) quando a flag estiver desativada nas preferências do usuário; **(3) Consistência Total no Balanço Patrimonial 360° & DRE**: `consolidatedBalance` sincronizado com os mesmos valores ponderados dos KPIs da página, corrigindo discrepâncias de cálculo entre visões; **(4) Transparência Visual de Valores Ponderados**: badge discreto `"Valores ponderados"` no seletor global de período e discriminação de valores nominais brutos de face no DRE contábil quando pesos estiverem ativos; **(5) Suíte 100% Verde**: 214 arquivos / 1.598 testes passando, zero erros de lint e typecheck.
 
 > **v1.92** registra a **Responsividade Mobile em Relatórios, Otimização da BottomNav (Grade Estrita de 5 Colunas sem 'Mais' para $\le 4$ Itens) & Filtragem Dinâmica por Feature Flags** (2026-08-23): **(1) Responsividade Mobile em Relatórios (`ReportsPage` & `ExcelExportCard`)**: layout adaptativo completo no smartphone com botões de período e agregações em grade compacta (`grid-cols-3` / `w-full sm:w-auto`), tabelas com scroll horizontal protegido (`min-w-[500px]`), textos truncados seguros nos cards de KPI e botões de ação em largura total no mobile; **(2) BottomNav Otimizada sem Botão 'Mais' Desnecessário (`resolveBottomNavSlots`)**: barra inferior com grade estrita de 5 colunas (`grid-cols-5`) com centralização do FAB contextual; quando o usuário possui $\le 4$ itens permitidos no total, todos os 4 itens são promovidos diretamente para a barra e nenhum botão "Mais" é renderizado; quando $> 4$ itens, 3 itens prioritários ocupam os slots da barra e os restantes vão para o menu "Mais"; **(3) Filtragem de Abas por Feature Flags em Relatórios**: integração com `useUserAccess()`, ocultando automaticamente as abas de Finanças e Balanço quando os módulos de transações/cartões/dívidas estiverem desativados e exibindo apenas Investimentos e Fiscal; **(4) Suíte 100% Verde**: 213 arquivos / 1.596 testes passando, zero erros de lint e typecheck.
@@ -1464,10 +1466,11 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 27 | **F41** — Arquitetura Unificada de Investimentos (Wizard & Quick Actions) | B / Investimentos | F40 | ✅ Concluída (2026-08-22) — wizard 4 passos, quick transaction sheet, asset detail sheet e eliminação de modais aninhados |
 | 28 | **F42** — Central Unificada de Relatórios & Exportação Multi-Abas (.xlsx) | C / Relatórios & Consultoria | F40/F41 | ✅ Concluída (2026-08-23) — central /relatorios em 4 abas, dossiês A4 de consultoria, gerador de Excel multi-abas nativo |
 | 29 | **F43** — Preparação para SaaS: Painel Admin, RBAC & Feature Flags | Infra & SaaS | F1/F2 | ✅ Concluída (2026-08-23) — RBAC (user, admin, superadmin), status (pending, active, suspended, banned), convites/allowlist, feature flags dinâmicas |
-| 30 | **F44** — Hardening de Segurança no Banco & Otimização de RLS | Segurança & Infra | F43 | 📋 Planejada — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, sanitização de inputs |
-| 31 | **F45** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F44 | 📋 Planejada — índices compostos/cobridores `(user_id, date)` com `INCLUDE`, unificação de range em Insights e RPCs set-based |
-| 32 | **F46** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | 📋 Planejada — 2FA (TOTP) para usuários e admins, Cloudflare Turnstile nos formulários públicos, revogação forçada de sessão no client |
-| 33 | **F47** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F45 | 📋 Planejada — particionamento de tabelas históricas de alto volume (`expenses`, `audit_events`) e rotinas de expurgo/arquivamento frio |
+| 30 | **F44** — Padronização Editorial A4, Supressão de Ruídos Nativos & Expansão de Investimentos | UI & Relatórios | F42 | 📋 **PRIORITÁRIA** — layout base `ReportDocumentLayout`, supressão de headers/footers do browser (`@page { margin: 0 }`), expansão institucional do Dossiê de Investimentos (Tear Sheet Completo) |
+| 31 | **F45** — Hardening de Segurança, RLS & Imunização contra Injeção | Segurança & Infra | F43 | 📋 Planejada — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, proteção contra Formula Injection (CSV/Excel) |
+| 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | 📋 Planejada — índices compostos/cobridores `(user_id, date)` com `INCLUDE`, unificação de range em Insights e RPCs set-based |
+| 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | 📋 Planejada — 2FA (TOTP) para usuários e admins, Cloudflare Turnstile nos formulários públicos, revogação forçada de sessão no client |
+| 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | 📋 Planejada — particionamento de tabelas históricas de alto volume (`expenses`, `audit_events`) e rotinas de expurgo/arquivamento frio |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -2138,34 +2141,93 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 44 — Hardening de Segurança no Banco & Otimização de RLS (PostgreSQL/Supabase)
+### Fase 44 — Padronização Editorial A4, Supressão de Ruídos Nativos, Elementos Gráficos & Expansão de Investimentos (UI & Relatórios)
 
-> **Status:** 📋 Planejada — padronização de segurança em nível de banco de dados, blindagem de contas suspensas/banidas diretamente nas políticas RLS, otimização de avaliação de `auth.uid()` e garantia de `search_path` em 100% das funções `SECURITY DEFINER`.
+> **Status:** 📋 **PRIORITÁRIA** — padronização visual e arquitetural de todos os 7 relatórios impressos/PDFs do aplicativo, supressão de ruídos nativos do navegador (`@page { margin: 0; }`), criação do layout mestre `ReportDocumentLayout`, introdução de elementos gráficos vetoriais nativos (SVG/CSS) e expansão institucional aprofundada do Dossiê de Investimentos (Wealth Tear Sheet).
+
+**Objetivo:** transformar a geração de relatórios e PDFs do aplicativo em uma experiência editorial de consultoria patrimonial de alto nível:
+1. **Supressão Total de Ruídos Nativos de Impressão do Navegador:**
+   - Eliminação de cabeçalhos e rodapés automáticos injetados pelos navegadores (`http://localhost...`, títulos de janela, datas não formatadas);
+   - Configuração estrita `@page { size: A4 portrait; margin: 0; }` combinada com o padding de segurança `.print-sheet { padding: 14mm !important; }` em `globals.css`;
+   - Ocultação mandatória de qualquer elemento de UI da aplicação (barras de navegação, modais de fundo, botões de ação e tooltips) durante o disparo de `window.print()`;
+2. **Arquitetura Visual Compartilhada & Componentes DRY (`src/components/modules/reports/`):**
+   - Criação do contêiner mestre `<ReportDocumentLayout />` gerenciando prévia em modal na tela e formatação A4 limpa na impressão;
+   - `<ReportHeader />` unificado com monograma oficial em Teal Petróleo (`#1B6B62`) e Ouro Âmbar (`#DDA726`), nome da aplicação, título do dossiê com tipografia Sora (`font-display`) e bloco de metadados à direita (período e data/hora de emissão);
+   - `<ReportKpiGrid />` com alinhamento tabular mono (`.num font-mono`), ícones semânticos e bordas de alta resolução;
+   - `<ReportFooter />` padronizado com termo de confidencialidade, identificação do titular da conta e numeração de páginas;
+3. **Elementos Gráficos Vetoriais Nativos para Impressão (Pure SVG & CSS):**
+   - **Mini-Donut Chart Vetorial (SVG):** Gráfico de rosca nítido para distribuição de classes de investimento e categorias de despesa, com `stroke-dasharray` nativo sem bibliotecas pesadas de canvas;
+   - **Barra de Alocação Empilhada (Stacked Allocation Bar):** Barra horizontal de proporções cromáticas da paleta (`--cat-1` a `--cat-10`) com legenda percentual limpa;
+   - **Gráfico Sparkline / Colunas Mensais de Proventos:** Mini-gráfico SVG com os últimos 12 meses de proventos demonstrando a curva de crescimento da "Bola de Neve";
+   - **Termômetro de Risco & Concentração (Risk Gauge):** Barra de escala visual com zonas de segurança (Verde $\le 10\%$, Âmbar $10-20\%$, Vermelho $> 20\%$) para destacar o ativo mais concentrado;
+   - **Cascata Visual de DRE (Waterfall Bar):** Visualização proporcional em degraus do fluxo financeiro: `Receitas Brutas` $\rightarrow$ `(-) Essenciais` $\rightarrow$ `(-) Estilo de Vida` $\rightarrow$ `(=) Poupança & Investimentos`;
+   - **Barra de Progresso com Pino de Meta:** Comparativo visual de alocação onde a barra preenchida representa o realizado e um marcador tracejado indica a meta % cadastrada;
+4. **Expansão Institucional do Dossiê de Investimentos (`WealthTearSheetModal`):**
+   - O relatório de investimentos atual é excessivamente sucinto. A expansão incluirá:
+     - *Matriz de Alocação por Classe & Subclasse:* Comparativo detalhado *Atual vs Meta vs Gap* em R$ e %, acompanhado da Barra de Alocação Empilhada;
+     - *Custódia Consolidada de Ativos:* Ticker, Nome, Classe, Moeda, Quantidade, Preço Médio (BRL/USD), Cotação de Mercado, Patrimônio Total, % da Carteira, Ganho de Capital Não Realizado (R$ e %), Proventos Recebidos e Yield on Cost (YoC);
+     - *Termômetro de Risco & Concentração:* Diagnóstico dos 3 maiores ativos e classes sobrealocadas com o indicador visual de risco;
+     - *Evolução Patrimonial & Proventos:* Gráfico de colunas mensais de dividendos e projeção de renda passiva para os próximos 12 meses;
+     - *Parecer Técnico Automatizado:* Diagnóstico de saúde da carteira (diversificação, proporção de caixa/reserva e defasagem);
+5. **Padronização das Tabelas & Quebras de Página A4:**
+   - Inclusão de `thead { display: table-header-group; }` e `tr { break-inside: avoid; page-break-inside: avoid; }` em 100% dos relatórios para impedir que linhas de transações ou ativos sejam cortadas entre duas páginas.
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 44.1 — Primitivos Editoriais e Gráficos de Relatório (`src/components/modules/reports/`):**
+   - Criação de `report-document-layout.tsx`, `report-header.tsx`, `report-kpi-grid.tsx`, `report-table.tsx`, `report-footer.tsx`, `report-donut-chart.tsx`, `report-stacked-bar.tsx` e `report-waterfall-bar.tsx`.
+   - Ajustes finais em `src/styles/globals.css` para a supressão de margens nativas do navegador (`@page { margin: 0; }`).
+2. **Etapa 44.2 — Expansão e Refatoração do Dossiê de Investimentos (`WealthTearSheetModal`):**
+   - Reestruturação completa do Tear Sheet com as 5 seções analíticas e os novos gráficos SVG.
+3. **Etapa 44.3 — Migração dos Demais Relatórios para o Layout Padronizado com Elementos Visuais:**
+   - Adaptação de `FinancialCloseReportModal` (DRE com Waterfall), `DividendFreedomModal` (Termômetro de Renda Passiva), `ConsolidatedWealthModal` (Donut Patrimonial), `TaxFacilitatorModal`, `CardInvoicePrintView` e `MonthlyClosePrintView`.
+4. **Etapa 44.4 — Testes Automatizados & Auditoria Visual de Impressão:**
+   - Testes unitários para os novos componentes de relatório e gráficos vetoriais (`*.test.tsx`).
+   - Validação de renderização em Desktop, Mobile, temas Light/Dark/OLED e conformidade de acessibilidade.
+
+**✅ DoD (critérios de aceite):**
+- 100% dos 7 relatórios utilizam o componente mestre `ReportDocumentLayout`.
+- Zero ruídos nativos do navegador (URLs, cabeçalhos ou rodapés cinzas) presentes na folha A4 impressa.
+- Relatório de investimentos detalhado com matriz de metas, tabela completa de ativos, termômetro de risco, gráfico de colunas de proventos e Donut SVG de alocação.
+- Gráficos vetoriais nativos em SVG/CSS com renderização 100% nítida em impressão física e exportação PDF.
+- Alinhamento numérico impecável com fonte mono tabular em todas as tabelas e KPIs.
+- Suíte de testes 100% verde (zero erros de typecheck e lint).
+
+
+---
+
+### Fase 45 — Hardening de Segurança no Banco, RLS & Imunização contra Injeção (PostgreSQL/Supabase)
+
+> **Status:** 📋 Planejada — padronização de segurança em nível de banco de dados, blindagem de contas suspensas/banidas diretamente nas políticas RLS, otimização de avaliação de `auth.uid()`, garantia de `search_path` em 100% das funções `SECURITY DEFINER` e blindagem contra CSV/Excel Formula Injection.
 
 **Objetivo:** eliminar potenciais vetores de vulnerabilidade e inconsistências identificadas na auditoria de segurança da base:
 1. **Otimização de RLS com `(select auth.uid())`:** substituir avaliações voláteis de `auth.uid() = user_id` por `(select auth.uid()) = user_id`, permitindo que o planejador do PostgreSQL avalie o ID do usuário apenas uma vez por query (ganho de 3x a 10x na velocidade de scans de tabelas grandes);
 2. **Isolamento de Contas Suspensas/Pendentes no RLS:** inclusão de `is_current_user_active()` em todas as políticas de tabelas de negócio (`expenses`, `incomes`, `credit_cards`, `debts`, `budgets`, `portfolio_assets`, etc.), garantindo que tokens JWT ativos de usuários suspensos/banidos não consigam ler ou gravar dados diretamente via REST API;
-3. **Imunização de RPCs com `search_path`:** assegurar que todas as funções PL/pgSQL com privilégio `SECURITY DEFINER` (incluindo migrations legadas 0003, 0004, 0005, 0013, 0014, 0025) declarem explicitamente `SET search_path = public, pg_temp;` contra injeção de schema;
-4. **Sanitização de Strings e Proteção XSS:** filtros de sanitização para campos de texto livre (descrições, nomes de categorias, observações) para prevenir Stored XSS em relatórios e impressões.
+3. **Imunização de RPCs com `search_path`:** assegurar que todas as funções PL/pgSQL com privilégio `SECURITY DEFINER` (incluindo migrations legadas 0003, 0004, 0005, 0013, 0014, 0025) declarem explicitamente `SET search_path = public, pg_temp;` contra injeção de schema (*Search Path Hijacking*);
+4. **Proteção contra CSV / Spreadsheet Formula Injection:** higienização rigorosa em `src/domain/export/csv.ts` e `src/services/excel-export.ts` para campos de texto livre (`description`, `notes`, `name`), neutralizando células que iniciem com caracteres executáveis (`=`, `+`, `-`, `@`, `\t`, `\r`) com prefixo de apóstrofo `'`, impedindo a execução arbitrária de fórmulas DDE no Excel, Google Sheets e LibreOffice Calc;
+5. **Sanitização de Strings e Proteção XSS:** filtros de sanitização para campos de texto livre para prevenir injeção em relatórios impressos e dossiês A4.
 
 **Organização da Implementação em 3 Etapas:**
-1. **Etapa 44.1 — Migration de Hardening de RLS e Funções (PostgreSQL):**
+1. **Etapa 45.1 — Migration de Hardening de RLS e Funções (PostgreSQL):**
    - Migration `0030_rls_hardening_and_search_path.sql` redefinindo as políticas de todas as tabelas para `((select auth.uid()) = user_id and public.is_current_user_active())`.
    - Recriação de RPCs históricas com `SET search_path = public, pg_temp;`.
-2. **Etapa 44.2 — Validações de Borda e Sanitização (TypeScript / Domínio):**
+2. **Etapa 45.2 — Sanitização de Exportadores & Validações de Borda (TypeScript / Domínio):**
+   - Atualização de `escapeCsvField` em `src/domain/export/csv.ts` com guarda `/^[=+\-@\t\r]/`.
+   - Atualização de `escapeXml` e células de texto em `src/services/excel-export.ts`.
    - Reforço de schemas Zod em `src/domain/*/schemas.ts` com sanitização e trim padronizados.
-3. **Etapa 44.3 — Testes de Penetração e Integridade:**
-   - Testes automatizados verificando que usuários com status `suspended`, `banned` ou `pending_approval` recebem erro de permissão do RLS mesmo autenticados.
+3. **Etapa 45.3 — Testes de Penetração e Integridade:**
+   - Expansão de `src/tests/security-audit.test.ts` com testes automatizados verificando que usuários com status `suspended`, `banned` ou `pending_approval` recebem erro de permissão do RLS mesmo autenticados.
+   - Testes unitários para exportação CSV e Excel com payloads maliciosos de injeção de fórmulas.
 
 **✅ DoD (critérios de aceite):**
 - 100% das tabelas de negócio utilizam `(select auth.uid())` e `is_current_user_active()`.
 - 100% das funções `SECURITY DEFINER` possuem `SET search_path = public, pg_temp;`.
 - Tentativas de injeção ou leitura por contas suspensas bloqueadas diretamente pelo banco.
+- Exportação CSV e Excel imunes a Formula Injection (strings iniciadas com `=, +, -, @` escapadas com `'`).
 - Zero regressões funcionais na suíte de testes (100% verde).
 
 ---
 
-### Fase 45 — Escalabilidade de Consultas, Eliminação de Micro-Waterfalls & Engenharia de Índices (PostgreSQL/Supabase)
+### Fase 46 — Escalabilidade de Consultas, Eliminação de Micro-Waterfalls & Engenharia de Índices (PostgreSQL/Supabase)
 
 > **Status:** 📋 Planejada — infraestrutura de indexação composta, índices cobridores com `INCLUDE`, eliminação de micro-waterfalls no cliente, refatoração de RPCs para processamento baseado em conjuntos (Set-Based) e otimização para dezenas de milhares de usuários simultâneos.
 
@@ -2180,12 +2242,12 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 5. **Otimização de Snapshots e Agregações:** garantia de índices btree em `portfolio_snapshots(user_id, month desc)` e `asset_prices(ticker, updated_at desc)`.
 
 **Organização da Implementação em 3 Etapas:**
-1. **Etapa 45.1 — Migration de Índices Cobridores & RPCs Set-Based (PostgreSQL):**
+1. **Etapa 46.1 — Migration de Índices Cobridores & RPCs Set-Based (PostgreSQL):**
    - Migration `0031_covering_indexes_and_set_based_rpcs.sql`.
    - Validação com `EXPLAIN ANALYZE` eliminando Bitmap Heap Scans em consultas de mês e competência.
-2. **Etapa 45.2 — Otimização de Queries e Hooks no Client (`src/features/insights` & `src/state`):**
+2. **Etapa 46.2 — Otimização de Queries e Hooks no Client (`src/features/insights` & `src/state`):**
    - Hook agregador `useHistoricalRange(startMonth, endMonth)` para alimentar diagnósticos e médias históricas em 1 request.
-3. **Etapa 45.3 — Auditoria de Client e Configurações de Conexão:**
+3. **Etapa 46.3 — Auditoria de Client e Configurações de Conexão:**
    - Verificação dos limites de conexões e políticas de staleTime/gcTime no TanStack Query.
 
 **✅ DoD (critérios de aceite):**
@@ -2197,7 +2259,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 46 — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso (Auth & Client)
+### Fase 47 — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso (Auth & Client)
 
 > **Status:** 📋 Planejada — autenticação em duas etapas via aplicativo autenticador (TOTP), proteção contra força bruta e desconexão reativa de sessões revogadas.
 
@@ -2207,13 +2269,13 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 3. **Desconexão Reativa em Tempo Real:** canal Supabase Realtime escutando alterações no status da conta; caso o usuário seja suspenso ou banido pelo painel administrativo, o cliente efetua teardown atômico imediato (`useSignOut`) e redireciona para a tela de bloqueio em < 500ms.
 
 **Organização da Implementação em 3 Etapas:**
-1. **Etapa 46.1 — Fluxo de 2FA/MFA (Client & Supabase Auth):**
+1. **Etapa 47.1 — Fluxo de 2FA/MFA (Client & Supabase Auth):**
    - Diálogo de configuração com QR Code, verificação de código e geração de códigos de recuperação.
    - Desafio de 2FA no login para contas com MFA ativo.
    - Enforcement de 2FA para administradores ao acessar `/admin`.
-2. **Etapa 46.2 — Proteção Anti-Abuso (Turnstile):**
+2. **Etapa 47.2 — Proteção Anti-Abuso (Turnstile):**
    - Componente Turnstile nos formulários públicos de autenticação.
-3. **Etapa 46.3 — Sincronização em Tempo Real de Suspensão:**
+3. **Etapa 47.3 — Sincronização em Tempo Real de Suspensão:**
    - Listener Realtime no `AuthProvider` monitorando `profiles(status)` com acionamento do `resetAppState`.
 
 **✅ DoD (critérios de aceite):**
@@ -2224,7 +2286,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 47 — Governança em Larga Escala, Particionamento & Retenção Histórica
+### Fase 48 — Governança em Larga Escala, Particionamento & Retenção Histórica
 
 > **Status:** 📋 Planejada — particionamento declarativo de tabelas transacionais de alto volume e rotinas automatizadas de expurgo/retenção de logs.
 
@@ -2238,3 +2300,4 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Rotina de expurgo de logs de auditoria executada automaticamente no banco.
 - Exportação de grandes volumes fluida e sem congelamento de interface.
 - Suíte de testes 100% verde.
+

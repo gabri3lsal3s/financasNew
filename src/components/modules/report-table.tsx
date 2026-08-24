@@ -54,24 +54,24 @@ export function ReportTable({
       className: "flex-1 min-w-[120px]",
       cell: (row) => <span className="text-sm font-medium text-foreground">{row.label}</span>,
     },
+    {
+      key: "bruto",
+      header: hasDualMetrics ? "Valor Bruto" : "Total",
+      align: "right",
+      cell: (row) => <MoneyText cents={row.brutoCents ?? row.valueCents} tone="default" className="font-semibold" />,
+    },
     ...(hasDualMetrics
       ? [
           {
-            key: "bruto",
-            header: "Nominal (100%)",
+            key: "ponderado",
+            header: "Ponderado",
             align: "right" as const,
             cell: (row: ReportRow) => (
-              <MoneyText cents={row.brutoCents ?? row.valueCents} tone="default" className="text-xs text-muted-foreground" />
+              <MoneyText cents={row.ponderadoCents ?? row.valueCents} tone="default" className="text-xs text-muted-foreground" />
             ),
           },
         ]
       : []),
-    {
-      key: "value",
-      header: hasDualMetrics ? "Ponderado" : "Total",
-      align: "right",
-      cell: (row) => <MoneyText cents={row.ponderadoCents ?? row.valueCents} tone="default" />,
-    },
     {
       key: "percent",
       header: "Part.",
@@ -94,18 +94,19 @@ export function ReportTable({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</span>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            {hasDualMetrics ? <span className="text-xs text-muted-foreground font-normal">Bruto:</span> : null}
+            <MoneyText cents={effectiveTotalBruto} tone="default" />
+          </div>
           {hasDualMetrics && effectiveTotalBruto !== effectiveTotalPonderado ? (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Nominal:</span>
-              <MoneyText cents={effectiveTotalBruto} tone="default" className="text-muted-foreground" />
+              <span>Ponderado:</span>
+              <MoneyText cents={effectiveTotalPonderado} tone="default" className="text-muted-foreground" />
             </div>
           ) : null}
-          <div className="flex items-center gap-1.5 text-sm font-semibold">
-            {hasDualMetrics ? <span className="text-xs text-muted-foreground font-normal">Ponderado:</span> : null}
-            <MoneyText cents={effectiveTotalPonderado} tone="default" />
-          </div>
         </div>
       </div>
     </section>
   );
 }
+

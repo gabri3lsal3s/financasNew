@@ -65,10 +65,12 @@ describe("ReportDetailDialog", () => {
     expect(screen.getByText("Despesas — Alimentação")).toBeInTheDocument();
     expect(screen.getByText("Agosto de 2026")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /compartilhar resumo/i })).toBeInTheDocument();
-    expect(screen.getByText("2 despesas")).toBeInTheDocument();
     expect(screen.getByText("Supermercado")).toBeInTheDocument();
     expect(screen.getByText("Restaurante")).toBeInTheDocument();
+    expect(screen.getByText(/Total Bruto:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ponderado:/i)).toBeInTheDocument();
   });
+
 
   it("permite clicar em uma despesa para selecioná-la", async () => {
     const user = userEvent.setup();

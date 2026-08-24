@@ -73,5 +73,38 @@ describe("FinancialCloseReportModal (F42)", () => {
     window.print = originalPrint;
     vi.useRealTimers();
   });
+
+  it("renderiza valores nominais e de consulta ponderados quando houver diferença", () => {
+    const mockWeightedDRE = {
+      grossIncomeCents: 800000,
+      totalExpensesCents: 400000,
+      operationalSavingsCents: 400000,
+      savingsRatePct: 50.0,
+      investedAporteCents: 100000,
+      netCashFlowCents: 300000,
+      grossIncomeBrutoCents: 1000000,
+      totalExpensesBrutoCents: 500000,
+    };
+
+
+    render(
+      <FinancialCloseReportModal
+        open={true}
+        onOpenChange={vi.fn()}
+        periodLabel="Agosto de 2026"
+        dre={mockWeightedDRE}
+        categories={mockCategories}
+        paymentMethods={mockPaymentMethods}
+        expenseCount={10}
+        incomeCount={2}
+        showWeightedNote={true}
+      />,
+    );
+
+    // Confere se aparecem as indicações de valor ponderado para consulta
+    expect(screen.getAllByText(/ponderado:/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/O valor principal exibido é o valor bruto nominal/i)).toBeInTheDocument();
+  });
 });
+
 

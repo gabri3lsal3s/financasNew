@@ -27,9 +27,11 @@ import {
   calculateConcentrationRisk,
   calculateFreedomIndex,
   computeConsolidatedBalanceSheet,
+  mondayFirstWeekday,
   validateCustomPeriod,
   WEEKDAY_LABELS,
 } from "@/domain/reports";
+
 
 import { isCashAssetClass } from "@/domain/portfolio";
 import { addDaysISO } from "@/domain/debts";
@@ -194,12 +196,13 @@ export function ReportsPage() {
   const [aggregationTab, setAggregationTab] = useState<AggregationTab>("category");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [detailModal, setDetailModal] = useState<{
-    open: boolean;
     title: string;
     expenses: Expense[];
   } | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+
+
 
   // Modais de Dossiê de Consultoria
   const [financialReportOpen, setFinancialReportOpen] = useState(false);
@@ -426,6 +429,18 @@ export function ReportsPage() {
   const byMethod = useMemo(() => aggregateByPaymentMethod(expenseEntries), [expenseEntries]);
   const byWeekday = useMemo(() => aggregateByWeekday(expenseEntries), [expenseEntries]);
 
+  const grossExpenseBrutoCents = useMemo(
+    () => expenseEntries.reduce((acc, e) => acc + e.baseCents, 0),
+    [expenseEntries],
+  );
+  const grossIncomeBrutoCents = useMemo(
+    () => incomeEntries.reduce((acc, e) => acc + e.baseCents, 0),
+    [incomeEntries],
+  );
+  const grossSavingsBrutoCents = grossIncomeBrutoCents - grossExpenseBrutoCents;
+  const grossSavingsRatePercent =
+    grossIncomeBrutoCents > 0 ? (grossSavingsBrutoCents / grossIncomeBrutoCents) * 100 : null;
+
   const currentExpenseCents = useMemo(
     () => expenseEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
     [expenseEntries],
@@ -435,10 +450,15 @@ export function ReportsPage() {
     [incomeEntries],
   );
 
+  const hasDualMetrics =
+    weightsEnabled &&
+    (grossIncomeBrutoCents !== currentIncomeCents || grossExpenseBrutoCents !== currentExpenseCents);
+
   const currentOverview = useMemo(
     () => computeOverview(currentIncomeCents, currentExpenseCents, 0),
     [currentIncomeCents, currentExpenseCents],
   );
+
 
   const consolidatedBalance = useMemo(() => {
     // Usa os mesmos valores ponderados que os KPIs da página exibem (consistência)
@@ -725,24 +745,39 @@ export function ReportsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Receitas Totais</span>
-              <MoneyText cents={currentIncomeCents} tone="positive" className="text-lg sm:text-xl font-bold font-display truncate" />
+              <MoneyText cents={grossIncomeBrutoCents} tone="positive" className="text-lg sm:text-xl font-bold font-display truncate" />
+              {hasDualMetrics && (
+                <span className="text-xs text-muted-foreground">
+                  ponderado: <MoneyText cents={currentIncomeCents} tone="positive" className="inline text-xs font-medium" />
+                </span>
+              )}
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Despesas Totais</span>
-              <MoneyText cents={currentExpenseCents} tone="negative" className="text-lg sm:text-xl font-bold font-display truncate" />
+              <MoneyText cents={grossExpenseBrutoCents} tone="negative" className="text-lg sm:text-xl font-bold font-display truncate" />
+              {hasDualMetrics && (
+                <span className="text-xs text-muted-foreground">
+                  ponderado: <MoneyText cents={currentExpenseCents} tone="negative" className="inline text-xs font-medium" />
+                </span>
+              )}
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Poupança do Período</span>
               <div className="flex items-center justify-between gap-2">
                 <MoneyText
-                  cents={currentIncomeCents - currentExpenseCents}
-                  tone={currentIncomeCents >= currentExpenseCents ? "positive" : "negative"}
+                  cents={grossSavingsBrutoCents}
+                  tone={grossSavingsBrutoCents >= 0 ? "positive" : "negative"}
                   className="text-lg sm:text-xl font-bold font-display truncate"
                 />
                 <span className="text-xs font-semibold text-muted-foreground shrink-0">
-                  {currentOverview.savingsRatePercent !== null ? `${currentOverview.savingsRatePercent.toFixed(1)}%` : "—"}
+                  {grossSavingsRatePercent !== null ? `${grossSavingsRatePercent.toFixed(1)}%` : "—"}
                 </span>
               </div>
+              {hasDualMetrics && (
+                <span className="text-xs text-muted-foreground">
+                  ponderado: <MoneyText cents={currentIncomeCents - currentExpenseCents} tone={currentIncomeCents >= currentExpenseCents ? "positive" : "negative"} className="inline text-xs font-medium" /> ({currentOverview.savingsRatePercent !== null ? `${currentOverview.savingsRatePercent.toFixed(1)}%` : "—"})
+                </span>
+              )}
             </div>
           </div>
 
@@ -785,37 +820,73 @@ export function ReportsPage() {
             {aggregationTab === "category" ? (
               <ReportTable
                 title="Por Categoria"
-                totalCents={currentExpenseCents}
+                totalBrutoCents={grossExpenseBrutoCents}
+                totalPonderadoCents={currentExpenseCents}
+                totalCents={grossExpenseBrutoCents}
                 rows={byCategory.map((c) => ({
                   key: c.categoryId,
                   label: c.name,
-                  valueCents: c.totalCents,
-                  percent: currentExpenseCents > 0 ? (c.totalCents / currentExpenseCents) * 100 : 0,
+                  brutoCents: c.brutoCents,
+                  ponderadoCents: c.ponderadoCents,
+                  valueCents: c.brutoCents,
+                  percent: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
                 }))}
+                onRowClick={(row) => {
+                  const catExpenses = expenses.filter((e) => e.category_id === row.key);
+                  setDetailModal({
+                    title: `Despesas: ${typeof row.label === "string" ? row.label : "Categoria"}`,
+                    expenses: catExpenses,
+                  });
+                }}
               />
             ) : aggregationTab === "method" ? (
               <ReportTable
                 title="Por Forma de Pagamento"
-                totalCents={currentExpenseCents}
+                totalBrutoCents={grossExpenseBrutoCents}
+                totalPonderadoCents={currentExpenseCents}
+                totalCents={grossExpenseBrutoCents}
                 rows={byMethod.map((m) => ({
                   key: m.method,
                   label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
-                  valueCents: m.totalCents,
-                  percent: currentExpenseCents > 0 ? (m.totalCents / currentExpenseCents) * 100 : 0,
+                  brutoCents: m.brutoCents,
+                  ponderadoCents: m.ponderadoCents,
+                  valueCents: m.brutoCents,
+                  percent: grossExpenseBrutoCents > 0 ? (m.brutoCents / grossExpenseBrutoCents) * 100 : 0,
                 }))}
+                onRowClick={(row) => {
+                  const methodExpenses = expenses.filter((e) => (e.payment_method ?? "other") === row.key);
+                  setDetailModal({
+                    title: `Despesas: ${typeof row.label === "string" ? row.label : "Forma de Pagamento"}`,
+                    expenses: methodExpenses,
+                  });
+                }}
               />
             ) : (
               <ReportTable
                 title="Por Dia da Semana"
-                totalCents={currentExpenseCents}
+                totalBrutoCents={grossExpenseBrutoCents}
+                totalPonderadoCents={currentExpenseCents}
+                totalCents={grossExpenseBrutoCents}
                 rows={byWeekday.map((w) => ({
                   key: String(w.weekday),
                   label: WEEKDAY_LABELS[w.weekday],
-                  valueCents: w.totalCents,
-                  percent: currentExpenseCents > 0 ? (w.totalCents / currentExpenseCents) * 100 : 0,
+                  brutoCents: w.brutoCents,
+                  ponderadoCents: w.ponderadoCents,
+                  valueCents: w.brutoCents,
+                  percent: grossExpenseBrutoCents > 0 ? (w.brutoCents / grossExpenseBrutoCents) * 100 : 0,
                 }))}
+                onRowClick={(row) => {
+                  const weekdayNum = parseInt(row.key, 10);
+                  const weekdayExpenses = expenses.filter((e) => mondayFirstWeekday(e.date) === weekdayNum);
+                  setDetailModal({
+                    title: `Despesas: ${WEEKDAY_LABELS[weekdayNum] ?? "Dia"}`,
+                    expenses: weekdayExpenses,
+                  });
+                }}
               />
+
             )}
+
           </div>
         </div>
       ) : null}
@@ -1010,19 +1081,24 @@ export function ReportsPage() {
         dre={financialDRE}
         categories={byCategory.map((c) => ({
           name: c.name,
-          totalCents: c.totalCents,
-          pct: currentExpenseCents > 0 ? (c.totalCents / currentExpenseCents) * 100 : 0,
+          brutoCents: c.brutoCents,
+          ponderadoCents: c.ponderadoCents,
+          totalCents: c.brutoCents,
+          pct: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
         }))}
         paymentMethods={byMethod.map((m) => ({
           method: m.method,
           label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
-          totalCents: m.totalCents,
-          pct: currentExpenseCents > 0 ? (m.totalCents / currentExpenseCents) * 100 : 0,
+          brutoCents: m.brutoCents,
+          ponderadoCents: m.ponderadoCents,
+          totalCents: m.brutoCents,
+          pct: grossExpenseBrutoCents > 0 ? (m.brutoCents / grossExpenseBrutoCents) * 100 : 0,
         }))}
         expenseCount={expenseEntries.length}
         incomeCount={incomeEntries.length}
         showWeightedNote={weightsEnabled}
       />
+
 
 
 
@@ -1090,13 +1166,15 @@ export function ReportsPage() {
 
       {detailModal ? (
         <ReportDetailDialog
-          open={detailModal.open}
+          open={Boolean(detailModal)}
           onOpenChange={(op) => !op && setDetailModal(null)}
           title={detailModal.title}
           expenses={detailModal.expenses}
           categories={categories}
+          onSelectExpense={setSelectedExpense}
         />
       ) : null}
+
     </div>
   );
 }

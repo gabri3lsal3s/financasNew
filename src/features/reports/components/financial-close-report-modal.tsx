@@ -30,6 +30,8 @@ export interface FinancialDREData {
 
 export interface FinancialReportCategoryItem {
   name: string;
+  brutoCents?: number;
+  ponderadoCents?: number;
   totalCents: number;
   pct: number;
 }
@@ -37,9 +39,12 @@ export interface FinancialReportCategoryItem {
 export interface FinancialReportPaymentMethodItem {
   method: string;
   label: string;
+  brutoCents?: number;
+  ponderadoCents?: number;
   totalCents: number;
   pct: number;
 }
+
 
 export interface FinancialReportPaidInvoiceItem {
   cardName: string;
@@ -90,10 +95,15 @@ export function FinancialCloseReportModal({
   const { printing, triggerPrint } = usePrint();
   const generatedAt = new Date().toLocaleDateString("pt-BR");
 
+  const effectiveGrossIncomeBruto = dre.grossIncomeBrutoCents ?? dre.grossIncomeCents;
+  const effectiveTotalExpensesBruto = dre.totalExpensesBrutoCents ?? dre.totalExpensesCents;
+  const effectiveGrossSavingsBruto = effectiveGrossIncomeBruto - effectiveTotalExpensesBruto;
+  const effectiveGrossSavingsRatePct =
+    effectiveGrossIncomeBruto > 0 ? (effectiveGrossSavingsBruto / effectiveGrossIncomeBruto) * 100 : 0;
+
   const hasBrutoRef =
     showWeightedNote &&
     (dre.grossIncomeBrutoCents !== undefined || dre.totalExpensesBrutoCents !== undefined);
-
 
   const reportContent = (
     <div className="print-area flex flex-col gap-6 bg-surface text-foreground w-full max-w-full overflow-hidden print:overflow-visible">
@@ -121,14 +131,24 @@ export function FinancialCloseReportModal({
             <Banknote className="size-3.5" aria-hidden="true" />
             <span>Receitas Totais</span>
           </div>
-          <MoneyText cents={dre.grossIncomeCents} tone="positive" className="text-base sm:text-lg font-bold" />
+          <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" className="text-base sm:text-lg font-bold" />
+          {hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto && (
+            <span className="text-[11px] text-muted-foreground">
+              ponderado: <MoneyText cents={dre.grossIncomeCents} className="inline text-[11px]" />
+            </span>
+          )}
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-3.5 flex flex-col gap-1">
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <ReceiptText className="size-3.5" aria-hidden="true" />
             <span>Despesas Totais</span>
           </div>
-          <MoneyText cents={dre.totalExpensesCents} tone="negative" className="text-base sm:text-lg font-bold" />
+          <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" className="text-base sm:text-lg font-bold" />
+          {hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto && (
+            <span className="text-[11px] text-muted-foreground">
+              ponderado: <MoneyText cents={dre.totalExpensesCents} className="inline text-[11px]" />
+            </span>
+          )}
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-3.5 flex flex-col gap-1">
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -136,10 +156,15 @@ export function FinancialCloseReportModal({
             <span>Resultado Operacional</span>
           </div>
           <MoneyText
-            cents={dre.operationalSavingsCents}
-            tone={dre.operationalSavingsCents >= 0 ? "positive" : "negative"}
+            cents={effectiveGrossSavingsBruto}
+            tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
             className="text-base sm:text-lg font-bold"
           />
+          {hasBrutoRef && dre.operationalSavingsCents !== effectiveGrossSavingsBruto && (
+            <span className="text-[11px] text-muted-foreground">
+              ponderado: <MoneyText cents={dre.operationalSavingsCents} className="inline text-[11px]" />
+            </span>
+          )}
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-3.5 flex flex-col gap-1">
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -147,8 +172,13 @@ export function FinancialCloseReportModal({
             <span>Taxa de Poupança</span>
           </div>
           <span className="text-base sm:text-lg font-bold font-display text-primary-strong">
-            {formatPercent(dre.savingsRatePct)}
+            {formatPercent(effectiveGrossSavingsRatePct)}
           </span>
+          {hasBrutoRef && dre.savingsRatePct !== effectiveGrossSavingsRatePct && (
+            <span className="text-[11px] text-muted-foreground">
+              ponderada: {formatPercent(dre.savingsRatePct)}
+            </span>
+          )}
         </div>
       </section>
 
@@ -166,7 +196,7 @@ export function FinancialCloseReportModal({
             <thead>
               <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold">
                 <th className="py-2.5 px-3">Linha / Estrutura Contábil</th>
-                <th className="py-2.5 px-3 text-right">Valor (R$)</th>
+                <th className="py-2.5 px-3 text-right">Valor Bruto (R$)</th>
                 <th className="py-2.5 px-3 text-right">% Receita</th>
               </tr>
             </thead>
@@ -176,10 +206,10 @@ export function FinancialCloseReportModal({
                   (+) Receita Operacional Bruta ({incomeCount} {incomeCount === 1 ? "lançamento" : "lançamentos"})
                 </td>
                 <td className="py-2 px-3 text-right font-mono font-bold">
-                  <MoneyText cents={dre.grossIncomeCents} tone="positive" />
-                  {hasBrutoRef && dre.grossIncomeBrutoCents !== undefined && dre.grossIncomeBrutoCents !== dre.grossIncomeCents && (
+                  <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />
+                  {hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto && (
                     <span className="block text-[10px] text-muted-foreground font-normal">
-                      nominal: <MoneyText cents={dre.grossIncomeBrutoCents} tone="default" className="inline text-[10px]" />
+                      ponderado: <MoneyText cents={dre.grossIncomeCents} tone="default" className="inline text-[10px]" />
                     </span>
                   )}
                 </td>
@@ -189,30 +219,35 @@ export function FinancialCloseReportModal({
                 <td className="py-2 px-3 pl-6 text-foreground">
                   (-) Despesas Operacionais Realizadas ({expenseCount} {expenseCount === 1 ? "gasto" : "gastos"})
                 </td>
-                <td className="py-2 px-3 text-right font-mono">
-                  <MoneyText cents={dre.totalExpensesCents} tone="negative" />
-                  {hasBrutoRef && dre.totalExpensesBrutoCents !== undefined && dre.totalExpensesBrutoCents !== dre.totalExpensesCents && (
+                <td className="py-2 px-3 text-right font-mono font-semibold">
+                  <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />
+                  {hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto && (
                     <span className="block text-[10px] text-muted-foreground font-normal">
-                      nominal: <MoneyText cents={dre.totalExpensesBrutoCents} tone="default" className="inline text-[10px]" />
+                      ponderado: <MoneyText cents={dre.totalExpensesCents} tone="default" className="inline text-[10px]" />
                     </span>
                   )}
                 </td>
                 <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                  {dre.grossIncomeCents > 0
-                    ? `${((dre.totalExpensesCents / dre.grossIncomeCents) * 100).toFixed(1).replace(".", ",")}%`
+                  {effectiveGrossIncomeBruto > 0
+                    ? `${((effectiveTotalExpensesBruto / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
                     : "—"}
                 </td>
               </tr>
               <tr className="bg-muted/20 font-semibold">
                 <td className="py-2 px-3 text-foreground">(=) Resultado Operacional do Período</td>
-                <td className="py-2 px-3 text-right font-mono">
+                <td className="py-2 px-3 text-right font-mono font-bold">
                   <MoneyText
-                    cents={dre.operationalSavingsCents}
-                    tone={dre.operationalSavingsCents >= 0 ? "positive" : "negative"}
+                    cents={effectiveGrossSavingsBruto}
+                    tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
                   />
+                  {hasBrutoRef && dre.operationalSavingsCents !== effectiveGrossSavingsBruto && (
+                    <span className="block text-[10px] text-muted-foreground font-normal">
+                      ponderado: <MoneyText cents={dre.operationalSavingsCents} tone="default" className="inline text-[10px]" />
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 px-3 text-right font-mono">
-                  {formatPercent(dre.savingsRatePct)}
+                  {formatPercent(effectiveGrossSavingsRatePct)}
                 </td>
               </tr>
               <tr>
@@ -223,8 +258,8 @@ export function FinancialCloseReportModal({
                   <MoneyText cents={dre.investedAporteCents} tone="default" />
                 </td>
                 <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                  {dre.grossIncomeCents > 0
-                    ? `${((dre.investedAporteCents / dre.grossIncomeCents) * 100).toFixed(1).replace(".", ",")}%`
+                  {effectiveGrossIncomeBruto > 0
+                    ? `${((dre.investedAporteCents / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
                     : "—"}
                 </td>
               </tr>
@@ -232,13 +267,13 @@ export function FinancialCloseReportModal({
                 <td className="py-2.5 px-3 text-primary-strong">(=) Fluxo de Caixa Líquido Final</td>
                 <td className="py-2.5 px-3 text-right font-mono text-sm">
                   <MoneyText
-                    cents={dre.netCashFlowCents}
-                    tone={dre.netCashFlowCents >= 0 ? "positive" : "negative"}
+                    cents={effectiveGrossSavingsBruto - dre.investedAporteCents}
+                    tone={effectiveGrossSavingsBruto - dre.investedAporteCents >= 0 ? "positive" : "negative"}
                   />
                 </td>
                 <td className="py-2.5 px-3 text-right font-mono text-primary-strong">
-                  {dre.grossIncomeCents > 0
-                    ? `${((dre.netCashFlowCents / dre.grossIncomeCents) * 100).toFixed(1).replace(".", ",")}%`
+                  {effectiveGrossIncomeBruto > 0
+                    ? `${(((effectiveGrossSavingsBruto - dre.investedAporteCents) / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
                     : "—"}
                 </td>
               </tr>
@@ -247,7 +282,7 @@ export function FinancialCloseReportModal({
         </div>
         {hasBrutoRef && (
           <p className="text-[10px] text-muted-foreground italic">
-            * Valores ponderados pelo peso de relatório configurado. A coluna "nominal" exibe o valor bruto de face.
+            * O valor principal exibido é o valor bruto nominal (100%). Os valores ponderados são informados para fins de consulta analítica.
           </p>
         )}
       </section>
@@ -268,7 +303,7 @@ export function FinancialCloseReportModal({
                 <thead>
                   <tr className="border-b border-border/60 text-muted-foreground text-left">
                     <th className="py-1.5 font-medium">Categoria</th>
-                    <th className="py-1.5 text-right font-medium">Total</th>
+                    <th className="py-1.5 text-right font-medium">Total Bruto</th>
                     <th className="py-1.5 text-right font-medium">%</th>
                   </tr>
                 </thead>
@@ -277,7 +312,12 @@ export function FinancialCloseReportModal({
                     <tr key={cat.name}>
                       <td className="py-1.5 font-medium text-foreground">{cat.name}</td>
                       <td className="py-1.5 text-right font-mono">
-                        <MoneyText cents={cat.totalCents} tone="negative" />
+                        <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-semibold" />
+                        {hasBrutoRef && cat.brutoCents !== undefined && cat.ponderadoCents !== undefined && cat.brutoCents !== cat.ponderadoCents && (
+                          <span className="block text-[10px] text-muted-foreground font-normal">
+                            ponderado: <MoneyText cents={cat.ponderadoCents} tone="default" className="inline text-[10px]" />
+                          </span>
+                        )}
                       </td>
                       <td className="py-1.5 text-right font-mono text-muted-foreground">
                         {cat.pct.toFixed(1).replace(".", ",")}%
@@ -304,7 +344,7 @@ export function FinancialCloseReportModal({
                 <thead>
                   <tr className="border-b border-border/60 text-muted-foreground text-left">
                     <th className="py-1.5 font-medium">Meio de Pagamento</th>
-                    <th className="py-1.5 text-right font-medium">Total</th>
+                    <th className="py-1.5 text-right font-medium">Total Bruto</th>
                     <th className="py-1.5 text-right font-medium">%</th>
                   </tr>
                 </thead>
@@ -313,7 +353,12 @@ export function FinancialCloseReportModal({
                     <tr key={pm.method}>
                       <td className="py-1.5 font-medium text-foreground">{pm.label}</td>
                       <td className="py-1.5 text-right font-mono">
-                        <MoneyText cents={pm.totalCents} tone="default" />
+                        <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" className="font-semibold" />
+                        {hasBrutoRef && pm.brutoCents !== undefined && pm.ponderadoCents !== undefined && pm.brutoCents !== pm.ponderadoCents && (
+                          <span className="block text-[10px] text-muted-foreground font-normal">
+                            ponderado: <MoneyText cents={pm.ponderadoCents} tone="default" className="inline text-[10px]" />
+                          </span>
+                        )}
                       </td>
                       <td className="py-1.5 text-right font-mono text-muted-foreground">
                         {pm.pct.toFixed(1).replace(".", ",")}%
