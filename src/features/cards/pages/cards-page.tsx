@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, Modal, MoneyText, PrintSheet, Skeleton } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, EmptyState, MoneyText, Skeleton } from "@/components/ui";
 import {
   CardInvoicePrintView,
   CreditCardWallet,
   InvoiceStatusBadge,
   KpiCard,
   MonthPicker,
+  ReportDocumentLayout,
   TransactionRow,
 } from "@/components/modules";
 import {
@@ -595,56 +596,28 @@ export function CardsPage() {
         }}
       />
 
-      {/* Fatura imprimível — preview no modal + portal de impressão (padrão F22) */}
+      {/* Fatura imprimível — preview no modal + portal de impressão (padrão unificado F22/F42) */}
       {selectedCard && summary ? (
-        <>
-          <Modal
-            open={printOpen}
-            onOpenChange={setPrintOpen}
-            title={`Fatura — ${selectedCard.name}`}
-            description={`Gastos lançados no cartão em ${monthLabel(effectiveMonth)} (competência ${effectiveMonth}), prontos para imprimir ou salvar em PDF — compare com a fatura do banco.`}
-            size="xl"
-          >
-            <div className="mt-4">
-              <CardInvoicePrintView
-                cardName={selectedCard.name}
-                competenceMonth={effectiveMonth}
-                competenceLabel={monthLabel(effectiveMonth)}
-                totalBrutoCents={summary.previstoBrutoCents}
-                totalPonderadoCents={summary.previstoPonderadoCents}
-                pagoCents={summary.pagoCents}
-                saldoAbertoCents={summary.saldoBrutoCents}
-                saldoPonderadoCents={summary.saldoPonderadoCents}
-                expenses={printExpenseRows}
-                payments={printPaymentRows}
-              />
-            </div>
-            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setPrintOpen(false)} className="w-full sm:w-auto">
-                Fechar
-              </Button>
-              <Button type="button" onClick={() => window.print()} className="gap-2 w-full sm:w-auto justify-center">
-                <Printer className="size-4" aria-hidden="true" />
-                <span>Imprimir / Salvar PDF</span>
-              </Button>
-            </div>
-          </Modal>
-
-          <PrintSheet open={printOpen}>
-            <CardInvoicePrintView
-              cardName={selectedCard.name}
-              competenceMonth={effectiveMonth}
-              competenceLabel={monthLabel(effectiveMonth)}
-              totalBrutoCents={summary.previstoBrutoCents}
-              totalPonderadoCents={summary.previstoPonderadoCents}
-              pagoCents={summary.pagoCents}
-              saldoAbertoCents={summary.saldoBrutoCents}
-              saldoPonderadoCents={summary.saldoPonderadoCents}
-              expenses={printExpenseRows}
-              payments={printPaymentRows}
-            />
-          </PrintSheet>
-        </>
+        <ReportDocumentLayout
+          open={printOpen}
+          onOpenChange={setPrintOpen}
+          title={`Fatura — ${selectedCard.name}`}
+          documentTitle={`Fatura_${selectedCard.name.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}_${effectiveMonth}.pdf`}
+          size="2xl"
+        >
+          <CardInvoicePrintView
+            cardName={selectedCard.name}
+            competenceMonth={effectiveMonth}
+            competenceLabel={monthLabel(effectiveMonth)}
+            totalBrutoCents={summary.previstoBrutoCents}
+            totalPonderadoCents={summary.previstoPonderadoCents}
+            pagoCents={summary.pagoCents}
+            saldoAbertoCents={summary.saldoBrutoCents}
+            saldoPonderadoCents={summary.saldoPonderadoCents}
+            expenses={printExpenseRows}
+            payments={printPaymentRows}
+          />
+        </ReportDocumentLayout>
       ) : null}
     </div>
   );

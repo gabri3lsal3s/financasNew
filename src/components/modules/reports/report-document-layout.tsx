@@ -11,6 +11,8 @@ export interface ReportDocumentLayoutProps {
   onOpenChange: (open: boolean) => void;
   /** Título do modal / diálogo. */
   title: string;
+  /** Nome sugerido para o arquivo PDF gerado ao salvar (ex.: "Relatorio_Executivo_Agosto_2026.pdf"). */
+  documentTitle?: string;
   /** Ações customizadas adicionais no cabeçalho do modal (ex.: botão de copiar, exportar Excel). */
   customActions?: ReactNode;
   /** Conteúdo editorial do relatório (usado tanto no preview de tela quanto na impressão). */
@@ -32,12 +34,14 @@ export function ReportDocumentLayout({
   open,
   onOpenChange,
   title,
+  documentTitle,
   customActions,
   children,
   size = "2xl",
   className,
 }: ReportDocumentLayoutProps) {
-  const { printing, triggerPrint } = usePrint();
+  const suggestedTitle = documentTitle ?? `${title.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}.pdf`;
+  const { printing, triggerPrint } = usePrint(suggestedTitle);
 
   return (
     <>
@@ -56,7 +60,7 @@ export function ReportDocumentLayout({
               type="button"
               variant="default"
               size="sm"
-              onClick={triggerPrint}
+              onClick={() => triggerPrint(suggestedTitle)}
               disabled={printing}
               className="gap-1.5 shadow-xs h-8 text-xs px-2.5 sm:px-3"
             >

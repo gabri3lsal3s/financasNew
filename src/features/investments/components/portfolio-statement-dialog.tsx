@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { ListFilter, Pencil, Plus, Search, Trash2, X } from "lucide-react";
-import { Badge, Button, ConfirmDialog, EmptyState, Input, Modal, SkeletonTable } from "@/components/ui";
+import { ListFilter, Pencil, Plus, Printer, Search, Trash2, X } from "lucide-react";
+import { Badge, Button, ConfirmDialog, EmptyState, Input, Modal, PrintSheet, SkeletonTable, usePrint } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { ReportHeader, ReportFooter } from "@/components/modules/reports";
 import { useAllPortfolioTransactions, useDeletePortfolioTransaction, usePortfolioAssets } from "@/state";
 import { PORTFOLIO_TX_LABELS } from "@/lib/labels";
 import { numberToCents } from "@/domain/money";
@@ -10,7 +11,6 @@ import { triggerSensory } from "@/services/sensory";
 import { TransactionFormDialog } from "./transaction-form-dialog";
 
 import type { PortfolioAsset, PortfolioTransaction } from "@/types";
-
 
 export interface PortfolioStatementDialogProps {
   open: boolean;
@@ -22,6 +22,7 @@ const formatQty = (value: number): string =>
   Number.isInteger(value) ? String(value) : value.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 
 export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction }: PortfolioStatementDialogProps) {
+  const { printing, triggerPrint } = usePrint("Extrato_Consolidado_Investimentos.pdf");
   const transactionsQuery = useAllPortfolioTransactions();
   const assetsQuery = usePortfolioAssets();
   const deleteTx = useDeletePortfolioTransaction();
@@ -79,6 +80,20 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
         title="Extrato Consolidado da Carteira"
         description="Histórico cronológico de todas as compras, vendas, proventos e desdobramentos de todos os seus ativos."
         size="3xl"
+        headerActions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => triggerPrint()}
+            disabled={printing || filteredTransactions.length === 0}
+            className="gap-1.5 h-8 text-xs px-2.5 print:hidden"
+          >
+            <Printer className="size-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">{printing ? "Preparando..." : "Imprimir / Salvar PDF"}</span>
+            <span className="sm:hidden">{printing ? "..." : "PDF"}</span>
+          </Button>
+        }
       >
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -263,6 +278,59 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
         variant="destructive"
         onConfirm={confirmDelete}
       />
+
+      {/* Portal de Impressão A4 Multi-página */}
+      <PrintSheet open={open}>
+        <div className="print-document flex flex-col gap-5 w-full bg-white text-slate-900">
+          <ReportHeader
+            title="Extrato Consolidado da Carteira"
+            subtitle="Histórico cronológico de movimentações e eventos societários"
+            periodLabel={`${filteredTransactions.length} lançamentos`}
+            icon={ListFilter}
+          />
+
+          <div className="rounded-xl border border-border overflow-x-auto print:overflow-visible">
+            <table className="w-full text-left text-xs border-collapse print:table-fixed">
+              <thead>
+                <tr className="bg-surface-hover/60 border-b border-border text-muted-foreground">
+                  <th className="py-2.5 px-3 font-semibold print:w-[15%]">Data</th>
+                  <th className="py-2.5 px-3 font-semibold print:w-[15%]">Tipo</th>
+                  <th className="py-2.5 px-3 font-semibold print:w-[15%]">Ticker</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[15%]">Quantidade</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[20%]">Preço Unit.</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[20%]">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {filteredTransactions.map((tx) => {
+                  const asset = assetMap.get(tx.asset_id);
+                  const isSplit = tx.type === "split";
+                  return (
+                    <tr key={tx.id} className="hover:bg-surface-hover/30 transition-colors">
+                      <td className="py-2.5 px-3 font-mono">{formatDateBR(tx.date)}</td>
+                      <td className="py-2.5 px-3 font-medium">{PORTFOLIO_TX_LABELS[tx.type] ?? tx.type}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold">{asset?.ticker ?? "—"}</td>
+                      <td className="py-2.5 px-3 text-right num">
+                        {isSplit ? `${formatQty(tx.quantity)}:1` : formatQty(tx.quantity)}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        {isSplit ? "—" : <MoneyText cents={numberToCents(tx.price)} currency={asset?.currency} tone="default" />}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-semibold">
+                        {isSplit ? "—" : <MoneyText cents={numberToCents(tx.total)} currency={asset?.currency} tone="default" />}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <ReportFooter
+            disclaimer="Extrato consolidado emitido para simples conferência e acompanhamento de custódia patrimonial."
+          />
+        </div>
+      </PrintSheet>
     </>
   );
 }

@@ -530,6 +530,12 @@
   @page {
     size: A4 portrait;
     margin: 15mm 12mm 15mm 12mm;
+    @bottom-right {
+      content: "Página " counter(page) " de " counter(pages);
+      font-family: var(--font-sans);
+      font-size: 8pt;
+      color: #64748b;
+    }
   }
 
   body {

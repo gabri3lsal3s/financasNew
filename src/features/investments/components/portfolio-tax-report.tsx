@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Check, Copy, FileText, Landmark, ShieldCheck } from "lucide-react";
-import { Badge, Button, Modal, Tabs } from "@/components/ui";
+import { Badge, Button, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { ReportDocumentLayout, ReportHeader, ReportFooter } from "@/components/modules/reports";
 import {
   classifyAnnualDividendsReport,
   generateAnnualBensDireitosReport,
@@ -19,7 +20,7 @@ export interface PortfolioTaxReportProps {
 }
 
 /**
- * Facilitador Anual de IRPF com fichas da Receita Federal e botão de cópia rápida (§F40).
+ * Facilitador Anual de IRPF com fichas da Receita Federal e exportação A4/PDF (§F40).
  */
 export function PortfolioTaxReport({
   open,
@@ -51,14 +52,22 @@ export function PortfolioTaxReport({
   };
 
   return (
-    <Modal
+    <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
       title="Facilitador de IRPF / Declaração Anual"
-      description={`Textos e enquadramentos fiscais pré-formatados para o exercício de ${selectedYear}.`}
+      documentTitle={`Informe_Rendimentos_IRPF_${selectedYear}.pdf`}
       size="2xl"
     >
-      <div className="flex flex-col gap-5 mt-3">
+      <div className="flex flex-col gap-5 w-full">
+        {/* Cabeçalho Institucional */}
+        <ReportHeader
+          title="Informe Consolidado para IRPF"
+          subtitle="Bens e Direitos, Rendimentos Isentos e Tributação Exclusiva"
+          periodLabel={`Ano-Calendário ${selectedYear}`}
+          icon={Landmark}
+        />
+
         {/* Seletor de Ano Base */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface-hover/40 p-3 rounded-xl border border-border">
           <div className="flex items-center gap-2">
@@ -218,7 +227,12 @@ export function PortfolioTaxReport({
             },
           ]}
         />
+
+        {/* Rodapé Institucional */}
+        <ReportFooter
+          disclaimer="Documento gerado automaticamente para suporte ao preenchimento da Declaração de Ajuste Anual do IRPF. Os valores refletem os registros de custódia e proventos mantidos no Guia Financeiro."
+        />
       </div>
-    </Modal>
+    </ReportDocumentLayout>
   );
 }

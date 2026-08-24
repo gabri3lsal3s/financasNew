@@ -10,6 +10,19 @@ export interface ReportFooterProps {
   className?: string;
 }
 
+function generateReportAuthId(accountHolder?: string): string {
+  const now = new Date();
+  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const seed = `${accountHolder ?? "FIN"}-${datePart}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(4, "0").slice(0, 4);
+  return `BR-${datePart}-${hex}`;
+}
+
 /**
  * Rodapé Institucional de Relatório A4 / PDF.
  *
@@ -22,6 +35,8 @@ export function ReportFooter({
   documentId,
   className,
 }: ReportFooterProps) {
+  const authCode = documentId ?? generateReportAuthId(accountHolder);
+
   return (
     <footer
       className={cn(
@@ -40,15 +55,9 @@ export function ReportFooter({
 
       <div className="flex flex-col items-start sm:items-end text-left sm:text-right shrink-0">
         <span className="font-semibold text-foreground/80">Guia Financeiro</span>
-        {documentId ? (
-          <span className="num font-mono text-[9px] text-muted-foreground/70">
-            ID: {documentId}
-          </span>
-        ) : (
-          <span className="text-[9px] text-muted-foreground/70">
-            Autenticidade Verificada
-          </span>
-        )}
+        <span className="num font-mono text-[9px] text-muted-foreground/70">
+          ID: {authCode}
+        </span>
       </div>
     </footer>
   );

@@ -289,6 +289,11 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 
 **Ações no Cabeçalho de Modais (`headerActions`):** o componente `Modal` expõe a prop `headerActions?: ReactNode`, permitindo injetar ações de topo (como botões de imprimir PDF, exportar, compartilhar) diretamente ao lado do botão de fechar nativo do Radix Dialog, eliminando cabeçalhos redundantes internos.
 
+**Padrão de Relatórios e Impressão A4 (`ReportDocumentLayout` + `usePrint`):**
+- **Contêiner Canônico (`ReportDocumentLayout`):** unifica o preview interativo na tela (`size="2xl"`, scroll interno e cabeçalho com ações) e a folha de impressão em `@media print` via portal `PrintSheet` montado em `document.body`.
+- **Nomenclatura Contextual de Arquivo (`documentTitle`):** o hook `usePrint` define temporariamente o `document.title` durante a captura do navegador (ex.: `Fatura_Nubank_2026-08.pdf`, `Informe_Rendimentos_IRPF_2026.pdf`), garantindo nomes profissionais ao salvar o PDF e restaurando o título original do app automaticamente.
+- **Regras Físicas A4 (`@page`):** margem de `15mm 12mm 15mm 12mm` com contadores de página (`@bottom-right { content: "Página " counter(page) " de " counter(pages); }`), anti-corte (`break-inside: avoid !important`), anti-órfãos (`break-after: avoid !important` em títulos) e repetição automática de cabeçalhos de tabela (`thead { display: table-header-group !important; }`).
+
 ---
 
 ## 12. ENTRADA MONETÁRIA — PADRÃO NUBANK (INPUT MONETÁRIO PROGRESSIVO)
