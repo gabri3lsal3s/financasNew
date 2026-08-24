@@ -50,6 +50,20 @@ export function PortfolioExecutiveReport({
     }))
     .sort((a, b) => b.val - a.val);
 
+  // Agrupamento por setor
+  const sectorTotals = new Map<string, number>();
+  for (const r of investmentRows) {
+    const sec = r.sector?.trim() || "Geral";
+    sectorTotals.set(sec, (sectorTotals.get(sec) ?? 0) + r.valueBRL);
+  }
+  const sectorBreakdown = Array.from(sectorTotals.entries())
+    .map(([sec, val]) => ({
+      sec,
+      val,
+      pct: totalBRL > 0 ? (val / totalBRL) * 100 : 0,
+    }))
+    .sort((a, b) => b.val - a.val);
+
   return (
     <ReportDocumentLayout
       open={open}
@@ -95,24 +109,44 @@ export function PortfolioExecutiveReport({
           </div>
         </section>
 
-        {/* Distribuição por Classe */}
-        <section aria-label="Distribuição por Classe" className="flex flex-col gap-3 break-inside-avoid">
-          <div className="flex items-center gap-2">
-            <PieChart className="size-4 text-portfolio" aria-hidden="true" />
-            <h3 className="text-sm font-semibold text-foreground">Alocação por Classe de Ativos</h3>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {classBreakdown.map((item) => (
-              <div key={item.cls} className="rounded-lg border border-border/60 p-2.5 flex flex-col gap-0.5 bg-surface">
-                <span className="text-xs text-muted-foreground truncate">{item.cls}</span>
-                <div className="flex items-center justify-between gap-1 pt-0.5">
-                  <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground" />
-                  <span className="num text-[11px] font-semibold text-portfolio">{item.pct.toFixed(1)}%</span>
+        {/* Distribuição por Classe e Setor */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 break-inside-avoid">
+          <section aria-label="Distribuição por Classe" className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-2">
+              <PieChart className="size-4 text-portfolio" aria-hidden="true" />
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">Alocação por Classe</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {classBreakdown.map((item) => (
+                <div key={item.cls} className="rounded-lg border border-border/60 p-2 flex flex-col gap-0.5 bg-surface">
+                  <span className="text-xs text-muted-foreground truncate">{item.cls}</span>
+                  <div className="flex items-center justify-between gap-1 pt-0.5">
+                    <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground" />
+                    <span className="num text-[11px] font-semibold text-portfolio">{item.pct.toFixed(1)}%</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+
+          <section aria-label="Distribuição por Setor" className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-2">
+              <PieChart className="size-4 text-portfolio" aria-hidden="true" />
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">Alocação por Setor</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {sectorBreakdown.slice(0, 4).map((item) => (
+                <div key={item.sec} className="rounded-lg border border-border/60 p-2 flex flex-col gap-0.5 bg-surface">
+                  <span className="text-xs text-muted-foreground truncate">{item.sec}</span>
+                  <div className="flex items-center justify-between gap-1 pt-0.5">
+                    <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground" />
+                    <span className="num text-[11px] font-semibold text-portfolio">{item.pct.toFixed(1)}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
 
         {/* Tabela Consolidada de Custódia */}
         <section aria-label="Custódia Consolidada" className="flex flex-col gap-3 break-inside-avoid">
@@ -128,14 +162,15 @@ export function PortfolioExecutiveReport({
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
                 <tr className="bg-surface-hover/60 border-b border-border text-muted-foreground">
-                  <th className="py-2.5 px-3 font-semibold print:w-[15%]">Ticker</th>
-                  <th className="py-2.5 px-3 font-semibold print:w-[14%]">Classe</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[10%]">Qtd</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[13%]">P. Médio</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[13%]">Cotação</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[15%]">Valor Atual</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[10%]">Rentab.</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[10%]">% Cart.</th>
+                  <th className="py-2.5 px-3 font-semibold print:w-[13%]">Ticker</th>
+                  <th className="py-2.5 px-3 font-semibold print:w-[12%]">Classe</th>
+                  <th className="py-2.5 px-3 font-semibold print:w-[14%]">Setor</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[8%]">Qtd</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[11%]">P. Médio</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[11%]">Cotação</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[13%]">Valor Atual</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[9%]">Rentab.</th>
+                  <th className="py-2.5 px-3 font-semibold text-right print:w-[9%]">% Cart.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -148,6 +183,7 @@ export function PortfolioExecutiveReport({
                     <tr key={r.assetId} className="hover:bg-surface-hover/30 transition-colors">
                       <td className="py-2.5 px-3 font-mono font-bold text-foreground truncate">{r.ticker}</td>
                       <td className="py-2.5 px-3 text-muted-foreground truncate">{r.assetClass ?? "Geral"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground truncate">{r.sector ?? "Geral"}</td>
                       <td className="py-2.5 px-3 text-right num">{formatQuantity(r.quantity)}</td>
                       <td className="py-2.5 px-3 text-right">
                         <MoneyText cents={numberToCents(r.averageCost)} currency={r.currency} tone="default" />

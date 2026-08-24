@@ -33,4 +33,25 @@ describe("calculateConcentrationRisk", () => {
     expect(result.riskAlerts.some((a) => a.code === "SINGLE_ASSET_CONCENTRATION")).toBe(true);
     expect(result.riskScore).toBeLessThan(100);
   });
+
+  it("deve calcular concentração setorial e emitir alertas de setor dominante", () => {
+    const positions: PositionRiskInput[] = [
+      { id: "1", ticker: "PETR4", assetClass: "Ações", sector: "Petróleo & Gás", currency: "BRL", valueBRL: 3500 },
+      { id: "2", ticker: "PRIO3", assetClass: "Ações", sector: "Petróleo & Gás", currency: "BRL", valueBRL: 1500 },
+      { id: "3", ticker: "ITUB4", assetClass: "Ações", sector: "Financeiro / Bancos", currency: "BRL", valueBRL: 2000 },
+      { id: "4", ticker: "WEGE3", assetClass: "Ações", sector: "Bens de Capital", currency: "BRL", valueBRL: 3000 },
+    ];
+    // Total = 10.000 BRL
+    // Petróleo & Gás: 5.000 (50%) -> Dominância setorial > 40% (crítico)
+
+    const result = calculateConcentrationRisk(positions);
+
+    expect(result.sectorExposure).toHaveLength(3);
+    expect(result.topSectorDominance?.sector).toBe("Petróleo & Gás");
+    expect(result.topSectorDominance?.pct).toBe(50);
+    expect(result.top3SectorsPct).toBe(100);
+
+    expect(result.riskAlerts.some((a) => a.code === "SECTOR_CONCENTRATION")).toBe(true);
+  });
 });
+

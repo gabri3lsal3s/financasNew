@@ -97,6 +97,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
       assetId: r.assetId,
       ticker: r.ticker,
       assetClass: r.assetClass,
+      sector: r.sector,
       targetValueBRL: r.targetValueBRL,
       currentValueBRL: r.currentValueBRL,
       gapBRL: r.gapBRL,
@@ -226,6 +227,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
                   leftover={result.leftover}
                   routes={routes}
                   classSummaries={result.classSummaries}
+                  sectorSummaries={result.sectorSummaries}
                   skippedAssets={result.skippedAssets}
                   onExecuteAporte={eligibleRoutes.length > 0 ? () => setConfirmBatchOpen(true) : undefined}
                   executing={isApplying}

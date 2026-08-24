@@ -16,6 +16,7 @@ export interface ExcelPositionRow {
   ticker: string;
   name?: string | null;
   assetClass: string;
+  sector?: string | null;
   currency: string;
   quantity: number;
   averagePrice: number;
@@ -218,6 +219,7 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell ss:StyleID="TextBold"><Data ss:Type="String">${escapeXml(p.ticker)}</Data></Cell>
     <Cell><Data ss:Type="String">${escapeXml(p.name ?? p.ticker)}</Data></Cell>
     <Cell><Data ss:Type="String">${escapeXml(p.assetClass)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(p.sector ?? "Geral")}</Data></Cell>
     <Cell><Data ss:Type="String">${escapeXml(p.currency)}</Data></Cell>
     <Cell ss:StyleID="Quantity"><Data ss:Type="Number">${formatQuantityRaw(p.quantity)}</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(p.averagePrice)}</Data></Cell>
@@ -237,6 +239,7 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
    <Column ss:Width="70"/>
    <Column ss:Width="160"/>
    <Column ss:Width="110"/>
+   <Column ss:Width="130"/>
    <Column ss:Width="60"/>
    <Column ss:Width="90"/>
    <Column ss:Width="100"/>
@@ -250,6 +253,7 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell><Data ss:Type="String">Ticker</Data></Cell>
     <Cell><Data ss:Type="String">Nome / Descrição</Data></Cell>
     <Cell><Data ss:Type="String">Classe</Data></Cell>
+    <Cell><Data ss:Type="String">Setor</Data></Cell>
     <Cell><Data ss:Type="String">Moeda</Data></Cell>
     <Cell><Data ss:Type="String">Quantidade</Data></Cell>
     <Cell><Data ss:Type="String">Preço Médio</Data></Cell>

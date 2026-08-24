@@ -203,7 +203,8 @@ describe("ReportsPage (Central Unificada §F42)", () => {
 
     expect(screen.getByText("Dossiê Executivo de Alocação & Patrimônio (A4/PDF)")).toBeInTheDocument();
     expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
-    expect(screen.getByText("Defasagem de Metas por Classe")).toBeInTheDocument();
+    expect(screen.getByText("Defasagem de Metas Hierárquica (Classe ➔ Setor ➔ Ativos)")).toBeInTheDocument();
+    expect(screen.getByText("Top Setor Dominante")).toBeInTheDocument();
   });
 
   it("permite alternar para a aba Balanço & Liberdade", async () => {

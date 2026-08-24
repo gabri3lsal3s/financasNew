@@ -145,5 +145,56 @@ describe("AporteResult", () => {
     expect(screen.getByText("VALE3")).toBeInTheDocument();
     expect(screen.getByText("Na meta")).toBeInTheDocument();
   });
+
+  it("renderiza a distribuição meso por setor e permite alternar para o modo Árvore", async () => {
+    const user = userEvent.setup();
+    const routesWithSector: AporteRouteRow[] = [
+      {
+        assetId: "a1",
+        ticker: "PETR4",
+        assetClass: "Ações",
+        sector: "Petróleo & Gás",
+        targetValueBRL: 5000,
+        currentValueBRL: 4000,
+        gapBRL: 1000,
+        allocatedBRL: 1000,
+        quantity: 25,
+        priceBRL: 40,
+      },
+    ];
+
+    render(
+      <AporteResult
+        mode="both"
+        aporte={1000}
+        totalAllocated={1000}
+        leftover={0}
+        routes={routesWithSector}
+        sectorSummaries={[
+          {
+            className: "Ações",
+            sectorName: "Petróleo & Gás",
+            targetPctInClass: 50,
+            effectiveTargetPct: 25,
+            targetValueBRL: 5000,
+            currentValueBRL: 4000,
+            gapBRL: 1000,
+            budgetAllocatedBRL: 1000,
+            actualAllocatedBRL: 1000,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Distribuição Meso por Setor")).toBeInTheDocument();
+    expect(screen.getAllByText("Petróleo & Gás").length).toBeGreaterThanOrEqual(1);
+
+    const treeBtn = screen.getByRole("button", { name: "Árvore" });
+    expect(treeBtn).toBeInTheDocument();
+    await user.click(treeBtn);
+
+    expect(screen.getByText("Hierarquia / Ativo")).toBeInTheDocument();
+  });
 });
+
 
