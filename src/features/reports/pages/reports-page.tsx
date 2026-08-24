@@ -340,7 +340,6 @@ export function ReportsPage() {
       positionRows.map((r) => ({
         id: r.assetId ?? r.ticker,
         ticker: r.ticker,
-        name: r.name,
         assetClass: r.assetClass ?? "outros",
         sector: r.sector,
         valueBRL: r.valueBRL,

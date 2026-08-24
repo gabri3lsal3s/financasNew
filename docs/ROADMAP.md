@@ -1499,6 +1499,9 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | ✅ Concluída (2026-08-24) — índices compostos/cobridores `(user_id, date)` com `INCLUDE` (expenses, incomes, debts, portfolio_assets, recurrences) e index-only scans |
 | 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | ✅ Concluída (2026-08-24) — motor de domínio MFA/TOTP (AAL1/AAL2), componente Turnstile anti-bot em formulários públicos e aba Segurança & 2FA |
 | 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | ✅ Concluída (2026-08-24) — rotinas de expurgo/retenção de logs de auditoria (cleanup_old_audit_events / admin_trigger_audit_retention) e índices temporais |
+| 35 | **F49** — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve | B / Proatividade & Investimentos | F41/F44 | 🟡 Planejada — ponte automática fluxo de caixa → calculadora de aporte, materialização mensal autônoma de snapshots e gatilhos de reinvestimento |
+| 36 | **F50** — Projeção de Caixa & Liquidez em Tempo Real: Saldo Livre Real (Safe-to-Spend) & Radar de Descasamento | A / Fluxo de Caixa & Alertas | F3/F33 | 🟡 Planejada — métrica Safe-to-Spend na Home, radar preditivo de descasamento temporal receitas vs. faturas/dívidas |
+| 37 | **F51** — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE | C / Inteligência & Estratégia | F24/F39 | 🟡 Planejada — alertas de desvio de alocação por limiar, estimativa de conclusão da reserva de emergência e conversor de economia em tempo de liberdade FIRE |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -2328,4 +2331,114 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Rotina de expurgo de logs de auditoria executada automaticamente no banco.
 - Exportação de grandes volumes fluida e sem congelamento de interface.
 - Suíte de testes 100% verde.
+
+---
+
+### Fase 49 — Proatividade Patrimonial: Conexão "Sobra de Caixa → Aporte Inteligente", Auto-Snapshots & Gatilhos da Bola de Neve
+
+> **Status:** 🟡 Planejada — integração proativa entre o fluxo de caixa mensal e a gestão de investimentos: cálculo de capacidade real de aporte no fechamento do mês, ponte em 1-clique para a calculadora de rebalanceamento, materialização autônoma de snapshots patrimoniais no 1º dia de cada mês (Marco Zero contínuo) e gatilhos de reinvestimento para ativos que atingiram o limiar de 1 nova cota em proventos.
+
+**Objetivo:** transformar o ecossistema financeiro em um ciclo contínuo e proativo, conectando as sobras do orçamento pessoal diretamente ao motor de aporte e automatizando a evolução temporal da carteira:
+1. **Ponte Proativa "Sobra de Caixa → Aporte Inteligente":**
+   - Motor puro de cálculo em `src/domain/overview/`: apuração determinística da Sobra Líquida Real do mês (`Receitas - Despesas - Faturas Pagas - Dívidas Quitadas - Compromissos do Mês`);
+   - Card inteligente na Visão Geral (`OverviewPage`) e no Hub de Investimentos (`InvestmentsPage`): exibição da sobra calculada com botão "Simular Aporte Ideal";
+   - Deep Linking com injeção automática de valor: navegação para `/investments?aba=aporte&valor=XXXXX`, pré-preenchendo a calculadora de rebalanceamento com a verba exata disponível;
+2. **Materialização Autônoma de Snapshots Mensais (Auto-Snapshot):**
+   - Rotina client-side resiliente em `usePortfolioSnapshots`: na abertura do app em um novo mês (`targetMonth > lastSnapshotMonth`), verifica a existência do snapshot do mês anterior;
+   - Caso ausente, dispara a materialização do snapshot (`upsertPortfolioSnapshot`) calculando o valor total de mercado (`total_value`) da custódia viva naquele instante e fixando o custo (`total_cost`), garantindo que a série histórica temporal permaneça contínua e sem lacunas sem exigir preenchimento manual;
+3. **Gatilho de Reinvestimento da Bola de Neve (Snowball Reinvestment Trigger):**
+   - Motor puro em `src/domain/portfolio/snowball.ts`: verificação de ativos cuja soma de proventos acumulados no mês atinge ou supera o valor de face de 1 cota de mercado (`monthDividends >= currentPrice`);
+   - Card de ação proativa em `ProventosTab` e `ResumoTab`: *"Seus proventos de HGLG11 (R$ 165,00) já permitem adquirir 1 nova cota. Deseja registrar o reinvestimento?"*;
+   - Fast-track no `InvestmentWizard` abrindo diretamente no Step 2 pré-configurado para a compra do ativo com o valor do provento.
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 49.1 — Domínio Puro & Funções de Proatividade:**
+   - Criação de `src/domain/overview/surplus.ts` (+ testes) para resolução da capacidade de aporte.
+   - Atualização de `src/domain/portfolio/snowball.ts` (+ testes) com `detectReinvestmentOpportunities`.
+2. **Etapa 49.2 — Camada de Estado & Auto-Snapshot:**
+   - Criação do hook `useAutoPortfolioSnapshot` sincronizado com o ciclo de vida e cache TanStack Query.
+3. **Etapa 49.3 — Componentes Modulares de UI & Deep Links:**
+   - Módulo `SurplusAporteBanner` para Home e Investimentos com suporte aos 3 temas e tokens do Design System.
+   - Módulo `SnowballActionCard` em `ProventosTab`.
+   - Suporte a query param `?valor=` em `AporteTab`.
+4. **Etapa 49.4 — Testes Automatizados & Validação:**
+   - Testes unitários para cálculo de sobra e gatilhos de bola de neve.
+   - Suíte 100% verde com typecheck e lint estritos.
+
+**✅ DoD (critérios de aceite):**
+- Sobra líquida de caixa calculada com rigor centesimal sem misturar meses distintos.
+- 1-clique no card de sobra redireciona para a calculadora de aporte com o valor preenchido e simulação executada.
+- Snapshots mensais materializados automaticamente sem duplicidade e sem sobrescrever dados inseridos manualmente.
+- Ativos com proventos suficientes para 1 cota exibem gatilho claro de reinvestimento.
+- Conformidade total com regras de UX: sem emojis, termos simples em pt-BR, acessibilidade AA.
+- Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
+
+---
+
+### Fase 50 — Projeção de Caixa & Liquidez em Tempo Real: Saldo Livre Real (Safe-to-Spend) & Radar de Descasamento
+
+> **Status:** 🟡 Planejada — enriquecimento da inteligência temporal de fluxo de caixa com a métrica diária "Saldo Livre Real" (Safe-to-Spend) e radar preditivo de descasamento entre vencimentos de faturas/dívidas e entradas habituais de renda.
+
+**Objetivo:** proporcionar segurança financeira no dia a dia do usuário, eliminando a ilusão de caixa disponível e prevenindo inadimplência ou uso emergencial de cheque especial:
+1. **Métrica "Saldo Livre Real" (Safe-to-Spend):**
+   - Motor puro de projeção em `src/domain/projection/`: cálculo do montante verdadeiramente livre para gastos discricionários até o fechamento do ciclo:
+     $$\text{Saldo Livre} = \text{Saldo em Caixa Atual} - \text{Faturas de Cartão Abertas a Vencer} - \text{Dívidas/Boletos Pendentes} - \text{Orçamentos Essenciais Restantes}$$
+   - Widget dedicado ou destaque no cabeçalho da `OverviewPage` com indicador de margem diária recomendada;
+2. **Radar Preditivo de Descasamento Temporal (Cash-Gap Warning):**
+   - Motor de análise cronológica: cruzamento entre o calendário de saídas contratadas (vencimentos de faturas `due_date` e parcelas de dívidas/empréstimos) e a projeção de receitas habituais (derivadas da mediana de datas históricas);
+   - Alerta antecipado com 5 a 10 dias de antecedência caso o saldo acumulado na data de vencimento da fatura fique negativo antes da entrada do salário;
+   - Card de recomendação com sugestão de realocação temporária de reserva/caixa ou postergação de gastos não essenciais;
+3. **Simulador de Fôlego Financeiro (Runway Diário):**
+   - Gráfico de linha de projeção de saldo diário até o último dia do mês corrente, destacando os dias de inflexão (pagamento de faturas vs. créditos de proventos e salários).
+
+**Organização da Implementação em 3 Etapas:**
+1. **Etapa 50.1 — Motores Puros de Domínio:**
+   - Criação de `src/domain/projection/safe-spend.ts` e `src/domain/projection/cash-gap.ts` (+ testes unitários com múltiplos cenários de data e saldo).
+2. **Etapa 50.2 — Componentes & Visualização:**
+   - Módulo `SafeToSpendCard` e `CashGapAlert` em `src/components/modules/`.
+   - Integração na `OverviewPage` respeitando a preferência de widgets do usuário.
+3. **Etapa 50.3 — Testes & Refinamento Visual:**
+   - Testes unitários e de integração para projeção de liquidez.
+   - Validação em telas móveis e conformidade WCAG AA.
+
+**✅ DoD (critérios de aceite):**
+- Saldo Livre Real reflete estritamente as obrigações já assumidas e compromissos essenciais do mês.
+- Alerta de descasamento dispara apenas quando há risco real de saldo insuficiente na data do vencimento.
+- Interface limpa com MoneyText, cores semânticas de aviso (`warning`/`critical`) e ações de contingência claras.
+- Suíte de testes 100% verde.
+
+---
+
+### Fase 51 — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE
+
+> **Status:** 🟡 Planejada — sofisticação dos motores de planejamento e alocação estratégica: monitoramento ativo de desvios de metas de classe/setor com limiares de tolerância, estimativa preditiva de conclusão da reserva de emergência e conversor de economia de despesas em tempo de liberdade financeira (FIRE).
+
+**Objetivo:** conectar a disciplina orçamentária do dia a dia com a conquista da independência financeira e a proteção patrimonial de longo prazo:
+1. **Alertas Ativos de Desvio de Alocação (Threshold Δ Alerts):**
+   - Motor puro em `src/domain/portfolio/allocation.ts`: monitoramento de desvios percentuais relativos ($\Delta > \text{Tolerância}$, ex.: classe descolando $> \pm 10\%$ da meta devido a oscilações de mercado);
+   - Diagnóstico proativo em `ResumoTab` e `InsightsPage` sugerindo o rebalanceamento via novos aportes ou contenção de exposição;
+2. **Termômetro Preditivo de Conclusão da Reserva de Emergência:**
+   - Motor em `src/domain/fire/`: cálculo da velocidade de acumulação baseado na média móvel de poupança dos últimos 3 meses;
+   - Projeção de data estimada (mês/ano) para atingir os 3, 6 e 12 meses de custo de vida essencial, com barra de progresso temporal dinâmica;
+3. **Conversor de Impacto FIRE ("O Custo do Hábito na Aposentadoria"):**
+   - Integração entre `domain/insights` (recorrências/assinaturas) e `domain/fire`: cálculo do valor futuro capitalizado de gastos supérfluos recorrentes;
+   - Simulação proativa demonstrando quantos meses ou anos de antecipação da independência financeira são conquistados ao converter um corte de gastos em aporte contínuo.
+
+**Organização da Implementação em 3 Etapas:**
+1. **Etapa 51.1 — Domínio Puro & Motores de Longo Prazo:**
+   - `src/domain/portfolio/thresholds.ts` e expansão de `src/domain/fire/projection.ts` (+ testes).
+2. **Etapa 51.2 — UI & Módulos Analíticos:**
+   - Módulo `AllocationDriftCard` em Investimentos e Insights.
+   - Atualização do painel de Planejamento (`PlanningTab` em Insights) com o termômetro temporal da Reserva e o simulador de impacto FIRE.
+3. **Etapa 51.3 — Testes & Validação:**
+   - Testes unitários com casos de borda (taxa de poupança nula, rendimento real negativo, metas zeradas).
+   - Suíte de testes 100% verde.
+
+**✅ DoD (critérios de aceite):**
+- Alertas de desvio de alocação claros, não intrusivos e orientados estritamente à regularização via aportes.
+- Projeção da Reserva de Emergência exibe mês/ano realista baseado no histórico consolidado.
+- Conversor FIRE matematicamente rigoroso com taxa de juros real ajustada pela inflação.
+- Total paridade com o Design System (zero emojis, ícones `lucide-react`, pt-BR, tokens CSS).
+- Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
+
 
