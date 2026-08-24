@@ -7,7 +7,7 @@ export type { MoneyInputProps } from "./money-input";
 export { Card, CardContent, CardHeader, CardTitle } from "./card";
 export { Badge } from "./badge";
 export type { BadgeProps } from "./badge";
-export { Skeleton, SkeletonChart, SkeletonKpi, SkeletonList, SkeletonTable } from "./skeleton";
+export { Skeleton, SkeletonChart, SkeletonHeroCard, SkeletonKpi, SkeletonList, SkeletonTable } from "./skeleton";
 export { MoneyText } from "./money-text";
 export type { MoneyTextProps } from "./money-text";
 export { EmptyState } from "./empty-state";

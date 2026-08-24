@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Badge, EmptyState, ErrorState, MoneyText, Progress, SkeletonChart, SkeletonKpi } from "@/components/ui";
+import { Badge, EmptyState, ErrorState, MoneyText, Progress, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   CategoryIcon,
@@ -101,7 +101,8 @@ export function OverviewPage() {
     expenseCategories.isLoading ||
     cardExpensesQuery.isLoading ||
     cardPaymentsQuery.isLoading ||
-    contributionsQuery.isLoading;
+    contributionsQuery.isLoading ||
+    realCashData.isLoading;
 
   const error =
     incomesQuery.error ??
@@ -116,7 +117,8 @@ export function OverviewPage() {
     expenseCategories.error ??
     cardExpensesQuery.error ??
     cardPaymentsQuery.error ??
-    contributionsQuery.error;
+    contributionsQuery.error ??
+    realCashData.error;
 
   const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
 
@@ -270,12 +272,9 @@ export function OverviewPage() {
         />
       ) : null}
 
-      {!error && (
-        <RealCashHeroCard realCashData={realCashData} />
-      )}
-
       {loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
+          <SkeletonHeroCard />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <SkeletonKpi />
             <SkeletonKpi />
@@ -286,6 +285,8 @@ export function OverviewPage() {
         </div>
       ) : (
         <>
+          <RealCashHeroCard realCashData={realCashData} />
+
           {/* KPIs fundamentais (§3.6) com sparkline */}
           {visual.dashboardWidgets.kpis && (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">

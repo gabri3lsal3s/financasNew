@@ -65,3 +65,30 @@ export function SkeletonTable({ rows = 5, className }: { rows?: number; classNam
     </div>
   );
 }
+
+/** Esqueleto do card hero de caixa da Visão Geral (§F49). */
+export function SkeletonHeroCard({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-8 shrink-0 rounded-xl" />
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-4 w-36 sm:w-44" />
+            <Skeleton className="h-3 w-48 sm:w-64" />
+          </div>
+        </div>
+        <Skeleton className="h-8 w-full sm:w-36 rounded-lg" />
+      </div>
+      <Skeleton className="h-8 w-44 sm:w-56" />
+      <Skeleton className="h-12 w-full rounded-xl" />
+    </div>
+  );
+}
+
