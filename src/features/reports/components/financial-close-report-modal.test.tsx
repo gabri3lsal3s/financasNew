@@ -36,7 +36,7 @@ describe("FinancialCloseReportModal (F42)", () => {
       />,
     );
 
-    expect(screen.getByText("Relatório Executivo de Finanças Pessoais & DRE")).toBeInTheDocument();
+    expect(screen.getAllByText("Relatório Executivo de Finanças Pessoais & DRE")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Agosto de 2026")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Receitas Totais")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Despesas Totais")[0]).toBeInTheDocument();
@@ -103,7 +103,7 @@ describe("FinancialCloseReportModal (F42)", () => {
 
     // Confere se aparecem as indicações de valor ponderado para consulta
     expect(screen.getAllByText(/ponderado:/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/O valor principal exibido é o valor bruto nominal/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/O valor principal exibido é o valor bruto nominal/i).length).toBeGreaterThan(0);
   });
 });
 

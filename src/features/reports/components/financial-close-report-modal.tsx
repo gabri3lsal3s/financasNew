@@ -1,18 +1,19 @@
-import { usePrint } from "@/components/ui";
 import {
   Banknote,
   Landmark,
   PieChart,
   PiggyBank,
-  Printer,
   ReceiptText,
-  TrendingUp,
   Wallet,
 } from "lucide-react";
-import { Button, Modal } from "@/components/ui";
-
+import {
+  ReportDocumentLayout,
+  ReportHeader,
+  ReportKpiGrid,
+  ReportWaterfallBar,
+  ReportFooter,
+} from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
-import { PrintSheet } from "@/components/ui/print-sheet";
 import { formatPercent } from "@/services/masks/percent";
 
 export interface FinancialDREData {
@@ -45,7 +46,6 @@ export interface FinancialReportPaymentMethodItem {
   pct: number;
 }
 
-
 export interface FinancialReportPaidInvoiceItem {
   cardName: string;
   competenceMonth: string;
@@ -58,6 +58,7 @@ export interface FinancialCloseReportModalProps {
   onOpenChange: (open: boolean) => void;
   periodLabel: string;
   appName?: string;
+  accountHolder?: string;
   dre: FinancialDREData;
   categories: readonly FinancialReportCategoryItem[];
   paymentMethods: readonly FinancialReportPaymentMethodItem[];
@@ -75,7 +76,7 @@ function formatDateBR(isoDate: string): string {
 }
 
 /**
- * Modal Executivo de Finanças Pessoais & DRE (F42).
+ * Modal Executivo de Finanças Pessoais & DRE (F42/F44).
  * Exibe a Demonstração do Resultado do Exercício (DRE Pessoal),
  * composição de despesas e impressão padronizada A4 / PDF.
  */
@@ -83,7 +84,8 @@ export function FinancialCloseReportModal({
   open,
   onOpenChange,
   periodLabel,
-  appName = "Finanças Pessoais",
+  appName = "Guia Financeiro",
+  accountHolder,
   dre,
   categories,
   paymentMethods,
@@ -92,9 +94,6 @@ export function FinancialCloseReportModal({
   incomeCount,
   showWeightedNote = false,
 }: FinancialCloseReportModalProps) {
-  const { printing, triggerPrint } = usePrint();
-  const generatedAt = new Date().toLocaleDateString("pt-BR");
-
   const effectiveGrossIncomeBruto = dre.grossIncomeBrutoCents ?? dre.grossIncomeCents;
   const effectiveTotalExpensesBruto = dre.totalExpensesBrutoCents ?? dre.totalExpensesCents;
   const effectiveGrossSavingsBruto = effectiveGrossIncomeBruto - effectiveTotalExpensesBruto;
@@ -105,96 +104,114 @@ export function FinancialCloseReportModal({
     showWeightedNote &&
     (dre.grossIncomeBrutoCents !== undefined || dre.totalExpensesBrutoCents !== undefined);
 
-  const reportContent = (
-    <div className="print-area flex flex-col gap-6 bg-surface text-foreground w-full max-w-full overflow-hidden print:overflow-visible">
-      {/* Cabeçalho Institucional do Documento */}
-      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-4 print:flex-row print:items-start">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary-strong">
-            <TrendingUp className="size-5" aria-hidden="true" />
-          </span>
-          <div className="flex flex-col">
-            <span className="font-display text-lg font-bold tracking-tight text-foreground">{appName}</span>
-            <span className="text-xs text-muted-foreground">Relatório de Finanças Pessoais &amp; DRE</span>
-          </div>
-        </div>
-        <div className="flex flex-col items-start sm:items-end text-left sm:text-right text-xs text-muted-foreground print:items-end print:text-right">
-          <span className="font-semibold text-sm text-foreground">{periodLabel}</span>
-          <span>Emitido em {generatedAt}</span>
-        </div>
-      </header>
+  // Passos para o gráfico visual em cascata de DRE
+  const waterfallSteps = [
+    {
+      key: "income",
+      label: "Receitas Realizadas",
+      amountCents: effectiveGrossIncomeBruto,
+      pctOfTotal: 100,
+      type: "income" as const,
+    },
+    {
+      key: "expenses",
+      label: "Despesas Operacionais",
+      amountCents: effectiveTotalExpensesBruto,
+      pctOfTotal: effectiveGrossIncomeBruto > 0 ? (effectiveTotalExpensesBruto / effectiveGrossIncomeBruto) * 100 : 0,
+      type: "expense" as const,
+    },
+    {
+      key: "savings",
+      label: "Poupança Líquida Operacional",
+      amountCents: effectiveGrossSavingsBruto,
+      pctOfTotal: effectiveGrossIncomeBruto > 0 ? (effectiveGrossSavingsBruto / effectiveGrossIncomeBruto) * 100 : 0,
+      type: "savings" as const,
+    },
+  ];
 
-      {/* Grade de KPIs do Período */}
-      <section aria-label="Resumo Financeiro" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-muted/30 p-3.5 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Banknote className="size-3.5" aria-hidden="true" />
-            <span>Receitas Totais</span>
-          </div>
-          <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" className="text-base sm:text-lg font-bold" />
-          {hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto && (
-            <span className="text-[11px] text-muted-foreground">
-              ponderado: <MoneyText cents={dre.grossIncomeCents} className="inline text-[11px]" />
-            </span>
-          )}
-        </div>
-        <div className="rounded-xl border border-border bg-muted/30 p-3.5 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <ReceiptText className="size-3.5" aria-hidden="true" />
-            <span>Despesas Totais</span>
-          </div>
-          <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" className="text-base sm:text-lg font-bold" />
-          {hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto && (
-            <span className="text-[11px] text-muted-foreground">
-              ponderado: <MoneyText cents={dre.totalExpensesCents} className="inline text-[11px]" />
-            </span>
-          )}
-        </div>
-        <div className="rounded-xl border border-border bg-muted/30 p-3.5 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Landmark className="size-3.5" aria-hidden="true" />
-            <span>Resultado Operacional</span>
-          </div>
-          <MoneyText
-            cents={effectiveGrossSavingsBruto}
-            tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
-            className="text-base sm:text-lg font-bold"
-          />
-          {hasBrutoRef && dre.operationalSavingsCents !== effectiveGrossSavingsBruto && (
-            <span className="text-[11px] text-muted-foreground">
-              ponderado: <MoneyText cents={dre.operationalSavingsCents} className="inline text-[11px]" />
-            </span>
-          )}
-        </div>
-        <div className="rounded-xl border border-border bg-muted/30 p-3.5 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <PiggyBank className="size-3.5" aria-hidden="true" />
-            <span>Taxa de Poupança</span>
-          </div>
-          <span className="text-base sm:text-lg font-bold font-display text-primary-strong">
-            {formatPercent(effectiveGrossSavingsRatePct)}
-          </span>
-          {hasBrutoRef && dre.savingsRatePct !== effectiveGrossSavingsRatePct && (
-            <span className="text-[11px] text-muted-foreground">
-              ponderada: {formatPercent(dre.savingsRatePct)}
-            </span>
-          )}
-        </div>
-      </section>
+  return (
+    <ReportDocumentLayout
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Relatório Executivo de Finanças Pessoais &amp; DRE"
+      maxWidthClassName="max-w-5xl"
+    >
+      {/* 1. Cabeçalho Institucional */}
+      <ReportHeader
+        title="Dossiê de Fechamento Financeiro &amp; DRE"
+        subtitle="Demonstração do Resultado, Fluxo de Caixa &amp; Composição de Gastos"
+        periodLabel={periodLabel}
+        appName={appName}
+        icon={Landmark}
+        accountHolder={accountHolder}
+      />
 
-      {/* Seção 1: Demonstração do Resultado do Exercício (DRE Pessoal) */}
+      {/* 2. Grade de 4 KPIs Executivos */}
+      <ReportKpiGrid
+        columns={4}
+        items={[
+          {
+            label: "Receitas Totais",
+            value: <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />,
+            subtext: hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto ? (
+              <span>ponderado: <MoneyText cents={dre.grossIncomeCents} className="inline text-[10px]" /></span>
+            ) : "Entradas no Período",
+            icon: Banknote,
+            tone: "positive",
+          },
+          {
+            label: "Despesas Totais",
+            value: <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />,
+            subtext: hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto ? (
+              <span>ponderado: <MoneyText cents={dre.totalExpensesCents} className="inline text-[10px]" /></span>
+            ) : "Saídas no Período",
+            icon: ReceiptText,
+            tone: "negative",
+          },
+          {
+            label: "Resultado Operacional",
+            value: (
+              <MoneyText
+                cents={effectiveGrossSavingsBruto}
+                tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
+              />
+            ),
+            subtext: effectiveGrossSavingsBruto >= 0 ? "Superávit" : "Déficit",
+            icon: Landmark,
+            tone: effectiveGrossSavingsBruto >= 0 ? "positive" : "negative",
+          },
+          {
+            label: "Taxa de Poupança",
+            value: formatPercent(effectiveGrossSavingsRatePct),
+            subtext: "Eficiência de Renda",
+            icon: PiggyBank,
+            tone: "primary",
+          },
+        ]}
+      />
+
+      {/* 3. Cascata Visual de DRE */}
+      {effectiveGrossIncomeBruto > 0 && (
+        <ReportWaterfallBar
+          title="Fluxo Contábil &amp; Destinação da Renda (Cascata DRE)"
+          grossIncomeCents={effectiveGrossIncomeBruto}
+          steps={waterfallSteps}
+        />
+      )}
+
+      {/* 4. Seção: Demonstração Contábil (DRE Pessoal) */}
       <section aria-label="Demonstração do Resultado do Exercício" className="break-inside-avoid flex flex-col gap-3">
-        <div className="flex items-center gap-2 border-b border-border pb-2">
+        <div className="flex items-center gap-2 border-b border-border/80 pb-2">
           <Landmark className="size-4 text-primary-strong" aria-hidden="true" />
-          <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
+          <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-foreground">
             DRE Pessoal — Demonstração do Período
           </h2>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface print:overflow-visible">
+        <div className="overflow-x-auto rounded-xl border border-border/80 bg-surface print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold">
+              <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-semibold">
                 <th className="py-2.5 px-3">Linha / Estrutura Contábil</th>
                 <th className="py-2.5 px-3 text-right">Valor Bruto (R$)</th>
                 <th className="py-2.5 px-3 text-right">% Receita</th>
@@ -205,7 +222,7 @@ export function FinancialCloseReportModal({
                 <td className="py-2 px-3 font-semibold text-positive-strong">
                   (+) Receita Operacional Bruta ({incomeCount} {incomeCount === 1 ? "lançamento" : "lançamentos"})
                 </td>
-                <td className="py-2 px-3 text-right font-mono font-bold">
+                <td className="py-2 px-3 text-right num font-mono font-bold">
                   <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />
                   {hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto && (
                     <span className="block text-[10px] text-muted-foreground font-normal">
@@ -213,13 +230,13 @@ export function FinancialCloseReportModal({
                     </span>
                   )}
                 </td>
-                <td className="py-2 px-3 text-right font-mono font-semibold">100,0%</td>
+                <td className="py-2 px-3 text-right num font-mono font-semibold">100,0%</td>
               </tr>
               <tr>
                 <td className="py-2 px-3 pl-6 text-foreground">
                   (-) Despesas Operacionais Realizadas ({expenseCount} {expenseCount === 1 ? "gasto" : "gastos"})
                 </td>
-                <td className="py-2 px-3 text-right font-mono font-semibold">
+                <td className="py-2 px-3 text-right num font-mono font-semibold">
                   <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />
                   {hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto && (
                     <span className="block text-[10px] text-muted-foreground font-normal">
@@ -227,7 +244,7 @@ export function FinancialCloseReportModal({
                     </span>
                   )}
                 </td>
-                <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
                   {effectiveGrossIncomeBruto > 0
                     ? `${((effectiveTotalExpensesBruto / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
                     : "—"}
@@ -235,7 +252,7 @@ export function FinancialCloseReportModal({
               </tr>
               <tr className="bg-muted/20 font-semibold">
                 <td className="py-2 px-3 text-foreground">(=) Resultado Operacional do Período</td>
-                <td className="py-2 px-3 text-right font-mono font-bold">
+                <td className="py-2 px-3 text-right num font-mono font-bold">
                   <MoneyText
                     cents={effectiveGrossSavingsBruto}
                     tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
@@ -246,7 +263,7 @@ export function FinancialCloseReportModal({
                     </span>
                   )}
                 </td>
-                <td className="py-2 px-3 text-right font-mono">
+                <td className="py-2 px-3 text-right num font-mono">
                   {formatPercent(effectiveGrossSavingsRatePct)}
                 </td>
               </tr>
@@ -254,10 +271,10 @@ export function FinancialCloseReportModal({
                 <td className="py-2 px-3 pl-6 text-muted-foreground">
                   (-) Aportes &amp; Investimentos Direcionados
                 </td>
-                <td className="py-2 px-3 text-right font-mono">
+                <td className="py-2 px-3 text-right num font-mono">
                   <MoneyText cents={dre.investedAporteCents} tone="default" />
                 </td>
-                <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
                   {effectiveGrossIncomeBruto > 0
                     ? `${((dre.investedAporteCents / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
                     : "—"}
@@ -265,13 +282,13 @@ export function FinancialCloseReportModal({
               </tr>
               <tr className="bg-primary/5 font-bold border-t border-border">
                 <td className="py-2.5 px-3 text-primary-strong">(=) Fluxo de Caixa Líquido Final</td>
-                <td className="py-2.5 px-3 text-right font-mono text-sm">
+                <td className="py-2.5 px-3 text-right num font-mono text-sm">
                   <MoneyText
                     cents={effectiveGrossSavingsBruto - dre.investedAporteCents}
                     tone={effectiveGrossSavingsBruto - dre.investedAporteCents >= 0 ? "positive" : "negative"}
                   />
                 </td>
-                <td className="py-2.5 px-3 text-right font-mono text-primary-strong">
+                <td className="py-2.5 px-3 text-right num font-mono text-primary-strong">
                   {effectiveGrossIncomeBruto > 0
                     ? `${(((effectiveGrossSavingsBruto - dre.investedAporteCents) / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
                     : "—"}
@@ -287,11 +304,11 @@ export function FinancialCloseReportModal({
         )}
       </section>
 
-      {/* Seção 2: Distribuição por Categorias & Formas de Pagamento */}
+      {/* 5. Seção: Distribuição por Categorias & Formas de Pagamento */}
       <section aria-label="Composição de Gastos" className="grid grid-cols-1 sm:grid-cols-2 gap-4 break-inside-avoid">
         {/* Tabela de Categorias */}
         <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-border text-xs font-bold text-foreground">
+          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
             <PieChart className="size-4 text-primary-strong" aria-hidden="true" />
             <span>DESPESAS POR CATEGORIA</span>
           </div>
@@ -311,7 +328,7 @@ export function FinancialCloseReportModal({
                   {categories.map((cat) => (
                     <tr key={cat.name}>
                       <td className="py-1.5 font-medium text-foreground">{cat.name}</td>
-                      <td className="py-1.5 text-right font-mono">
+                      <td className="py-1.5 text-right num font-mono">
                         <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-semibold" />
                         {hasBrutoRef && cat.brutoCents !== undefined && cat.ponderadoCents !== undefined && cat.brutoCents !== cat.ponderadoCents && (
                           <span className="block text-[10px] text-muted-foreground font-normal">
@@ -319,7 +336,7 @@ export function FinancialCloseReportModal({
                           </span>
                         )}
                       </td>
-                      <td className="py-1.5 text-right font-mono text-muted-foreground">
+                      <td className="py-1.5 text-right num font-mono text-muted-foreground">
                         {cat.pct.toFixed(1).replace(".", ",")}%
                       </td>
                     </tr>
@@ -332,7 +349,7 @@ export function FinancialCloseReportModal({
 
         {/* Tabela de Formas de Pagamento */}
         <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-border text-xs font-bold text-foreground">
+          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
             <Wallet className="size-4 text-primary-strong" aria-hidden="true" />
             <span>FORMAS DE PAGAMENTO</span>
           </div>
@@ -352,7 +369,7 @@ export function FinancialCloseReportModal({
                   {paymentMethods.map((pm) => (
                     <tr key={pm.method}>
                       <td className="py-1.5 font-medium text-foreground">{pm.label}</td>
-                      <td className="py-1.5 text-right font-mono">
+                      <td className="py-1.5 text-right num font-mono">
                         <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" className="font-semibold" />
                         {hasBrutoRef && pm.brutoCents !== undefined && pm.ponderadoCents !== undefined && pm.brutoCents !== pm.ponderadoCents && (
                           <span className="block text-[10px] text-muted-foreground font-normal">
@@ -360,7 +377,7 @@ export function FinancialCloseReportModal({
                           </span>
                         )}
                       </td>
-                      <td className="py-1.5 text-right font-mono text-muted-foreground">
+                      <td className="py-1.5 text-right num font-mono text-muted-foreground">
                         {pm.pct.toFixed(1).replace(".", ",")}%
                       </td>
                     </tr>
@@ -372,10 +389,10 @@ export function FinancialCloseReportModal({
         </div>
       </section>
 
-      {/* Seção 3: Faturas de Cartão Pagas no Período (se houver) */}
+      {/* 6. Seção: Faturas de Cartão Pagas no Período (se houver) */}
       {paidInvoices.length > 0 && (
         <section aria-label="Faturas Pagas" className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-border text-xs font-bold text-foreground">
+          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
             <ReceiptText className="size-4 text-primary-strong" aria-hidden="true" />
             <span>FATURAS DE CARTÃO QUITADAS NO PERÍODO</span>
           </div>
@@ -395,7 +412,7 @@ export function FinancialCloseReportModal({
                     <td className="py-1.5 font-medium text-foreground">{inv.cardName}</td>
                     <td className="py-1.5 text-muted-foreground">{inv.competenceMonth}</td>
                     <td className="py-1.5 text-muted-foreground">{formatDateBR(inv.date)}</td>
-                    <td className="py-1.5 text-right font-mono font-semibold">
+                    <td className="py-1.5 text-right num font-mono font-semibold">
                       <MoneyText cents={inv.amountCents} tone="negative" />
                     </td>
                   </tr>
@@ -406,42 +423,11 @@ export function FinancialCloseReportModal({
         </section>
       )}
 
-      {/* Rodapé da Página A4 */}
-      <footer className="mt-4 flex items-center justify-between border-t border-border pt-3 text-[10px] text-muted-foreground">
-        <span>{appName} — Fechamento Financeiro &amp; DRE Pessoal</span>
-        <span>Página 1 de 1</span>
-      </footer>
-    </div>
-  );
-
-  return (
-    <>
-      <Modal
-        open={open}
-        onOpenChange={onOpenChange}
-        title="Relatório Executivo de Finanças Pessoais &amp; DRE"
-        description="Demonstração do resultado do período, fluxo de caixa e composição das despesas."
-        size="xl"
-      >
-        <div className="flex flex-col gap-6">
-          <div className="p-4 sm:p-6 bg-surface rounded-xl border border-border">
-            {reportContent}
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Fechar
-            </Button>
-            <Button type="button" variant="default" onClick={triggerPrint} className="gap-2">
-              <Printer className="size-4" aria-hidden="true" />
-              Imprimir / Salvar PDF
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <PrintSheet open={printing}>
-        {reportContent}
-      </PrintSheet>
-    </>
+      {/* 7. Rodapé Institucional */}
+      <ReportFooter
+        accountHolder={accountHolder}
+        disclaimer="Documento estritamente confidencial emitido pelo titular da conta via Guia Financeiro. Demonstração de fluxo de caixa baseada nos registros efetivamente conciliados."
+      />
+    </ReportDocumentLayout>
   );
 }

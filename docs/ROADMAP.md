@@ -1466,7 +1466,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 27 | **F41** — Arquitetura Unificada de Investimentos (Wizard & Quick Actions) | B / Investimentos | F40 | ✅ Concluída (2026-08-22) — wizard 4 passos, quick transaction sheet, asset detail sheet e eliminação de modais aninhados |
 | 28 | **F42** — Central Unificada de Relatórios & Exportação Multi-Abas (.xlsx) | C / Relatórios & Consultoria | F40/F41 | ✅ Concluída (2026-08-23) — central /relatorios em 4 abas, dossiês A4 de consultoria, gerador de Excel multi-abas nativo |
 | 29 | **F43** — Preparação para SaaS: Painel Admin, RBAC & Feature Flags | Infra & SaaS | F1/F2 | ✅ Concluída (2026-08-23) — RBAC (user, admin, superadmin), status (pending, active, suspended, banned), convites/allowlist, feature flags dinâmicas |
-| 30 | **F44** — Padronização Editorial A4, Elementos Gráficos & Tear Sheet Completo | UI & Relatórios | F42 | 📋 **PRIORITÁRIA** — layout base `ReportDocumentLayout`, supressão de ruídos do browser (`@page { margin: 0 }`), gráficos vetoriais nativos (SVG/CSS) e expansão institucional do Tear Sheet de Investimentos |
+| 30 | **F44** — Padronização Editorial A4, Elementos Gráficos & Tear Sheet Completo | UI & Relatórios | F42 | ✅ Concluída (2026-08-24) — layout base `ReportDocumentLayout`, supressão de ruídos do browser (`@page { margin: 0 }`), 6 gráficos vetoriais nativos (SVG/CSS), expansão institucional do Tear Sheet e unificação dos 7 relatórios |
 | 31 | **F45** — Hardening de Segurança, RLS & Imunização contra Injeção | Segurança & Infra | F43 | 📋 Planejada — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, proteção contra Formula Injection (CSV/Excel) |
 | 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | 📋 Planejada — índices compostos/cobridores `(user_id, date)` com `INCLUDE`, unificação de range em Insights e RPCs set-based |
 | 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | 📋 Planejada — 2FA (TOTP) para usuários e admins, Cloudflare Turnstile nos formulários públicos, revogação forçada de sessão no client |
@@ -2143,7 +2143,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 44 — Padronização Editorial A4, Supressão de Ruídos Nativos, Elementos Gráficos & Expansão de Investimentos (UI & Relatórios)
 
-> **Status:** 📋 **PRIORITÁRIA** — padronização visual e arquitetural de todos os 7 relatórios impressos/PDFs do aplicativo, supressão de ruídos nativos do navegador (`@page { margin: 0; }`), criação do layout mestre `ReportDocumentLayout`, introdução de elementos gráficos vetoriais nativos (SVG/CSS) e expansão institucional aprofundada do Dossiê de Investimentos (Wealth Tear Sheet).
+> **Status:** ✅ Concluída (2026-08-24) — padronização visual e arquitetural de todos os 7 relatórios impressos/PDFs do aplicativo, supressão de ruídos nativos do navegador (`@page { margin: 0; }`), criação do layout mestre `ReportDocumentLayout`, 6 primitivos de gráficos vetoriais nativos (SVG/CSS) e expansão institucional do Dossiê de Investimentos (Wealth Tear Sheet). Suíte 100% verde com typecheck e lint limpos.
 
 **Objetivo:** transformar a geração de relatórios e PDFs do aplicativo em uma experiência editorial de consultoria patrimonial de alto nível:
 1. **Supressão Total de Ruídos Nativos de Impressão do Navegador:**
