@@ -516,10 +516,25 @@
      - Badge informativo `"Estimado"` na Bola de Neve para ativos alimentados via estimativa cadastral.
      - Fast-Track no Wizard: abertura direta no Passo 2 com dados do ativo pré-carregados ao clicar em ações de ativos (`Aportar`, `Vender`, `Provento`).
 
+## Evolução — Auditoria, Refatoração Estrutural, Responsividade e Motor de PDF no Módulo de Relatórios (2026-08-24)
+
+- **Problema:**
+  1. A página de Relatórios (`ReportsPage`) continha paddings redundantes (`p-3.5 sm:p-6 pb-20`) conflitando com o container mestre `PageShell`, além de recarga destrutiva no ErrorState (`window.location.reload()`);
+  2. Modais editoriais (`ReportDocumentLayout`) duplicavam títulos e botões de fechar ("X") devido à renderização manual de barra superior dentro do Radix `Modal`;
+  3. Tabelas densas de 8 colunas e agregações financeiras sofriam esmagamento em telas mobile `< 380px`;
+  4. Na exportação e impressão de PDF A4, contêineres com `overflow-x-auto` cortavam as colunas da margem direita e seções contábeis quebravam no meio por falta de `break-inside-avoid`.
+- **Solução:**
+  1. **Alinhamento de Layout & Contêiner:** Contêiner raiz padronizado com `<div className="flex flex-col gap-6 w-full min-w-0">` e `refetch()` assíncrono TanStack no `ErrorState`.
+  2. **Unificação de Cabeçalhos em Modais (`Modal` + `ReportDocumentLayout`):** Adicionada a prop `headerActions?: ReactNode` ao primitivo `Modal`, integrando o botão "Imprimir / Salvar PDF" diretamente no cabeçalho Radix Dialog e eliminando elementos duplicados.
+  3. **Responsividade Mobile das Tabelas:** Larguras protegidas para colunas de valor e percentual em `ReportTable` (`DataList`), eliminação de tabelas ad-hoc e adoção universal de `<MoneyText>`.
+  4. **Blindagem da Engine de PDF A4:** Classes `break-inside-avoid`, `print:overflow-visible`, `print:table-fixed` e larguras percentuais somando 100% da folha A4 Portrait, acompanhadas de reforço em `src/styles/globals.css`.
+  5. **Fuso Horário Local:** Substituição de `toISOString()` por `todayISO()` na exportação do Caderno Excel.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
 - **Verificação:** a cada fase — typecheck, lint, testes e build verdes antes do commit (regra do ciclo, `ROADMAP.md` §6.1).
+
 
 
 

@@ -285,6 +285,8 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 
 **Calculadora em modais (`showCalculator`):** o componente `Modal` expõe a prop `showCalculator` (default `false`). O botão de calculadora **só deve aparecer em modais com campo de valor monetário** (i.e., que contêm `MoneyInput`). Modais de confirmação, exclusão, visualização, importação e configuração **nunca passam `showCalculator`**. Modais com `elevated={true}` ignoram a prop (a calculadora não abre sobre si mesma).
 
+**Ações no Cabeçalho de Modais (`headerActions`):** o componente `Modal` expõe a prop `headerActions?: ReactNode`, permitindo injetar ações de topo (como botões de imprimir PDF, exportar, compartilhar) diretamente ao lado do botão de fechar nativo do Radix Dialog, eliminando cabeçalhos redundantes internos.
+
 ---
 
 ## 12. ENTRADA MONETÁRIA — PADRÃO NUBANK (INPUT MONETÁRIO PROGRESSIVO)
