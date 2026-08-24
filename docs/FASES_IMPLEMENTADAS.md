@@ -618,7 +618,11 @@
   3. **Interface & Módulos Analíticos (`AllocationDriftCard`, `PlanningSection`, `ResumoTab`):**
      - Componente `AllocationDriftCard` integrado na aba Resumo de Investimentos (`ResumoTab`) apresentando os ativos abaixo da meta e botão de ação rápida "Simular Rebalanceamento";
      - `PlanningSection` aprimorado com o Termômetro Preditivo da Reserva de Emergência em 3 faixas e o Simulador Interativo do Impacto de Hábitos na Aposentadoria.
-  4. **Qualidade & Testes:**
+  4. **Refinamentos de UX/UI & Padronização Visual:**
+     - **Calculadora de Aporte (`AporteResult`):** Implementada visualização compacta e colapsável por prioridade de aporte nas seções *Macro por Classe* e *Meso por Setor*, exibindo inicialmente apenas as classes e setores com aporte alocado e botão de expansão "Ver todas / Recolher";
+     - **Card Hero de Caixa Real (`RealCashHeroCard`):** Padronização visual estrita com os cards da Home, adotando ícones e botões neutros (`border-border/80`, `bg-surface-hover/80`, `text-muted-foreground`), desacoplados de variações de cor de destaque de tema;
+     - **Sincronização Reativa de Abas (`InvestmentsPage`):** Derivação direta da aba ativa a partir dos search params (`useSearchParams`), assegurando navegação instantânea de deep links sem descompasso de estado.
+  5. **Qualidade & Testes:**
      - Suíte completa de testes unitários de domínio e testes de componentes com 100% de cobertura e conformidade total com acessibilidade.
 
 ## Notas finais
