@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 export interface AllocationDriftCardProps {
   analysis: AllocationDriftAnalysis;
   className?: string;
+  onSimulateAporte?: () => void;
 }
 
 /**
@@ -16,7 +17,7 @@ export interface AllocationDriftCardProps {
  *
  * Aponta desvios em relação às metas de carteira e sugere aportes corretivos.
  */
-export function AllocationDriftCard({ analysis, className }: AllocationDriftCardProps) {
+export function AllocationDriftCard({ analysis, className, onSimulateAporte }: AllocationDriftCardProps) {
   const navigate = useNavigate();
 
   if (!analysis.hasTargets) {
@@ -24,6 +25,14 @@ export function AllocationDriftCard({ analysis, className }: AllocationDriftCard
   }
 
   const { isBalanced, underweightItems, overweightItems } = analysis;
+
+  const handleAction = () => {
+    if (onSimulateAporte) {
+      onSimulateAporte();
+    } else {
+      navigate("/carteira?tab=aporte");
+    }
+  };
 
   return (
     <div
@@ -75,7 +84,7 @@ export function AllocationDriftCard({ analysis, className }: AllocationDriftCard
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => navigate("/carteira?tab=aporte")}
+            onClick={handleAction}
             className="gap-1.5 text-xs h-8 shrink-0 font-medium self-end sm:self-center"
           >
             <span>Simular Rebalanceamento</span>

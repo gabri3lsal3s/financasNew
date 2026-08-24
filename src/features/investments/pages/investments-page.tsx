@@ -22,19 +22,16 @@ type InvestmentsTab = "resumo" | "aporte" | "proventos";
 export function InvestmentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const initialTab =
+  const tab: InvestmentsTab =
     tabParam && ["resumo", "aporte", "proventos"].includes(tabParam)
       ? (tabParam as InvestmentsTab)
       : "resumo";
-
-  const [tab, setTab] = useState<InvestmentsTab>(initialTab);
 
   // Materialização autônoma de snapshots patrimoniais (§F50)
   useAutoPortfolioSnapshot();
 
   const handleTabChange = (nextTab: string) => {
     const valid = nextTab as InvestmentsTab;
-    setTab(valid);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -117,6 +114,7 @@ export function InvestmentsPage() {
               <ResumoTab
                 onOpenWizard={handleOpenWizard}
                 onOpenCash={() => setCashDialogOpen(true)}
+                onSelectTab={handleTabChange}
               />
             ),
           },

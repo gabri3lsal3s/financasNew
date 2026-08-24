@@ -49,6 +49,7 @@ import type { PriceSource } from "@/domain/portfolio";
 export interface ResumoTabProps {
   onOpenWizard?: (asset?: PortfolioAsset | null, mode?: WizardMode) => void;
   onOpenCash?: () => void;
+  onSelectTab?: (tab: string) => void;
 }
 
 /**
@@ -56,7 +57,7 @@ export interface ResumoTabProps {
  * KPIs executivos, gráfico unificado de distribuição da carteira, tabela de posições com Sheet de detalhes,
  * e Investment Wizard (Nova Operação centralizada: Compra, Venda, Provento, Split e Novo Ativo).
  */
-export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
+export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabProps = {}) {
   const navigate = useNavigate();
   const position = usePortfolioPosition();
 
@@ -398,7 +399,10 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
         <>
           {/* Card de Diagnóstico de Desvio de Alocação */}
           {allocationDrift.hasTargets && (
-            <AllocationDriftCard analysis={allocationDrift} />
+            <AllocationDriftCard
+              analysis={allocationDrift}
+              onSimulateAporte={() => (onSelectTab ? onSelectTab("aporte") : navigate("/carteira?tab=aporte"))}
+            />
           )}
 
           {/* Seção Gráfica: Alocação Visual */}
