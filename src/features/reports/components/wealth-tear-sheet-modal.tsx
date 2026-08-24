@@ -220,7 +220,11 @@ export function WealthTearSheetModal({
                   </td>
                   <td className="py-2 px-3 text-right num font-mono">
                     {cg.gapBRL > 0 ? (
-                      <MoneyText cents={numberToCents(cg.gapBRL)} tone="primary" className="font-semibold" />
+                      <MoneyText
+                        cents={numberToCents(cg.gapBRL)}
+                        tone="default"
+                        className="text-primary-strong font-semibold"
+                      />
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
@@ -315,8 +319,8 @@ export function WealthTearSheetModal({
                 <strong>{allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}</strong> está com a maior defasagem patrimonial, demandando aproximadamente{" "}
                 <MoneyText
                   cents={numberToCents(allocationAnalysis.topDeficitClass.gapBRL)}
-                  tone="primary"
-                  className="font-bold inline"
+                  tone="default"
+                  className="text-primary-strong font-bold inline"
                 />{" "}
                 para restabelecer o equilíbrio das suas metas.
               </p>
