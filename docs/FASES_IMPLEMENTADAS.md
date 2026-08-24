@@ -648,8 +648,12 @@
   3. **Harmonização do Design System:**
      - Padronização estrita de `Ponderada:` e `Ponderado:` em todas as exibições secundárias;
      - Transições de progresso e hover neutros padronizados.
-  4. **Qualidade & Testes:**
-     - Testes unitários do `MoneyText` e `NumberTicker` 100% aprovados;
+  4. **Padronização da Página de Relatórios (`ReportsPage`):**
+     - Cabeçalho padronizado (`<header>`) com título, subtítulo e hierarquia visual idêntica às páginas de Análise e Planejamento (`InvestmentsPage`, `DebtsPage`, `InsightsPage`);
+     - Navegação estrita pelo primitivo `Tabs` com suporte a gestos de swipe horizontal (`swipeable`), navegação por teclado e sincronização bidirecional de URLs (`?tab=` e `?aba=`);
+     - Reorganização de layout com o Caderno de Relatórios em Excel (.xlsx) posicionado no rodapé da página.
+  5. **Qualidade & Testes:**
+     - Testes unitários do `MoneyText`, `NumberTicker` e `ReportsPage` 100% aprovados;
      - 232 arquivos de teste e 1702 testes executados com sucesso;
      - Build de produção gerado com sucesso.
 

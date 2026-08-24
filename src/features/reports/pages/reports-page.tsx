@@ -12,7 +12,7 @@ import {
   Scale,
   TrendingUp,
 } from "lucide-react";
-import { Button, ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { Button, ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
 import {
@@ -83,14 +83,13 @@ type AggregationTab = "category" | "method" | "weekday" | "charges";
  */
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTabParam = (searchParams.get("aba") as MainTab) || "financas";
+  const activeTabParam = (searchParams.get("aba") as MainTab) || (searchParams.get("tab") as MainTab) || "financas";
   const { hasFeature } = useUserAccess();
   const prefsQuery = useUserPreferences();
   /** Quando false, os pesos de relatório são neutralizados (weight = 1 para todos). */
   const weightsEnabled = prefsQuery.data?.report_weights_enabled ?? true;
 
   const hasFinanceFeatures =
-
     hasFeature("transactions") ||
     hasFeature("cards") ||
     hasFeature("overview") ||
@@ -98,94 +97,34 @@ export function ReportsPage() {
     hasFeature("debts");
   const hasInvestmentsFeature = hasFeature("investments");
 
-  const tabItems = useMemo(() => {
-    const list: Array<{ value: MainTab; label: string; shortLabel?: string; icon: React.ReactNode }> = [];
-
-    if (hasFinanceFeatures) {
-      list.push({
-        value: "financas",
-        label: "Finanças & DRE",
-        shortLabel: "Finanças",
-        icon: <Landmark className="size-4" aria-hidden="true" />,
-      });
-    }
-
-    if (hasInvestmentsFeature) {
-      list.push({
-        value: "investimentos",
-        label: "Investimentos & Carteira",
-        shortLabel: "Investimentos",
-        icon: <TrendingUp className="size-4" aria-hidden="true" />,
-      });
-    }
-
-    if (hasFinanceFeatures) {
-      list.push({
-        value: "balanco",
-        label: "Balanço & Liberdade",
-        shortLabel: "Balanço",
-        icon: <Scale className="size-4" aria-hidden="true" />,
-      });
-    }
-
-    if (hasInvestmentsFeature) {
-      list.push({
-        value: "fiscal",
-        label: "Fiscal & IRPF",
-        shortLabel: "Fiscal",
-        icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
-      });
-    }
-
-    if (list.length === 0) {
-      return [
-        {
-          value: "financas" as MainTab,
-          label: "Finanças & DRE",
-          shortLabel: "Finanças",
-          icon: <Landmark className="size-4" aria-hidden="true" />,
-        },
-        {
-          value: "investimentos" as MainTab,
-          label: "Investimentos & Carteira",
-          shortLabel: "Investimentos",
-          icon: <TrendingUp className="size-4" aria-hidden="true" />,
-        },
-        {
-          value: "balanco" as MainTab,
-          label: "Balanço & Liberdade",
-          shortLabel: "Balanço",
-          icon: <Scale className="size-4" aria-hidden="true" />,
-        },
-        {
-          value: "fiscal" as MainTab,
-          label: "Fiscal & IRPF",
-          shortLabel: "Fiscal",
-          icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
-        },
-      ];
-    }
-
+  const availableTabs = useMemo(() => {
+    const list: MainTab[] = [];
+    if (hasFinanceFeatures) list.push("financas");
+    if (hasInvestmentsFeature) list.push("investimentos");
+    if (hasFinanceFeatures) list.push("balanco");
+    if (hasInvestmentsFeature) list.push("fiscal");
+    if (list.length === 0) return ["financas", "investimentos", "balanco", "fiscal"] as MainTab[];
     return list;
   }, [hasFinanceFeatures, hasInvestmentsFeature]);
 
   const [selectedTab, setSelectedTab] = useState<MainTab>(() => {
-    const validValues = new Set(tabItems.map((t) => t.value));
+    const validValues = new Set(availableTabs);
     if (validValues.has(activeTabParam)) return activeTabParam;
-    return tabItems[0]?.value ?? "financas";
+    return availableTabs[0] ?? "financas";
   });
 
-  const validTabValues = useMemo(() => new Set(tabItems.map((t) => t.value)), [tabItems]);
+  const validTabValues = useMemo(() => new Set(availableTabs), [availableTabs]);
   const mainTab: MainTab = validTabValues.has(selectedTab)
     ? selectedTab
-    : (tabItems[0]?.value ?? "financas");
+    : (availableTabs[0] ?? "financas");
 
   const handleTabChange = (val: string) => {
     const nextTab = val as MainTab;
     setSelectedTab(nextTab);
     setSearchParams((prev) => {
-      prev.set("aba", nextTab);
-      return prev;
+      const updated = new URLSearchParams(prev);
+      updated.set("aba", nextTab);
+      return updated;
     });
   };
 
@@ -681,19 +620,602 @@ export function ReportsPage() {
     );
   }
 
+  const financasContent = (
+    <div className="flex flex-col gap-6">
+      {/* Card Dossiê Executivo A4 de Finanças & DRE */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Landmark className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
+            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais &amp; DRE (A4/PDF)</h3>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Demonstração do Resultado do Exercício (DRE Pessoal), fluxo de caixa líquido, taxa de poupança e detalhamento de gastos.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="default"
+          onClick={() => setFinancialReportOpen(true)}
+          className="gap-2 shrink-0 w-full sm:w-auto justify-center"
+        >
+          <Printer className="size-4" aria-hidden="true" />
+          Visualizar &amp; Imprimir Dossiê A4
+        </Button>
+      </div>
+
+      {/* Cards de Resumo */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Receitas Totais</span>
+          <MoneyText cents={grossIncomeBrutoCents} tone="positive" animated className="text-lg sm:text-xl font-bold font-display truncate" />
+          {hasDualMetrics && (
+            <span className="text-xs text-muted-foreground">
+              Ponderada: <MoneyText cents={currentIncomeCents} tone="positive" className="inline text-xs font-medium" />
+            </span>
+          )}
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Despesas Totais</span>
+          <MoneyText cents={grossExpenseBrutoCents} tone="negative" animated className="text-lg sm:text-xl font-bold font-display truncate" />
+          {hasDualMetrics && (
+            <span className="text-xs text-muted-foreground">
+              Ponderada: <MoneyText cents={currentExpenseCents} tone="negative" className="inline text-xs font-medium" />
+            </span>
+          )}
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Poupança do Período</span>
+          <div className="flex items-center justify-between gap-2">
+            <MoneyText
+              cents={grossSavingsBrutoCents}
+              tone={grossSavingsBrutoCents >= 0 ? "positive" : "negative"}
+              animated
+              className="text-lg sm:text-xl font-bold font-display truncate"
+            />
+            <span className="text-xs font-semibold text-muted-foreground shrink-0">
+              {grossSavingsRatePercent !== null ? `${grossSavingsRatePercent.toFixed(1)}%` : "—"}
+            </span>
+          </div>
+          {hasDualMetrics && (
+            <span className="text-xs text-muted-foreground">
+              Ponderado: <MoneyText cents={currentIncomeCents - currentExpenseCents} tone={currentIncomeCents >= currentExpenseCents ? "positive" : "negative"} className="inline text-xs font-medium" /> ({currentOverview.savingsRatePercent !== null ? `${currentOverview.savingsRatePercent.toFixed(1)}%` : "—"})
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Agregações */}
+      <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-foreground">Detalhamento de Despesas</h3>
+          <div className="grid grid-cols-3 sm:flex gap-1.5 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant={aggregationTab === "category" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAggregationTab("category")}
+              className="px-2 sm:px-3 text-xs justify-center"
+            >
+              Categorias
+            </Button>
+            <Button
+              type="button"
+              variant={aggregationTab === "method" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAggregationTab("method")}
+              className="px-2 sm:px-3 text-xs justify-center"
+            >
+              Formas de Pgto
+            </Button>
+            <Button
+              type="button"
+              variant={aggregationTab === "weekday" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAggregationTab("weekday")}
+              className="px-2 sm:px-3 text-xs justify-center"
+            >
+              Dias da Semana
+            </Button>
+          </div>
+        </div>
+
+        {aggregationTab === "category" ? (
+          <ReportTable
+            title="Por Categoria"
+            totalBrutoCents={grossExpenseBrutoCents}
+            totalPonderadoCents={currentExpenseCents}
+            totalCents={grossExpenseBrutoCents}
+            rows={byCategory.map((c) => ({
+              key: c.categoryId,
+              label: c.name,
+              brutoCents: c.brutoCents,
+              ponderadoCents: c.ponderadoCents,
+              valueCents: c.brutoCents,
+              percent: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
+            }))}
+            onRowClick={(row) => {
+              const catExpenses = expenses.filter((e) => e.category_id === row.key);
+              setDetailModal({
+                title: `Despesas: ${typeof row.label === "string" ? row.label : "Categoria"}`,
+                expenses: catExpenses,
+              });
+            }}
+          />
+        ) : aggregationTab === "method" ? (
+          <ReportTable
+            title="Por Forma de Pagamento"
+            totalBrutoCents={grossExpenseBrutoCents}
+            totalPonderadoCents={currentExpenseCents}
+            totalCents={grossExpenseBrutoCents}
+            rows={byMethod.map((m) => ({
+              key: m.method,
+              label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
+              brutoCents: m.brutoCents,
+              ponderadoCents: m.ponderadoCents,
+              valueCents: m.brutoCents,
+              percent: grossExpenseBrutoCents > 0 ? (m.brutoCents / grossExpenseBrutoCents) * 100 : 0,
+            }))}
+            onRowClick={(row) => {
+              const methodExpenses = expenses.filter((e) => (e.payment_method ?? "other") === row.key);
+              setDetailModal({
+                title: `Despesas: ${typeof row.label === "string" ? row.label : "Forma de Pagamento"}`,
+                expenses: methodExpenses,
+              });
+            }}
+          />
+        ) : (
+          <ReportTable
+            title="Por Dia da Semana"
+            totalBrutoCents={grossExpenseBrutoCents}
+            totalPonderadoCents={currentExpenseCents}
+            totalCents={grossExpenseBrutoCents}
+            rows={byWeekday.map((w) => ({
+              key: String(w.weekday),
+              label: WEEKDAY_LABELS[w.weekday],
+              brutoCents: w.brutoCents,
+              ponderadoCents: w.ponderadoCents,
+              valueCents: w.brutoCents,
+              percent: grossExpenseBrutoCents > 0 ? (w.brutoCents / grossExpenseBrutoCents) * 100 : 0,
+            }))}
+            onRowClick={(row) => {
+              const weekdayNum = parseInt(row.key, 10);
+              const weekdayExpenses = expenses.filter((e) => mondayFirstWeekday(e.date) === weekdayNum);
+              setDetailModal({
+                title: `Despesas: ${WEEKDAY_LABELS[weekdayNum] ?? "Dia"}`,
+                expenses: weekdayExpenses,
+              });
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  const investimentosContent = (
+    <div className="flex flex-col gap-6">
+      {/* Card Dossiê Executivo A4 */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="size-5 text-portfolio shrink-0" aria-hidden="true" />
+            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Alocação &amp; Patrimônio (A4/PDF)</h3>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Documento de consultoria patrimonial com diagnóstico de defasagem de metas (Target vs. Actual), risco de concentração e custódia.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="default"
+          onClick={() => setTearSheetOpen(true)}
+          className="gap-2 shrink-0 w-full sm:w-auto justify-center"
+        >
+          <Printer className="size-4" aria-hidden="true" />
+          Visualizar &amp; Imprimir Dossiê A4
+        </Button>
+      </div>
+
+      {/* Resumo da Alocação, Metas & Concentração Setorial */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Patrimônio Consolidado</span>
+          <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display truncate" />
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Aderência às Metas</span>
+          <span className="text-lg sm:text-xl font-bold font-display text-primary-strong">{allocationAnalysis.alignmentScore}%</span>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Top 5 Concentração</span>
+          <span className="text-lg sm:text-xl font-bold font-display text-foreground">{concentrationRisk.top5Pct.toFixed(1)}%</span>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Top Setor Dominante</span>
+          <div className="flex items-center justify-between gap-1 truncate">
+            <span className="text-sm sm:text-base font-bold font-display text-foreground truncate">
+              {concentrationRisk.topSectorDominance?.sector ?? "Nenhum"}
+            </span>
+            <span className="text-xs font-bold text-portfolio shrink-0">
+              {concentrationRisk.topSectorDominance ? `${concentrationRisk.topSectorDominance.pct.toFixed(1)}%` : "0%"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabela em Árvore Hierárquica de Gaps (Classe -> Setor -> Ativos) */}
+      <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+            <h3 className="text-sm font-semibold text-foreground">Defasagem de Metas Hierárquica (Classe ➔ Setor ➔ Ativos)</h3>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {allocationAnalysis.topDeficitClass ? (
+              <span className="text-[11px] font-semibold text-primary-strong bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                Prioridade Classe: {allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}
+              </span>
+            ) : null}
+            {allocationAnalysis.topDeficitSector ? (
+              <span className="text-[11px] font-semibold text-portfolio bg-portfolio/10 px-2 py-0.5 rounded-md border border-portfolio/20">
+                Prioridade Setor: {allocationAnalysis.topDeficitSector.sectorName}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+          <span className="text-muted-foreground text-[11px]">
+            Clique nas linhas para expandir/recolher os setores e ativos vinculados.
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setExpandedTreeClasses(new Set(allocationAnalysis.treeNodes.map((n) => n.assetClass)));
+                setExpandedTreeSectors(
+                  new Set(
+                    allocationAnalysis.treeNodes.flatMap((n) =>
+                      n.sectors.map((s) => `${n.assetClass}::${s.sectorName}`),
+                    ),
+                  ),
+                );
+              }}
+              className="h-7 px-2 text-[11px]"
+            >
+              Expandir tudo
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setExpandedTreeClasses(new Set());
+                setExpandedTreeSectors(new Set());
+              }}
+              className="h-7 px-2 text-[11px]"
+            >
+              Recolher tudo
+            </Button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-border/80">
+          <table className="w-full min-w-[620px] text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
+                <th className="py-2.5 px-3">Hierarquia / Nome</th>
+                <th className="py-2.5 px-3 text-right">Atual (R$)</th>
+                <th className="py-2.5 px-3 text-right">Atual (%)</th>
+                <th className="py-2.5 px-3 text-right">Meta (%)</th>
+                <th className="py-2.5 px-3 text-right">Gap (R$)</th>
+                <th className="py-2.5 px-3 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {allocationAnalysis.treeNodes.map((cNode) => {
+                const isClassExpanded = expandedTreeClasses.has(cNode.assetClass);
+                return (
+                  <Fragment key={cNode.assetClass}>
+                    <tr
+                      onClick={() => {
+                        setExpandedTreeClasses((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(cNode.assetClass)) next.delete(cNode.assetClass);
+                          else next.add(cNode.assetClass);
+                          return next;
+                        });
+                      }}
+                      className="bg-muted/25 hover:bg-muted/40 cursor-pointer font-semibold select-none"
+                    >
+                      <td className="py-2.5 px-3 text-foreground">
+                        <div className="flex items-center gap-1.5">
+                          {isClassExpanded ? (
+                            <ChevronDown className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          ) : (
+                            <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          )}
+                          <span className="capitalize">{cNode.assetClass}</span>
+                          <span className="text-[10px] text-muted-foreground font-normal">
+                            ({cNode.sectors.length} setores)
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono">
+                        <MoneyText cents={numberToCents(cNode.currentBRL)} />
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono">{cNode.currentPct.toFixed(1)}%</td>
+                      <td className="py-2.5 px-3 text-right font-mono">
+                        {cNode.targetPct > 0 ? `${cNode.targetPct.toFixed(1)}%` : "—"}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono">
+                        {cNode.gapBRL > 0 ? (
+                          <MoneyText cents={numberToCents(cNode.gapBRL)} tone="portfolio" className="font-bold" />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span
+                          className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                            cNode.status === "deficit"
+                              ? "bg-primary/10 text-primary-strong border border-primary/20"
+                              : cNode.status === "surplus"
+                                ? "bg-surface-hover text-muted-foreground border border-border"
+                                : "bg-positive/10 text-positive-strong border border-positive/20"
+                          }`}
+                        >
+                          {cNode.status === "deficit" ? "Aportar" : cNode.status === "surplus" ? "Acima da Meta" : "Equilibrado"}
+                        </span>
+                      </td>
+                    </tr>
+
+                    {isClassExpanded &&
+                      cNode.sectors.map((sNode) => {
+                        const sectorKey = `${cNode.assetClass}::${sNode.sectorName}`;
+                        const isSectorExpanded = expandedTreeSectors.has(sectorKey);
+
+                        return (
+                          <Fragment key={sectorKey}>
+                            <tr
+                              onClick={() => {
+                                setExpandedTreeSectors((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(sectorKey)) next.delete(sectorKey);
+                                  else next.add(sectorKey);
+                                  return next;
+                                });
+                              }}
+                              className="bg-surface hover:bg-muted/15 cursor-pointer font-medium select-none"
+                            >
+                              <td className="py-2 px-3 pl-8 text-foreground">
+                                <div className="flex items-center gap-1.5">
+                                  {isSectorExpanded ? (
+                                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                                  ) : (
+                                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                                  )}
+                                  <span className="text-xs">{sNode.sectorName}</span>
+                                  {sNode.targetPctInClass > 0 ? (
+                                    <span className="text-[10px] text-muted-foreground font-normal">
+                                      (Meta na classe: {sNode.targetPctInClass}%)
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                                <MoneyText cents={numberToCents(sNode.currentBRL)} />
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                                {sNode.currentPct.toFixed(1)}%
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
+                                {sNode.effectiveTargetPct > 0 ? `${sNode.effectiveTargetPct.toFixed(1)}%` : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono">
+                                {sNode.gapBRL > 0 ? (
+                                  <MoneyText cents={numberToCents(sNode.gapBRL)} tone="portfolio" />
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                <span
+                                  className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${
+                                    sNode.status === "deficit"
+                                      ? "bg-primary/10 text-primary-strong border border-primary/20"
+                                      : sNode.status === "surplus"
+                                        ? "bg-surface-hover text-muted-foreground border border-border"
+                                        : "bg-positive/10 text-positive-strong border border-positive/20"
+                                  }`}
+                                >
+                                  {sNode.status === "deficit" ? "Aportar" : sNode.status === "surplus" ? "Na Meta" : "Equilibrado"}
+                                </span>
+                              </td>
+                            </tr>
+
+                            {isSectorExpanded &&
+                              sNode.assets.map((aNode) => (
+                                <tr key={aNode.id} className="hover:bg-muted/20 text-muted-foreground">
+                                  <td className="py-1.5 px-3 pl-14 font-mono font-semibold text-foreground">
+                                    {aNode.ticker}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
+                                    <MoneyText cents={numberToCents(aNode.currentBRL)} />
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
+                                    {aNode.currentPct.toFixed(1)}%
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
+                                    {aNode.targetPct > 0 ? `${aNode.targetPct.toFixed(1)}%` : "—"}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
+                                    {aNode.gapBRL > 0 ? (
+                                      <MoneyText cents={numberToCents(aNode.gapBRL)} tone="default" />
+                                    ) : (
+                                      <span>—</span>
+                                    )}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-center text-[10px]">
+                                    {aNode.status === "deficit" ? "Déficit" : aNode.status === "surplus" ? "Excedente" : "Ok"}
+                                  </td>
+                                </tr>
+                              ))}
+                          </Fragment>
+                        );
+                      })}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const balancoContent = (
+    <div className="flex flex-col gap-6">
+      {/* Card Duplo de Dossiês A4 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+          <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Scale className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
+              <h3 className="text-sm sm:text-base font-bold text-foreground">Balanço 360° &amp; DRE Pessoal</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Relatório consolidado unindo investimentos, contas, dívidas, poupança e fluxo de caixa.
+            </p>
+          </div>
+          <Button type="button" variant="outline" onClick={() => setConsolidatedWealthOpen(true)} className="gap-2 w-full justify-center">
+            <Printer className="size-4" aria-hidden="true" />
+            Visualizar Balanço 360°
+          </Button>
+        </div>
+
+        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+          <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Flame className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+              <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê de Liberdade Financeira</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Análise da cobertura de custos por proventos, calendário 12M e efeito bola de neve.
+            </p>
+          </div>
+          <Button type="button" variant="outline" onClick={() => setDividendFreedomOpen(true)} className="gap-2 w-full justify-center">
+            <Printer className="size-4" aria-hidden="true" />
+            Visualizar Dossiê de Liberdade
+          </Button>
+        </div>
+      </div>
+
+      {/* Cards de Patrimônio Líquido Real */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Patrimônio Líquido Real</span>
+          <MoneyText cents={numberToCents(consolidatedBalance.netWorthBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display truncate" />
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Grau de Liberdade Financeira</span>
+          <span className="text-lg sm:text-xl font-bold font-display text-positive-strong">{freedomAnalysis.freedomPct.toFixed(1)}%</span>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Autonomia de Reserva (Runway)</span>
+          <span className="text-lg sm:text-xl font-bold font-display text-foreground">{freedomAnalysis.runwayMonths.toFixed(1)} meses</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const fiscalContent = (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Landmark className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+            <h3 className="text-sm sm:text-base font-bold text-foreground">Facilitador de Declaração de IRPF</h3>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Textos prontos com 1-clique para cópia das Fichas de Bens e Direitos e Rendimentos Isentos/Exclusivos para o programa da Receita Federal.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="default"
+          onClick={() => setTaxReportOpen(true)}
+          className="gap-2 shrink-0 w-full sm:w-auto justify-center"
+        >
+          <Printer className="size-4" aria-hidden="true" />
+          Abrir Fichas de IRPF
+        </Button>
+      </div>
+    </div>
+  );
+
+  const tabItems: TabItem[] = [
+    ...(hasFinanceFeatures
+      ? [
+          {
+            value: "financas",
+            label: "Finanças & DRE",
+            shortLabel: "Finanças",
+            icon: <Landmark className="size-4" aria-hidden="true" />,
+            content: financasContent,
+          },
+        ]
+      : []),
+    ...(hasInvestmentsFeature
+      ? [
+          {
+            value: "investimentos",
+            label: "Investimentos & Carteira",
+            shortLabel: "Investimentos",
+            icon: <TrendingUp className="size-4" aria-hidden="true" />,
+            content: investimentosContent,
+          },
+        ]
+      : []),
+    ...(hasFinanceFeatures
+      ? [
+          {
+            value: "balanco",
+            label: "Balanço & Liberdade",
+            shortLabel: "Balanço",
+            icon: <Scale className="size-4" aria-hidden="true" />,
+            content: balancoContent,
+          },
+        ]
+      : []),
+    ...(hasInvestmentsFeature
+      ? [
+          {
+            value: "fiscal",
+            label: "Fiscal & IRPF",
+            shortLabel: "Fiscal",
+            icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
+            content: fiscalContent,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
-      {/* Banner / Card de Exportação Excel */}
-      <ExcelExportCard workbookData={workbookData} description={excelDescription} />
-
-
-      {/* Navegação Principal do Hub de Relatórios */}
-      <Tabs
-        value={mainTab}
-        onValueChange={handleTabChange}
-        variant="pills"
-        items={tabItems}
-      />
+      {/* Header */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            Relatórios
+          </h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal
+          </p>
+        </div>
+      </header>
 
       {/* Seletor Global de Período — Compartilhado por todas as abas */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-xs">
@@ -742,555 +1264,18 @@ export function ReportsPage() {
             </div>
           )}
         </div>
-
       </div>
 
-      {/* ABA 1: FINANÇAS & DRE PESSOAL */}
-      {mainTab === "financas" ? (
-        <div className="flex flex-col gap-6">
-          {/* Card Dossiê Executivo A4 de Finanças & DRE */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-            <div className="flex flex-col gap-1 min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <Landmark className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
-                <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais &amp; DRE (A4/PDF)</h3>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Demonstração do Resultado do Exercício (DRE Pessoal), fluxo de caixa líquido, taxa de poupança e detalhamento de gastos.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="default"
-              onClick={() => setFinancialReportOpen(true)}
-              className="gap-2 shrink-0 w-full sm:w-auto justify-center"
-            >
-              <Printer className="size-4" aria-hidden="true" />
-              Visualizar &amp; Imprimir Dossiê A4
-            </Button>
-          </div>
+      {/* Navegação Principal em Tabs com suporte a gestos swipe e acessibilidade */}
+      <Tabs
+        value={mainTab}
+        onValueChange={handleTabChange}
+        swipeable
+        items={tabItems}
+      />
 
-          {/* Cards de Resumo */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Receitas Totais</span>
-              <MoneyText cents={grossIncomeBrutoCents} tone="positive" animated className="text-lg sm:text-xl font-bold font-display truncate" />
-              {hasDualMetrics && (
-                <span className="text-xs text-muted-foreground">
-                  Ponderada: <MoneyText cents={currentIncomeCents} tone="positive" className="inline text-xs font-medium" />
-                </span>
-              )}
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Despesas Totais</span>
-              <MoneyText cents={grossExpenseBrutoCents} tone="negative" animated className="text-lg sm:text-xl font-bold font-display truncate" />
-              {hasDualMetrics && (
-                <span className="text-xs text-muted-foreground">
-                  Ponderada: <MoneyText cents={currentExpenseCents} tone="negative" className="inline text-xs font-medium" />
-                </span>
-              )}
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Poupança do Período</span>
-              <div className="flex items-center justify-between gap-2">
-                <MoneyText
-                  cents={grossSavingsBrutoCents}
-                  tone={grossSavingsBrutoCents >= 0 ? "positive" : "negative"}
-                  animated
-                  className="text-lg sm:text-xl font-bold font-display truncate"
-                />
-                <span className="text-xs font-semibold text-muted-foreground shrink-0">
-                  {grossSavingsRatePercent !== null ? `${grossSavingsRatePercent.toFixed(1)}%` : "—"}
-                </span>
-              </div>
-              {hasDualMetrics && (
-                <span className="text-xs text-muted-foreground">
-                  Ponderado: <MoneyText cents={currentIncomeCents - currentExpenseCents} tone={currentIncomeCents >= currentExpenseCents ? "positive" : "negative"} className="inline text-xs font-medium" /> ({currentOverview.savingsRatePercent !== null ? `${currentOverview.savingsRatePercent.toFixed(1)}%` : "—"})
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Agregações */}
-          <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-foreground">Detalhamento de Despesas</h3>
-              <div className="grid grid-cols-3 sm:flex gap-1.5 w-full sm:w-auto">
-                <Button
-                  type="button"
-                  variant={aggregationTab === "category" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAggregationTab("category")}
-                  className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-                >
-                  Categorias
-                </Button>
-                <Button
-                  type="button"
-                  variant={aggregationTab === "method" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAggregationTab("method")}
-                  className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-                >
-                  Formas de Pgto
-                </Button>
-                <Button
-                  type="button"
-                  variant={aggregationTab === "weekday" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAggregationTab("weekday")}
-                  className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-                >
-                  Dias da Semana
-                </Button>
-
-              </div>
-            </div>
-
-            {aggregationTab === "category" ? (
-              <ReportTable
-                title="Por Categoria"
-                totalBrutoCents={grossExpenseBrutoCents}
-                totalPonderadoCents={currentExpenseCents}
-                totalCents={grossExpenseBrutoCents}
-                rows={byCategory.map((c) => ({
-                  key: c.categoryId,
-                  label: c.name,
-                  brutoCents: c.brutoCents,
-                  ponderadoCents: c.ponderadoCents,
-                  valueCents: c.brutoCents,
-                  percent: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-                }))}
-                onRowClick={(row) => {
-                  const catExpenses = expenses.filter((e) => e.category_id === row.key);
-                  setDetailModal({
-                    title: `Despesas: ${typeof row.label === "string" ? row.label : "Categoria"}`,
-                    expenses: catExpenses,
-                  });
-                }}
-              />
-            ) : aggregationTab === "method" ? (
-              <ReportTable
-                title="Por Forma de Pagamento"
-                totalBrutoCents={grossExpenseBrutoCents}
-                totalPonderadoCents={currentExpenseCents}
-                totalCents={grossExpenseBrutoCents}
-                rows={byMethod.map((m) => ({
-                  key: m.method,
-                  label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
-                  brutoCents: m.brutoCents,
-                  ponderadoCents: m.ponderadoCents,
-                  valueCents: m.brutoCents,
-                  percent: grossExpenseBrutoCents > 0 ? (m.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-                }))}
-                onRowClick={(row) => {
-                  const methodExpenses = expenses.filter((e) => (e.payment_method ?? "other") === row.key);
-                  setDetailModal({
-                    title: `Despesas: ${typeof row.label === "string" ? row.label : "Forma de Pagamento"}`,
-                    expenses: methodExpenses,
-                  });
-                }}
-              />
-            ) : (
-              <ReportTable
-                title="Por Dia da Semana"
-                totalBrutoCents={grossExpenseBrutoCents}
-                totalPonderadoCents={currentExpenseCents}
-                totalCents={grossExpenseBrutoCents}
-                rows={byWeekday.map((w) => ({
-                  key: String(w.weekday),
-                  label: WEEKDAY_LABELS[w.weekday],
-                  brutoCents: w.brutoCents,
-                  ponderadoCents: w.ponderadoCents,
-                  valueCents: w.brutoCents,
-                  percent: grossExpenseBrutoCents > 0 ? (w.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-                }))}
-                onRowClick={(row) => {
-                  const weekdayNum = parseInt(row.key, 10);
-                  const weekdayExpenses = expenses.filter((e) => mondayFirstWeekday(e.date) === weekdayNum);
-                  setDetailModal({
-                    title: `Despesas: ${WEEKDAY_LABELS[weekdayNum] ?? "Dia"}`,
-                    expenses: weekdayExpenses,
-                  });
-                }}
-              />
-
-            )}
-
-          </div>
-        </div>
-      ) : null}
-
-      {/* ABA 2: INVESTIMENTOS & CARTEIRA */}
-      {mainTab === "investimentos" ? (
-        <div className="flex flex-col gap-6">
-          {/* Card Dossiê Executivo A4 */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-            <div className="flex flex-col gap-1 min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="size-5 text-portfolio shrink-0" aria-hidden="true" />
-                <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Alocação &amp; Patrimônio (A4/PDF)</h3>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Documento de consultoria patrimonial com diagnóstico de defasagem de metas (Target vs. Actual), risco de concentração e custódia.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="default"
-              onClick={() => setTearSheetOpen(true)}
-              className="gap-2 shrink-0 w-full sm:w-auto justify-center"
-            >
-              <Printer className="size-4" aria-hidden="true" />
-              Visualizar &amp; Imprimir Dossiê A4
-            </Button>
-          </div>
-
-          {/* Resumo da Alocação, Metas & Concentração Setorial */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Patrimônio Consolidado</span>
-              <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display truncate" />
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Aderência às Metas</span>
-              <span className="text-lg sm:text-xl font-bold font-display text-primary-strong">{allocationAnalysis.alignmentScore}%</span>
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Top 5 Concentração</span>
-              <span className="text-lg sm:text-xl font-bold font-display text-foreground">{concentrationRisk.top5Pct.toFixed(1)}%</span>
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Top Setor Dominante</span>
-              <div className="flex items-center justify-between gap-1 truncate">
-                <span className="text-sm sm:text-base font-bold font-display text-foreground truncate">
-                  {concentrationRisk.topSectorDominance?.sector ?? "Nenhum"}
-                </span>
-                <span className="text-xs font-bold text-portfolio shrink-0">
-                  {concentrationRisk.topSectorDominance ? `${concentrationRisk.topSectorDominance.pct.toFixed(1)}%` : "0%"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabela em Árvore Hierárquica de Gaps (Classe -> Setor -> Ativos) */}
-          <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-                <h3 className="text-sm font-semibold text-foreground">Defasagem de Metas Hierárquica (Classe ➔ Setor ➔ Ativos)</h3>
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {allocationAnalysis.topDeficitClass ? (
-                  <span className="text-[11px] font-semibold text-primary-strong bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                    Prioridade Classe: {allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}
-                  </span>
-                ) : null}
-                {allocationAnalysis.topDeficitSector ? (
-                  <span className="text-[11px] font-semibold text-portfolio bg-portfolio/10 px-2 py-0.5 rounded-md border border-portfolio/20">
-                    Prioridade Setor: {allocationAnalysis.topDeficitSector.sectorName}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-              <span className="text-muted-foreground text-[11px]">
-                Clique nas linhas para expandir/recolher os setores e ativos vinculados.
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setExpandedTreeClasses(new Set(allocationAnalysis.treeNodes.map((n) => n.assetClass)));
-                    setExpandedTreeSectors(
-                      new Set(
-                        allocationAnalysis.treeNodes.flatMap((n) =>
-                          n.sectors.map((s) => `${n.assetClass}::${s.sectorName}`),
-                        ),
-                      ),
-                    );
-                  }}
-                  className="h-7 px-2 text-[11px]"
-                >
-                  Expandir tudo
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setExpandedTreeClasses(new Set());
-                    setExpandedTreeSectors(new Set());
-                  }}
-                  className="h-7 px-2 text-[11px]"
-                >
-                  Recolher tudo
-                </Button>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-border/80">
-              <table className="w-full min-w-[620px] text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
-                    <th className="py-2.5 px-3">Hierarquia / Nome</th>
-                    <th className="py-2.5 px-3 text-right">Atual (R$)</th>
-                    <th className="py-2.5 px-3 text-right">Atual (%)</th>
-                    <th className="py-2.5 px-3 text-right">Meta (%)</th>
-                    <th className="py-2.5 px-3 text-right">Gap (R$)</th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {allocationAnalysis.treeNodes.map((cNode) => {
-                    const isClassExpanded = expandedTreeClasses.has(cNode.assetClass);
-                    return (
-                      <Fragment key={cNode.assetClass}>
-                        {/* Linha da Classe */}
-                        <tr
-                          onClick={() => {
-                            setExpandedTreeClasses((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(cNode.assetClass)) next.delete(cNode.assetClass);
-                              else next.add(cNode.assetClass);
-                              return next;
-                            });
-                          }}
-                          className="bg-muted/25 hover:bg-muted/40 cursor-pointer font-semibold select-none"
-                        >
-                          <td className="py-2.5 px-3 text-foreground">
-                            <div className="flex items-center gap-1.5">
-                              {isClassExpanded ? (
-                                <ChevronDown className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                              ) : (
-                                <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                              )}
-                              <span className="capitalize">{cNode.assetClass}</span>
-                              <span className="text-[10px] text-muted-foreground font-normal">
-                                ({cNode.sectors.length} setores)
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono">
-                            <MoneyText cents={numberToCents(cNode.currentBRL)} />
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono">{cNode.currentPct.toFixed(1)}%</td>
-                          <td className="py-2.5 px-3 text-right font-mono">
-                            {cNode.targetPct > 0 ? `${cNode.targetPct.toFixed(1)}%` : "—"}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono">
-                            {cNode.gapBRL > 0 ? (
-                              <MoneyText cents={numberToCents(cNode.gapBRL)} tone="portfolio" className="font-bold" />
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
-                            <span
-                              className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                                cNode.status === "deficit"
-                                  ? "bg-primary/10 text-primary-strong border border-primary/20"
-                                  : cNode.status === "surplus"
-                                    ? "bg-surface-hover text-muted-foreground border border-border"
-                                    : "bg-positive/10 text-positive-strong border border-positive/20"
-                              }`}
-                            >
-                              {cNode.status === "deficit" ? "Aportar" : cNode.status === "surplus" ? "Acima da Meta" : "Equilibrado"}
-                            </span>
-                          </td>
-                        </tr>
-
-                        {/* Linhas de Setores da Classe */}
-                        {isClassExpanded &&
-                          cNode.sectors.map((sNode) => {
-                            const sectorKey = `${cNode.assetClass}::${sNode.sectorName}`;
-                            const isSectorExpanded = expandedTreeSectors.has(sectorKey);
-
-                            return (
-                              <Fragment key={sectorKey}>
-                                <tr
-                                  onClick={() => {
-                                    setExpandedTreeSectors((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(sectorKey)) next.delete(sectorKey);
-                                      else next.add(sectorKey);
-                                      return next;
-                                    });
-                                  }}
-                                  className="bg-surface hover:bg-muted/15 cursor-pointer font-medium select-none"
-                                >
-                                  <td className="py-2 px-3 pl-8 text-foreground">
-                                    <div className="flex items-center gap-1.5">
-                                      {isSectorExpanded ? (
-                                        <ChevronDown className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                                      ) : (
-                                        <ChevronRight className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                                      )}
-                                      <span className="text-xs">{sNode.sectorName}</span>
-                                      {sNode.targetPctInClass > 0 ? (
-                                        <span className="text-[10px] text-muted-foreground font-normal">
-                                          (Meta na classe: {sNode.targetPctInClass}%)
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                    <MoneyText cents={numberToCents(sNode.currentBRL)} />
-                                  </td>
-                                  <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                    {sNode.currentPct.toFixed(1)}%
-                                  </td>
-                                  <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                    {sNode.effectiveTargetPct > 0 ? `${sNode.effectiveTargetPct.toFixed(1)}%` : "—"}
-                                  </td>
-                                  <td className="py-2 px-3 text-right font-mono">
-                                    {sNode.gapBRL > 0 ? (
-                                      <MoneyText cents={numberToCents(sNode.gapBRL)} tone="portfolio" />
-                                    ) : (
-                                      <span className="text-muted-foreground">—</span>
-                                    )}
-                                  </td>
-                                  <td className="py-2 px-3 text-center">
-                                    <span
-                                      className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${
-                                        sNode.status === "deficit"
-                                          ? "bg-primary/10 text-primary-strong border border-primary/20"
-                                          : sNode.status === "surplus"
-                                            ? "bg-surface-hover text-muted-foreground border border-border"
-                                            : "bg-positive/10 text-positive-strong border border-positive/20"
-                                      }`}
-                                    >
-                                      {sNode.status === "deficit" ? "Aportar" : sNode.status === "surplus" ? "Na Meta" : "Equilibrado"}
-                                    </span>
-                                  </td>
-                                </tr>
-
-                                {/* Linhas dos Ativos do Setor */}
-                                {isSectorExpanded &&
-                                  sNode.assets.map((aNode) => (
-                                    <tr key={aNode.id} className="hover:bg-muted/20 text-muted-foreground">
-                                      <td className="py-1.5 px-3 pl-14 font-mono font-semibold text-foreground">
-                                        {aNode.ticker}
-                                      </td>
-                                      <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                        <MoneyText cents={numberToCents(aNode.currentBRL)} />
-                                      </td>
-                                      <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                        {aNode.currentPct.toFixed(1)}%
-                                      </td>
-                                      <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                        {aNode.targetPct > 0 ? `${aNode.targetPct.toFixed(1)}%` : "—"}
-                                      </td>
-                                      <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                        {aNode.gapBRL > 0 ? (
-                                          <MoneyText cents={numberToCents(aNode.gapBRL)} tone="default" />
-                                        ) : (
-                                          <span>—</span>
-                                        )}
-                                      </td>
-                                      <td className="py-1.5 px-3 text-center text-[10px]">
-                                        {aNode.status === "deficit" ? "Déficit" : aNode.status === "surplus" ? "Excedente" : "Ok"}
-                                      </td>
-                                    </tr>
-                                  ))}
-                              </Fragment>
-                            );
-                          })}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* ABA 3: BALANÇO & LIBERDADE */}
-      {mainTab === "balanco" ? (
-        <div className="flex flex-col gap-6">
-          {/* Card Duplo de Dossiês A4 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-              <div className="flex flex-col gap-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <Scale className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
-                  <h3 className="text-sm sm:text-base font-bold text-foreground">Balanço 360° &amp; DRE Pessoal</h3>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Relatório consolidado unindo investimentos, contas, dívidas, poupança e fluxo de caixa.
-                </p>
-              </div>
-              <Button type="button" variant="outline" onClick={() => setConsolidatedWealthOpen(true)} className="gap-2 w-full justify-center">
-                <Printer className="size-4" aria-hidden="true" />
-                Visualizar Balanço 360°
-              </Button>
-            </div>
-
-            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-              <div className="flex flex-col gap-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <Flame className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
-                  <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê de Liberdade Financeira</h3>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Análise da cobertura de custos por proventos, calendário 12M e efeito bola de neve.
-                </p>
-              </div>
-              <Button type="button" variant="outline" onClick={() => setDividendFreedomOpen(true)} className="gap-2 w-full justify-center">
-                <Printer className="size-4" aria-hidden="true" />
-                Visualizar Dossiê de Liberdade
-              </Button>
-            </div>
-          </div>
-
-          {/* Cards de Patrimônio Líquido Real */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Patrimônio Líquido Real</span>
-              <MoneyText cents={numberToCents(consolidatedBalance.netWorthBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display truncate" />
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Grau de Liberdade Financeira</span>
-              <span className="text-lg sm:text-xl font-bold font-display text-positive-strong">{freedomAnalysis.freedomPct.toFixed(1)}%</span>
-            </div>
-            <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Autonomia de Reserva (Runway)</span>
-              <span className="text-lg sm:text-xl font-bold font-display text-foreground">{freedomAnalysis.runwayMonths.toFixed(1)} meses</span>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* ABA 4: FISCAL & IRPF */}
-      {mainTab === "fiscal" ? (
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-            <div className="flex flex-col gap-1 min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <Landmark className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
-                <h3 className="text-sm sm:text-base font-bold text-foreground">Facilitador de Declaração de IRPF</h3>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Textos prontos com 1-clique para cópia das Fichas de Bens e Direitos e Rendimentos Isentos/Exclusivos para o programa da Receita Federal.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="default"
-              onClick={() => setTaxReportOpen(true)}
-              className="gap-2 shrink-0 w-full sm:w-auto justify-center"
-            >
-              <Printer className="size-4" aria-hidden="true" />
-              Abrir Fichas de IRPF
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
+      {/* Banner / Card de Exportação Excel (.xlsx) posicionado no rodapé da página */}
+      <ExcelExportCard workbookData={workbookData} description={excelDescription} />
 
       {/* Modais de Dossiês de Consultoria */}
       <FinancialCloseReportModal

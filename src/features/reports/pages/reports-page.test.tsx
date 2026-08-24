@@ -177,8 +177,12 @@ vi.mock("@/state", () => ({
 
 
 describe("ReportsPage (Central Unificada §F42)", () => {
-  it("renderiza o Hub com o banner de exportação Excel e as 4 abas principais", () => {
+  it("renderiza o Hub com o cabeçalho padronizado, banner de exportação Excel e as 4 abas principais", () => {
     renderReports();
+    expect(screen.getByRole("heading", { level: 1, name: "Relatórios" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Caderno de Relatórios em Excel (.xlsx)")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Finanças & DRE/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Investimentos & Carteira/i })).toBeInTheDocument();
