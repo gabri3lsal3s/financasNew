@@ -463,51 +463,116 @@ export function buildAporteSuggestions(
   totalPortfolioBRL: number,
   limit = 3,
   classTargets?: readonly { name: string; target_percentage: number }[],
+  sectorTargets?: readonly { className: string; sectorName: string; target_percentage: number }[],
 ): AporteSuggestionItem[] {
-  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0);
+  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0) || (sectorTargets && sectorTargets.length > 0);
   if (totalPortfolioBRL <= 0 || !hasTargets) return [];
 
   const targetMap = new Map(targets.map((t) => [t.asset_id, t.target_percentage]));
   const classTargetMap = new Map((classTargets ?? []).map((t) => [t.name, t.target_percentage]));
-  const rowMap = new Map(assetRows.map((r) => [r.assetId, r]));
 
-  // Agrupamento por classe
-  const assetsByClass = new Map<string, PortfolioAsset[]>();
-  for (const asset of assets) {
-    const key = asset.asset_class ?? "";
-    const list = assetsByClass.get(key) ?? [];
-    list.push(asset);
-    assetsByClass.set(key, list);
+  const sectorTargetMap = new Map<string, Map<string, number>>();
+  for (const st of sectorTargets ?? []) {
+    let sMap = sectorTargetMap.get(st.className);
+    if (!sMap) {
+      sMap = new Map<string, number>();
+      sectorTargetMap.set(st.className, sMap);
+    }
+    sMap.set(st.sectorName, st.target_percentage);
   }
 
-  // Resolução de metas efetivas hierárquicas
-  const effectiveTargetMap = new Map<string, number>();
+  const rowMap = new Map(assetRows.map((r) => [r.assetId, r]));
 
-  // 1. Metas individuais diretas
+  // Agrupamento por classe e setor
+  const assetsByClass = new Map<string, PortfolioAsset[]>();
+  const assetsByClassAndSector = new Map<string, Map<string, PortfolioAsset[]>>();
+
   for (const asset of assets) {
-    const targetPct = targetMap.get(asset.id);
-    if (targetPct && targetPct > 0) {
-      effectiveTargetMap.set(asset.id, targetPct);
+    const classKey = asset.asset_class ?? "Ações";
+    const sectorKey = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, classKey);
+
+    const classList = assetsByClass.get(classKey) ?? [];
+    classList.push(asset);
+    assetsByClass.set(classKey, classList);
+
+    let sectorMap = assetsByClassAndSector.get(classKey);
+    if (!sectorMap) {
+      sectorMap = new Map<string, PortfolioAsset[]>();
+      assetsByClassAndSector.set(classKey, sectorMap);
+    }
+    const sectorList = sectorMap.get(sectorKey) ?? [];
+    sectorList.push(asset);
+    sectorMap.set(sectorKey, sectorList);
+  }
+
+  // Resolução de metas efetivas hierárquicas (Classe -> Setor -> Ativo)
+  const effectiveTargetMap = new Map<string, number>();
+  const hasIndividualTargets = targets.length > 0;
+
+  // 1. Metas individuais explícitas (incluindo 0% e ativos não listados quando há metas individuais)
+  for (const asset of assets) {
+    if (targetMap.has(asset.id)) {
+      effectiveTargetMap.set(asset.id, targetMap.get(asset.id)!);
+    } else if (hasIndividualTargets) {
+      effectiveTargetMap.set(asset.id, 0);
     }
   }
 
-  // 2. Metas de classe distribuídas equiponderadamente para ativos sem meta própria
-  for (const [className, members] of assetsByClass) {
+  // 2. Metas de setor e classe em 3 níveis
+  for (const [className, sectorMap] of assetsByClassAndSector) {
     const classTargetPct = classTargetMap.get(className) ?? 0;
     if (!(classTargetPct > 0)) continue;
 
-    const unassigned = members.filter((a) => !effectiveTargetMap.has(a.id));
-    if (unassigned.length === 0) continue;
+    const sectorsWithTarget = sectorTargetMap.get(className);
+    const hasConfiguredSectorTargets = sectorsWithTarget && sectorsWithTarget.size > 0;
 
-    const assignedSum = members
-      .filter((a) => effectiveTargetMap.has(a.id))
-      .reduce((acc, a) => acc + (targetMap.get(a.id) ?? 0), 0);
+    if (hasConfiguredSectorTargets) {
+      for (const [sectorName, members] of sectorMap) {
+        const sectorTargetInClass = sectorsWithTarget?.get(sectorName);
 
-    const remainingClassPct = Math.max(0, classTargetPct - assignedSum);
-    if (remainingClassPct > 0) {
-      const share = remainingClassPct / unassigned.length;
-      for (const member of unassigned) {
-        effectiveTargetMap.set(member.id, share);
+        if (sectorTargetInClass === 0) {
+          for (const member of members) {
+            if (!effectiveTargetMap.has(member.id)) {
+              effectiveTargetMap.set(member.id, 0);
+            }
+          }
+          continue;
+        }
+
+        if (!sectorTargetInClass || !(sectorTargetInClass > 0)) continue;
+
+        const sectorEffectiveTargetPct = (classTargetPct * sectorTargetInClass) / 100;
+        const unassigned = members.filter((a) => !effectiveTargetMap.has(a.id));
+        if (unassigned.length === 0) continue;
+
+        const assignedSum = members
+          .filter((a) => effectiveTargetMap.has(a.id))
+          .reduce((acc, a) => acc + (effectiveTargetMap.get(a.id) ?? 0), 0);
+
+        const remainingSectorPct = Math.max(0, sectorEffectiveTargetPct - assignedSum);
+        if (remainingSectorPct > 0) {
+          const share = remainingSectorPct / unassigned.length;
+          for (const member of unassigned) {
+            effectiveTargetMap.set(member.id, share);
+          }
+        }
+      }
+    }
+
+    // Fallback de classe para membros sem meta
+    const classMembers = assetsByClass.get(className) ?? [];
+    const remainingUnassigned = classMembers.filter((a) => !effectiveTargetMap.has(a.id));
+    if (remainingUnassigned.length > 0) {
+      const assignedClassSum = classMembers
+        .filter((a) => effectiveTargetMap.has(a.id))
+        .reduce((acc, a) => acc + (effectiveTargetMap.get(a.id) ?? 0), 0);
+
+      const remainingClassPct = Math.max(0, classTargetPct - assignedClassSum);
+      if (remainingClassPct > 0) {
+        const share = remainingClassPct / remainingUnassigned.length;
+        for (const member of remainingUnassigned) {
+          effectiveTargetMap.set(member.id, share);
+        }
       }
     }
   }
@@ -600,11 +665,12 @@ export function buildTopSuggestionResults(
   totalPortfolioBRL: number,
   limit = 5,
   classTargets?: readonly { name: string; target_percentage: number }[],
+  sectorTargets?: readonly { className: string; sectorName: string; target_percentage: number }[],
 ): TickerSearchResult[] {
-  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0);
+  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0) || (sectorTargets && sectorTargets.length > 0);
   if (!hasTargets) return [];
 
-  const suggestions = buildAporteSuggestions(assets, assetRows, targets, totalPortfolioBRL, limit, classTargets);
+  const suggestions = buildAporteSuggestions(assets, assetRows, targets, totalPortfolioBRL, limit, classTargets, sectorTargets);
 
   return suggestions.map((item) => {
     const asset = assets.find((a) => a.id === item.assetId);

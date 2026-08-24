@@ -73,6 +73,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     }));
   });
 
+  const hasIndividualTargets = (targetsQuery.data ?? []).length > 0;
   const assets: AporteAssetInput[] = nonCashRows.map((row) => ({
     id: row.assetId,
     ticker: row.ticker,
@@ -81,7 +82,9 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     currency: row.currency,
     currentValueBRL: row.valueBRL,
     priceBRL: row.priceBRL,
-    targetPercentage: targetByAsset.get(row.assetId) ?? null,
+    targetPercentage: targetByAsset.has(row.assetId)
+      ? targetByAsset.get(row.assetId)!
+      : (hasIndividualTargets ? 0 : null),
   }));
 
   const result =

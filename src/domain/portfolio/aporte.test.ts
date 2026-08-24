@@ -264,4 +264,114 @@ describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fas
     expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "SEM_META", reason: "no_target" }));
     expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "ACIMA_META", reason: "above_target" }));
   });
+
+  it("não sugere aporte para ativo com meta individual explicitamente zerada (targetPercentage = 0)", () => {
+    const assets: AporteAssetInput[] = [
+      // Ativo A com meta individual explicitamente 0%
+      asset({ id: "a", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, targetPercentage: 0 }),
+      // Ativo B com meta individual de 10%
+      asset({ id: "b", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 50, targetPercentage: 10 }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 5000,
+      assets,
+      classTargets: [{ className: "Ações", targetPercentage: 100 }],
+    });
+
+    // Apenas VALE3 deve receber aporte, PETR4 tem meta individual 0% e deve ser ignorado
+    expect(result.routes.map((r) => r.ticker)).toEqual(["VALE3"]);
+    expect(result.routes.find((r) => r.ticker === "PETR4")).toBeUndefined();
+    expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "PETR4", reason: "no_target" }));
+  });
+
+  it("não sugere aporte para ativo pertencente a setor com meta explicitamente zerada (0%)", () => {
+    const assets: AporteAssetInput[] = [
+      asset({ id: "itub", ticker: "ITUB4", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 20 }),
+      asset({ id: "taee", ticker: "TAEE11", assetClass: "Ações", sector: "Energia Elétrica", currentValueBRL: 0, priceBRL: 20 }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 2000,
+      assets,
+      classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      sectorTargets: [
+        { className: "Ações", sectorName: "Financeiro / Bancos", targetPercentage: 0 },
+        { className: "Ações", sectorName: "Energia Elétrica", targetPercentage: 100 },
+      ],
+    });
+
+    // Apenas TAEE11 (Energia Elétrica) deve receber aporte, ITUB4 está em setor com 0%
+    expect(result.routes.map((r) => r.ticker)).toEqual(["TAEE11"]);
+    expect(result.routes.find((r) => r.ticker === "ITUB4")).toBeUndefined();
+  });
+
+  it("espalha o aporte proporcionalmente entre múltiplos ativos do mesmo setor em vez de concentrar em um só", () => {
+    const assets: AporteAssetInput[] = [
+      asset({ id: "itub", ticker: "ITUB4", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 20, targetPercentage: null }),
+      asset({ id: "bbas", ticker: "BBAS3", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 25, targetPercentage: null }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 1000,
+      assets,
+      classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      sectorTargets: [{ className: "Ações", sectorName: "Financeiro / Bancos", targetPercentage: 100 }],
+    });
+
+    // Orçamento de 1000 dividido igualmente (500 para ITUB4 e 500 para BBAS3)
+    // ITUB4: 500 / 20 = 25 cotas (500)
+    // BBAS3: 500 / 25 = 20 cotas (500)
+    expect(result.routes).toHaveLength(2);
+    const itub = result.routes.find((r) => r.ticker === "ITUB4");
+    const bbas = result.routes.find((r) => r.ticker === "BBAS3");
+    expect(itub).toMatchObject({ quantity: 25, allocatedBRL: 500 });
+    expect(bbas).toMatchObject({ quantity: 20, allocatedBRL: 500 });
+    expect(result.totalAllocated).toBe(1000);
+  });
+
+  it("respeita teto individual estrito e distribui o restante do setor para outro ativo", () => {
+    const assets: AporteAssetInput[] = [
+      // Ativo com meta individual de 10% (em patrimônio de 1000 = R$ 100)
+      asset({ id: "itub", ticker: "ITUB4", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 20, targetPercentage: 10 }),
+      // Ativo com meta individual de 90% (em patrimônio de 1000 = R$ 900)
+      asset({ id: "bbas", ticker: "BBAS3", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 25, targetPercentage: 90 }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 1000,
+      assets,
+      classTargets: [{ className: "Ações", targetPercentage: 100 }],
+    });
+
+    const itub = result.routes.find((r) => r.ticker === "ITUB4");
+    const bbas = result.routes.find((r) => r.ticker === "BBAS3");
+    expect(itub).toMatchObject({ quantity: 5, allocatedBRL: 100 });
+    expect(bbas).toMatchObject({ quantity: 36, allocatedBRL: 900 });
+    expect(result.totalAllocated).toBe(1000);
+  });
+
+  it("distribui aporte de R$ 2.000 entre 2 classes com déficits proporcionais (R$ 1.000 cada)", () => {
+    const assets: AporteAssetInput[] = [
+      // Classe Ações (meta 50% de 2000 = 1000)
+      asset({ id: "itub", ticker: "ITUB4", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 20, targetPercentage: null }),
+      // Classe FIIs (meta 50% de 2000 = 1000)
+      asset({ id: "hglg", ticker: "HGLG11", assetClass: "FIIs", sector: "Imobiliário / Logística", currentValueBRL: 0, priceBRL: 100, targetPercentage: null }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 2000,
+      assets,
+      classTargets: [
+        { className: "Ações", targetPercentage: 50 },
+        { className: "FIIs", targetPercentage: 50 },
+      ],
+    });
+
+    const itub = result.routes.find((r) => r.ticker === "ITUB4");
+    const hglg = result.routes.find((r) => r.ticker === "HGLG11");
+    expect(itub?.allocatedBRL).toBe(1000);
+    expect(hglg?.allocatedBRL).toBe(1000);
+    expect(result.totalAllocated).toBe(2000);
+  });
 });

@@ -325,21 +325,21 @@ export function simulateAporte(opts: {
   if (opts.mode === "asset") {
     // Modo individual: cada ativo usa sua meta direta
     for (const asset of opts.assets) {
-      const targetPct = nonNegative(asset.targetPercentage ?? 0);
-      if (targetPct > 0) {
+      if (asset.targetPercentage !== null && asset.targetPercentage !== undefined) {
+        const targetPct = nonNegative(asset.targetPercentage);
         const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
-        const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL)));
+        const gapBRL = targetPct > 0 ? round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL))) : 0;
         effectiveAssetMap.set(asset.id, { targetPct, targetValueBRL, gapBRL });
       }
     }
   } else {
-    // Se mode === "both", metas individuais são consideradas prioritariamente
+    // Se mode === "both", metas individuais são consideradas prioritariamente (incluindo 0%)
     if (opts.mode === "both") {
       for (const asset of opts.assets) {
-        const targetPct = nonNegative(asset.targetPercentage ?? 0);
-        if (targetPct > 0) {
+        if (asset.targetPercentage !== null && asset.targetPercentage !== undefined) {
+          const targetPct = nonNegative(asset.targetPercentage);
           const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
-          const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL)));
+          const gapBRL = targetPct > 0 ? round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL))) : 0;
           effectiveAssetMap.set(asset.id, { targetPct, targetValueBRL, gapBRL });
         }
       }
@@ -355,8 +355,19 @@ export function simulateAporte(opts: {
       if (hasConfiguredSectorTargets) {
         // Alocação em 3 níveis: distribui a meta da classe para os setores cadastrados
         for (const [sectorName, members] of sectorMap) {
-          const sectorTargetInClass = sectorsWithTarget?.get(sectorName) ?? 0;
-          if (!(sectorTargetInClass > 0)) continue;
+          const sectorTargetInClass = sectorsWithTarget?.get(sectorName);
+
+          // Se o setor foi explicitamente configurado com 0%, zera os membros sem meta individual
+          if (sectorTargetInClass === 0) {
+            for (const member of members) {
+              if (!effectiveAssetMap.has(member.id)) {
+                effectiveAssetMap.set(member.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
+              }
+            }
+            continue;
+          }
+
+          if (!sectorTargetInClass || !(sectorTargetInClass > 0)) continue;
 
           const sectorEffectiveTargetPct = round2((classTargetPct * sectorTargetInClass) / 100);
           if (!(sectorEffectiveTargetPct > 0)) continue;
@@ -545,17 +556,142 @@ export function simulateAporte(opts: {
     });
 
   // -------------------------------------------------------------------------
-  // 4. NÍVEL 3: Execução da Distribuição (Classe -> Setor -> Ativos)
+  // 4. NÍVEL 3: Execução da Distribuição Proporcional (Classe -> Setor -> Ativos)
   // -------------------------------------------------------------------------
-  const routes: AporteRoute[] = [];
   const classSummaries: ClassAporteSummary[] = [];
   const sectorSummaries: SectorAporteSummary[] = [];
-  let poolAvailable = aporte;
+  const allocatedMap = new Map<string, { quantity: number; allocatedBRL: number }>();
+
+  // Helper interno de alocação ponderada a uma lista de ativos
+  const allocateBudgetToMembers = (
+    members: readonly AporteAssetInput[],
+    budget: number,
+  ): number => {
+    if (!(budget > 0) || members.length === 0) {
+      return 0;
+    }
+
+    const eligible = members.filter((m) => {
+      const eff = effectiveAssetMap.get(m.id);
+      if (!eff || !(eff.gapBRL > 0) || !(eff.targetPct > 0) || !(m.priceBRL > 0)) return false;
+      const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+      return eff.gapBRL - currentAlloc > 0;
+    });
+
+    if (eligible.length === 0) {
+      return 0;
+    }
+
+    const sumGaps = eligible.reduce((acc, m) => {
+      const eff = effectiveAssetMap.get(m.id)!;
+      const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+      return acc + Math.max(0, eff.gapBRL - currentAlloc);
+    }, 0);
+
+    if (!(sumGaps > 0)) {
+      return 0;
+    }
+
+    let remainingBudget = budget;
+
+    // Pass 1: Proporcional ponderado por déficit restante
+    for (const m of eligible) {
+      const eff = effectiveAssetMap.get(m.id)!;
+      const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+      const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
+      if (!(remainingGap > 0)) continue;
+
+      const share = Math.min(remainingGap, (remainingGap / sumGaps) * budget);
+      const precision = resolveAssetPrecision(m);
+
+      let qty: number;
+      let alloc: number;
+
+      if (precision > 0) {
+        const multiplier = Math.pow(10, precision);
+        qty = Math.floor((share / m.priceBRL) * multiplier) / multiplier;
+        alloc = round2(qty * m.priceBRL);
+      } else {
+        qty = Math.floor(share / m.priceBRL);
+        alloc = round2(qty * m.priceBRL);
+      }
+
+      if (alloc > remainingGap) {
+        alloc = remainingGap;
+        qty = precision > 0 ? Math.floor((alloc / m.priceBRL) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(alloc / m.priceBRL);
+        alloc = round2(qty * m.priceBRL);
+      }
+
+      if (alloc > 0 && qty > 0) {
+        const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
+        const newQty = precision > 0 ? Math.round((existing.quantity + qty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + qty;
+        allocatedMap.set(m.id, {
+          quantity: newQty,
+          allocatedBRL: round2(existing.allocatedBRL + alloc),
+        });
+        remainingBudget = round2(remainingBudget - alloc);
+      }
+    }
+
+    // Pass 2: Sweep de resíduos dentro dos membros elegíveis
+    if (remainingBudget > 0) {
+      const sortedForResiduals = [...eligible].sort((a, b) => {
+        const remA = Math.max(0, (effectiveAssetMap.get(a.id)?.gapBRL ?? 0) - (allocatedMap.get(a.id)?.allocatedBRL ?? 0));
+        const remB = Math.max(0, (effectiveAssetMap.get(b.id)?.gapBRL ?? 0) - (allocatedMap.get(b.id)?.allocatedBRL ?? 0));
+        return remB - remA;
+      });
+
+      for (const m of sortedForResiduals) {
+        if (!(remainingBudget > 0)) break;
+        const eff = effectiveAssetMap.get(m.id)!;
+        const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+        const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
+        if (!(remainingGap > 0)) continue;
+
+        const precision = resolveAssetPrecision(m);
+        const canAfford = Math.min(remainingGap, remainingBudget);
+
+        let addQty: number;
+        let addAlloc: number;
+
+        if (precision > 0) {
+          const multiplier = Math.pow(10, precision);
+          addQty = Math.floor((canAfford / m.priceBRL) * multiplier) / multiplier;
+          addAlloc = round2(addQty * m.priceBRL);
+        } else {
+          addQty = Math.floor(canAfford / m.priceBRL);
+          addAlloc = round2(addQty * m.priceBRL);
+        }
+
+        if (addAlloc > 0 && addQty > 0) {
+          const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
+          const newQty = precision > 0 ? Math.round((existing.quantity + addQty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + addQty;
+          allocatedMap.set(m.id, {
+            quantity: newQty,
+            allocatedBRL: round2(existing.allocatedBRL + addAlloc),
+          });
+          remainingBudget = round2(remainingBudget - addAlloc);
+        }
+      }
+    }
+
+    return round2(budget - remainingBudget);
+  };
+
+  // Cálculo proporcional de orçamento por classe
+  const totalClassesGap = sortedClasses.reduce((acc, c) => acc + c.gapBRL, 0);
+  let globalRemainingPool = aporte;
 
   for (const classMacro of sortedClasses) {
-    if (!(poolAvailable > 0)) break;
+    if (!(globalRemainingPool > 0)) break;
 
-    const classBudget = Math.min(classMacro.gapBRL, poolAvailable);
+    // Orçamento proporcional da classe
+    const classTargetBudget =
+      totalClassesGap > 0
+        ? Math.min(classMacro.gapBRL, round2((classMacro.gapBRL / totalClassesGap) * aporte))
+        : Math.min(classMacro.gapBRL, globalRemainingPool);
+
+    const classBudget = Math.min(classTargetBudget, globalRemainingPool);
     let classRemainingBudget = classBudget;
     let actualClassAllocated = 0;
 
@@ -566,89 +702,27 @@ export function simulateAporte(opts: {
         return b.gapBRL - a.gapBRL;
       });
 
-    // Se houver setores com metas cadastrados, orça setor por setor; senão distribui na classe
     const hasSectorTargets = (sectorTargetMap.get(classMacro.className)?.size ?? 0) > 0;
 
     if (hasSectorTargets && sectorMacros.length > 0) {
+      const totalSectorsGap = sectorMacros.reduce((acc, s) => acc + s.gapBRL, 0);
+
+      // Pass 1 nos setores da classe: distribuição proporcional
       for (const sectorMacro of sectorMacros) {
         if (!(classRemainingBudget > 0)) break;
 
-        const sectorBudget = Math.min(sectorMacro.gapBRL, classRemainingBudget);
-        let sectorRemainingBudget = sectorBudget;
-        let actualSectorAllocated = 0;
+        const sectorTargetBudget =
+          totalSectorsGap > 0
+            ? Math.min(sectorMacro.gapBRL, round2((sectorMacro.gapBRL / totalSectorsGap) * classBudget))
+            : Math.min(sectorMacro.gapBRL, classRemainingBudget);
 
-        const sectorMembers = (assetsByClassAndSector.get(classMacro.className)?.get(sectorMacro.sectorName) ?? [])
-          .filter((asset) => {
-            const eff = effectiveAssetMap.get(asset.id);
-            return eff !== undefined && eff.gapBRL > 0 && asset.priceBRL > 0;
-          })
-          .sort((a, b) => {
-            const gapA = effectiveAssetMap.get(a.id)?.gapBRL ?? 0;
-            const gapB = effectiveAssetMap.get(b.id)?.gapBRL ?? 0;
-            return gapB - gapA;
-          });
+        const sectorBudget = Math.min(sectorTargetBudget, classRemainingBudget);
+        const sectorMembers = assetsByClassAndSector.get(classMacro.className)?.get(sectorMacro.sectorName) ?? [];
 
-        for (const asset of sectorMembers) {
-          if (!(sectorRemainingBudget > 0)) break;
-          const eff = effectiveAssetMap.get(asset.id);
-          if (!eff) continue;
+        const allocated = allocateBudgetToMembers(sectorMembers, sectorBudget);
 
-          const precision = resolveAssetPrecision(asset);
-          const amountToAllocate = Math.min(eff.gapBRL, sectorRemainingBudget);
-
-          if (precision > 0) {
-            // Ativos Fracionários: USD (4 casas) ou Cripto (8 casas)
-            const multiplier = Math.pow(10, precision);
-            const quantity = Math.floor((amountToAllocate / asset.priceBRL) * multiplier) / multiplier;
-            if (quantity <= 0) continue;
-
-            const allocatedBRL = round2(quantity * asset.priceBRL);
-            if (!(allocatedBRL > 0)) continue;
-
-            sectorRemainingBudget = round2(sectorRemainingBudget - allocatedBRL);
-            classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
-            actualSectorAllocated = round2(actualSectorAllocated + allocatedBRL);
-            actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
-
-            routes.push({
-              assetId: asset.id,
-              ticker: asset.ticker,
-              assetClass: asset.assetClass,
-              sector: sectorMacro.sectorName,
-              targetValueBRL: eff.targetValueBRL,
-              currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
-              gapBRL: eff.gapBRL,
-              allocatedBRL,
-              quantity,
-              priceBRL: round2(nonNegative(asset.priceBRL)),
-            });
-          } else {
-            // Ativos Nacionais B3: Cotas inteiras (>= 1)
-            const quantity = Math.floor(amountToAllocate / asset.priceBRL);
-            if (quantity < 1) continue;
-
-            const allocatedBRL = round2(quantity * asset.priceBRL);
-            if (!(allocatedBRL > 0)) continue;
-
-            sectorRemainingBudget = round2(sectorRemainingBudget - allocatedBRL);
-            classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
-            actualSectorAllocated = round2(actualSectorAllocated + allocatedBRL);
-            actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
-
-            routes.push({
-              assetId: asset.id,
-              ticker: asset.ticker,
-              assetClass: asset.assetClass,
-              sector: sectorMacro.sectorName,
-              targetValueBRL: eff.targetValueBRL,
-              currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
-              gapBRL: eff.gapBRL,
-              allocatedBRL,
-              quantity,
-              priceBRL: round2(nonNegative(asset.priceBRL)),
-            });
-          }
-        }
+        actualClassAllocated = round2(actualClassAllocated + allocated);
+        classRemainingBudget = round2(classRemainingBudget - allocated);
 
         sectorSummaries.push({
           className: classMacro.className,
@@ -659,81 +733,37 @@ export function simulateAporte(opts: {
           currentValueBRL: sectorMacro.currentValueBRL,
           gapBRL: sectorMacro.gapBRL,
           budgetAllocatedBRL: sectorBudget,
-          actualAllocatedBRL: actualSectorAllocated,
+          actualAllocatedBRL: allocated,
         });
       }
-    } else {
-      // Sem metas setoriais: distribui diretamente nos membros da classe
-      const classMembers = (assetsByClass.get(classMacro.className) ?? [])
-        .filter((asset) => {
-          const eff = effectiveAssetMap.get(asset.id);
-          return eff !== undefined && eff.gapBRL > 0 && asset.priceBRL > 0;
-        })
-        .sort((a, b) => {
-          const gapA = effectiveAssetMap.get(a.id)?.gapBRL ?? 0;
-          const gapB = effectiveAssetMap.get(b.id)?.gapBRL ?? 0;
-          return gapB - gapA;
-        });
 
-      for (const asset of classMembers) {
-        if (!(classRemainingBudget > 0)) break;
-        const eff = effectiveAssetMap.get(asset.id);
-        if (!eff) continue;
+      // Pass 2 nos setores: se sobrou orçamento da classe, oferta aos setores que ainda possuem gap
+      if (classRemainingBudget > 0) {
+        for (const sectorMacro of sectorMacros) {
+          if (!(classRemainingBudget > 0)) break;
+          const sectorMembers = assetsByClassAndSector.get(classMacro.className)?.get(sectorMacro.sectorName) ?? [];
+          const allocated = allocateBudgetToMembers(sectorMembers, classRemainingBudget);
 
-        const precision = resolveAssetPrecision(asset);
-        const amountToAllocate = Math.min(eff.gapBRL, classRemainingBudget);
-        const sector = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, asset.assetClass);
+          if (allocated > 0) {
+            actualClassAllocated = round2(actualClassAllocated + allocated);
+            classRemainingBudget = round2(classRemainingBudget - allocated);
 
-        if (precision > 0) {
-          const multiplier = Math.pow(10, precision);
-          const quantity = Math.floor((amountToAllocate / asset.priceBRL) * multiplier) / multiplier;
-          if (quantity <= 0) continue;
-
-          const allocatedBRL = round2(quantity * asset.priceBRL);
-          if (!(allocatedBRL > 0)) continue;
-
-          classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
-          actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
-
-          routes.push({
-            assetId: asset.id,
-            ticker: asset.ticker,
-            assetClass: asset.assetClass,
-            sector,
-            targetValueBRL: eff.targetValueBRL,
-            currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
-            gapBRL: eff.gapBRL,
-            allocatedBRL,
-            quantity,
-            priceBRL: round2(nonNegative(asset.priceBRL)),
-          });
-        } else {
-          const quantity = Math.floor(amountToAllocate / asset.priceBRL);
-          if (quantity < 1) continue;
-
-          const allocatedBRL = round2(quantity * asset.priceBRL);
-          if (!(allocatedBRL > 0)) continue;
-
-          classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
-          actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
-
-          routes.push({
-            assetId: asset.id,
-            ticker: asset.ticker,
-            assetClass: asset.assetClass,
-            sector,
-            targetValueBRL: eff.targetValueBRL,
-            currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
-            gapBRL: eff.gapBRL,
-            allocatedBRL,
-            quantity,
-            priceBRL: round2(nonNegative(asset.priceBRL)),
-          });
+            const sSummary = sectorSummaries.find((s) => s.className === classMacro.className && s.sectorName === sectorMacro.sectorName);
+            if (sSummary) {
+              sSummary.actualAllocatedBRL = round2(sSummary.actualAllocatedBRL + allocated);
+            }
+          }
         }
       }
+    } else {
+      // Sem metas setoriais: distribui diretamente e proporcionalmente nos membros da classe
+      const classMembers = assetsByClass.get(classMacro.className) ?? [];
+      const allocated = allocateBudgetToMembers(classMembers, classBudget);
+
+      actualClassAllocated = round2(actualClassAllocated + allocated);
     }
 
-    poolAvailable = round2(poolAvailable - actualClassAllocated);
+    globalRemainingPool = round2(globalRemainingPool - actualClassAllocated);
 
     classSummaries.push({
       className: classMacro.className,
@@ -744,6 +774,97 @@ export function simulateAporte(opts: {
       budgetAllocatedBRL: classBudget,
       actualAllocatedBRL: actualClassAllocated,
     });
+  }
+
+  // Pass 2 Global: se sobrou pool após todas as classes (por arredondamentos B3), oferta às classes com gap
+  if (globalRemainingPool > 0) {
+    for (const classMacro of sortedClasses) {
+      if (!(globalRemainingPool > 0)) break;
+      const classMembers = assetsByClass.get(classMacro.className) ?? [];
+      const allocated = allocateBudgetToMembers(classMembers, globalRemainingPool);
+
+      if (allocated > 0) {
+        globalRemainingPool = round2(globalRemainingPool - allocated);
+
+        const cSummary = classSummaries.find((cs) => cs.className === classMacro.className);
+        if (cSummary) {
+          cSummary.actualAllocatedBRL = round2(cSummary.actualAllocatedBRL + allocated);
+        }
+      }
+    }
+  }
+
+  // Consolidação final das rotas ordenadas por prioridade macro de classe e déficit
+  const routes: AporteRoute[] = [];
+
+  for (const classMacro of sortedClasses) {
+    const sectorMacros = (sectorMacrosByClass.get(classMacro.className) ?? [])
+      .sort((a, b) => {
+        if (b.deficitRel !== a.deficitRel) return b.deficitRel - a.deficitRel;
+        return b.gapBRL - a.gapBRL;
+      });
+
+    const hasSectorTargets = (sectorTargetMap.get(classMacro.className)?.size ?? 0) > 0;
+
+    if (hasSectorTargets && sectorMacros.length > 0) {
+      for (const sectorMacro of sectorMacros) {
+        const sectorMembers = (assetsByClassAndSector.get(classMacro.className)?.get(sectorMacro.sectorName) ?? [])
+          .sort((a, b) => {
+            const gapA = effectiveAssetMap.get(a.id)?.gapBRL ?? 0;
+            const gapB = effectiveAssetMap.get(b.id)?.gapBRL ?? 0;
+            return gapB - gapA;
+          });
+
+        for (const asset of sectorMembers) {
+          const res = allocatedMap.get(asset.id);
+          if (!res || !(res.allocatedBRL > 0) || !(res.quantity > 0)) continue;
+
+          const eff = effectiveAssetMap.get(asset.id)!;
+          const sector = asset.sector?.trim() || sectorMacro.sectorName || inferSectorFromTicker(asset.ticker, asset.assetClass);
+
+          routes.push({
+            assetId: asset.id,
+            ticker: asset.ticker,
+            assetClass: asset.assetClass,
+            sector,
+            targetValueBRL: eff.targetValueBRL,
+            currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
+            gapBRL: eff.gapBRL,
+            allocatedBRL: res.allocatedBRL,
+            quantity: res.quantity,
+            priceBRL: round2(nonNegative(asset.priceBRL)),
+          });
+        }
+      }
+    } else {
+      const classMembers = (assetsByClass.get(classMacro.className) ?? [])
+        .sort((a, b) => {
+          const gapA = effectiveAssetMap.get(a.id)?.gapBRL ?? 0;
+          const gapB = effectiveAssetMap.get(b.id)?.gapBRL ?? 0;
+          return gapB - gapA;
+        });
+
+      for (const asset of classMembers) {
+        const res = allocatedMap.get(asset.id);
+        if (!res || !(res.allocatedBRL > 0) || !(res.quantity > 0)) continue;
+
+        const eff = effectiveAssetMap.get(asset.id)!;
+        const sector = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, asset.assetClass);
+
+        routes.push({
+          assetId: asset.id,
+          ticker: asset.ticker,
+          assetClass: asset.assetClass,
+          sector,
+          targetValueBRL: eff.targetValueBRL,
+          currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
+          gapBRL: eff.gapBRL,
+          allocatedBRL: res.allocatedBRL,
+          quantity: res.quantity,
+          priceBRL: round2(nonNegative(asset.priceBRL)),
+        });
+      }
+    }
   }
 
   // Preenche sumário de classes sem aporte para completude dos gráficos

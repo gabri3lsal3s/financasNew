@@ -3,6 +3,7 @@ import { Alert, Button, ConfirmDialog, Modal, Stepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
+import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/dividends";
 import {
   useAllocationTargets,
@@ -57,6 +58,7 @@ function InvestmentWizardContent({
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
+  const sectorTargetsQuery = useGroupTargets("sector");
   const createAsset = useCreatePortfolioAsset();
   const recordOrder = useRecordOrder();
   const saveTargets = useSaveAllocationTargets();
@@ -65,6 +67,22 @@ function InvestmentWizardContent({
   const existingAssets = assetsQuery.data ?? [];
   const targets = targetsQuery.data ?? [];
   const classTargets = classTargetsQuery.data ?? [];
+  const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
+
+  const sectorTargets = (sectorTargetsQuery.data ?? []).flatMap((st) => {
+    const matchedClasses = classes.filter((cls) => {
+      const inAssets = position.rows.some((r) => r.assetClass === cls && (r.sector === st.name || inferSectorFromTicker(r.ticker, cls) === st.name));
+      return inAssets;
+    });
+    if (matchedClasses.length === 0) {
+      return [{ className: "Ações", sectorName: st.name, target_percentage: st.target_percentage }];
+    }
+    return matchedClasses.map((className) => ({
+      className,
+      sectorName: st.name,
+      target_percentage: st.target_percentage,
+    }));
+  });
   const cashAsset = existingAssets.find((a) => isCashAssetClass(a.asset_class)) ?? null;
 
   const [state, setState] = useState<InvestmentWizardState>(() => {
@@ -386,6 +404,7 @@ function InvestmentWizardContent({
               assetRows={position.rows}
               targets={targets}
               classTargets={classTargets}
+              sectorTargets={sectorTargets}
               totalPortfolioBRL={position.totalBRL}
               onSelectResult={(res) => {
                 triggerSensory("selection");

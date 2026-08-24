@@ -197,5 +197,42 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
       expect(buildAporteSuggestions(mockAssets, mockRows, [], 10000)).toEqual([]);
       expect(buildAporteSuggestions(mockAssets, mockRows, mockTargets, 0)).toEqual([]);
     });
+
+    it("ignora ativos com meta individual zerada (target_percentage = 0)", () => {
+      const targetsWithZero = [
+        { asset_id: "a-1", target_percentage: 0 },
+        { asset_id: "a-2", target_percentage: 20 },
+      ];
+      const suggestions = buildAporteSuggestions(mockAssets, mockRows, targetsWithZero, 10000);
+      expect(suggestions.map((s) => s.ticker)).toEqual(["MXRF11"]);
+      expect(suggestions.find((s) => s.ticker === "PETR4")).toBeUndefined();
+    });
+
+    it("suporta metas setoriais e ignora setores com meta 0%", () => {
+      const sectorAssets: PortfolioAsset[] = [
+        { id: "a-1", user_id: "u-1", ticker: "ITUB4", asset_class: "Ações", sector: "Financeiro / Bancos", currency: "BRL", quantity: 10, average_price: 10 },
+        { id: "a-2", user_id: "u-1", ticker: "TAEE11", asset_class: "Ações", sector: "Energia Elétrica", currency: "BRL", quantity: 10, average_price: 10 },
+      ];
+      const rows = [
+        { assetId: "a-1", ticker: "ITUB4", valueBRL: 100, pct: 10, assetClass: "Ações", sector: "Financeiro / Bancos" },
+        { assetId: "a-2", ticker: "TAEE11", valueBRL: 100, pct: 10, assetClass: "Ações", sector: "Energia Elétrica" },
+      ];
+      const classTargets = [{ name: "Ações", target_percentage: 100 }];
+      const sectorTargets = [
+        { className: "Ações", sectorName: "Financeiro / Bancos", target_percentage: 0 },
+        { className: "Ações", sectorName: "Energia Elétrica", target_percentage: 100 },
+      ];
+
+      const suggestions = buildAporteSuggestions(sectorAssets, rows, [], 1000, 3, classTargets, sectorTargets);
+      expect(suggestions.map((s) => s.ticker)).toEqual(["TAEE11"]);
+      expect(suggestions.find((s) => s.ticker === "ITUB4")).toBeUndefined();
+    });
+
+    it("zera ativos da carteira não incluídos na lista quando existem metas individuais salvas", () => {
+      const onlyMxrfTarget = [{ asset_id: "a-2", target_percentage: 20 }];
+      const suggestions = buildAporteSuggestions(mockAssets, mockRows, onlyMxrfTarget, 10000);
+      expect(suggestions.map((s) => s.ticker)).toEqual(["MXRF11"]);
+      expect(suggestions.find((s) => s.ticker === "PETR4")).toBeUndefined();
+    });
   });
 });

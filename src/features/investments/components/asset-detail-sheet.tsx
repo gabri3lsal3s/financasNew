@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
+import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { calculateYieldOnCostTotal } from "@/domain/portfolio/snowball";
 import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
 import {
@@ -115,13 +116,15 @@ export function AssetDetailSheet({
     }
   };
 
+  const resolvedSector = currentAsset.sector?.trim() || (currentAsset.asset_class ? inferSectorFromTicker(currentAsset.ticker, currentAsset.asset_class) : null);
+
   return (
     <>
       <Modal
         open={open}
         onOpenChange={onOpenChange}
         title={currentAsset.ticker}
-        description={currentAsset.asset_class ?? "Ativo em Carteira"}
+        description={resolvedSector ? `${currentAsset.asset_class ?? "Ativo"} · ${resolvedSector}` : (currentAsset.asset_class ?? "Ativo em Carteira")}
         size="xl"
       >
         <div className="flex flex-col gap-5 pt-1">
@@ -131,6 +134,11 @@ export function AssetDetailSheet({
               <Badge variant="muted" className="text-xs">
                 {currentAsset.asset_class ?? "Sem classe"}
               </Badge>
+              {resolvedSector ? (
+                <Badge variant="muted" className="text-xs font-normal">
+                  {resolvedSector}
+                </Badge>
+              ) : null}
               <Badge variant="muted" className="text-xs">
                 {currentAsset.currency}
               </Badge>

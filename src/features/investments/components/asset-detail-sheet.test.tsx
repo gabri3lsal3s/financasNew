@@ -100,4 +100,10 @@ describe("AssetDetailSheet (Fase 41)", () => {
     fireEvent.click(aporteBtn);
     expect(onAction).toHaveBeenCalledWith("buy", mockAsset);
   });
+
+  it("renderiza a badge de setor e a moeda no cabeçalho sem duplicar a classe", () => {
+    render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} />);
+    expect(screen.getByText("Petróleo, Gás e Combustíveis")).toBeInTheDocument();
+    expect(screen.getByText("BRL")).toBeInTheDocument();
+  });
 });
