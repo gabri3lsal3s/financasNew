@@ -547,7 +547,30 @@
      - Remoção da trava de tamanho mínimo em `tickers-catalog.ts` ($q.length \ge 1$) e adição de `"O"`, `"T"`, `"V"`, `"C"`, `"F"` no `CURATED_TICKERS_CATALOG`.
      - Atualização das regexes em `import-parser.ts`, `valuation.ts` e `quotes.ts` para `/^[A-Za-z]{1,5}$/`.
      - **Sistema de Ranking de Relevância em `searchTickers`:** Match exato de ticker pontua com maior prioridade ($score = 0$), garantindo que buscas curtas como "O" posicionem o ativo "O" no topo absoluto da lista.
-  4. **Qualidade & Testes:** Suíte completa com 218 arquivos / 1.639 testes passando (100% verde), com typecheck e ESLint estritos.
+## F49 — Saldo em Caixa Real (Regime de Caixa Estrito), Checkpoints de Âncora & Previsão de Liquidez (2026-08-24)
+
+- **Problema:**
+  1. O usuário não sabia quanto possuía em caixa para gastar porque o app apurava apenas o resultado de competência mensal (DRE operacional) que resetava a cada virada de mês;
+  2. O saldo calculado nunca batia com o saldo real do extrato bancário;
+  3. Compras no cartão de crédito debitavam o caixa prematuramente no dia da compra, antes do pagamento real da fatura;
+  4. Lançamentos com datas futuras distorciam o saldo disponível de hoje;
+  5. Não havia mecanismo de conciliação e aferição rápida com o extrato bancário sem criar despesas fictícias de "ajuste" que poluíam categorias e relatórios.
+- **Solução:**
+  1. **Domínio Puro de Caixa (`src/domain/cash/cash-ledger.ts`):**
+     - Motor puro `calculateRealCashBalance`: computa o saldo acumulado histórico considerando receitas, despesas em débito/PIX/dinheiro, pagamentos/estornos de fatura de cartão de crédito, dívidas efetivamente liquidadas (`paid_at`) e aportes em investimentos;
+     - Desacoplamento estrito de compras de cartão de crédito do caixa diário (apenas o evento `card_payments` na data da liquidação debita da conta corrente);
+     - Filtragem temporal rigorosa: eventos $> \text{hoje}$ são desconsiderados do saldo disponível em conta de hoje;
+     - Motor `calculateSafeToSpend`: projeta o Saldo Livre Real deduzindo faturas em aberto e compromissos/dívidas pendentes do ciclo.
+  2. **Banco de Dados & Repositório (`supabase/migrations/20260101000035_cash_checkpoints.sql` & `src/data/repositories/cash-checkpoints.ts`):**
+     - Tabela `cash_checkpoints` com RLS por `auth.uid()`, isolamento temporal e índice de performance;
+     - Repositório completo com queries e mutations (`useCashCheckpoints`, `useLatestCashCheckpoint`, `useRealCashBalance`, `useCreateCashCheckpoint`, `useDeleteCashCheckpoint`);
+     - Inclusão de `cash_checkpoints` na exportação e restauração de backup integral JSON.
+  3. **Interface & Visão Geral (`RealCashHeroCard`, `CashCheckpointDialog`, `OverviewPage`):**
+     - `RealCashHeroCard` no topo da Visão Geral exibindo o Saldo Disponível em Conta consolidado, badge de aferição/fluxo e projeção Safe-to-Spend;
+     - Ação "Calibrar com o banco" abrindo `CashCheckpointDialog` com `MoneyInput`, `DatePicker` e anotações para ancorar o saldo em 1 clique;
+     - Renomeação do 4º KPI da Visão Geral para "Resultado do mês" para diferenciar claramente o resultado de competência mensal do saldo bancário acumulado.
+  4. **Qualidade & Testes:**
+     - Testes unitários puros de domínio, testes de repositório, testes de componentes e auditoria de acessibilidade (axe) 100% aprovados sem violações.
 
 ## Notas finais
 

@@ -111,6 +111,34 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useRealCashBalance: () => ({
+    cashBalance: {
+      currentBalanceCents: 450000,
+      latestCheckpoint: null,
+      checkpointBalanceCents: 0,
+      inflowSinceCheckpointCents: 500000,
+      outflowSinceCheckpointCents: 50000,
+      eventsSinceCheckpoint: [],
+    },
+    safeToSpend: {
+      realCashBalanceCents: 450000,
+      openInvoicesCents: 60000,
+      payablePendingCents: 50000,
+      receivablePendingCents: 100000,
+      essentialBudgetsRemainingCents: 0,
+      committedObligationsCents: 110000,
+      safeToSpendCents: 340000,
+      safeToSpendWithBudgetsCents: 340000,
+      safeToSpendWithReceivablesCents: 440000,
+    },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useCreateCashCheckpoint: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
+  }),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {
@@ -119,14 +147,15 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     portfolioContributionsMock = [];
   });
 
-  it("exibe os KPIs fundamentais com peso de relatório", () => {
+  it("exibe os KPIs fundamentais com peso de relatório e o Saldo Disponível em Conta", () => {
     render(<OverviewPage />);
     // "Receitas"/"Despesas"/"Investimentos" aparecem nos KPIs.
     expect(screen.getAllByText("Receitas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Despesas").length).toBeGreaterThan(0);
     expect(screen.getByText("Investimentos")).toBeInTheDocument();
-    expect(screen.getByText("Saldo do mês")).toBeInTheDocument();
-    // Receitas 5.000 · Despesas 3.100 · Saldo 1.900 (3.100 também no centro do donut).
+    expect(screen.getByText("Resultado do mês")).toBeInTheDocument();
+    expect(screen.getByText("Saldo Disponível em Conta")).toBeInTheDocument();
+    // Receitas 5.000 · Despesas 3.100 · Resultado 1.900 (3.100 também no centro do donut).
     expect(screen.getByText("R$ 5.000,00")).toBeInTheDocument();
     expect(screen.getAllByText("R$ 3.100,00").length).toBeGreaterThan(0);
     expect(screen.getByText("R$ 1.900,00")).toBeInTheDocument();

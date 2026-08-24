@@ -142,4 +142,18 @@ export {
   useAdminRevokeInvite,
 } from "./mutations/use-admin-mutations";
 
+export {
+  useCashCheckpoints,
+  useLatestCashCheckpoint,
+  cashCheckpointsKey,
+} from "./queries/use-cash-checkpoints";
+export {
+  useRealCashBalance,
+  type UseRealCashBalanceResult,
+} from "./queries/use-real-cash-balance";
+export {
+  useCreateCashCheckpoint,
+  useDeleteCashCheckpoint,
+} from "./mutations/use-cash-checkpoint-mutations";
+
 

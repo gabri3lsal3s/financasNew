@@ -264,6 +264,34 @@ vi.mock("@/state", () => ({
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutate: vi.fn(), isPending: false }),
   useSetManualPrice: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
+  useRealCashBalance: () => ({
+    cashBalance: {
+      currentBalanceCents: 350000,
+      latestCheckpoint: null,
+      checkpointBalanceCents: 0,
+      inflowSinceCheckpointCents: 500000,
+      outflowSinceCheckpointCents: 150000,
+      eventsSinceCheckpoint: [],
+    },
+    safeToSpend: {
+      realCashBalanceCents: 350000,
+      openInvoicesCents: 60000,
+      payablePendingCents: 20000,
+      receivablePendingCents: 50000,
+      essentialBudgetsRemainingCents: 0,
+      committedObligationsCents: 80000,
+      safeToSpendCents: 270000,
+      safeToSpendWithBudgetsCents: 270000,
+      safeToSpendWithReceivablesCents: 320000,
+    },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useCreateCashCheckpoint: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
+  }),
 }));
 
 

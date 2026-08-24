@@ -44,6 +44,7 @@ export const BACKUP_TABLE_KEYS = [
   "class_targets",
   "sector_targets",
   "asset_prices",
+  "cash_checkpoints",
   "user_preferences",
 ] as const;
 
@@ -70,6 +71,7 @@ export interface BackupData {
   class_targets: BackupRow[];
   sector_targets: BackupRow[];
   asset_prices: BackupRow[];
+  cash_checkpoints: BackupRow[];
   user_preferences: BackupRow[];
 }
 

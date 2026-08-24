@@ -11,6 +11,7 @@ import {
   MonthPicker,
   OnboardingCard,
   PaceAlertBanner,
+  RealCashHeroCard,
 } from "@/components/modules";
 import { isOnboardingComplete } from "@/domain/onboarding";
 import {
@@ -48,6 +49,7 @@ import {
   useIncomesByRange,
   useOnboardingCounts,
   usePortfolioContributions,
+  useRealCashBalance,
 } from "@/state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { cn } from "@/lib/utils";
@@ -84,6 +86,7 @@ export function OverviewPage() {
   const cardPaymentsQuery = useAllCardPayments();
   const onboardingQuery = useOnboardingCounts();
   const contributionsQuery = usePortfolioContributions();
+  const realCashData = useRealCashBalance(today);
 
   const loading =
     incomesQuery.isLoading ||
@@ -267,6 +270,10 @@ export function OverviewPage() {
         />
       ) : null}
 
+      {!error && (
+        <RealCashHeroCard realCashData={realCashData} />
+      )}
+
       {loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -327,7 +334,7 @@ export function OverviewPage() {
                 onClick={() => navigate("/carteira")}
               />
               <KpiCard
-                label="Saldo do mês"
+                label="Resultado do mês"
                 cents={totals.operatingBalanceCents}
                 tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
                 icon={<DollarSign className="size-4" aria-hidden="true" />}

@@ -24,6 +24,7 @@ function emptyData(): BackupData {
     class_targets: [],
     sector_targets: [],
     asset_prices: [],
+    cash_checkpoints: [],
     user_preferences: [],
   };
 }

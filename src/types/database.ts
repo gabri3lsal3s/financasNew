@@ -7,6 +7,7 @@ import type {
   Budget,
   CardCompetenceOverride,
   CardPayment,
+  CashCheckpoint,
   Category,
   CreditCard,
   DbInsert,
@@ -74,6 +75,7 @@ export interface Database {
       class_targets: Table<GroupTarget>;
       sector_targets: Table<GroupTarget>;
       asset_prices: Table<AssetPrice>;
+      cash_checkpoints: Table<CashCheckpoint>;
       audit_events: Table<AuditEvent>;
     };
 

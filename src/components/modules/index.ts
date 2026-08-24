@@ -68,4 +68,8 @@ export { NotificationsPopover } from "./notifications-popover";
 export type { NotificationsPopoverProps } from "./notifications-popover";
 export { PaceAlertBanner } from "./pace-alert-banner";
 export type { PaceAlertBannerProps } from "./pace-alert-banner";
+export { RealCashHeroCard } from "./real-cash-hero-card";
+export type { RealCashHeroCardProps } from "./real-cash-hero-card";
+export { CashCheckpointDialog } from "./cash-checkpoint-dialog";
+export type { CashCheckpointDialogProps } from "./cash-checkpoint-dialog";
 export * from "./reports";

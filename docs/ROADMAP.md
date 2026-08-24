@@ -1499,9 +1499,10 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | ✅ Concluída (2026-08-24) — índices compostos/cobridores `(user_id, date)` com `INCLUDE` (expenses, incomes, debts, portfolio_assets, recurrences) e index-only scans |
 | 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | ✅ Concluída (2026-08-24) — motor de domínio MFA/TOTP (AAL1/AAL2), componente Turnstile anti-bot em formulários públicos e aba Segurança & 2FA |
 | 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | ✅ Concluída (2026-08-24) — rotinas de expurgo/retenção de logs de auditoria (cleanup_old_audit_events / admin_trigger_audit_retention) e índices temporais |
-| 35 | **F49** — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve | B / Proatividade & Investimentos | F41/F44 | 🟡 Planejada — ponte automática fluxo de caixa → calculadora de aporte, materialização mensal autônoma de snapshots e gatilhos de reinvestimento |
-| 36 | **F50** — Projeção de Caixa & Liquidez em Tempo Real: Saldo Livre Real (Safe-to-Spend) & Radar de Descasamento | A / Fluxo de Caixa & Alertas | F3/F33 | 🟡 Planejada — métrica Safe-to-Spend na Home, radar preditivo de descasamento temporal receitas vs. faturas/dívidas |
-| 37 | **F51** — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE | C / Inteligência & Estratégia | F24/F39 | 🟡 Planejada — alertas de desvio de alocação por limiar, estimativa de conclusão da reserva de emergência e conversor de economia em tempo de liberdade FIRE |
+| 35 | **F49** — Saldo em Caixa Real (Regime de Caixa Estrito), Checkpoints de Âncora & Previsão de Liquidez | A / Caixa & Liquidez Real | F2/F3/F33 | ✅ Concluída (2026-08-24) — saldo cumulativo real em conta bancária, checkpoints de calibração rápida ("Bater com o banco"), cálculo estrito de regime de caixa e métrica Safe-to-Spend |
+| 36 | **F50** — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve | B / Proatividade & Investimentos | F41/F44/F49 | 🟡 Planejada — ponte automática fluxo de caixa → calculadora de aporte, materialização mensal autônoma de snapshots e gatilhos de reinvestimento |
+| 37 | **F51** — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário | A / Fluxo de Caixa & Alertas | F3/F49 | 🟡 Planejada — alerta preditivo de descasamento temporal receitas vs. faturas/dívidas e gráfico de runway diário |
+| 38 | **F52** — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE | C / Inteligência & Estratégia | F24/F39 | 🟡 Planejada — alertas de desvio de alocação por limiar, estimativa de conclusão da reserva de emergência e conversor de economia em tempo de liberdade FIRE |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -2334,7 +2335,59 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 49 — Proatividade Patrimonial: Conexão "Sobra de Caixa → Aporte Inteligente", Auto-Snapshots & Gatilhos da Bola de Neve
+### Fase 49 — Saldo em Caixa Real (Regime de Caixa Estrito), Checkpoints de Âncora & Previsão de Liquidez
+
+> **Status:** ✅ Concluída (2026-08-24) — resolução definitiva da desconexão entre o saldo bancário real e o app: implementação do modelo de **Saldo em Caixa Cumulativo (Balanço Patrimonial / Contas)** coexistindo harmonicamente com o **Resultado do Mês (DRE / Competência)**. Inclui cálculo em Regime de Caixa Estrito (desacoplado de compras de cartão de crédito), sistema de Checkpoints de Saldo ("Bater com o Banco" em 1 clique sem poluir relatórios de categorias), card mestre de liquidez na Home e indicador Safe-to-Spend.
+
+**Objetivo:** fazer com que o saldo exibido no app reflita com exatidão centesimal a soma real do dinheiro disponível nas contas bancárias do usuário hoje, sem zerar no primeiro dia do mês, sem sofrer distorções por compras a prazo no cartão de crédito e com calibração rápida e indolor quando houver pequenas divergências:
+
+1. **Separação Arquitetural Canônica (Caixa Real vs. Resultado do Mês):**
+   - **Saldo em Caixa Real (Bancos / Hoje):** Grandezas de balanço patrimonial acumuladas no tempo. Responde: *"Quanto dinheiro líquido eu tenho na conta hoje?"*;
+   - **Resultado do Mês (DRE):** Grandezas analíticas de competência do mês corrente (`incomeCents - expenseCents`). O 4º KPI da grade da Home é denominado com precisão como **"Resultado do mês"**, mantendo os sparklines de 6 meses e sem conflito de significado com o saldo bancário de topo;
+2. **Motor Matemático Puro de Regime de Caixa Estrito (`src/domain/cash/`):**
+   - **O que entra:** Receitas realizadas com $\text{data} \le \text{hoje}$;
+   - **O que sai:** Despesas à vista (PIX, dinheiro, débito, boleto pago) com $\text{data} \le \text{hoje}$ (`payment_method !== 'credit'`), Pagamentos efetivos de faturas de cartão (`card_payments`), Dívidas marcadas como quitadas (`paid_at` preenchido) e Aportes de investimentos (`portfolio_contributions`);
+   - **O que NÃO afeta o saldo diário:** Compras parceladas ou à vista no cartão de crédito (estas entram na fatura e só impactam o caixa no momento em que o pagamento da fatura é registrado); Lançamentos com $\text{data} > \text{hoje}$ (pré-datados);
+3. **Mecanismo de Checkpoint de Âncora ("Bater com o Banco"):**
+   - Nova tabela `cash_checkpoints` (`id`, `user_id`, `date`, `balance_cents`, `notes`, `created_at`);
+   - Ao ajustar o saldo (ex: para R$ 5.400,00 no dia de hoje), o sistema grava um novo checkpoint âncora;
+   - O saldo em caixa passa a ser calculado estritamente como:
+     $$\text{Saldo Real Hoje} = \text{Último Checkpoint} + \sum_{T_{\text{checkpoint}} < \text{data} \le \text{hoje}} (\text{Entradas} - \text{Saídas Realizadas})$$
+   - **Zero poluição contábil:** Não cria despesas fictícias nem altera relatórios ou categorias;
+4. **Card Mestre de Liquidez & Safe-to-Spend na Home (`OverviewPage`):**
+   - Card hero elegante no topo da Visão Geral exibindo o Saldo Total em Conta com `<MoneyText size="xl">`;
+   - Botão discreto *"Calibrar com o banco"* que abre o modal `CashCheckpointDialog` com `MoneyInput` e `DatePicker`;
+   - Linha de fôlego financeiro: `(-) Faturas e contas pendentes do mês: R$ X,XX` $\rightarrow$ `(=) Saldo Livre Real: R$ Y,YY`;
+5. **Integração no Balanço 360° e Exportação:**
+   - O Ativo Circulante / Liquidez do Balanço Patrimonial (`domain/reports/consolidated-balance.ts` e exportador Excel) passa a consumir o Saldo em Caixa Real em vez de um saldo de fluxo isolado;
+   - Backup e restauração JSON incluem a tabela `cash_checkpoints` com validação de integridade referencial.
+
+**Organização da Implementação em 4 Etapas:**
+1. **Etapa 49.1 — Domínio Puro de Caixa (`src/domain/cash/`):**
+   - `cash-ledger.ts` com `calculateRealCashBalance`, `calculateSafeToSpend` e `resolveCashFlowEvents` (+ suíte exaustiva de testes com compras no crédito, pagamentos de fatura, PIX, aportes e datas futuras).
+2. **Etapa 49.2 — Banco de Dados & Repositório (Supabase/PostgreSQL):**
+   - Migration `0033_cash_checkpoints.sql` com RLS `((select auth.uid()) = user_id and public.is_current_user_active())` e índice cobridor `(user_id, date desc, created_at desc)`.
+   - Repositório `src/data/repositories/cash-checkpoints.ts` e hook `useRealCashBalance`.
+3. **Etapa 49.3 — Componentes de UI & Diálogo de Ajuste:**
+   - Componente `RealCashHeroCard` em `src/components/modules/`.
+   - Diálogo `CashCheckpointDialog` com `MoneyInput`, `DatePicker` e feedback háptico.
+   - Ajuste de rótulo do 4º KPI da Home para "Resultado do mês".
+4. **Etapa 49.4 — Testes Automatizados, Hardening & Documentação:**
+   - Testes de integração de ponta a ponta para fluxo de caixa contínuo.
+   - Validação em Desktop e Mobile nos 3 temas.
+   - Suíte 100% verde com typecheck e lint estritos.
+
+**✅ DoD (critérios de aceite):**
+- Saldo em conta calculado com exatidão matemática sem zerar na virada do mês.
+- Compras no cartão de crédito NÃO reduzem o saldo no dia da compra; apenas o pagamento da fatura reduz o caixa.
+- Lançamentos com data futura NÃO inflam o saldo disponível de hoje.
+- Diálogo "Bater com o banco" permite calibrar o saldo em 2 cliques sem poluir categorias ou DRE.
+- Card mestre de liquidez perfeitamente integrado à Home com suporte a Modo Privacidade e temas.
+- Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
+
+---
+
+### Fase 50 — Proatividade Patrimonial: Conexão "Sobra de Caixa → Aporte Inteligente", Auto-Snapshots & Gatilhos da Bola de Neve
 
 > **Status:** 🟡 Planejada — integração proativa entre o fluxo de caixa mensal e a gestão de investimentos: cálculo de capacidade real de aporte no fechamento do mês, ponte em 1-clique para a calculadora de rebalanceamento, materialização autônoma de snapshots patrimoniais no 1º dia de cada mês (Marco Zero contínuo) e gatilhos de reinvestimento para ativos que atingiram o limiar de 1 nova cota em proventos.
 
@@ -2352,16 +2405,16 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
    - Fast-track no `InvestmentWizard` abrindo diretamente no Step 2 pré-configurado para a compra do ativo com o valor do provento.
 
 **Organização da Implementação em 4 Etapas:**
-1. **Etapa 49.1 — Domínio Puro & Funções de Proatividade:**
+1. **Etapa 50.1 — Domínio Puro & Funções de Proatividade:**
    - Criação de `src/domain/overview/surplus.ts` (+ testes) para resolução da capacidade de aporte.
    - Atualização de `src/domain/portfolio/snowball.ts` (+ testes) com `detectReinvestmentOpportunities`.
-2. **Etapa 49.2 — Camada de Estado & Auto-Snapshot:**
+2. **Etapa 50.2 — Camada de Estado & Auto-Snapshot:**
    - Criação do hook `useAutoPortfolioSnapshot` sincronizado com o ciclo de vida e cache TanStack Query.
-3. **Etapa 49.3 — Componentes Modulares de UI & Deep Links:**
+3. **Etapa 50.3 — Componentes Modulares de UI & Deep Links:**
    - Módulo `SurplusAporteBanner` para Home e Investimentos com suporte aos 3 temas e tokens do Design System.
    - Módulo `SnowballActionCard` em `ProventosTab`.
    - Suporte a query param `?valor=` em `AporteTab`.
-4. **Etapa 49.4 — Testes Automatizados & Validação:**
+4. **Etapa 50.4 — Testes Automatizados & Validação:**
    - Testes unitários para cálculo de sobra e gatilhos de bola de neve.
    - Suíte 100% verde com typecheck e lint estritos.
 
@@ -2375,41 +2428,36 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 50 — Projeção de Caixa & Liquidez em Tempo Real: Saldo Livre Real (Safe-to-Spend) & Radar de Descasamento
+### Fase 51 — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário
 
-> **Status:** 🟡 Planejada — enriquecimento da inteligência temporal de fluxo de caixa com a métrica diária "Saldo Livre Real" (Safe-to-Spend) e radar preditivo de descasamento entre vencimentos de faturas/dívidas e entradas habituais de renda.
+> **Status:** 🟡 Planejada — enriquecimento da inteligência temporal de fluxo de caixa com alerta preditivo de descasamento entre vencimentos de faturas/dívidas e datas habituais de recebimento de renda, acompanhado de gráfico de projeção de liquidez diária.
 
-**Objetivo:** proporcionar segurança financeira no dia a dia do usuário, eliminando a ilusão de caixa disponível e prevenindo inadimplência ou uso emergencial de cheque especial:
-1. **Métrica "Saldo Livre Real" (Safe-to-Spend):**
-   - Motor puro de projeção em `src/domain/projection/`: cálculo do montante verdadeiramente livre para gastos discricionários até o fechamento do ciclo:
-     $$\text{Saldo Livre} = \text{Saldo em Caixa Atual} - \text{Faturas de Cartão Abertas a Vencer} - \text{Dívidas/Boletos Pendentes} - \text{Orçamentos Essenciais Restantes}$$
-   - Widget dedicado ou destaque no cabeçalho da `OverviewPage` com indicador de margem diária recomendada;
-2. **Radar Preditivo de Descasamento Temporal (Cash-Gap Warning):**
-   - Motor de análise cronológica: cruzamento entre o calendário de saídas contratadas (vencimentos de faturas `due_date` e parcelas de dívidas/empréstimos) e a projeção de receitas habituais (derivadas da mediana de datas históricas);
+**Objetivo:** prevenir inadimplência, juros de mora e uso emergencial de cheque especial através de avisos prévios de saldo insuficiente:
+1. **Radar Preditivo de Descasamento Temporal (Cash-Gap Warning):**
+   - Motor de análise cronológica em `src/domain/projection/`: cruzamento entre o calendário de saídas contratadas (vencimentos de faturas `due_date` e parcelas de dívidas/empréstimos) e a projeção de receitas habituais (derivadas da mediana de datas históricas);
    - Alerta antecipado com 5 a 10 dias de antecedência caso o saldo acumulado na data de vencimento da fatura fique negativo antes da entrada do salário;
    - Card de recomendação com sugestão de realocação temporária de reserva/caixa ou postergação de gastos não essenciais;
-3. **Simulador de Fôlego Financeiro (Runway Diário):**
+2. **Simulador de Fôlego Financeiro (Runway Diário):**
    - Gráfico de linha de projeção de saldo diário até o último dia do mês corrente, destacando os dias de inflexão (pagamento de faturas vs. créditos de proventos e salários).
 
 **Organização da Implementação em 3 Etapas:**
-1. **Etapa 50.1 — Motores Puros de Domínio:**
-   - Criação de `src/domain/projection/safe-spend.ts` e `src/domain/projection/cash-gap.ts` (+ testes unitários com múltiplos cenários de data e saldo).
-2. **Etapa 50.2 — Componentes & Visualização:**
-   - Módulo `SafeToSpendCard` e `CashGapAlert` em `src/components/modules/`.
+1. **Etapa 51.1 — Motores Puros de Domínio:**
+   - Criação de `src/domain/projection/cash-gap.ts` (+ testes unitários com múltiplos cenários de data e saldo).
+2. **Etapa 51.2 — Componentes & Visualização:**
+   - Módulo `CashGapAlert` em `src/components/modules/`.
    - Integração na `OverviewPage` respeitando a preferência de widgets do usuário.
-3. **Etapa 50.3 — Testes & Refinamento Visual:**
+3. **Etapa 51.3 — Testes & Refinamento Visual:**
    - Testes unitários e de integração para projeção de liquidez.
    - Validação em telas móveis e conformidade WCAG AA.
 
 **✅ DoD (critérios de aceite):**
-- Saldo Livre Real reflete estritamente as obrigações já assumidas e compromissos essenciais do mês.
 - Alerta de descasamento dispara apenas quando há risco real de saldo insuficiente na data do vencimento.
 - Interface limpa com MoneyText, cores semânticas de aviso (`warning`/`critical`) e ações de contingência claras.
 - Suíte de testes 100% verde.
 
 ---
 
-### Fase 51 — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE
+### Fase 52 — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE
 
 > **Status:** 🟡 Planejada — sofisticação dos motores de planejamento e alocação estratégica: monitoramento ativo de desvios de metas de classe/setor com limiares de tolerância, estimativa preditiva de conclusão da reserva de emergência e conversor de economia de despesas em tempo de liberdade financeira (FIRE).
 
@@ -2425,12 +2473,12 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
    - Simulação proativa demonstrando quantos meses ou anos de antecipação da independência financeira são conquistados ao converter um corte de gastos em aporte contínuo.
 
 **Organização da Implementação em 3 Etapas:**
-1. **Etapa 51.1 — Domínio Puro & Motores de Longo Prazo:**
+1. **Etapa 52.1 — Domínio Puro & Motores de Longo Prazo:**
    - `src/domain/portfolio/thresholds.ts` e expansão de `src/domain/fire/projection.ts` (+ testes).
-2. **Etapa 51.2 — UI & Módulos Analíticos:**
+2. **Etapa 52.2 — UI & Módulos Analíticos:**
    - Módulo `AllocationDriftCard` em Investimentos e Insights.
    - Atualização do painel de Planejamento (`PlanningTab` em Insights) com o termômetro temporal da Reserva e o simulador de impacto FIRE.
-3. **Etapa 51.3 — Testes & Validação:**
+3. **Etapa 52.3 — Testes & Validação:**
    - Testes unitários com casos de borda (taxa de poupança nula, rendimento real negativo, metas zeradas).
    - Suíte de testes 100% verde.
 
@@ -2440,5 +2488,6 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Conversor FIRE matematicamente rigoroso com taxa de juros real ajustada pela inflação.
 - Total paridade com o Design System (zero emojis, ícones `lucide-react`, pt-BR, tokens CSS).
 - Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
+
 
 

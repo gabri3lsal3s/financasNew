@@ -520,6 +520,17 @@ export type AssetPrice = {
   updated_at: string;
 };
 
+export type CashCheckpoint = {
+  id: string;
+  user_id: string;
+  /** Data de aferição do saldo (YYYY-MM-DD). */
+  date: string;
+  /** Saldo bancário em centavos (inteiro). */
+  balance_cents: number;
+  notes: string | null;
+  created_at: string;
+};
+
 export type AuditEvent = {
   id: string;
   user_id: string;
