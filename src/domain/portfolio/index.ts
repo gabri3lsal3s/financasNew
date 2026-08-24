@@ -386,6 +386,7 @@ export {
   calculatePortfolioConcentration,
   calculateSnowballProgress,
   calculateYieldOnCost,
+  detectReinvestmentOpportunities,
   normalizeAllocationTargets,
 } from "./snowball";
 export type {
@@ -393,6 +394,8 @@ export type {
   BazinTargetPriceResult,
   ConcentrationItem,
   PortfolioConcentrationResult,
+  ReinvestmentAssetInput,
+  ReinvestmentOpportunity,
   SnowballProgressInput,
   SnowballProgressResult,
   TargetPercentageItem,

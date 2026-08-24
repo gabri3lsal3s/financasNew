@@ -5,6 +5,7 @@ import {
   calculateSnowballProgress,
   calculateYieldOnCost,
   calculateYieldOnCostTotal,
+  detectReinvestmentOpportunities,
   normalizeAllocationTargets,
   resolveMonthlyDividendPerShare,
 } from "./snowball";
@@ -214,6 +215,59 @@ describe("domain/portfolio/snowball — Efeito Bola de Neve, YoC e Concentraçã
       expect(sum).toBe(40);
       expect(normalized[0]?.targetPercentage).toBe(20);
       expect(normalized[1]?.targetPercentage).toBe(20);
+    });
+  });
+
+  describe("detectReinvestmentOpportunities (F50)", () => {
+    it("identifica ativos cujos proventos no mês compram 1 ou mais cotas completas", () => {
+      const opportunities = detectReinvestmentOpportunities([
+        {
+          assetId: "a1",
+          ticker: "HGLG11",
+          currentPrice: 160.0,
+          quantity: 150,
+          monthDividends: 165.0, // compra 1 cota de R$ 160,00, sobra R$ 5,00
+        },
+        {
+          assetId: "a2",
+          ticker: "MXRF11",
+          currentPrice: 10.0,
+          quantity: 500,
+          monthDividends: 50.0, // compra 5 cotas de R$ 10,00, sobra R$ 0,00
+        },
+        {
+          assetId: "a3",
+          ticker: "ITUB4",
+          currentPrice: 35.0,
+          quantity: 10,
+          monthDividends: 15.0, // R$ 15 < R$ 35 -> não compra cota inteira
+        },
+      ]);
+
+      expect(opportunities).toHaveLength(2);
+      expect(opportunities[0]?.ticker).toBe("MXRF11");
+      expect(opportunities[0]?.purchasableShares).toBe(5);
+      expect(opportunities[0]?.totalReinvestmentValue).toBe(50.0);
+      expect(opportunities[0]?.leftoverDividends).toBe(0.0);
+
+      expect(opportunities[1]?.ticker).toBe("HGLG11");
+      expect(opportunities[1]?.purchasableShares).toBe(1);
+      expect(opportunities[1]?.totalReinvestmentValue).toBe(160.0);
+      expect(opportunities[1]?.leftoverDividends).toBe(5.0);
+    });
+
+    it("retorna lista vazia quando nenhum ativo atinge o valor de 1 cota", () => {
+      const opportunities = detectReinvestmentOpportunities([
+        {
+          assetId: "a1",
+          ticker: "KNRI11",
+          currentPrice: 140.0,
+          quantity: 10,
+          monthDividends: 10.0,
+        },
+      ]);
+
+      expect(opportunities).toEqual([]);
     });
   });
 });

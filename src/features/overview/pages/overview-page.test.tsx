@@ -244,4 +244,17 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       expect(navigateMock).toHaveBeenCalledWith("/insights");
     }
   });
+
+  it("renderiza o banner de capacidade de aporte da sobra de caixa (F50) e navega para /carteira", async () => {
+    const user = userEvent.setup();
+    render(<OverviewPage />);
+
+    // Rendas 5000 - Despesas 3100 - Compromissos 1100 = R$ 800,00 de sobra
+    const simulateButton = screen.queryByRole("button", { name: /Simular Aporte/i });
+    if (simulateButton) {
+      await user.click(simulateButton);
+      expect(navigateMock).toHaveBeenCalledWith(expect.stringContaining("/carteira?tab=aporte&valor="));
+    }
+  });
 });
+

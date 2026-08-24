@@ -298,3 +298,54 @@ export function normalizeAllocationTargets<T extends TargetPercentageItem>(items
 
   return normalized;
 }
+
+export interface ReinvestmentAssetInput {
+  assetId: string;
+  ticker: string;
+  currentPrice: number;
+  quantity: number;
+  monthDividends: number;
+}
+
+export interface ReinvestmentOpportunity {
+  assetId: string;
+  ticker: string;
+  currentPrice: number;
+  monthDividends: number;
+  purchasableShares: number;
+  totalReinvestmentValue: number;
+  leftoverDividends: number;
+}
+
+/**
+ * Identifica oportunidades imediatas de reinvestimento da Bola de Neve:
+ * Ativos cujos proventos recebidos no mês já compram 1 ou mais cotas completas (F50).
+ */
+export function detectReinvestmentOpportunities(
+  assets: readonly ReinvestmentAssetInput[],
+): ReinvestmentOpportunity[] {
+  const opportunities: ReinvestmentOpportunity[] = [];
+
+  for (const asset of assets) {
+    if (asset.currentPrice <= 0 || asset.monthDividends <= 0) continue;
+
+    const purchasableShares = Math.floor(asset.monthDividends / asset.currentPrice);
+    if (purchasableShares >= 1) {
+      const totalReinvestmentValue = Math.round(purchasableShares * asset.currentPrice * 100) / 100;
+      const leftoverDividends = Math.round((asset.monthDividends - totalReinvestmentValue) * 100) / 100;
+
+      opportunities.push({
+        assetId: asset.assetId,
+        ticker: asset.ticker,
+        currentPrice: asset.currentPrice,
+        monthDividends: asset.monthDividends,
+        purchasableShares,
+        totalReinvestmentValue,
+        leftoverDividends,
+      });
+    }
+  }
+
+  return opportunities.sort((a, b) => b.purchasableShares - a.purchasableShares);
+}
+

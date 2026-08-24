@@ -77,8 +77,8 @@ export function SkeletonHeroCard({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Skeleton className="size-8 shrink-0 rounded-xl" />
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="size-7 shrink-0 rounded-lg" />
           <div className="flex flex-col gap-1.5">
             <Skeleton className="h-4 w-36 sm:w-44" />
             <Skeleton className="h-3 w-48 sm:w-64" />

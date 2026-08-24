@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { CalendarDays, Sparkles, Trash2, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonTable, Tabs } from "@/components/ui";
-import { MonthPicker } from "@/components/modules";
+import { MonthPicker, SnowballActionCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { calculateSnowballProgress, calculateYieldOnCostTotal, resolveMonthlyDividendPerShare } from "@/domain/portfolio/snowball";
+import {
+  calculateSnowballProgress,
+  calculateYieldOnCostTotal,
+  detectReinvestmentOpportunities,
+  resolveMonthlyDividendPerShare,
+  type ReinvestmentOpportunity,
+} from "@/domain/portfolio/snowball";
 import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -14,9 +20,14 @@ import {
   usePortfolioDividends,
   usePortfolioPosition,
 } from "@/state";
-import type { PortfolioDividend } from "@/types";
+import type { PortfolioAsset, PortfolioDividend } from "@/types";
+import type { WizardMode } from "../wizard/wizard-state";
 
 type ProventosSubTab = "extrato" | "calendario";
+
+export interface ProventosTabProps {
+  onOpenWizard?: (asset?: PortfolioAsset | null, mode?: WizardMode) => void;
+}
 
 /**
  * Proventos da carteira (§F36 e §F39) — extrato mensal dos rendimentos RECEBIDOS
@@ -26,7 +37,7 @@ type ProventosSubTab = "extrato" | "calendario";
  * - Extrato & Indicadores: barra de filtros, KPIs do mês/ano/histórico, extrato mensal e Bola de Neve.
  * - Calendário Anual: visualização dos 12 meses com barras proporcionais de rendimento.
  */
-export function ProventosTab() {
+export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
   const dividendsQuery = usePortfolioDividends();
   const assetsQuery = usePortfolioAssets();
   const position = usePortfolioPosition();
@@ -172,7 +183,33 @@ export function ProventosTab() {
     }
   };
 
-  const maxMonthTotal = Math.max(...yearly.map((e) => e.total), 1);
+  const nonCashActiveAssets = assets.filter((a) => !isCashAssetClass(a.asset_class) && a.quantity > 0);
+  const reinvestmentOpportunities = detectReinvestmentOpportunities(
+    nonCashActiveAssets.map((asset) => {
+      const row = rowByAssetId.get(asset.id);
+      const isUSD = asset.currency === "USD" || row?.currency === "USD";
+      const currentPrice = row && (row.priceQuote ?? row.priceBRL) > 0
+        ? (isUSD ? (row.priceQuote || row.priceBRL) : row.priceBRL)
+        : asset.average_price;
+      const assetExtract = extract.filter((d) => d.asset_id === asset.id || d.ticker === asset.ticker);
+      const monthDividends = assetExtract.reduce((acc, d) => acc + getDividendAmountBRL(d), 0);
+
+      return {
+        assetId: asset.id,
+        ticker: asset.ticker,
+        currentPrice,
+        quantity: asset.quantity,
+        monthDividends,
+      };
+    }),
+  );
+
+  const handleReinvest = (opp: ReinvestmentOpportunity) => {
+    if (onOpenWizard) {
+      const asset = assetById.get(opp.assetId) ?? null;
+      onOpenWizard(asset, "buy");
+    }
+  };
 
   const extratoContent = (
     <div className="flex flex-col gap-6">
@@ -206,6 +243,14 @@ export function ProventosTab() {
         />
       ) : (
         <>
+          {/* Gatilho de Reinvestimento da Bola de Neve (§F50) */}
+          {reinvestmentOpportunities.length > 0 && (
+            <SnowballActionCard
+              opportunities={reinvestmentOpportunities}
+              onReinvest={handleReinvest}
+            />
+          )}
+
           {/* KPIs consolidados: mês, ano, histórico inicial e vitalício */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
@@ -479,48 +524,53 @@ export function ProventosTab() {
           <CalendarDays className="size-4 text-portfolio shrink-0" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-foreground">Calendário de {year}</h2>
         </div>
-        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {yearly.map((entry) => {
-            const active = entry.month === month;
-            const hasValue = entry.total > 0;
-            return (
-              <li key={entry.month}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMonth(entry.month);
-                    setSubTab("extrato");
-                  }}
-                  aria-pressed={active}
-                  className={`flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer ${
-                    active
-                      ? "border-portfolio/40 bg-portfolio/10"
-                      : "border-border/80 bg-transparent hover:border-border hover:bg-surface-hover/30"
-                  }`}
-                >
-                  <div className="flex w-full items-center justify-between gap-2">
-                    <span className="text-xs font-medium capitalize text-foreground">{monthLabel(entry.month)}</span>
-                    {hasValue ? (
-                      <span className="num text-xs font-semibold text-positive-strong">
-                        <MoneyText cents={numberToCents(entry.total)} tone="positive" />
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">—</span>
-                    )}
-                  </div>
-                  {hasValue ? (
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-border/40" aria-hidden="true">
-                      <div
-                        className="h-full rounded-full bg-positive-strong transition-all duration-300"
-                        style={{ width: `${Math.max(4, Math.min(100, (entry.total / maxMonthTotal) * 100))}%` }}
-                      />
-                    </div>
-                  ) : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        {(() => {
+          const maxMonthTotal = Math.max(...yearly.map((e) => e.total), 1);
+          return (
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {yearly.map((entry) => {
+                const active = entry.month === month;
+                const hasValue = entry.total > 0;
+                return (
+                  <li key={entry.month}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMonth(entry.month);
+                        setSubTab("extrato");
+                      }}
+                      aria-pressed={active}
+                      className={`flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                        active
+                          ? "border-portfolio/40 bg-portfolio/10"
+                          : "border-border/80 bg-transparent hover:border-border hover:bg-surface-hover/30"
+                      }`}
+                    >
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span className="text-xs font-medium capitalize text-foreground">{monthLabel(entry.month)}</span>
+                        {hasValue ? (
+                          <span className="num text-xs font-semibold text-positive-strong">
+                            <MoneyText cents={numberToCents(entry.total)} tone="positive" />
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">—</span>
+                        )}
+                      </div>
+                      {hasValue ? (
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-border/40" aria-hidden="true">
+                          <div
+                            className="h-full rounded-full bg-positive-strong transition-all duration-300"
+                            style={{ width: `${Math.max(4, Math.min(100, (entry.total / maxMonthTotal) * 100))}%` }}
+                          />
+                        </div>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          );
+        })()}
       </section>
     </div>
   );

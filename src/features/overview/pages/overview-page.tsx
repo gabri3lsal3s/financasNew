@@ -12,6 +12,7 @@ import {
   OnboardingCard,
   PaceAlertBanner,
   RealCashHeroCard,
+  SurplusAporteBanner,
 } from "@/components/modules";
 import { isOnboardingComplete } from "@/domain/onboarding";
 import {
@@ -29,6 +30,7 @@ import { dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projec
 import {
   accountsNet,
   buildDailyFlow,
+  calculateSurplusCapacity,
   computeOverview,
   openInvoicesTotal,
 } from "@/domain/overview";
@@ -247,6 +249,12 @@ export function OverviewPage() {
     pace.active &&
     (pace.ahead || projection.onTrack === false || (projection.surplusCents !== null && projection.surplusCents < 0));
 
+  const surplusCapacity = calculateSurplusCapacity({
+    incomeCents: totals.incomeCents,
+    expenseCents: totals.expenseCents,
+    openInvoicesCents: realCashData.safeToSpend.committedObligationsCents,
+  });
+
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       {/* F12 — sem header visual: o app mostra direto o seletor de mês.
@@ -287,6 +295,10 @@ export function OverviewPage() {
         <>
           <RealCashHeroCard realCashData={realCashData} />
 
+          {surplusCapacity.hasSurplus && isCurrentMonth && (
+            <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />
+          )}
+
           {/* KPIs fundamentais (§3.6) com sparkline */}
           {visual.dashboardWidgets.kpis && (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
@@ -324,7 +336,6 @@ export function OverviewPage() {
                 }
                 spark={expenseSpark}
               />
-              {/* F16 — deep-link: KPI da carteira navega para /carteira (operação/metas). */}
               <KpiCard
                 label="Investimentos"
                 cents={totals.investmentCents}

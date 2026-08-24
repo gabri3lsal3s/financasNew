@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { Calculator, Sparkles } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
@@ -34,6 +35,7 @@ type AporteSubTab = "calculadora" | "metas" | "historico";
  * - Histórico: lista de aportes registrados por mês (§F37)
  */
 export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
+  const [searchParams] = useSearchParams();
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
@@ -41,7 +43,18 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const executeBatch = useExecutePortfolioBatchAporte();
 
   const [subTab, setSubTab] = useState<AporteSubTab>("calculadora");
-  const [aporteCents, setAporteCents] = useState(0);
+
+  const [userAporteCents, setUserAporteCents] = useState<number | null>(null);
+  const paramValorCents = (() => {
+    const raw = searchParams.get("valor");
+    if (!raw) return 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 0;
+  })();
+
+  const aporteCents = userAporteCents ?? paramValorCents;
+  const setAporteCents = (val: number) => setUserAporteCents(val);
+
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);

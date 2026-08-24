@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Scale, ShieldCheck, ArrowDownRight } from "lucide-react";
+import { Landmark, Scale, ShieldCheck, ArrowDownRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
@@ -35,39 +35,35 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
         )}
       >
         {/* Topo do Card: Título + Badge + Ação de Calibrar */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
-                  Saldo Disponível em Conta
-                </h2>
-                {hasCheckpoint ? (
-                  <Badge variant="muted" className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground border-border">
-                    Aferido em {formatDateBR(latestCheckpoint.date)}
-                  </Badge>
-                ) : (
-                  <Badge variant="muted" className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground border-border">
-                    Acumulado do Fluxo
-                  </Badge>
-                )}
-              </div>
-              <span className="text-[11px] text-muted-foreground truncate">
-                Soma real das contas correntes e dinheiro líquido hoje
-              </span>
-            </div>
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary-strong"
+              aria-hidden="true"
+            >
+              <Landmark className="size-3.5" aria-hidden="true" />
+            </span>
+            <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">
+              Saldo Disponível em Conta
+            </h2>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setDialogOpen(true)}
-            className="gap-1.5 text-xs h-8 shrink-0 w-full sm:w-auto justify-center font-medium border-border/80 hover:bg-surface-hover"
-          >
-            <Scale className="size-3.5 text-primary" aria-hidden="true" />
-            Calibrar com o banco
-          </Button>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Badge variant="muted" className="text-[11px] shrink-0 font-normal">
+              {hasCheckpoint ? `Aferido em ${formatDateBR(latestCheckpoint.date)}` : "Acumulado do Fluxo"}
+            </Badge>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+              aria-label="Calibrar com o banco"
+              className="h-7 gap-1 px-2 text-xs font-medium text-primary hover:text-primary-strong hover:bg-primary/10 cursor-pointer"
+            >
+              <Scale className="size-3.5" aria-hidden="true" />
+              <span>Calibrar</span>
+            </Button>
+          </div>
         </div>
 
         {/* Valor Principal em Destaque */}

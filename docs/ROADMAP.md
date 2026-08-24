@@ -1500,7 +1500,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | ✅ Concluída (2026-08-24) — motor de domínio MFA/TOTP (AAL1/AAL2), componente Turnstile anti-bot em formulários públicos e aba Segurança & 2FA |
 | 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | ✅ Concluída (2026-08-24) — rotinas de expurgo/retenção de logs de auditoria (cleanup_old_audit_events / admin_trigger_audit_retention) e índices temporais |
 | 35 | **F49** — Saldo em Caixa Real (Regime de Caixa Estrito), Checkpoints de Âncora & Previsão de Liquidez | A / Caixa & Liquidez Real | F2/F3/F33 | ✅ Concluída (2026-08-24) — saldo cumulativo real em conta bancária, checkpoints de calibração rápida ("Bater com o banco"), cálculo estrito de regime de caixa e métrica Safe-to-Spend |
-| 36 | **F50** — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve | B / Proatividade & Investimentos | F41/F44/F49 | 🟡 Planejada — ponte automática fluxo de caixa → calculadora de aporte, materialização mensal autônoma de snapshots e gatilhos de reinvestimento |
+| 36 | **F50** — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve | B / Proatividade & Investimentos | F41/F44/F49 | ✅ Concluída (2026-08-24) — ponte automática fluxo de caixa → calculadora de aporte, materialização mensal autônoma de snapshots e gatilhos de reinvestimento |
 | 37 | **F51** — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário | A / Fluxo de Caixa & Alertas | F3/F49 | 🟡 Planejada — alerta preditivo de descasamento temporal receitas vs. faturas/dívidas e gráfico de runway diário |
 | 38 | **F52** — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE | C / Inteligência & Estratégia | F24/F39 | 🟡 Planejada — alertas de desvio de alocação por limiar, estimativa de conclusão da reserva de emergência e conversor de economia em tempo de liberdade FIRE |
 
@@ -2389,7 +2389,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 50 — Proatividade Patrimonial: Conexão "Sobra de Caixa → Aporte Inteligente", Auto-Snapshots & Gatilhos da Bola de Neve
 
-> **Status:** 🟡 Planejada — integração proativa entre o fluxo de caixa mensal e a gestão de investimentos: cálculo de capacidade real de aporte no fechamento do mês, ponte em 1-clique para a calculadora de rebalanceamento, materialização autônoma de snapshots patrimoniais no 1º dia de cada mês (Marco Zero contínuo) e gatilhos de reinvestimento para ativos que atingiram o limiar de 1 nova cota em proventos.
+> **Status:** ✅ Concluída (2026-08-24) — integração proativa entre o fluxo de caixa mensal e a gestão de investimentos: cálculo de capacidade real de aporte no fechamento do mês, ponte em 1-clique para a calculadora de rebalanceamento, materialização autônoma de snapshots patrimoniais no 1º dia de cada mês (Marco Zero contínuo) e gatilhos de reinvestimento para ativos que atingiram o limiar de 1 nova cota em proventos.
 
 **Objetivo:** transformar o ecossistema financeiro em um ciclo contínuo e proativo, conectando as sobras do orçamento pessoal diretamente ao motor de aporte e automatizando a evolução temporal da carteira:
 1. **Ponte Proativa "Sobra de Caixa → Aporte Inteligente":**

@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { Briefcase, Coins, Plus, TrendingUp, Wallet } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
+import { useAutoPortfolioSnapshot } from "@/hooks/use-auto-portfolio-snapshot";
 import { ResumoTab } from "./resumo-tab";
 import { ProventosTab } from "./proventos-tab";
 import { AporteTab } from "./aporte-tab";
@@ -18,7 +20,30 @@ type InvestmentsTab = "resumo" | "aporte" | "proventos";
  * Aporte (rebalanceamento + metas integradas) e Proventos (extrato e calendário).
  */
 export function InvestmentsPage() {
-  const [tab, setTab] = useState<InvestmentsTab>("resumo");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const initialTab =
+    tabParam && ["resumo", "aporte", "proventos"].includes(tabParam)
+      ? (tabParam as InvestmentsTab)
+      : "resumo";
+
+  const [tab, setTab] = useState<InvestmentsTab>(initialTab);
+
+  // Materialização autônoma de snapshots patrimoniais (§F50)
+  useAutoPortfolioSnapshot();
+
+  const handleTabChange = (nextTab: string) => {
+    const valid = nextTab as InvestmentsTab;
+    setTab(valid);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", valid);
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   // FAB contextual mobile (?novo=investimento) e abertura do Wizard
   const { open: wizardDeepOpen, setOpen: setWizardDeepOpen } = useCreateDeepLink("investimento");
@@ -81,7 +106,7 @@ export function InvestmentsPage() {
 
       <Tabs
         value={tab}
-        onValueChange={(value) => setTab(value as InvestmentsTab)}
+        onValueChange={handleTabChange}
         swipeable
         items={[
           {
@@ -99,13 +124,13 @@ export function InvestmentsPage() {
             value: "aporte",
             label: "Aporte",
             icon: <TrendingUp className="size-4" aria-hidden="true" />,
-            content: <AporteTab onGoToPosition={() => setTab("resumo")} />,
+            content: <AporteTab onGoToPosition={() => handleTabChange("resumo")} />,
           },
           {
             value: "proventos",
             label: "Proventos",
             icon: <Coins className="size-4" aria-hidden="true" />,
-            content: <ProventosTab />,
+            content: <ProventosTab onOpenWizard={handleOpenWizard} />,
           },
         ]}
       />

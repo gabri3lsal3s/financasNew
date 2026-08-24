@@ -569,8 +569,26 @@
      - `RealCashHeroCard` no topo da Visão Geral exibindo o Saldo Disponível em Conta consolidado, badge de aferição/fluxo e projeção Safe-to-Spend;
      - Ação "Calibrar com o banco" abrindo `CashCheckpointDialog` com `MoneyInput`, `DatePicker` e anotações para ancorar o saldo em 1 clique;
      - Renomeação do 4º KPI da Visão Geral para "Resultado do mês" para diferenciar claramente o resultado de competência mensal do saldo bancário acumulado.
-  4. **Qualidade & Testes:**
-     - Testes unitários puros de domínio, testes de repositório, testes de componentes e auditoria de acessibilidade (axe) 100% aprovados sem violações.
+## F50 — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve (2026-08-24)
+
+- **Problema:**
+  1. O usuário precisava calcular manualmente de cabeça quanto sobrava de caixa no fim do mês para decidir o valor de aporte na carteira de investimentos;
+  2. A série histórica de evolução patrimonial exigia a criação manual de snapshots no 1º dia de cada mês; caso o usuário esquecesse, ficavam lacunas nos gráficos de patrimônio;
+  3. Quando os proventos recebidos de um ativo atingiam o valor de uma nova cota inteira (efeito bola de neve ativo), o usuário não recebia nenhuma notificação ou atalho direto de reinvestimento nos extratos.
+- **Solução:**
+  1. **Domínio Puro de Sobra & Capacidade de Aporte (`src/domain/overview/surplus.ts`):**
+     - Motor `calculateSurplusCapacity`: apura deterministamente a Sobra Líquida Real do ciclo mensal descontando despesas, faturas em aberto e compromissos/dívidas pendentes, derivando a capacidade ideal de aporte (`suggestedAporteCents`).
+  2. **Gatilhos da Bola de Neve (`src/domain/portfolio/snowball.ts`):**
+     - Motor puro `detectReinvestmentOpportunities`: rastreia ativos cuja soma de proventos no mês permite adquirir $\ge 1$ nova cota a mercado (`purchasableShares >= 1`), calculando o valor total de compra e as sobras fracionárias.
+  3. **Auto-Snapshots Patrimoniais (`src/hooks/use-auto-portfolio-snapshot.ts`):**
+     - Rotina inteligente client-side: ao carregar a carteira em um novo mês sem snapshot registrado, materializa automaticamente o `total_value` e `total_cost` via `upsertPortfolioSnapshot`, assegurando continuidade absoluta da série temporal sem exigir ações manuais.
+  4. **Interface & Deep Linking (`SurplusAporteBanner`, `SnowballActionCard`, `OverviewPage`, `InvestmentsPage`, `AporteTab`, `ProventosTab`):**
+     - `SurplusAporteBanner` exibido proativamente na Visão Geral com o valor líquido disponível e botão "Simular Aporte" que navega para `/carteira?tab=aporte&valor=XXXXX`;
+     - `AporteTab` consome e pré-preenche o valor do aporte via query params sem disparar renders em cascata;
+     - `SnowballActionCard` em `ProventosTab` listando as oportunidades ativas da Bola de Neve com atalho "Reinvestir Provento" integrado ao `InvestmentWizard`;
+     - Sincronização bidirecional de abas em `InvestmentsPage` com a URL via `useSearchParams`.
+  5. **Qualidade & Testes:**
+     - Testes unitários puros de domínio, testes de hooks, testes de componentes modulares e testes de acessibilidade (axe) 100% aprovados.
 
 ## Notas finais
 

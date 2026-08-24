@@ -72,4 +72,8 @@ export { RealCashHeroCard } from "./real-cash-hero-card";
 export type { RealCashHeroCardProps } from "./real-cash-hero-card";
 export { CashCheckpointDialog } from "./cash-checkpoint-dialog";
 export type { CashCheckpointDialogProps } from "./cash-checkpoint-dialog";
+export { SurplusAporteBanner } from "./surplus-aporte-banner";
+export type { SurplusAporteBannerProps } from "./surplus-aporte-banner";
+export { SnowballActionCard } from "./snowball-action-card";
+export type { SnowballActionCardProps } from "./snowball-action-card";
 export * from "./reports";
