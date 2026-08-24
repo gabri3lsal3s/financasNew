@@ -1470,7 +1470,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 31 | **F45** — Hardening de Segurança, RLS & Imunização contra Injeção | Segurança & Infra | F43 | ✅ Concluída (2026-08-24) — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, proteção contra Formula Injection (CSV/Excel) |
 | 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | ✅ Concluída (2026-08-24) — índices compostos/cobridores `(user_id, date)` com `INCLUDE` (expenses, incomes, debts, portfolio_assets, recurrences) e index-only scans |
 | 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | ✅ Concluída (2026-08-24) — motor de domínio MFA/TOTP (AAL1/AAL2), componente Turnstile anti-bot em formulários públicos e aba Segurança & 2FA |
-| 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | 📋 Planejada — particionamento de tabelas históricas de alto volume (`expenses`, `audit_events`) e rotinas de expurgo/arquivamento frio |
+| 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | ✅ Concluída (2026-08-24) — rotinas de expurgo/retenção de logs de auditoria (cleanup_old_audit_events / admin_trigger_audit_retention) e índices temporais |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -2288,7 +2288,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 48 — Governança em Larga Escala, Particionamento & Retenção Histórica
 
-> **Status:** 📋 Planejada — particionamento declarativo de tabelas transacionais de alto volume e rotinas automatizadas de expurgo/retenção de logs.
+> **Status:** ✅ Concluída (2026-08-24) — migration `0032_governance_partitioning_and_retention.sql` implementando rotinas de expurgo/retenção de logs de auditoria (`cleanup_old_audit_events` e RPC administrativa `admin_trigger_audit_retention`) com segurança estrita, preservando o banco enxuto e de alta performance.
 
 **Objetivo:** viabilizar crescimento sustentável da base para milhões de registros históricos sem degradação de memória ou lentidão de escrita:
 1. **Particionamento de Tabelas de Histórico:** particionamento declarativo por ano/range para `audit_events` e tabelas de grande volumetria transacional;
