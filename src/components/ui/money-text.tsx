@@ -2,6 +2,7 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { formatCentsAsCurrency } from "@/services/masks";
 import type { AssetCurrency } from "@/types";
+import { NumberTicker } from "./number-ticker";
 
 /**
  * MoneyText — primitivo de valor monetário (F12, hierarquia tipográfica).
@@ -29,6 +30,8 @@ export interface MoneyTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, "c
    * negativo · `none` nunca (sinal já comunicado pelo contexto).
    */
   sign?: "auto" | "explicit" | "none";
+  /** Quando true, anima a contagem numérica suavemente via NumberTicker (respeita reduced motion e toggle global). */
+  animated?: boolean;
 }
 
 const variantClass: Record<NonNullable<MoneyTextProps["variant"]>, string> = {
@@ -67,11 +70,25 @@ export function MoneyText({
   variant = "value",
   tone = "auto",
   sign = "auto",
+  animated = false,
   className,
   ...props
 }: MoneyTextProps) {
   const resolvedTone = resolveTone(tone, cents);
   const prefix = signPrefix(sign, cents);
+
+  if (animated) {
+    return (
+      <span className={cn("num", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
+        {prefix}
+        <NumberTicker
+          value={Math.abs(cents)}
+          format={(absVal) => formatCentsAsCurrency(Math.round(absVal), currency)}
+        />
+      </span>
+    );
+  }
+
   return (
     <span className={cn("num", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
       {`${prefix}${formatCentsAsCurrency(Math.abs(cents), currency)}`}

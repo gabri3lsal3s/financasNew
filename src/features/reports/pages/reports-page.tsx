@@ -774,19 +774,19 @@ export function ReportsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Receitas Totais</span>
-              <MoneyText cents={grossIncomeBrutoCents} tone="positive" className="text-lg sm:text-xl font-bold font-display truncate" />
+              <MoneyText cents={grossIncomeBrutoCents} tone="positive" animated className="text-lg sm:text-xl font-bold font-display truncate" />
               {hasDualMetrics && (
                 <span className="text-xs text-muted-foreground">
-                  ponderado: <MoneyText cents={currentIncomeCents} tone="positive" className="inline text-xs font-medium" />
+                  Ponderada: <MoneyText cents={currentIncomeCents} tone="positive" className="inline text-xs font-medium" />
                 </span>
               )}
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Despesas Totais</span>
-              <MoneyText cents={grossExpenseBrutoCents} tone="negative" className="text-lg sm:text-xl font-bold font-display truncate" />
+              <MoneyText cents={grossExpenseBrutoCents} tone="negative" animated className="text-lg sm:text-xl font-bold font-display truncate" />
               {hasDualMetrics && (
                 <span className="text-xs text-muted-foreground">
-                  ponderado: <MoneyText cents={currentExpenseCents} tone="negative" className="inline text-xs font-medium" />
+                  Ponderada: <MoneyText cents={currentExpenseCents} tone="negative" className="inline text-xs font-medium" />
                 </span>
               )}
             </div>
@@ -796,6 +796,7 @@ export function ReportsPage() {
                 <MoneyText
                   cents={grossSavingsBrutoCents}
                   tone={grossSavingsBrutoCents >= 0 ? "positive" : "negative"}
+                  animated
                   className="text-lg sm:text-xl font-bold font-display truncate"
                 />
                 <span className="text-xs font-semibold text-muted-foreground shrink-0">
@@ -804,7 +805,7 @@ export function ReportsPage() {
               </div>
               {hasDualMetrics && (
                 <span className="text-xs text-muted-foreground">
-                  ponderado: <MoneyText cents={currentIncomeCents - currentExpenseCents} tone={currentIncomeCents >= currentExpenseCents ? "positive" : "negative"} className="inline text-xs font-medium" /> ({currentOverview.savingsRatePercent !== null ? `${currentOverview.savingsRatePercent.toFixed(1)}%` : "—"})
+                  Ponderado: <MoneyText cents={currentIncomeCents - currentExpenseCents} tone={currentIncomeCents >= currentExpenseCents ? "positive" : "negative"} className="inline text-xs font-medium" /> ({currentOverview.savingsRatePercent !== null ? `${currentOverview.savingsRatePercent.toFixed(1)}%` : "—"})
                 </span>
               )}
             </div>
@@ -949,7 +950,7 @@ export function ReportsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Patrimônio Consolidado</span>
-              <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" className="text-lg sm:text-xl font-bold font-display truncate" />
+              <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display truncate" />
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Aderência às Metas</span>
@@ -1250,7 +1251,7 @@ export function ReportsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Patrimônio Líquido Real</span>
-              <MoneyText cents={numberToCents(consolidatedBalance.netWorthBRL)} tone="portfolio" className="text-lg sm:text-xl font-bold font-display truncate" />
+              <MoneyText cents={numberToCents(consolidatedBalance.netWorthBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display truncate" />
             </div>
             <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">Grau de Liberdade Financeira</span>

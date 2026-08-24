@@ -626,10 +626,38 @@
   5. **Qualidade & Testes:**
      - Suíte completa de testes unitários de domínio e testes de componentes com 100% de cobertura e conformidade total com acessibilidade.
 
+## F53 — Padronização Global de Animações Numéricas, NumberTicker & Efeitos Visuais do Design System (2026-08-24)
+
+- **Problema:**
+  1. A interpolação suave de números (`NumberTicker`) só estava conectada a `KpiCard`, deixando cards de destaque (`RealCashHeroCard`, `SurplusAporteBanner`, `AporteResult`, `ProventosTab`, `DebtsPage`, `BudgetsPage`, `CreditCard3D`) com números estáticos;
+  2. Incongruências de termos e casing (`ponderado` vs `Ponderado:` vs `"Sua cota"`);
+  3. Mini barras de progresso com durações de transição divergentes (`duration-500` vs `duration-300`).
+- **Solução:**
+  1. **Evolução do Primitivo `MoneyText` (`src/components/ui/money-text.tsx`):**
+     - Adicionada a propriedade `animated?: boolean` conectada nativamente ao `NumberTicker`, respeitando a preferência de acessibilidade do usuário (`prefers-reduced-motion`) e o toggle global das Configurações (`visual.numberTickerEnabled`);
+     - Exportação de `NumberTicker` e `NumberTickerProps` no barrel `src/components/ui/index.ts`.
+  2. **Animações Numéricas nos Cards Hero e Resumos em Todo o App:**
+     - `RealCashHeroCard`: Saldo Disponível em Conta e Saldo Livre Real (Safe-to-Spend) com transição animada fluida;
+     - `OverviewPage`: Saldo líquido de contas e Taxa de Poupança animadas;
+     - `SurplusAporteBanner`: Capacidade de Aporte estimada com animação de valor;
+     - `AporteResult`: Cards de aporte informado, alocado e sobra de caixa animados;
+     - `ProventosTab`: Total anual de proventos animado e barras de progresso padronizadas com `duration-300 ease-out`;
+     - `CreditCard3D`: Fatura bruta e fatura ponderada animadas com `NumberTicker`;
+     - `DebtsPage` & `BudgetsPage`: Régua de métricas e cards de resumo com valores animados;
+     - `ReportsPage`: Cards de resumo de Receitas Totais, Despesas Totais, Poupança, Patrimônio e DRE animados.
+  3. **Harmonização do Design System:**
+     - Padronização estrita de `Ponderada:` e `Ponderado:` em todas as exibições secundárias;
+     - Transições de progresso e hover neutros padronizados.
+  4. **Qualidade & Testes:**
+     - Testes unitários do `MoneyText` e `NumberTicker` 100% aprovados;
+     - 232 arquivos de teste e 1702 testes executados com sucesso;
+     - Build de produção gerado com sucesso.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
 - **Verificação:** a cada fase — typecheck, lint, testes e build verdes antes do commit (regra do ciclo, `ROADMAP.md` §6.1).
+
 
 
 

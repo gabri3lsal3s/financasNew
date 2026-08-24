@@ -2,6 +2,7 @@ import { useState, useRef, type MouseEvent, type KeyboardEvent } from "react";
 import { Radio } from "lucide-react";
 import { formatCentsAsBRL } from "@/services/masks";
 import { bestPurchaseDay, cardLimitUsage } from "@/domain/cards";
+import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
 import type { CreditCard } from "@/types";
 
@@ -258,13 +259,13 @@ export function CreditCard3D({
               Fatura Total (Bruto)
             </span>
             <span className="font-mono text-base sm:text-lg font-bold text-white drop-shadow-xs">
-              {formatCentsAsBRL(usedLimitCents)}
+              <NumberTicker value={usedLimitCents} format={formatCentsAsBRL} />
             </span>
             {usedLimitPonderadoCents !== undefined && (
               <div className="flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded bg-black/35 border border-white/10">
                 <span className="text-[9px] uppercase tracking-wider text-white/70">Ponderada:</span>
                 <span className="font-mono text-[11px] font-semibold text-white">
-                  {formatCentsAsBRL(usedLimitPonderadoCents)}
+                  <NumberTicker value={usedLimitPonderadoCents} format={formatCentsAsBRL} />
                 </span>
               </div>
             )}

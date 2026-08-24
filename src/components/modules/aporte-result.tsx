@@ -743,6 +743,7 @@ function ResultStat({
         cents={cents}
         variant="value"
         tone="default"
+        animated
         className={cn("text-lg sm:text-xl font-semibold truncate", accent && "text-portfolio", tone === "attention" && "text-warning-strong")}
       />
     </div>

@@ -106,6 +106,7 @@ export function CashKpiCard({
       <MoneyText
         cents={numberToCents(cashBRL)}
         tone={hasCashAsset && cashBRL > 0 ? "portfolio" : "default"}
+        animated
         className="text-xl font-bold leading-tight"
       />
 

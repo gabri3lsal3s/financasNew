@@ -157,6 +157,7 @@ export function BudgetsPage() {
             <MoneyText
               cents={totalExpensesCents}
               tone="default"
+              animated
               className="text-base sm:text-lg font-bold text-foreground truncate block mt-0.5"
             />
           </div>
@@ -165,6 +166,7 @@ export function BudgetsPage() {
             <MoneyText
               cents={totalLimitsCents}
               tone="default"
+              animated
               className="text-base sm:text-lg font-semibold text-muted-foreground truncate block mt-0.5"
             />
           </div>
@@ -175,6 +177,7 @@ export function BudgetsPage() {
             <MoneyText
               cents={Math.abs(totalLimitsCents - totalExpensesCents)}
               tone={totalLimitsCents >= totalExpensesCents ? "positive" : "negative"}
+              animated
               className="text-base sm:text-lg font-bold truncate block mt-0.5"
             />
           </div>

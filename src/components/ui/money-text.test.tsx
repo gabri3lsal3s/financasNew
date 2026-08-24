@@ -71,4 +71,11 @@ describe("MoneyText (F12 — hierarquia tipográfica de valores)", () => {
     expect(el).toHaveAttribute("aria-hidden", "true");
     expect(el).toHaveClass("shrink-0");
   });
+
+  it("renderiza via NumberTicker quando animated={true}", () => {
+    const { container } = render(<MoneyText cents={250000} animated />);
+    const el = container.firstChild as HTMLElement;
+    expect(el).toHaveClass("num");
+    expect(el.textContent).toBe("R$\u00a02.500,00");
+  });
 });

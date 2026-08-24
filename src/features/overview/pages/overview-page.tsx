@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Badge, EmptyState, ErrorState, MoneyText, Progress, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
+import { Badge, EmptyState, ErrorState, MoneyText, NumberTicker, Progress, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
   CategoryIcon,
@@ -514,6 +514,7 @@ export function OverviewPage() {
                     variant="hero"
                     tone="auto"
                     sign="auto"
+                    animated
                     className="text-2xl sm:text-3xl tracking-tight truncate"
                   />
                 </div>
@@ -556,7 +557,7 @@ export function OverviewPage() {
                 </div>
                 <div>
                   <p className={cn("num text-2xl sm:text-3xl font-bold tracking-tight", totals.savingsRatePercent >= 20 ? "text-positive-strong" : totals.savingsRatePercent >= 0 ? "text-foreground" : "text-critical")}>
-                    {formatPercent(totals.savingsRatePercent)}%
+                    <NumberTicker value={totals.savingsRatePercent} format={(v: number) => `${formatPercent(v)}%`} />
                   </p>
                 </div>
                 <div className="border-t border-border/50 pt-3 text-xs text-muted-foreground">

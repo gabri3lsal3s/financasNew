@@ -40,6 +40,8 @@ export { Command } from "./command";
 export type { CommandProps, CommandItem } from "./command";
 export { PrintSheet } from "./print-sheet";
 export { usePrint } from "./use-print";
+export { NumberTicker } from "./number-ticker";
+export type { NumberTickerProps } from "./number-ticker";
 
 export { Alert } from "./alert";
 export type { AlertProps, AlertVariant } from "./alert";

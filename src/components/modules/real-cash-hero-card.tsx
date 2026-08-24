@@ -71,6 +71,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
           <MoneyText
             cents={cashBalance.currentBalanceCents}
             tone={cashBalance.currentBalanceCents >= 0 ? "default" : "negative"}
+            animated
             className="text-2xl sm:text-3xl font-bold tracking-tight"
           />
         </div>
@@ -83,6 +84,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
             <MoneyText
               cents={safeToSpend.committedObligationsCents}
               tone="negative"
+              animated
               className="font-medium shrink-0"
             />
           </div>
@@ -93,6 +95,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
             <MoneyText
               cents={safeToSpend.safeToSpendCents}
               tone={safeToSpend.safeToSpendCents >= 0 ? "positive" : "negative"}
+              animated
               className="font-semibold text-xs sm:text-sm"
             />
           </div>

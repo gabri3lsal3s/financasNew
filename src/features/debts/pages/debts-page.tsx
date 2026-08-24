@@ -219,13 +219,13 @@ export function DebtsPage() {
               <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
                 A pagar
               </span>
-              <MoneyText cents={payablePendingCents} tone="negative" className="text-sm sm:text-lg font-bold" />
+              <MoneyText cents={payablePendingCents} tone="negative" animated className="text-sm sm:text-lg font-bold" />
             </div>
             <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
               <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
                 A receber
               </span>
-              <MoneyText cents={receivablePendingCents} tone="positive" className="text-sm sm:text-lg font-bold" />
+              <MoneyText cents={receivablePendingCents} tone="positive" animated className="text-sm sm:text-lg font-bold" />
             </div>
             <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
               <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
@@ -235,6 +235,7 @@ export function DebtsPage() {
                 cents={netPendingCents}
                 tone={netPendingCents >= 0 ? "positive" : "negative"}
                 sign="auto"
+                animated
                 className="text-sm sm:text-lg font-bold"
               />
             </div>

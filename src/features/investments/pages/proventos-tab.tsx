@@ -474,7 +474,7 @@ export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
                     {/* Barra de progresso */}
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/50" aria-hidden="true">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${
+                        className={`h-full rounded-full transition-all duration-300 ease-out ${
                           progress.isSnowballActive ? "bg-positive-strong" : "bg-portfolio"
                         }`}
                         style={{ width: `${Math.max(4, Math.min(100, progress.progressPct))}%` }}
@@ -510,7 +510,7 @@ export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
         <div>
           <span className="text-xs text-muted-foreground">Total de Proventos em {year}</span>
           <p className="num mt-1 text-2xl font-bold tracking-tight text-foreground">
-            <MoneyText cents={numberToCents(yearTotal)} tone="positive" />
+            <MoneyText cents={numberToCents(yearTotal)} tone="positive" animated />
           </p>
         </div>
         <Badge variant="muted" className="text-xs">

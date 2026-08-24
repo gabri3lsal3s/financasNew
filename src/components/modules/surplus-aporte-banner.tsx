@@ -68,6 +68,7 @@ export function SurplusAporteBanner({
             <MoneyText
               cents={surplusCents}
               tone="portfolio"
+              animated
               className="text-base sm:text-lg font-bold tracking-tight"
             />
           </div>
