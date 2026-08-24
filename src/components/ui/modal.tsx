@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { setCalculatorOpen } from "@/services/calculator-open";
 import { triggerSensory } from "@/services/sensory";
 
-export type ModalSize = "sm" | "md" | "lg" | "xl";
+export type ModalSize = "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
 
 /** Largura máxima no desktop (base + variantes — UMA classe por modal, sem conflito de cascata). */
 const SIZE_MAX_W: Record<ModalSize, string> = {
@@ -16,6 +16,9 @@ const SIZE_MAX_W: Record<ModalSize, string> = {
   md: "lg:max-w-md",
   lg: "lg:max-w-lg",
   xl: "lg:max-w-3xl",
+  "2xl": "lg:max-w-5xl",
+  "3xl": "lg:max-w-6xl",
+  full: "lg:max-w-7xl",
 };
 
 export interface ModalProps {

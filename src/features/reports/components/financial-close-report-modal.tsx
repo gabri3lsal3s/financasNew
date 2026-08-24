@@ -133,8 +133,7 @@ export function FinancialCloseReportModal({
     <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Relatório Executivo de Finanças Pessoais &amp; DRE"
-      maxWidthClassName="max-w-5xl"
+      title="Dossiê de Fechamento Financeiro & DRE"
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader

@@ -283,6 +283,8 @@ Todo controle de interface é um **componente do próprio app** (`components/ui/
 
 **Regra de criação:** qualquer novo controle nativo que precise ser usado deve primeiro virar um primitivo em `components/ui/` (ver `docs/PROJECT_STRUCTURE.md` §8) — proibido ad-hoc em tela.
 
+**Tamanhos de Modais no Desktop (`size`):** o componente `Modal` expõe a prop `size?: ModalSize` (`"sm"`: 384px, `"md"`: 448px [default], `"lg"`: 512px, `"xl"`: 768px, `"2xl"`: 1024px, `"3xl"`: 1152px, `"full"`: 1280px). Modais com tabelas analíticas, dossiês executivos A4 e relatórios contábeis utilizam `"2xl"` ou `"3xl"` para garantir excelente respiro e leitura fluida no desktop.
+
 **Calculadora em modais (`showCalculator`):** o componente `Modal` expõe a prop `showCalculator` (default `false`). O botão de calculadora **só deve aparecer em modais com campo de valor monetário** (i.e., que contêm `MoneyInput`). Modais de confirmação, exclusão, visualização, importação e configuração **nunca passam `showCalculator`**. Modais com `elevated={true}` ignoram a prop (a calculadora não abre sobre si mesma).
 
 **Ações no Cabeçalho de Modais (`headerActions`):** o componente `Modal` expõe a prop `headerActions?: ReactNode`, permitindo injetar ações de topo (como botões de imprimir PDF, exportar, compartilhar) diretamente ao lado do botão de fechar nativo do Radix Dialog, eliminando cabeçalhos redundantes internos.

@@ -78,7 +78,7 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
         onOpenChange={onOpenChange}
         title="Extrato Consolidado da Carteira"
         description="Histórico cronológico de todas as compras, vendas, proventos e desdobramentos de todos os seus ativos."
-        size="xl"
+        size="3xl"
       >
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">

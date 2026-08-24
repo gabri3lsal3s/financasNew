@@ -54,6 +54,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
         onOpenChange={onOpenChange}
         title={`Lançamentos · ${asset?.ticker ?? ""}`}
         description="Extrato cronológico das operações do ativo. Edite ou exclua qualquer lançamento — o ledger é recalculado automaticamente."
+        size="lg"
       >
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">

@@ -59,7 +59,6 @@ export function DividendFreedomModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Dossiê de Proventos &amp; Liberdade Financeira"
-      maxWidthClassName="max-w-5xl"
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader

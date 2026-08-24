@@ -56,29 +56,27 @@ export function PortfolioTaxReport({
       onOpenChange={onOpenChange}
       title="Facilitador de IRPF / Declaração Anual"
       description={`Textos e enquadramentos fiscais pré-formatados para o exercício de ${selectedYear}.`}
-      size="xl"
+      size="2xl"
     >
       <div className="flex flex-col gap-5 mt-3">
         {/* Seletor de Ano Base */}
-        <div className="flex items-center justify-between gap-3 bg-surface-hover/40 p-3 rounded-xl border border-border">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface-hover/40 p-3 rounded-xl border border-border">
           <div className="flex items-center gap-2">
             <Landmark className="size-4 text-portfolio" aria-hidden="true" />
             <span className="text-xs font-medium text-foreground">Ano-Calendário de Referência:</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
             {[selectedYear - 1, selectedYear].map((y) => (
-              <button
+              <Button
                 key={y}
                 type="button"
+                size="sm"
+                variant={selectedYear === y ? "default" : "outline"}
                 onClick={() => setSelectedYear(y)}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                  selectedYear === y
-                    ? "bg-portfolio text-portfolio-foreground shadow-xs"
-                    : "bg-surface-hover text-muted-foreground hover:text-foreground"
-                }`}
+                className="h-7 px-3 text-xs flex-1 sm:flex-initial"
               >
                 {y}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -100,7 +98,7 @@ export function PortfolioTaxReport({
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-2.5">
                     {bensDireitosReport.items.map((item) => {
                       const isCopied = copiedId === item.assetId;
                       return (
@@ -157,7 +155,7 @@ export function PortfolioTaxReport({
               value: "proventos_fichas",
               label: `Rendimentos Isentos & Exclusivos`,
               content: (
-                <div className="flex flex-col gap-4 max-h-[50vh] overflow-y-auto pr-1">
+                <div className="flex flex-col gap-4">
                   {/* Ficha 09 */}
                   <div className="flex flex-col gap-2 rounded-xl border border-border p-3.5 bg-surface">
                     <div className="flex items-center justify-between border-b border-border/40 pb-2">

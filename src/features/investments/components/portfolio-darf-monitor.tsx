@@ -59,7 +59,7 @@ export function PortfolioDarfMonitor({
       onOpenChange={onOpenChange}
       title="Monitor Mensal de DARF & Isenção de 20k"
       description="Apuração de impostos sobre vendas em bolsa de valores e controle de isenções fiscais."
-      size="lg"
+      size="xl"
     >
       <div className="flex flex-col gap-4 mt-3">
         {/* Seletor do Mês de Competência */}

@@ -433,7 +433,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
             ? "Verifique o tipo de planilha (Posição Atual ou Movimentações) e ajuste as colunas identificadas."
             : "Confira e edite os valores identificados antes de gravar na sua carteira."
       }
-      size="xl"
+      size="2xl"
     >
       {step === 1 && (
         <Tabs

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Printer } from "lucide-react";
 import { Button, Modal, usePrint, PrintSheet } from "@/components/ui";
+import type { ModalSize } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 export interface ReportDocumentLayoutProps {
@@ -14,8 +15,8 @@ export interface ReportDocumentLayoutProps {
   customActions?: ReactNode;
   /** Conteúdo editorial do relatório (usado tanto no preview de tela quanto na impressão). */
   children: ReactNode;
-  /** Largura customizada para o modal de tela (padrão: max-w-5xl). */
-  maxWidthClassName?: string;
+  /** Tamanho do modal no desktop (padrão: "2xl" = lg:max-w-5xl). */
+  size?: ModalSize;
   className?: string;
 }
 
@@ -33,7 +34,7 @@ export function ReportDocumentLayout({
   title,
   customActions,
   children,
-  maxWidthClassName = "max-w-5xl",
+  size = "2xl",
   className,
 }: ReportDocumentLayoutProps) {
   const { printing, triggerPrint } = usePrint();
@@ -45,7 +46,8 @@ export function ReportDocumentLayout({
         open={open}
         onOpenChange={onOpenChange}
         title={title}
-        className={cn(maxWidthClassName, "w-full max-h-[90dvh] flex flex-col p-4 sm:p-6 overflow-hidden")}
+        size={size}
+        className="w-full max-h-[90dvh] flex flex-col p-4 sm:p-6 lg:p-7 overflow-hidden"
         headerActions={
           <div className="flex items-center gap-1.5 print:hidden">
             {customActions}
@@ -71,7 +73,7 @@ export function ReportDocumentLayout({
         <div className="flex-1 overflow-y-auto overscroll-contain mt-3 sm:mt-4 pr-0.5 -mr-0.5 print:hidden">
           <div
             className={cn(
-              "mx-auto bg-surface text-foreground rounded-xl border border-border/80 p-4 sm:p-6 shadow-xs flex flex-col gap-6",
+              "mx-auto w-full bg-surface text-foreground rounded-xl border border-border/80 p-4 sm:p-6 lg:p-7 shadow-xs flex flex-col gap-6",
               className,
             )}
           >

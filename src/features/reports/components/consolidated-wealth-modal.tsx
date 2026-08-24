@@ -72,8 +72,7 @@ export function ConsolidatedWealthModal({
     <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Balanço Patrimonial 360° &amp; DRE"
-      maxWidthClassName="max-w-5xl"
+      title="Balanço Patrimonial 360° & Evolução Líquida"
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader

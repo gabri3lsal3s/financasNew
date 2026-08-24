@@ -53,8 +53,7 @@ export function TaxFacilitatorModal({
     <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Facilitador de IRPF Anual"
-      maxWidthClassName="max-w-5xl"
+      title="Dossiê Fiscal & Facilitador de IRPF"
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader

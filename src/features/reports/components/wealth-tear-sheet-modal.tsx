@@ -116,8 +116,7 @@ export function WealthTearSheetModal({
     <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Dossiê Executivo de Investimentos &amp; Alocação"
-      maxWidthClassName="max-w-5xl"
+      title="Dossiê de Alocação & Risco da Carteira"
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader
