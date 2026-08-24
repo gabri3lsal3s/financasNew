@@ -255,3 +255,16 @@ export function spentByCategoryMap(
   }
   return spent;
 }
+
+/**
+ * Soma os gastos brutos (valor total nominal sem ponderação) por categoria.
+ */
+export function spentGrossByCategoryMap(
+  expenses: readonly { category_id: string; value: number }[],
+): Map<string, number> {
+  const spent = new Map<string, number>();
+  for (const expense of expenses) {
+    spent.set(expense.category_id, (spent.get(expense.category_id) ?? 0) + numberToCents(expense.value));
+  }
+  return spent;
+}

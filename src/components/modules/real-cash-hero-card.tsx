@@ -79,7 +79,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
         <div className="flex flex-col gap-2 rounded-xl bg-surface-hover/50 border border-border/60 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
             <ArrowDownRight className="size-3.5 shrink-0 text-negative" aria-hidden="true" />
-            <span className="truncate">Faturas e contas a pagar do ciclo:</span>
+            <span className="truncate">Faturas e contas a pagar do ciclo (bruto):</span>
             <MoneyText
               cents={safeToSpend.committedObligationsCents}
               tone="negative"

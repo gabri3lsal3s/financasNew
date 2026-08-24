@@ -250,5 +250,10 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       expect(navigateMock).toHaveBeenCalledWith(expect.stringContaining("/carteira?tab=aporte&valor="));
     }
   });
+
+  it("exibe valor bruto como padrão no card de caixa e detalha obrigações de ciclo", () => {
+    render(<OverviewPage />);
+    expect(screen.getByText("Faturas e contas a pagar do ciclo (bruto):")).toBeInTheDocument();
+  });
 });
 

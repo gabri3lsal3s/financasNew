@@ -10,6 +10,7 @@ import {
   reallocationSuggestion,
   resolveEffectiveLimit,
   spentByCategoryMap,
+  spentGrossByCategoryMap,
   suggestCategory,
   suggestLimitCents,
 } from "./index";
@@ -171,6 +172,16 @@ describe("budgetLimitsByCategory / spentByCategoryMap (F19 — helpers compartil
       { category_id: "b", value: 50, report_weight: 1 },
     ]);
     expect(spent.get("a")).toBe(16000); // 12.000 + 4.000
+    expect(spent.get("b")).toBe(5000);
+  });
+
+  it("soma os gastos brutos por categoria sem ponderação", () => {
+    const spent = spentGrossByCategoryMap([
+      { category_id: "a", value: 120 },
+      { category_id: "a", value: 80 },
+      { category_id: "b", value: 50 },
+    ]);
+    expect(spent.get("a")).toBe(20000); // 12.000 + 8.000
     expect(spent.get("b")).toBe(5000);
   });
 });

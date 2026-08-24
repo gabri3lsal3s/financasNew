@@ -47,7 +47,7 @@ describe("RealCashHeroCard", () => {
     expect(screen.getByText("Saldo Disponível em Conta")).toBeInTheDocument();
     expect(screen.getByText(/5\.420,00/)).toBeInTheDocument();
     expect(screen.getByText("Aferido em 20/08/2026")).toBeInTheDocument();
-    expect(screen.getByText("Faturas e contas a pagar do ciclo:")).toBeInTheDocument();
+    expect(screen.getByText("Faturas e contas a pagar do ciclo (bruto):")).toBeInTheDocument();
     expect(screen.getByText(/1\.500,00/)).toBeInTheDocument();
     expect(screen.getByText("Saldo Livre Real:")).toBeInTheDocument();
     expect(screen.getByText(/3\.920,00/)).toBeInTheDocument();

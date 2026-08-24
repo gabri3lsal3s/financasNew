@@ -25,6 +25,7 @@ import {
   progressTone,
   resolveEffectiveLimit,
   spentByCategoryMap,
+  spentGrossByCategoryMap,
 } from "@/domain/budgets";
 import { invoiceDueDate } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
@@ -126,13 +127,13 @@ export function OverviewPage() {
 
   const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
 
-  // Computação pura dos totais do mês (§3.6).
+  // Computação pura dos totais do mês (§3.6). Padrão do app: BRUTO como métrica principal, informando ponderado quando houver.
   const incomeCents = weightedSum(incomesQuery.data ?? []);
   const expenseCents = weightedSum(expensesQuery.data ?? []);
   const grossIncomeCents = (incomesQuery.data ?? []).reduce((acc, i) => acc + Math.round(i.value * 100), 0);
   const grossExpenseCents = (expensesQuery.data ?? []).reduce((acc, e) => acc + Math.round(e.value * 100), 0);
-  const prevIncomeCents = weightedSum(prevIncomesQuery.data ?? []);
-  const prevExpenseCents = weightedSum(prevExpensesQuery.data ?? []);
+  const prevGrossIncomeCents = (prevIncomesQuery.data ?? []).reduce((acc, i) => acc + Math.round(i.value * 100), 0);
+  const prevGrossExpenseCents = (prevExpensesQuery.data ?? []).reduce((acc, e) => acc + Math.round(e.value * 100), 0);
 
   // Investimentos/Aportes no mês a partir de portfolio_contributions
   const contributions = contributionsQuery.data ?? [];
@@ -145,15 +146,15 @@ export function OverviewPage() {
   const prevInvestmentCents = Math.max(0, computeMonthInvestments(prevMonth));
   const investmentSpark = rangeMonths.map((m) => Math.max(0, computeMonthInvestments(m)));
 
-  const totals = computeOverview(incomeCents, expenseCents, investmentCents);
-  const prevTotals = computeOverview(prevIncomeCents, prevExpenseCents, prevInvestmentCents);
+  const totals = computeOverview(grossIncomeCents, grossExpenseCents, investmentCents);
+  const prevTotals = computeOverview(prevGrossIncomeCents, prevGrossExpenseCents, prevInvestmentCents);
 
-  // Sparklines com a série dos últimos 6 meses.
+  // Sparklines com a série dos últimos 6 meses (bruto).
   const incomeSpark = rangeMonths.map((m) =>
-    weightedSum((incomesRangeQuery.data ?? []).filter((i) => i.date.startsWith(m))),
+    (incomesRangeQuery.data ?? []).filter((i) => i.date.startsWith(m)).reduce((acc, i) => acc + Math.round(i.value * 100), 0),
   );
   const expenseSpark = rangeMonths.map((m) =>
-    weightedSum((expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m))),
+    (expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m)).reduce((acc, e) => acc + Math.round(e.value * 100), 0),
   );
 
   // Resumo de contas e faturas.
@@ -169,8 +170,8 @@ export function OverviewPage() {
 
   // Fluxo diário (barras empilhadas) + curva de saldo acumulado.
   const dailyItems = [
-    ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: numberToCents(i.value * i.report_weight) })),
-    ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: numberToCents(e.value * e.report_weight) })),
+    ...(incomesQuery.data ?? []).map((i) => ({ date: i.date, kind: "income" as const, amountCents: numberToCents(i.value) })),
+    ...(expensesQuery.data ?? []).map((e) => ({ date: e.date, kind: "expense" as const, amountCents: numberToCents(e.value) })),
     ...contributions
       .filter((c) => c.date.startsWith(month))
       .map((c) => ({ date: c.date, kind: "investment" as const, amountCents: numberToCents(c.amount) })),
@@ -178,30 +179,38 @@ export function OverviewPage() {
   const dailyFlow = buildDailyFlow(month, dailyItems);
 
   // Orçamentos compactos (§3.6): progresso e lista de atenção.
-  // Helpers compartilhados (F19) — mesma agregação de Budgets/Insights.
+  // Padrão do app: valor BRUTO como métrica principal, informando ponderado quando houver diferença.
   const budgets = budgetsQuery.data ?? [];
   const limitsByCategory = budgetLimitsByCategory(budgets);
-  const spentByCategory = spentByCategoryMap(expensesQuery.data ?? []);
+  const spentWeightedByCategory = spentByCategoryMap(expensesQuery.data ?? []);
+  const spentGrossByCategory = spentGrossByCategoryMap(expensesQuery.data ?? []);
   const budgetRows = (expenseCategories.data ?? [])
-    .map((category) => ({
-      category,
-      limitCents: resolveEffectiveLimit(limitsByCategory.get(category.id) ?? [], month),
-      spentCents: spentByCategory.get(category.id) ?? 0,
-      inherited: isInheritedLimit(limitsByCategory.get(category.id) ?? [], month),
-    }))
+    .map((category) => {
+      const spentGrossCents = spentGrossByCategory.get(category.id) ?? 0;
+      const spentWeightedCents = spentWeightedByCategory.get(category.id) ?? 0;
+      return {
+        category,
+        limitCents: resolveEffectiveLimit(limitsByCategory.get(category.id) ?? [], month),
+        spentGrossCents,
+        spentWeightedCents,
+        spentCents: spentGrossCents,
+        hasWeighting: spentGrossCents !== spentWeightedCents,
+        inherited: isInheritedLimit(limitsByCategory.get(category.id) ?? [], month),
+      };
+    })
     .filter((row) => row.limitCents > 0);
   const totalLimitsCents = budgetRows.reduce((acc, row) => acc + row.limitCents, 0);
-  const globalPercent = globalUsedPercent(expenseCents, totalLimitsCents, incomeCents);
+  const globalPercent = globalUsedPercent(grossExpenseCents, totalLimitsCents, grossIncomeCents);
   const attentionRows = budgetRows
-    .map((row) => ({ ...row, status: budgetStatus(row.spentCents, row.limitCents) }))
+    .map((row) => ({ ...row, status: budgetStatus(row.spentGrossCents, row.limitCents) }))
     .filter((row) => row.status !== "ok")
-    .sort((a, b) => b.spentCents / b.limitCents - a.spentCents / a.limitCents);
+    .sort((a, b) => b.spentGrossCents / b.limitCents - a.spentGrossCents / a.limitCents);
 
-  // Donut de categorias: principais despesas do mês.
+  // Donut de categorias: principais despesas do mês (bruto).
   const donutSlices = (expenseCategories.data ?? [])
     .map((category) => ({
       label: category.name,
-      valueCents: spentByCategory.get(category.id) ?? 0,
+      valueCents: spentGrossByCategory.get(category.id) ?? 0,
       icon: category.icon,
       color: category.color,
     }))
@@ -375,9 +384,9 @@ export function OverviewPage() {
                 hint={
                   <div className="flex flex-col gap-0.5">
                     <DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />
-                    {grossIncomeCents !== totals.incomeCents ? (
+                    {grossIncomeCents !== incomeCents ? (
                       <span className="text-[10px] text-muted-foreground truncate">
-                        Total: <MoneyText cents={grossIncomeCents} tone="default" className="text-[10px]" />
+                        Ponderada: <MoneyText cents={incomeCents} tone="default" className="text-[10px]" />
                       </span>
                     ) : null}
                   </div>
@@ -392,9 +401,9 @@ export function OverviewPage() {
                 hint={
                   <div className="flex flex-col gap-0.5">
                     <DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />
-                    {grossExpenseCents !== totals.expenseCents ? (
+                    {grossExpenseCents !== expenseCents ? (
                       <span className="text-[10px] text-muted-foreground truncate">
-                        Total: <MoneyText cents={grossExpenseCents} tone="default" className="text-[10px]" />
+                        Ponderada: <MoneyText cents={expenseCents} tone="default" className="text-[10px]" />
                       </span>
                     ) : null}
                   </div>
@@ -593,14 +602,21 @@ export function OverviewPage() {
                   <div className="flex flex-col gap-2 rounded-xl bg-surface-hover/30 border border-border/40 p-3">
                     <div className="flex items-center justify-between text-xs min-w-0">
                       <span className="text-muted-foreground">Uso consolidado</span>
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <MoneyText cents={expenseCents} tone="default" className="font-semibold text-foreground" />
-                        <span className="text-muted-foreground font-normal">de</span>
-                        <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground" />
-                        <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[10px] px-1.5 py-0">
-                          {Math.round(globalPercent)}%
-                        </Badge>
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <MoneyText cents={grossExpenseCents} tone="default" className="font-semibold text-foreground" />
+                          <span className="text-muted-foreground font-normal">de</span>
+                          <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground" />
+                          <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[10px] px-1.5 py-0">
+                            {Math.round(globalPercent)}%
+                          </Badge>
+                        </span>
+                        {grossExpenseCents !== expenseCents ? (
+                          <span className="text-[10px] text-muted-foreground">
+                            Ponderado: <MoneyText cents={expenseCents} tone="default" className="text-[10px]" />
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <Progress
                       value={globalPercent}
@@ -621,11 +637,11 @@ export function OverviewPage() {
                     {(attentionRows.length > 0
                       ? attentionRows.slice(0, 4)
                       : [...budgetRows]
-                          .sort((a, b) => (b.limitCents > 0 ? b.spentCents / b.limitCents : 0) - (a.limitCents > 0 ? a.spentCents / a.limitCents : 0))
+                          .sort((a, b) => (b.limitCents > 0 ? b.spentGrossCents / b.limitCents : 0) - (a.limitCents > 0 ? a.spentGrossCents / a.limitCents : 0))
                           .slice(0, 4)
                     ).map((row) => {
-                      const percent = row.limitCents > 0 ? (row.spentCents / row.limitCents) * 100 : 0;
-                      const status = budgetStatus(row.spentCents, row.limitCents);
+                      const percent = row.limitCents > 0 ? (row.spentGrossCents / row.limitCents) * 100 : 0;
+                      const status = budgetStatus(row.spentGrossCents, row.limitCents);
                       const isOver = status === "exceeded";
                       const isAttention = status !== "ok";
 
@@ -641,19 +657,26 @@ export function OverviewPage() {
                               {row.category.name}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0 text-[11px]">
-                            <span className="text-muted-foreground">
-                              <MoneyText cents={row.spentCents} tone="default" className="font-medium text-foreground" />
-                              {" / "}
-                              <MoneyText cents={row.limitCents} tone="default" />
-                            </span>
-                            {isAttention ? (
-                              <Badge variant={isOver ? "critical" : "warning"} className="text-[9px] px-1 py-0">
-                                {BUDGET_STATUS_LABELS[status]}
-                              </Badge>
-                            ) : (
-                              <span className="num text-muted-foreground font-medium">{Math.round(percent)}%</span>
-                            )}
+                          <div className="flex flex-col items-end shrink-0 text-[11px]">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">
+                                <MoneyText cents={row.spentGrossCents} tone="default" className="font-medium text-foreground" />
+                                {" / "}
+                                <MoneyText cents={row.limitCents} tone="default" />
+                              </span>
+                              {isAttention ? (
+                                <Badge variant={isOver ? "critical" : "warning"} className="text-[9px] px-1 py-0">
+                                  {BUDGET_STATUS_LABELS[status]}
+                                </Badge>
+                              ) : (
+                                <span className="num text-muted-foreground font-medium">{Math.round(percent)}%</span>
+                              )}
+                            </div>
+                            {row.hasWeighting ? (
+                              <span className="text-[10px] text-muted-foreground">
+                                Ponderado: <MoneyText cents={row.spentWeightedCents} tone="default" className="text-[10px]" />
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       );
