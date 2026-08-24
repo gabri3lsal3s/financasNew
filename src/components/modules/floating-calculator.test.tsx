@@ -109,4 +109,71 @@ describe("FloatingCalculator (F9)", () => {
     // Display passa a mostrar a primeira parcela.
     expect(screen.getByText("R$ 33,34")).toBeInTheDocument();
   });
+
+  it("abre e fecha a calculadora com a tecla de atalho global F9", async () => {
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
+
+    await user.keyboard("{F9}");
+    expect(screen.getByText("Calculadora")).toBeInTheDocument();
+
+    await user.keyboard("{F9}");
+    expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
+  });
+
+  it("opera a calculadora com o teclado físico (dígitos, operadores e Enter)", async () => {
+    registerFakeTarget();
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    // Digita 2 5 + 1 5 Enter -> 40
+    await user.keyboard("25+15{Enter}");
+    expect(screen.getAllByText("R$ 40,00").length).toBeGreaterThan(0);
+  });
+
+  it("suporta operadores alternativos via teclado (*, x, /, -, ,)", async () => {
+    registerFakeTarget();
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    // Multiplicação com *
+    await user.keyboard("10*2=");
+    expect(screen.getAllByText("R$ 20,00").length).toBeGreaterThan(0);
+
+    // Limpa com tecla c
+    await user.keyboard("c");
+    expect(screen.getAllByText("R$ 0,00").length).toBeGreaterThan(0);
+
+    // Divisão com / e vírgula decimal
+    await user.keyboard("10/4=");
+    expect(screen.getAllByText("R$ 2,50").length).toBeGreaterThan(0);
+  });
+
+  it("apaga dígitos com Backspace e limpa com Delete", async () => {
+    registerFakeTarget();
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    await user.keyboard("123{Backspace}");
+    expect(screen.getAllByText("R$ 12,00").length).toBeGreaterThan(0);
+
+    await user.keyboard("{Delete}");
+    expect(screen.getAllByText("R$ 0,00").length).toBeGreaterThan(0);
+  });
+
+  it("injeta o valor no campo com Ctrl+Enter", async () => {
+    const setter = vi.fn();
+    registerCalculatorTarget(setter);
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    await user.keyboard("75{Control>}{Enter}{/Control}");
+    expect(setter).toHaveBeenCalledWith(7500);
+    expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
+  });
 });

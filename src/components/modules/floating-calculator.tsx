@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Check, History } from "lucide-react";
 import { Button, Modal, NumberStepper } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
@@ -32,7 +32,7 @@ export function FloatingCalculator() {
   const [installments, setInstallments] = useState(1);
   const [plan, setPlan] = useState<string | null>(null);
 
-  const handleEquals = () => {
+  const handleEquals = useCallback(() => {
     const previous = state;
     const result = pressEquals(state);
     const accumulator = previous.accumulator;
@@ -47,7 +47,7 @@ export function FloatingCalculator() {
     }
     setState(result);
     setPlan(null);
-  };
+  }, [state]);
 
   const handleSplit = () => {
     const parts = splitInstallments(decimalToCents(state.display), installments);
@@ -60,13 +60,75 @@ export function FloatingCalculator() {
     triggerHaptic("light");
   };
 
-  const handleInject = () => {
+  const handleInject = useCallback(() => {
     const ok = injectCalculatedValue(decimalToCents(state.display));
     triggerHaptic(ok ? "success" : "warning");
     if (ok) setCalculatorOpen(false);
-  };
+  }, [state.display]);
 
   const displayCents = decimalToCents(state.display);
+
+  // Atalho global F9: alterna abertura da calculadora em qualquer tela
+  useEffect(() => {
+    const onGlobalKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F9") {
+        event.preventDefault();
+        setCalculatorOpen(!isCalculatorOpen());
+      }
+    };
+    window.addEventListener("keydown", onGlobalKeyDown);
+    return () => window.removeEventListener("keydown", onGlobalKeyDown);
+  }, []);
+
+  // Suporte a teclado físico quando o modal da calculadora está aberto
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        handleInject();
+        return;
+      }
+
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+      const key = event.key;
+
+      if (key >= "0" && key <= "9") {
+        event.preventDefault();
+        setState((current) => pressDigit(current, key));
+      } else if (key === "." || key === ",") {
+        event.preventDefault();
+        setState((current) => pressDigit(current, "."));
+      } else if (key === "+") {
+        event.preventDefault();
+        setState((current) => pressOperator(current, "+"));
+      } else if (key === "-" || key === "−") {
+        event.preventDefault();
+        setState((current) => pressOperator(current, "−"));
+      } else if (key === "*" || key.toLowerCase() === "x" || key === "×") {
+        event.preventDefault();
+        setState((current) => pressOperator(current, "×"));
+      } else if (key === "/" || key === "÷") {
+        event.preventDefault();
+        setState((current) => pressOperator(current, "÷"));
+      } else if (key === "=" || key === "Enter") {
+        event.preventDefault();
+        handleEquals();
+      } else if (key === "Backspace") {
+        event.preventDefault();
+        setState((current) => pressBackspace(current));
+      } else if (key.toLowerCase() === "c" || key === "Delete") {
+        event.preventDefault();
+        setState(INITIAL_STATE);
+        setPlan(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, handleEquals, handleInject]);
 
   return (
     <Modal
