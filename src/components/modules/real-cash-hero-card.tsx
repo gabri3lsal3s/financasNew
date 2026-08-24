@@ -38,7 +38,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
         <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <span
-              className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary-strong"
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground"
               aria-hidden="true"
             >
               <Landmark className="size-3.5" aria-hidden="true" />
@@ -54,13 +54,13 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
             </Badge>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setDialogOpen(true)}
               aria-label="Calibrar com o banco"
-              className="h-7 gap-1 px-2 text-xs font-medium text-primary hover:text-primary-strong hover:bg-primary/10 cursor-pointer"
+              className="h-7 gap-1 px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80"
             >
-              <Scale className="size-3.5" aria-hidden="true" />
+              <Scale className="size-3.5 text-muted-foreground" aria-hidden="true" />
               <span>Calibrar</span>
             </Button>
           </div>
@@ -88,7 +88,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
           </div>
 
           <div className="flex items-center gap-1.5 pt-1 sm:pt-0 border-t border-border/40 sm:border-t-0 shrink-0">
-            <ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />
+            <ShieldCheck className="size-3.5 text-muted-foreground" aria-hidden="true" />
             <span className="text-muted-foreground">Saldo Livre Real:</span>
             <MoneyText
               cents={safeToSpend.safeToSpendCents}
