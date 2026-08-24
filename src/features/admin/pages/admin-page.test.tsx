@@ -96,7 +96,7 @@ describe("AdminPage Component", () => {
     expect(screen.getByText("Total de Usuários")).toBeInTheDocument();
     expect(screen.getByText("120")).toBeInTheDocument();
     expect(screen.getByText("Fila de Aprovação Imediata")).toBeInTheDocument();
-    expect(screen.getByText("Carlos Silva")).toBeInTheDocument();
+    expect(screen.getAllByText("Carlos Silva")[0]).toBeInTheDocument();
   });
 
   it("permite alternar para a aba de Gestão de Usuários", async () => {
@@ -109,7 +109,7 @@ describe("AdminPage Component", () => {
 
     await user.click(screen.getByRole("tab", { name: /Gestão de Usuários/i }));
     expect(screen.getByPlaceholderText(/Buscar por nome ou e-mail/i)).toBeInTheDocument();
-    expect(screen.getByText("carlos@teste.com")).toBeInTheDocument();
+    expect(screen.getAllByText("carlos@teste.com")[0]).toBeInTheDocument();
   });
 
   it("permite alternar para a aba de Funcionalidades & Flags", async () => {
@@ -134,7 +134,7 @@ describe("AdminPage Component", () => {
     );
 
     await user.click(screen.getByRole("tab", { name: /Convites & Allowlist/i }));
-    expect(screen.getByText("GF-VIP-2026")).toBeInTheDocument();
+    expect(screen.getAllByText("GF-VIP-2026")[0]).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Gerar Novo Convite/i })).toBeInTheDocument();
   });
 
@@ -147,6 +147,6 @@ describe("AdminPage Component", () => {
     );
 
     await user.click(screen.getByRole("tab", { name: /Auditoria/i }));
-    expect(screen.getByText("UPDATE_STATUS")).toBeInTheDocument();
+    expect(screen.getAllByText("UPDATE_STATUS")[0]).toBeInTheDocument();
   });
 });

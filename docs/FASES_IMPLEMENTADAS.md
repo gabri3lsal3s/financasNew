@@ -652,8 +652,15 @@
      - Cabeçalho padronizado (`<header>`) com título, subtítulo e hierarquia visual idêntica às páginas de Análise e Planejamento (`InvestmentsPage`, `DebtsPage`, `InsightsPage`);
      - Navegação estrita pelo primitivo `Tabs` com suporte a gestos de swipe horizontal (`swipeable`), navegação por teclado e sincronização bidirecional de URLs (`?tab=` e `?aba=`);
      - Reorganização de layout com o Caderno de Relatórios em Excel (.xlsx) posicionado no rodapé da página.
-  5. **Qualidade & Testes:**
-     - Testes unitários do `MoneyText`, `NumberTicker` e `ReportsPage` 100% aprovados;
+  5. **Padronização e Responsividade do Painel Administrativo (`AdminPage`):**
+     - Remoção do padding e margens duplicadas na casca externa da página (`max-w-7xl` e `p-3.5 sm:p-6 lg:p-8`), liberando todo o espaço útil do container raiz do app;
+     - Cabeçalho padronizado (`<header>`) com título, subtítulo e tipografia alinhados com o Design System;
+     - Navegação nativa via componente `Tabs` com `swipeable`, suporte a gestos e persistência de query params (`?aba=` e `?tab=`);
+     - Grid de KPIs na Visão Geral reorganizado (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-6`) com cards espaçosos e números animados (`NumberTicker`);
+     - Visualização adaptativa para Mobile (Cards otimizados com áreas de toque ampliadas) e Desktop/Tablets (tabelas completas com hover e espaçamento ideal) nas abas de Visão Geral, Usuários, Convites e Auditoria;
+     - Cartões de Kill-Switch (`FeatureToggleCard`) aprimorados com ícones semânticos, badges e botões responsivos.
+  6. **Qualidade & Testes:**
+     - Testes unitários do `MoneyText`, `NumberTicker`, `ReportsPage` e `AdminPage` 100% aprovados;
      - 232 arquivos de teste e 1702 testes executados com sucesso;
      - Build de produção gerado com sucesso.
 

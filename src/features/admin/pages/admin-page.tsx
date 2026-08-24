@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { History, KeyRound, Layers, ShieldCheck, Users } from "lucide-react";
-import { Tabs } from "@/components/ui";
+import { Tabs, type TabItem } from "@/components/ui";
 import { OverviewTab } from "./overview-tab";
 import { UsersTab } from "./users-tab";
 import { FeaturesTab } from "./features-tab";
@@ -12,62 +11,90 @@ type AdminTab = "visao-geral" | "usuarios" | "funcionalidades" | "convites" | "a
 
 export function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = (searchParams.get("aba") as AdminTab) || "visao-geral";
+  const rawTab = searchParams.get("aba") || searchParams.get("tab") || "visao-geral";
 
-  const [activeTab, setActiveTab] = useState<AdminTab>(
-    ["visao-geral", "usuarios", "funcionalidades", "convites", "auditoria"].includes(tabParam)
-      ? tabParam
-      : "visao-geral",
-  );
+  const activeTab: AdminTab = [
+    "visao-geral",
+    "usuarios",
+    "funcionalidades",
+    "convites",
+    "auditoria",
+  ].includes(rawTab)
+    ? (rawTab as AdminTab)
+    : "visao-geral";
 
   const handleTabChange = (val: string) => {
     const nextTab = val as AdminTab;
-    setActiveTab(nextTab);
-    setSearchParams((prev) => {
-      prev.set("aba", nextTab);
-      return prev;
-    });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("aba", nextTab);
+        next.delete("tab");
+        return next;
+      },
+      { replace: true },
+    );
   };
 
+  const tabItems: TabItem[] = [
+    {
+      value: "visao-geral",
+      label: "Visão Geral",
+      shortLabel: "Geral",
+      icon: <ShieldCheck className="size-4" aria-hidden="true" />,
+      content: <OverviewTab />,
+    },
+    {
+      value: "usuarios",
+      label: "Gestão de Usuários",
+      shortLabel: "Usuários",
+      icon: <Users className="size-4" aria-hidden="true" />,
+      content: <UsersTab />,
+    },
+    {
+      value: "funcionalidades",
+      label: "Funcionalidades & Flags",
+      shortLabel: "Módulos",
+      icon: <Layers className="size-4" aria-hidden="true" />,
+      content: <FeaturesTab />,
+    },
+    {
+      value: "convites",
+      label: "Convites & Allowlist",
+      shortLabel: "Convites",
+      icon: <KeyRound className="size-4" aria-hidden="true" />,
+      content: <InvitesTab />,
+    },
+    {
+      value: "auditoria",
+      label: "Auditoria",
+      shortLabel: "Auditoria",
+      icon: <History className="size-4" aria-hidden="true" />,
+      content: <AuditTab />,
+    },
+  ];
+
   return (
-    <div className="flex flex-col gap-5 sm:gap-6 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-24 sm:pb-8">
-      {/* Cabeçalho da Página */}
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-            <ShieldCheck className="size-4" aria-hidden="true" />
-          </span>
-          <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+    <div className="flex flex-col gap-6 w-full min-w-0">
+      {/* Cabeçalho da Página Padronizado */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             Painel Administrativo
           </h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Gestão de usuários, aprovação de contas, convites de acesso e feature flags da plataforma
+          </p>
         </div>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          Gestão de usuários, aprovação de contas, convites de acesso e feature flags da plataforma.
-        </p>
       </header>
 
-      {/* Navegação de Abas */}
+      {/* Navegação de Abas Nativa com Suporte a Swipe */}
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
-        variant="pills"
-        items={[
-          { value: "visao-geral", label: "Visão Geral", shortLabel: "Geral", icon: <ShieldCheck className="size-4" aria-hidden="true" /> },
-          { value: "usuarios", label: "Gestão de Usuários", shortLabel: "Usuários", icon: <Users className="size-4" aria-hidden="true" /> },
-          { value: "funcionalidades", label: "Funcionalidades & Flags", shortLabel: "Módulos", icon: <Layers className="size-4" aria-hidden="true" /> },
-          { value: "convites", label: "Convites & Allowlist", shortLabel: "Convites", icon: <KeyRound className="size-4" aria-hidden="true" /> },
-          { value: "auditoria", label: "Auditoria", shortLabel: "Auditoria", icon: <History className="size-4" aria-hidden="true" /> },
-        ]}
+        swipeable
+        items={tabItems}
       />
-
-
-
-      {/* Conteúdo da Aba Ativa */}
-      {activeTab === "visao-geral" && <OverviewTab />}
-      {activeTab === "usuarios" && <UsersTab />}
-      {activeTab === "funcionalidades" && <FeaturesTab />}
-      {activeTab === "convites" && <InvitesTab />}
-      {activeTab === "auditoria" && <AuditTab />}
     </div>
   );
 }

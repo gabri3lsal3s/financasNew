@@ -23,9 +23,9 @@ export function UsersTab() {
   const users = usersQuery.data ?? [];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 w-full min-w-0">
       {/* Filtros e Busca */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="relative">
           <Input
             type="search"
@@ -61,13 +61,13 @@ export function UsersTab() {
         />
       </div>
 
-      {/* Tabela de Usuários */}
+      {/* Lista / Tabela de Usuários com Layout Adaptativo */}
       <div className="rounded-2xl border border-border/80 bg-surface/90 shadow-xs overflow-hidden">
         {usersQuery.isLoading ? (
           <div className="p-6 flex flex-col gap-3">
-            <Skeleton className="h-10 w-full rounded-xl" />
-            <Skeleton className="h-10 w-full rounded-xl" />
-            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
           </div>
         ) : users.length === 0 ? (
           <div className="p-8">
@@ -77,76 +77,130 @@ export function UsersTab() {
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
-                  <th className="py-3 px-3.5 sm:px-4">Usuário</th>
-                  <th className="py-3 px-3.5 sm:px-4">Cargo (Role)</th>
-                  <th className="py-3 px-3.5 sm:px-4">Status</th>
-                  <th className="py-3 px-3.5 sm:px-4">Criado em</th>
-                  <th className="py-3 px-3.5 sm:px-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-surface-hover/30">
-                    <td className="py-3 px-3.5 sm:px-4">
-                      <div className="flex flex-col max-w-[180px] sm:max-w-[240px]">
-                        <span className="font-semibold text-foreground truncate">{user.name || "Sem nome"}</span>
-                        <span className="font-mono text-muted-foreground text-[11px] truncate">{user.email}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3.5 sm:px-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                          user.role === "superadmin"
-                            ? "bg-portfolio/10 text-portfolio border border-portfolio/20"
-                            : user.role === "admin"
-                              ? "bg-primary/10 text-primary-strong border border-primary/20"
-                              : "bg-surface-hover text-muted-foreground border border-border"
-                        }`}
-                      >
-                        <Shield className="size-3" aria-hidden="true" />
-                        {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3.5 sm:px-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                          user.status === "active"
-                            ? "bg-positive/10 text-positive-strong border border-positive/20"
-                            : user.status === "pending_approval"
-                              ? "bg-warning/10 text-warning border border-warning/20"
-                              : "bg-critical/10 text-critical border border-critical/20"
-                        }`}
-                      >
-                        {STATUS_LABELS[user.status as keyof typeof STATUS_LABELS] || user.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3.5 sm:px-4 text-muted-foreground whitespace-nowrap">
-                      {new Date(user.created_at).toLocaleDateString("pt-BR")}
-                    </td>
-                    <td className="py-3 px-3.5 sm:px-4 text-right whitespace-nowrap">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedUser(user)}
-                        className="gap-1.5 text-xs h-8 px-2.5"
-                      >
-                        <Settings2 className="size-3.5" aria-hidden="true" />
-                        Gerenciar
-                      </Button>
-                    </td>
+          <>
+            {/* Visualização em Cards para Mobile */}
+            <div className="flex flex-col divide-y divide-border/60 sm:hidden">
+              {users.map((user) => (
+                <div key={user.id} className="p-4 flex flex-col gap-3 hover:bg-surface-hover/20 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-semibold text-sm text-foreground truncate">{user.name || "Sem nome"}</span>
+                      <span className="font-mono text-xs text-muted-foreground truncate">{user.email}</span>
+                    </div>
+                    <span
+                      className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold shrink-0 ${
+                        user.status === "active"
+                          ? "bg-positive/10 text-positive-strong border border-positive/20"
+                          : user.status === "pending_approval"
+                            ? "bg-warning/10 text-warning border border-warning/20"
+                            : "bg-critical/10 text-critical border border-critical/20"
+                      }`}
+                    >
+                      {STATUS_LABELS[user.status as keyof typeof STATUS_LABELS] || user.status}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground pt-1">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                        user.role === "superadmin"
+                          ? "bg-portfolio/10 text-portfolio border border-portfolio/20"
+                          : user.role === "admin"
+                            ? "bg-primary/10 text-primary-strong border border-primary/20"
+                            : "bg-surface-hover text-muted-foreground border border-border"
+                      }`}
+                    >
+                      <Shield className="size-3" aria-hidden="true" />
+                      {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
+                    </span>
+                    <span>Criado em {new Date(user.created_at).toLocaleDateString("pt-BR")}</span>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedUser(user)}
+                    className="w-full gap-1.5 text-xs h-8 justify-center mt-1"
+                  >
+                    <Settings2 className="size-3.5" aria-hidden="true" />
+                    Gerenciar Usuário
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Visualização em Tabela para Tablets e Desktop */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
+                    <th className="py-3 px-4">Usuário</th>
+                    <th className="py-3 px-4">Cargo (Role)</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Criado em</th>
+                    <th className="py-3 px-4 text-right">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-surface-hover/30 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col max-w-[240px]">
+                          <span className="font-semibold text-foreground truncate">{user.name || "Sem nome"}</span>
+                          <span className="font-mono text-muted-foreground text-[11px] truncate">{user.email}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                            user.role === "superadmin"
+                              ? "bg-portfolio/10 text-portfolio border border-portfolio/20"
+                              : user.role === "admin"
+                                ? "bg-primary/10 text-primary-strong border border-primary/20"
+                                : "bg-surface-hover text-muted-foreground border border-border"
+                          }`}
+                        >
+                          <Shield className="size-3" aria-hidden="true" />
+                          {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                            user.status === "active"
+                              ? "bg-positive/10 text-positive-strong border border-positive/20"
+                              : user.status === "pending_approval"
+                                ? "bg-warning/10 text-warning border border-warning/20"
+                                : "bg-critical/10 text-critical border border-critical/20"
+                          }`}
+                        >
+                          {STATUS_LABELS[user.status as keyof typeof STATUS_LABELS] || user.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
+                        {new Date(user.created_at).toLocaleDateString("pt-BR")}
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedUser(user)}
+                          className="gap-1.5 text-xs h-8 px-2.5"
+                        >
+                          <Settings2 className="size-3.5" aria-hidden="true" />
+                          Gerenciar
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
-
 
       {selectedUser ? (
         <UserEditDialog
