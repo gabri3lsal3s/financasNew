@@ -278,13 +278,15 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 ### 3.6 Visão Consolidada (Dia / Mês / Ano)
 
-- **KPIs fundamentais** (com peso de relatório quando habilitado): `totalRendas`, `totalDespesas`, `totalInvestimentos` (aportes líquidos do mês), `saldo`, `savingsRate = saldo ÷ rendas`.
+- **Hierarquia de Apresentação em Relatórios:** em todas as visões, dossiês e tabelas onde métricas ponderadas forem relevantes, o valor principal e de maior destaque visual é **sempre o valor bruto nominal (100%)**, enquanto o valor ponderado é apresentado como **dado de consulta analítica** (coluna ou sub-linha dedicada), garantindo transparência contábil de face e comparabilidade de dados.
+- **KPIs fundamentais** (com peso de relatório para consulta analítica): `totalRendas`, `totalDespesas`, `totalInvestimentos` (aportes líquidos do mês), `saldo`, `savingsRate = saldo ÷ rendas`.
 - `saldo = rendas − despesas − investimentos`.
 - **Saldo líquido de Contas** = total a receber (pendentes do mês) − total a pagar (pendentes do mês) − total de faturas em aberto.
 - **Fluxo diário:** barras empilhadas por dia (rendas/despesas/investimentos); comparativo com período anterior.
 - **Agrupamentos temporais:** dia/mês/ano; navegação de mês/ano com clamp no APP_START_DATE.
 - **Orçamentos:** progresso vs limite, lista de atenção, recomendação de realocação.
 - **Limite de período customizado:** máximo 366 dias.
+
 
 ### 3.7 Motor de Análise e Diagnóstico (Insights)
 
