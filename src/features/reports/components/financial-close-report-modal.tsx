@@ -133,12 +133,12 @@ export function FinancialCloseReportModal({
     <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Dossiê de Fechamento Financeiro & DRE"
+      title="Relatório Executivo de Finanças Pessoais & DRE"
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader
-        title="Dossiê de Fechamento Financeiro &amp; DRE"
-        subtitle="Demonstração do Resultado, Fluxo de Caixa &amp; Composição de Gastos"
+        title="Relatório Executivo de Finanças Pessoais & DRE"
+        subtitle="Demonstração do Resultado, Fluxo de Caixa & Composição de Gastos"
         periodLabel={periodLabel}
         appName={appName}
         icon={Landmark}

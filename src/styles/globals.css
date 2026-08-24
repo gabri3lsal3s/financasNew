@@ -528,11 +528,15 @@
 
 @media print {
   @page {
-    size: A4;
-    margin: 0;
+    size: A4 portrait;
+    margin: 15mm 12mm 15mm 12mm;
   }
 
   body {
+    background: #ffffff !important;
+    color: #1c1917 !important;
+    margin: 0 !important;
+    padding: 0 !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
@@ -584,12 +588,14 @@
     display: block !important;
     background: #ffffff !important;
     color: #1c1917 !important;
-    padding: 14mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
-
 
   /* Tipografia única e padronizada: toda a folha usa a família sans (Inter)
      — o `.num` (mono) e o `font-display` (Sora) viram sans no documento,
@@ -604,8 +610,24 @@
     letter-spacing: 0 !important;
   }
 
-  /* Reforço explícito das cores-chave (rede de segurança caso alguma
-     utilitária não derive das variáveis acima). */
+  /* Ritmo vertical fluido e sem vácuos desnecessários */
+  .print-sheet .print-document,
+  .print-sheet .print-area,
+  .print-sheet > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    width: 100% !important;
+  }
+
+  .print-sheet section {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Reforço explícito das cores-chave */
   .print-sheet .text-muted-foreground {
     color: #475569 !important;
   }
@@ -621,35 +643,76 @@
 
   .print-sheet .border-border,
   .print-sheet .border-border\/40,
-  .print-sheet .border-border\/60 {
+  .print-sheet .border-border\/60,
+  .print-sheet .border-border\/70,
+  .print-sheet .border-border\/80 {
     border-color: #d6d3d1 !important;
   }
 
+  .print-sheet .bg-muted\/10,
+  .print-sheet .bg-muted\/20,
   .print-sheet .bg-muted\/30,
   .print-sheet .bg-muted\/40 {
     background-color: #f5f5f4 !important;
   }
 
-  /* Quebra de página limpa: linhas de tabela e blocos nunca são cortados no meio e o
-     cabeçalho das tabelas repete em cada página (comportamento nativo do
-     `<thead>` em fluxo normal — mantido pelo PrintSheet). */
+  /* Prevenção estrita de fragmentação e corte de componentes ao meio */
   .print-sheet tr,
-  .print-sheet .break-inside-avoid {
+  .print-sheet td,
+  .print-sheet th,
+  .print-sheet .break-inside-avoid,
+  .print-sheet article,
+  .print-sheet figure,
+  .print-sheet .rounded-xl,
+  .print-sheet .rounded-2xl,
+  .print-sheet .rounded-lg,
+  .print-sheet [role="region"],
+  .print-sheet [aria-label] {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
+  /* Títulos e cabeçalhos nunca ficam isolados/órfãos no rodapé da página */
+  .print-sheet h1,
+  .print-sheet h2,
+  .print-sheet h3,
+  .print-sheet h4,
+  .print-sheet h5,
+  .print-sheet h6,
+  .print-sheet header,
+  .print-sheet .report-section-header {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Cabeçalho da tabela repete no topo de cada página onde a tabela continuar */
   .print-sheet thead {
     display: table-header-group !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .print-sheet tbody {
+    display: table-row-group !important;
   }
 
   .print-sheet table {
     width: 100% !important;
     max-width: 100% !important;
+    border-collapse: collapse !important;
   }
 
-  .print-sheet .overflow-x-auto {
+  .print-sheet .overflow-x-auto,
+  .print-sheet .overflow-hidden {
     overflow: visible !important;
+  }
+
+  /* Rodapé institucional posicionado no fim do fluxo */
+  .print-sheet footer,
+  .print-sheet .report-footer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-top: 12px !important;
   }
 }
 
