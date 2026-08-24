@@ -1467,7 +1467,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 28 | **F42** — Central Unificada de Relatórios & Exportação Multi-Abas (.xlsx) | C / Relatórios & Consultoria | F40/F41 | ✅ Concluída (2026-08-23) — central /relatorios em 4 abas, dossiês A4 de consultoria, gerador de Excel multi-abas nativo |
 | 29 | **F43** — Preparação para SaaS: Painel Admin, RBAC & Feature Flags | Infra & SaaS | F1/F2 | ✅ Concluída (2026-08-23) — RBAC (user, admin, superadmin), status (pending, active, suspended, banned), convites/allowlist, feature flags dinâmicas |
 | 30 | **F44** — Padronização Editorial A4, Elementos Gráficos & Tear Sheet Completo | UI & Relatórios | F42 | ✅ Concluída (2026-08-24) — layout base `ReportDocumentLayout`, supressão de ruídos do browser (`@page { margin: 0 }`), 6 gráficos vetoriais nativos (SVG/CSS), expansão institucional do Tear Sheet e unificação dos 7 relatórios |
-| 31 | **F45** — Hardening de Segurança, RLS & Imunização contra Injeção | Segurança & Infra | F43 | 📋 Planejada — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, proteção contra Formula Injection (CSV/Excel) |
+| 31 | **F45** — Hardening de Segurança, RLS & Imunização contra Injeção | Segurança & Infra | F43 | ✅ Concluída (2026-08-24) — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, proteção contra Formula Injection (CSV/Excel) |
 | 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | 📋 Planejada — índices compostos/cobridores `(user_id, date)` com `INCLUDE`, unificação de range em Insights e RPCs set-based |
 | 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | 📋 Planejada — 2FA (TOTP) para usuários e admins, Cloudflare Turnstile nos formulários públicos, revogação forçada de sessão no client |
 | 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | 📋 Planejada — particionamento de tabelas históricas de alto volume (`expenses`, `audit_events`) e rotinas de expurgo/arquivamento frio |
@@ -2197,7 +2197,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 45 — Hardening de Segurança no Banco, RLS & Imunização contra Injeção (PostgreSQL/Supabase)
 
-> **Status:** 📋 Planejada — padronização de segurança em nível de banco de dados, blindagem de contas suspensas/banidas diretamente nas políticas RLS, otimização de avaliação de `auth.uid()`, garantia de `search_path` em 100% das funções `SECURITY DEFINER` e blindagem contra CSV/Excel Formula Injection.
+> **Status:** ✅ Concluída (2026-08-24) — migration `0030_rls_hardening_and_search_path.sql` redefinindo todas as políticas de tabelas de negócio para `((select auth.uid()) = user_id and public.is_current_user_active())`, fixação estrita de `SET search_path = public, pg_temp;` em 100% das funções `SECURITY DEFINER` e triggers, e proteção robusta contra CSV/Excel Formula Injection em `src/domain/export/csv.ts` e `src/services/excel-export.ts`.
 
 **Objetivo:** eliminar potenciais vetores de vulnerabilidade e inconsistências identificadas na auditoria de segurança da base:
 1. **Otimização de RLS com `(select auth.uid())`:** substituir avaliações voláteis de `auth.uid() = user_id` por `(select auth.uid()) = user_id`, permitindo que o planejador do PostgreSQL avalie o ID do usuário apenas uma vez por query (ganho de 3x a 10x na velocidade de scans de tabelas grandes);

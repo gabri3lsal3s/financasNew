@@ -9,12 +9,28 @@
 
 const CSV_DELIMITER = ";";
 
-/** Escapa um campo: aspas duplas quando necessário, dobrando aspas internas. */
-export function escapeCsvField(value: string): string {
-  if (/[";\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+/**
+ * Sanitiza valores de texto para proteção contra CSV/Formula Injection (DDE).
+ * Previne execução de comandos em planilhas iniciados por '=', '+', '-', '@', '\t' ou '\r'.
+ */
+export function sanitizeFormulaInjection(value: string): string {
+  if (/^[-=+@\t\r]/.test(value)) {
+    // Permite números legítimos com sinal (ex.: "-15,50" ou "+100")
+    if (/^[-+]?\d+(?:[.,]\d+)?$/.test(value.trim())) {
+      return value;
+    }
+    return `'${value}`;
   }
   return value;
+}
+
+/** Escapa um campo: sanitiza contra injeção e aplica aspas duplas quando necessário. */
+export function escapeCsvField(value: string): string {
+  const sanitized = sanitizeFormulaInjection(value);
+  if (/[";\r\n]/.test(sanitized)) {
+    return `"${sanitized.replace(/"/g, '""')}"`;
+  }
+  return sanitized;
 }
 
 /** Concatena um arquivo CSV com quebras de linha Windows (Excel-friendly). */

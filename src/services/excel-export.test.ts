@@ -85,4 +85,53 @@ describe("generateMultiSheetExcelXml", () => {
     expect(xml).toContain("Financiamento Imobiliário");
     expect(xml).toContain("12000.00");
   });
+
+  it("deve sanitizar injeção de fórmulas em células de texto", () => {
+    const maliciousData: ExcelWorkbookData = {
+      appName: "=cmd|' /C calc'!A0",
+      generatedAt: "23/08/2026",
+      summary: {
+        totalPatrimonyBRL: 0,
+        totalInvestedCostBRL: 0,
+        unrealizedPnlBRL: 0,
+        unrealizedPnlPct: 0,
+        cashBalanceBRL: 0,
+        yearDividendsBRL: 0,
+        freedomPct: 0,
+        savingsRatePct: 0,
+      },
+      positions: [
+        {
+          ticker: "=DDE('cmd';'/C calc';'A0')",
+          name: "@SUM(1+1)*cmd",
+          assetClass: "acoes",
+          currency: "BRL",
+          quantity: 1,
+          averagePrice: 10,
+          currentPrice: 10,
+          totalValueBRL: 10,
+          unrealizedPnlBRL: 0,
+          unrealizedPnlPct: 0,
+          yearDividendsBRL: 0,
+          yocPct: 0,
+        },
+      ],
+      dividends: [],
+      dreMonthly: [],
+      debts: [
+        {
+          description: "+cmd|' /C calc'!A0",
+          type: "payable",
+          remainingAmountBRL: 100,
+          totalAmountBRL: 100,
+        },
+      ],
+    };
+
+    const xml = generateMultiSheetExcelXml(maliciousData);
+    expect(xml).toContain("&apos;=cmd");
+    expect(xml).toContain("&apos;=DDE");
+    expect(xml).toContain("&apos;@SUM");
+    expect(xml).toContain("&apos;+cmd");
+  });
 });

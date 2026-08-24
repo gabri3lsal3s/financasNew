@@ -157,4 +157,16 @@ describe("domain/export — CSV", () => {
     expect(csv).toContain("ITUB4;Ações;BRL;100;34,50;40,25;4025,00;575,00;100,00;19,57;40,25");
     expect(csv).toContain("Caixa;;BRL;6.000;1,00;1,00;6000,00;0,00;0,00;;60");
   });
+
+  it("protege contra CSV/Formula Injection (DDE) prefixando com apóstrofo", () => {
+    expect(escapeCsvField("=cmd|' /C calc'!A0")).toBe("'=cmd|' /C calc'!A0");
+    expect(escapeCsvField("@SUM(1+1)*cmd|' /C calc'!A0")).toBe("'@SUM(1+1)*cmd|' /C calc'!A0");
+    expect(escapeCsvField("+cmd|' /C calc'!A0")).toBe("'+cmd|' /C calc'!A0");
+    expect(escapeCsvField("-cmd|' /C calc'!A0")).toBe("'-cmd|' /C calc'!A0");
+    expect(escapeCsvField("\tmalicious")).toBe("'\tmalicious");
+
+    // Números legítimos com sinal negativo/positivo não devem ser corrompidos
+    expect(escapeCsvField("-15,50")).toBe("-15,50");
+    expect(escapeCsvField("+100")).toBe("+100");
+  });
 });

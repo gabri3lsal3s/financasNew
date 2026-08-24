@@ -73,10 +73,22 @@ export interface ExcelWorkbookData {
   debts: readonly ExcelDebtRow[];
 }
 
+export function sanitizeSpreadsheetText(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  const str = String(value);
+  if (/^[-=+@\t\r]/.test(str)) {
+    if (/^[-+]?\d+(?:[.,]\d+)?$/.test(str.trim())) {
+      return str;
+    }
+    return `'${str}`;
+  }
+  return str;
+}
+
 function escapeXml(text: string | number | null | undefined): string {
   if (text === null || text === undefined) return "";
-  const str = String(text);
-  return str
+  const sanitized = sanitizeSpreadsheetText(text);
+  return sanitized
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
