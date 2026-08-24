@@ -201,8 +201,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getAllByText("Moradia").length).toBeGreaterThan(0);
   });
 
-  it("KPI de investimentos reflete os aportes realizados no mês e navega para /carteira", async () => {
-    const user = userEvent.setup();
+  it("KPI de investimentos reflete os aportes realizados no mês", () => {
     portfolioContributionsMock = [
       { id: "c1", asset_id: "a1", date: "2026-08-05", amount: 1500, notes: null },
       { id: "c2", asset_id: "a2", date: "2026-08-15", amount: 500, notes: null },
@@ -220,11 +219,6 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     // Saldo do mês exibe o operacional (1.900) e detalha o caixa pós-aportes (-100)
     expect(screen.getByText("Caixa pós-aportes:")).toBeInTheDocument();
     expect(screen.getByText("R$ 100,00")).toBeInTheDocument();
-
-    // Clique no KPI navega para /carteira
-    const kpiButton = screen.getByRole("button", { name: /Investimentos/i });
-    await user.click(kpiButton);
-    expect(navigateMock).toHaveBeenCalledWith("/carteira");
   });
 
   it("não exibe o card Carteira em Resumo na Home (permanece na Carteira)", () => {

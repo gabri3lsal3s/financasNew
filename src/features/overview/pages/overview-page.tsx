@@ -408,7 +408,6 @@ export function OverviewPage() {
                 icon={<TrendingUp className="size-4" aria-hidden="true" />}
                 hint={<DeltaHint currentCents={totals.investmentCents} previousCents={prevTotals.investmentCents} />}
                 spark={investmentSpark}
-                onClick={() => navigate("/carteira")}
               />
               <KpiCard
                 label="Resultado do mês"
