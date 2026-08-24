@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { usePrint } from "@/components/ui";
 import { ArrowDownRight, ArrowUpRight, Landmark, Printer, Scale } from "lucide-react";
 import { Button, Modal } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
@@ -21,18 +21,8 @@ export function ConsolidatedWealthModal({
   periodLabel = "Fechamento Consolidado",
   appName = "Finanças Pessoais",
 }: ConsolidatedWealthModalProps) {
-  const [printing, setPrinting] = useState(false);
+  const { printing, triggerPrint } = usePrint();
   const generatedAt = new Date().toLocaleDateString("pt-BR");
-
-  const handlePrint = () => {
-    setPrinting(true);
-    setTimeout(() => {
-      if (typeof window !== "undefined" && typeof window.print === "function") {
-        window.print();
-      }
-      setPrinting(false);
-    }, 100);
-  };
 
 
   const reportContent = (
@@ -176,7 +166,7 @@ export function ConsolidatedWealthModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
-            <Button type="button" variant="default" onClick={handlePrint} className="gap-2">
+            <Button type="button" variant="default" onClick={triggerPrint} className="gap-2">
               <Printer className="size-4" aria-hidden="true" />
               Imprimir / Salvar PDF
             </Button>

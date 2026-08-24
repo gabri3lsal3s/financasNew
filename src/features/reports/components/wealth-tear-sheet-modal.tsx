@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { usePrint } from "@/components/ui";
 import { Layers, PieChart, Printer, ShieldAlert, TrendingUp } from "lucide-react";
 import { Button, Modal } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
@@ -51,21 +51,11 @@ export function WealthTearSheetModal({
   periodLabel = "Posição Atual Consolidada",
   appName = "Finanças Pessoais",
 }: WealthTearSheetModalProps) {
-  const [printing, setPrinting] = useState(false);
+  const { printing, triggerPrint } = usePrint();
   const generatedAt = new Date().toLocaleDateString("pt-BR");
   const investmentRows = rows.filter((r) => !r.isCash);
   const unrealizedPnlBRL = totalBRL - totalCostBRL;
   const unrealizedPnlPct = totalCostBRL > 0 ? (unrealizedPnlBRL / totalCostBRL) * 100 : 0;
-
-  const handlePrint = () => {
-    setPrinting(true);
-    setTimeout(() => {
-      if (typeof window !== "undefined" && typeof window.print === "function") {
-        window.print();
-      }
-      setPrinting(false);
-    }, 100);
-  };
 
 
   const reportContent = (
@@ -286,7 +276,7 @@ export function WealthTearSheetModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
-            <Button type="button" variant="default" onClick={handlePrint} className="gap-2">
+            <Button type="button" variant="default" onClick={triggerPrint} className="gap-2">
               <Printer className="size-4" aria-hidden="true" />
               Imprimir / Salvar PDF
             </Button>

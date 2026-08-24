@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { usePrint } from "@/components/ui";
 import {
   Banknote,
   Landmark,
@@ -10,6 +10,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Button, Modal } from "@/components/ui";
+
 import { MoneyText } from "@/components/ui/money-text";
 import { PrintSheet } from "@/components/ui/print-sheet";
 import { formatPercent } from "@/services/masks/percent";
@@ -21,6 +22,10 @@ export interface FinancialDREData {
   savingsRatePct: number;
   investedAporteCents: number;
   netCashFlowCents: number;
+  /** Valor bruto (sem ponderação) de receitas — exibido quando pesos estão ativos. */
+  grossIncomeBrutoCents?: number;
+  /** Valor bruto (sem ponderação) de despesas — exibido quando pesos estão ativos. */
+  totalExpensesBrutoCents?: number;
 }
 
 export interface FinancialReportCategoryItem {
@@ -54,6 +59,8 @@ export interface FinancialCloseReportModalProps {
   paidInvoices?: readonly FinancialReportPaidInvoiceItem[];
   expenseCount: number;
   incomeCount: number;
+  /** Quando true, exibe linha de bruto vs. ponderado na DRE. */
+  showWeightedNote?: boolean;
 }
 
 function formatDateBR(isoDate: string): string {
@@ -78,19 +85,14 @@ export function FinancialCloseReportModal({
   paidInvoices = [],
   expenseCount,
   incomeCount,
+  showWeightedNote = false,
 }: FinancialCloseReportModalProps) {
-  const [printing, setPrinting] = useState(false);
+  const { printing, triggerPrint } = usePrint();
   const generatedAt = new Date().toLocaleDateString("pt-BR");
 
-  const handlePrint = () => {
-    setPrinting(true);
-    setTimeout(() => {
-      if (typeof window !== "undefined" && typeof window.print === "function") {
-        window.print();
-      }
-      setPrinting(false);
-    }, 100);
-  };
+  const hasBrutoRef =
+    showWeightedNote &&
+    (dre.grossIncomeBrutoCents !== undefined || dre.totalExpensesBrutoCents !== undefined);
 
 
   const reportContent = (
@@ -175,6 +177,11 @@ export function FinancialCloseReportModal({
                 </td>
                 <td className="py-2 px-3 text-right font-mono font-bold">
                   <MoneyText cents={dre.grossIncomeCents} tone="positive" />
+                  {hasBrutoRef && dre.grossIncomeBrutoCents !== undefined && dre.grossIncomeBrutoCents !== dre.grossIncomeCents && (
+                    <span className="block text-[10px] text-muted-foreground font-normal">
+                      nominal: <MoneyText cents={dre.grossIncomeBrutoCents} tone="default" className="inline text-[10px]" />
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 px-3 text-right font-mono font-semibold">100,0%</td>
               </tr>
@@ -184,6 +191,11 @@ export function FinancialCloseReportModal({
                 </td>
                 <td className="py-2 px-3 text-right font-mono">
                   <MoneyText cents={dre.totalExpensesCents} tone="negative" />
+                  {hasBrutoRef && dre.totalExpensesBrutoCents !== undefined && dre.totalExpensesBrutoCents !== dre.totalExpensesCents && (
+                    <span className="block text-[10px] text-muted-foreground font-normal">
+                      nominal: <MoneyText cents={dre.totalExpensesBrutoCents} tone="default" className="inline text-[10px]" />
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 px-3 text-right font-mono text-muted-foreground">
                   {dre.grossIncomeCents > 0
@@ -233,6 +245,11 @@ export function FinancialCloseReportModal({
             </tbody>
           </table>
         </div>
+        {hasBrutoRef && (
+          <p className="text-[10px] text-muted-foreground italic">
+            * Valores ponderados pelo peso de relatório configurado. A coluna "nominal" exibe o valor bruto de face.
+          </p>
+        )}
       </section>
 
       {/* Seção 2: Distribuição por Categorias & Formas de Pagamento */}
@@ -369,7 +386,7 @@ export function FinancialCloseReportModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
-            <Button type="button" variant="default" onClick={handlePrint} className="gap-2">
+            <Button type="button" variant="default" onClick={triggerPrint} className="gap-2">
               <Printer className="size-4" aria-hidden="true" />
               Imprimir / Salvar PDF
             </Button>

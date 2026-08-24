@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { usePrint } from "@/components/ui";
 import { CalendarDays, Flame, PiggyBank, Printer, Sparkles } from "lucide-react";
 import { Button, Modal } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
@@ -28,20 +28,10 @@ export function DividendFreedomModal({
   periodLabel = "Exercício Anual",
   appName = "Finanças Pessoais",
 }: DividendFreedomModalProps) {
-  const [printing, setPrinting] = useState(false);
+  const { printing, triggerPrint } = usePrint();
   const generatedAt = new Date().toLocaleDateString("pt-BR");
 
   const currentYear = new Date().getFullYear();
-
-  const handlePrint = () => {
-    setPrinting(true);
-    setTimeout(() => {
-      if (typeof window !== "undefined" && typeof window.print === "function") {
-        window.print();
-      }
-      setPrinting(false);
-    }, 100);
-  };
 
 
   // Matriz de 12 meses de proventos do ano corrente
@@ -232,7 +222,7 @@ export function DividendFreedomModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
-            <Button type="button" variant="default" onClick={handlePrint} className="gap-2">
+            <Button type="button" variant="default" onClick={triggerPrint} className="gap-2">
               <Printer className="size-4" aria-hidden="true" />
               Imprimir / Salvar PDF
             </Button>

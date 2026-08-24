@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 import {
   FileSpreadsheet,
   Flame,
+  Info,
   Landmark,
   PieChart,
   Printer,
@@ -49,7 +50,9 @@ import {
   usePortfolioDividends,
   usePortfolioPosition,
   useUserAccess,
+  useUserPreferences,
 } from "@/state";
+
 
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { ExpenseDetailDialog } from "@/features/transactions";
@@ -79,6 +82,10 @@ export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTabParam = (searchParams.get("aba") as MainTab) || "financas";
   const { hasFeature } = useUserAccess();
+  const prefsQuery = useUserPreferences();
+  /** Quando false, os pesos de relatório são neutralizados (weight = 1 para todos). */
+  const weightsEnabled = prefsQuery.data?.report_weights_enabled ?? true;
+
   const hasFinanceFeatures =
 
     hasFeature("transactions") ||
@@ -378,9 +385,66 @@ export function ReportsPage() {
     return "Período Personalizado";
   }, [mode, month, year, customStart, customEnd]);
 
+  // Conversão de dados da aba finanças
+  const expenseEntries = useMemo(() => {
+    return expenses.map((item) => {
+      const cat = categoryById.get(item.category_id);
+      return {
+        id: item.id,
+        date: item.date,
+        kind: "expense" as const,
+        categoryId: item.category_id,
+        categoryName: cat?.name ?? "Sem categoria",
+        categoryIcon: cat?.icon,
+        paymentMethod: item.payment_method,
+        baseCents: numberToCents(item.value),
+        // Quando pesos estão desativados, neutraliza o weight (trata como 1)
+        weight: weightsEnabled ? item.report_weight : 1,
+      };
+    });
+  }, [expenses, categoryById, weightsEnabled]);
+
+  const incomeEntries = useMemo(() => {
+    return incomes.map((item) => {
+      const cat = categoryById.get(item.category_id);
+      return {
+        id: item.id,
+        date: item.date,
+        kind: "income" as const,
+        categoryId: item.category_id,
+        categoryName: cat?.name ?? "Sem categoria",
+        categoryIcon: cat?.icon,
+        paymentMethod: undefined,
+        baseCents: numberToCents(item.value),
+        // Quando pesos estão desativados, neutraliza o weight (trata como 1)
+        weight: weightsEnabled ? item.report_weight : 1,
+      };
+    });
+  }, [incomes, categoryById, weightsEnabled]);
+
+  const byCategory = useMemo(() => aggregateByCategory(expenseEntries), [expenseEntries]);
+  const byMethod = useMemo(() => aggregateByPaymentMethod(expenseEntries), [expenseEntries]);
+  const byWeekday = useMemo(() => aggregateByWeekday(expenseEntries), [expenseEntries]);
+
+  const currentExpenseCents = useMemo(
+    () => expenseEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
+    [expenseEntries],
+  );
+  const currentIncomeCents = useMemo(
+    () => incomeEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
+    [incomeEntries],
+  );
+
+  const currentOverview = useMemo(
+    () => computeOverview(currentIncomeCents, currentExpenseCents, 0),
+    [currentIncomeCents, currentExpenseCents],
+  );
+
   const consolidatedBalance = useMemo(() => {
-    const curMonthIncome = (incomes ?? []).reduce((acc, i) => acc + i.value, 0);
-    const curMonthExpense = (expenses ?? []).reduce((acc, e) => acc + e.value, 0);
+    // Usa os mesmos valores ponderados que os KPIs da página exibem (consistência)
+    // currentIncomeCents e currentExpenseCents já aplicam weightsEnabled
+    const curMonthIncomeBRL = currentIncomeCents / 100;
+    const curMonthExpenseBRL = currentExpenseCents / 100;
     const curMonthContrib = contributions
       .filter((c) => {
         if (mode === "month") return c.date.startsWith(month);
@@ -400,64 +464,12 @@ export function ReportsPage() {
         remainingAmountBRL: d.amount,
         description: d.name,
       })),
-      monthlyIncomesBRL: curMonthIncome,
-      monthlyExpensesBRL: curMonthExpense,
+      monthlyIncomesBRL: curMonthIncomeBRL,
+      monthlyExpensesBRL: curMonthExpenseBRL,
       monthlyContributionsBRL: curMonthContrib,
     });
-  }, [totalPatrimonyBRL, totalInvestedCostBRL, cashBalanceBRL, debts, incomes, expenses, contributions, mode, month, year, customValid, customStart, customEnd]);
+  }, [totalPatrimonyBRL, totalInvestedCostBRL, cashBalanceBRL, debts, currentIncomeCents, currentExpenseCents, contributions, mode, month, year, customValid, customStart, customEnd]);
 
-  // Conversão de dados da aba finanças
-  const expenseEntries = useMemo(() => {
-    return expenses.map((item) => {
-      const cat = categoryById.get(item.category_id);
-      return {
-        id: item.id,
-        date: item.date,
-        kind: "expense" as const,
-        categoryId: item.category_id,
-        categoryName: cat?.name ?? "Sem categoria",
-        categoryIcon: cat?.icon,
-        paymentMethod: item.payment_method,
-        baseCents: numberToCents(item.value),
-        weight: item.report_weight,
-      };
-    });
-  }, [expenses, categoryById]);
-
-  const incomeEntries = useMemo(() => {
-    return incomes.map((item) => {
-      const cat = categoryById.get(item.category_id);
-      return {
-        id: item.id,
-        date: item.date,
-        kind: "income" as const,
-        categoryId: item.category_id,
-        categoryName: cat?.name ?? "Sem categoria",
-        categoryIcon: cat?.icon,
-        paymentMethod: undefined,
-        baseCents: numberToCents(item.value),
-        weight: item.report_weight,
-      };
-    });
-  }, [incomes, categoryById]);
-
-  const byCategory = useMemo(() => aggregateByCategory(expenseEntries), [expenseEntries]);
-  const byMethod = useMemo(() => aggregateByPaymentMethod(expenseEntries), [expenseEntries]);
-  const byWeekday = useMemo(() => aggregateByWeekday(expenseEntries), [expenseEntries]);
-
-  const currentExpenseCents = useMemo(
-    () => expenseEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
-    [expenseEntries],
-  );
-  const currentIncomeCents = useMemo(
-    () => incomeEntries.reduce((acc, e) => acc + e.baseCents * e.weight, 0),
-    [incomeEntries],
-  );
-
-  const currentOverview = useMemo(
-    () => computeOverview(currentIncomeCents, currentExpenseCents, 0),
-    [currentIncomeCents, currentExpenseCents],
-  );
 
   const financialDRE = useMemo(() => {
     const grossIncomeCents = currentIncomeCents;
@@ -479,6 +491,10 @@ export function ReportsPage() {
     const investedAporteCents = numberToCents(periodContribBRL);
     const netCashFlowCents = operationalSavingsCents - investedAporteCents;
 
+    // Valores brutos (sem ponderação) — referência para exibição no modal DRE quando pesos ativos
+    const grossIncomeBrutoCents = incomes.reduce((acc, i) => acc + numberToCents(i.value), 0);
+    const totalExpensesBrutoCents = expenses.reduce((acc, e) => acc + numberToCents(e.value), 0);
+
     return {
       grossIncomeCents,
       totalExpensesCents,
@@ -486,6 +502,8 @@ export function ReportsPage() {
       savingsRatePct,
       investedAporteCents,
       netCashFlowCents,
+      grossIncomeBrutoCents,
+      totalExpensesBrutoCents,
     };
   }, [
     currentIncomeCents,
@@ -497,7 +515,10 @@ export function ReportsPage() {
     customValid,
     customStart,
     customEnd,
+    incomes,
+    expenses,
   ]);
+
 
   // Estrutura Completa do Caderno Excel
   const workbookData: ExcelWorkbookData = useMemo(() => {
@@ -621,34 +642,42 @@ export function ReportsPage() {
 
       {/* Seletor Global de Período — Compartilhado por todas as abas */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-xs">
-        <div className="grid grid-cols-3 sm:flex items-center gap-1.5 w-full sm:w-auto">
-          <Button
-            type="button"
-            variant={mode === "month" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setMode("month")}
-            className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-          >
-            Mensal
-          </Button>
-          <Button
-            type="button"
-            variant={mode === "year" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setMode("year")}
-            className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-          >
-            Anual
-          </Button>
-          <Button
-            type="button"
-            variant={mode === "custom" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setMode("custom")}
-            className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
-          >
-            Personalizado
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="grid grid-cols-3 sm:flex items-center gap-1.5 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant={mode === "month" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMode("month")}
+              className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
+            >
+              Mensal
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "year" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMode("year")}
+              className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
+            >
+              Anual
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "custom" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMode("custom")}
+              className="w-full sm:w-auto justify-center px-2 sm:px-3 text-xs"
+            >
+              Personalizado
+            </Button>
+          </div>
+          {weightsEnabled && (
+            <span className="inline-flex items-center gap-1 self-start sm:self-auto rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary-strong">
+              <Info className="size-3 shrink-0" aria-hidden="true" />
+              Valores ponderados
+            </span>
+          )}
         </div>
 
         <div className="flex items-center justify-center sm:justify-end w-full sm:w-auto">
@@ -664,6 +693,7 @@ export function ReportsPage() {
             </div>
           )}
         </div>
+
       </div>
 
       {/* ABA 1: FINANÇAS & DRE PESSOAL */}
@@ -991,7 +1021,10 @@ export function ReportsPage() {
         }))}
         expenseCount={expenseEntries.length}
         incomeCount={incomeEntries.length}
+        showWeightedNote={weightsEnabled}
       />
+
+
 
       <WealthTearSheetModal
         open={tearSheetOpen}

@@ -39,6 +39,8 @@ export type { DataListProps, DataListColumn } from "./data-list";
 export { Command } from "./command";
 export type { CommandProps, CommandItem } from "./command";
 export { PrintSheet } from "./print-sheet";
+export { usePrint } from "./use-print";
+
 export { Alert } from "./alert";
 export type { AlertProps, AlertVariant } from "./alert";
 export { ErrorState } from "./error-state";

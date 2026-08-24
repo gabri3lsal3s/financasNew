@@ -60,6 +60,12 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useUserPreferences: () => ({
+    data: { report_weights_enabled: true },
+    isLoading: false,
+    error: null,
+  }),
+
   usePortfolioContributions: () => ({
     data: [],
     isLoading: false,

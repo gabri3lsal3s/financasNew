@@ -1,6 +1,8 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v1.93** registra a **Correção da Geração de PDFs Limpos (A4) via Hook `usePrint` & Suporte Consistente a Valores Ponderados em Relatórios** (2026-08-23): **(1) Correção Definitiva de PDFs Vazios (`usePrint`)**: substituição do padrão inconsistente de `setTimeout(100ms)` pelo novo hook reativo `src/components/ui/use-print.ts` com sincronização garantida no commit do DOM via `useEffect` e próximo frame de pintura do navegador (`requestAnimationFrame`), eliminando impressões em branco em todos os 4 modais de dossiê (`FinancialCloseReportModal`, `WealthTearSheetModal`, `DividendFreedomModal`, `ConsolidatedWealthModal`); **(2) Suporte Completo à Preferência de Pesos de Relatório (`report_weights_enabled`)**: consumo reativo de `useUserPreferences()` na página central `ReportsPage`, neutralizando automaticamente os pesos (`weight = 1`) quando a flag estiver desativada nas preferências do usuário; **(3) Consistência Total no Balanço Patrimonial 360° & DRE**: `consolidatedBalance` sincronizado com os mesmos valores ponderados dos KPIs da página, corrigindo discrepâncias de cálculo entre visões; **(4) Transparência Visual de Valores Ponderados**: badge discreto `"Valores ponderados"` no seletor global de período e discriminação de valores nominais brutos de face no DRE contábil quando pesos estiverem ativos; **(5) Suíte 100% Verde**: 214 arquivos / 1.598 testes passando, zero erros de lint e typecheck.
 > **v1.92** registra a **Responsividade Mobile em Relatórios, Otimização da BottomNav (Grade Estrita de 5 Colunas sem 'Mais' para $\le 4$ Itens) & Filtragem Dinâmica por Feature Flags** (2026-08-23): **(1) Responsividade Mobile em Relatórios (`ReportsPage` & `ExcelExportCard`)**: layout adaptativo completo no smartphone com botões de período e agregações em grade compacta (`grid-cols-3` / `w-full sm:w-auto`), tabelas com scroll horizontal protegido (`min-w-[500px]`), textos truncados seguros nos cards de KPI e botões de ação em largura total no mobile; **(2) BottomNav Otimizada sem Botão 'Mais' Desnecessário (`resolveBottomNavSlots`)**: barra inferior com grade estrita de 5 colunas (`grid-cols-5`) com centralização do FAB contextual; quando o usuário possui $\le 4$ itens permitidos no total, todos os 4 itens são promovidos diretamente para a barra e nenhum botão "Mais" é renderizado; quando $> 4$ itens, 3 itens prioritários ocupam os slots da barra e os restantes vão para o menu "Mais"; **(3) Filtragem de Abas por Feature Flags em Relatórios**: integração com `useUserAccess()`, ocultando automaticamente as abas de Finanças e Balanço quando os módulos de transações/cartões/dívidas estiverem desativados e exibindo apenas Investimentos e Fiscal; **(4) Suíte 100% Verde**: 213 arquivos / 1.596 testes passando, zero erros de lint e typecheck.
+
 > **v1.91** registra o **Dossiê Executivo de Finanças Pessoais & DRE + Impressão Limpa A4 sem Ruídos do Navegador** (2026-08-23): **(1) Dossiê Executivo de Finanças Pessoais & DRE (`FinancialCloseReportModal`)**: modal editorial com estrutura contábil formal (DRE Pessoal), Receitas Brutas, Custos Essenciais, Despesas de Estilo de Vida, Resultado Operacional Líquido, Taxa de Poupança e detalhamento por categorias e meios de pagamento; **(2) Impressão A4 Limpa sem Cabeçalhos/Rodapés**: configuração CSS `@page { size: A4; margin: 0; }` e padding de segurança `.print-sheet { padding: 14mm !important; }` em `globals.css` para suprimir URLs, datas e paginação padrão do navegador; **(3) Card Executivo & Seletor de Período Global**: integração no topo de `ReportsPage` com atalho de 1-clique para impressão/PDF do fechamento mensal.
 > **v1.90** registra a **Preparação para SaaS: Painel Administrativo, Controle de Acesso (RBAC), Gestão de Onboarding/Sessão & Feature Flags** (2026-08-23): **(1) Fundação de Dados & RLS Inviolável**: enums `user_status` (`pending_approval`, `active`, `suspended`, `banned`) e `user_role` (`user`, `admin`, `superadmin`), trigger de proteção contra escalação de privilégios em `profiles`, auto-promoção do primeiro usuário para `superadmin`, validação de `is_current_user_active()` nas políticas e RPCs financeiras; **(2) Onboarding & Allowlist de Convites**: tabela `access_invites` com código promocional/pré-aprovação, expiração e limites de uso, consumo automático no `handle_new_user()`, fluxo de aprovação com telas dedicadas `PendingApprovalPage` e `SuspendedAccountPage`, guards `RequireActiveAccount` e `RequireAdmin`; **(3) Motor de Feature Flags**: catálogo `system_features` e overrides `user_feature_overrides` resolvidos em 3 níveis (Kill-Switch Global > Override por Usuário > Padrão da Feature), hook `useUserAccess()`, componente `<FeatureGate />`, guard `RequireFeature` e filtragem dinâmica na `Sidebar` e `MoreMenu`; **(4) Painel Administrativo `/admin`**: interface responsiva em 5 abas (*Visão Geral & Métricas, Gestão de Usuários & Moderação, Matriz de Funcionalidades & Kill-Switch, Gestão de Convites & Allowlist, Logs de Auditoria*); **(5) 10 RPCs Transacionais Administrativas**: `get_my_features`, `admin_list_users`, `admin_update_user_status`, `admin_set_user_role`, `admin_set_feature_override`, `admin_remove_feature_override`, `admin_toggle_global_feature`, `admin_create_invite`, `admin_revoke_invite`, `admin_get_metrics`; **(6) Suíte 100% Verde**: 211 arquivos / 1.592 testes passando, zero erros de lint e typecheck.
 
@@ -1457,6 +1459,13 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 24 | **F38** — Operações de Custódia: Vendas, Resgates, Splits & Ativo de Caixa | B / Carteira & Operação | F37 | ✅ Concluída (2026-08-23) — fluxo nativo de vendas/resgates com cálculo de lucro realizado e PM inalterado, monitor de isenção de 20k, desdobramentos/splits, renderização de ativos zerados e integração do ativo Caixa |
 | 25 | **F39** — Inteligência de Proventos, Bola de Neve & Margem de Segurança | B / Carteira & Patrimônio | F38 | ✅ Concluída (2026-08-22) — calculadora de proventos por cota, YoC histórico, indicador do Efeito Bola de Neve, termômetro de concentração de carteira, Preço Teto (Bazin) e normalização de metas em 1-clique |
 | 26 | **F40** — Central de Relatórios de Investimentos & Facilitador de IR/IRPF | B / Relatórios & Fiscal | F39 | ✅ Concluída (2026-08-22) — relatório executivo da carteira A4/PDF, relatório anual facilitador de IRPF (Bens e Direitos com texto para copiar, Rendimentos Isentos/Exclusivos e Renda Variável) e monitor mensal de DARF |
+| 27 | **F41** — Arquitetura Unificada de Investimentos (Wizard & Quick Actions) | B / Investimentos | F40 | ✅ Concluída (2026-08-22) — wizard 4 passos, quick transaction sheet, asset detail sheet e eliminação de modais aninhados |
+| 28 | **F42** — Central Unificada de Relatórios & Exportação Multi-Abas (.xlsx) | C / Relatórios & Consultoria | F40/F41 | ✅ Concluída (2026-08-23) — central /relatorios em 4 abas, dossiês A4 de consultoria, gerador de Excel multi-abas nativo |
+| 29 | **F43** — Preparação para SaaS: Painel Admin, RBAC & Feature Flags | Infra & SaaS | F1/F2 | ✅ Concluída (2026-08-23) — RBAC (user, admin, superadmin), status (pending, active, suspended, banned), convites/allowlist, feature flags dinâmicas |
+| 30 | **F44** — Hardening de Segurança no Banco & Otimização de RLS | Segurança & Infra | F43 | 📋 Planejada — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, sanitização de inputs |
+| 31 | **F45** — Escalabilidade de Consultas & Engenharia de Índices | Performance & Escala | F44 | 📋 Planejada — índices compostos/cobridores `(user_id, date)` com `INCLUDE`, otimização de faturas por competência e pooling Supavisor |
+| 32 | **F46** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | 📋 Planejada — 2FA (TOTP) para usuários e admins, Cloudflare Turnstile nos formulários públicos, revogação forçada de sessão no client |
+| 33 | **F47** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F45 | 📋 Planejada — particionamento de tabelas históricas de alto volume (`expenses`, `audit_events`) e rotinas de expurgo/arquivamento frio |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -1496,7 +1505,8 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Parcelas embutidas (`01/10`) extraídas e despesas com status de conciliado identificadas automaticamente.
 - Categorias dos novos lançamentos pré-preenchidas pelo motor preditivo de histórico (`domain/predictions`).
 - Interface 100% responsiva (Desktop e Mobile), sem emojis e com controles encapsulados Radix.
-- Suíte completa de testes (`npm run test`, `npm run typecheck`, `npm run lint`) 100% verde.
+
+### Fase 32 — Recorrências, Rendas Parceladas & Operações em Grupo
 
 > **Status:** ✅ Concluída (2026-08-17) — todas as 7 etapas executadas (domínio, migration 0013, RPCs, estado, wizard, diálogos, lista/insights, docs). Suíte **1202 testes / 145 arquivos** (100% verde) + typecheck/lint limpos.
 
@@ -1555,9 +1565,6 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Feedback sensorial calibrado via `triggerHaptic` em ações táteis.
 - Suíte completa de testes (143 arquivos / 1.160 testes) e build de produção 100% verdes.
 
-### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
-
-**Objetivo (Trilha A / Cartões & Inteligência):** permitir a importação de faturas de cartão de crédito de qualquer instituição financeira (CSV com auto-encoding Latin-1/UTF-8, XLSX/XLS sob demanda, OFX SGML/XML bancário nativo ou Quick-Paste de texto copiado), processando 100% no cliente (privacidade absoluta), com reconciliação heurística contra despesas existentes, autopreenchimento preditivo de categorias e gravação transacional idempotente no Supabase.
 
 **Organização da Implementação em 4 Etapas:**
 1. **Etapa 30.1 — Motores Puros de Domínio (`src/domain/reconciliation/`):**
@@ -2127,5 +2134,99 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Total conformidade com o Design System existente e governança: zero emojis, ícones `lucide-react`, pt-BR.
 - Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
 
+---
 
+### Fase 44 — Hardening de Segurança no Banco & Otimização de RLS (PostgreSQL/Supabase)
 
+> **Status:** 📋 Planejada — padronização de segurança em nível de banco de dados, blindagem de contas suspensas/banidas diretamente nas políticas RLS, otimização de avaliação de `auth.uid()` e garantia de `search_path` em 100% das funções `SECURITY DEFINER`.
+
+**Objetivo:** eliminar potenciais vetores de vulnerabilidade e inconsistências identificadas na auditoria de segurança da base:
+1. **Otimização de RLS com `(select auth.uid())`:** substituir avaliações voláteis de `auth.uid() = user_id` por `(select auth.uid()) = user_id`, permitindo que o planejador do PostgreSQL avalie o ID do usuário apenas uma vez por query (ganho de 3x a 10x na velocidade de scans de tabelas grandes);
+2. **Isolamento de Contas Suspensas/Pendentes no RLS:** inclusão de `is_current_user_active()` em todas as políticas de tabelas de negócio (`expenses`, `incomes`, `credit_cards`, `debts`, `budgets`, `portfolio_assets`, etc.), garantindo que tokens JWT ativos de usuários suspensos/banidos não consigam ler ou gravar dados diretamente via REST API;
+3. **Imunização de RPCs com `search_path`:** assegurar que todas as funções PL/pgSQL com privilégio `SECURITY DEFINER` (incluindo migrations legadas 0003, 0004, 0005, 0013, 0014, 0025) declarem explicitamente `SET search_path = public, pg_temp;` contra injeção de schema;
+4. **Sanitização de Strings e Proteção XSS:** filtros de sanitização para campos de texto livre (descrições, nomes de categorias, observações) para prevenir Stored XSS em relatórios e impressões.
+
+**Organização da Implementação em 3 Etapas:**
+1. **Etapa 44.1 — Migration de Hardening de RLS e Funções (PostgreSQL):**
+   - Migration `0030_rls_hardening_and_search_path.sql` redefinindo as políticas de todas as tabelas para `((select auth.uid()) = user_id and public.is_current_user_active())`.
+   - Recriação de RPCs históricas com `SET search_path = public, pg_temp;`.
+2. **Etapa 44.2 — Validações de Borda e Sanitização (TypeScript / Domínio):**
+   - Reforço de schemas Zod em `src/domain/*/schemas.ts` com sanitização e trim padronizados.
+3. **Etapa 44.3 — Testes de Penetração e Integridade:**
+   - Testes automatizados verificando que usuários com status `suspended`, `banned` ou `pending_approval` recebem erro de permissão do RLS mesmo autenticados.
+
+**✅ DoD (critérios de aceite):**
+- 100% das tabelas de negócio utilizam `(select auth.uid())` e `is_current_user_active()`.
+- 100% das funções `SECURITY DEFINER` possuem `SET search_path = public, pg_temp;`.
+- Tentativas de injeção ou leitura por contas suspensas bloqueadas diretamente pelo banco.
+- Zero regressões funcionais na suíte de testes (100% verde).
+
+---
+
+### Fase 45 — Escalabilidade de Consultas & Engenharia de Índices (PostgreSQL/Supabase)
+
+> **Status:** 📋 Planejada — infraestrutura de indexação composta, índices cobridores com `INCLUDE` e otimização para dezenas de milhares de usuários simultâneos.
+
+**Objetivo:** assegurar tempo de resposta submilisegundo em consultas agregadas, dashboards e extratos mensais sob alta carga:
+1. **Índices Compostos e Cobridores (`INCLUDE`):** criação de índices especializados para as queries mais frequentes do app:
+   - `expenses(user_id, date desc) include (value, category_id, payment_method)`
+   - `incomes(user_id, date desc) include (value, category_id)`
+   - `expenses(user_id, card_id, bill_competence) where card_id is not null`
+2. **Conexões e Transaction Pooling (Supavisor):** padronização das rotinas de backend e Edge Functions para conexão via porta 6543 (Transaction Pooler), prevenindo esgotamento de `max_connections` do PostgreSQL;
+3. **Otimização de Snapshots e Agregações:** garantia de índices btree em `portfolio_snapshots(user_id, month desc)` e `asset_prices(ticker, updated_at desc)`.
+
+**Organização da Implementação em 2 Etapas:**
+1. **Etapa 45.1 — Migration de Índices Cobridores (PostgreSQL):**
+   - Migration `0031_covering_indexes_and_performance.sql`.
+   - Validação com `EXPLAIN ANALYZE` eliminando Bitmap Heap Scans em consultas de mês e competência.
+2. **Etapa 45.2 — Auditoria de Client e Configurações de Conexão:**
+   - Verificação dos limites de conexões e políticas de staleTime/gcTime no TanStack Query.
+
+**✅ DoD (critérios de aceite):**
+- Consultas de extrato e visão geral executadas via Index Only Scan no plano do PostgreSQL.
+- Zero gargalos de conexão sob carga simulada de múltiplas sessões simultâneas.
+- Suíte de testes 100% verde.
+
+---
+
+### Fase 46 — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso (Auth & Client)
+
+> **Status:** 📋 Planejada — autenticação em duas etapas via aplicativo autenticador (TOTP), proteção contra força bruta e desconexão reativa de sessões revogadas.
+
+**Objetivo:** elevar o nível de segurança de contas de usuários comuns e administradores da plataforma:
+1. **2FA / MFA com TOTP:** suporte nativo a códigos de autenticação (Google Authenticator, Authy, 1Password) nas Configurações de Perfil (`/configuracoes`), com exigência obrigatória para contas com cargo `admin` ou `superadmin`;
+2. **Proteção Anti-Bot com Cloudflare Turnstile:** integração de verificação inteligente invisível nas telas de Login (`/login`), Cadastro (`/cadastro`) e Recuperação de Senha, blindando as APIs do Supabase Auth contra ataques de força bruta e stuffing;
+3. **Desconexão Reativa em Tempo Real:** canal Supabase Realtime escutando alterações no status da conta; caso o usuário seja suspenso ou banido pelo painel administrativo, o cliente efetua teardown atômico imediato (`useSignOut`) e redireciona para a tela de bloqueio em < 500ms.
+
+**Organização da Implementação em 3 Etapas:**
+1. **Etapa 46.1 — Fluxo de 2FA/MFA (Client & Supabase Auth):**
+   - Diálogo de configuração com QR Code, verificação de código e geração de códigos de recuperação.
+   - Desafio de 2FA no login para contas com MFA ativo.
+   - Enforcement de 2FA para administradores ao acessar `/admin`.
+2. **Etapa 46.2 — Proteção Anti-Abuso (Turnstile):**
+   - Componente Turnstile nos formulários públicos de autenticação.
+3. **Etapa 46.3 — Sincronização em Tempo Real de Suspensão:**
+   - Listener Realtime no `AuthProvider` monitorando `profiles(status)` com acionamento do `resetAppState`.
+
+**✅ DoD (critérios de aceite):**
+- Usuário consegue ativar e desativar 2FA com sucesso via aplicativo autenticador.
+- Acesso ao painel `/admin` bloqueado se o administrador não possuir 2FA ativo.
+- Suspensão de conta desconecta o usuário no navegador em tempo real sem necessidade de reload.
+- Suíte de testes e typecheck 100% verdes.
+
+---
+
+### Fase 47 — Governança em Larga Escala, Particionamento & Retenção Histórica
+
+> **Status:** 📋 Planejada — particionamento declarativo de tabelas transacionais de alto volume e rotinas automatizadas de expurgo/retenção de logs.
+
+**Objetivo:** viabilizar crescimento sustentável da base para milhões de registros históricos sem degradação de memória ou lentidão de escrita:
+1. **Particionamento de Tabelas de Histórico:** particionamento declarativo por ano/range para `audit_events` e tabelas de grande volumetria transacional;
+2. **Política de Retenção de Logs (pg_cron):** rotina agendada no banco para arquivamento ou expurgo de logs de auditoria mais antigos que 12 meses;
+3. **Relatórios Analíticos Assíncronos:** streaming e processamento em Web Workers para exportações de bases muito extensas (10k+ lançamentos) sem travar a thread principal da UI.
+
+**✅ DoD (critérios de aceite):**
+- Tabelas de histórico particionadas transparentemente sem impactar a camada de repositórios da aplicação.
+- Rotina de expurgo de logs de auditoria executada automaticamente no banco.
+- Exportação de grandes volumes fluida e sem congelamento de interface.
+- Suíte de testes 100% verde.
