@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
-import { Alert, Button, Input } from "@/components/ui";
+import { Alert, Button, Input, Turnstile } from "@/components/ui";
 import { resetPasswordForEmail } from "@/data/auth";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { getErrorMessage } from "@/services/errors";
@@ -50,6 +50,8 @@ export function ForgotPasswordPage() {
               placeholder="voce@exemplo.com"
             />
           </div>
+          <Turnstile />
+
           <Button type="submit" disabled={pending}>
             {pending ? "Enviando…" : "Enviar link de recuperação"}
           </Button>

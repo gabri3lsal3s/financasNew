@@ -121,6 +121,21 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Interface" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Dados" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Segurança & 2FA" })).toBeInTheDocument();
+  });
+
+  it("permite acessar a aba de Segurança & 2FA e visualizar status de proteção", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const securityTab = screen.getByRole("tab", { name: /Segurança & 2FA/i });
+    await user.click(securityTab);
+
+    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
+    expect(screen.getByText("Aplicativo Autenticador (TOTP)")).toBeInTheDocument();
+    expect(screen.getByText("Sessão & Nível de Acesso")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gerenciar 2FA/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
   });
 
   it("permite alternar entre opções de tema visual e emite toast de confirmação", async () => {

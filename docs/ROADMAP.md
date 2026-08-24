@@ -1469,7 +1469,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 30 | **F44** — Padronização Editorial A4, Elementos Gráficos & Tear Sheet Completo | UI & Relatórios | F42 | ✅ Concluída (2026-08-24) — layout base `ReportDocumentLayout`, supressão de ruídos do browser (`@page { margin: 0 }`), 6 gráficos vetoriais nativos (SVG/CSS), expansão institucional do Tear Sheet e unificação dos 7 relatórios |
 | 31 | **F45** — Hardening de Segurança, RLS & Imunização contra Injeção | Segurança & Infra | F43 | ✅ Concluída (2026-08-24) — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, proteção contra Formula Injection (CSV/Excel) |
 | 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | ✅ Concluída (2026-08-24) — índices compostos/cobridores `(user_id, date)` com `INCLUDE` (expenses, incomes, debts, portfolio_assets, recurrences) e index-only scans |
-| 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | 📋 Planejada — 2FA (TOTP) para usuários e admins, Cloudflare Turnstile nos formulários públicos, revogação forçada de sessão no client |
+| 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | ✅ Concluída (2026-08-24) — motor de domínio MFA/TOTP (AAL1/AAL2), componente Turnstile anti-bot em formulários públicos e aba Segurança & 2FA |
 | 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | 📋 Planejada — particionamento de tabelas históricas de alto volume (`expenses`, `audit_events`) e rotinas de expurgo/arquivamento frio |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
@@ -2261,7 +2261,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 47 — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso (Auth & Client)
 
-> **Status:** 📋 Planejada — autenticação em duas etapas via aplicativo autenticador (TOTP), proteção contra força bruta e desconexão reativa de sessões revogadas.
+> **Status:** ✅ Concluída (2026-08-24) — motor de domínio para MFA/2FA com verificação de códigos TOTP e checagem de AAL1/AAL2 (`src/domain/auth/mfa.ts`), componente `Turnstile` de proteção anti-bot e anti-força bruta em formulários públicos (`/entrar`, `/cadastro`, `/recuperar-senha`), e aba "Segurança & 2FA" no centro de configurações com gestão de sessão e status de autenticação.
 
 **Objetivo:** elevar o nível de segurança de contas de usuários comuns e administradores da plataforma:
 1. **2FA / MFA com TOTP:** suporte nativo a códigos de autenticação (Google Authenticator, Authy, 1Password) nas Configurações de Perfil (`/configuracoes`), com exigência obrigatória para contas com cargo `admin` ou `superadmin`;

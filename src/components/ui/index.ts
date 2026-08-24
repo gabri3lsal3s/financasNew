@@ -64,3 +64,5 @@ export {
 export type { PopoverContentProps } from "./popover";
 export { Stepper } from "./stepper";
 export type { StepperProps } from "./stepper";
+export { Turnstile } from "./turnstile";
+export type { TurnstileProps } from "./turnstile";

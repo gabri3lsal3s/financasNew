@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router";
-import { Alert, Button, Input } from "@/components/ui";
+import { Alert, Button, Input, Turnstile } from "@/components/ui";
 import { signInWithEmail } from "@/data/auth";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth } from "@/hooks/use-auth";
@@ -70,6 +70,8 @@ export function LoginPage() {
               placeholder="••••••••"
             />
           </div>
+          <Turnstile />
+
           <Button type="submit" disabled={pending || Boolean(configError)}>
             {pending ? "Entrando…" : "Entrar"}
           </Button>

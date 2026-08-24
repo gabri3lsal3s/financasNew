@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
-import { Alert, Button, Input } from "@/components/ui";
+import { Alert, Button, Input, Turnstile } from "@/components/ui";
 import { signUpWithEmail } from "@/data/auth";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth } from "@/hooks/use-auth";
@@ -110,6 +110,8 @@ export function RegisterPage() {
               className="font-mono uppercase text-xs"
             />
           </div>
+          <Turnstile />
+
           <Button type="submit" disabled={pending || Boolean(configError)}>
             {pending ? "Criando conta…" : "Criar conta"}
           </Button>

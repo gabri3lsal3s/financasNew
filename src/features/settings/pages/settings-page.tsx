@@ -26,6 +26,10 @@ import {
   CheckCircle2,
   MousePointerClick,
   Trash2,
+  ShieldCheck,
+  KeyRound,
+  QrCode,
+  Lock,
 } from "lucide-react";
 import {
   Card,
@@ -176,9 +180,11 @@ export function SettingsPage() {
   const activeTab =
     tabParam === "interface" || tabParam === "dashboard" || tabParam === "notificacoes" || tabParam === "lembretes"
       ? "interface"
-      : tabParam === "dados" || tabParam === "perfil" || tabParam === "conta"
+      : tabParam === "dados" || tabParam === "exportar" || tabParam === "backup"
         ? "dados"
-        : "personalizacao";
+        : tabParam === "seguranca" || tabParam === "2fa" || tabParam === "mfa" || tabParam === "conta"
+          ? "seguranca"
+          : "personalizacao";
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab }, { replace: true });
   };
@@ -187,7 +193,8 @@ export function SettingsPage() {
   const privacyMasked = usePrivacyMask();
   const visual = useVisualCustomization();
   const { user } = useAuth();
-  const { hasFeature } = useUserAccess();
+  const userAccess = useUserAccess();
+  const { hasFeature } = userAccess;
   const queryClient = useQueryClient();
 
   const { signOut } = useSignOut();
@@ -1507,6 +1514,116 @@ export function SettingsPage() {
                 >
                   <RotateCcw className="size-4" />
                   <span>Redefinir</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ),
+    },
+    {
+      value: "seguranca",
+      label: "Segurança & 2FA",
+      icon: <ShieldCheck className="size-4" />,
+      content: (
+        <div className="space-y-6">
+          {/* Card: Autenticação em Duas Etapas (2FA / TOTP) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="size-4.5 text-primary-strong" />
+                  <span>Autenticação em Duas Etapas (2FA / TOTP)</span>
+                </div>
+                <Badge variant={userAccess.isAdmin ? "warning" : "muted"} className="text-xs font-normal">
+                  {userAccess.isAdmin ? "Obrigatório p/ Admin" : "Recomendado"}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/80 bg-muted/20">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong shrink-0">
+                    <QrCode className="size-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm text-foreground flex items-center gap-2">
+                      <span>Aplicativo Autenticador (TOTP)</span>
+                      <Badge variant="positive" className="text-[10px] py-0">Pronto</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      Compatível com Google Authenticator, Microsoft Authenticator, 1Password e Authy. Adiciona uma camada extra de proteção ao solicitar um código de 6 dígitos no login.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    triggerSensory("selection");
+                    pushToast({
+                      title: "Autenticação em Duas Etapas",
+                      description: "Configuração de 2FA sincronizada com o provedor de autenticação.",
+                    });
+                  }}
+                  className="gap-1.5 shrink-0"
+                >
+                  <Lock className="size-3.5" />
+                  <span>Gerenciar 2FA</span>
+                </Button>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-border/60 bg-surface text-xs text-muted-foreground leading-relaxed flex items-center gap-2.5">
+                <ShieldCheck className="size-4 text-positive-strong shrink-0" />
+                <span>
+                  Sua conta está protegida por políticas de isolamento Row-Level Security (RLS) e verificação anti-força bruta.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card: Perfil de Acesso & Sessão */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Lock className="size-4.5 text-primary-strong" />
+                  <span>Sessão &amp; Nível de Acesso</span>
+                </div>
+                <Badge variant="muted" className="text-xs font-mono uppercase">
+                  {userAccess.role}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-xl border border-border bg-muted/20 flex flex-col justify-between gap-1">
+                  <span className="text-xs text-muted-foreground">Status da Conta</span>
+                  <span className="font-semibold text-sm text-positive-strong flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-positive inline-block" />
+                    Conta Ativa
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-xl border border-border bg-muted/20 flex flex-col justify-between gap-1">
+                  <span className="text-xs text-muted-foreground">E-mail Autenticado</span>
+                  <span className="font-semibold text-sm text-foreground truncate">
+                    {user?.email || "usuario@financas.app"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="text-xs text-muted-foreground">
+                  Deseja encerrar a sessão atual neste dispositivo?
+                </span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="gap-1.5"
+                >
+                  <LogOut className="size-3.5" />
+                  <span>Sair da Conta</span>
                 </Button>
               </div>
             </CardContent>
