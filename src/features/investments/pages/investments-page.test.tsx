@@ -53,6 +53,7 @@ vi.mock("@/state", () => ({
   usePortfolioDividends: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   usePortfolioContributions: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   usePortfolioSnapshots: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useUpsertPortfolioSnapshot: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSaveAllocationTargets: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
