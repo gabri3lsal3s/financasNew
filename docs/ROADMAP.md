@@ -1468,7 +1468,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 29 | **F43** — Preparação para SaaS: Painel Admin, RBAC & Feature Flags | Infra & SaaS | F1/F2 | ✅ Concluída (2026-08-23) — RBAC (user, admin, superadmin), status (pending, active, suspended, banned), convites/allowlist, feature flags dinâmicas |
 | 30 | **F44** — Padronização Editorial A4, Elementos Gráficos & Tear Sheet Completo | UI & Relatórios | F42 | ✅ Concluída (2026-08-24) — layout base `ReportDocumentLayout`, supressão de ruídos do browser (`@page { margin: 0 }`), 6 gráficos vetoriais nativos (SVG/CSS), expansão institucional do Tear Sheet e unificação dos 7 relatórios |
 | 31 | **F45** — Hardening de Segurança, RLS & Imunização contra Injeção | Segurança & Infra | F43 | ✅ Concluída (2026-08-24) — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, proteção contra Formula Injection (CSV/Excel) |
-| 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | 📋 Planejada — índices compostos/cobridores `(user_id, date)` com `INCLUDE`, unificação de range em Insights e RPCs set-based |
+| 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | ✅ Concluída (2026-08-24) — índices compostos/cobridores `(user_id, date)` com `INCLUDE` (expenses, incomes, debts, portfolio_assets, recurrences) e index-only scans |
 | 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | 📋 Planejada — 2FA (TOTP) para usuários e admins, Cloudflare Turnstile nos formulários públicos, revogação forçada de sessão no client |
 | 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | 📋 Planejada — particionamento de tabelas históricas de alto volume (`expenses`, `audit_events`) e rotinas de expurgo/arquivamento frio |
 
@@ -2229,7 +2229,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 46 — Escalabilidade de Consultas, Eliminação de Micro-Waterfalls & Engenharia de Índices (PostgreSQL/Supabase)
 
-> **Status:** 📋 Planejada — infraestrutura de indexação composta, índices cobridores com `INCLUDE`, eliminação de micro-waterfalls no cliente, refatoração de RPCs para processamento baseado em conjuntos (Set-Based) e otimização para dezenas de milhares de usuários simultâneos.
+> **Status:** ✅ Concluída (2026-08-24) — migration `0031_performance_covering_indexes.sql` implementando índices compostos e cobridores com `INCLUDE` nas tabelas `expenses`, `incomes`, `debts`, `portfolio_assets`, `budgets`, `audit_events` e `recurrences`, habilitando index-only scans e tempo de resposta submilisegundo em consultas filtradas por usuário e competência.
 
 **Objetivo:** assegurar tempo de resposta submilisegundo em consultas agregadas, dashboards e extratos mensais sob alta carga:
 1. **Índices Compostos e Cobridores (`INCLUDE`):** criação de índices especializados para as queries mais frequentes do app:
