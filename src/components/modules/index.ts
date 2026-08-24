@@ -78,4 +78,6 @@ export { SnowballActionCard } from "./snowball-action-card";
 export type { SnowballActionCardProps } from "./snowball-action-card";
 export { CashGapAlert } from "./cash-gap-alert";
 export type { CashGapAlertProps } from "./cash-gap-alert";
+export { AllocationDriftCard } from "./allocation-drift-card";
+export type { AllocationDriftCardProps } from "./allocation-drift-card";
 export * from "./reports";

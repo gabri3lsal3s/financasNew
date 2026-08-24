@@ -1502,7 +1502,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 35 | **F49** — Saldo em Caixa Real (Regime de Caixa Estrito), Checkpoints de Âncora & Previsão de Liquidez | A / Caixa & Liquidez Real | F2/F3/F33 | ✅ Concluída (2026-08-24) — saldo cumulativo real em conta bancária, checkpoints de calibração rápida ("Bater com o banco"), cálculo estrito de regime de caixa e métrica Safe-to-Spend |
 | 36 | **F50** — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve | B / Proatividade & Investimentos | F41/F44/F49 | ✅ Concluída (2026-08-24) — ponte automática fluxo de caixa → calculadora de aporte, materialização mensal autônoma de snapshots e gatilhos de reinvestimento |
 | 37 | **F51** — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário | A / Fluxo de Caixa & Alertas | F3/F49 | ✅ Concluída (2026-08-24) — alerta preditivo de descasamento temporal receitas vs. faturas/dívidas e simulação de runway diário |
-| 38 | **F52** — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE | C / Inteligência & Estratégia | F24/F39 | 🟡 Planejada — alertas de desvio de alocação por limiar, estimativa de conclusão da reserva de emergência e conversor de economia em tempo de liberdade FIRE |
+| 38 | **F52** — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE | C / Inteligência & Estratégia | F24/F39 | ✅ Concluída (2026-08-24) — alertas de desvio de alocação por limiar, termômetro preditivo da reserva de emergência e conversor de impacto de hábitos FIRE |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
 
@@ -2459,7 +2459,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 52 — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE
 
-> **Status:** 🟡 Planejada — sofisticação dos motores de planejamento e alocação estratégica: monitoramento ativo de desvios de metas de classe/setor com limiares de tolerância, estimativa preditiva de conclusão da reserva de emergência e conversor de economia de despesas em tempo de liberdade financeira (FIRE).
+> **Status:** ✅ Concluída (2026-08-24) — sofisticação dos motores de planejamento e alocação estratégica: monitoramento ativo de desvios de metas de classe/setor com limiares de tolerância, estimativa preditiva de conclusão da reserva de emergência e conversor de economia de despesas em tempo de liberdade financeira (FIRE).
 
 **Objetivo:** conectar a disciplina orçamentária do dia a dia com a conquista da independência financeira e a proteção patrimonial de longo prazo:
 1. **Alertas Ativos de Desvio de Alocação (Threshold Δ Alerts):**

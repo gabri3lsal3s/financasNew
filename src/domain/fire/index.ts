@@ -130,3 +130,7 @@ export function emergencyFundMonths(liquidCents: number, monthlyExpensesCents: n
     months < 3 ? "critico" : months < 6 ? "baixo" : months < 12 ? "adequado" : "saudavel";
   return { months, health };
 }
+
+export * from "./emergency-projection";
+export * from "./habit-impact";
+

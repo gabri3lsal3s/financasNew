@@ -14,15 +14,16 @@ import {
   Upload,
 } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonKpi } from "@/components/ui";
-import { CategoryDonut, CashKpiCard, KpiCard, PositionTable } from "@/components/modules";
+import { CategoryDonut, CashKpiCard, KpiCard, PositionTable, AllocationDriftCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
-import { calculatePortfolioConcentration, inferSectorFromTicker, isCashAssetClass } from "@/domain/portfolio";
+import { calculateAllocationDrift, calculatePortfolioConcentration, inferSectorFromTicker, isCashAssetClass } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import {
+  useAllocationTargets,
   useAllPortfolioTransactions,
   useDeletePortfolioAsset,
   usePortfolioAssets,
@@ -270,6 +271,25 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
     })),
   );
 
+  const targetsQuery = useAllocationTargets();
+  const targets = targetsQuery.data ?? [];
+
+  const driftItems = targets.map((t) => {
+    const row = position.rows.find((r) => r.assetId === t.asset_id);
+    const valCents = Math.round((row?.valueBRL ?? 0) * 100);
+    return {
+      id: t.id,
+      name: row?.ticker ?? t.asset_id,
+      currentValueCents: valCents,
+      targetPercent: Number(t.target_percentage),
+    };
+  });
+
+  const allocationDrift = calculateAllocationDrift({
+    totalPortfolioCents: Math.round(position.totalBRL * 100),
+    items: driftItems,
+  });
+
   return (
     <div className="flex flex-col gap-6">
       {position.error ? (
@@ -376,6 +396,11 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
       {/* Conteúdo com Ativos Cadastrados */}
       {!position.isLoading && hasInvestments && (
         <>
+          {/* Card de Diagnóstico de Desvio de Alocação */}
+          {allocationDrift.hasTargets && (
+            <AllocationDriftCard analysis={allocationDrift} />
+          )}
+
           {/* Seção Gráfica: Alocação Visual */}
           <section aria-label="Alocação da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

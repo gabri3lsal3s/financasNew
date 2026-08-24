@@ -603,8 +603,23 @@
      - Componente `CashGapAlert` estilizado com as cores e badges semânticas do Design System (`bg-warning/5 border-warning/40` ou `bg-critical/5 border-critical/40`);
      - Mensagem clara orientada à ação informando as datas exatas e o montante faltante, com CTA "Ver Contas e Vencimentos" direcionando para o gerenciamento de dívidas e compromissos;
      - Integração fluida no topo da Visão Geral sob o card hero de caixa.
-  3. **Qualidade & Testes:**
-     - Testes unitários puros de domínio, testes de componentes e auditoria de acessibilidade (axe) 100% aprovados.
+## F52 — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE (2026-08-24)
+
+- **Problema:**
+  1. O usuário não tinha visibilidade imediata de quais classes ou ativos estavam desbalanceados em relação às metas estipuladas de carteira;
+  2. A Reserva de Emergência exibia apenas o status atual de meses cobertos, sem projetar o tempo e a data estimada para atingir os marcos de 3, 6 e 12 meses com base na velocidade de poupança;
+  3. Não havia uma ponte quantitativa demonstrando o impacto financeiro de longo prazo que a eliminação de pequenos gastos recorrentes supérfluos produz na antecipação da independência financeira (FIRE).
+- **Solução:**
+  1. **Domínio Puro de Thresholds de Alocação (`src/domain/portfolio/thresholds.ts`):**
+     - Motor `calculateAllocationDrift`: monitora o desvio percentual de cada ativo em relação à meta de alocação ($\Delta > \pm 5\%$), identificando ativos/classes *underweight* e calculando o aporte financeiro exato necessário para equilibrar a carteira (`recommendedAporteCents`).
+  2. **Domínio Puro de Longo Prazo & Impacto FIRE (`src/domain/fire/`):**
+     - Motor `projectEmergencyFund`: projeta marcos de 3, 6 e 12 meses de custo de vida essencial considerando o ritmo mensal de poupança/investimento, gerando o progresso percentual e a estimativa do mês de conclusão;
+     - Motor `calculateHabitFireImpact`: capitaliza o valor futuro em 10, 20 e 30 anos gerado pela economia de gastos supérfluos/assinaturas e calcula a redução da meta FIRE e os anos de liberdade antecipados.
+  3. **Interface & Módulos Analíticos (`AllocationDriftCard`, `PlanningSection`, `ResumoTab`):**
+     - Componente `AllocationDriftCard` integrado na aba Resumo de Investimentos (`ResumoTab`) apresentando os ativos abaixo da meta e botão de ação rápida "Simular Rebalanceamento";
+     - `PlanningSection` aprimorado com o Termômetro Preditivo da Reserva de Emergência em 3 faixas e o Simulador Interativo do Impacto de Hábitos na Aposentadoria.
+  4. **Qualidade & Testes:**
+     - Suíte completa de testes unitários de domínio e testes de componentes com 100% de cobertura e conformidade total com acessibilidade.
 
 ## Notas finais
 
