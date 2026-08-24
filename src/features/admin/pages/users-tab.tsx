@@ -25,7 +25,7 @@ export function UsersTab() {
   return (
     <div className="flex flex-col gap-5">
       {/* Filtros e Busca */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
         <div className="relative">
           <Input
             type="search"
@@ -78,26 +78,26 @@ export function UsersTab() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full min-w-[560px] text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
-                  <th className="py-3 px-4">Usuário</th>
-                  <th className="py-3 px-4">Cargo (Role)</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Criado em</th>
-                  <th className="py-3 px-4 text-right">Ações</th>
+                  <th className="py-3 px-3.5 sm:px-4">Usuário</th>
+                  <th className="py-3 px-3.5 sm:px-4">Cargo (Role)</th>
+                  <th className="py-3 px-3.5 sm:px-4">Status</th>
+                  <th className="py-3 px-3.5 sm:px-4">Criado em</th>
+                  <th className="py-3 px-3.5 sm:px-4 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {users.map((user) => (
                   <tr key={user.id} className="hover:bg-surface-hover/30">
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-foreground">{user.name || "Sem nome"}</span>
-                        <span className="font-mono text-muted-foreground text-[11px]">{user.email}</span>
+                    <td className="py-3 px-3.5 sm:px-4">
+                      <div className="flex flex-col max-w-[180px] sm:max-w-[240px]">
+                        <span className="font-semibold text-foreground truncate">{user.name || "Sem nome"}</span>
+                        <span className="font-mono text-muted-foreground text-[11px] truncate">{user.email}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-3.5 sm:px-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ${
                           user.role === "superadmin"
@@ -111,7 +111,7 @@ export function UsersTab() {
                         {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-3.5 sm:px-4 whitespace-nowrap">
                       <span
                         className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
                           user.status === "active"
@@ -124,16 +124,16 @@ export function UsersTab() {
                         {STATUS_LABELS[user.status as keyof typeof STATUS_LABELS] || user.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground">
+                    <td className="py-3 px-3.5 sm:px-4 text-muted-foreground whitespace-nowrap">
                       {new Date(user.created_at).toLocaleDateString("pt-BR")}
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-3 px-3.5 sm:px-4 text-right whitespace-nowrap">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedUser(user)}
-                        className="gap-1.5 text-xs"
+                        className="gap-1.5 text-xs h-8 px-2.5"
                       >
                         <Settings2 className="size-3.5" aria-hidden="true" />
                         Gerenciar
@@ -146,6 +146,7 @@ export function UsersTab() {
           </div>
         )}
       </div>
+
 
       {selectedUser ? (
         <UserEditDialog

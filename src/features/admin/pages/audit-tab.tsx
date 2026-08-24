@@ -29,20 +29,20 @@ export function AuditTab() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full min-w-[620px] text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
-                  <th className="py-3 px-4">Data / Hora</th>
-                  <th className="py-3 px-4">Ação</th>
-                  <th className="py-3 px-4">Entidade</th>
-                  <th className="py-3 px-4">ID Usuário</th>
-                  <th className="py-3 px-4">Payload / Detalhes</th>
+                  <th className="py-3 px-3.5 sm:px-4">Data / Hora</th>
+                  <th className="py-3 px-3.5 sm:px-4">Ação</th>
+                  <th className="py-3 px-3.5 sm:px-4">Entidade</th>
+                  <th className="py-3 px-3.5 sm:px-4">ID Usuário</th>
+                  <th className="py-3 px-3.5 sm:px-4">Payload / Detalhes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-surface-hover/30">
-                    <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
+                    <td className="py-3 px-3.5 sm:px-4 text-muted-foreground whitespace-nowrap">
                       {new Date(log.created_at).toLocaleDateString("pt-BR", {
                         day: "2-digit",
                         month: "2-digit",
@@ -52,18 +52,18 @@ export function AuditTab() {
                         second: "2-digit",
                       })}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-3.5 sm:px-4 whitespace-nowrap">
                       <span className="inline-flex rounded-md bg-surface-hover px-2 py-0.5 text-[10px] font-mono font-semibold text-foreground">
                         {log.action}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-mono text-muted-foreground">
+                    <td className="py-3 px-3.5 sm:px-4 font-mono text-muted-foreground whitespace-nowrap">
                       {log.entity_type} {log.entity_id ? `(${log.entity_id.slice(0, 8)})` : ""}
                     </td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground">
+                    <td className="py-3 px-3.5 sm:px-4 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
                       {log.user_id ? log.user_id.slice(0, 8) + "…" : "Sistema"}
                     </td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground max-w-xs truncate">
+                    <td className="py-3 px-3.5 sm:px-4 font-mono text-[11px] text-muted-foreground max-w-xs truncate">
                       {JSON.stringify(log.payload ?? {})}
                     </td>
                   </tr>
@@ -71,6 +71,7 @@ export function AuditTab() {
               </tbody>
             </table>
           </div>
+
         )}
       </div>
     </div>

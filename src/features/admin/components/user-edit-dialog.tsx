@@ -224,14 +224,14 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                     <span className="text-[11px] text-muted-foreground leading-relaxed">{feature.description}</span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
                     <Button
                       type="button"
                       variant={statusInfo.kind === "override_enabled" ? "default" : "outline"}
                       size="sm"
                       onClick={() => handleToggleUserFeature(feature.key, true)}
                       disabled={setOverrideMutation.isPending || !feature.is_globally_enabled}
-                      className={`gap-1 text-xs h-7 px-2.5 ${
+                      className={`gap-1 text-xs h-7 px-2.5 flex-1 sm:flex-initial justify-center ${
                         statusInfo.kind === "override_enabled"
                           ? "bg-positive text-white hover:bg-positive/90"
                           : "text-positive-strong hover:bg-positive/10 border-positive/30"
@@ -248,7 +248,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                       size="sm"
                       onClick={() => handleToggleUserFeature(feature.key, false)}
                       disabled={setOverrideMutation.isPending || !feature.is_globally_enabled}
-                      className={`gap-1 text-xs h-7 px-2.5 ${
+                      className={`gap-1 text-xs h-7 px-2.5 flex-1 sm:flex-initial justify-center ${
                         statusInfo.kind === "override_disabled"
                           ? "bg-critical text-white hover:bg-critical/90"
                           : "text-critical hover:bg-critical/10 border-critical/30"
@@ -266,7 +266,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                         size="sm"
                         onClick={() => handleRemoveOverride(feature.key)}
                         disabled={removeOverrideMutation.isPending}
-                        className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                        className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
                         title="Restaurar regra padrão global"
                       >
                         <RotateCcw className="size-3.5" aria-hidden="true" />
@@ -280,20 +280,21 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         </div>
 
         {/* Rodapé */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border mt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 pt-2 border-t border-border mt-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto justify-center">
             Fechar
           </Button>
           <Button
             type="submit"
             variant="default"
             disabled={updateStatusMutation.isPending || setRoleMutation.isPending}
-            className="gap-1.5"
+            className="gap-1.5 w-full sm:w-auto justify-center"
           >
             <UserCheck className="size-4" aria-hidden="true" />
             Salvar Alterações
           </Button>
         </div>
+
       </form>
     </Modal>
   );

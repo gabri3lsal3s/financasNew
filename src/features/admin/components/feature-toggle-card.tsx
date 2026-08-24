@@ -18,9 +18,9 @@ export function FeatureToggleCard({ feature }: FeatureToggleCardProps) {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl border border-border/80 bg-surface/90 shadow-xs">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface/90 shadow-xs">
+      <div className="flex flex-col gap-1 min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-foreground text-sm">{feature.name}</span>
           <span
             className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
@@ -32,7 +32,7 @@ export function FeatureToggleCard({ feature }: FeatureToggleCardProps) {
             {feature.is_globally_enabled ? "Ativo Globalmente" : "Desativado (Kill-Switch)"}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground">{feature.description}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
       </div>
 
       <Button
@@ -41,7 +41,7 @@ export function FeatureToggleCard({ feature }: FeatureToggleCardProps) {
         size="sm"
         onClick={handleToggle}
         disabled={toggleMutation.isPending}
-        className="shrink-0 gap-1.5"
+        className="w-full sm:w-auto justify-center shrink-0 gap-1.5 h-8 text-xs"
       >
         {feature.is_globally_enabled ? (
           <>
@@ -58,3 +58,4 @@ export function FeatureToggleCard({ feature }: FeatureToggleCardProps) {
     </div>
   );
 }
+

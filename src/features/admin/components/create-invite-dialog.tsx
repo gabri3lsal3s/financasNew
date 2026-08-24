@@ -153,15 +153,16 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
         </div>
 
         {/* Ações */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border mt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 pt-2 border-t border-border mt-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto justify-center">
             Cancelar
           </Button>
-          <Button type="submit" variant="default" disabled={createInviteMutation.isPending} className="gap-1.5">
+          <Button type="submit" variant="default" disabled={createInviteMutation.isPending} className="gap-1.5 w-full sm:w-auto justify-center">
             <Plus className="size-4" aria-hidden="true" />
             {createInviteMutation.isPending ? "Criando…" : "Salvar Convite"}
           </Button>
         </div>
+
       </form>
     </Modal>
   );

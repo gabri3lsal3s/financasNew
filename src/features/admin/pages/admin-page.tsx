@@ -30,14 +30,14 @@ export function AdminPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-5 sm:gap-6 p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-24 sm:pb-8">
       {/* Cabeçalho da Página */}
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
             <ShieldCheck className="size-4" aria-hidden="true" />
           </span>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground">
             Painel Administrativo
           </h1>
         </div>
@@ -50,14 +50,16 @@ export function AdminPage() {
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
+        variant="pills"
         items={[
-          { value: "visao-geral", label: "Visão Geral", icon: <ShieldCheck className="size-4" aria-hidden="true" /> },
-          { value: "usuarios", label: "Gestão de Usuários", icon: <Users className="size-4" aria-hidden="true" /> },
-          { value: "funcionalidades", label: "Funcionalidades & Flags", icon: <Layers className="size-4" aria-hidden="true" /> },
-          { value: "convites", label: "Convites & Allowlist", icon: <KeyRound className="size-4" aria-hidden="true" /> },
-          { value: "auditoria", label: "Auditoria", icon: <History className="size-4" aria-hidden="true" /> },
+          { value: "visao-geral", label: "Visão Geral", shortLabel: "Geral", icon: <ShieldCheck className="size-4" aria-hidden="true" /> },
+          { value: "usuarios", label: "Gestão de Usuários", shortLabel: "Usuários", icon: <Users className="size-4" aria-hidden="true" /> },
+          { value: "funcionalidades", label: "Funcionalidades & Flags", shortLabel: "Módulos", icon: <Layers className="size-4" aria-hidden="true" /> },
+          { value: "convites", label: "Convites & Allowlist", shortLabel: "Convites", icon: <KeyRound className="size-4" aria-hidden="true" /> },
+          { value: "auditoria", label: "Auditoria", shortLabel: "Auditoria", icon: <History className="size-4" aria-hidden="true" /> },
         ]}
       />
+
 
 
       {/* Conteúdo da Aba Ativa */}

@@ -1,6 +1,8 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v1.94** registra a **Responsividade Mobile Completa do Painel Administrativo (`/admin`), Abas Pills com `shortLabel` & Tabelas Fluidas com Scroll Protegido** (2026-08-23): **(1) Navegação por Abas Mobile-First (`AdminPage`)**: aplicação de `variant="pills"` e `shortLabel` nas 5 abas (*Geral, Usuários, Módulos, Convites, Auditoria*), garantindo toque fluido sem quebra de linhas em smartphones; **(2) Visão Geral & Métricas (`OverviewTab`)**: grid de 6 KPIs com valores truncados seguros (`truncate text-lg sm:text-xl`), espaçamento responsivo `gap-2.5 sm:gap-3` e tabela de aprovação imediata com `min-w-[520px]`; **(3) Gestão de Usuários & Convites (`UsersTab` & `InvitesTab`)**: tabelas administrativas com contêiner `overflow-x-auto rounded-xl border border-border/80` e larguras mínimas protegidas (`min-w-[560px..580px]`), filtros responsivos e botões em largura total no mobile (`w-full sm:w-auto justify-center`); **(4) Catálogo de Feature Flags (`FeatureToggleCard`)**: reestruturação do card em layout flexível com badge de status bem posicionado e botão "Ativar/Desativar Módulo" em largura total no mobile; **(5) Diálogos Administrativos (`UserEditDialog` & `CreateInviteDialog`)**: lista de permissões e overrides por usuário em layout empilhado responsivo com botões claros de liberar/bloquear/restaurar e rodapés com botões adaptados para toque; **(6) Suíte 100% Verde**: 214 arquivos / 1.598 testes passando, zero erros de lint e typecheck.
 > **v1.93** registra a **Correção da Geração de PDFs Limpos (A4) via Hook `usePrint` & Suporte Consistente a Valores Ponderados em Relatórios** (2026-08-23): **(1) Correção Definitiva de PDFs Vazios (`usePrint`)**: substituição do padrão inconsistente de `setTimeout(100ms)` pelo novo hook reativo `src/components/ui/use-print.ts` com sincronização garantida no commit do DOM via `useEffect` e próximo frame de pintura do navegador (`requestAnimationFrame`), eliminando impressões em branco em todos os 4 modais de dossiê (`FinancialCloseReportModal`, `WealthTearSheetModal`, `DividendFreedomModal`, `ConsolidatedWealthModal`); **(2) Suporte Completo à Preferência de Pesos de Relatório (`report_weights_enabled`)**: consumo reativo de `useUserPreferences()` na página central `ReportsPage`, neutralizando automaticamente os pesos (`weight = 1`) quando a flag estiver desativada nas preferências do usuário; **(3) Consistência Total no Balanço Patrimonial 360° & DRE**: `consolidatedBalance` sincronizado com os mesmos valores ponderados dos KPIs da página, corrigindo discrepâncias de cálculo entre visões; **(4) Transparência Visual de Valores Ponderados**: badge discreto `"Valores ponderados"` no seletor global de período e discriminação de valores nominais brutos de face no DRE contábil quando pesos estiverem ativos; **(5) Suíte 100% Verde**: 214 arquivos / 1.598 testes passando, zero erros de lint e typecheck.
+
 > **v1.92** registra a **Responsividade Mobile em Relatórios, Otimização da BottomNav (Grade Estrita de 5 Colunas sem 'Mais' para $\le 4$ Itens) & Filtragem Dinâmica por Feature Flags** (2026-08-23): **(1) Responsividade Mobile em Relatórios (`ReportsPage` & `ExcelExportCard`)**: layout adaptativo completo no smartphone com botões de período e agregações em grade compacta (`grid-cols-3` / `w-full sm:w-auto`), tabelas com scroll horizontal protegido (`min-w-[500px]`), textos truncados seguros nos cards de KPI e botões de ação em largura total no mobile; **(2) BottomNav Otimizada sem Botão 'Mais' Desnecessário (`resolveBottomNavSlots`)**: barra inferior com grade estrita de 5 colunas (`grid-cols-5`) com centralização do FAB contextual; quando o usuário possui $\le 4$ itens permitidos no total, todos os 4 itens são promovidos diretamente para a barra e nenhum botão "Mais" é renderizado; quando $> 4$ itens, 3 itens prioritários ocupam os slots da barra e os restantes vão para o menu "Mais"; **(3) Filtragem de Abas por Feature Flags em Relatórios**: integração com `useUserAccess()`, ocultando automaticamente as abas de Finanças e Balanço quando os módulos de transações/cartões/dívidas estiverem desativados e exibindo apenas Investimentos e Fiscal; **(4) Suíte 100% Verde**: 213 arquivos / 1.596 testes passando, zero erros de lint e typecheck.
 
 > **v1.91** registra o **Dossiê Executivo de Finanças Pessoais & DRE + Impressão Limpa A4 sem Ruídos do Navegador** (2026-08-23): **(1) Dossiê Executivo de Finanças Pessoais & DRE (`FinancialCloseReportModal`)**: modal editorial com estrutura contábil formal (DRE Pessoal), Receitas Brutas, Custos Essenciais, Despesas de Estilo de Vida, Resultado Operacional Líquido, Taxa de Poupança e detalhamento por categorias e meios de pagamento; **(2) Impressão A4 Limpa sem Cabeçalhos/Rodapés**: configuração CSS `@page { size: A4; margin: 0; }` e padding de segurança `.print-sheet { padding: 14mm !important; }` em `globals.css` para suprimir URLs, datas e paginação padrão do navegador; **(3) Card Executivo & Seletor de Período Global**: integração no topo de `ReportsPage` com atalho de 1-clique para impressão/PDF do fechamento mensal.
@@ -1463,7 +1465,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 28 | **F42** — Central Unificada de Relatórios & Exportação Multi-Abas (.xlsx) | C / Relatórios & Consultoria | F40/F41 | ✅ Concluída (2026-08-23) — central /relatorios em 4 abas, dossiês A4 de consultoria, gerador de Excel multi-abas nativo |
 | 29 | **F43** — Preparação para SaaS: Painel Admin, RBAC & Feature Flags | Infra & SaaS | F1/F2 | ✅ Concluída (2026-08-23) — RBAC (user, admin, superadmin), status (pending, active, suspended, banned), convites/allowlist, feature flags dinâmicas |
 | 30 | **F44** — Hardening de Segurança no Banco & Otimização de RLS | Segurança & Infra | F43 | 📋 Planejada — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, sanitização de inputs |
-| 31 | **F45** — Escalabilidade de Consultas & Engenharia de Índices | Performance & Escala | F44 | 📋 Planejada — índices compostos/cobridores `(user_id, date)` com `INCLUDE`, otimização de faturas por competência e pooling Supavisor |
+| 31 | **F45** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F44 | 📋 Planejada — índices compostos/cobridores `(user_id, date)` com `INCLUDE`, unificação de range em Insights e RPCs set-based |
 | 32 | **F46** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | 📋 Planejada — 2FA (TOTP) para usuários e admins, Cloudflare Turnstile nos formulários públicos, revogação forçada de sessão no client |
 | 33 | **F47** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F45 | 📋 Planejada — particionamento de tabelas históricas de alto volume (`expenses`, `audit_events`) e rotinas de expurgo/arquivamento frio |
 
@@ -2163,27 +2165,33 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 45 — Escalabilidade de Consultas & Engenharia de Índices (PostgreSQL/Supabase)
+### Fase 45 — Escalabilidade de Consultas, Eliminação de Micro-Waterfalls & Engenharia de Índices (PostgreSQL/Supabase)
 
-> **Status:** 📋 Planejada — infraestrutura de indexação composta, índices cobridores com `INCLUDE` e otimização para dezenas de milhares de usuários simultâneos.
+> **Status:** 📋 Planejada — infraestrutura de indexação composta, índices cobridores com `INCLUDE`, eliminação de micro-waterfalls no cliente, refatoração de RPCs para processamento baseado em conjuntos (Set-Based) e otimização para dezenas de milhares de usuários simultâneos.
 
 **Objetivo:** assegurar tempo de resposta submilisegundo em consultas agregadas, dashboards e extratos mensais sob alta carga:
 1. **Índices Compostos e Cobridores (`INCLUDE`):** criação de índices especializados para as queries mais frequentes do app:
    - `expenses(user_id, date desc) include (value, category_id, payment_method)`
    - `incomes(user_id, date desc) include (value, category_id)`
    - `expenses(user_id, card_id, bill_competence) where card_id is not null`
-2. **Conexões e Transaction Pooling (Supavisor):** padronização das rotinas de backend e Edge Functions para conexão via porta 6543 (Transaction Pooler), prevenindo esgotamento de `max_connections` do PostgreSQL;
-3. **Otimização de Snapshots e Agregações:** garantia de índices btree em `portfolio_snapshots(user_id, month desc)` e `asset_prices(ticker, updated_at desc)`.
+2. **Eliminação de Micro-Waterfalls no Client (`InsightsPage`):** unificação das 4 consultas de despesas e receitas mensais concorrentes (`month0` a `month3`) em uma única requisição HTTP por intervalo (`useExpensesByRange` / `useIncomesByRange`), agrupando os meses em memória no JavaScript ($O(1)$) e reduzindo o tráfego de rede em 75% na tela de Insights;
+3. **Refatoração RBAR $\rightarrow$ Set-Based em RPCs de Importação e Lote:** substituição dos loops iterativos (`LOOP` PL/pgSQL) em `import_statement_expenses` e `import_bank_statement_transactions` por instruções únicas `INSERT INTO ... SELECT FROM jsonb_to_recordset(...)` (padrão já consolidado em `0020_set_based_recurrences.sql`), reduzindo o tempo de processamento de extratos com centenas de linhas para $< 10\text{ms}$;
+4. **Conexões e Transaction Pooling (Supavisor):** padronização das rotinas de backend e Edge Functions para conexão via porta 6543 (Transaction Pooler), prevenindo esgotamento de `max_connections` do PostgreSQL;
+5. **Otimização de Snapshots e Agregações:** garantia de índices btree em `portfolio_snapshots(user_id, month desc)` e `asset_prices(ticker, updated_at desc)`.
 
-**Organização da Implementação em 2 Etapas:**
-1. **Etapa 45.1 — Migration de Índices Cobridores (PostgreSQL):**
-   - Migration `0031_covering_indexes_and_performance.sql`.
+**Organização da Implementação em 3 Etapas:**
+1. **Etapa 45.1 — Migration de Índices Cobridores & RPCs Set-Based (PostgreSQL):**
+   - Migration `0031_covering_indexes_and_set_based_rpcs.sql`.
    - Validação com `EXPLAIN ANALYZE` eliminando Bitmap Heap Scans em consultas de mês e competência.
-2. **Etapa 45.2 — Auditoria de Client e Configurações de Conexão:**
+2. **Etapa 45.2 — Otimização de Queries e Hooks no Client (`src/features/insights` & `src/state`):**
+   - Hook agregador `useHistoricalRange(startMonth, endMonth)` para alimentar diagnósticos e médias históricas em 1 request.
+3. **Etapa 45.3 — Auditoria de Client e Configurações de Conexão:**
    - Verificação dos limites de conexões e políticas de staleTime/gcTime no TanStack Query.
 
 **✅ DoD (critérios de aceite):**
 - Consultas de extrato e visão geral executadas via Index Only Scan no plano do PostgreSQL.
+- Tela de Insights carrega histórico de 4 meses com apenas 1 requisição HTTP por domínio.
+- Importação de extratos com 500+ linhas executada em operação atômica set-based sem loops PL/pgSQL.
 - Zero gargalos de conexão sob carga simulada de múltiplas sessões simultâneas.
 - Suíte de testes 100% verde.
 
