@@ -175,7 +175,7 @@ export function TransactionListPage() {
           hint={
             incomesTotalCents !== incomesWeightedCents ? (
               <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                <span>Sua cota:</span>
+                <span>Ponderada:</span>
                 <MoneyText cents={incomesWeightedCents} tone="default" />
               </span>
             ) : undefined
@@ -188,7 +188,7 @@ export function TransactionListPage() {
           hint={
             expensesTotalCents !== expensesWeightedCents ? (
               <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                <span>Sua cota:</span>
+                <span>Ponderada:</span>
                 <MoneyText cents={expensesWeightedCents} tone="default" />
               </span>
             ) : undefined
@@ -201,7 +201,7 @@ export function TransactionListPage() {
           hint={
             balanceCents !== balanceWeightedCents ? (
               <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                <span>Sua cota:</span>
+                <span>Ponderado:</span>
                 <MoneyText cents={balanceWeightedCents} tone="default" />
               </span>
             ) : undefined

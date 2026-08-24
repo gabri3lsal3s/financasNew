@@ -153,7 +153,7 @@ export function FinancialCloseReportModal({
             label: "Receitas Totais",
             value: <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />,
             subtext: hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto ? (
-              <span>ponderado: <MoneyText cents={dre.grossIncomeCents} className="inline text-[10px]" /></span>
+              <span>Ponderada: <MoneyText cents={dre.grossIncomeCents} className="inline text-[10px]" /></span>
             ) : "Entradas no Período",
             icon: Banknote,
             tone: "positive",
@@ -162,7 +162,7 @@ export function FinancialCloseReportModal({
             label: "Despesas Totais",
             value: <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />,
             subtext: hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto ? (
-              <span>ponderado: <MoneyText cents={dre.totalExpensesCents} className="inline text-[10px]" /></span>
+              <span>Ponderada: <MoneyText cents={dre.totalExpensesCents} className="inline text-[10px]" /></span>
             ) : "Saídas no Período",
             icon: ReceiptText,
             tone: "negative",
@@ -225,7 +225,7 @@ export function FinancialCloseReportModal({
                   <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />
                   {hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto && (
                     <span className="block text-[10px] text-muted-foreground font-normal">
-                      ponderado: <MoneyText cents={dre.grossIncomeCents} tone="default" className="inline text-[10px]" />
+                      Ponderada: <MoneyText cents={dre.grossIncomeCents} tone="default" className="inline text-[10px]" />
                     </span>
                   )}
                 </td>
@@ -239,7 +239,7 @@ export function FinancialCloseReportModal({
                   <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />
                   {hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto && (
                     <span className="block text-[10px] text-muted-foreground font-normal">
-                      ponderado: <MoneyText cents={dre.totalExpensesCents} tone="default" className="inline text-[10px]" />
+                      Ponderada: <MoneyText cents={dre.totalExpensesCents} tone="default" className="inline text-[10px]" />
                     </span>
                   )}
                 </td>
@@ -258,7 +258,7 @@ export function FinancialCloseReportModal({
                   />
                   {hasBrutoRef && dre.operationalSavingsCents !== effectiveGrossSavingsBruto && (
                     <span className="block text-[10px] text-muted-foreground font-normal">
-                      ponderado: <MoneyText cents={dre.operationalSavingsCents} tone="default" className="inline text-[10px]" />
+                      Ponderado: <MoneyText cents={dre.operationalSavingsCents} tone="default" className="inline text-[10px]" />
                     </span>
                   )}
                 </td>
@@ -331,7 +331,7 @@ export function FinancialCloseReportModal({
                         <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-semibold" />
                         {hasBrutoRef && cat.brutoCents !== undefined && cat.ponderadoCents !== undefined && cat.brutoCents !== cat.ponderadoCents && (
                           <span className="block text-[10px] text-muted-foreground font-normal">
-                            ponderado: <MoneyText cents={cat.ponderadoCents} tone="default" className="inline text-[10px]" />
+                            Ponderado: <MoneyText cents={cat.ponderadoCents} tone="default" className="inline text-[10px]" />
                           </span>
                         )}
                       </td>
@@ -372,7 +372,7 @@ export function FinancialCloseReportModal({
                         <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" className="font-semibold" />
                         {hasBrutoRef && pm.brutoCents !== undefined && pm.ponderadoCents !== undefined && pm.brutoCents !== pm.ponderadoCents && (
                           <span className="block text-[10px] text-muted-foreground font-normal">
-                            ponderado: <MoneyText cents={pm.ponderadoCents} tone="default" className="inline text-[10px]" />
+                            Ponderado: <MoneyText cents={pm.ponderadoCents} tone="default" className="inline text-[10px]" />
                           </span>
                         )}
                       </td>

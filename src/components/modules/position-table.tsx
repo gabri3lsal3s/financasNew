@@ -998,7 +998,7 @@ export function PositionTable({
       {/* Visão Desktop (Tabela sm+) */}
       <div className="hidden sm:block">
         <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
-          <div role="table" aria-label="Lista de dados" className="min-w-full">
+          <div className="min-w-full">
             {/* Conteúdo da Tabela Desktop */}
             {filteredRows.length === 0 ? (
               <div className="px-4 py-12 text-center text-sm text-muted-foreground">
