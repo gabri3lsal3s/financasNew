@@ -530,6 +530,25 @@
   4. **Blindagem da Engine de PDF A4:** Classes `break-inside-avoid`, `print:overflow-visible`, `print:table-fixed` e larguras percentuais somando 100% da folha A4 Portrait, acompanhadas de reforço em `src/styles/globals.css`.
   5. **Fuso Horário Local:** Substituição de `toISOString()` por `todayISO()` na exportação do Caderno Excel.
 
+## Evolução — Wizard de Investimentos: Sugestões Condicionadas a Metas, Feedback Visual & Tickers de 1 Letra (2026-08-24)
+
+- **Problema:**
+  1. Quando não havia metas cadastradas, o Wizard exibia todos os ativos em carteira como se fossem sugestões/recomendações calculadas de aporte;
+  2. Ao selecionar uma sugestão ou resultado de busca, o item não recebia destaque visual claro, gerando dúvida sobre qual ativo seria adicionado, e o fluxo para novo ativo permanecia redundante no Step 1;
+  3. Ativos globais com ticker de 1 letra (como "O" - Realty Income, "T" - AT&T, "V" - Visa) não podiam ser buscados nem cadastrados devido a restrições de comprimento mínimo ($q.length \ge 2$) e regexes de 2 a 5 letras.
+- **Solução:**
+  1. **Sugestões Estritamente Condicionadas a Metas (`StepSelect` & `buildAporteSuggestions`):** Verificação `hasTargets = targets.length > 0 || classTargets.length > 0`. Sem metas, exibe banner informativo amigável e apresenta a lista de ativos sob o rótulo "Seus ativos em carteira (seleção manual)".
+  2. **Destaque Visual e Transição Fluida no Wizard:**
+     - Aplicação de estilo visual ativo `isSelected` (`ring-2 ring-primary bg-primary/10 border-primary`), badge `Selecionado` e checkmark.
+     - Sincronização automática do input de busca ao selecionar ativo.
+     - Botão contextual no rodapé: `Continuar com ${state.ticker}`.
+     - Ao selecionar um novo ativo do catálogo ou busca, o fluxo avança diretamente para o **Passo 2: Posição Inicial** (`mode: "new_asset", step: 2`), eliminando a tela duplicada.
+  3. **Suporte Global a Tickers de 1 Caractere:**
+     - Remoção da trava de tamanho mínimo em `tickers-catalog.ts` ($q.length \ge 1$) e adição de `"O"`, `"T"`, `"V"`, `"C"`, `"F"` no `CURATED_TICKERS_CATALOG`.
+     - Atualização das regexes em `import-parser.ts`, `valuation.ts` e `quotes.ts` para `/^[A-Za-z]{1,5}$/`.
+     - **Sistema de Ranking de Relevância em `searchTickers`:** Match exato de ticker pontua com maior prioridade ($score = 0$), garantindo que buscas curtas como "O" posicionem o ativo "O" no topo absoluto da lista.
+  4. **Qualidade & Testes:** Suíte completa com 218 arquivos / 1.639 testes passando (100% verde), com typecheck e ESLint estritos.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
