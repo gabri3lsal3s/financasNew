@@ -4,6 +4,8 @@ import { Alert, Badge, Button, Checkbox, ConfirmDialog, DatePicker, Input, Modal
 import { numberToCents } from "@/domain/money";
 import {
   calculateWeightedAveragePrice,
+  DEFAULT_SECTORS_BY_CLASS,
+  inferSectorFromTicker,
   isCashAssetClass,
   isFixedIncomeClass,
   isTesouroAsset,
@@ -72,7 +74,26 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
   const [ticker, setTicker] = useState(asset?.ticker ?? "");
   const [assetClass, setAssetClass] = useState(asset?.asset_class ?? initialAssetClass ?? "");
+  const [sector, setSector] = useState(asset?.sector ?? inferSectorFromTicker(asset?.ticker ?? "", asset?.asset_class ?? initialAssetClass));
   const [currency, setCurrency] = useState<AssetCurrency>(asset?.currency ?? "BRL");
+
+  const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[assetClass] ?? [];
+
+  const handleTickerChange = (val: string) => {
+    setTicker(val);
+    if (!asset?.sector) {
+      const suggested = inferSectorFromTicker(val, assetClass);
+      setSector(suggested);
+    }
+  };
+
+  const handleClassChange = (newClass: string) => {
+    setAssetClass(newClass);
+    if (!asset?.sector) {
+      const suggested = inferSectorFromTicker(ticker, newClass);
+      setSector(suggested);
+    }
+  };
 
   const isCash = isCashAssetClass(assetClass) || ticker.trim().toUpperCase() === "CAIXA";
   const isTesouro = isTesouroAsset(ticker, assetClass);
@@ -227,6 +248,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
       const payload = {
         ticker: normalizedTicker,
         asset_class: effectiveClass,
+        sector: sector.trim() === "" ? null : sector.trim(),
         currency,
         quantity: payloadQuantity,
         average_price: payloadAvgPrice,
@@ -521,7 +543,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               {isCash ? "Nome / Identificador do Caixa (opcional)" : "Ticker / Código do Ativo"}
               <Input
                 value={ticker}
-                onChange={(event) => setTicker(event.target.value)}
+                onChange={(event) => handleTickerChange(event.target.value)}
                 placeholder={isCash ? "CAIXA (padrão)" : "PETR4, MXRF11, CDB Banco Inter, Tesouro Selic…"}
                 maxLength={40}
                 aria-label={isCash ? "Nome do Caixa" : "Ticker do ativo"}
@@ -547,13 +569,47 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               <button
                 key={preset}
                 type="button"
-                onClick={() => setAssetClass(preset)}
+                onClick={() => handleClassChange(preset)}
                 className="rounded-md border border-border/70 bg-surface-hover/50 px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover cursor-pointer"
               >
                 {preset}
               </button>
             ))}
           </div>
+
+          {!isCash && (
+            <div className="flex flex-col gap-1.5">
+              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                Setor / Segmento / Indexador
+                <Input
+                  value={sector}
+                  onChange={(event) => setSector(event.target.value)}
+                  placeholder="Ex: Financeiro / Bancos, Imobiliário / Logística, Pós-fixado..."
+                  maxLength={60}
+                  aria-label="Setor do ativo"
+                />
+              </label>
+              {recommendedSectors.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-muted-foreground">Setores recomendados:</span>
+                  {recommendedSectors.slice(0, 4).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSector(s)}
+                      className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                        sector === s
+                          ? "bg-primary text-primary-foreground font-semibold"
+                          : "border border-border/70 bg-surface-hover/50 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">

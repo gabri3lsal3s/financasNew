@@ -32,6 +32,7 @@ export interface InvestmentWizardState {
   ticker: string;
   name: string;
   assetClass: string;
+  sector: string;
   currency: AssetCurrency;
   isCash: boolean;
   pricingMode?: "total_value" | "unit_price";
@@ -67,6 +68,7 @@ export const defaultWizardState: InvestmentWizardState = {
   ticker: "",
   name: "",
   assetClass: "Ações",
+  sector: "",
   currency: "BRL",
   isCash: false,
 

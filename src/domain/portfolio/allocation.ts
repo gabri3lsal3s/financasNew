@@ -194,3 +194,77 @@ export function calculateAssetAllocationDelta(currentPct: number, targetPct: num
     formattedDelta: `${sign}${delta.toFixed(1)}%`,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Agrupamento e Validações Hierárquicas por Setor
+// ---------------------------------------------------------------------------
+
+export interface SectorItem {
+  id: string;
+  name: string;
+  className: string;
+  targetPercentage: number;
+}
+
+/**
+ * Agrupa ativos da carteira por Classe e, dentro de cada classe, por Setor/Segmento.
+ * Ativos sem setor ou classe recebem fallbacks amigáveis ("Geral" / "Outros").
+ */
+export function groupAssetsByClassAndSector<
+  T extends { id: string; assetClass?: string | null; sector?: string | null },
+>(items: readonly T[]): Map<string, Map<string, T[]>> {
+  const result = new Map<string, Map<string, T[]>>();
+
+  for (const item of items) {
+    const className = item.assetClass?.trim() || "Outros";
+    const sectorName = item.sector?.trim() || "Geral";
+
+    let sectorMap = result.get(className);
+    if (!sectorMap) {
+      sectorMap = new Map<string, T[]>();
+      result.set(className, sectorMap);
+    }
+
+    const list = sectorMap.get(sectorName) || [];
+    list.push(item);
+    sectorMap.set(sectorName, list);
+  }
+
+  return result;
+}
+
+/**
+ * Calcula a meta absoluta do setor no patrimônio total (em % da carteira)
+ * a partir da meta da classe (%) e da meta relativa do setor (%) dentro dela.
+ * Exemplo: Classe Ações com meta 40%, Setor Bancos com meta 25% da classe -> 10% da carteira.
+ */
+export function calculateSectorEffectiveTargetPct(classTargetPct: number, sectorTargetInClassPct: number): number {
+  const c = Math.max(0, Number.isFinite(classTargetPct) ? classTargetPct : 0);
+  const s = Math.max(0, Number.isFinite(sectorTargetInClassPct) ? sectorTargetInClassPct : 0);
+  return Math.round(((c * s) / 100) * 100) / 100;
+}
+
+/**
+ * Valida a soma das metas relativas dos setores de uma classe (deve somar ≤ 100% da classe).
+ */
+export function validateClassSectorTargetsSum(
+  sectorTargets: readonly Pick<TargetDraft, "target">[],
+  className = "Classe",
+): TargetValidation {
+  const sum = targetsSum(sectorTargets);
+  if (sum > 100.001) {
+    return {
+      ok: false,
+      sum,
+      remaining: 0,
+      error: `A soma dos setores de ${className} excede 100%. Reduza algum percentual.`,
+    };
+  }
+  const safeSum = Math.min(100, Math.max(0, sum));
+  return {
+    ok: true,
+    sum: safeSum,
+    remaining: Math.max(0, Math.round((100 - safeSum) * 100) / 100),
+    error: null,
+  };
+}

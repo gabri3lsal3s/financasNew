@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildAporteSuggestions,
   cleanTicker,
+  inferSectorFromTicker,
   searchTickers,
   CURATED_TICKERS_CATALOG,
 } from "./tickers-catalog";
@@ -20,6 +21,41 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
     it("converte para caixa alta e remove espaços em branco", () => {
       expect(cleanTicker("  petr4  ")).toBe("PETR4");
       expect(cleanTicker("vale3")).toBe("VALE3");
+    });
+  });
+
+  describe("inferSectorFromTicker", () => {
+    it("reconhece setores de ações B3 do catálogo", () => {
+      expect(inferSectorFromTicker("PETR4", "Ações")).toBe("Petróleo, Gás e Combustíveis");
+      expect(inferSectorFromTicker("ITUB4", "Ações")).toBe("Financeiro / Bancos");
+      expect(inferSectorFromTicker("TAEE11", "Ações")).toBe("Energia Elétrica");
+      expect(inferSectorFromTicker("WEGE3", "Ações")).toBe("Bens de Capital / Máquinas");
+    });
+
+    it("reconhece segmentos de FIIs", () => {
+      expect(inferSectorFromTicker("HGLG11", "FIIs")).toBe("Imobiliário / Logística");
+      expect(inferSectorFromTicker("MXRF11", "FIIs")).toBe("Imobiliário / Papel e CRI");
+      expect(inferSectorFromTicker("XPML11", "FIIs")).toBe("Imobiliário / Shoppings");
+      expect(inferSectorFromTicker("RZTR11", "FIIs")).toBe("Agro / FIAGRO");
+    });
+
+    it("reconhece indexadores de Renda Fixa e Tesouro Direto", () => {
+      expect(inferSectorFromTicker("TESOURO-SELIC", "Renda Fixa")).toBe("Pós-fixado (Selic / CDI)");
+      expect(inferSectorFromTicker("TESOURO-IPCA", "Renda Fixa")).toBe("Inflação (IPCA+)");
+      expect(inferSectorFromTicker("TESOURO-PREFIXADO", "Renda Fixa")).toBe("Prefixado");
+      expect(inferSectorFromTicker("CDB-100-CDI", "Renda Fixa")).toBe("Pós-fixado (Selic / CDI)");
+    });
+
+    it("reconhece ativos internacionais em dólar", () => {
+      expect(inferSectorFromTicker("VOO", "Internacional")).toBe("Mercado Amplo US (S&P 500)");
+      expect(inferSectorFromTicker("VT", "Internacional")).toBe("Neutro Global (All-World)");
+      expect(inferSectorFromTicker("VNQ", "Internacional")).toBe("REITs / Imobiliário");
+      expect(inferSectorFromTicker("AAPL", "Internacional")).toBe("Tecnologia & Software");
+    });
+
+    it("reconhece criptomoedas e stablecoins", () => {
+      expect(inferSectorFromTicker("BTC", "Cripto")).toBe("Layer 1 / Reserva (BTC / ETH / SOL)");
+      expect(inferSectorFromTicker("USDT", "Cripto")).toBe("Stablecoins (USD)");
     });
   });
 

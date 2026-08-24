@@ -28,6 +28,7 @@ export interface PortfolioPositionRow {
   assetId: string;
   ticker: string;
   assetClass: string | null;
+  sector?: string | null;
   currency: AssetCurrency;
   quantity: number;
   /** Custo médio na moeda nativa do ativo (USD ou BRL). */
@@ -184,6 +185,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       assetId: asset.id,
       ticker: asset.ticker,
       assetClass: asset.asset_class,
+      sector: asset.sector ?? null,
       currency: asset.currency,
       quantity: summary.pricingMode === "total_value" ? 1 : quantity,
       averageCost: summary.pricingMode === "total_value" ? summary.totalCost : averageCost,

@@ -1,5 +1,6 @@
 import { Input, MoneyInput, Select } from "@/components/ui";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
+import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { cn } from "@/lib/utils";
 import type { AssetCurrency } from "@/types";
 import type { InvestmentWizardState } from "./wizard-state";
@@ -31,6 +32,26 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
   const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
   const tesouroMode = state.pricingMode ?? "total_value";
   const isTotalValueMode = !isCash && isFixedIncome && (!isTesouro || tesouroMode === "total_value");
+  const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[state.assetClass] ?? [];
+
+  const handleTickerChange = (ticker: string) => {
+    const patch: Partial<InvestmentWizardState> = { ticker };
+    if (!state.sector) {
+      patch.sector = inferSectorFromTicker(ticker, state.assetClass);
+    }
+    onChange(patch);
+  };
+
+  const handleClassChange = (assetClass: string) => {
+    const patch: Partial<InvestmentWizardState> = {
+      assetClass,
+      isCash: isCashAssetClass(assetClass),
+    };
+    if (!state.sector) {
+      patch.sector = inferSectorFromTicker(state.ticker, assetClass);
+    }
+    onChange(patch);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -43,7 +64,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
           <Input
             id="wizard-new-ticker"
             value={state.ticker}
-            onChange={(e) => onChange({ ticker: e.target.value.toUpperCase().trim() })}
+            onChange={(e) => handleTickerChange(e.target.value.toUpperCase().trim())}
             placeholder={isCash ? "CAIXA" : "Ex: CDB BANCO INTER, PETR4, TESOURO SELIC…"}
             className="font-mono uppercase font-bold"
           />
@@ -56,10 +77,44 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
           </span>
           <Select
             value={state.assetClass}
-            onValueChange={(assetClass) => onChange({ assetClass, isCash: isCashAssetClass(assetClass) })}
+            onValueChange={handleClassChange}
             options={ASSET_CLASS_OPTIONS}
           />
         </div>
+
+        {/* Setor / Segmento */}
+        {!isCash && (
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <label htmlFor="wizard-new-sector" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Setor / Segmento / Indexador
+            </label>
+            <Input
+              id="wizard-new-sector"
+              value={state.sector}
+              onChange={(e) => onChange({ sector: e.target.value })}
+              placeholder="Ex: Financeiro / Bancos, Imobiliário / Logística, Pós-fixado..."
+            />
+            {recommendedSectors.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] text-muted-foreground">Recomendados:</span>
+                {recommendedSectors.slice(0, 4).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onChange({ sector: s })}
+                    className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                      state.sector === s
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "border border-border/70 bg-surface-hover/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Moeda */}
         <div className="flex flex-col gap-1.5 sm:col-span-2">

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  simulateCombinedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
   type AporteAssetInput,
@@ -68,7 +69,7 @@ describe("simulateSmartAporte — por meta de ativo (§3.11.3)", () => {
     expect(result.leftover).toBe(1000);
   });
 
-  it("quantidades inteiras: excedente por arredondamento volta à sobra", () => {
+  it("quantidades inteiras na B3: excedente por arredondamento volta à sobra", () => {
     const result = simulateSmartAporte({
       aporte: 1000,
       assets: [asset({ id: "a", ticker: "A", currentValueBRL: 0, priceBRL: 300, targetPercentage: 100 })],
@@ -78,7 +79,7 @@ describe("simulateSmartAporte — por meta de ativo (§3.11.3)", () => {
     expect(result.leftover).toBe(100);
   });
 
-  it("quando o gap é menor que o preço, nada é alocado (sem fração)", () => {
+  it("quando o gap é menor que o preço na B3, nada é alocado (sem fração)", () => {
     const result = simulateSmartAporte({
       aporte: 5000,
       assets: [asset({ id: "a", ticker: "A", currentValueBRL: 4900, priceBRL: 250, targetPercentage: 100 })],
@@ -139,7 +140,7 @@ describe("simulateRebalanceAporte — por meta de classe (§3.11.3)", () => {
     expect(result.leftover).toBe(4000);
   });
 
-  it("classe sem meta não gera aporte; metas individuais são ignoradas", () => {
+  it("classe sem meta não gera aporte; metas individuais são ignoradas no modo class", () => {
     const result = simulateRebalanceAporte({
       aporte: 2000,
       assets: [
@@ -167,25 +168,34 @@ describe("simulateRebalanceAporte — por meta de classe (§3.11.3)", () => {
   });
 });
 
-describe("Hierarquia Classe -> Ativo e Recursos Avançados", () => {
-  it("estabiliza a classe mais defasada antes de alocar na próxima classe", () => {
-    const result = simulateSmartAporte({
-      aporte: 2000,
+describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fase 4)", () => {
+  it("suporta compras fracionárias para ativos em Dólar (USD / Internacional) com 4 casas decimais", () => {
+    const result = simulateCombinedAporte({
+      aporte: 500, // R$ 500 para aportar
       assets: [
-        // Classe Ações: alvo 50% de 5000 = 2500; atual 500 → déficit 80% (gap 2000)
-        asset({ id: "a1", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 500, priceBRL: 50, targetPercentage: 50 }),
-        // Classe FIIs: alvo 50% de 5000 = 2500; atual 2500 → déficit 0% (gap 0)
-        asset({ id: "f1", ticker: "HGLG11", assetClass: "FIIs", currentValueBRL: 2500, priceBRL: 100, targetPercentage: 50 }),
+        asset({
+          id: "voo",
+          ticker: "VOO",
+          assetClass: "Internacional",
+          currency: "USD",
+          currentValueBRL: 0,
+          priceBRL: 2500, // Cotação ~US$ 500 (~R$ 2.500)
+          targetPercentage: 100,
+        }),
       ],
+      classTargets: [{ className: "Internacional", targetPercentage: 100 }],
     });
-    // Todo o aporte de 2000 vai para Ações
+
+    // R$ 500 ÷ R$ 2500 = 0.2000 cotas de VOO
     expect(result.routes).toHaveLength(1);
-    expect(result.routes[0]).toMatchObject({ ticker: "PETR4", quantity: 40, allocatedBRL: 2000 });
-    expect(result.totalAllocated).toBe(2000);
+    expect(result.routes[0]?.ticker).toBe("VOO");
+    expect(result.routes[0]?.quantity).toBe(0.2);
+    expect(result.routes[0]?.allocatedBRL).toBe(500);
+    expect(result.totalAllocated).toBe(500);
     expect(result.leftover).toBe(0);
   });
 
-  it("suporta compras fracionárias para criptoativos com precisão decimal", () => {
+  it("suporta compras fracionárias para criptoativos com 8 casas decimais", () => {
     const result = simulateSmartAporte({
       aporte: 500,
       assets: [
@@ -196,16 +206,49 @@ describe("Hierarquia Classe -> Ativo e Recursos Avançados", () => {
           currentValueBRL: 0,
           priceBRL: 300_000,
           targetPercentage: 10,
-          isFractional: true,
         }),
       ],
     });
-    // Patrimônio alvo = 500. Alvo BTC 10% = 50.
-    // 50 / 300000 = 0.00016666 BTC
     expect(result.routes).toHaveLength(1);
     expect(result.routes[0]?.ticker).toBe("BTC");
     expect(result.routes[0]?.quantity).toBeCloseTo(0.00016666, 6);
     expect(result.routes[0]?.allocatedBRL).toBe(50);
+  });
+
+  it("aloca aporte respeitando a hierarquia Classe -> Setor -> Ativo", () => {
+    const assets: AporteAssetInput[] = [
+      // Classe Ações -> Setor Bancos (meta 60% de Ações)
+      asset({ id: "itub", ticker: "ITUB4", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 1000, priceBRL: 20 }),
+      asset({ id: "bbas", ticker: "BBAS3", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 1000, priceBRL: 25 }),
+      // Classe Ações -> Setor Elétricas (meta 40% de Ações)
+      asset({ id: "taee", ticker: "TAEE11", assetClass: "Ações", sector: "Energia Elétrica", currentValueBRL: 2000, priceBRL: 20 }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 6000,
+      assets,
+      classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      sectorTargets: [
+        { className: "Ações", sectorName: "Financeiro / Bancos", targetPercentage: 60 },
+        { className: "Ações", sectorName: "Energia Elétrica", targetPercentage: 40 },
+      ],
+    });
+
+    // Patrimônio alvo = 4000 + 6000 = 10000.
+    // Setor Bancos: alvo 60% de 10000 = 6000. Atual = 2000. Gap = 4000.
+    // Setor Elétricas: alvo 40% de 10000 = 4000. Atual = 2000. Gap = 2000.
+    // Bancos recebe 4000 (ITUB4: 2000 / 20 = 100 cotas; BBAS3: 2000 / 25 = 80 cotas).
+    // Elétricas recebe 2000 (TAEE11: 2000 / 20 = 100 cotas).
+    expect(result.sectorSummaries.length).toBeGreaterThan(0);
+    const bancosSummary = result.sectorSummaries.find((s) => s.sectorName === "Financeiro / Bancos");
+    expect(bancosSummary?.targetValueBRL).toBe(6000);
+    expect(bancosSummary?.gapBRL).toBe(4000);
+    expect(bancosSummary?.actualAllocatedBRL).toBe(4000);
+
+    const eletricasSummary = result.sectorSummaries.find((s) => s.sectorName === "Energia Elétrica");
+    expect(eletricasSummary?.actualAllocatedBRL).toBe(2000);
+
+    expect(result.totalAllocated).toBe(6000);
   });
 
   it("reporta diagnóstico de ativos ignorados (sem preço, sem meta, acima da meta)", () => {

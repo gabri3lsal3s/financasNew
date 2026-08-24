@@ -16,7 +16,7 @@ import {
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonKpi } from "@/components/ui";
 import { CategoryDonut, CashKpiCard, KpiCard, PositionTable } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
-import { calculatePortfolioConcentration, isCashAssetClass } from "@/domain/portfolio";
+import { calculatePortfolioConcentration, inferSectorFromTicker, isCashAssetClass } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -108,7 +108,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
   const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
   const [taxReportOpen, setTaxReportOpen] = useState(false);
   const [darfMonitorOpen, setDarfMonitorOpen] = useState(false);
-  const [allocationMode, setAllocationMode] = useState<"asset" | "class">("class");
+  const [allocationMode, setAllocationMode] = useState<"class" | "sector" | "asset">("class");
   const [priceFor, setPriceFor] = useState<{
     id: string;
     ticker: string;
@@ -218,6 +218,23 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
     .filter((s) => s.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents);
 
+  // Agrupamento por setor / segmento
+  const sectorMap = new Map<string, number>();
+  for (const row of rows) {
+    const label = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
+    const cents = Math.round(row.valueBRL * 100);
+    sectorMap.set(label, (sectorMap.get(label) ?? 0) + cents);
+  }
+  const sectorSlices = Array.from(sectorMap.entries())
+    .map(([label, valueCents]) => ({
+      key: label,
+      label,
+      valueCents,
+      subtitle: `${rows.filter((r) => (r.sector?.trim() || inferSectorFromTicker(r.ticker, r.assetClass)) === label).length} ativo(s)`,
+    }))
+    .filter((s) => s.valueCents > 0)
+    .sort((a, b) => b.valueCents - a.valueCents);
+
   // Fatias individuais de cada ativo com clique interativo para ver detalhes
   const assetSlices = rows
     .filter((row) => row.valueBRL > 0)
@@ -226,11 +243,16 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
       key: row.assetId,
       label: row.ticker,
       valueCents: Math.round(row.valueBRL * 100),
-      subtitle: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
+      subtitle: row.sector ?? row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
       onClick: () => openDetail(row.assetId),
     }));
 
-  const activeSlices = allocationMode === "asset" ? assetSlices : classSlices;
+  const activeSlices =
+    allocationMode === "sector"
+      ? sectorSlices
+      : allocationMode === "asset"
+        ? assetSlices
+        : classSlices;
 
   const series = position.monthlySeries;
   const totalReturnPnlBRL = position.totalReturnPnlBRL;
@@ -375,6 +397,18 @@ export function ResumoTab({ onOpenWizard, onOpenCash }: ResumoTabProps = {}) {
                     )}
                   >
                     Por Classe
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAllocationMode("sector")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      allocationMode === "sector"
+                        ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Por Setor
                   </button>
                   <button
                     type="button"

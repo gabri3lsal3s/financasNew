@@ -128,7 +128,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 | `budgets` | id, user_id, category_id, month, limit | **Unique (category_id, month)**; upsert |
 | `income_goals` | id, user_id, category_id, month, expected | Unique (category_id, month); upsert |
 | `insight_feedback` | id, user_id, occurrence_key (hash estável: tipo + entidade + mês), decision (`ignore \| confirm`), created_at | Registra o aprendizado do usuário sobre insights (§3.7.4); ocorrência ignorada deixa de contar |
-| `portfolio_assets` | id, user_id, ticker, asset_class, currency (BRL/USD) | Ticker único por user |
+| `portfolio_assets` | id, user_id, ticker, asset_class, sector (nullable), currency (BRL/USD) | Ticker único por user |
 | `portfolio_transactions` | id, user_id, asset_id, type (`buy \| sell \| dividend \| jcp \| fii_yield \| split \| reverse_split \| subscription`), date, quantity, price, total | Caixa derivado do ledger (nunca armazenado como saldo) |
 | `allocation_targets` | id, user_id, asset_id, target_percentage (0–100) | Soma por user ≤ 100 — **validada no domínio e no banco (trigger/RPC)**; check não cobre soma entre linhas |
 | `class_targets` / `sector_targets` | id, user_id, group_type (`class \| sector`), name, target_percentage | Metas opcionais por classe/setor |
@@ -368,14 +368,18 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 
 #### 3.11.1 Metas / Alocação Alvo
 
-- **Meta por ativo:** `target_percentage` (0–100) por `(user, ticker)`; **soma ≤ 100%** (domínio + banco).
-- **Meta por classe/setor** (opcional): `(user, group_type, nome) → target_percentage`.
-- Alvo = % do **patrimônio total** (incluindo caixa/reserva).
-- Edição em lote com feedback visual de soma (barra de total ≤ 100%).
+#### 3.11.1 Metas de Alocação Hierárquicas (Classe $\rightarrow$ Setor $\rightarrow$ Ativo)
+
+- **Meta macro por classe:** `class_targets` (`group_type = "class"`) — % do patrimônio total ($\sum \le 100\%$).
+- **Meta meso por setor:** `sector_targets` (`group_type = "sector"`) — % relativo da classe ($\sum \le 100\%$ dentro da respectiva classe). Meta efetiva do setor no patrimônio total = $(\text{meta da classe} \times \text{meta do setor}) / 100$.
+- **Meta micro por ativo:** `target_percentage` (0–100) por `(user, asset_id)` no patrimônio total ($\sum \le 100\%$).
+- **Inferência setorial automática (`inferSectorFromTicker`):** mapeamento canônico de setores por classe (Ações B3 por setor financeiro/bancos, petróleo, utilidades; FIIs por tijolo/logística, papel/CRI; Tesouro Direto por indexador econômico Selic/CDI, IPCA+, Prefixado; Ativos Internacionais USD por tecnologia, saúde, REITs, ETFs globais neutros; Criptoativos).
+- **Ações contextuais:** normalização em 1-clique (100% ou teto da classe), equiponderação ($1/N$) e zeramento em todos os 3 níveis.
+- Edição em lote com feedback visual de soma (barra de total ≤ 100% validada no domínio e no banco via RPC).
 
 #### 3.11.2 Posição Atual (Posição Consolidada & Snapshots — F36)
 
-- **Modelo de Custódia Direta:** posições mantidas diretamente em `portfolio_assets` (`quantity`, `average_price`, `notes`), permitindo valoração instantânea $O(1)$ (`calculatePositionSummary`).
+- **Modelo de Custódia Direta:** posições mantidas diretamente em `portfolio_assets` (`quantity`, `average_price`, `sector`, `notes`), permitindo valoração instantânea $O(1)$ (`calculatePositionSummary`).
 - **Valoração e Rentabilidade (Retorno Total / Total Return):**
   - `totalCost = quantity * average_price`
   - `valueBRL = quantity * priceBRL` (com conversão USD via `USDBRL=X` quando aplicável)
@@ -399,13 +403,17 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 #### 3.11.3 Algoritmo de Aporte Hierárquico (`simulateCombinedAporte`)
 
 1. **Defasagem macro por classe:** classe com maior déficit relativo recebe prioridade de orçamentação.
-2. **Distribuição micro por ativo:** a verba da classe é distribuída entre seus membros com base no gap das metas individuais ou cota equiponderada ($1/N$).
-3. **Elegibilidade:** meta definida (individual ou de classe), cotação disponível, abaixo da meta (gap > 0).
-4. **Ordenação:** prioridade da classe com maior déficit relativo desc; dentro da classe, gap financeiro desc.
-5. **Transbordamento:** sobras internas de classe retornam ao pool para atender a próxima classe defasada.
-6. **Quantidades inteiras e fracionárias:** suporte a cotas inteiras para ativos convencionais e decimais para criptoativos.
-7. **Sobra:** não alocada (arredondamento/preço mínimo) → caixa/reserva.
-8. **Log de roteamento:** por ativo — valor alvo, atual, aporte sugerido, quantidade, preço; sobra final e diagnósticos.
+2. **Orçamentação meso por setor:** a verba da classe é distribuída entre seus setores conforme o déficit das metas setoriais relativas ou equiponderação setorial.
+3. **Distribuição micro por ativo:** a verba setorial é distribuída entre os ativos membros com base nas metas individuais ou cota equiponderada ($1/N$).
+4. **Precisão fracionária adaptativa (`resolveAssetPrecision`):**
+   - **Moeda Estrangeira (USD / Internacional):** compras fracionárias com até **4 casas decimais** (`0.1234 VOO`).
+   - **Criptoativos:** compras fracionárias com até **8 casas decimais** (`0.00012345 BTC`).
+   - **Mercado Nacional (B3):** estritamente cotas inteiras ($\ge 1$ cota).
+5. **Elegibilidade:** meta definida (individual, setorial ou de classe), cotação disponível, abaixo da meta (gap > 0).
+6. **Ordenação:** prioridade da classe com maior déficit relativo desc; dentro da classe, setor com maior déficit desc; dentro do setor, gap financeiro desc.
+7. **Transbordamento:** sobras internas de setor retornam para a classe; sobras da classe retornam ao pool global para atender a próxima classe defasada.
+8. **Sobra:** resíduos não alocados por restrição de cota mínima retornam ao caixa/reserva.
+9. **Log de roteamento:** por ativo — valor alvo, atual, aporte sugerido, quantidade (fracionária ou inteira), preço; sobra final e diagnósticos.
 
 **Consistência:** soma dos aportes nunca excede o aporte informado; ativo sem meta não recebe aporte; aporte só para ativos **abaixo** da meta (gap > 0); motor hierárquico único e opinado.
 

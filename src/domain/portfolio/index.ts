@@ -302,15 +302,18 @@ export { dividendExtractForMonth, dividendsByYear, dividendsInMonth, isDividendT
 export type { DividendEntry, DividendTransaction, MonthDividendSummary } from "./dividends";
 export {
   calculateAssetAllocationDelta,
+  calculateSectorEffectiveTargetPct,
   clampTargetPercentage,
   distributeEquallyTargets,
+  groupAssetsByClassAndSector,
   mirrorCurrentPositionTargets,
   parseTargetInput,
   sanitizeTargetsForSave,
   targetsSum,
+  validateClassSectorTargetsSum,
   validateTargetsSum,
 } from "./allocation";
-export type { AssetAllocationDelta, TargetDraft, TargetValidation } from "./allocation";
+export type { AssetAllocationDelta, SectorItem, TargetDraft, TargetValidation } from "./allocation";
 export {
   SYSTEM_PRESET_TEMPLATES,
   applyPresetToPosition,
@@ -325,6 +328,8 @@ export type {
 } from "./presets";
 export {
   isFractionalAsset,
+  resolveAssetPrecision,
+  simulateAporte,
   simulateCombinedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
@@ -336,6 +341,8 @@ export type {
   AporteRoute,
   ClassAporteSummary,
   ClassTargetInput,
+  SectorAporteSummary,
+  SectorTargetInput,
   SkippedAssetDiagnostic,
   SkippedReason,
 } from "./aporte";

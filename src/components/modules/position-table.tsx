@@ -32,6 +32,7 @@ export interface PositionRow {
   assetId: string;
   ticker: string;
   assetClass: string | null;
+  sector?: string | null;
   currency: AssetCurrency;
   quantity: number;
   averageCost: number;
@@ -280,7 +281,8 @@ export function PositionTable({
     const matchesSearch =
       search.trim() === "" ||
       row.ticker.toLowerCase().includes(search.toLowerCase().trim()) ||
-      (row.assetClass?.toLowerCase().includes(search.toLowerCase().trim()) ?? false);
+      (row.assetClass?.toLowerCase().includes(search.toLowerCase().trim()) ?? false) ||
+      (row.sector?.toLowerCase().includes(search.toLowerCase().trim()) ?? false);
     const matchesClass = selectedClass === null || rowClass === selectedClass;
     return matchesSearch && matchesClass;
   });

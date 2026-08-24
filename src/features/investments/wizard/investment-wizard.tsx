@@ -304,6 +304,7 @@ function InvestmentWizardContent({
         const newAsset = await createAsset.mutateAsync({
           ticker: state.ticker,
           asset_class: state.assetClass,
+          sector: state.sector.trim() || null,
           currency: state.currency,
           quantity: finalQuantity,
           average_price: finalAveragePrice,
@@ -398,6 +399,7 @@ function InvestmentWizardContent({
                     ticker: res.ticker,
                     name: res.name,
                     assetClass: res.assetClass,
+                    sector: res.sector ?? asset?.sector ?? "",
                     currency: res.currency,
                     isCash,
                   }));
@@ -410,6 +412,7 @@ function InvestmentWizardContent({
                     ticker: res.ticker,
                     name: res.name,
                     assetClass: res.assetClass,
+                    sector: res.sector ?? "",
                     currency: res.currency,
                     isCash,
                   }));
@@ -427,6 +430,7 @@ function InvestmentWizardContent({
                   selectedAsset: asset ?? null,
                   ticker: item.ticker,
                   assetClass: item.assetClass,
+                  sector: item.sector ?? asset?.sector ?? "",
                   currency: asset?.currency ?? "BRL",
                   isCash: false,
                   priceCents: Math.round(priceBRL * 100),
@@ -454,6 +458,7 @@ function InvestmentWizardContent({
                   ticker: res.ticker,
                   name: res.name,
                   assetClass: res.assetClass,
+                  sector: res.sector ?? "",
                   currency: res.currency,
                   isCash,
                 }));
@@ -470,6 +475,7 @@ function InvestmentWizardContent({
                   selectedAsset: asset ?? null,
                   ticker: item.ticker,
                   assetClass: item.assetClass,
+                  sector: item.sector ?? asset?.sector ?? "",
                   currency: asset?.currency ?? "BRL",
                   isCash: false,
                   priceCents: Math.round(priceBRL * 100),

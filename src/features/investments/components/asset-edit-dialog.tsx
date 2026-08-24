@@ -3,6 +3,7 @@ import { numberToCents } from "@/domain/money";
 import { Alert, Button, Input, Modal, MoneyInput, Select } from "@/components/ui";
 import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { assetMetadataSchema } from "@/domain/portfolio/schemas";
+import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { getErrorMessage } from "@/services/errors";
 import { useUpdatePortfolioAsset } from "@/state";
 import type { AssetCurrency, PortfolioAsset } from "@/types";
@@ -39,6 +40,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
   const [ticker, setTicker] = useState(asset.ticker);
   const [assetClass, setAssetClass] = useState(asset.asset_class ?? "Ações");
+  const [sector, setSector] = useState(asset.sector ?? inferSectorFromTicker(asset.ticker, asset.asset_class));
   const [currency, setCurrency] = useState<AssetCurrency>(asset.currency ?? "BRL");
   const [notes, setNotes] = useState(asset.notes ?? "");
   const [accumulatedDividendsCents, setAccumulatedDividendsCents] = useState(
@@ -50,6 +52,13 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   const [error, setError] = useState<string | null>(null);
 
   const isCash = isCashAssetClass(assetClass);
+  const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[assetClass] ?? [];
+
+  const handleClassChange = (newClass: string) => {
+    setAssetClass(newClass);
+    const suggested = inferSectorFromTicker(ticker, newClass);
+    setSector(suggested);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +67,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
     const validation = assetMetadataSchema.safeParse({
       ticker,
       asset_class: assetClass,
+      sector: sector.trim() || null,
       currency,
       accumulated_dividends: accumulatedDividendsCents / 100,
       estimated_monthly_dividend_per_share: estimatedDividendPerShareCents / 100,
@@ -75,6 +85,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         patch: {
           ticker: validation.data.ticker,
           asset_class: validation.data.asset_class,
+          sector: validation.data.sector,
           currency: validation.data.currency,
           accumulated_dividends: validation.data.accumulated_dividends,
           estimated_monthly_dividend_per_share: validation.data.estimated_monthly_dividend_per_share,
@@ -111,7 +122,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           </span>
           <Select
             value={assetClass}
-            onValueChange={setAssetClass}
+            onValueChange={handleClassChange}
             options={ASSET_CLASSES}
           />
         </div>
@@ -126,6 +137,36 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
             options={CURRENCIES}
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="edit-asset-sector" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Setor / Segmento / Indexador
+        </label>
+        <Input
+          id="edit-asset-sector"
+          value={sector}
+          onChange={(e) => setSector(e.target.value)}
+          placeholder="Ex: Financeiro / Bancos, Logística, Pós-fixado..."
+        />
+        {recommendedSectors.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {recommendedSectors.slice(0, 4).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSector(s)}
+                className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                  sector === s
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">

@@ -403,6 +403,7 @@ export type PortfolioAsset = {
   user_id: string;
   ticker: string;
   asset_class: string | null;
+  sector?: string | null;
   currency: AssetCurrency;
   quantity: number;
   average_price: number;
@@ -489,6 +490,12 @@ export type PresetClassTarget = {
   target_percentage: number;
 };
 
+export type PresetSectorTarget = {
+  class_name: string;
+  name: string;
+  target_percentage: number;
+};
+
 export type AllocationPreset = {
   id: string;
   user_id: string;
@@ -496,6 +503,7 @@ export type AllocationPreset = {
   description: string | null;
   asset_targets: PresetAssetTarget[];
   class_targets: PresetClassTarget[];
+  sector_targets?: PresetSectorTarget[];
   created_at: string;
   updated_at: string;
 };

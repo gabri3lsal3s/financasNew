@@ -28,6 +28,14 @@ export const assetClassSchema = z
   .min(1, "Selecione ou informe a classe do ativo")
   .max(50, "A classe deve ter no máximo 50 caracteres");
 
+export const assetSectorSchema = z
+  .string()
+  .trim()
+  .max(100, "O setor deve ter no máximo 100 caracteres")
+  .nullable()
+  .optional()
+  .transform((val) => (val && val.trim().length > 0 ? val.trim() : null));
+
 export const assetCurrencySchema = z.enum(["BRL", "USD"] as const, {
   message: "Moeda inválida (escolha BRL ou USD)",
 });
@@ -36,6 +44,7 @@ export const assetCurrencySchema = z.enum(["BRL", "USD"] as const, {
 export const newAssetSchema = z.object({
   ticker: assetTickerSchema,
   asset_class: assetClassSchema,
+  sector: assetSectorSchema,
   currency: assetCurrencySchema.default("BRL"),
   quantity: z
     .number({ message: "Informe uma quantidade válida" })
@@ -137,6 +146,7 @@ export type QuickTransactionInput = z.infer<typeof quickTransactionSchema>;
 export const assetMetadataSchema = z.object({
   ticker: assetTickerSchema,
   asset_class: assetClassSchema,
+  sector: assetSectorSchema,
   currency: assetCurrencySchema,
   /** Proventos históricos acumulados anteriores ao extrato periódico. Alimenta YoC e Bola de Neve. */
   accumulated_dividends: z

@@ -1,16 +1,21 @@
 /**
- * Calculadora de aporte — ESPECIFICAÇÃO §3.11.3 & Arquitetura Hierárquica Classe -> Ativo.
+ * Calculadora de aporte — ESPECIFICAÇÃO §3.11.3 & Arquitetura Hierárquica Classe -> Setor -> Ativo.
  *
  * Princípio Arquitetural:
  *   1. Estabilização Macro por Classe: o aporte é prioritariamente orçado
  *      entre as classes com maior déficit relativo (alvo − atual) ÷ alvo;
- *   2. Alocação Micro por Ativo: a verba destinada a cada classe é distribuída
- *      exclusivamente entre os ativos membros dessa classe;
- *   3. Transbordamento de Resíduos: sobras internas da classe (preço unitário >
- *      saldo restante ou arredondamentos) retornam ao pool para atender a
- *      próxima classe deficitária;
- *   4. Suporte Fracionário: criptoativos permitem precisão decimal (até 8 casas);
- *   5. Rastreabilidade & Diagnóstico: ativos não elegíveis são catalogados com
+ *   2. Orçamentação Meso por Setor: dentro de cada classe, a verba é
+ *      prioritariamente distribuída entre os setores com maior defasagem interna;
+ *   3. Alocação Micro por Ativo: a verba do setor é distribuída entre os ativos
+ *      membros (respeitando metas individuais ou equiponderação 1/N);
+ *   4. Suporte Fracionário Diferenciado:
+ *      • Ativos em Dólar (USD / Internacional): frações de até 4 casas decimais;
+ *      • Criptoativos: frações de alta precisão (até 8 casas decimais);
+ *      • Ativos B3 (Ações / FIIs / ETFs nacionais): cotas inteiras (>= 1);
+ *      • Renda Fixa / Caixa: aporte financeiro direto (2 casas).
+ *   5. Transbordamento de Resíduos: sobras internas do setor atendem o próximo setor,
+ *      e sobras da classe retornam ao pool para atender a próxima classe;
+ *   6. Rastreabilidade & Diagnóstico: ativos não elegíveis são catalogados com
  *      o motivo exato (sem preço, sem meta, acima da meta, etc).
  *
  * Consistência (DoD): a soma dos aportes NUNCA excede o aporte informado;
@@ -21,6 +26,7 @@
 
 import type { AssetCurrency } from "@/types";
 import { normalizeClassName } from "./valuation";
+import { inferSectorFromTicker } from "./tickers-catalog";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -38,6 +44,7 @@ export interface SkippedAssetDiagnostic {
   assetId: string;
   ticker: string;
   assetClass: string | null;
+  sector?: string | null;
   reason: SkippedReason;
   detail?: string;
 }
@@ -52,10 +59,23 @@ export interface ClassAporteSummary {
   actualAllocatedBRL: number;
 }
 
+export interface SectorAporteSummary {
+  className: string;
+  sectorName: string;
+  targetPctInClass: number;
+  effectiveTargetPct: number;
+  targetValueBRL: number;
+  currentValueBRL: number;
+  gapBRL: number;
+  budgetAllocatedBRL: number;
+  actualAllocatedBRL: number;
+}
+
 export interface AporteAssetInput {
   id: string;
   ticker: string;
   assetClass: string | null;
+  sector?: string | null;
   currency: AssetCurrency;
   /** Valor atual em BRL (já convertido). */
   currentValueBRL: number;
@@ -63,7 +83,7 @@ export interface AporteAssetInput {
   priceBRL: number;
   /** Meta individual (% do patrimônio) — null = sem meta. */
   targetPercentage: number | null;
-  /** Indica se aceita compra fracionária (ex: cripto). */
+  /** Indica se aceita compra fracionária (override manual). */
   isFractional?: boolean;
 }
 
@@ -73,11 +93,19 @@ export interface ClassTargetInput {
   targetPercentage: number;
 }
 
+export interface SectorTargetInput {
+  className: string;
+  sectorName: string;
+  /** % relativo dentro da classe (0–100). */
+  targetPercentage: number;
+}
+
 /** Linha do log de roteamento (§3.11.3.8). */
 export interface AporteRoute {
   assetId: string;
   ticker: string;
   assetClass: string | null;
+  sector: string | null;
   /** Valor alvo em BRL (meta aplicada ao patrimônio pós-aporte). */
   targetValueBRL: number;
   /** Valor atual em BRL. */
@@ -86,7 +114,7 @@ export interface AporteRoute {
   gapBRL: number;
   /** Aporte sugerido em BRL (quantidade × preço). */
   allocatedBRL: number;
-  /** Quantidade sugerida (inteira ou decimal para cripto). */
+  /** Quantidade sugerida (inteira ou decimal para cripto/USD). */
   quantity: number;
   /** Preço unitário usado (BRL). */
   priceBRL: number;
@@ -104,12 +132,14 @@ export interface AporteResult {
   routes: AporteRoute[];
   /** Sumário macro da distribuição por classe. */
   classSummaries: ClassAporteSummary[];
+  /** Sumário intermediário da distribuição por setor. */
+  sectorSummaries: SectorAporteSummary[];
   /** Diagnóstico de ativos que não receberam aporte. */
   skippedAssets: SkippedAssetDiagnostic[];
 }
 
 // ---------------------------------------------------------------------------
-// Utilidades
+// Utilidades & Precisão Fracionária
 // ---------------------------------------------------------------------------
 
 /** Arredonda para 2 casas (moeda BRL). */
@@ -129,27 +159,78 @@ const CRYPTO_CLASS_ALIASES = new Set([
   "cryptocurrency",
 ]);
 
-/** Verifica se um ativo aceita cotas fracionárias (ex: Cripto). */
-export function isFractionalAsset(assetClass: string | null, ticker: string, explicitFractional?: boolean): boolean {
-  if (explicitFractional !== undefined) return explicitFractional;
-  if (!assetClass && !ticker) return false;
-  const normalizedClass = normalizeClassName(assetClass ?? "");
-  if (CRYPTO_CLASS_ALIASES.has(normalizedClass)) return true;
-  const upperTicker = ticker.trim().toUpperCase();
-  if (upperTicker.endsWith("USD") || upperTicker.endsWith("BRL") || upperTicker === "BTC" || upperTicker === "ETH") {
-    return true;
+/**
+ * Determina o número de casas decimais para cálculo da quantidade:
+ * - Cripto: 8 casas decimais;
+ * - Dólar (USD / Internacional): 4 casas decimais;
+ * - B3 / BRL convencional: 0 casas decimais (cotas inteiras).
+ */
+export function resolveAssetPrecision(asset: Pick<AporteAssetInput, "assetClass" | "ticker" | "currency" | "isFractional">): number {
+  if (asset.isFractional !== undefined) {
+    if (!asset.isFractional) return 0;
+    const normalizedClass = normalizeClassName(asset.assetClass ?? "");
+    return CRYPTO_CLASS_ALIASES.has(normalizedClass) ? 8 : 4;
   }
-  return false;
+
+  const normalizedClass = normalizeClassName(asset.assetClass ?? "");
+  const upperTicker = asset.ticker.trim().toUpperCase();
+
+  // 1. Criptoativos -> 8 casas
+  if (
+    CRYPTO_CLASS_ALIASES.has(normalizedClass) ||
+    upperTicker === "BTC" ||
+    upperTicker === "ETH" ||
+    upperTicker === "SOL" ||
+    upperTicker === "USDT" ||
+    upperTicker === "USDC"
+  ) {
+    return 8;
+  }
+
+  // 2. Internacional / USD -> 4 casas
+  if (
+    asset.currency === "USD" ||
+    normalizedClass.includes("internacional") ||
+    normalizedClass.includes("global") ||
+    normalizedClass.includes("stock") ||
+    normalizedClass.includes("reit")
+  ) {
+    return 4;
+  }
+
+  // 3. Mercado Nacional B3 -> Cotas inteiras (0 casas)
+  return 0;
+}
+
+/** Verifica se um ativo aceita cotas fracionárias (ex: Cripto ou Internacional USD). */
+export function isFractionalAsset(
+  assetClass: string | null,
+  ticker: string,
+  explicitFractional?: boolean,
+  currency?: AssetCurrency,
+): boolean {
+  return resolveAssetPrecision({ assetClass, ticker, currency: currency ?? "BRL", isFractional: explicitFractional }) > 0;
 }
 
 // ---------------------------------------------------------------------------
-// Motor de simulação Hierárquico (Classe -> Ativo)
+// Motor de simulação Hierárquico (Classe -> Setor -> Ativo)
 // ---------------------------------------------------------------------------
 
 interface InternalEffectiveAssetTarget {
   targetPct: number;
   targetValueBRL: number;
   gapBRL: number;
+}
+
+interface InternalSectorMacro {
+  className: string;
+  sectorName: string;
+  targetPctInClass: number;
+  effectiveTargetPct: number;
+  targetValueBRL: number;
+  currentValueBRL: number;
+  gapBRL: number;
+  deficitRel: number;
 }
 
 interface InternalClassMacro {
@@ -161,11 +242,12 @@ interface InternalClassMacro {
   deficitRel: number;
 }
 
-function simulateAporte(opts: {
+export function simulateAporte(opts: {
   mode: AporteMode;
   aporte: number;
   assets: readonly AporteAssetInput[];
   classTargets: readonly ClassTargetInput[];
+  sectorTargets?: readonly SectorTargetInput[];
 }): AporteResult {
   const aporte = round2(nonNegative(opts.aporte));
   const skippedAssets: SkippedAssetDiagnostic[] = [];
@@ -178,6 +260,7 @@ function simulateAporte(opts: {
       leftover: aporte,
       routes: [],
       classSummaries: [],
+      sectorSummaries: [],
       skippedAssets: [],
     };
   }
@@ -192,17 +275,31 @@ function simulateAporte(opts: {
       leftover: aporte,
       routes: [],
       classSummaries: [],
+      sectorSummaries: [],
       skippedAssets: [],
     };
   }
 
-  // Agrupamento de ativos por classe
+  // Agrupamento de ativos por Classe e por Setor
   const assetsByClass = new Map<string, AporteAssetInput[]>();
+  const assetsByClassAndSector = new Map<string, Map<string, AporteAssetInput[]>>();
+
   for (const asset of opts.assets) {
-    const key = asset.assetClass ?? "";
-    const list = assetsByClass.get(key) ?? [];
-    list.push(asset);
-    assetsByClass.set(key, list);
+    const classKey = asset.assetClass?.trim() || "Outros";
+    const sectorKey = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, classKey);
+
+    const classList = assetsByClass.get(classKey) ?? [];
+    classList.push(asset);
+    assetsByClass.set(classKey, classList);
+
+    let sectorMap = assetsByClassAndSector.get(classKey);
+    if (!sectorMap) {
+      sectorMap = new Map<string, AporteAssetInput[]>();
+      assetsByClassAndSector.set(classKey, sectorMap);
+    }
+    const sectorList = sectorMap.get(sectorKey) ?? [];
+    sectorList.push(asset);
+    sectorMap.set(sectorKey, sectorList);
   }
 
   const classTargetMap = new Map<string, number>();
@@ -210,8 +307,18 @@ function simulateAporte(opts: {
     classTargetMap.set(ct.className, nonNegative(ct.targetPercentage));
   }
 
+  const sectorTargetMap = new Map<string, Map<string, number>>();
+  for (const st of opts.sectorTargets ?? []) {
+    let sMap = sectorTargetMap.get(st.className);
+    if (!sMap) {
+      sMap = new Map<string, number>();
+      sectorTargetMap.set(st.className, sMap);
+    }
+    sMap.set(st.sectorName, nonNegative(st.targetPercentage));
+  }
+
   // -------------------------------------------------------------------------
-  // 1. Meta efetiva por ativo
+  // 1. Meta efetiva por ativo (Hierarquia 3 Níveis: Classe -> Setor -> Ativo)
   // -------------------------------------------------------------------------
   const effectiveAssetMap = new Map<string, InternalEffectiveAssetTarget>();
 
@@ -225,57 +332,76 @@ function simulateAporte(opts: {
         effectiveAssetMap.set(asset.id, { targetPct, targetValueBRL, gapBRL });
       }
     }
-  } else if (opts.mode === "both") {
-    // Modo combinado: meta individual prioritária; ativos sem meta individual
-    // dividem a meta restante da classe de forma equiponderada (1/N)
-    for (const asset of opts.assets) {
-      const targetPct = nonNegative(asset.targetPercentage ?? 0);
-      if (targetPct > 0) {
-        const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
-        const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL)));
-        effectiveAssetMap.set(asset.id, { targetPct, targetValueBRL, gapBRL });
-      }
-    }
-
-    for (const [className, members] of assetsByClass) {
-      const classTargetPct = classTargetMap.get(className) ?? 0;
-      if (!(classTargetPct > 0)) continue;
-
-      const membersWithoutIndividual = members.filter((a) => !effectiveAssetMap.has(a.id));
-      if (membersWithoutIndividual.length === 0) continue;
-
-      const individualPctInClass = members
-        .filter((a) => effectiveAssetMap.has(a.id))
-        .reduce((acc, a) => acc + nonNegative(a.targetPercentage ?? 0), 0);
-
-      const remainingClassPct = Math.max(0, classTargetPct - individualPctInClass);
-      if (!(remainingClassPct > 0)) continue;
-
-      const sharePerMember = remainingClassPct / membersWithoutIndividual.length;
-      for (const member of membersWithoutIndividual) {
-        const targetPct = round2(sharePerMember);
-        const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
-        const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
+  } else {
+    // Se mode === "both", metas individuais são consideradas prioritariamente
+    if (opts.mode === "both") {
+      for (const asset of opts.assets) {
+        const targetPct = nonNegative(asset.targetPercentage ?? 0);
         if (targetPct > 0) {
-          effectiveAssetMap.set(member.id, { targetPct, targetValueBRL, gapBRL });
+          const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
+          const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL)));
+          effectiveAssetMap.set(asset.id, { targetPct, targetValueBRL, gapBRL });
         }
       }
     }
-  } else {
-    // Modo classe: a meta da classe é distribuída de forma EQUIPONDERADA (1/N)
-    // entre os ativos da classe, garantindo que o dinheiro estabilize a classe
-    // sem inflar desproporcionalmente ativos que já são grandes.
-    for (const [className, members] of assetsByClass) {
-      const classTargetPct = classTargetMap.get(className) ?? 0;
-      if (members.length === 0 || !(classTargetPct > 0)) continue;
 
-      const sharePerMember = classTargetPct / members.length;
-      for (const member of members) {
-        const targetPct = round2(sharePerMember);
-        const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
-        const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
-        if (targetPct > 0) {
-          effectiveAssetMap.set(member.id, { targetPct, targetValueBRL, gapBRL });
+    for (const [className, sectorMap] of assetsByClassAndSector) {
+      const classTargetPct = classTargetMap.get(className) ?? 0;
+      if (!(classTargetPct > 0)) continue;
+
+      const sectorsWithTarget = sectorTargetMap.get(className);
+      const hasConfiguredSectorTargets = sectorsWithTarget && sectorsWithTarget.size > 0;
+
+      if (hasConfiguredSectorTargets) {
+        // Alocação em 3 níveis: distribui a meta da classe para os setores cadastrados
+        for (const [sectorName, members] of sectorMap) {
+          const sectorTargetInClass = sectorsWithTarget?.get(sectorName) ?? 0;
+          if (!(sectorTargetInClass > 0)) continue;
+
+          const sectorEffectiveTargetPct = round2((classTargetPct * sectorTargetInClass) / 100);
+          if (!(sectorEffectiveTargetPct > 0)) continue;
+
+          const unassignedMembers = members.filter((m) => !effectiveAssetMap.has(m.id));
+          if (unassignedMembers.length === 0) continue;
+
+          const assignedInSector = members
+            .filter((m) => effectiveAssetMap.has(m.id))
+            .reduce((acc, m) => acc + (effectiveAssetMap.get(m.id)?.targetPct ?? 0), 0);
+
+          const remainingSectorPct = Math.max(0, sectorEffectiveTargetPct - assignedInSector);
+          if (remainingSectorPct > 0) {
+            const sharePerMember = remainingSectorPct / unassignedMembers.length;
+            for (const member of unassignedMembers) {
+              const targetPct = round2(sharePerMember);
+              const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
+              const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
+              if (targetPct > 0) {
+                effectiveAssetMap.set(member.id, { targetPct, targetValueBRL, gapBRL });
+              }
+            }
+          }
+        }
+      }
+
+      // Fallback para membros da classe que ficaram sem meta (equiponderação do restante da classe)
+      const allClassMembers = assetsByClass.get(className) ?? [];
+      const remainingUnassigned = allClassMembers.filter((m) => !effectiveAssetMap.has(m.id));
+      if (remainingUnassigned.length > 0) {
+        const assignedClassPct = allClassMembers
+          .filter((m) => effectiveAssetMap.has(m.id))
+          .reduce((acc, m) => acc + (effectiveAssetMap.get(m.id)?.targetPct ?? 0), 0);
+
+        const remainingClassPct = Math.max(0, classTargetPct - assignedClassPct);
+        if (remainingClassPct > 0) {
+          const sharePerMember = remainingClassPct / remainingUnassigned.length;
+          for (const member of remainingUnassigned) {
+            const targetPct = round2(sharePerMember);
+            const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
+            const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
+            if (targetPct > 0) {
+              effectiveAssetMap.set(member.id, { targetPct, targetValueBRL, gapBRL });
+            }
+          }
         }
       }
     }
@@ -286,11 +412,13 @@ function simulateAporte(opts: {
   // -------------------------------------------------------------------------
   for (const asset of opts.assets) {
     const eff = effectiveAssetMap.get(asset.id);
+    const sector = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, asset.assetClass);
     if (!eff || eff.targetPct <= 0) {
       skippedAssets.push({
         assetId: asset.id,
         ticker: asset.ticker,
         assetClass: asset.assetClass,
+        sector,
         reason: "no_target",
         detail: "Sem meta percentual definida.",
       });
@@ -299,6 +427,7 @@ function simulateAporte(opts: {
         assetId: asset.id,
         ticker: asset.ticker,
         assetClass: asset.assetClass,
+        sector,
         reason: "no_price",
         detail: "Cotação não disponível (R$ 0,00).",
       });
@@ -307,6 +436,7 @@ function simulateAporte(opts: {
         assetId: asset.id,
         ticker: asset.ticker,
         assetClass: asset.assetClass,
+        sector,
         reason: "above_target",
         detail: "Posição já atingiu ou superou o percentual-alvo.",
       });
@@ -314,25 +444,62 @@ function simulateAporte(opts: {
   }
 
   // -------------------------------------------------------------------------
-  // 3. NÍVEL 1: Estabilização Macro por Classe (Orçamentação por Classe)
+  // 3. NÍVEL 1 & 2: Estatísticas Macro por Classe e Meso por Setor
   // -------------------------------------------------------------------------
   const classMacros: InternalClassMacro[] = [];
+  const sectorMacrosByClass = new Map<string, InternalSectorMacro[]>();
 
-  for (const [className, members] of assetsByClass) {
+  for (const [className, sectorMap] of assetsByClassAndSector) {
     let classTargetValueBRL = 0;
     let classTargetPct = classTargetMap.get(className) ?? 0;
     let classCurrentValueBRL = 0;
     let sumMemberGapsBRL = 0;
 
-    for (const member of members) {
-      classCurrentValueBRL += nonNegative(member.currentValueBRL);
-      const eff = effectiveAssetMap.get(member.id);
-      if (eff) {
-        classTargetValueBRL += eff.targetValueBRL;
-        if (member.priceBRL > 0) {
-          sumMemberGapsBRL += eff.gapBRL;
+    const sectorMacroList: InternalSectorMacro[] = [];
+    const sectorsWithTarget = sectorTargetMap.get(className);
+
+    for (const [sectorName, members] of sectorMap) {
+      let sectorTargetValBRL = 0;
+      let sectorCurrentValBRL = 0;
+      let sectorMemberGapsBRL = 0;
+
+      for (const member of members) {
+        sectorCurrentValBRL += nonNegative(member.currentValueBRL);
+        const eff = effectiveAssetMap.get(member.id);
+        if (eff) {
+          sectorTargetValBRL += eff.targetValueBRL;
+          if (member.priceBRL > 0) {
+            sectorMemberGapsBRL += eff.gapBRL;
+          }
         }
       }
+
+      sectorCurrentValBRL = round2(sectorCurrentValBRL);
+      sectorMemberGapsBRL = round2(sectorMemberGapsBRL);
+      sectorTargetValBRL = round2(sectorTargetValBRL);
+
+      const targetPctInClass = sectorsWithTarget?.get(sectorName) ?? 0;
+      const effectiveTargetPct = round2((sectorTargetValBRL / patrimonioAlvo) * 100);
+
+      const sectorDeficitRel =
+        sectorTargetValBRL > 0
+          ? Math.max(0, (sectorTargetValBRL - sectorCurrentValBRL) / sectorTargetValBRL)
+          : (sectorCurrentValBRL === 0 && sectorMemberGapsBRL > 0 ? 1 : 0);
+
+      sectorMacroList.push({
+        className,
+        sectorName,
+        targetPctInClass,
+        effectiveTargetPct,
+        targetValueBRL: sectorTargetValBRL,
+        currentValueBRL: sectorCurrentValBRL,
+        gapBRL: sectorMemberGapsBRL,
+        deficitRel: sectorDeficitRel,
+      });
+
+      classCurrentValueBRL += sectorCurrentValBRL;
+      classTargetValueBRL += sectorTargetValBRL;
+      sumMemberGapsBRL += sectorMemberGapsBRL;
     }
 
     if (opts.mode === "class" || (opts.mode === "both" && classTargetPct > 0)) {
@@ -344,8 +511,6 @@ function simulateAporte(opts: {
     classCurrentValueBRL = round2(classCurrentValueBRL);
     sumMemberGapsBRL = round2(sumMemberGapsBRL);
 
-    // O gap macro da classe respeita a necessidade real dos membros elegíveis
-    // limitada pelo déficit geral da classe quando houver meta de classe explícita
     let gapBRL: number;
     if (opts.mode === "class" || (opts.mode === "both" && (classTargetMap.get(className) ?? 0) > 0)) {
       const classLevelGap = round2(Math.max(0, classTargetValueBRL - classCurrentValueBRL));
@@ -354,9 +519,10 @@ function simulateAporte(opts: {
       gapBRL = sumMemberGapsBRL;
     }
 
-    const deficitRel = classTargetValueBRL > 0
-      ? Math.max(0, (classTargetValueBRL - classCurrentValueBRL) / classTargetValueBRL)
-      : (classCurrentValueBRL === 0 && gapBRL > 0 ? 1 : 0);
+    const deficitRel =
+      classTargetValueBRL > 0
+        ? Math.max(0, (classTargetValueBRL - classCurrentValueBRL) / classTargetValueBRL)
+        : (classCurrentValueBRL === 0 && gapBRL > 0 ? 1 : 0);
 
     classMacros.push({
       className,
@@ -366,9 +532,11 @@ function simulateAporte(opts: {
       gapBRL,
       deficitRel,
     });
+
+    sectorMacrosByClass.set(className, sectorMacroList);
   }
 
-  // Ordena as classes por maior defasagem relativa desc e gap desc
+  // Ordena classes por maior defasagem macro
   const sortedClasses = [...classMacros]
     .filter((c) => c.gapBRL > 0)
     .sort((a, b) => {
@@ -377,106 +545,208 @@ function simulateAporte(opts: {
     });
 
   // -------------------------------------------------------------------------
-  // 4. NÍVEL 2: Distribuição do Orçamento da Classe para seus Ativos
+  // 4. NÍVEL 3: Execução da Distribuição (Classe -> Setor -> Ativos)
   // -------------------------------------------------------------------------
   const routes: AporteRoute[] = [];
   const classSummaries: ClassAporteSummary[] = [];
+  const sectorSummaries: SectorAporteSummary[] = [];
   let poolAvailable = aporte;
 
-  for (const macro of sortedClasses) {
+  for (const classMacro of sortedClasses) {
     if (!(poolAvailable > 0)) break;
 
-    // Orçamento inicial designado à classe
-    const classBudget = Math.min(macro.gapBRL, poolAvailable);
+    const classBudget = Math.min(classMacro.gapBRL, poolAvailable);
     let classRemainingBudget = classBudget;
     let actualClassAllocated = 0;
 
-    const members = assetsByClass.get(macro.className) ?? [];
-
-    // Ativos elegíveis da classe ordenados por gap decrescente
-    const eligibleMembers = members
-      .filter((asset) => {
-        const eff = effectiveAssetMap.get(asset.id);
-        return eff !== undefined && eff.gapBRL > 0 && asset.priceBRL > 0;
-      })
+    const sectorMacros = (sectorMacrosByClass.get(classMacro.className) ?? [])
+      .filter((s) => s.gapBRL > 0)
       .sort((a, b) => {
-        const gapA = effectiveAssetMap.get(a.id)?.gapBRL ?? 0;
-        const gapB = effectiveAssetMap.get(b.id)?.gapBRL ?? 0;
-        return gapB - gapA;
+        if (b.deficitRel !== a.deficitRel) return b.deficitRel - a.deficitRel;
+        return b.gapBRL - a.gapBRL;
       });
 
-    for (const asset of eligibleMembers) {
-      if (!(classRemainingBudget > 0)) break;
-      const eff = effectiveAssetMap.get(asset.id);
-      if (!eff) continue;
+    // Se houver setores com metas cadastrados, orça setor por setor; senão distribui na classe
+    const hasSectorTargets = (sectorTargetMap.get(classMacro.className)?.size ?? 0) > 0;
 
-      const isFractional = isFractionalAsset(asset.assetClass, asset.ticker, asset.isFractional);
-      const amountToAllocate = Math.min(eff.gapBRL, classRemainingBudget);
+    if (hasSectorTargets && sectorMacros.length > 0) {
+      for (const sectorMacro of sectorMacros) {
+        if (!(classRemainingBudget > 0)) break;
 
-      if (isFractional) {
-        // Criptoativos: precisão até 8 casas decimais
-        const quantity = Math.floor((amountToAllocate / asset.priceBRL) * 100000000) / 100000000;
-        if (quantity <= 0) continue;
-        const allocatedBRL = round2(quantity * asset.priceBRL);
-        if (!(allocatedBRL > 0)) continue;
+        const sectorBudget = Math.min(sectorMacro.gapBRL, classRemainingBudget);
+        let sectorRemainingBudget = sectorBudget;
+        let actualSectorAllocated = 0;
 
-        classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
-        actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
+        const sectorMembers = (assetsByClassAndSector.get(classMacro.className)?.get(sectorMacro.sectorName) ?? [])
+          .filter((asset) => {
+            const eff = effectiveAssetMap.get(asset.id);
+            return eff !== undefined && eff.gapBRL > 0 && asset.priceBRL > 0;
+          })
+          .sort((a, b) => {
+            const gapA = effectiveAssetMap.get(a.id)?.gapBRL ?? 0;
+            const gapB = effectiveAssetMap.get(b.id)?.gapBRL ?? 0;
+            return gapB - gapA;
+          });
 
-        routes.push({
-          assetId: asset.id,
-          ticker: asset.ticker,
-          assetClass: asset.assetClass,
-          targetValueBRL: eff.targetValueBRL,
-          currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
-          gapBRL: eff.gapBRL,
-          allocatedBRL,
-          quantity,
-          priceBRL: round2(nonNegative(asset.priceBRL)),
-        });
-      } else {
-        // Ativos tradicionais: cotas inteiras
-        const quantity = Math.floor(amountToAllocate / asset.priceBRL);
-        if (quantity < 1) {
-          // Preço é maior que o montante que a classe pode alocar neste momento
-          continue;
+        for (const asset of sectorMembers) {
+          if (!(sectorRemainingBudget > 0)) break;
+          const eff = effectiveAssetMap.get(asset.id);
+          if (!eff) continue;
+
+          const precision = resolveAssetPrecision(asset);
+          const amountToAllocate = Math.min(eff.gapBRL, sectorRemainingBudget);
+
+          if (precision > 0) {
+            // Ativos Fracionários: USD (4 casas) ou Cripto (8 casas)
+            const multiplier = Math.pow(10, precision);
+            const quantity = Math.floor((amountToAllocate / asset.priceBRL) * multiplier) / multiplier;
+            if (quantity <= 0) continue;
+
+            const allocatedBRL = round2(quantity * asset.priceBRL);
+            if (!(allocatedBRL > 0)) continue;
+
+            sectorRemainingBudget = round2(sectorRemainingBudget - allocatedBRL);
+            classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
+            actualSectorAllocated = round2(actualSectorAllocated + allocatedBRL);
+            actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
+
+            routes.push({
+              assetId: asset.id,
+              ticker: asset.ticker,
+              assetClass: asset.assetClass,
+              sector: sectorMacro.sectorName,
+              targetValueBRL: eff.targetValueBRL,
+              currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
+              gapBRL: eff.gapBRL,
+              allocatedBRL,
+              quantity,
+              priceBRL: round2(nonNegative(asset.priceBRL)),
+            });
+          } else {
+            // Ativos Nacionais B3: Cotas inteiras (>= 1)
+            const quantity = Math.floor(amountToAllocate / asset.priceBRL);
+            if (quantity < 1) continue;
+
+            const allocatedBRL = round2(quantity * asset.priceBRL);
+            if (!(allocatedBRL > 0)) continue;
+
+            sectorRemainingBudget = round2(sectorRemainingBudget - allocatedBRL);
+            classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
+            actualSectorAllocated = round2(actualSectorAllocated + allocatedBRL);
+            actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
+
+            routes.push({
+              assetId: asset.id,
+              ticker: asset.ticker,
+              assetClass: asset.assetClass,
+              sector: sectorMacro.sectorName,
+              targetValueBRL: eff.targetValueBRL,
+              currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
+              gapBRL: eff.gapBRL,
+              allocatedBRL,
+              quantity,
+              priceBRL: round2(nonNegative(asset.priceBRL)),
+            });
+          }
         }
 
-        const allocatedBRL = round2(quantity * asset.priceBRL);
-        if (!(allocatedBRL > 0)) continue;
-
-        classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
-        actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
-
-        routes.push({
-          assetId: asset.id,
-          ticker: asset.ticker,
-          assetClass: asset.assetClass,
-          targetValueBRL: eff.targetValueBRL,
-          currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
-          gapBRL: eff.gapBRL,
-          allocatedBRL,
-          quantity,
-          priceBRL: round2(nonNegative(asset.priceBRL)),
+        sectorSummaries.push({
+          className: classMacro.className,
+          sectorName: sectorMacro.sectorName,
+          targetPctInClass: sectorMacro.targetPctInClass,
+          effectiveTargetPct: sectorMacro.effectiveTargetPct,
+          targetValueBRL: sectorMacro.targetValueBRL,
+          currentValueBRL: sectorMacro.currentValueBRL,
+          gapBRL: sectorMacro.gapBRL,
+          budgetAllocatedBRL: sectorBudget,
+          actualAllocatedBRL: actualSectorAllocated,
         });
+      }
+    } else {
+      // Sem metas setoriais: distribui diretamente nos membros da classe
+      const classMembers = (assetsByClass.get(classMacro.className) ?? [])
+        .filter((asset) => {
+          const eff = effectiveAssetMap.get(asset.id);
+          return eff !== undefined && eff.gapBRL > 0 && asset.priceBRL > 0;
+        })
+        .sort((a, b) => {
+          const gapA = effectiveAssetMap.get(a.id)?.gapBRL ?? 0;
+          const gapB = effectiveAssetMap.get(b.id)?.gapBRL ?? 0;
+          return gapB - gapA;
+        });
+
+      for (const asset of classMembers) {
+        if (!(classRemainingBudget > 0)) break;
+        const eff = effectiveAssetMap.get(asset.id);
+        if (!eff) continue;
+
+        const precision = resolveAssetPrecision(asset);
+        const amountToAllocate = Math.min(eff.gapBRL, classRemainingBudget);
+        const sector = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, asset.assetClass);
+
+        if (precision > 0) {
+          const multiplier = Math.pow(10, precision);
+          const quantity = Math.floor((amountToAllocate / asset.priceBRL) * multiplier) / multiplier;
+          if (quantity <= 0) continue;
+
+          const allocatedBRL = round2(quantity * asset.priceBRL);
+          if (!(allocatedBRL > 0)) continue;
+
+          classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
+          actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
+
+          routes.push({
+            assetId: asset.id,
+            ticker: asset.ticker,
+            assetClass: asset.assetClass,
+            sector,
+            targetValueBRL: eff.targetValueBRL,
+            currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
+            gapBRL: eff.gapBRL,
+            allocatedBRL,
+            quantity,
+            priceBRL: round2(nonNegative(asset.priceBRL)),
+          });
+        } else {
+          const quantity = Math.floor(amountToAllocate / asset.priceBRL);
+          if (quantity < 1) continue;
+
+          const allocatedBRL = round2(quantity * asset.priceBRL);
+          if (!(allocatedBRL > 0)) continue;
+
+          classRemainingBudget = round2(classRemainingBudget - allocatedBRL);
+          actualClassAllocated = round2(actualClassAllocated + allocatedBRL);
+
+          routes.push({
+            assetId: asset.id,
+            ticker: asset.ticker,
+            assetClass: asset.assetClass,
+            sector,
+            targetValueBRL: eff.targetValueBRL,
+            currentValueBRL: round2(nonNegative(asset.currentValueBRL)),
+            gapBRL: eff.gapBRL,
+            allocatedBRL,
+            quantity,
+            priceBRL: round2(nonNegative(asset.priceBRL)),
+          });
+        }
       }
     }
 
-    // Deduz do pool total apenas o que foi REALMENTE alocado em compras
     poolAvailable = round2(poolAvailable - actualClassAllocated);
 
     classSummaries.push({
-      className: macro.className,
-      targetPct: macro.targetPct,
-      targetValueBRL: macro.targetValueBRL,
-      currentValueBRL: macro.currentValueBRL,
-      gapBRL: macro.gapBRL,
+      className: classMacro.className,
+      targetPct: classMacro.targetPct,
+      targetValueBRL: classMacro.targetValueBRL,
+      currentValueBRL: classMacro.currentValueBRL,
+      gapBRL: classMacro.gapBRL,
       budgetAllocatedBRL: classBudget,
       actualAllocatedBRL: actualClassAllocated,
     });
   }
 
-  // Preenche sumário das classes que não receberam orçamento (para completude)
+  // Preenche sumário de classes sem aporte para completude dos gráficos
   for (const macro of classMacros) {
     if (!classSummaries.some((cs) => cs.className === macro.className)) {
       classSummaries.push({
@@ -501,6 +771,7 @@ function simulateAporte(opts: {
     leftover,
     routes,
     classSummaries,
+    sectorSummaries,
     skippedAssets,
   };
 }
@@ -523,30 +794,32 @@ export function simulateRebalanceAporte(opts: {
   aporte: number;
   assets: readonly AporteAssetInput[];
   classTargets: readonly ClassTargetInput[];
+  sectorTargets?: readonly SectorTargetInput[];
 }): AporteResult {
   return simulateAporte({
     mode: "class",
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: opts.classTargets,
+    sectorTargets: opts.sectorTargets,
   });
 }
 
 /**
- * Modo combinado (§3.11.3) — usa meta individual quando disponível e recorre
- * à meta de classe como fallback para ativos sem meta própria.
+ * Modo combinado (§3.11.3) — hierarquia Classe -> Setor -> Ativo.
  * É o modo padrão recomendado para carteiras mistas.
  */
 export function simulateCombinedAporte(opts: {
   aporte: number;
   assets: readonly AporteAssetInput[];
   classTargets: readonly ClassTargetInput[];
+  sectorTargets?: readonly SectorTargetInput[];
 }): AporteResult {
   return simulateAporte({
     mode: "both",
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: opts.classTargets,
+    sectorTargets: opts.sectorTargets,
   });
 }
-

@@ -3,9 +3,11 @@ import { Calculator, Sparkles } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
+  inferSectorFromTicker,
   simulateCombinedAporte,
   type AporteAssetInput,
   type ClassTargetInput,
+  type SectorTargetInput,
 } from "@/domain/portfolio";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
@@ -22,19 +24,20 @@ import { TargetsTab } from "./targets-tab";
 type AporteSubTab = "calculadora" | "metas" | "historico";
 
 /**
- * Calculadora de aporte (§F36) — simulação hierárquica unificada (Classe -> Ativo).
+ * Calculadora de aporte (§F36) — simulação hierárquica unificada (Classe -> Setor -> Ativo).
  * Ao aplicar o lote, executa a transação atômica via RPC (`execute_portfolio_batch_aporte`)
  * atualizando posições, registrando compras em `portfolio_transactions` e histórico em `portfolio_contributions`.
  *
  * Sub-tabs:
  * - Calculadora: rebalanceador interativo hierárquico
- * - Metas: gestão visual de alocação por ativo e por classe
+ * - Metas: gestão visual de alocação por ativo, setor e classe
  * - Histórico: lista de aportes registrados por mês (§F37)
  */
 export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
+  const sectorTargetsQuery = useGroupTargets("sector");
   const executeBatch = useExecutePortfolioBatchAporte();
 
   const [subTab, setSubTab] = useState<AporteSubTab>("calculadora");
@@ -43,10 +46,11 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
 
-  const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error;
-  const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading;
+  const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? sectorTargetsQuery.error;
+  const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || sectorTargetsQuery.isLoading;
 
   const nonCashRows = position.rows.filter((r) => !r.isCash);
+  const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
 
   const targetByAsset = new Map((targetsQuery.data ?? []).map((t) => [t.asset_id, t.target_percentage]));
   const classTargets: ClassTargetInput[] = (classTargetsQuery.data ?? []).map((t) => ({
@@ -54,10 +58,26 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     targetPercentage: t.target_percentage,
   }));
 
+  const sectorTargets: SectorTargetInput[] = (sectorTargetsQuery.data ?? []).flatMap((st) => {
+    const matchedClasses = classes.filter((cls) => {
+      const inAssets = position.rows.some((r) => r.assetClass === cls && (r.sector === st.name || inferSectorFromTicker(r.ticker, cls) === st.name));
+      return inAssets;
+    });
+    if (matchedClasses.length === 0) {
+      return [{ className: "Ações", sectorName: st.name, targetPercentage: st.target_percentage }];
+    }
+    return matchedClasses.map((className) => ({
+      className,
+      sectorName: st.name,
+      targetPercentage: st.target_percentage,
+    }));
+  });
+
   const assets: AporteAssetInput[] = nonCashRows.map((row) => ({
     id: row.assetId,
     ticker: row.ticker,
     assetClass: row.assetClass,
+    sector: row.sector ?? inferSectorFromTicker(row.ticker, row.assetClass),
     currency: row.currency,
     currentValueBRL: row.valueBRL,
     priceBRL: row.priceBRL,
@@ -66,7 +86,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
 
   const result =
     aporteCents > 0 && assets.length > 0
-      ? simulateCombinedAporte({ aporte: aporteCents / 100, assets, classTargets })
+      ? simulateCombinedAporte({ aporte: aporteCents / 100, assets, classTargets, sectorTargets })
       : null;
 
   const routes: AporteRouteRow[] =

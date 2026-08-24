@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateAssetAllocationDelta,
+  calculateSectorEffectiveTargetPct,
   clampTargetPercentage,
   distributeEquallyTargets,
+  groupAssetsByClassAndSector,
   mirrorCurrentPositionTargets,
   parseTargetInput,
   sanitizeTargetsForSave,
   targetsSum,
+  validateClassSectorTargetsSum,
   validateTargetsSum,
 } from "./allocation";
 
@@ -163,6 +166,60 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
       expect(delta.deltaPct).toBe(-2.5);
       expect(delta.isUnderallocated).toBe(false);
       expect(delta.formattedDelta).toBe("-2.5%");
+    });
+  });
+
+  describe("groupAssetsByClassAndSector", () => {
+    it("agrupa ativos por classe e por setor com fallbacks limpos", () => {
+      const assets = [
+        { id: "1", assetClass: "Ações", sector: "Financeiro / Bancos" },
+        { id: "2", assetClass: "Ações", sector: "Energia Elétrica" },
+        { id: "3", assetClass: "Ações", sector: "Financeiro / Bancos" },
+        { id: "4", assetClass: "FIIs", sector: "Imobiliário / Logística" },
+        { id: "5", assetClass: null, sector: null },
+      ];
+
+      const grouped = groupAssetsByClassAndSector(assets);
+      expect(grouped.has("Ações")).toBe(true);
+      expect(grouped.has("FIIs")).toBe(true);
+      expect(grouped.has("Outros")).toBe(true);
+
+      const acoesSectors = grouped.get("Ações")!;
+      expect(acoesSectors.get("Financeiro / Bancos")?.length).toBe(2);
+      expect(acoesSectors.get("Energia Elétrica")?.length).toBe(1);
+
+      const outrosSectors = grouped.get("Outros")!;
+      expect(outrosSectors.get("Geral")?.length).toBe(1);
+    });
+  });
+
+  describe("calculateSectorEffectiveTargetPct", () => {
+    it("converte percentual relativo da classe para percentual absoluto da carteira", () => {
+      // 40% da carteira em Ações, 25% de Ações em Bancos -> 10% da carteira
+      expect(calculateSectorEffectiveTargetPct(40, 25)).toBe(10);
+      // 30% da carteira em FIIs, 33.33% de FIIs em Logística -> 10% da carteira
+      expect(calculateSectorEffectiveTargetPct(30, 33.33)).toBe(10);
+      // Casos com zero ou inválido
+      expect(calculateSectorEffectiveTargetPct(0, 50)).toBe(0);
+      expect(calculateSectorEffectiveTargetPct(40, 0)).toBe(0);
+    });
+  });
+
+  describe("validateClassSectorTargetsSum", () => {
+    it("valida soma de setores até 100% da classe", () => {
+      const res = validateClassSectorTargetsSum([{ target: 40 }, { target: 30 }, { target: 30 }], "Ações");
+      expect(res.ok).toBe(true);
+      expect(res.sum).toBe(100);
+      expect(res.remaining).toBe(0);
+      expect(res.error).toBeNull();
+    });
+
+    it("bloqueia soma de setores > 100% da classe com mensagem contextual", () => {
+      const res = validateClassSectorTargetsSum([{ target: 50 }, { target: 60 }], "Ações");
+      expect(res.ok).toBe(false);
+      expect(res.sum).toBe(110);
+      expect(res.error).toContain("Ações");
+      expect(res.error).toContain("excede 100%");
     });
   });
 });
