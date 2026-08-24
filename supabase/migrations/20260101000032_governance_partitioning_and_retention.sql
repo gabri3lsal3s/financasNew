@@ -10,8 +10,12 @@
 -- ================================================================
 
 -- 1. Índice para acelerar expurgo e leitura temporal de logs
-create index if not exists idx_audit_events_retention_date
-  on public.audit_events (created_at asc);
+do $$
+begin
+  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'audit_events') then
+    execute 'create index if not exists idx_audit_events_retention_date on public.audit_events (created_at asc);';
+  end if;
+end $$;
 
 -- 2. Função de retenção e expurgo de logs antigos
 create or replace function public.cleanup_old_audit_events(retention_days integer default 365)
