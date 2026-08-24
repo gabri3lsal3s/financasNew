@@ -4,7 +4,6 @@ import { useSearchParams } from "react-router";
 import {
   FileSpreadsheet,
   Flame,
-  Info,
   Landmark,
   PieChart,
   Printer,
@@ -708,12 +707,6 @@ export function ReportsPage() {
               Personalizado
             </Button>
           </div>
-          {weightsEnabled && (
-            <span className="inline-flex items-center gap-1 self-start sm:self-auto rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary-strong">
-              <Info className="size-3 shrink-0" aria-hidden="true" />
-              Valores ponderados
-            </span>
-          )}
         </div>
 
         <div className="flex items-center justify-center sm:justify-end w-full sm:w-auto">
