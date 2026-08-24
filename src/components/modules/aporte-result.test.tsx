@@ -195,6 +195,45 @@ describe("AporteResult", () => {
 
     expect(screen.getByText("Hierarquia / Ativo")).toBeInTheDocument();
   });
+
+  it("permite colapsar e expandir classes e setores destacando os itens com aporte", async () => {
+    const user = userEvent.setup();
+    const classSummaries = [
+      { className: "Ações", targetPct: 25, targetValueBRL: 5000, currentValueBRL: 4000, gapBRL: 1000, budgetAllocatedBRL: 500, actualAllocatedBRL: 500 },
+      { className: "FIIs", targetPct: 25, targetValueBRL: 5000, currentValueBRL: 4500, gapBRL: 500, budgetAllocatedBRL: 0, actualAllocatedBRL: 0 },
+      { className: "Renda Fixa", targetPct: 25, targetValueBRL: 5000, currentValueBRL: 4600, gapBRL: 400, budgetAllocatedBRL: 0, actualAllocatedBRL: 0 },
+      { className: "Internacional", targetPct: 25, targetValueBRL: 5000, currentValueBRL: 4700, gapBRL: 300, budgetAllocatedBRL: 0, actualAllocatedBRL: 0 },
+    ];
+
+    render(
+      <AporteResult
+        mode="both"
+        aporte={500}
+        totalAllocated={500}
+        leftover={0}
+        routes={mockRoutes}
+        classSummaries={classSummaries}
+      />,
+    );
+
+    // Inicialmente mostra apenas a classe com aporte (Ações)
+    expect(screen.getAllByText("Ações").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Internacional")).not.toBeInTheDocument();
+
+    // Botão de expandir exibe todas as classes
+    const expandBtn = screen.getByRole("button", { name: /Ver todas \(4\)/i });
+    expect(expandBtn).toBeInTheDocument();
+    await user.click(expandBtn);
+
+    // Todas as 4 classes agora estão visíveis
+    expect(screen.getByText("Internacional")).toBeInTheDocument();
+    expect(screen.getAllByText("FIIs").length).toBeGreaterThan(0);
+
+    // Clicar em Recolher volta ao modo compacto
+    const collapseBtn = screen.getByRole("button", { name: /Recolher/i });
+    await user.click(collapseBtn);
+    expect(screen.queryByText("Internacional")).not.toBeInTheDocument();
+  });
 });
 
 

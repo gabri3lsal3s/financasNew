@@ -91,6 +91,8 @@ export function AporteResult({
   const [viewMode, setViewMode] = useState<"list" | "tree">("list");
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(() => new Set());
   const [expandedSectors, setExpandedSectors] = useState<Set<string>>(() => new Set());
+  const [showAllClasses, setShowAllClasses] = useState(false);
+  const [showAllSectors, setShowAllSectors] = useState(false);
 
   const toggleTicker = (ticker: string) => {
     setCompletedTickers((prev) => {
@@ -289,8 +291,55 @@ export function AporteResult({
     },
   ];
 
-  const activeClasses = classSummaries.filter((c) => c.actualAllocatedBRL > 0 || c.gapBRL > 0);
-  const activeSectors = sectorSummaries.filter((s) => s.actualAllocatedBRL > 0 || s.gapBRL > 0);
+  // 1. Classes: Ordenadas por aporte alocado desc, depois gap desc
+  const sortedClasses = useMemo(() => {
+    return classSummaries
+      .filter((c) => c.actualAllocatedBRL > 0 || c.gapBRL > 0)
+      .sort((a, b) => {
+        if (b.actualAllocatedBRL !== a.actualAllocatedBRL) {
+          return b.actualAllocatedBRL - a.actualAllocatedBRL;
+        }
+        return b.gapBRL - a.gapBRL;
+      });
+  }, [classSummaries]);
+
+  const allocatedClassesCount = useMemo(
+    () => sortedClasses.filter((c) => c.actualAllocatedBRL > 0).length,
+    [sortedClasses],
+  );
+
+  const displayedClasses = useMemo(() => {
+    if (showAllClasses) return sortedClasses;
+    const withAlloc = sortedClasses.filter((c) => c.actualAllocatedBRL > 0);
+    return withAlloc.length > 0 ? withAlloc : sortedClasses.slice(0, 3);
+  }, [showAllClasses, sortedClasses]);
+
+  const canToggleClasses = sortedClasses.length > displayedClasses.length || showAllClasses;
+
+  // 2. Setores: Ordenados por aporte alocado desc, depois gap desc
+  const sortedSectors = useMemo(() => {
+    return sectorSummaries
+      .filter((s) => s.actualAllocatedBRL > 0 || s.gapBRL > 0)
+      .sort((a, b) => {
+        if (b.actualAllocatedBRL !== a.actualAllocatedBRL) {
+          return b.actualAllocatedBRL - a.actualAllocatedBRL;
+        }
+        return b.gapBRL - a.gapBRL;
+      });
+  }, [sectorSummaries]);
+
+  const allocatedSectorsCount = useMemo(
+    () => sortedSectors.filter((s) => s.actualAllocatedBRL > 0).length,
+    [sortedSectors],
+  );
+
+  const displayedSectors = useMemo(() => {
+    if (showAllSectors) return sortedSectors;
+    const withAlloc = sortedSectors.filter((s) => s.actualAllocatedBRL > 0);
+    return withAlloc.length > 0 ? withAlloc : sortedSectors.slice(0, 3);
+  }, [showAllSectors, sortedSectors]);
+
+  const canToggleSectors = sortedSectors.length > displayedSectors.length || showAllSectors;
 
   return (
     <section aria-label="Resultado da simulação de aporte" className="flex flex-col gap-4 min-w-0">
@@ -311,14 +360,39 @@ export function AporteResult({
       </div>
 
       {/* 1. Macro por Classe */}
-      {activeClasses.length > 0 ? (
+      {sortedClasses.length > 0 ? (
         <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/60 p-3 sm:p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider">
-            <Layers className="size-3.5 text-portfolio" aria-hidden="true" />
-            <span>Distribuição Macro por Classe</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider">
+              <Layers className="size-3.5 text-portfolio" aria-hidden="true" />
+              <span>Distribuição Macro por Classe</span>
+            </div>
+            {canToggleClasses && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
+                  {allocatedClassesCount > 0
+                    ? `${allocatedClassesCount} com aporte de ${sortedClasses.length}`
+                    : `${sortedClasses.length} classes`}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllClasses((prev) => !prev)}
+                  className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1"
+                >
+                  <span>{showAllClasses ? "Recolher" : `Ver todas (${sortedClasses.length})`}</span>
+                  {showAllClasses ? (
+                    <ChevronUp className="size-3" aria-hidden="true" />
+                  ) : (
+                    <ChevronDown className="size-3" aria-hidden="true" />
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
-            {activeClasses.map((cls) => (
+            {displayedClasses.map((cls) => (
               <div
                 key={cls.className}
                 className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-surface px-3 py-2 text-xs"
@@ -338,17 +412,39 @@ export function AporteResult({
       ) : null}
 
       {/* 2. Meso por Setor */}
-      {activeSectors.length > 0 ? (
+      {sortedSectors.length > 0 ? (
         <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/60 p-3 sm:p-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider">
               <PieChart className="size-3.5 text-portfolio" aria-hidden="true" />
               <span>Distribuição Meso por Setor</span>
             </div>
-            <span className="text-[11px] text-muted-foreground font-medium">{activeSectors.length} setores</span>
+            {canToggleSectors && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
+                  {allocatedSectorsCount > 0
+                    ? `${allocatedSectorsCount} com aporte de ${sortedSectors.length}`
+                    : `${sortedSectors.length} setores`}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllSectors((prev) => !prev)}
+                  className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1"
+                >
+                  <span>{showAllSectors ? "Recolher" : `Ver todos (${sortedSectors.length})`}</span>
+                  {showAllSectors ? (
+                    <ChevronUp className="size-3" aria-hidden="true" />
+                  ) : (
+                    <ChevronDown className="size-3" aria-hidden="true" />
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
-            {activeSectors.map((sec) => (
+            {displayedSectors.map((sec) => (
               <div
                 key={`${sec.className}::${sec.sectorName}`}
                 className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-surface px-3 py-2 text-xs"
