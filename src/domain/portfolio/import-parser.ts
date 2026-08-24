@@ -98,8 +98,8 @@ export function inferAssetClassFromTicker(ticker: string): string | null {
   if (/^[A-Z]{4}(?:3|4|5|6|7|8)$/.test(t)) {
     return "Ações";
   }
-  // Internacional puro (2 a 5 letras sem dígitos)
-  if (/^[A-Za-z]{2,5}$/.test(t)) {
+  // Internacional puro (1 a 5 letras sem dígitos)
+  if (/^[A-Za-z]{1,5}$/.test(t)) {
     return "Internacional";
   }
 

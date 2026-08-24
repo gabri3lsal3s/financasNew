@@ -388,6 +388,7 @@ function InvestmentWizardContent({
               classTargets={classTargets}
               totalPortfolioBRL={position.totalBRL}
               onSelectResult={(res) => {
+                triggerSensory("selection");
                 const isCash = isCashAssetClass(res.assetClass);
                 if (res.isExisting && res.existingAssetId) {
                   const asset = existingAssets.find((a) => a.id === res.existingAssetId);
@@ -395,6 +396,7 @@ function InvestmentWizardContent({
                     ...prev,
                     mode: "buy",
                     step: 2,
+                    searchQuery: res.ticker,
                     selectedAsset: asset ?? null,
                     ticker: res.ticker,
                     name: res.name,
@@ -407,7 +409,8 @@ function InvestmentWizardContent({
                   setState((prev) => ({
                     ...prev,
                     mode: "new_asset",
-                    step: 1,
+                    step: 2,
+                    searchQuery: res.ticker,
                     selectedAsset: null,
                     ticker: res.ticker,
                     name: res.name,
@@ -419,6 +422,7 @@ function InvestmentWizardContent({
                 }
               }}
               onSelectSuggestion={(item) => {
+                triggerSensory("selection");
                 const asset = existingAssets.find((a) => a.id === item.assetId);
                 const row = position.rows.find((r) => r.assetId === item.assetId);
                 const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
@@ -427,6 +431,7 @@ function InvestmentWizardContent({
                   ...prev,
                   mode: "buy",
                   step: 2,
+                  searchQuery: item.ticker,
                   selectedAsset: asset ?? null,
                   ticker: item.ticker,
                   assetClass: item.assetClass,
@@ -452,9 +457,12 @@ function InvestmentWizardContent({
               classTargets={classTargets}
               totalPortfolioBRL={position.totalBRL}
               onSelectResult={(res) => {
+                triggerSensory("selection");
                 const isCash = isCashAssetClass(res.assetClass);
                 setState((prev) => ({
                   ...prev,
+                  step: 2,
+                  searchQuery: res.ticker,
                   ticker: res.ticker,
                   name: res.name,
                   assetClass: res.assetClass,
@@ -464,6 +472,7 @@ function InvestmentWizardContent({
                 }));
               }}
               onSelectSuggestion={(item) => {
+                triggerSensory("selection");
                 const asset = existingAssets.find((a) => a.id === item.assetId);
                 const row = position.rows.find((r) => r.assetId === item.assetId);
                 const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
@@ -472,6 +481,7 @@ function InvestmentWizardContent({
                   ...prev,
                   mode: "buy",
                   step: 2,
+                  searchQuery: item.ticker,
                   selectedAsset: asset ?? null,
                   ticker: item.ticker,
                   assetClass: item.assetClass,
@@ -565,7 +575,9 @@ function InvestmentWizardContent({
                   onClick={handleNext}
                   disabled={!canProceed(state) || isPending}
                 >
-                  Continuar
+                  {(state.mode === "select" || state.step === 1) && state.ticker
+                    ? `Continuar com ${state.ticker}`
+                    : "Continuar"}
                 </Button>
               )}
             </div>

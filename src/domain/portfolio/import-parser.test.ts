@@ -34,6 +34,9 @@ describe("domain/portfolio/import-parser — Fase 35 & 36", () => {
       expect(inferAssetClassFromTicker("AAPL")).toBe("Internacional");
       expect(inferAssetClassFromTicker("VOO")).toBe("Internacional");
       expect(inferAssetClassFromTicker("TSLA")).toBe("Internacional");
+      expect(inferAssetClassFromTicker("O")).toBe("Internacional");
+      expect(inferAssetClassFromTicker("T")).toBe("Internacional");
+      expect(inferAssetClassFromTicker("V")).toBe("Internacional");
     });
 
     it("identifica Criptoativos", () => {

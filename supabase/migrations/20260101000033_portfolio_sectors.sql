@@ -37,3 +37,6 @@ end $$;
 -- 4. Cria índice de performance para consultas e agregações setoriais
 create index if not exists idx_portfolio_assets_sector
   on public.portfolio_assets (user_id, sector);
+
+-- 5. Força a recarga imediata do schema cache do PostgREST
+notify pgrst, 'reload schema';

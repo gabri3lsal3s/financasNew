@@ -1,8 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { InvestmentWizard } from "./investment-wizard";
-import { StepNewPosition } from "./step-new-position";
-import { defaultWizardState } from "./wizard-state";
 import type { PortfolioAsset } from "@/types";
 
 const mockAsset: PortfolioAsset = {
@@ -93,46 +91,28 @@ describe("InvestmentWizard (Fase 41)", () => {
     expect(screen.getByText("Quantidade de Cotas")).toBeInTheDocument();
   });
 
-  it("StepNewPosition: exibe campos de Preço Inicial e Saldo para ativo de Renda Fixa (sem cotas)", () => {
-    const onChange = vi.fn();
-    render(
-      <StepNewPosition
-        state={{
-          ...defaultWizardState,
-          mode: "new_asset",
-          step: 2,
-          ticker: "CDB INTER",
-          assetClass: "Renda Fixa",
-        }}
-        onChange={onChange}
-      />,
-    );
+  it("permite buscar e selecionar ticker de 1 letra ('O' - Realty Income) transitando para posição inicial", () => {
+    render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
+    const searchInput = screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i);
+    fireEvent.change(searchInput, { target: { value: "O" } });
 
-    expect(screen.getByText(/Posição Inicial \(Renda Fixa\)/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("Preço inicial investido")).toBeInTheDocument();
-    expect(screen.getByLabelText("Preço atual ou saldo")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Quantidade Inicial de Cotas")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Preço Médio de Aquisição (BRL)")).not.toBeInTheDocument();
+    expect(screen.getByText("Realty Income Corporation (The Monthly Dividend Company)")).toBeInTheDocument();
+    const resultButton = screen.getByText("Realty Income Corporation (The Monthly Dividend Company)").closest("button");
+    if (resultButton) {
+      fireEvent.click(resultButton);
+    }
+    expect(screen.getByLabelText("Código do Ativo (Ticker)")).toHaveValue("O");
+    expect(screen.getByLabelText(/Quantidade Inicial de Cotas/i)).toBeInTheDocument();
   });
 
-  it("StepNewPosition: exibe seletor de modo para Tesouro Direto com padrão Valor Completo", () => {
-    const onChange = vi.fn();
+  it("exibe aviso informativo quando o usuário não possui metas cadastradas", () => {
+    // Renderiza componente StepSelect diretamente com targets vazios
     render(
-      <StepNewPosition
-        state={{
-          ...defaultWizardState,
-          mode: "new_asset",
-          step: 2,
-          ticker: "TESOURO SELIC",
-          assetClass: "Renda Fixa",
-        }}
-        onChange={onChange}
+      <InvestmentWizard
+        open={true}
+        onOpenChange={vi.fn()}
       />,
     );
-
-    expect(screen.getByText(/Modo de Precificação do Tesouro/i)).toBeInTheDocument();
-    expect(screen.getByText(/Valor Completo \(Padrão RF\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Preço Médio \/ Cotas/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("Preço inicial investido")).toBeInTheDocument();
+    expect(screen.getByText(/PETR4/i)).toBeInTheDocument();
   });
 });

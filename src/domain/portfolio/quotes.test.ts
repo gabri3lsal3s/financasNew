@@ -18,9 +18,12 @@ describe("normalizeTickerForApi", () => {
     expect(normalizeTickerForApi("USDBRL=X")).toBe("USDBRL=X");
   });
 
-  it("internacional puro é mantido", () => {
+  it("internacional puro (1 a 5 letras) é mantido", () => {
     expect(normalizeTickerForApi("AAPL")).toBe("AAPL");
     expect(normalizeTickerForApi("MSFT")).toBe("MSFT");
+    expect(normalizeTickerForApi("O")).toBe("O");
+    expect(normalizeTickerForApi("T")).toBe("T");
+    expect(normalizeTickerForApi("V")).toBe("V");
   });
 
   it("retorna vazio para entrada vazia", () => {

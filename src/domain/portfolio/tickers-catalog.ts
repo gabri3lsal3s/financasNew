@@ -221,6 +221,11 @@ export const CURATED_TICKERS_CATALOG: readonly CatalogTickerItem[] = [
   { ticker: "VTI", name: "Vanguard Total Stock Market ETF", assetClass: "Internacional", sector: "Mercado Amplo US (S&P 500)", currency: "USD" },
   { ticker: "VT", name: "Vanguard Total World Stock ETF", assetClass: "Internacional", sector: "Neutro Global (All-World)", currency: "USD" },
   { ticker: "VNQ", name: "Vanguard Real Estate ETF (US REITs)", assetClass: "Internacional", sector: "REITs / Imobiliário", currency: "USD" },
+  { ticker: "O", name: "Realty Income Corporation (The Monthly Dividend Company)", assetClass: "Internacional", sector: "REITs / Imobiliário", currency: "USD" },
+  { ticker: "T", name: "AT&T Inc. Common Stock", assetClass: "Internacional", sector: "Comunicação & Mídia", currency: "USD" },
+  { ticker: "V", name: "Visa Inc. Class A", assetClass: "Internacional", sector: "Financeiro / Meios de Pagamento", currency: "USD" },
+  { ticker: "C", name: "Citigroup Inc. Common Stock", assetClass: "Internacional", sector: "Financeiro / Bancos Globais", currency: "USD" },
+  { ticker: "F", name: "Ford Motor Company Common Stock", assetClass: "Internacional", sector: "Consumo / Automotivo", currency: "USD" },
   { ticker: "AAPL", name: "Apple Inc. Common Stock", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
   { ticker: "MSFT", name: "Microsoft Corporation Common Stock", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
   { ticker: "NVDA", name: "NVIDIA Corporation Common Stock", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
@@ -282,6 +287,7 @@ export function cleanTicker(raw: string): string {
 
 /**
  * Pesquisa no catálogo e mescla com ativos já cadastrados na carteira do usuário.
+ * Utiliza sistema de pontuação de relevância para priorizar match exato e prefixos.
  */
 export function searchTickers(
   query: string,
@@ -291,11 +297,11 @@ export function searchTickers(
   const q = cleanTicker(query);
   const existingMap = new Map(existingAssets.map((a) => [cleanTicker(a.ticker), a]));
 
-  const results: TickerSearchResult[] = [];
-  const seenTickers = new Set<string>();
-
   // 1. Se houver query vazia, sugere os ativos já existentes na carteira primeiro
   if (!q) {
+    const results: TickerSearchResult[] = [];
+    const seenTickers = new Set<string>();
+
     for (const asset of existingAssets) {
       const t = cleanTicker(asset.ticker);
       if (seenTickers.has(t)) continue;
@@ -319,72 +325,124 @@ export function searchTickers(
     return results;
   }
 
-  // 2. Prioridade A: Ativos existentes do usuário que batem com a query
-  for (const asset of existingAssets) {
-    const t = cleanTicker(asset.ticker);
-    const matchTicker = t.includes(q);
-    const matchNotes = (asset.notes ?? "").toUpperCase().includes(q);
+  interface ScoredCandidate {
+    result: TickerSearchResult;
+    score: number;
+  }
 
-    if (matchTicker || matchNotes) {
-      seenTickers.add(t);
-      const catalogMatch = CURATED_TICKERS_CATALOG.find((c) => c.ticker === t);
-      const sector = asset.sector ?? catalogMatch?.sector ?? inferSectorFromTicker(t, asset.asset_class ?? catalogMatch?.assetClass);
-      results.push({
+  const scoredCandidates: ScoredCandidate[] = [];
+  const seenTickers = new Set<string>();
+
+  const evaluateMatch = (
+    ticker: string,
+    name: string,
+    assetClass: string,
+    sector: string,
+    currency: "BRL" | "USD",
+    isExisting: boolean,
+    existingAssetId?: string,
+    currentQuantity?: number,
+    currentAveragePrice?: number,
+  ) => {
+    const t = cleanTicker(ticker);
+    if (seenTickers.has(t)) return;
+
+    const nameUpper = name.toUpperCase();
+    const matchTickerExact = t === q;
+    const matchTickerPrefix = t.startsWith(q);
+    const matchNamePrefix = nameUpper.startsWith(q);
+    const matchTickerSub = t.includes(q);
+    const matchNameSub = nameUpper.includes(q);
+
+    if (!matchTickerExact && !matchTickerPrefix && !matchNamePrefix && !matchTickerSub && !matchNameSub) {
+      return;
+    }
+
+    seenTickers.add(t);
+
+    let score = 50;
+    if (matchTickerExact) score = 0;
+    else if (matchTickerPrefix) score = 10;
+    else if (matchNamePrefix) score = 20;
+    else if (matchTickerSub) score = 30;
+    else if (matchNameSub) score = 40;
+
+    // Prioridade leve para ativos existentes na carteira do usuário
+    if (isExisting) {
+      score -= 2;
+    }
+
+    scoredCandidates.push({
+      score,
+      result: {
         ticker: t,
-        name: catalogMatch?.name ?? asset.notes ?? t,
-        assetClass: asset.asset_class ?? catalogMatch?.assetClass ?? "Outros",
+        name,
+        assetClass,
         sector,
-        currency: asset.currency,
-        isExisting: true,
-        existingAssetId: asset.id,
-        currentQuantity: asset.quantity,
-        currentAveragePrice: asset.average_price,
-      });
-      if (results.length >= limit) return results;
-    }
+        currency,
+        isExisting,
+        existingAssetId,
+        currentQuantity,
+        currentAveragePrice,
+      },
+    });
+  };
+
+  // Avalia ativos existentes da carteira
+  for (const asset of existingAssets) {
+    const catalogMatch = CURATED_TICKERS_CATALOG.find((c) => c.ticker === cleanTicker(asset.ticker));
+    const sector = asset.sector ?? catalogMatch?.sector ?? inferSectorFromTicker(asset.ticker, asset.asset_class ?? catalogMatch?.assetClass);
+    evaluateMatch(
+      asset.ticker,
+      catalogMatch?.name ?? asset.notes ?? asset.ticker,
+      asset.asset_class ?? catalogMatch?.assetClass ?? "Outros",
+      sector,
+      asset.currency,
+      true,
+      asset.id,
+      asset.quantity,
+      asset.average_price,
+    );
   }
 
-  // 3. Prioridade B: Catálogo estático curado
+  // Avalia catálogo curado
   for (const item of CURATED_TICKERS_CATALOG) {
-    if (seenTickers.has(item.ticker)) continue;
-
-    const matchTicker = item.ticker.includes(q);
-    const matchName = item.name.toUpperCase().includes(q);
-
-    if (matchTicker || matchName) {
-      seenTickers.add(item.ticker);
-      const existing = existingMap.get(item.ticker);
-      results.push({
-        ticker: item.ticker,
-        name: item.name,
-        assetClass: item.assetClass,
-        sector: existing?.sector ?? item.sector ?? inferSectorFromTicker(item.ticker, item.assetClass),
-        currency: item.currency,
-        isExisting: existing !== undefined,
-        existingAssetId: existing?.id,
-        currentQuantity: existing?.quantity,
-        currentAveragePrice: existing?.average_price,
-      });
-      if (results.length >= limit) return results;
-    }
+    const existing = existingMap.get(item.ticker);
+    evaluateMatch(
+      item.ticker,
+      item.name,
+      item.assetClass,
+      existing?.sector ?? item.sector ?? inferSectorFromTicker(item.ticker, item.assetClass),
+      item.currency,
+      existing !== undefined,
+      existing?.id,
+      existing?.quantity,
+      existing?.average_price,
+    );
   }
 
-  // 4. Se a query não estiver no catálogo nem na carteira, oferece como novo ativo livre
-  if (q.length >= 2 && !seenTickers.has(q)) {
+  // Se a query não foi contemplada exatamente no catálogo/carteira, oferece como novo ativo livre
+  if (q.length >= 1 && !seenTickers.has(q)) {
     const inferredClass = inferAssetClassFromTicker(q) ?? "Ações";
     const inferredCurrency = inferCurrencyFromTicker(q);
     const inferredSector = inferSectorFromTicker(q, inferredClass);
-    results.push({
-      ticker: q,
-      name: `Ativo personalizado (${q})`,
-      assetClass: inferredClass,
-      sector: inferredSector,
-      currency: inferredCurrency,
-      isExisting: false,
+    scoredCandidates.push({
+      score: 45, // Prioridade após matches exatos e prefixos, antes de substrings
+      result: {
+        ticker: q,
+        name: `Ativo personalizado (${q})`,
+        assetClass: inferredClass,
+        sector: inferredSector,
+        currency: inferredCurrency,
+        isExisting: false,
+      },
     });
   }
 
-  return results.slice(0, limit);
+  return scoredCandidates
+    .sort((a, b) => a.score - b.score)
+    .slice(0, limit)
+    .map((c) => c.result);
 }
 
 /**

@@ -199,11 +199,11 @@ export function applySpikeGuardrail(
 
 /**
  * Moeda inferida pelo padrão do ticker (§3.11.2):
- * 2–5 letras sem números = USD (ex.: AAPL, MSFT, IVVB11 tem número → BRL);
+ * 1–5 letras sem números = USD (ex.: AAPL, MSFT, O, T; IVVB11 tem número → BRL);
  * B3/RF/cripto = BRL.
  */
 export function inferCurrencyFromTicker(ticker: string): AssetCurrency {
-  return /^[A-Za-z]{2,5}$/.test(ticker) ? "USD" : "BRL";
+  return /^[A-Za-z]{1,5}$/.test(ticker) ? "USD" : "BRL";
 }
 
 export interface PositionPnl {

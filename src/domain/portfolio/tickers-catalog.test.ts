@@ -100,6 +100,18 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
       expect(results.some((r) => r.ticker === "NOVO3" && r.assetClass === "Ações")).toBe(true);
     });
 
+    it("suporta busca e catálogo de tickers de 1 letra (ex: O - Realty Income, T - AT&T)", () => {
+      const resultsO = searchTickers("O", mockExistingAssets);
+      expect(resultsO.some((r) => r.ticker === "O" && r.assetClass === "Internacional" && r.currency === "USD")).toBe(true);
+
+      const resultsT = searchTickers("T", mockExistingAssets);
+      expect(resultsT.some((r) => r.ticker === "T" && r.currency === "USD")).toBe(true);
+
+      // Ticker livre de 1 letra não presente no catálogo
+      const resultsZ = searchTickers("Z", mockExistingAssets);
+      expect(resultsZ.some((r) => r.ticker === "Z" && r.currency === "USD")).toBe(true);
+    });
+
     it("retorna ativos existentes quando a query está vazia", () => {
       const results = searchTickers("", mockExistingAssets);
       expect(results.length).toBe(2);

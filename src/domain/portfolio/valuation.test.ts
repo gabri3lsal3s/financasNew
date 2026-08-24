@@ -332,5 +332,25 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(getAssetPricingMode({ asset_class: "Ações", ticker: "PETR4", notes: "[PRICING:TOTAL]" })).toBe("total_value");
     });
   });
+
+  describe("inferCurrencyFromTicker", () => {
+    it("infere USD para tickers internacionais de 1 a 5 letras", () => {
+      expect(inferCurrencyFromTicker("AAPL")).toBe("USD");
+      expect(inferCurrencyFromTicker("MSFT")).toBe("USD");
+      expect(inferCurrencyFromTicker("VOO")).toBe("USD");
+      expect(inferCurrencyFromTicker("O")).toBe("USD");
+      expect(inferCurrencyFromTicker("T")).toBe("USD");
+      expect(inferCurrencyFromTicker("V")).toBe("USD");
+      expect(inferCurrencyFromTicker("C")).toBe("USD");
+      expect(inferCurrencyFromTicker("F")).toBe("USD");
+    });
+
+    it("infere BRL para tickers com números (B3) ou classes locais", () => {
+      expect(inferCurrencyFromTicker("PETR4")).toBe("BRL");
+      expect(inferCurrencyFromTicker("MXRF11")).toBe("BRL");
+      expect(inferCurrencyFromTicker("IVVB11")).toBe("BRL");
+      expect(inferCurrencyFromTicker("TESOURO-SELIC")).toBe("BRL");
+    });
+  });
 });
 
