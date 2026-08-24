@@ -13,6 +13,7 @@ import {
   PaceAlertBanner,
   RealCashHeroCard,
   SurplusAporteBanner,
+  CashGapAlert,
 } from "@/components/modules";
 import { isOnboardingComplete } from "@/domain/onboarding";
 import {
@@ -25,8 +26,9 @@ import {
   resolveEffectiveLimit,
   spentByCategoryMap,
 } from "@/domain/budgets";
+import { invoiceDueDate } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
-import { dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projection";
+import { analyzeCashGap, dailyBudget, endOfMonthProjection, spendingPace } from "@/domain/projection";
 import {
   accountsNet,
   buildDailyFlow,
@@ -255,6 +257,65 @@ export function OverviewPage() {
     openInvoicesCents: realCashData.safeToSpend.committedObligationsCents,
   });
 
+  const cashGapResult = analyzeCashGap({
+    currentBalanceCents: realCashData.cashBalance.currentBalanceCents,
+    today,
+    obligations: [
+      ...(cardsQuery.data ?? []).flatMap((card) => {
+        const cardExpenses = (cardExpensesQuery.data ?? []).filter(
+          (e) => e.card_id === card.id && e.bill_competence === month,
+        );
+        const cardPayments = (cardPaymentsQuery.data ?? []).filter(
+          (p) => p.card_id === card.id && p.competence_month === month,
+        );
+        const expTotal = cardExpenses.reduce(
+          (acc, e) => acc + Math.round(e.value * 100 * (e.report_weight ?? 1)),
+          0,
+        );
+        const payTotal = cardPayments.reduce((acc, p) => acc + Math.round(p.amount * 100), 0);
+        const balance = Math.max(0, expTotal - payTotal);
+        if (balance <= 0) return [];
+        const dueDate = invoiceDueDate(month, card.due_day);
+        return [
+          {
+            id: `invoice-${card.id}-${month}`,
+            name: `Fatura ${card.name}`,
+            dueDate,
+            amountCents: balance,
+            kind: "invoice" as const,
+          },
+        ];
+      }),
+      ...(debtsQuery.data ?? [])
+        .filter((d) => d.type === "payable" && !d.paid_at && d.due_date && d.due_date >= today)
+        .map((d) => ({
+          id: `debt-${d.id}`,
+          name: d.name,
+          dueDate: d.due_date,
+          amountCents: numberToCents(d.amount),
+          kind: "debt" as const,
+        })),
+    ],
+    inflows: [
+      ...(debtsQuery.data ?? [])
+        .filter((d) => d.type === "receivable" && !d.paid_at && d.due_date && d.due_date >= today)
+        .map((d) => ({
+          id: `recv-${d.id}`,
+          name: d.name,
+          expectedDate: d.due_date,
+          amountCents: numberToCents(d.amount),
+        })),
+      ...(incomesQuery.data ?? [])
+        .filter((i) => i.date >= today)
+        .map((i) => ({
+          id: `income-${i.id}`,
+          name: "Renda prevista",
+          expectedDate: i.date,
+          amountCents: Math.round(i.value * 100 * (i.report_weight ?? 1)),
+        })),
+    ],
+  });
+
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       {/* F12 — sem header visual: o app mostra direto o seletor de mês.
@@ -294,6 +355,10 @@ export function OverviewPage() {
       ) : (
         <>
           <RealCashHeroCard realCashData={realCashData} />
+
+          {isCurrentMonth && cashGapResult.isCashGapDetected && (
+            <CashGapAlert result={cashGapResult} />
+          )}
 
           {surplusCapacity.hasSurplus && isCurrentMonth && (
             <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />

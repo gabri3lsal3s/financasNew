@@ -587,8 +587,24 @@
      - `AporteTab` consome e pré-preenche o valor do aporte via query params sem disparar renders em cascata;
      - `SnowballActionCard` em `ProventosTab` listando as oportunidades ativas da Bola de Neve com atalho "Reinvestir Provento" integrado ao `InvestmentWizard`;
      - Sincronização bidirecional de abas em `InvestmentsPage` com a URL via `useSearchParams`.
-  5. **Qualidade & Testes:**
-     - Testes unitários puros de domínio, testes de hooks, testes de componentes modulares e testes de acessibilidade (axe) 100% aprovados.
+## F51 — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário (2026-08-24)
+
+- **Problema:**
+  1. O usuário podia ter saldo suficiente para o total de despesas do mês, mas enfrentar descasamento temporal (ex: fatura de cartão vencendo no dia 05 e salário entrando apenas no dia 15);
+  2. Falta de visibilidade prévia sobre dias em que o saldo em conta corrente ficaria temporariamente negativo antes do recebimento de receitas habituais;
+  3. Ausência de alertas acionáveis sugerindo contingências prévias (realocação temporária de caixa ou postergação de contas flexíveis).
+- **Solução:**
+  1. **Domínio Puro de Cash-Gap & Runway Diário (`src/domain/projection/cash-gap.ts`):**
+     - Motor `analyzeCashGap`: simula cronologicamente a evolução do saldo bancário dia a dia até o encerramento do mês;
+     - Cruzamento dinâmico de datas de vencimento de faturas de cartão de crédito e contas/dívidas a pagar com entradas previstas (salários, dívidas a receber);
+     - Detecção antecipada de descasamento temporal com cálculo do dia inicial do déficit, valor máximo faltante (`maxDeficitCents`), dias até o gap (`daysUntilGap`) e data de cobertura pela próxima renda (`nextInflowDate`);
+     - Classificação semântica de gravidade: `critical` ($\le 3$ dias) vs. `warning` ($4-10$ dias).
+  2. **Interface & Alerta Proativo (`CashGapAlert`, `OverviewPage`):**
+     - Componente `CashGapAlert` estilizado com as cores e badges semânticas do Design System (`bg-warning/5 border-warning/40` ou `bg-critical/5 border-critical/40`);
+     - Mensagem clara orientada à ação informando as datas exatas e o montante faltante, com CTA "Ver Contas e Vencimentos" direcionando para o gerenciamento de dívidas e compromissos;
+     - Integração fluida no topo da Visão Geral sob o card hero de caixa.
+  3. **Qualidade & Testes:**
+     - Testes unitários puros de domínio, testes de componentes e auditoria de acessibilidade (axe) 100% aprovados.
 
 ## Notas finais
 

@@ -1501,7 +1501,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | ✅ Concluída (2026-08-24) — rotinas de expurgo/retenção de logs de auditoria (cleanup_old_audit_events / admin_trigger_audit_retention) e índices temporais |
 | 35 | **F49** — Saldo em Caixa Real (Regime de Caixa Estrito), Checkpoints de Âncora & Previsão de Liquidez | A / Caixa & Liquidez Real | F2/F3/F33 | ✅ Concluída (2026-08-24) — saldo cumulativo real em conta bancária, checkpoints de calibração rápida ("Bater com o banco"), cálculo estrito de regime de caixa e métrica Safe-to-Spend |
 | 36 | **F50** — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve | B / Proatividade & Investimentos | F41/F44/F49 | ✅ Concluída (2026-08-24) — ponte automática fluxo de caixa → calculadora de aporte, materialização mensal autônoma de snapshots e gatilhos de reinvestimento |
-| 37 | **F51** — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário | A / Fluxo de Caixa & Alertas | F3/F49 | 🟡 Planejada — alerta preditivo de descasamento temporal receitas vs. faturas/dívidas e gráfico de runway diário |
+| 37 | **F51** — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário | A / Fluxo de Caixa & Alertas | F3/F49 | ✅ Concluída (2026-08-24) — alerta preditivo de descasamento temporal receitas vs. faturas/dívidas e simulação de runway diário |
 | 38 | **F52** — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE | C / Inteligência & Estratégia | F24/F39 | 🟡 Planejada — alertas de desvio de alocação por limiar, estimativa de conclusão da reserva de emergência e conversor de economia em tempo de liberdade FIRE |
 
 ### Fase 30 — Importação e Reconciliação Inteligente de Faturas de Cartão
@@ -2430,7 +2430,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 51 — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário
 
-> **Status:** 🟡 Planejada — enriquecimento da inteligência temporal de fluxo de caixa com alerta preditivo de descasamento entre vencimentos de faturas/dívidas e datas habituais de recebimento de renda, acompanhado de gráfico de projeção de liquidez diária.
+> **Status:** ✅ Concluída (2026-08-24) — enriquecimento da inteligência temporal de fluxo de caixa com alerta preditivo de descasamento entre vencimentos de faturas/dívidas e datas habituais de recebimento de renda, acompanhado de simulação de runway diário.
 
 **Objetivo:** prevenir inadimplência, juros de mora e uso emergencial de cheque especial através de avisos prévios de saldo insuficiente:
 1. **Radar Preditivo de Descasamento Temporal (Cash-Gap Warning):**

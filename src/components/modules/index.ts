@@ -76,4 +76,6 @@ export { SurplusAporteBanner } from "./surplus-aporte-banner";
 export type { SurplusAporteBannerProps } from "./surplus-aporte-banner";
 export { SnowballActionCard } from "./snowball-action-card";
 export type { SnowballActionCardProps } from "./snowball-action-card";
+export { CashGapAlert } from "./cash-gap-alert";
+export type { CashGapAlertProps } from "./cash-gap-alert";
 export * from "./reports";

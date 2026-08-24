@@ -253,3 +253,6 @@ export function pendingProjection(debts: readonly PendingDebt[]): PendingProject
     balanceCents: receivables - payables,
   };
 }
+
+export * from "./cash-gap";
+
