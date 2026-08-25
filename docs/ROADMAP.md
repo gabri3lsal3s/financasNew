@@ -1,6 +1,13 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.06** registra o **Planejamento do Saneamento Arquitetural de Camadas, Erradicação de Controles Nativos, Resiliência Universal de UI & Decomposição Estrutural** (2026-08-25):
+> - **(1) Fase 58 (Saneamento de Camadas, Controles Nativos & Incongruências de Datas/Moeda)**: eliminação de 100% dos imports diretos de `@/data/` em `src/features/` com migração para `@/types/`, erradicação do input nativo de data em `portfolio-import-dialog.tsx` para `<DatePicker />`, saneamento de `.toISOString().slice(0, 10)` em `debts` e `cash-gap`, e substituição de interpolações manuais de `toLocaleString` por `formatCentsAsBRL` e `<MoneyText />`;
+> - **(2) Fase 59 (Cobertura Universal de ErrorState e Desacoplamento de Módulos Compartilhados)**: adição de `<ErrorState message={...} onRetry={...} />` nas telas e abas core (`CardsPage`, `TransactionListPage`, `ResumoTab`, `ProventosTab`, `TargetsTab`, `AporteTab`), e desacoplamento de chamadas de dados em `src/components/modules/` (`cash-checkpoint-dialog.tsx`, `feature-gate.tsx`, `notifications-popover.tsx`);
+> - **(3) Fase 60 (Decomposição Modular de Monólitos Restantes)**: decomposição estrutural da `ReportsPage` (1.424 linhas $\rightarrow$ sub-abas em `src/features/reports/components/tabs/`), `TargetsTab` (1.062 linhas $\rightarrow$ cards atômicos de classes, setores e ativos), `AssetFormDialog` (934 linhas) e `InsightsPage` (785 linhas);
+> - **(4) Suíte 100% Verde & Governança**: manutenção contínua de zero erros de typecheck (`tsc -b`), zero violações de linter e suíte de testes 100% verde.
+
 > **v2.05** registra o **Refinamento e Reengenharia Sequencial das Fases 55, 56 e 57 — Pipeline Anti-Retrabalho, Fundação de Estado, Design System Responsivo & Modularização Estrutural** (2026-08-25):
+
 > - **(1) Eliminação de Dependências Circulares e Retrabalho**: reorganização estrita da ordem de execução: a **Fundação de Estado, Tipos Canônicos e Primitivos de UI** passa a ser o Bloco 1 (**Fase 55**), o **Design System Responsivo, Shell Global e Navegação Mobile-First** passa a ser o Bloco 2 (**Fase 56**), e a **Modularização Estrutural de Monólitos, Adoção Global e Governança** consolida-se no Bloco 3 (**Fase 57**);
 > - **(2) Zero Retrabalho em Modais e Diálogos**: o primitivo `ResponsiveDialog` (`BottomSheet` no mobile $\leftrightarrow$ `Dialog` no desktop) e a regra de ouro "Zero Auto-Focus" nascem na base (Fase 55), garantindo que a migração de diálogos na Fase 57 ocorra em um **único passe definitivo**;
 > - **(3) Zero Retrabalho na `SettingsPage`**: criação prévia dos hooks em `src/state/` (`useExportData`, `useRestoreBackup`) na Fase 55, permitindo que a decomposição nas 6 sub-abas na Fase 57 já nasça 100% aderente ao isolamento de camadas e sem stubs;
@@ -2734,6 +2741,94 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - [x] Diretório `public/pwa/screenshots/` criado com imagens nas dimensões especificadas e integrado ao manifest.
 - [x] Documentação governada sincronizada em `AGENTS.md` e `docs/PROJECT_STRUCTURE.md`.
 - [x] Typecheck estrito (`tsc --noEmit`), ESLint e suite completa de testes 100% verdes (1.716 testes).
+
+---
+
+### Fase 58 — Saneamento de Camadas, Controles Nativos & Incongruências de Datas/Moeda
+
+> **Status:** ⏳ Pendente — **Saneamento Arquitetural de Camadas e Regras DRY**: eliminação de 100% dos imports diretos de `src/data/` em `src/features/`, substituição de controles nativos residuais por primitivos encapsulados, unificação de datas com timezone local e padronização monetária com `formatCentsAsBRL`.
+
+**Objetivo:** Eliminar fragilidades de acoplamento de camadas e violações de regras estritas do `AGENTS.md`:
+
+1. **Saneamento de Tipos e Camadas (`src/data/` $\rightarrow$ `src/types/`):**
+   - Re-exportar em `src/types/` os tipos `AdminUserRow`, `CreditCardForm`, `AllocationTargetInput`, `RecurrenceGroupFields`, `InstallmentInput`.
+   - Atualizar os 7 arquivos em `src/features/` (`user-edit-dialog.tsx`, `users-tab.tsx`, `card-form-dialog.tsx`, `investment-wizard.tsx`, `expense-detail-dialog.tsx`, `income-detail-dialog.tsx`, `wizard-state.ts`) para importar de `@/types`.
+
+2. **Erradicação de Controles Nativos Residuais:**
+   - Substituir o `<Input type="date" />` nativo em `src/features/investments/components/portfolio-import-dialog.tsx` pelo primitivo `<DatePicker />` com tema unificado.
+
+3. **Correção de Datas e Fusos Horários em Domínio:**
+   - Substituir chamadas de `.toISOString().slice(0, 10)` em `src/domain/debts/index.ts` (`addDaysISO`) e `src/domain/projection/cash-gap.ts` por funções livres de distorção de fuso horário.
+
+4. **Padronização Monetária Canônica:**
+   - Substituir interpolações residuais de `toLocaleString("pt-BR", { style: "currency", currency: "BRL" })` em `position-table.tsx`, `asset-detail-sheet.tsx`, `resumo-tab.tsx`, `asset-form-dialog.tsx` e `wealth-tear-sheet-modal.tsx` por `formatCentsAsBRL(numberToCents(val))` e `<MoneyText />`.
+
+**✅ DoD (Definition of Done da Fase 58):**
+- [ ] Zero imports de `@/data/` em qualquer arquivo dentro de `src/features/` ou `src/components/`.
+- [ ] Zero `<input type="date">` nativo na aplicação — 100% via `<DatePicker />`.
+- [ ] Zero `.toISOString().slice(0, 10)` com risco de fuso horário no domínio.
+- [ ] Zero interpolações manuais de moeda com `toLocaleString` fora dos formatadores canônicos.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+
+---
+
+### Fase 59 — Cobertura Universal de ErrorState e Desacoplamento de Módulos Compartilhados
+
+> **Status:** ⏳ Pendente — **Resiliência e Desacoplamento de Domínio**: inclusão de `ErrorState` com retry em todas as páginas e abas core, e desacoplamento de chamadas diretas de estado em `src/components/modules/`.
+
+**Objetivo:** Garantir a experiência resiliente Online First em 100% das telas e conformidade com o papel puro de `components/modules`:
+
+1. **Cobertura Universal de `ErrorState` com Retry:**
+   - Implementar bloco explícito de `ErrorState` com `getErrorMessage(error)` e ação de reconexão (`refetch`) em:
+     - `CardsPage` (`src/features/cards/pages/cards-page.tsx`);
+     - `TransactionListPage` (`src/features/transactions/pages/transaction-list-page.tsx`);
+     - Abas de Investimentos (`resumo-tab.tsx`, `proventos-tab.tsx`, `targets-tab.tsx`, `aporte-tab.tsx`).
+
+2. **Desacoplamento de `src/components/modules/`:**
+   - Refatorar `CashCheckpointDialog` para receber `onConfirm` e `isPending` via props tipadas, sem importar `@/state` diretamente.
+   - Formalizar o papel de componentes de casca (`FeatureGate` e `NotificationsPopover`) documentando suas dependências arquiteturais em `docs/ARCHITECTURE.md`.
+
+**✅ DoD (Definition of Done da Fase 59):**
+- [ ] 100% das páginas e abas de finanças e investimentos possuem tratamento de `ErrorState` com retry funcional.
+- [ ] `CashCheckpointDialog` não faz import direto de `src/state/`.
+- [ ] Documentação de arquitetura sincronizada com a classificação de componentes de casca vs módulos puros.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+
+---
+
+### Fase 60 — Decomposição Modular de Monólitos Restantes
+
+> **Status:** ⏳ Pendente — **Decomposição Estrutural e Arquitetura Limpa**: fatiamento de monólitos de apresentação remanescentes (`ReportsPage`, `TargetsTab`, `AssetFormDialog`, `InsightsPage`) em subcomponentes coesos (< 400 linhas).
+
+**Objetivo:** Reduzir a complexidade cognitiva e o acoplamento de arquivos extensos da base:
+
+1. **Decomposição da `ReportsPage` (1.424 linhas $\rightarrow$ Modular):**
+   - Criar `src/features/reports/components/tabs/`:
+     - `financial-tab.tsx` (DRE, agregações por categoria/meio/dia da semana);
+     - `investments-tab.tsx` (árvore hierárquica classe/setor/ativo, alocação e teardown);
+     - `balance-tab.tsx` (balanço 360° e índice de liberdade financeira);
+     - `tax-tab.tsx` (monitor DARF e facilitador de IRPF).
+   - Reduzir a orquestradora principal para < 120 linhas.
+
+2. **Decomposição da `TargetsTab` (1.062 linhas $\rightarrow$ Modular):**
+   - Criar subcomponentes em `src/features/investments/components/targets/`:
+     - `classes-target-card.tsx`;
+     - `sectors-target-card.tsx`;
+     - `assets-target-card.tsx`.
+
+3. **Decomposição do `AssetFormDialog` (934 linhas $\rightarrow$ Modular):**
+   - Extrair sub-seções de cotação e ticker, precificação em valor completo (Renda Fixa) e histórico acumulado.
+
+4. **Decomposição da `InsightsPage` (785 linhas $\rightarrow$ Modular):**
+   - Extrair cards e seções de simulação de hábitos, assinaturas e alertas de risco.
+
+**✅ DoD (Definition of Done da Fase 60):**
+- [ ] `ReportsPage` decomposta em 4 sub-abas modulares com orquestradora < 120 linhas.
+- [ ] `TargetsTab` decomposta em subcomponentes coesos < 400 linhas.
+- [ ] `AssetFormDialog` e `InsightsPage` fatiados em blocos atômicos e reutilizáveis.
+- [ ] Zero quebras de rotas, deep links ou contratos de estado.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+
 
 
 
