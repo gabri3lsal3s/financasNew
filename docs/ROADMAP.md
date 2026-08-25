@@ -2489,5 +2489,38 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - Total paridade com o Design System (zero emojis, ícones `lucide-react`, pt-BR, tokens CSS).
 - Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
 
+---
+
+### Fase 53 — Padronização Global de Animações Numéricas, NumberTicker & Efeitos Visuais do Design System
+
+> **Status:** ✅ Concluída (2026-08-24) — integração universal do motor de animação numérica fluida (`NumberTicker`) ao primitivo `MoneyText`, respeitando preferências de acessibilidade (`prefers-reduced-motion`) e toggles do usuário.
+
+**Objetivo:**
+1. **Evolução do `MoneyText`:** Adicionada prop `animated?: boolean` conectada nativamente ao `NumberTicker`;
+2. **Animação em Cards de Destaque:** `RealCashHeroCard`, `OverviewPage`, `SurplusAporteBanner`, `AporteResult`, `ProventosTab`, `DebtsPage`, `BudgetsPage`, `CreditCard3D` e `ReportsPage`;
+3. **Harmonização de Terminologia:** Padronização estrita de `Ponderada:` e `Ponderado:` e transições harmônicas.
+
+---
+
+### Fase 54 — Padronização da Central de Relatórios & Responsividade do Painel Administrativo
+
+> **Status:** ✅ Concluída (2026-08-24) — harmonização da página de relatórios com layout e navegação em Tabs nativas com gestos de swipe, e reformulação da responsividade do Painel Administrativo com visualização adaptativa (Mobile Cards vs. Desktop Tables).
+
+**Objetivo:**
+1. **Central de Relatórios (`ReportsPage`):**
+   - Cabeçalho semântico padronizado;
+   - Navegação estrita pelo componente `Tabs` com suporte a `swipeable` e sincronização bidirecional de URL;
+   - Reposicionamento do Caderno de Relatórios em Excel (.xlsx) no rodapé da página.
+2. **Painel Administrativo (`AdminPage`):**
+   - Eliminação de padding/margem duplicados na raiz do container;
+   - Header padronizado e navegação em abas nativas;
+   - Reorganização do grid de KPIs da Visão Geral (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-6`) com cards espaçosos e `NumberTicker`;
+   - Visualização adaptativa para Mobile (Cards verticais com áreas de toque ampliadas) e Desktop (Tabelas completas com hover);
+   - Cards de Kill-Switch e controles de permissão totalmente responsivos.
+3. **Qualidade & Verificação:**
+   - 232 arquivos de teste e 1702 testes verdes;
+   - Typecheck, ESLint e Build 100% aprovados.
+
+
 
 
