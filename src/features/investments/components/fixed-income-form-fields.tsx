@@ -38,13 +38,13 @@ export function FixedIncomeFormFields({
   const getRatePlaceholder = () => {
     switch (values.rateType) {
       case "cdi":
-        return "Ex: 110 (para 110% do CDI)";
+        return "Ex: 110 ou 110,50 (% do CDI)";
       case "selic":
-        return "Ex: 100 (para 100% da Selic)";
+        return "Ex: 100 ou 100,25 (% da Selic)";
       case "pre":
-        return "Ex: 12.5 (para 12,5% a.a.)";
+        return "Ex: 12,50 ou 12.50 (% a.a.)";
       case "ipca":
-        return "Ex: 6.2 (para IPCA + 6,2% a.a.)";
+        return "Ex: 6,20 ou 6.20 (spread % a.a.)";
       default:
         return "Ex: 100";
     }

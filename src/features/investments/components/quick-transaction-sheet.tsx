@@ -14,7 +14,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { MonthPicker } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
-import { numberToCents } from "@/domain/money";
+import { numberToCents, parseDecimalNumber } from "@/domain/money";
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
 import { calculateFixedIncomeBalance } from "@/domain/portfolio/fixed-income";
@@ -39,19 +39,7 @@ export interface QuickTransactionSheetProps {
   onSuccess?: () => void;
 }
 
-const parseNumber = (raw: string): number => {
-  if (!raw || typeof raw !== "string") return 0;
-  const trimmed = raw.trim();
-  if (!trimmed) return 0;
-  if (trimmed.includes(",") && trimmed.includes(".")) {
-    const clean = trimmed.replace(/\./g, "").replace(",", ".");
-    const val = Number(clean);
-    return Number.isFinite(val) && val >= 0 ? val : 0;
-  }
-  const clean = trimmed.replace(",", ".");
-  const val = Number(clean);
-  return Number.isFinite(val) && val >= 0 ? val : 0;
-};
+const parseNumber = parseDecimalNumber;
 
 export function QuickTransactionSheet({
   open,

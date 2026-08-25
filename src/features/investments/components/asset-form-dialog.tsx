@@ -3,7 +3,7 @@ import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Sparkles } from "luc
 import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
 
 
-import { numberToCents } from "@/domain/money";
+import { formatDecimalNumber, numberToCents, parseDecimalNumber } from "@/domain/money";
 import {
   calculateWeightedAveragePrice,
   DEFAULT_SECTORS_BY_CLASS,
@@ -153,7 +153,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     asset?.fixed_income_metadata?.rate_type ?? "cdi",
   );
   const [fixedIncomeRateValue, setFixedIncomeRateValue] = useState<string>(
-    asset?.fixed_income_metadata?.rate_value !== undefined ? String(asset.fixed_income_metadata.rate_value) : "",
+    asset?.fixed_income_metadata?.rate_value !== undefined ? formatDecimalNumber(asset.fixed_income_metadata.rate_value) : "",
   );
   const [fixedIncomeBaseDate, setFixedIncomeBaseDate] = useState<string>(
     asset?.fixed_income_metadata?.base_date ?? todayISO(),
@@ -191,17 +191,11 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     createContribution.isPending ||
     setManualPrice.isPending;
 
-  const parseNumber = (raw: string): number => {
-    const clean = raw.replace(/\s+/g, "").replace(",", ".");
-    const val = Number(clean);
-    return Number.isFinite(val) ? val : 0;
-  };
-
-  const parsedQuantity = isCash ? parseNumber(quantityStr) : parseNumber(quantityStr);
+  const parsedQuantity = parseDecimalNumber(quantityStr);
   const parsedAvgPrice = averagePriceCents / 100;
 
   // Cálculo da prévia do helper de lote
-  const parsedNewLotQty = parseNumber(newLotQtyStr);
+  const parsedNewLotQty = parseDecimalNumber(newLotQtyStr);
   const parsedNewLotPrice = newLotPriceCents / 100;
   const lotPreview = calculateWeightedAveragePrice(
     parsedQuantity,
@@ -227,7 +221,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   };
 
   // Cálculo de venda em tempo real
-  const parsedSellQty = parseNumber(sellQtyStr);
+  const parsedSellQty = parseDecimalNumber(sellQtyStr);
   const parsedSellPrice = sellPriceCents / 100;
   const sellResult = sellAssetPosition({
     currentQuantity: asset?.quantity ?? 0,
@@ -280,7 +274,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
       let fiMetadata: FixedIncomeMetadata | null = null;
       if (isFixedIncome && !isCash) {
-        const rateVal = parseNumber(fixedIncomeRateValue);
+        const rateVal = parseDecimalNumber(fixedIncomeRateValue);
         fiMetadata = {
           rate_type: fixedIncomeRateType,
           rate_value: rateVal,

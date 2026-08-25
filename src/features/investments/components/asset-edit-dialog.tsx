@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { numberToCents } from "@/domain/money";
+import { formatDecimalNumber, numberToCents, parseDecimalNumber } from "@/domain/money";
 import { Alert, Badge, Button, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { assetMetadataSchema } from "@/domain/portfolio/schemas";
@@ -33,13 +33,6 @@ const CURRENCIES: { value: AssetCurrency; label: string }[] = [
   { value: "USD", label: "USD (Dólares)" },
 ];
 
-const parseNumber = (raw: string): number => {
-  if (!raw || typeof raw !== "string") return 0;
-  const clean = raw.trim().replace(/\./g, "").replace(",", ".");
-  const val = Number(clean);
-  return Number.isFinite(val) && val >= 0 ? val : 0;
-};
-
 interface AssetEditFormContentProps {
   asset: PortfolioAsset;
   onClose: () => void;
@@ -71,7 +64,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
     asset.fixed_income_metadata?.rate_type ?? "cdi",
   );
   const [fixedIncomeRateValue, setFixedIncomeRateValue] = useState<string>(
-    asset.fixed_income_metadata?.rate_value !== undefined ? String(asset.fixed_income_metadata.rate_value) : "",
+    asset.fixed_income_metadata?.rate_value !== undefined ? formatDecimalNumber(asset.fixed_income_metadata.rate_value) : "",
   );
   const [fixedIncomeBaseDate, setFixedIncomeBaseDate] = useState<string>(
     asset.fixed_income_metadata?.base_date ?? todayISO(),
@@ -147,7 +140,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
     e.preventDefault();
     setError(null);
 
-    const parsedQuantity = parseNumber(quantityStr);
+    const parsedQuantity = parseDecimalNumber(quantityStr);
     const parsedAvgPrice = averagePriceCents / 100;
 
     let payloadQuantity: number;
@@ -173,7 +166,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
     let fiMetadata: FixedIncomeMetadata | null = null;
     if (isFixedIncome && !isCash) {
-      const rateVal = parseNumber(fixedIncomeRateValue);
+      const rateVal = parseDecimalNumber(fixedIncomeRateValue);
       fiMetadata = {
         rate_type: fixedIncomeRateType,
         rate_value: rateVal,

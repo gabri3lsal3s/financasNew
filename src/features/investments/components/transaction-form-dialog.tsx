@@ -5,7 +5,7 @@ import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { useCreatePortfolioTransaction, useDeletePortfolioTransaction, useUpdatePortfolioTransaction } from "@/state";
-import { numberToCents } from "@/domain/money";
+import { numberToCents, parseDecimalNumber } from "@/domain/money";
 import type { DbInsert, PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 
 export interface TransactionFormDialogProps {
@@ -57,10 +57,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
   const withAmount = IS_DIVIDEND.includes(type);
   const withFactor = IS_SPLIT.includes(type);
 
-  const parseNumber = (raw: string): number => {
-    const parsed = Number(raw.replace(",", "."));
-    return Number.isFinite(parsed) ? parsed : NaN;
-  };
+  const parseNumber = parseDecimalNumber;
 
   const totalPreview = withQtyPrice
     ? Math.round((Number.isFinite(parseNumber(quantity)) ? parseNumber(quantity) : 0) * (Number.isFinite(parseNumber(price)) ? parseNumber(price) : 0) * 100) / 100

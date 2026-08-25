@@ -171,6 +171,86 @@ describe("AssetEditDialog", () => {
     });
   });
 
+  it("salva corretamente taxas de rentabilidade com vírgula e com ponto (ex: 8,52 e 8.52)", async () => {
+    mockUpdateAsset.mockResolvedValue({ ...mockFixedIncomeAsset });
+    mockSetManualPrice.mockResolvedValue({});
+    const onOpenChange = vi.fn();
+
+    const { rerender } = render(
+      <AssetEditDialog
+        asset={{
+          ...mockFixedIncomeAsset,
+          fixed_income_metadata: {
+            rate_type: "pre",
+            rate_value: 8.52,
+            base_date: "2026-01-01",
+            base_value: 10000,
+            initial_investment_date: "2026-01-01",
+            maturity_date: "2028-01-01",
+            is_tax_exempt: false,
+          },
+        }}
+        open={true}
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    // Deve carregar 8,52 formatado amigavelmente
+    const rateInput = screen.getByLabelText(/Taxa Anual Prefixada/i);
+    expect(rateInput).toHaveValue("8,52");
+
+    // Testa alterando para 8.52 (com ponto)
+    fireEvent.change(rateInput, { target: { value: "8.52" } });
+    fireEvent.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateAsset).toHaveBeenCalledWith({
+        id: "asset-rf-1",
+        patch: expect.objectContaining({
+          fixed_income_metadata: expect.objectContaining({
+            rate_value: 8.52,
+          }),
+        }),
+      });
+    });
+
+    vi.clearAllMocks();
+
+    // Testa alterando para 12,75 (com vírgula)
+    rerender(
+      <AssetEditDialog
+        asset={{
+          ...mockFixedIncomeAsset,
+          fixed_income_metadata: {
+            rate_type: "pre",
+            rate_value: 8.52,
+            base_date: "2026-01-01",
+            base_value: 10000,
+            initial_investment_date: "2026-01-01",
+            maturity_date: "2028-01-01",
+            is_tax_exempt: false,
+          },
+        }}
+        open={true}
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/Taxa Anual Prefixada/i), { target: { value: "12,75" } });
+    fireEvent.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateAsset).toHaveBeenCalledWith({
+        id: "asset-rf-1",
+        patch: expect.objectContaining({
+          fixed_income_metadata: expect.objectContaining({
+            rate_value: 12.75,
+          }),
+        }),
+      });
+    });
+  });
+
   it("renderiza campos de quantidade e preço médio para Ações", async () => {
     mockUpdateAsset.mockResolvedValue({ ...mockStockAsset });
     const onOpenChange = vi.fn();

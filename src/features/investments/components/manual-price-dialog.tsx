@@ -2,7 +2,7 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Alert, Badge, Button, Modal, NumberStepperInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { numberToCents } from "@/domain/money";
+import { numberToCents, parseDecimalNumber } from "@/domain/money";
 import type { PriceSource } from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -44,12 +44,7 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
 
   const pending = setManual.isPending || removeManual.isPending;
 
-  const parseNumber = (raw: string): number => {
-    const parsed = Number(raw.replace(",", "."));
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : NaN;
-  };
-
-  const parsedPrice = parseNumber(priceInput);
+  const parsedPrice = parseDecimalNumber(priceInput);
   const canSave = Number.isFinite(parsedPrice) && parsedPrice > 0 && !pending;
 
   const handleSave = async () => {

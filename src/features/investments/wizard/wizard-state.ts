@@ -9,6 +9,7 @@ import {
 import { cleanTicker } from "@/domain/portfolio/tickers-catalog";
 import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
+import { parseDecimalNumber } from "@/domain/money";
 import type { DividendEntryMode } from "@/domain/portfolio/dividends";
 import type { AssetCurrency, FixedIncomeRateType, PortfolioAsset } from "@/types";
 
@@ -106,23 +107,7 @@ export const defaultWizardState: InvestmentWizardState = {
 
 
 
-export const parseNumber = (raw: string): number => {
-  if (!raw || typeof raw !== "string") return 0;
-  const trimmed = raw.trim();
-  if (!trimmed) return 0;
-
-  // Trata formato brasileiro com separador de milhar: 1.234,56 -> 1234.56
-  if (trimmed.includes(",") && trimmed.includes(".")) {
-    const clean = trimmed.replace(/\./g, "").replace(",", ".");
-    const val = Number(clean);
-    return Number.isFinite(val) && val >= 0 ? val : 0;
-  }
-
-  // Trata vírgula como decimal: 10,5 -> 10.5
-  const clean = trimmed.replace(",", ".");
-  const val = Number(clean);
-  return Number.isFinite(val) && val >= 0 ? val : 0;
-};
+export const parseNumber = parseDecimalNumber;
 
 /**
  * Retorna os passos dinâmicos do Wizard conforme o modo de operação.
