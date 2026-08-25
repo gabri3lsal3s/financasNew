@@ -71,6 +71,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useAllPortfolioTransactions: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   usePortfolioPosition: () => ({
     data: {
       totalBRL: 80000,
@@ -222,7 +227,7 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     expect(screen.getByText("Patrimônio Líquido Real")).toBeInTheDocument();
   });
 
-  it("permite alternar para a aba Fiscal & Declaração e exibe o facilitador de IRPF e o Caderno Excel", async () => {
+  it("permite alternar para a aba Fiscal & Declaração e exibe o facilitador de IRPF, Monitor DARF e Caderno Excel", async () => {
     const user = userEvent.setup();
     renderReports();
 
@@ -231,8 +236,16 @@ describe("ReportsPage (Central Unificada §F42)", () => {
 
     expect(screen.getByText("Facilitador de Declaração de IRPF")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Abrir Fichas de IRPF/i })).toBeInTheDocument();
+
+    expect(screen.getByText("Monitor Mensal de DARF & Isenção de R$ 20k")).toBeInTheDocument();
+    const darfBtn = screen.getByRole("button", { name: /Abrir Monitor DARF/i });
+    expect(darfBtn).toBeInTheDocument();
+
     expect(screen.getByText("Caderno de Relatórios em Excel (.xlsx)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Baixar Caderno Excel/i })).toBeInTheDocument();
+
+    await user.click(darfBtn);
+    expect(screen.getByText("Sem DARF a recolher no período")).toBeInTheDocument();
   });
 
   it("permite alternar as agregações de despesas (Categorias, Formas de Pgto, Dias da Semana)", async () => {

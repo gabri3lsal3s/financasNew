@@ -48,6 +48,7 @@ import {
   useGroupTargets,
   useIncomes,
   useIncomesByRange,
+  useAllPortfolioTransactions,
   usePortfolioAssets,
   usePortfolioContributions,
   usePortfolioDividends,
@@ -59,6 +60,7 @@ import {
 
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { ExpenseDetailDialog } from "@/features/transactions";
+import { PortfolioDarfMonitor } from "@/features/investments/components";
 import {
   ConsolidatedWealthModal,
   DividendFreedomModal,
@@ -150,6 +152,7 @@ export function ReportsPage() {
   const [dividendFreedomOpen, setDividendFreedomOpen] = useState(false);
   const [consolidatedWealthOpen, setConsolidatedWealthOpen] = useState(false);
   const [taxReportOpen, setTaxReportOpen] = useState(false);
+  const [darfMonitorOpen, setDarfMonitorOpen] = useState(false);
 
 
 
@@ -188,6 +191,7 @@ export function ReportsPage() {
   const positionQuery = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
   const dividendsQuery = usePortfolioDividends();
+  const transactionsQuery = useAllPortfolioTransactions();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
   const assetTargetsQuery = useAllocationTargets();
@@ -229,6 +233,7 @@ export function ReportsPage() {
     categoriesQuery.isLoading ||
     positionQuery.isLoading ||
     assetsQuery.isLoading ||
+    transactionsQuery.isLoading ||
     sectorTargetsQuery.isLoading;
 
   const error =
@@ -240,6 +245,7 @@ export function ReportsPage() {
     debtsQuery.error ??
     categoriesQuery.error ??
     positionQuery.error ??
+    transactionsQuery.error ??
     sectorTargetsQuery.error;
 
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
@@ -247,6 +253,7 @@ export function ReportsPage() {
   const debts = useMemo(() => debtsQuery.data ?? [], [debtsQuery.data]);
   const assets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
   const dividends = useMemo(() => dividendsQuery.data ?? [], [dividendsQuery.data]);
+  const transactions = useMemo(() => transactionsQuery.data ?? [], [transactionsQuery.data]);
   const contributions = useMemo(() => contributionsQuery.data ?? [], [contributionsQuery.data]);
   const positionRows = useMemo(() => positionQuery.rows ?? [], [positionQuery.rows]);
   const classTargets = useMemo(() => classTargetsQuery.data ?? [], [classTargetsQuery.data]);
@@ -1133,6 +1140,7 @@ export function ReportsPage() {
 
   const fiscalContent = (
     <div className="flex flex-col gap-6">
+      {/* Card 1: Facilitador de Declaração de IRPF */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -1154,6 +1162,29 @@ export function ReportsPage() {
         </Button>
       </div>
 
+      {/* Card 2: Monitor Mensal de DARF & Isenção de R$ 20k */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="size-5 text-warning-strong shrink-0" aria-hidden="true" />
+            <h3 className="text-sm sm:text-base font-bold text-foreground">Monitor Mensal de DARF & Isenção de R$ 20k</h3>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Apuração de operações de venda em bolsa de valores, controle da faixa de isenção mensal de R$ 20.000 para ações e cálculo de imposto a recolher.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="default"
+          onClick={() => setDarfMonitorOpen(true)}
+          className="gap-2 shrink-0 w-full sm:w-auto justify-center"
+        >
+          <FileSpreadsheet className="size-4" aria-hidden="true" />
+          Abrir Monitor DARF
+        </Button>
+      </div>
+
+      {/* Card 3: Caderno de Relatórios em Excel (.xlsx) */}
       <ExcelExportCard workbookData={workbookData} description={excelDescription} />
     </div>
   );
@@ -1357,6 +1388,13 @@ export function ReportsPage() {
         onOpenChange={setTaxReportOpen}
         assets={assets}
         dividends={dividends}
+      />
+
+      <PortfolioDarfMonitor
+        open={darfMonitorOpen}
+        onOpenChange={setDarfMonitorOpen}
+        assets={assets}
+        transactions={transactions}
       />
 
       {/* Detalhe de Lançamento ao clicar nas tabelas de finanças */}
