@@ -2465,7 +2465,8 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 55 — Fundação de Estado, Tipos Canônicos, Saneamento de Camadas & Primitivos de UI
 
-> **Status:** 📋 Planejada (Pronta para Execução) — **Bloco 1 do Pipeline Anti-Retrabalho**: estabelecimento das fundações de estado, centralização de contratos de tipos, saneamento de dependências de camadas, fonte única de formatação/timezones, formalização da regra "Zero Auto-Focus" e criação dos novos primitivos essenciais de interface (`Button size="xs"` e `ResponsiveDialog`).
+> **Status:** ✅ Concluída — **Bloco 1 do Pipeline Anti-Retrabalho**: estabelecimento das fundações de estado, centralização de contratos de tipos, saneamento de dependências de camadas, fonte única de formatação/timezones, formalização da regra "Zero Auto-Focus" e criação dos novos primitivos essenciais de interface (`Button size="xs"` e `ResponsiveDialog`).
+
 
 **Objetivo:** Estabelecer todas as abstrações de dados e primitivos de interface antes de qualquer refatoração de telas ou monólitos, garantindo que as fases subsequentes consumam contratos estáveis, sem stubs e sem necessidade de segundas passadas:
 
@@ -2538,13 +2539,14 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
   3. Validação de ausência de regressões funcionais.
 
 **✅ DoD (Definition of Done da Fase 55):**
-- [ ] Hooks `useExportData` e `useRestoreBackup` implementados e 100% testados em `src/state/`.
-- [ ] Telas de autenticação consomem exclusivamente `useAuth()` sem imports de `@/data/auth`.
-- [ ] 100% das formatações monetárias em centavos utilizam `formatCentsAsBRL`.
-- [ ] 100% das datas resolvidas no fuso local via `todayLocalIso()` / `toLocalIsoDate()`.
-- [ ] Regra "Zero Auto-Focus em Modais" documentada e zero ocorrências de `autoFocus` em inputs de diálogos.
-- [ ] Primitivos `Button size="xs"` e `ResponsiveDialog` criados, exportados no barrel `components/ui/index.ts` e cobertos por testes unitários.
-- [ ] Suíte de testes 100% verde, typecheck estrito e zero avisos de linter.
+- [x] Hooks `useExportData` e `useRestoreBackup` implementados e 100% testados em `src/state/`.
+- [x] Telas de autenticação consomem exclusivamente `useAuth()` sem imports de `@/data/auth`.
+- [x] 100% das formatações monetárias em centavos utilizam `formatCentsAsBRL`.
+- [x] 100% das datas resolvidas no fuso local via `todayLocalIso()` / `toLocalIsoDate()`.
+- [x] Regra "Zero Auto-Focus em Modais" documentada e zero ocorrências de `autoFocus` em inputs de diálogos.
+- [x] Primitivos `Button size="xs"` e `ResponsiveDialog` criados, exportados no barrel `components/ui/index.ts` e cobertos por testes unitários.
+- [x] Suíte de testes 100% verde, typecheck estrito e zero avisos de linter.
+
 
 ---
 
