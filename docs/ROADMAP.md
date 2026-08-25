@@ -1,10 +1,12 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v2.06** registra o **Planejamento do Saneamento Arquitetural de Camadas, Erradicação de Controles Nativos, Resiliência Universal de UI & Decomposição Estrutural** (2026-08-25):
+> **v2.06** registra o **Planejamento do Saneamento Arquitetural de Camadas, Erradicação de Controles Nativos, Resiliência Universal de UI, Decomposição Estrutural & Responsividade Mobile-First** (2026-08-25):
 > - **(1) Fase 58 (Saneamento de Camadas, Controles Nativos & Incongruências de Datas/Moeda)**: eliminação de 100% dos imports diretos de `@/data/` em `src/features/` com migração para `@/types/`, erradicação do input nativo de data em `portfolio-import-dialog.tsx` para `<DatePicker />`, saneamento de `.toISOString().slice(0, 10)` em `debts` e `cash-gap`, e substituição de interpolações manuais de `toLocaleString` por `formatCentsAsBRL` e `<MoneyText />`;
 > - **(2) Fase 59 (Cobertura Universal de ErrorState e Desacoplamento de Módulos Compartilhados)**: adição de `<ErrorState message={...} onRetry={...} />` nas telas e abas core (`CardsPage`, `TransactionListPage`, `ResumoTab`, `ProventosTab`, `TargetsTab`, `AporteTab`), e desacoplamento de chamadas de dados em `src/components/modules/` (`cash-checkpoint-dialog.tsx`, `feature-gate.tsx`, `notifications-popover.tsx`);
 > - **(3) Fase 60 (Decomposição Modular de Monólitos Restantes)**: decomposição estrutural da `ReportsPage` (1.424 linhas $\rightarrow$ sub-abas em `src/features/reports/components/tabs/`), `TargetsTab` (1.062 linhas $\rightarrow$ cards atômicos de classes, setores e ativos), `AssetFormDialog` (934 linhas) e `InsightsPage` (785 linhas);
-> - **(4) Suíte 100% Verde & Governança**: manutenção contínua de zero erros de typecheck (`tsc -b`), zero violações de linter e suíte de testes 100% verde.
+> - **(4) Fase 61 (Engenharia de Responsividade Mobile-First, Ergonomia de Cards, Scroll de Abas & Auto-Fit Numérico)**: correção estrutural do primitivo `Tabs` (scroll suave sem compressão de abas), redesenho responsivo dos cards da Visão Geral (`RealCashHeroCard`, `KpiCard`, `StatCard`), adaptação de cabeçalhos compostos, grids adaptativos e erradicação de reticências em valores monetários grandes;
+> - **(5) Suíte 100% Verde & Governança**: manutenção contínua de zero erros de typecheck (`tsc -b`), zero violações de linter e suíte de testes 100% verde.
+
 
 > **v2.05** registra o **Refinamento e Reengenharia Sequencial das Fases 55, 56 e 57 — Pipeline Anti-Retrabalho, Fundação de Estado, Design System Responsivo & Modularização Estrutural** (2026-08-25):
 
@@ -2828,6 +2830,44 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - [ ] `AssetFormDialog` e `InsightsPage` fatiados em blocos atômicos e reutilizáveis.
 - [ ] Zero quebras de rotas, deep links ou contratos de estado.
 - [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+
+---
+
+### Fase 61 — Engenharia de Responsividade Mobile-First, Ergonomia de Cards, Scroll de Abas & Auto-Fit Numérico
+
+> **Status:** ⏳ Pendente — **Refinamento de UX, Cards & Ergonomia Mobile**: correção estrutural do primitivo `Tabs` (scroll suave sem compressão/sobreposição de abas), redesenho responsivo dos cards da Visão Geral (`RealCashHeroCard`, `KpiCard`, `StatCard`), adaptação de cabeçalhos compostos, grids adaptativos e erradicação de reticências em valores monetários grandes.
+
+**Objetivo:** Eliminar 100% das sobreposições visuais, esmagamentos de layout, truncamentos forçados em valores numéricos e quebras de paddings em dispositivos móveis (320px a 400px):
+
+1. **Correção Estrutural do Primitivo `Tabs` (`src/components/ui/tabs.tsx`):**
+   - No modo padrão (`fullWidth={false}`), aplicar `shrink-0 flex-initial min-w-fit px-3 py-2`, eliminando o `flex-1 min-w-0` em listas com $\ge 4$ abas e garantindo rolagem horizontal suave com `overflow-x-auto no-scrollbar scroll-smooth`.
+   - Restringir `fullWidth={true}` (`flex-1 min-w-0`) exclusivamente a conjuntos curtos de $\le 3$ itens.
+
+2. **Redesenho Responsivo dos Cards da Página Inicial (Visão Geral):**
+   - **`RealCashHeroCard`:** Refatorar o cabeçalho para layout empilhado flexível (`flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between`), eliminando o truncamento de "Saldo Disponível em Conta" e colisões com o botão "Calibrar" e a badge de aferição;
+   - **`KpiCard` & `StatCard`:** Implementar auto-fit tipográfico proporcional com `tabular-nums tracking-tight whitespace-nowrap` e erradicar o `truncate` cego em valores monetários e contadores;
+   - **Card de Fluxo Diário:** Aplicar `flex-wrap` e espaçamento responsivo nas legendas do cabeçalho;
+   - **Card de Saldo Líquido de Contas:** Refatorar as sub-colunas "A receber / A pagar / Faturas" para layout com tipografia fluida sem corte de centavos;
+   - **Barra de Uso Consolidado de Orçamentos:** Ajustar o cabeçalho para `flex-col sm:flex-row sm:items-center sm:justify-between gap-1`.
+
+3. **Adaptação de Grids de Métricas e Cards no Restante do App:**
+   - Converter grids rígidos de `grid-cols-3` em `grid-cols-1 sm:grid-cols-3` ou `grid-cols-2 sm:grid-cols-3` em:
+     - `DebtsPage` (`src/features/debts/pages/debts-page.tsx`);
+     - `BudgetsPage` (`src/features/budgets/pages/budgets-page.tsx`);
+     - Card mobile de ativo da `PositionTable` (`src/components/modules/position-table.tsx`);
+     - `PlanningSection` (`src/components/modules/planning-section.tsx`).
+
+4. **Harmonização de Formulários e Diálogos Mobile:**
+   - Ajustar campos de formulário em `CardFormDialog`, `CategoryFormDialog` e `LoanFormDialog` para `grid-cols-1 sm:grid-cols-2`, prevenindo esmagamento de controles quando o teclado virtual é acionado.
+
+**✅ DoD (Definition of Done da Fase 61):**
+- [ ] Primitivo `Tabs` sem sobreposição ou compressão em telas de 320px–390px, com scroll horizontal livre para $\ge 4$ abas.
+- [ ] `RealCashHeroCard` com cabeçalho adaptativo sem cortes de título ou sobreposição de badges/botões.
+- [ ] Zero `truncate` cego em valores monetários em `KpiCard`, `StatCard` e cards de resumo financeiro.
+- [ ] 100% dos grids com $\ge 3$ colunas adaptados para mobile-first (`grid-cols-1` ou `grid-cols-2` em telas $< 640\text{px}$).
+- [ ] Formulários em diálogos adaptados para coluna única no mobile.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
 
 
 
