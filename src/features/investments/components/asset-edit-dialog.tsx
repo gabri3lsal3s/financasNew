@@ -56,7 +56,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   const [currency, setCurrency] = useState<AssetCurrency>(asset.currency ?? "BRL");
   const [notes, setNotes] = useState(
     asset.notes
-      ? asset.notes.replace("[PRICING:UNIT]", "").replace("[PRICING:TOTAL]", "").trim()
+      ? asset.notes.replace(/\[PRICING:(UNIT|TOTAL)\]/g, "").trim()
       : "",
   );
   const [accumulatedDividendsCents, setAccumulatedDividendsCents] = useState(
@@ -103,16 +103,8 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
   const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[assetClass] ?? [];
 
-  // ─── Modo de Precificação Tesouro ─────────────────────────────────────────
-  const initialTesouroMode = asset.notes?.includes("[PRICING:UNIT]") ? "unit_price" : "total_value";
-  const [tesouroMode, setTesouroMode] = useState<"total_value" | "unit_price">(initialTesouroMode);
-  // Seletor de modo Tesouro: expõe se já estava em modo cotas ou se usuário clicar
-  const [showTesouroModeSelector, setShowTesouroModeSelector] = useState(
-    initialTesouroMode === "unit_price",
-  );
-
-  // Modo efetivo de valor total (RF e Tesouro valor completo)
-  const isTotalValueMode = !isCash && isFixedIncome && (!isTesouro || tesouroMode === "total_value");
+  // Modo efetivo de valor total (Renda Fixa e Tesouro Direto)
+  const isTotalValueMode = !isCash && isFixedIncome;
 
   // ─── Preços para modo total_value ─────────────────────────────────────────
   const priceQuote = (pricesQuery.data ?? []).find(
@@ -187,7 +179,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
     let payloadQuantity: number;
     let payloadAvgPrice: number;
-    let finalNotes = notes.trim() || null;
+    const finalNotes = notes.trim() || null;
 
     if (isCash) {
       payloadQuantity = parsedQuantity;
@@ -195,15 +187,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
     } else if (isTotalValueMode) {
       payloadQuantity = 1;
       payloadAvgPrice = initialPriceCents / 100;
-      if (isTesouro) {
-        finalNotes = finalNotes ? `${finalNotes} [PRICING:TOTAL]` : "[PRICING:TOTAL]";
-      }
     } else {
       payloadQuantity = Math.max(0, parsedQuantity);
       payloadAvgPrice = Math.max(0, parsedAvgPrice);
-      if (isTesouro && tesouroMode === "unit_price") {
-        finalNotes = finalNotes ? `${finalNotes} [PRICING:UNIT]` : "[PRICING:UNIT]";
-      }
     }
 
     let fiMetadata: FixedIncomeMetadata | null = null;
@@ -364,61 +350,6 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         </div>
       )}
 
-      {/* Seletor de Modo de Precificação para Tesouro Direto — colapsado por padrão */}
-      {isTesouro && (
-        <div className="flex flex-col gap-2">
-          {showTesouroModeSelector ? (
-            <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">Modo de Precificação do Tesouro</span>
-                <button
-                  type="button"
-                  onClick={() => setShowTesouroModeSelector(false)}
-                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
-                  Recolher
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTesouroMode("total_value")}
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-xs transition-all text-left flex flex-col gap-0.5 cursor-pointer",
-                    tesouroMode === "total_value"
-                      ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
-                      : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <span className="text-xs font-semibold">Valor Completo (Padrão RF)</span>
-                  <span className="text-[10px] text-muted-foreground">Preço inicial e saldo atual (sem cotas)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTesouroMode("unit_price")}
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
-                    tesouroMode === "unit_price"
-                      ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
-                      : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <span className="text-xs font-semibold">Preço Médio / Cotas</span>
-                  <span className="text-[10px] text-muted-foreground">Frações de títulos e preço unitário</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowTesouroModeSelector(true)}
-              className="self-start text-xs text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
-            >
-              Usar modo Preco Medio / Cotas (avancado)
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Campos de Posição de Custódia */}
       {isCash ? (

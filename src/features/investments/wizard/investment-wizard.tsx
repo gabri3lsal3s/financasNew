@@ -189,9 +189,7 @@ function InvestmentWizardContent({
         const pricingMode = getAssetPricingMode(
           state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
         );
-        const isTotalValue =
-          !state.isCash &&
-          (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+        const isTotalValue = !state.isCash && (pricingMode === "total_value" || isFixedIncome);
 
         const finalTotal = isTotalValue
           ? total > 0
@@ -227,9 +225,7 @@ function InvestmentWizardContent({
         const pricingMode = getAssetPricingMode(
           state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
         );
-        const isTotalValue =
-          !state.isCash &&
-          (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+        const isTotalValue = !state.isCash && (pricingMode === "total_value" || isFixedIncome);
 
         const finalTotal = isTotalValue
           ? total > 0
@@ -299,11 +295,11 @@ function InvestmentWizardContent({
         const isCash = state.isCash || isCashAssetClass(state.assetClass) || state.ticker.toUpperCase() === "CAIXA";
         const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
         const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-        const isTotalValue = !isCash && isFixedIncome && (!isTesouro || state.pricingMode === "total_value" || !state.pricingMode);
+        const isTotalValue = !isCash && isFixedIncome;
 
         let finalQuantity = parsedQty;
         let finalAveragePrice = price;
-        let finalNotes = state.notes ? state.notes.trim() : null;
+        const finalNotes = state.notes ? state.notes.trim() : null;
 
         if (isCash) {
           finalQuantity = total > 0 ? total : parsedQty;
@@ -311,13 +307,6 @@ function InvestmentWizardContent({
         } else if (isTotalValue) {
           finalQuantity = 1;
           finalAveragePrice = price > 0 ? price : total;
-          if (isTesouro) {
-            finalNotes = finalNotes ? `${finalNotes} [PRICING:TOTAL]` : "[PRICING:TOTAL]";
-          }
-        } else {
-          if (isTesouro && state.pricingMode === "unit_price") {
-            finalNotes = finalNotes ? `${finalNotes} [PRICING:UNIT]` : "[PRICING:UNIT]";
-          }
         }
 
         let fixedIncomeMetadata: FixedIncomeMetadata | null = null;

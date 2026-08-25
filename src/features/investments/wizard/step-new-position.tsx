@@ -1,7 +1,6 @@
 import { Input, MoneyInput, Select } from "@/components/ui";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
-import { cn } from "@/lib/utils";
 import type { AssetCurrency } from "@/types";
 import { FixedIncomeFormFields } from "../components/fixed-income-form-fields";
 import type { InvestmentWizardState } from "./wizard-state";
@@ -31,8 +30,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
   const isCash = isCashAssetClass(state.assetClass) || state.ticker.toUpperCase() === "CAIXA";
   const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
   const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-  const tesouroMode = state.pricingMode ?? "total_value";
-  const isTotalValueMode = !isCash && isFixedIncome && (!isTesouro || tesouroMode === "total_value");
+  const isTotalValueMode = !isCash && isFixedIncome;
   const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[state.assetClass] ?? [];
 
   const handleTickerChange = (ticker: string) => {
@@ -138,43 +136,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
         </div>
       </div>
 
-      {/* Seletor de Modo de Precificação para Tesouro Direto */}
-      {isTesouro && (
-        <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">Modo de Precificação do Tesouro</span>
-            <span className="text-[11px] text-muted-foreground">Padrão: Valor Completo</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => onChange({ pricingMode: "total_value" })}
-              className={cn(
-                "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
-                tesouroMode === "total_value"
-                  ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
-                  : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span className="text-xs font-semibold">Valor Completo (Padrão RF)</span>
-              <span className="text-[10px] text-muted-foreground">Preço inicial e saldo atual (sem cotas)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange({ pricingMode: "unit_price" })}
-              className={cn(
-                "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
-                tesouroMode === "unit_price"
-                  ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
-                  : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span className="text-xs font-semibold">Preço Médio / Cotas</span>
-              <span className="text-[10px] text-muted-foreground">Frações de títulos e preço unitário</span>
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* Bloco de Posição Inicial */}
       {isCash ? (

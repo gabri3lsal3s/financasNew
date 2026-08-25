@@ -35,9 +35,7 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
   const pricingMode = getAssetPricingMode(
     state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
   );
-  const isTotalValue =
-    !isCash &&
-    (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+  const isTotalValue = !isCash && (pricingMode === "total_value" || isFixedIncome);
 
   const getModeBadge = () => {
     switch (mode) {

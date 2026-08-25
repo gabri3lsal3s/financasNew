@@ -287,21 +287,19 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(defaultTesouro.valueBRL).toBe(5200);
       expect(defaultTesouro.unrealizedPnl).toBe(200);
 
-      // Com override [PRICING:UNIT]: Tesouro Direto em cotas/PM
-      const unitTesouro = calculatePositionSummary({
+      // Posição de Tesouro Direto legada com fração (quantity: 0.5, averagePrice: 10.000 -> Custo R$ 5.000)
+      const fractionalTesouro = calculatePositionSummary({
         quantity: 0.5,
-        averagePrice: 10000, // PM unitário de R$ 10.000 -> Custo R$ 5.000
+        averagePrice: 10000,
         assetClass: "Renda Fixa",
         currency: "BRL",
         ticker: "TESOURO-IPCA",
-        notes: "[PRICING:UNIT] Custódia em frações de título",
-        resolvedPrice: { price: 11000, source: "api" }, // PU R$ 11.000 -> Valor R$ 5.500
+        resolvedPrice: { price: 5500, source: "manual" }, // Saldo atual R$ 5.500
       });
-      expect(unitTesouro.pricingMode).toBe("unit_price");
-      expect(unitTesouro.quantity).toBe(0.5);
-      expect(unitTesouro.totalCost).toBe(5000);
-      expect(unitTesouro.valueBRL).toBe(5500);
-      expect(unitTesouro.unrealizedPnl).toBe(500);
+      expect(fractionalTesouro.pricingMode).toBe("total_value");
+      expect(fractionalTesouro.totalCost).toBe(5000);
+      expect(fractionalTesouro.valueBRL).toBe(5500);
+      expect(fractionalTesouro.unrealizedPnl).toBe(500);
     });
 
     it("calcula evolução diária de Renda Fixa parametrizada com Marco Zero e tributação", () => {
@@ -376,13 +374,12 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(isTesouroAsset("PETR4")).toBe(false);
     });
 
-    it("determina modos de precificação padrão e customizados", () => {
+    it("determina modos de precificação padrão", () => {
       expect(getAssetPricingMode({ asset_class: "Caixa" })).toBe("cash");
       expect(getAssetPricingMode({ asset_class: "Renda Fixa", ticker: "CDB" })).toBe("total_value");
       expect(getAssetPricingMode({ asset_class: "Renda Fixa", ticker: "TESOURO-SELIC" })).toBe("total_value");
-      expect(getAssetPricingMode({ asset_class: "Renda Fixa", ticker: "TESOURO-SELIC", notes: "[PRICING:UNIT]" })).toBe("unit_price");
+      expect(getAssetPricingMode({ asset_class: "Renda Fixa", ticker: "TESOURO-SELIC", notes: "Qualquer nota" })).toBe("total_value");
       expect(getAssetPricingMode({ asset_class: "Ações", ticker: "PETR4" })).toBe("unit_price");
-      expect(getAssetPricingMode({ asset_class: "Ações", ticker: "PETR4", notes: "[PRICING:TOTAL]" })).toBe("total_value");
     });
   });
 

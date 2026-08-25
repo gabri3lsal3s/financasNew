@@ -711,6 +711,38 @@
   - ESLint: sem violações;
   - 14/14 testes de componente aprovados.
 
+## F55 — Remoção Definitiva do Modo Preço Médio / Cotas para Tesouro Direto (2026-08-25)
+
+- **Problema:** A tentativa de modelar frações de títulos do Tesouro Direto como se fossem ações (Preço Médio / Cotas com tag `[PRICING:UNIT]` em `notes`) gerava complexidade excessiva, branching duplicado em 10+ arquivos, campos de anotações poluídos e atrito de configuração para o usuário, que precisava calcular e preencher manualmente o Preço Unitário (PU) sem cotação automática da API.
+- **Solução:** Padronização canônica e definitiva da Renda Fixa e Tesouro Direto no modo **Valor Completo (`total_value`)**:
+  1. **Domínio (`valuation.ts`, `valuation.test.ts`):**
+     - `getAssetPricingMode`: Tesouro Direto e Renda Fixa são deterministicamente `total_value`, sem leitura de tags em `notes`;
+     - `calculatePositionSummary`: Fortalecido para calcular `totalCost = quantity * averagePrice` com segurança caso haja ativos legados no banco com frações de cotas (`quantity > 0 && quantity !== 1`).
+  2. **Diálogos e Formulários (`asset-edit-dialog.tsx`, `asset-form-dialog.tsx`):**
+     - Removidos estados `tesouroMode` e `showTesouroModeSelector`;
+     - Removida a injeção e leitura de tags `[PRICING:UNIT]` e `[PRICING:TOTAL]` no campo de anotações;
+     - Diálogos simplificados exibem diretamente Valor Inicial Investido e Saldo Atual / Final;
+     - Testes de formulário (`asset-form-dialog.test.tsx`) atualizados para validar o fluxo padronizado.
+  3. **Wizard de Investimentos (`wizard-state.ts`, `step-new-position.tsx`, `step-order.tsx`, `step-review.tsx`, `investment-wizard.tsx`):**
+     - Removido o campo `pricingMode` de `InvestmentWizardState`;
+     - Removido o seletor de modo Tesouro de `StepNewPosition`;
+     - Simplificadas as verificações de `isTotalValue` em `StepOrder`, `StepReview`, `canProceed` e `calculateInvestmentPreview`.
+- **Arquivos alterados:**
+  - `src/domain/portfolio/valuation.ts`
+  - `src/domain/portfolio/valuation.test.ts`
+  - `src/features/investments/components/asset-edit-dialog.tsx`
+  - `src/features/investments/components/asset-form-dialog.tsx`
+  - `src/features/investments/components/asset-form-dialog.test.tsx`
+  - `src/features/investments/wizard/wizard-state.ts`
+  - `src/features/investments/wizard/step-new-position.tsx`
+  - `src/features/investments/wizard/step-order.tsx`
+  - `src/features/investments/wizard/step-review.tsx`
+  - `src/features/investments/wizard/investment-wizard.tsx`
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 40 arquivos de teste e 367/367 testes unitários e de componentes aprovados com 100% de sucesso.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

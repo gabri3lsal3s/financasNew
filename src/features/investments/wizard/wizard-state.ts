@@ -36,7 +36,6 @@ export interface InvestmentWizardState {
   sector: string;
   currency: AssetCurrency;
   isCash: boolean;
-  pricingMode?: "total_value" | "unit_price";
 
   // Parâmetros de Renda Fixa (Fase 63/72)
   fixedIncomeRateType: FixedIncomeRateType;
@@ -168,9 +167,7 @@ export function canProceed(state: InvestmentWizardState): boolean {
   const pricingMode = getAssetPricingMode(
     state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
   );
-  const isTotalValue =
-    !isCash &&
-    (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+  const isTotalValue = !isCash && (pricingMode === "total_value" || isFixedIncome);
 
   if (state.mode === "select") {
     return cleanTicker(state.ticker).length > 0 || state.selectedAsset !== null;
@@ -242,12 +239,6 @@ export function canProceed(state: InvestmentWizardState): boolean {
       if (isTotalValue) {
         return state.priceCents > 0 || state.totalCents > 0;
       }
-      const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-      const isTotalValueCheck = !state.isCash && isFixedIncome && (!isTesouro || state.pricingMode === "total_value" || !state.pricingMode);
-
-      if (isTotalValueCheck) {
-        return state.priceCents > 0 || state.totalCents > 0;
-      }
       return parsedQty > 0 && price > 0;
     }
     if (state.step === 3) {
@@ -291,7 +282,7 @@ export function calculateInvestmentPreview(
   const pricingMode = getAssetPricingMode(
     state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
   );
-  const isTotalValue = !state.isCash && (pricingMode === "total_value" || (isFixedIncome && (!isTesouro || state.pricingMode === "total_value")));
+  const isTotalValue = !state.isCash && (pricingMode === "total_value" || isFixedIncome);
 
   if (state.isCash) {
     const amount = inputTotal > 0 ? inputTotal : parsedQty;

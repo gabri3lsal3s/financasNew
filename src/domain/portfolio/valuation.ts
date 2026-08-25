@@ -176,13 +176,6 @@ export function getAssetPricingMode(asset: {
   if (isCashAssetClass(asset.asset_class)) {
     return "cash";
   }
-  const notes = asset.notes ?? "";
-  if (notes.includes("[PRICING:UNIT]")) {
-    return "unit_price";
-  }
-  if (notes.includes("[PRICING:TOTAL]")) {
-    return "total_value";
-  }
   if (isFixedIncomeClass(asset.asset_class) || isTesouroAsset(asset.ticker, asset.asset_class)) {
     return "total_value";
   }
@@ -365,7 +358,7 @@ export function calculatePositionSummary(params: {
   if (effectivePricingMode === "total_value") {
     // Modo Valor Completo (Renda Fixa / Tesouro Direto):
     const initialCost =
-      quantity > 1 && averagePrice > 0
+      quantity > 0 && quantity !== 1 && averagePrice > 0
         ? Math.round(quantity * averagePrice * 100) / 100
         : averagePrice > 0 && averagePrice !== 1
           ? averagePrice
