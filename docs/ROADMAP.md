@@ -3345,11 +3345,11 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 67):**
-- [ ] Primitivo `Badge` expõe e implementa `size="xs" | "sm" | "md"` com 100% de adoção nas telas.
-- [ ] `EmptyState` usa tom neutro calmo por padrão em todas as páginas vazias.
-- [ ] Barras de progresso com 3 escalas padronizadas e trilha de fundo homogênea.
-- [ ] Ações inline e micro-botões sem divergências de altura (`h-7` / `size-7`).
-- [ ] Suíte de testes, typecheck e lint 100% verdes.
+- [x] Primitivo `Badge` expõe e implementa `size="xs" | "sm" | "md"` com 100% de adoção nas telas.
+- [x] `EmptyState` usa tom neutro calmo por padrão em todas as páginas vazias.
+- [x] Barras de progresso com 3 escalas padronizadas e trilha de fundo homogênea.
+- [x] Ações inline e micro-botões sem divergências de altura (`h-7` / `size-7`).
+- [x] Suíte de testes, typecheck e lint 100% verdes.
 
 ---
 
@@ -3481,6 +3481,51 @@ flowchart TD
 - [ ] Modo `reduced` zera durações de animações em todo o CSS e JS.
 - [ ] Testes unitários de `NumberTicker` cobrindo todos os cenários de preferência.
 - [ ] Suíte de testes, typecheck e lint 100% verdes.
+
+---
+
+### 🧹 FASE 71 — Descontinuação da Densidade Manual, Densidade Universal Equilibrada & Purga de Código Legado
+
+> **Objetivo:** Descontinuar a preferência manual redundante de "Densidade da Interface" nas Configurações, adotar o padrão canônico universal e equilibrado em todas as listas/tabelas e purgar código morto, hooks e chaves de storage associadas.
+
+#### 1. Fase 71.1: Purga da Interface de Configurações (`AppearanceTab`)
+- **Remoção do Card Redundante:**
+  - Remover o card *"Densidade da Interface"* e o switch *Confortável vs Compacto* de `src/features/settings/components/tabs/appearance-tab.tsx`;
+  - Limpeza de imports, estados e handlers de densidade na página de configurações;
+  - Despoluição visual da aba Aparência, mantendo o foco exclusivo em Temas, Cores de Destaque, Superfícies, Animações e Privacidade.
+
+---
+
+#### 2. Fase 71.2: Adoção do Padrão Canônico Universal nas Listas e Tabelas
+- **Padronização Visual Balanceada:**
+  - `TransactionRow` (`src/components/modules/transaction-row.tsx`): Fixação no padding canônico responsivo (`py-2.5 sm:py-2 px-2`), garantindo área útil de toque de $48\text{px}$ no mobile (WCAG AA) e nitidez compacta no desktop sem depender de preferência externa;
+  - `PositionTable` (`src/components/modules/position-table.tsx`): Fixação no padding canônico equilibrado de tabela de custódia (`py-2.5 sm:py-2`).
+
+---
+
+#### 3. Fase 71.3: Purga do Hook, Storage e Estado Legado
+- **Limpeza Arquitetural no Código:**
+  - Exclusão dos arquivos `src/hooks/use-density.ts` e `src/hooks/use-density.test.ts`;
+  - Limpeza de exports no barrel `src/hooks/index.ts`;
+  - Remoção da chave `density` em `src/services/user-storage.ts`, `src/services/auth-cleanup.ts` e na mutação de configurações `useUpdateCustomSettings`.
+
+---
+
+#### 4. Fase 71.4: Atualização de Documentação e Testes
+- **Atualização do `docs/DESIGN_SYSTEM.md`:** Seção §4 e §14.4 atualizadas para consolidar o modelo de Densidade Universal Equilibrada de fábrica;
+- **Suíte de Testes:**
+  - Testes unitários de `TransactionRow`, `PositionTable` e `AppearanceTab` atualizados e verdes;
+  - Typecheck (`tsc --noEmit`) e ESLint 100% limpos.
+
+---
+
+**✅ DoD (Definition of Done da Fase 71):**
+- [ ] Card de densidade removido de `AppearanceTab`.
+- [ ] `TransactionRow` e `PositionTable` utilizam padding canônico universal responsivo.
+- [ ] Arquivos `use-density.ts` e `use-density.test.ts` purgados do repositório.
+- [ ] Chave de storage `density` e listeners síncronos removidos do ciclo de vida.
+- [ ] Suíte de testes, typecheck e lint 100% verdes.
+
 
 
 

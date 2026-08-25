@@ -67,7 +67,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
               </h3>
               <Badge
                 variant={isCritical ? "critical" : "warning"}
-                className="text-[10px] py-0 px-1.5 font-medium"
+                size="xs"
               >
                 Déficit de <MoneyText cents={result.maxDeficitCents} tone="default" className="text-[10px] font-semibold" />
               </Badge>

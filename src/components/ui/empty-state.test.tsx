@@ -17,21 +17,21 @@ describe("EmptyState (F12 — polimento)", () => {
     expect(screen.getByRole("button", { name: "Criar" })).toBeInTheDocument();
   });
 
-  it("aplica o tom da marca (primary) por padrão no ícone — sem fundo", () => {
+  it("aplica o tom neutro suave (default) por padrão no ícone — sem fundo", () => {
     const { container } = render(<EmptyState {...base} />);
     const icon = container.querySelector("div.size-12");
-    expect(icon).toHaveClass("text-primary-strong");
+    expect(icon).toHaveClass("text-muted-foreground");
     expect(icon).not.toHaveClass("bg-primary/10", "bg-muted");
   });
 
-  it("aplica o tom semântico informado (negative) e o neutro (default)", () => {
+  it("aplica o tom semântico informado (negative, primary, positive)", () => {
     const { container, rerender } = render(<EmptyState {...base} tone="negative" />);
     let icon = container.querySelector("div.size-12");
     expect(icon).toHaveClass("text-negative-strong");
 
-    rerender(<EmptyState {...base} tone="default" />);
+    rerender(<EmptyState {...base} tone="primary" />);
     icon = container.querySelector("div.size-12");
-    expect(icon).toHaveClass("text-muted-foreground");
+    expect(icon).toHaveClass("text-primary-strong");
     expect(icon).not.toHaveClass("bg-muted");
   });
 

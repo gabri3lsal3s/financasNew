@@ -385,10 +385,10 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Componente:** `src/components/modules/transaction-row.tsx`.
 - **Mecânica:** As linhas de transação utilizam o modelo de interação integral direta por clique/toque (Whole-Element Interaction). Clicar na linha abre o diálogo de detalhes/edição com disparo sensorial suave (`sensory.selection()`). Ações destrutivas (exclusão) são concentradas com segurança dentro dos diálogos de detalhes com confirmação explícita (`ConfirmDialog`), eliminando estados ocultos e colisões de gestos.
 
-### 14.4 Controle de Densidade (Compacto vs. Confortável)
-- **Confortável (Padrão):** Linhas com altura de 48px a 52px (py 12px), ideal para uso tátil mobile.
-- **Compacto:** Linhas com altura de 38px a 40px (py 8px), ideal para visualização densa de múltiplas linhas no desktop.
-- **Persistência:** Gravado na preferência do usuário (`user_preferences` / `localStorage`).
+### 14.4 Densidade Universal Equilibrada & Responsiva de Fábrica
+- **Padrão Oficial:** O aplicativo adota a densidade universal calibrada de fábrica, eliminando a necessidade de configuração manual e garantindo perfeita ergonomia de toque e leitura em qualquer dispositivo.
+- **Mobile (< 640px):** Altura confortável de 48px a 52px (`py-2.5`), garantindo área útil de toque seguro com o polegar (WCAG AA).
+- **Desktop (≥ 640px):** Altura analítica compacta de 40px a 44px (`py-2`), permitindo visualizar 50% a 70% mais linhas na tela de extrato e custódia sem rolagem excessiva.
 
 ### 14.5 Modo Privacidade / Ocultar Valores ("Privacy Masking")
 - **Componente:** `src/components/layout/privacy-toggle.tsx` + hook `usePrivacyMask`.

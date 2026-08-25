@@ -60,7 +60,7 @@ export function AllocationDriftCard({ analysis, className, onSimulateAporte }: A
               </h3>
               <Badge
                 variant={isBalanced ? "positive" : "warning"}
-                className="text-[10px] py-0 px-1.5 font-medium"
+                size="xs"
               >
                 {isBalanced ? "Em conformidade" : `${underweightItems.length + overweightItems.length} desvios`}
               </Badge>

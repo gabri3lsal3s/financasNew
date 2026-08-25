@@ -8,7 +8,9 @@ export interface ProgressProps extends HTMLAttributes<HTMLDivElement> {
    * "auto" aplica as faixas do DESIGN_SYSTEM §2.3:
    * >= 85% critical · >= 70% warning · senão positive.
    */
-  tone?: "auto" | "positive" | "warning" | "critical";
+  tone?: "auto" | "positive" | "warning" | "critical" | "portfolio";
+  /** Escala dimensional de altura (sm: 4px, md: 6px, lg: 10px). */
+  size?: "sm" | "md" | "lg";
 }
 
 const toneBg: Record<NonNullable<ProgressProps["tone"]>, string> = {
@@ -16,6 +18,13 @@ const toneBg: Record<NonNullable<ProgressProps["tone"]>, string> = {
   positive: "bg-positive",
   warning: "bg-warning",
   critical: "bg-critical",
+  portfolio: "bg-portfolio",
+};
+
+const sizeClasses: Record<NonNullable<ProgressProps["size"]>, string> = {
+  sm: "h-1",
+  md: "h-1.5",
+  lg: "h-2.5",
 };
 
 function autoTone(value: number): "positive" | "warning" | "critical" {
@@ -24,7 +33,7 @@ function autoTone(value: number): "positive" | "warning" | "critical" {
   return "positive";
 }
 
-export function Progress({ value, tone = "auto", className, ...props }: ProgressProps) {
+export function Progress({ value, tone = "auto", size = "md", className, ...props }: ProgressProps) {
   const clamped = Math.min(100, Math.max(0, value));
   const resolved = tone === "auto" ? autoTone(clamped) : tone;
   return (
@@ -33,7 +42,7 @@ export function Progress({ value, tone = "auto", className, ...props }: Progress
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={clamped}
-      className={cn("h-2 w-full overflow-hidden rounded-full bg-muted", className)}
+      className={cn("w-full overflow-hidden rounded-full bg-surface-hover/80 dark:bg-muted/70", sizeClasses[size], className)}
       {...props}
     >
       <div

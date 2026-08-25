@@ -31,7 +31,7 @@ const toneIcon: Record<NonNullable<EmptyStateProps["tone"]>, string> = {
   portfolio: "text-portfolio",
 };
 
-export function EmptyState({ icon, title, description, action, className, tone = "primary", headingLevel = "h3" }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, className, tone = "default", headingLevel = "h3" }: EmptyStateProps) {
   return (
     <div
       className={cn(

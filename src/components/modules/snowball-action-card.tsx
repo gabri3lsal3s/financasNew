@@ -44,7 +44,7 @@ export function SnowballActionCard({
             Efeito Bola de Neve em Ação
           </h3>
         </div>
-        <Badge variant="portfolio" className="text-[10px] py-0 px-2 font-medium">
+        <Badge variant="portfolio" size="xs">
           {opportunities.length} {opportunities.length === 1 ? "ativo" : "ativos"}
         </Badge>
       </div>
@@ -64,7 +64,7 @@ export function SnowballActionCard({
                 <span className="font-mono text-sm font-bold text-foreground">
                   {opp.ticker}
                 </span>
-                <Badge variant="muted" className="text-[10px] py-0 px-1.5 font-normal">
+                <Badge variant="muted" size="xs">
                   +{opp.purchasableShares} {opp.purchasableShares === 1 ? "cota" : "cotas"}
                 </Badge>
               </div>

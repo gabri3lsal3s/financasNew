@@ -702,7 +702,7 @@ export function AporteResult({
                     title={asset.detail}
                   >
                     <span className="font-mono font-medium text-foreground">{asset.ticker}</span>
-                    <Badge variant={config.variant} className="text-[10px] px-1.5 py-0">
+                    <Badge variant={config.variant} size="xs">
                       {config.label}
                     </Badge>
                   </div>
