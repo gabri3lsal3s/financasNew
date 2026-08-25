@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { getVisualCustomization } from "@/hooks/use-visual-customization";
+import { useVisualCustomization } from "@/hooks/use-visual-customization";
 
 export interface NumberTickerProps {
   /** Valor numérico alvo (centavos, percentuais, …). */
@@ -20,8 +20,8 @@ function prefersReducedMotion(): boolean {
  * NumberTicker (F8 — Decisão 1): transição animada de valores (KPIs) ao trocar
  * mês/filtro. Interpolação suave (~300ms, ease-out cubic) via
  * requestAnimationFrame, mantendo `.num` (mono + tabular). Com
- * `prefers-reduced-motion` o valor é renderizado diretamente (sem setState
- * síncrono em effect — compatível com o lint React Compiler).
+ * `prefers-reduced-motion` ou `motionLevel: "reduced"` o valor é renderizado
+ * diretamente sem disparar animações desnecessárias.
  */
 export function NumberTicker({
   value,
@@ -31,10 +31,10 @@ export function NumberTicker({
 }: NumberTickerProps) {
   const [display, setDisplay] = useState(value);
   const displayRef = useRef(value);
-  // F11: o toggle "Contagem Numérica Animada" (numberTickerEnabled) desliga a
-  // interpolação — o valor é renderizado direto, como no prefers-reduced-motion.
-  const tickerEnabled = getVisualCustomization().numberTickerEnabled;
-  const reduceMotion = prefersReducedMotion() || !tickerEnabled;
+  const visual = useVisualCustomization();
+  const tickerEnabled = visual.numberTickerEnabled;
+  const isReducedMotionLevel = visual.motionLevel === "reduced";
+  const reduceMotion = prefersReducedMotion() || !tickerEnabled || isReducedMotionLevel;
 
   useEffect(() => {
     const from = displayRef.current;

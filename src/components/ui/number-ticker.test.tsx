@@ -53,4 +53,13 @@ describe("NumberTicker (F8 — Decisão 1)", () => {
     // Sem interpolação: o valor final aparece imediatamente.
     expect(screen.getByText("200")).toBeInTheDocument();
   });
+
+  it("desliga a animação quando motionLevel é reduced (F70)", async () => {
+    updateVisualCustomization({ motionLevel: "reduced" });
+    const { rerender } = render(<NumberTicker value={100} />);
+
+    rerender(<NumberTicker value={200} />);
+    await waitFrames(60);
+    expect(screen.getByText("200")).toBeInTheDocument();
+  });
 });

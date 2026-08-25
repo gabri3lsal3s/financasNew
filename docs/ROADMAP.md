@@ -3476,11 +3476,11 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 70):**
-- [ ] `NumberTicker` não executa `requestAnimationFrame` quando `motionLevel = "reduced"` ou `numberTickerEnabled = false`.
-- [ ] Modo `eco` desativa 100% dos efeitos contínuos de GPU sem quebrar layouts.
-- [ ] Modo `reduced` zera durações de animações em todo o CSS e JS.
-- [ ] Testes unitários de `NumberTicker` cobrindo todos os cenários de preferência.
-- [ ] Suíte de testes, typecheck e lint 100% verdes.
+- [x] `NumberTicker` não executa `requestAnimationFrame` quando `motionLevel = "reduced"` ou `numberTickerEnabled = false`.
+- [x] Modo `eco` desativa 100% dos efeitos contínuos de GPU sem quebrar layouts.
+- [x] Modo `reduced` zera durações de animações em todo o CSS e JS.
+- [x] Testes unitários de `NumberTicker` cobrindo todos os cenários de preferência.
+- [x] Suíte de testes, typecheck e lint 100% verdes.
 
 ---
 
