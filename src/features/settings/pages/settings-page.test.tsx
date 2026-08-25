@@ -114,21 +114,23 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     });
   });
 
-  it("renderiza o cabeçalho e as 3 abas consolidadas", () => {
+  it("renderiza o cabeçalho e as sub-abas modulares", () => {
     renderSettings();
 
     expect(screen.getByRole("heading", { level: 1, name: "Configurações" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Interface" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Sensorial" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Widgets" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Lembretes" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Dados" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Segurança & 2FA" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Segurança" })).toBeInTheDocument();
   });
 
-  it("permite acessar a aba de Segurança & 2FA e visualizar status de proteção", async () => {
+  it("permite acessar a aba de Segurança e visualizar status de proteção", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const securityTab = screen.getByRole("tab", { name: /Segurança & 2FA/i });
+    const securityTab = screen.getByRole("tab", { name: "Segurança" });
     await user.click(securityTab);
 
     expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
@@ -147,12 +149,12 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("permite acessar a aba de Interface e interagir com as configurações de lembretes", async () => {
+  it("permite acessar a aba de Lembretes e interagir com as configurações", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const interfaceTab = screen.getByRole("tab", { name: /Interface/i });
-    await user.click(interfaceTab);
+    const remindersTab = screen.getByRole("tab", { name: "Lembretes" });
+    await user.click(remindersTab);
 
     expect(screen.getByText("Lembretes & Notificações Automáticas")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Faturas de Cartão")).toBeInTheDocument();
@@ -170,8 +172,8 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const interfaceTab = screen.getByRole("tab", { name: /Interface/i });
-    await user.click(interfaceTab);
+    const widgetsTab = screen.getByRole("tab", { name: "Widgets" });
+    await user.click(widgetsTab);
 
     expect(screen.getByText("Widgets Visíveis na Visão Geral")).toBeInTheDocument();
     expect(screen.getByText("Banners Contextuais de Atenção & Ritmo")).toBeInTheDocument();
@@ -185,3 +187,4 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     });
   });
 });
+

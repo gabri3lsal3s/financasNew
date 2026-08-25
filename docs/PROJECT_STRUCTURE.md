@@ -74,22 +74,18 @@
     │
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button (+ button-variants), input,
-    │   │   │                      #   card, badge, modal, tabs, skeleton, empty-state,
-    │   │   │                      #   virtual-list (F5.5), toast, toast-host (F30),
-    │   │   │                      #   print-sheet (F22 evolução — portal de impressão),
-    │   │   │                      #   number-ticker, sparkline (F8), color-picker,
-    │   │   │                      #   icon-picker (pós-F10), live-pulse-beacon (F11),
-    │   │   │                      #   tooltip (F25 — primitivo acessível, CSS puro),
-    │   │   │                      #   popover (v1.62 — Radix Popover com tema/blur),
-    │   │   │                      #   number-stepper-input (pós-F25),
-    │   │   │                      #   error-state (v1.25 — Alert + "Tentar novamente")…
+    │   │   │                      #   card, badge, modal, responsive-dialog (F55 — drawer mobile + modal desktop),
+    │   │   │                      #   tabs, skeleton, empty-state, virtual-list (F5.5), toast, toast-host (F30),
+    │   │   │                      #   print-sheet, number-ticker, sparkline (F8), color-picker,
+    │   │   │                      #   icon-picker, live-pulse-beacon (F11), tooltip (F25), popover,
+    │   │   │                      #   number-stepper-input, error-state (v1.25 — Alert + "Tentar novamente")…
     │   │   └── index.ts
-    │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card,
+    │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: stat-card (F56 — auto-fit 7+ dígitos),
+    │   │   │                      #   kpi-card, portfolio/ (position-types, position-table-header, subcomponentes F57),
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, onboarding-card, pwa-update-toast,
-    │   │   │                      #   notifications-popover (v1.62 — resumo rápido de lembretes no header),
-    │   │   │                      #   install-app-button (F5.6),
+    │   │   │                      #   notifications-popover, install-app-button,
     │   │   │                      #   category-donut, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   credit-card-3d + credit-card-wallet (F13),
@@ -101,7 +97,9 @@
     │   │   │                      #   cash-kpi-card (card do saldo em Caixa com ações de Editar/Excluir embutidas)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
+    │       │                      #   more-menu-sheet (F56 — bottom sheet móvel),
     │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10), logo-profile-button,
+
     │       │                      #   privacy-toggle (F8), theme-toggle, calculator-button,
     │       │                      #   notifications-button (v1.62 — sininho com badge dinâmico no header),
     │       │                      #   global-search (busca no header), loading-screen (F10/F23 — tela de carregamento oficial e dinâmica)
