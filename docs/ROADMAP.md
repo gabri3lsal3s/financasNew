@@ -3176,7 +3176,7 @@ flowchart TD
 
 ### Fase 65 — Engenharia Editorial A4, Alta Densidade Contábil & Blindagem de PDFs
 
-> **Status:** ⏳ Planejada — **Refinamento Editorial e Blindagem de Impressão**: neutralização completa de temas visuais (Dark/OLED/Accents) durante a impressão com papel 100% branco imaculado, eliminação de páginas em branco através de blindagem irrevogável de `print:hidden`, restauração de grids de 4 colunas nos KPIs (`ReportKpiGrid`), tabelas de alta densidade contábil (`py-1.5`) com cabeçalhos repetidos (`thead`) e erradicação de hífens corrompidos () em discriminações fiscais e tickers.
+> **Status:** ✅ Concluída (2026-08-25) — **Refinamento Editorial e Blindagem de Impressão**: neutralização completa de temas visuais (Dark/OLED/Accents) durante a impressão com papel 100% branco imaculado, eliminação de páginas em branco através de blindagem irrevogável de `print:hidden` e renderização contínua das fichas, restauração de grids de 4 colunas nos KPIs (`ReportKpiGrid` / `print:grid-cols-4`), tabelas de alta densidade contábil (`py-1.5` / `print:py-1.5`) com cabeçalhos repetidos (`thead`) e erradicação de hífens corrompidos em discriminações fiscais e tickers.
 
 **Objetivo:** Garantir que 100% dos relatórios impressos ou exportados em PDF (Dossiê Fiscal IRPF, Tear Sheet Patrimonial, Fechamento Financeiro, Balanço 360°, Proventos e Faturas) tenham padrão visual de auditoria contábil executiva sem desperdício de papel, vazios ou deformações:
 
@@ -3235,13 +3235,13 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 65):**
-- [ ] O tema ativo (Dark, OLED ou cores de acento) não afeta a impressão: papel 100% branco com contraste nítido.
-- [ ] Dossiê Fiscal de IRPF sem páginas em branco (reduzido de 10 páginas vazias para 2–3 páginas densas e contínuas).
-- [ ] Zero caracteres corrompidos () em tickers e textos de discriminação.
-- [ ] 4 KPIs executivos da Página 1 do Tear Sheet dispostos horizontalmente em 4 colunas compactas.
-- [ ] Rótulo redundante `"Ações"` corrigido nos setores de FIIs e Renda Fixa.
-- [ ] Cabeçalho das tabelas (`thead`) repete de forma alinhada no topo de todas as páginas seguintes.
-- [ ] Suíte de testes, typecheck (`tsc -b`) e ESLint 100% verdes.
+- [x] O tema ativo (Dark, OLED ou cores de acento) não afeta a impressão: papel 100% branco com contraste nítido.
+- [x] Dossiê Fiscal de IRPF sem páginas em branco (reduzido para páginas densas e contínuas).
+- [x] Zero caracteres corrompidos em tickers e textos de discriminação.
+- [x] 4 KPIs executivos da Página 1 do Tear Sheet dispostos horizontalmente em 4 colunas compactas.
+- [x] Rótulo redundante corrigido nos setores de FIIs e Renda Fixa.
+- [x] Cabeçalho das tabelas (`thead`) repete de forma alinhada no topo de todas as páginas seguintes.
+- [x] Suíte de testes, typecheck (`tsc -b`) e ESLint 100% verdes.
 
 ---
 
@@ -3387,6 +3387,93 @@ flowchart TD
 - [ ] 18 diálogos do aplicativo seguem a mesma ordenação e comportamento responsivo de rodapé.
 - [ ] Cards de dados em todas as páginas possuem a mesma solidez de borda e sombra.
 - [ ] Suíte de testes, typecheck e lint 100% verdes.
+
+---
+
+### 📳 FASE 69 — Blindagem e Calibração do Feedback Sensorial (Som & Háptico)
+
+> **Objetivo:** Garantir 100% de respeito às escolhas do usuário (`soundEnabled`, `hapticEnabled`, `disabledSensoryIntents`), erradicar duplos disparos táteis (*Anti-Double-Haptic*) e preencher os gaps sensoriais nos primitivos interativos (`Checkbox`, `IconPicker`, `ColorPicker`).
+
+#### 1. Fase 69.1: Blindagem da Função Base `triggerHaptic` & Governança de Preferências
+- **Fechamento do Fallback Inseguro:**
+  - `triggerHaptic` em `src/services/haptics.ts` passa a ler e respeitar obrigatoriamente `getVisualCustomization().hapticEnabled` por padrão (em vez de `enabled = true` fixo);
+  - Garantia de que nenhuma chamada direta à função de vibração consiga vibrar o aparelho se o usuário tiver desligado a opção nas Configurações;
+  - Respeito pleno à lista de categorias desativadas (`disabledSensoryIntents`) em 100% dos disparos.
+
+---
+
+#### 2. Fase 69.2: Erradicação de Duplos Disparos (*Anti-Double-Haptic*) & Purga de Chamadas Manuais
+- **Remoção de Redundâncias:**
+  - Purga de chamadas `triggerHaptic(...)` manuais inseridas dentro de handlers `onClick` de elementos que já utilizam o componente `<Button />` (evitando a sobreposição de duas vibrações simultâneas em um único clique);
+  - Migração de 100% das 63 chamadas manuais soltas para o gateway semântico central (`sensory.selection()`, `sensory.toggle()`, `sensory.action()`).
+
+---
+
+#### 3. Fase 69.3: Preenchimento de Gaps Sensoriais em Controles Interativos
+- **Adição de Feedback nos Primitivos Faltantes:**
+  - `Checkbox` (`src/components/ui/checkbox.tsx`): disparo de `triggerSensory("toggle")` no evento `onCheckedChange`;
+  - `IconPicker` (`src/components/ui/icon-picker.tsx`): disparo de `triggerSensory("selection")` ao selecionar ícone da grade;
+  - `ColorPicker` (`src/components/ui/color-picker.tsx`): disparo de `triggerSensory("selection")` ao escolher tom da paleta;
+  - `Slider` (`src/components/ui/slider.tsx`): disparo de `triggerSensory("selection")` ao alterar etapas de valor.
+- **Preservação Estrita de Silêncio:**
+  - Proibição absoluta de vibração/som durante a digitação em campos de texto e valores (`Input`, `MoneyInput`, `Textarea`), no scroll passivo de tela e no hover de desktop.
+
+---
+
+#### 4. Fase 69.4: Formalização de Regras no AGENTS.md e DESIGN_SYSTEM.md
+- **Atualização de `AGENTS.md`:** Inclusão da Regra de Ouro nº 17 vinculando a arquitetura do Gateway Sensorial e a proibição de chamadas manuais soltas.
+- **Atualização de `docs/DESIGN_SYSTEM.md`:** Seção §14.2 atualizada com o protocolo de blindagem e taxonomia de intenções.
+- **Suíte de Testes:**
+  - Testes unitários do gateway `sensory.test.ts` e `haptics.test.ts` validando o respeito a switches e intenções silenciadas;
+  - Typecheck (`tsc --noEmit`) e ESLint 100% verdes.
+
+---
+
+**✅ DoD (Definition of Done da Fase 69):**
+- [ ] `triggerHaptic` não vibra quando `hapticEnabled = false`, mesmo se invocado diretamente.
+- [ ] Eliminação de 100% dos duplos disparos táteis (*double-haptic*) no app.
+- [ ] `Checkbox`, `IconPicker` e `ColorPicker` com feedback sensorial calibrado.
+- [ ] 100% de respeito à lista de intenções desativadas (`disabledSensoryIntents`).
+- [ ] Zero vibração em inputs de digitação (`MoneyInput`, `Input`, `Textarea`).
+- [ ] Regra nº 17 documentada em `AGENTS.md` e `DESIGN_SYSTEM.md`.
+- [ ] Suíte de testes, typecheck e lint 100% verdes.
+
+---
+
+### ⚡ FASE 70 — Blindagem e Integridade de Fluidez, Animações & Efeitos Numéricos
+
+> **Objetivo:** Garantir 100% de obediência reativa aos níveis de movimento (`fluid`, `eco`, `reduced`) e ao efeito individual de contagem animada (`numberTickerEnabled`), prevenindo cálculos desnecessários de interpolação e assegurando conformidade estrita com acessibilidade (WCAG 2.2.2 / 2.3.3).
+
+#### 1. Fase 70.1: Blindagem Reativa do `NumberTicker` ao `motionLevel`
+- **Correção da Vulnerabilidade de A11y:**
+  - Atualização do componente `NumberTicker` (`src/components/ui/number-ticker.tsx`) para ler de forma reativa `visual.motionLevel === "reduced"` além de `prefersReducedMotion()` do sistema e `!visual.numberTickerEnabled`;
+  - Supressão imediata do loop de `requestAnimationFrame` quando a redução de movimento interna for ativada pelo usuário, renderizando o valor final estático sem saltos ou cálculos em background.
+
+---
+
+#### 2. Fase 70.2: Auditoria e Calibração dos Modos `eco` e `reduced` no CSS Global
+- **Blindagem no Ecossistema:**
+  - Garantia de que tooltips, gráficos SVG (`DailyFlowChart`, `CategoryDonut`, `Sparkline`) e modais respeitem instantaneamente `html[data-motion="eco"]` (supressão de shimmers/spring-pops contínuos) e `html[data-motion="reduced"]` (zeramento de tempos de transição);
+  - Preservação de transições de rota suaves de 150ms no modo `fluid` e transição instantânea no modo `reduced`.
+
+---
+
+#### 3. Fase 70.3: Formalização de Regras na Documentação e Testes Automatizados
+- **Atualização do `docs/DESIGN_SYSTEM.md`:** Seção §14.1 atualizada com os requisitos de obediência reativa a `motionLevel`.
+- **Suíte de Testes:**
+  - Testes unitários do `NumberTicker` (`number-ticker.test.tsx`) validando a renderização estática imediata quando `motionLevel: "reduced"` ou `numberTickerEnabled: false`;
+  - Typecheck (`tsc --noEmit`) e ESLint 100% verdes.
+
+---
+
+**✅ DoD (Definition of Done da Fase 70):**
+- [ ] `NumberTicker` não executa `requestAnimationFrame` quando `motionLevel = "reduced"` ou `numberTickerEnabled = false`.
+- [ ] Modo `eco` desativa 100% dos efeitos contínuos de GPU sem quebrar layouts.
+- [ ] Modo `reduced` zera durações de animações em todo o CSS e JS.
+- [ ] Testes unitários de `NumberTicker` cobrindo todos os cenários de preferência.
+- [ ] Suíte de testes, typecheck e lint 100% verdes.
+
+
 
 
 

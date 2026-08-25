@@ -579,11 +579,16 @@
     opacity: 0 !important;
   }
 
-  /* Paleta clara fixa — sobrepõe QUALQUER tema/accento/surface-style ativo */
+  /* Paleta clara fixa — sobrepõe QUALQUER tema/acento/surface-style ativo */
   :root,
-  html[data-theme="light"],
-  html[data-theme="dark"],
-  html[data-theme="oled"] {
+  html,
+  body,
+  html[data-theme],
+  html[data-accent],
+  html[data-surface-style] {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
     --background: 0 0% 100% !important;
     --surface: 0 0% 100% !important;
     --surface-hover: 200 22% 94% !important;
@@ -617,6 +622,7 @@
     visibility: visible !important;
     opacity: 1 !important;
     position: static !important;
+    background-color: #ffffff !important;
     background: #ffffff !important;
     color: #0f172a !important;
     padding: 0 !important;

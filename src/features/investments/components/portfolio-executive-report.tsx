@@ -90,39 +90,39 @@ export function PortfolioExecutiveReport({
         </header>
 
         {/* Grade de KPIs Principais */}
-        <section aria-label="Indicadores principais" className="grid grid-cols-2 gap-3 sm:grid-cols-4 break-inside-avoid">
-          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Patrimônio Total</span>
-            <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" className="text-base sm:text-lg font-bold" />
+        <section aria-label="Indicadores principais" className="grid grid-cols-2 gap-3 sm:grid-cols-4 print:grid-cols-4 print:gap-2 break-inside-avoid">
+          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 print:bg-white print:border-border print:p-2 shadow-2xs">
+            <span className="text-xs text-muted-foreground print:text-[10px]">Patrimônio Total</span>
+            <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" className="text-base sm:text-lg font-bold print:text-sm" />
           </div>
-          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Saldo em Caixa</span>
-            <MoneyText cents={numberToCents(cashBRL)} tone="default" className="text-base sm:text-lg font-bold" />
+          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 print:bg-white print:border-border print:p-2 shadow-2xs">
+            <span className="text-xs text-muted-foreground print:text-[10px]">Saldo em Caixa</span>
+            <MoneyText cents={numberToCents(cashBRL)} tone="default" className="text-base sm:text-lg font-bold print:text-sm" />
           </div>
-          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Proventos no Ano</span>
-            <MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="text-base sm:text-lg font-bold" />
+          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 print:bg-white print:border-border print:p-2 shadow-2xs">
+            <span className="text-xs text-muted-foreground print:text-[10px]">Proventos no Ano</span>
+            <MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="text-base sm:text-lg font-bold print:text-sm" />
           </div>
-          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Ativos sob Custódia</span>
-            <span className="num text-base sm:text-lg font-bold text-foreground">{investmentRows.length} ativos</span>
+          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 print:bg-white print:border-border print:p-2 shadow-2xs">
+            <span className="text-xs text-muted-foreground print:text-[10px]">Ativos sob Custódia</span>
+            <span className="num text-base sm:text-lg font-bold text-foreground print:text-sm">{investmentRows.length} ativos</span>
           </div>
         </section>
 
         {/* Distribuição por Classe e Setor */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 break-inside-avoid">
+        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-4 print:gap-3 break-inside-avoid">
           <section aria-label="Distribuição por Classe" className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
               <PieChart className="size-4 text-portfolio" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">Alocação por Classe</h3>
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider print:text-[11px]">Alocação por Classe</h3>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {classBreakdown.map((item) => (
-                <div key={item.cls} className="rounded-lg border border-border/60 p-2 flex flex-col gap-0.5 bg-surface">
-                  <span className="text-xs text-muted-foreground truncate">{item.cls}</span>
+                <div key={item.cls} className="rounded-lg border border-border/60 p-2 flex flex-col gap-0.5 bg-surface print:bg-white print:p-1.5 shadow-2xs">
+                  <span className="text-xs text-muted-foreground truncate print:text-[10px]">{item.cls}</span>
                   <div className="flex items-center justify-between gap-1 pt-0.5">
-                    <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground" />
-                    <span className="num text-[11px] font-semibold text-portfolio">{item.pct.toFixed(1)}%</span>
+                    <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground print:text-[11px]" />
+                    <span className="num text-[11px] font-semibold text-portfolio print:text-[10px]">{item.pct.toFixed(1)}%</span>
                   </div>
                 </div>
               ))}
@@ -132,15 +132,15 @@ export function PortfolioExecutiveReport({
           <section aria-label="Distribuição por Setor" className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
               <PieChart className="size-4 text-portfolio" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">Alocação por Setor</h3>
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider print:text-[11px]">Alocação por Setor</h3>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {sectorBreakdown.slice(0, 4).map((item) => (
-                <div key={item.sec} className="rounded-lg border border-border/60 p-2 flex flex-col gap-0.5 bg-surface">
-                  <span className="text-xs text-muted-foreground truncate">{item.sec}</span>
+                <div key={item.sec} className="rounded-lg border border-border/60 p-2 flex flex-col gap-0.5 bg-surface print:bg-white print:p-1.5 shadow-2xs">
+                  <span className="text-xs text-muted-foreground truncate print:text-[10px]">{item.sec}</span>
                   <div className="flex items-center justify-between gap-1 pt-0.5">
-                    <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground" />
-                    <span className="num text-[11px] font-semibold text-portfolio">{item.pct.toFixed(1)}%</span>
+                    <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground print:text-[11px]" />
+                    <span className="num text-[11px] font-semibold text-portfolio print:text-[10px]">{item.pct.toFixed(1)}%</span>
                   </div>
                 </div>
               ))}
@@ -153,51 +153,51 @@ export function PortfolioExecutiveReport({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="size-4 text-portfolio" aria-hidden="true" />
-              <h3 className="text-sm font-semibold text-foreground">Detalhamento das Posições em Carteira</h3>
+              <h3 className="text-sm font-semibold text-foreground print:text-xs">Detalhamento das Posições em Carteira</h3>
             </div>
-            <span className="text-xs text-muted-foreground">{investmentRows.length} ativos</span>
+            <span className="text-xs text-muted-foreground print:text-[10px]">{investmentRows.length} ativos</span>
           </div>
 
-          <div className="rounded-xl border border-border overflow-x-auto print:overflow-visible">
+          <div className="rounded-xl border border-border overflow-x-auto print:overflow-visible bg-surface print:bg-white">
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
-                <tr className="bg-surface-hover/60 border-b border-border text-muted-foreground">
-                  <th className="py-2.5 px-3 font-semibold print:w-[13%]">Ticker</th>
-                  <th className="py-2.5 px-3 font-semibold print:w-[12%]">Classe</th>
-                  <th className="py-2.5 px-3 font-semibold print:w-[14%]">Setor</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[8%]">Qtd</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[11%]">P. Médio</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[11%]">Cotação</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[13%]">Valor Atual</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[9%]">Rentab.</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[9%]">% Cart.</th>
+                <tr className="bg-surface-hover/60 border-b border-border text-muted-foreground print:bg-muted/30">
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold print:w-[13%]">Ticker</th>
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold print:w-[12%]">Classe</th>
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold print:w-[14%]">Setor</th>
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[8%]">Qtd</th>
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[11%]">P. Médio</th>
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[11%]">Cotação</th>
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[13%]">Valor Atual</th>
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[9%]">Rentab.</th>
+                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[9%]">% Cart.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {investmentRows.map((r) => {
                   const effectiveRentab = r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPct;
-                  const rentabLabel = effectiveRentab !== null ? formatSignedPct(effectiveRentab) : "—";
+                  const rentabLabel = effectiveRentab !== null ? formatSignedPct(effectiveRentab) : "-";
                   const rentabTone = effectiveRentab !== null && effectiveRentab >= 0 ? "text-positive-strong" : "text-negative-strong";
 
                   return (
                     <tr key={r.assetId} className="hover:bg-surface-hover/30 transition-colors">
-                      <td className="py-2.5 px-3 font-mono font-bold text-foreground truncate">{r.ticker}</td>
-                      <td className="py-2.5 px-3 text-muted-foreground truncate">{r.assetClass ?? "Geral"}</td>
-                      <td className="py-2.5 px-3 text-muted-foreground truncate">{r.sector ?? "Geral"}</td>
-                      <td className="py-2.5 px-3 text-right num">{formatQuantity(r.quantity)}</td>
-                      <td className="py-2.5 px-3 text-right">
+                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 font-mono font-bold text-foreground truncate">{r.ticker}</td>
+                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-muted-foreground truncate">{r.assetClass ?? "Geral"}</td>
+                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-muted-foreground truncate">{r.sector ?? "Geral"}</td>
+                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right num">{formatQuantity(r.quantity)}</td>
+                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right">
                         <MoneyText cents={numberToCents(r.averageCost)} currency={r.currency} tone="default" />
                       </td>
-                      <td className="py-2.5 px-3 text-right">
+                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right">
                         <MoneyText cents={numberToCents(r.priceQuote || r.priceBRL)} currency={r.currency} tone="default" />
                       </td>
-                      <td className="py-2.5 px-3 text-right font-semibold">
+                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right font-semibold">
                         <MoneyText cents={numberToCents(r.valueBRL)} tone="default" />
                       </td>
-                      <td className={`py-2.5 px-3 text-right num font-semibold ${rentabTone}`}>
+                      <td className={`py-2.5 px-3 print:py-1.5 print:px-2 text-right num font-semibold ${rentabTone}`}>
                         {rentabLabel}
                       </td>
-                      <td className="py-2.5 px-3 text-right num text-muted-foreground">
+                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right num text-muted-foreground">
                         {r.pct.toFixed(1)}%
                       </td>
                     </tr>

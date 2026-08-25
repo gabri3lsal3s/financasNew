@@ -434,13 +434,13 @@ export function WealthTearSheetModal({
           <table className="w-full text-left text-xs border-collapse print:table-fixed">
             <thead>
               <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium print:bg-slate-100">
-                <th className="py-2.5 px-3 print:w-[32%]">Ativo / Especificação</th>
-                <th className="py-2.5 px-3 text-right print:w-[8%]">Qtd</th>
-                <th className="py-2.5 px-3 text-right print:w-[15%]">Preço Médio</th>
-                <th className="py-2.5 px-3 text-right print:w-[15%]">Cotação</th>
-                <th className="py-2.5 px-3 text-right print:w-[16%]">Total (R$)</th>
-                <th className="py-2.5 px-3 text-right print:w-[8%]">PnL (%)</th>
-                <th className="py-2.5 px-3 text-right print:w-[6%]">YoC</th>
+                <th className="py-2.5 px-3 print:py-1.5 print:px-2 print:w-[32%]">Ativo / Especificação</th>
+                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[8%]">Qtd</th>
+                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[15%]">Preço Médio</th>
+                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[15%]">Cotação</th>
+                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[16%]">Total (R$)</th>
+                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[8%]">PnL (%)</th>
+                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[6%]">YoC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -448,20 +448,20 @@ export function WealthTearSheetModal({
                 <Fragment key={group.assetClass}>
                   {/* Subcabeçalho de Classe */}
                   <tr className="bg-muted/30 border-y border-border/70 print:bg-slate-50 break-inside-avoid">
-                    <td colSpan={4} className="py-1.5 px-3 font-bold text-foreground capitalize text-[11px]">
+                    <td colSpan={4} className="py-1.5 px-3 print:py-1 print:px-2 font-bold text-foreground capitalize text-[11px]">
                       {group.assetClass} ({group.items.length} ativos)
                     </td>
-                    <td className="py-1.5 px-3 text-right font-mono font-bold text-foreground whitespace-nowrap">
+                    <td className="py-1.5 px-3 print:py-1 print:px-2 text-right font-mono font-bold text-foreground whitespace-nowrap">
                       <MoneyText cents={numberToCents(group.subtotalBRL)} />
                     </td>
                     <td
-                      className={`py-1.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                      className={`py-1.5 px-3 print:py-1 print:px-2 text-right font-mono font-bold whitespace-nowrap ${
                         group.subtotalPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
                       }`}
                     >
                       {formatSignedPct(group.subtotalPnlPct)}
                     </td>
-                    <td className="py-1.5 px-3 text-right text-[10px] text-muted-foreground font-mono whitespace-nowrap">
+                    <td className="py-1.5 px-3 print:py-1 print:px-2 text-right text-[10px] text-muted-foreground font-mono whitespace-nowrap">
                       {group.pctOfTotal.toFixed(1)}%
                     </td>
                   </tr>
@@ -470,33 +470,33 @@ export function WealthTearSheetModal({
                     const displaySector = r.sector?.replace(/biticoin/i, "Bitcoin") ?? "Geral";
                     return (
                       <tr key={r.ticker} className="hover:bg-muted/20 break-inside-avoid">
-                        <td className="py-2 px-3">
+                        <td className="py-2 px-3 print:py-1.5 print:px-2">
                           <div className="flex flex-col leading-tight">
                             <span className="font-bold text-foreground text-xs">{r.ticker}</span>
                             <span className="text-[10px] text-muted-foreground truncate">
-                              {r.name ? `${r.name} • ` : ""}{displaySector}
+                              {r.name ? `${r.name} · ` : ""}{displaySector}
                             </span>
                           </div>
                         </td>
-                        <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">{formatQuantity(r.quantity)}</td>
-                        <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">
+                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">{formatQuantity(r.quantity)}</td>
+                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">
                           <MoneyText cents={numberToCents(r.averagePrice)} />
                         </td>
-                        <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">
+                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">
                           <MoneyText cents={numberToCents(r.currentPrice)} />
                         </td>
-                        <td className="py-2 px-3 text-right num font-mono font-medium text-foreground whitespace-nowrap">
+                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono font-medium text-foreground whitespace-nowrap">
                           <MoneyText cents={numberToCents(r.valueBRL)} />
                         </td>
                         <td
-                          className={`py-2 px-3 text-right num font-mono font-semibold whitespace-nowrap ${
+                          className={`py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono font-semibold whitespace-nowrap ${
                             r.unrealizedPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
                           }`}
                         >
                           {formatSignedPct(r.unrealizedPnlPct)}
                         </td>
-                        <td className="py-2 px-3 text-right num font-mono text-positive-strong font-medium whitespace-nowrap">
-                          {r.yocPct > 0 ? `${r.yocPct.toFixed(1)}%` : "—"}
+                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono text-positive-strong font-medium whitespace-nowrap">
+                          {r.yocPct > 0 ? `${r.yocPct.toFixed(1)}%` : "-"}
                         </td>
                       </tr>
                     );
