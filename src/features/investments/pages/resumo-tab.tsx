@@ -1,17 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
-  FileSpreadsheet,
-  Landmark,
   LineChart,
   PieChart,
   Plus,
-  Printer,
   RefreshCw,
   Shield,
-  Sparkles,
   TrendingUp,
-  Upload,
 } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonKpi } from "@/components/ui";
 import { CategoryDonut, CashKpiCard, KpiCard, PositionTable, AllocationDriftCard } from "@/components/modules";
@@ -24,7 +19,6 @@ import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import {
   useAllocationTargets,
-  useAllPortfolioTransactions,
   useDeletePortfolioAsset,
   usePortfolioAssets,
   usePortfolioDividends,
@@ -36,10 +30,6 @@ import {
   AssetEditDialog,
   CashFormDialog,
   ManualPriceDialog,
-  PortfolioDarfMonitor,
-  PortfolioExecutiveReport,
-  PortfolioImportDialog,
-  PortfolioTaxReport,
 } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
@@ -106,10 +96,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
 
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
-  const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
-  const [taxReportOpen, setTaxReportOpen] = useState(false);
-  const [darfMonitorOpen, setDarfMonitorOpen] = useState(false);
   const [allocationMode, setAllocationMode] = useState<"class" | "sector" | "asset">("class");
   const [priceFor, setPriceFor] = useState<{
     id: string;
@@ -121,17 +107,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     source: PriceSource;
     pricingMode?: string;
   } | null>(null);
-
-  const transactionsQuery = useAllPortfolioTransactions();
-  const assets = assetsQuery.data ?? [];
-  const dividends = dividendsQuery.data ?? [];
-  const transactions = transactionsQuery.data ?? [];
-
-  const currentYear = new Date().getFullYear();
-  const yearDividends = dividends
-    .filter((d) => d.date.startsWith(String(currentYear)))
-    .reduce((acc, d) => acc + d.amount, 0);
-
   const rows = position.rows;
   const investmentRows = rows.filter((r) => !r.isCash);
   const cashAsset = (assetsQuery.data ?? []).find(
@@ -386,9 +361,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               <Button type="button" size="sm" variant="outline" onClick={handleOpenCash}>
                 Cadastrar Saldo em Caixa
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-                Importar Carteira
-              </Button>
             </div>
           }
         />
@@ -584,61 +556,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         </>
       )}
 
-      {/* Seção Compacta: Ferramentas & Inteligência Fiscal da Carteira (Barra de Ações Rápidas) */}
-      <section
-        aria-label="Ferramentas da carteira"
-        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border/80 bg-surface/70 px-4 py-3.5 shadow-xs transition-all hover:border-border"
-      >
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Ferramentas & Inteligência da Carteira
-          </h2>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/relatorios?aba=investimentos")}
-            className="h-8 text-xs gap-1.5 shrink-0 font-medium text-portfolio hover:text-portfolio"
-          >
-            <Printer className="size-3.5" aria-hidden="true" />
-            <span>Central de Relatórios</span>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setImportOpen(true)}
-            className="h-8 text-xs gap-1.5 shrink-0"
-          >
-            <Upload className="size-3.5 text-portfolio" aria-hidden="true" />
-            <span>Importar Planilha</span>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setTaxReportOpen(true)}
-            className="h-8 text-xs gap-1.5 shrink-0"
-          >
-            <Landmark className="size-3.5 text-positive-strong" aria-hidden="true" />
-            <span>Fichas IRPF</span>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setDarfMonitorOpen(true)}
-            className="h-8 text-xs gap-1.5 shrink-0"
-          >
-            <FileSpreadsheet className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <span>Monitor DARF</span>
-          </Button>
-        </div>
-      </section>
 
       {/* Investment Wizard Unificado (quando renderizado standalone) */}
       {!onOpenWizard ? (
@@ -690,33 +607,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         />
       ) : null}
 
-      <PortfolioImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-      />
-
-      <PortfolioExecutiveReport
-        open={executiveReportOpen}
-        onOpenChange={setExecutiveReportOpen}
-        rows={position.rows}
-        totalBRL={position.totalBRL}
-        cashBRL={position.cashBRL}
-        yearDividendsBRL={yearDividends}
-      />
-
-      <PortfolioTaxReport
-        open={taxReportOpen}
-        onOpenChange={setTaxReportOpen}
-        assets={assets}
-        dividends={dividends}
-      />
-
-      <PortfolioDarfMonitor
-        open={darfMonitorOpen}
-        onOpenChange={setDarfMonitorOpen}
-        assets={assets}
-        transactions={transactions}
-      />
 
       {/* Confirmação de Exclusão */}
       <ConfirmDialog

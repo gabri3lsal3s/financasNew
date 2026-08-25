@@ -193,15 +193,6 @@ describe("ResumoTab", () => {
     expect(screen.getByRole("heading", { name: /Editar Saldo em Caixa/i })).toBeInTheDocument();
   });
 
-  it("renderiza a seção de ferramentas da carteira no rodapé com atalhos de importação, central de relatórios, IRPF e DARF", () => {
-    renderResumo();
-    expect(screen.getByText("Ferramentas & Inteligência da Carteira")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Central de Relatórios/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Importar Planilha/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Fichas IRPF/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Monitor DARF/i })).toBeInTheDocument();
-  });
-
 
   it("renderiza a seção de Evolução Histórica (Snapshots Mensais) com os meses da série", () => {
     renderResumo();

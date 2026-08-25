@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Calculator, Sparkles } from "lucide-react";
+import { Calculator, Sparkles, Upload } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
@@ -19,7 +19,7 @@ import {
   useGroupTargets,
   usePortfolioPosition,
 } from "@/state";
-import { ContributionsPanel } from "../components";
+import { ContributionsPanel, PortfolioImportDialog } from "../components";
 import { TargetsTab } from "./targets-tab";
 
 type AporteSubTab = "calculadora" | "metas" | "historico";
@@ -58,6 +58,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? sectorTargetsQuery.error;
   const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || sectorTargetsQuery.isLoading;
@@ -260,6 +261,33 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         confirmPending={isApplying}
         onConfirm={() => void handleExecuteBatch()}
       />
+
+      {/* Importação contextual — atualizar posição antes de aportar */}
+      {subTab === "calculadora" && (
+        <section
+          aria-label="Importar posição via planilha"
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border/80 bg-surface/70 px-4 py-3.5 shadow-xs transition-all hover:border-border"
+        >
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-xs font-semibold text-foreground">Posição desatualizada?</span>
+            <span className="text-xs text-muted-foreground">
+              Importe um arquivo .xlsx ou .csv para atualizar suas posições antes de simular o aporte.
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setImportOpen(true)}
+            className="h-8 text-xs gap-1.5 shrink-0 sm:flex-initial"
+          >
+            <Upload className="size-3.5 text-portfolio" aria-hidden="true" />
+            <span>Importar Planilha</span>
+          </Button>
+        </section>
+      )}
+
+      <PortfolioImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

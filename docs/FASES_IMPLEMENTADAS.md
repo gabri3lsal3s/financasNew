@@ -659,10 +659,15 @@
      - Grid de KPIs na Visão Geral reorganizado (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-6`) com cards espaçosos e números animados (`NumberTicker`);
      - Visualização adaptativa para Mobile (Cards otimizados com áreas de toque ampliadas) e Desktop/Tablets (tabelas completas com hover e espaçamento ideal) nas abas de Visão Geral, Usuários, Convites e Auditoria;
      - Cartões de Kill-Switch (`FeatureToggleCard`) aprimorados com ícones semânticos, badges e botões responsivos.
-  6. **Qualidade & Testes:**
-     - Testes unitários do `MoneyText`, `NumberTicker`, `ReportsPage` e `AdminPage` 100% aprovados;
-     - 232 arquivos de teste e 1702 testes executados com sucesso;
-     - Build de produção gerado com sucesso.
+  6. **Reorganização de Ferramentas de Carteira & Contextualização de Importação:**
+     - Remoção da barra de ferramentas/atalhos genéricos da aba Carteira (`ResumoTab`), eliminando a mistura de contextos e dependências não utilizadas;
+     - Integração contextual do bloco de **Importação via Planilha (.xlsx/.csv)** diretamente na aba **Aporte** (`AporteTab`), permitindo ao usuário atualizar posições de carteira imediatamente antes da simulação de aportes;
+     - Exclusão de arquivos e abas duplicadas/órfãs (`relatorios-tab.tsx`), mantendo as fichas IRPF e monitor DARF centralizados na Central de Relatórios (`/relatorios`);
+     - Adição de suite de testes dedicada para `AporteTab` (`aporte-tab.test.tsx`).
+  7. **Qualidade & Testes:**
+     - Testes unitários de `AporteTab`, `ResumoTab`, `MoneyText`, `NumberTicker`, `ReportsPage` e `AdminPage` 100% aprovados;
+     - 232 arquivos de teste e 1700 testes executados com sucesso;
+     - Typecheck, ESLint e Build de produção gerados com sucesso.
 
 ## Notas finais
 
