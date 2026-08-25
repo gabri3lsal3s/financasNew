@@ -26,10 +26,10 @@ export { ColorPicker } from "./color-picker";
 export type { ColorPickerProps } from "./color-picker";
 export { IconPicker } from "./icon-picker";
 export type { IconPickerProps, IconPickerOption } from "./icon-picker";
-export { Modal } from "./modal";
+export { Modal, ModalFooter } from "./modal";
 export { ResponsiveDialog } from "./responsive-dialog";
 export type { ResponsiveDialogProps } from "./responsive-dialog";
-export type { ModalProps, ModalSize } from "./modal";
+export type { ModalProps, ModalSize, ModalFooterProps } from "./modal";
 
 export { ConfirmDialog } from "./confirm-dialog";
 export type { ConfirmDialogProps } from "./confirm-dialog";

@@ -3389,13 +3389,13 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 68):**
-- [ ] Todos os formulários e campos possuem a mesma anatomia visual de label e helper text.
-- [ ] 18 diálogos do aplicativo seguem a mesma ordenação e comportamento responsivo de rodapé.
-- [ ] Token `--shadow-xs` controlado centralmente por `tokens.css` e `@theme inline`.
-- [ ] O modo "Minimalista Flat" zera 100% das sombras do app (incluindo `shadow-xs`).
-- [ ] O modo "Elevado 3D" amplia proporcionalmente a profundidade de todos os cards.
-- [ ] Cards de dados em todas as páginas possuem a mesma solidez de borda e sombra.
-- [ ] Suíte de testes, typecheck e lint 100% verdes.
+- [x] Todos os formulários e campos possuem a mesma anatomia visual de label e helper text.
+- [x] 18 diálogos do aplicativo seguem a mesma ordenação e comportamento responsivo de rodapé.
+- [x] Token `--shadow-xs` controlado centralmente por `tokens.css` e `@theme inline`.
+- [x] O modo "Minimalista Flat" zera 100% das sombras do app (incluindo `shadow-xs`).
+- [x] O modo "Elevado 3D" amplia proporcionalmente a profundidade de todos os cards.
+- [x] Cards de dados em todas as páginas possuem a mesma solidez de borda e sombra.
+- [x] Suíte de testes, typecheck e lint 100% verdes.
 
 ---
 

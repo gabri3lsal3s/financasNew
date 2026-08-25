@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "./confirm-dialog";
-import { Modal } from "./modal";
+import { Modal, ModalFooter } from "./modal";
 
 describe("Modal", () => {
   it("exibe título, descrição e conteúdo quando aberto", () => {
@@ -161,6 +161,22 @@ describe("ConfirmDialog", () => {
     const cancelButton = screen.getByRole("button", { name: "Cancelar" });
     await user.click(cancelButton);
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+describe("ModalFooter (Fase 68)", () => {
+  it("renderiza o rodapé responsivo com layout empilhado seguro no mobile e horizontal no desktop", () => {
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Teste">
+        <ModalFooter>
+          <button type="button">Cancelar</button>
+          <button type="button">Salvar</button>
+        </ModalFooter>
+      </Modal>,
+    );
+    const footer = screen.getByText("Salvar").parentElement;
+    expect(footer).toBeInTheDocument();
+    expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-border/80");
   });
 });
 

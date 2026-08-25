@@ -221,3 +221,21 @@ export function Modal({
     </DialogPrimitive.Root>
   );
 }
+
+export interface ModalFooterProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export function ModalFooter({ children, className }: ModalFooterProps) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-3 mt-4 border-t border-border/80 sticky bottom-0 bg-surface/95 backdrop-blur-sm -mx-6 px-6 -mb-2 pb-2",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
