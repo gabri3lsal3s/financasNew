@@ -15,7 +15,7 @@ import {
   useSaveAllocationTargets,
   useSetManualPrice,
 } from "@/state";
-import type { AllocationTargetInput, PortfolioAsset } from "@/types";
+import type { AllocationTargetInput, FixedIncomeMetadata, PortfolioAsset } from "@/types";
 
 
 import { StepNewPosition } from "./step-new-position";
@@ -320,6 +320,19 @@ function InvestmentWizardContent({
           }
         }
 
+        let fixedIncomeMetadata: FixedIncomeMetadata | null = null;
+        if (isFixedIncome && !isCash) {
+          const rateVal = parseNumber(state.fixedIncomeRateValue);
+          fixedIncomeMetadata = {
+            rate_type: state.fixedIncomeRateType,
+            rate_value: rateVal,
+            base_date: state.fixedIncomeBaseDate || state.date,
+            initial_investment_date: state.fixedIncomeInitialInvestmentDate ? state.fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
+            maturity_date: state.fixedIncomeMaturityDate ? state.fixedIncomeMaturityDate.slice(0, 10) : null,
+            is_tax_exempt: state.fixedIncomeIsTaxExempt,
+          };
+        }
+
         const newAsset = await createAsset.mutateAsync({
           ticker: state.ticker,
           asset_class: state.assetClass,
@@ -329,6 +342,7 @@ function InvestmentWizardContent({
           average_price: finalAveragePrice,
           accumulated_dividends: state.accumulatedDividendsCents / 100,
           estimated_monthly_dividend_per_share: state.estimatedDividendPerShareCents / 100,
+          fixed_income_metadata: fixedIncomeMetadata,
           notes: finalNotes,
         });
 

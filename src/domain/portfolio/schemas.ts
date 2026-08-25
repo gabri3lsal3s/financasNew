@@ -4,10 +4,10 @@ import { z } from "zod";
  * Regex para validação de tickers de ativos:
  * • B3: 4 letras + dígitos (ex.: PETR4, VALE3, MXRF11, BOVA11, AAPL34)
  * • Cripto: BTC, ETH, SOL, USDT, USDC, etc.
- * • Renda Fixa / Caixa: prefixos como TESOURO, CDB, LCI, LCA, SELIC, CDI, CAIXA, RESERVA
+ * • Renda Fixa / Caixa / Tesouro: TESOURO SELIC 2029, CDB INTER 110% CDI, LCI, LCA, IPCA+, CAIXA
  * • Internacional / EUA: 1 a 6 letras (ex.: AAPL, MSFT, IVV, VOO, BRK.B, BF.B)
  */
-export const TICKER_REGEX = /^[A-Z0-9.\-=]{1,20}$/;
+export const TICKER_REGEX = /^[A-Z0-9.\-+=/%\s]{1,60}$/;
 
 /** Schema para sanitização e validação de ticker de ativo. */
 export const assetTickerSchema = z
@@ -18,8 +18,8 @@ export const assetTickerSchema = z
     z
       .string()
       .min(1, "Informe o código ou nome do ativo")
-      .max(20, "O código do ativo deve ter no máximo 20 caracteres")
-      .regex(TICKER_REGEX, "Formato de código inválido (use apenas letras maiúsculas, números ou hífen/ponto)"),
+      .max(60, "O código do ativo deve ter no máximo 60 caracteres")
+      .regex(TICKER_REGEX, "Formato de código inválido (use letras maiúsculas, números, espaços ou caracteres permitidos)"),
   );
 
 export const assetClassSchema = z
@@ -39,6 +39,34 @@ export const assetSectorSchema = z
 export const assetCurrencySchema = z.enum(["BRL", "USD"] as const, {
   message: "Moeda inválida (escolha BRL ou USD)",
 });
+
+export const fixedIncomeRateTypeSchema = z.enum(["cdi", "selic", "pre", "ipca"] as const, {
+  message: "Indexador inválido (escolha CDI, Selic, Pré ou IPCA)",
+});
+
+/** Schema para validação de metadados de títulos de Renda Fixa parametrizada (Fase 63/72). */
+export const fixedIncomeMetadataSchema = z.object({
+  rate_type: fixedIncomeRateTypeSchema,
+  rate_value: z
+    .number({ message: "Informe uma taxa válida" })
+    .min(0, "A taxa não pode ser negativa"),
+  base_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data-base inválida (use o formato AAAA-MM-DD)"),
+  initial_investment_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de aplicação original inválida (use o formato AAAA-MM-DD)")
+    .nullable()
+    .optional(),
+  maturity_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de vencimento inválida (use o formato AAAA-MM-DD)")
+    .nullable()
+    .optional(),
+  is_tax_exempt: z.boolean().default(false),
+});
+
+export type FixedIncomeMetadataInput = z.infer<typeof fixedIncomeMetadataSchema>;
 
 /** Schema para criação de um Novo Ativo via Wizard. */
 export const newAssetSchema = z.object({
@@ -68,6 +96,8 @@ export const newAssetSchema = z.object({
     .number({ message: "Informe um valor válido para o dividendo estimado por cota" })
     .min(0, "O dividendo estimado por cota não pode ser negativo")
     .default(0),
+  /** Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63/72). */
+  fixed_income_metadata: fixedIncomeMetadataSchema.nullable().optional(),
   notes: z
     .string()
     .max(500, "As notas devem ter no máximo 500 caracteres")
@@ -158,6 +188,8 @@ export const assetMetadataSchema = z.object({
     .number({ message: "Informe um valor válido para o dividendo estimado por cota" })
     .min(0, "O dividendo estimado por cota não pode ser negativo")
     .default(0),
+  /** Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63/72). */
+  fixed_income_metadata: fixedIncomeMetadataSchema.nullable().optional(),
   notes: z
     .string()
     .max(500, "As notas devem ter no máximo 500 caracteres")

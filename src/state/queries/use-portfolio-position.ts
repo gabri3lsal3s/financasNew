@@ -16,11 +16,12 @@ import {
   resolvePrice,
   usdRateFromPrices,
   type AssetPricingMode,
+  type FixedIncomeBalanceResult,
   type PortfolioMonthlySeriesPoint,
   type PriceSource,
 } from "@/domain/portfolio";
 import { currentMonth } from "@/lib/date";
-import type { AssetCurrency } from "@/types";
+import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
@@ -64,6 +65,13 @@ export interface PortfolioPositionRow {
   isCash: boolean;
   pricingMode: AssetPricingMode;
   notes?: string | null;
+  fixedIncomeMetadata?: FixedIncomeMetadata | null;
+  fixedIncomeResult?: FixedIncomeBalanceResult | null;
+  isMatured?: boolean;
+  maturityDate?: string | null;
+  netValueBRL?: number;
+  taxAmountBRL?: number;
+  taxRatePct?: number;
 }
 
 export interface PortfolioPosition {
@@ -173,6 +181,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       ticker: asset.ticker,
       notes: asset.notes,
       totalDividends: assetDividends,
+      fixedIncomeMetadata: asset.fixed_income_metadata,
     });
 
     totalBRL = round2(totalBRL + summary.valueBRL);
@@ -205,6 +214,13 @@ export function usePortfolioPosition(): PortfolioPosition {
       isCash,
       pricingMode: summary.pricingMode,
       notes: asset.notes,
+      fixedIncomeMetadata: asset.fixed_income_metadata,
+      fixedIncomeResult: summary.fixedIncomeResult,
+      isMatured: summary.isMatured,
+      maturityDate: summary.maturityDate,
+      netValueBRL: summary.netValueBRL,
+      taxAmountBRL: summary.taxAmountBRL,
+      taxRatePct: summary.taxRatePct,
     });
   }
 

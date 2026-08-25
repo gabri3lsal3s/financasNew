@@ -3,6 +3,7 @@ import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/p
 import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { cn } from "@/lib/utils";
 import type { AssetCurrency } from "@/types";
+import { FixedIncomeFormFields } from "../components/fixed-income-form-fields";
 import type { InvestmentWizardState } from "./wizard-state";
 
 export interface StepNewPositionProps {
@@ -39,6 +40,10 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
     if (!state.sector) {
       patch.sector = inferSectorFromTicker(ticker, state.assetClass);
     }
+    const upper = ticker.toUpperCase();
+    if (upper.includes("LCI") || upper.includes("LCA") || upper.includes("CRI") || upper.includes("CRA")) {
+      patch.fixedIncomeIsTaxExempt = true;
+    }
     onChange(patch);
   };
 
@@ -49,6 +54,10 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
     };
     if (!state.sector) {
       patch.sector = inferSectorFromTicker(state.ticker, assetClass);
+    }
+    const upper = state.ticker.toUpperCase();
+    if (upper.includes("LCI") || upper.includes("LCA") || upper.includes("CRI") || upper.includes("CRA")) {
+      patch.fixedIncomeIsTaxExempt = true;
     }
     onChange(patch);
   };
@@ -265,6 +274,33 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Bloco de Parâmetros de Renda Fixa e Tesouro Direto (Fase 63/72) */}
+      {isFixedIncome && !isCash && (
+        <FixedIncomeFormFields
+          values={{
+            rateType: state.fixedIncomeRateType,
+            rateValue: state.fixedIncomeRateValue,
+            baseDate: state.fixedIncomeBaseDate,
+            initialInvestmentDate: state.fixedIncomeInitialInvestmentDate || null,
+            maturityDate: state.fixedIncomeMaturityDate || null,
+            isTaxExempt: state.fixedIncomeIsTaxExempt,
+          }}
+          onChange={(patch) => {
+            const statePatch: Partial<InvestmentWizardState> = {};
+            if (patch.rateType !== undefined) statePatch.fixedIncomeRateType = patch.rateType;
+            if (patch.rateValue !== undefined) statePatch.fixedIncomeRateValue = patch.rateValue;
+            if (patch.baseDate !== undefined) statePatch.fixedIncomeBaseDate = patch.baseDate;
+            if (patch.initialInvestmentDate !== undefined)
+              statePatch.fixedIncomeInitialInvestmentDate = patch.initialInvestmentDate ?? "";
+            if (patch.maturityDate !== undefined) statePatch.fixedIncomeMaturityDate = patch.maturityDate ?? "";
+            if (patch.isTaxExempt !== undefined) statePatch.fixedIncomeIsTaxExempt = patch.isTaxExempt;
+            onChange(statePatch);
+          }}
+          idPrefix="wizard-fi"
+          isTesouro={isTesouro}
+        />
       )}
 
       {/* Notas / Observações */}

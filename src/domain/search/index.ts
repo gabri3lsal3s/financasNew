@@ -28,6 +28,8 @@
 // Tipos
 // ---------------------------------------------------------------------------
 
+import type { SystemFeatureKey } from "@/types";
+
 export type SearchEntryType =
   | "action"
   | "page"
@@ -57,6 +59,10 @@ export interface SearchEntry {
   detail?: string;
   /** Deep-link: rota + params (ex.: /transacoes?month=…&q=…). */
   link: { path: string; params?: Record<string, string> };
+  /** Módulo do sistema atrelado para controle de acesso via Feature Flags (§F73). */
+  featureKey?: SystemFeatureKey;
+  /** Restrito a administradores do sistema (§F73). */
+  adminOnly?: boolean;
 }
 
 export interface SearchResult {
@@ -180,6 +186,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Início / Visão Geral",
     detail: "Dashboard consolidado e saldo atual",
     link: { path: "/" },
+    featureKey: "overview",
   },
   {
     id: "page-transactions",
@@ -188,6 +195,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Extrato de Transações",
     detail: "Histórico completo de receitas e despesas",
     link: { path: "/transacoes" },
+    featureKey: "transactions",
   },
   {
     id: "page-cards",
@@ -196,6 +204,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Cartões de Crédito",
     detail: "Faturas, limites e gestão de cartões",
     link: { path: "/cartoes" },
+    featureKey: "cards",
   },
   {
     id: "page-investments",
@@ -204,6 +213,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Investimentos & Carteira",
     detail: "Custódia consolidada e rentabilidade",
     link: { path: "/investimentos" },
+    featureKey: "investments",
   },
   {
     id: "page-investments-aporte",
@@ -212,6 +222,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Rebalanceamento & Aporte",
     detail: "Motor de sugestão de aportes por desvio",
     link: { path: "/investimentos", params: { tab: "aporte" } },
+    featureKey: "investments",
   },
   {
     id: "page-investments-proventos",
@@ -220,6 +231,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Proventos & Dividendos",
     detail: "Histórico de rendimentos e bola de neve",
     link: { path: "/investimentos", params: { tab: "proventos" } },
+    featureKey: "investments",
   },
   {
     id: "page-investments-targets",
@@ -228,6 +240,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Metas de Alocação",
     detail: "Definição de metas por classe e ativos",
     link: { path: "/investimentos", params: { tab: "targets" } },
+    featureKey: "investments",
   },
   {
     id: "page-debts",
@@ -236,6 +249,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Dívidas & Empréstimos",
     detail: "Controle de dívidas ativas e acordos",
     link: { path: "/dividas" },
+    featureKey: "debts",
   },
   {
     id: "page-budgets",
@@ -244,6 +258,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Orçamentos & Metas de Gastos",
     detail: "Limites mensais por categoria de consumo",
     link: { path: "/orcamentos" },
+    featureKey: "budgets",
   },
   {
     id: "page-categories",
@@ -252,6 +267,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Categorias",
     detail: "Classificação de receitas e despesas",
     link: { path: "/categorias" },
+    featureKey: "transactions",
   },
   {
     id: "page-reports",
@@ -260,6 +276,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Relatórios & Análises",
     detail: "Visão analítica de evolução e distribuição",
     link: { path: "/relatorios" },
+    featureKey: "reports",
   },
   {
     id: "page-reports-dre",
@@ -268,6 +285,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "DRE Contábil Gerencial",
     detail: "Demonstrativo estruturado de receitas e despesas",
     link: { path: "/relatorios", params: { tab: "dre" } },
+    featureKey: "reports",
   },
   {
     id: "page-reports-patrimonio",
@@ -276,6 +294,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Tear Sheet de Patrimônio",
     detail: "Evolução histórica de ativos e passivos",
     link: { path: "/relatorios", params: { tab: "patrimonio" } },
+    featureKey: "reports",
   },
   {
     id: "page-reports-irpf",
@@ -284,6 +303,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Facilitador de IRPF Anual",
     detail: "Dossiê fiscal para Declaração de Ajuste Anual",
     link: { path: "/relatorios", params: { tab: "irpf" } },
+    featureKey: "reports",
   },
   {
     id: "page-reports-projecao",
@@ -292,6 +312,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Projeção Financeira",
     detail: "Simulações e projeções de longo prazo",
     link: { path: "/relatorios", params: { tab: "projecao" } },
+    featureKey: "reports",
   },
   {
     id: "page-insights",
@@ -300,6 +321,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Insights & Alertas",
     detail: "Diagnósticos automáticos sobre suas finanças",
     link: { path: "/insights" },
+    featureKey: "insights",
   },
   {
     id: "page-reminders",
@@ -308,6 +330,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Lembretes & Recorrências",
     detail: "Contas fixas e lembretes de vencimento",
     link: { path: "/lembretes" },
+    featureKey: "reminders",
   },
   {
     id: "page-settings",
@@ -316,6 +339,15 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     label: "Configurações da Conta",
     detail: "Preferências de exibição, tema e dados",
     link: { path: "/configuracoes" },
+  },
+  {
+    id: "page-admin",
+    type: "page",
+    text: ["admin", "painel administrativo", "usuarios", "gestao", "moderacao", "feature flags", "convites"],
+    label: "Painel Administrativo (SaaS)",
+    detail: "Gestão de usuários, moderação, flags e auditoria",
+    link: { path: "/admin" },
+    adminOnly: true,
   },
 ];
 
@@ -327,6 +359,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Nova Despesa",
     detail: "Lançar nova despesa ou compra com cartão/PIX",
     link: { path: "/transacoes", params: { action: "new-expense" } },
+    featureKey: "transactions",
   },
   {
     id: "action-new-income",
@@ -335,6 +368,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Nova Receita",
     detail: "Registrar entrada financeira ou salário",
     link: { path: "/transacoes", params: { action: "new-income" } },
+    featureKey: "transactions",
   },
   {
     id: "action-new-asset",
@@ -343,6 +377,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Novo Ativo / Aporte na Carteira",
     detail: "Cadastrar nova posição ou registrar aporte",
     link: { path: "/investimentos", params: { action: "new-asset" } },
+    featureKey: "investments",
   },
   {
     id: "action-new-card",
@@ -351,6 +386,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Novo Cartão de Crédito",
     detail: "Cadastrar novo cartão e configurar limite/fechamento",
     link: { path: "/cartoes", params: { action: "new-card" } },
+    featureKey: "cards",
   },
   {
     id: "action-new-debt",
@@ -359,6 +395,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Nova Dívida / Empréstimo",
     detail: "Cadastrar obrigação a pagar ou crédito a receber",
     link: { path: "/dividas", params: { action: "new-debt" } },
+    featureKey: "debts",
   },
   {
     id: "action-new-budget",
@@ -367,6 +404,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Novo Orçamento Mensal",
     detail: "Definir teto de gastos para uma categoria",
     link: { path: "/orcamentos", params: { action: "new-budget" } },
+    featureKey: "budgets",
   },
   {
     id: "action-new-reminder",
@@ -375,6 +413,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Novo Lembrete / Recorrência",
     detail: "Criar lembrete de conta a pagar ou receber",
     link: { path: "/lembretes", params: { action: "new-reminder" } },
+    featureKey: "reminders",
   },
   {
     id: "action-export-executive-report",
@@ -383,6 +422,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Exportar Dossiê Executivo (PDF)",
     detail: "Gerar relatório financeiro diagramado A4",
     link: { path: "/relatorios", params: { action: "print-executive" } },
+    featureKey: "reports",
   },
   {
     id: "action-export-irpf-report",
@@ -391,8 +431,35 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     label: "Exportar Dossiê Fiscal IRPF (PDF)",
     detail: "Gerar informe fiscal para declaração anual",
     link: { path: "/relatorios", params: { tab: "irpf", action: "print-tax" } },
+    featureKey: "reports",
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Filtragem por permissões e Feature Flags (§F73)
+// ---------------------------------------------------------------------------
+
+export interface FilterSearchEntriesOptions {
+  isAdmin?: boolean;
+  hasFeature?: (featureKey: SystemFeatureKey | string) => boolean;
+}
+
+/**
+ * Filtra entradas de busca com base nas permissões de acesso do usuário (Fase 73).
+ * Descarta entradas de módulos desativados ou reservadas para administradores.
+ */
+export function filterSearchEntries(
+  entries: readonly SearchEntry[],
+  options: FilterSearchEntriesOptions = {},
+): SearchEntry[] {
+  const { isAdmin = false, hasFeature = () => true } = options;
+
+  return entries.filter((entry) => {
+    if (entry.adminOnly && !isAdmin) return false;
+    if (entry.featureKey && !hasFeature(entry.featureKey)) return false;
+    return true;
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Busca consolidada

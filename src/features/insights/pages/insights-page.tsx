@@ -284,6 +284,38 @@ export function InsightsPage() {
           },
         ]
       : []),
+    // Radar de Vencimentos & Inteligência Fiscal de Renda Fixa (Fase 63/72)
+    ...position.rows
+      .filter((r) => r.isMatured)
+      .map((r) => ({
+        id: `matured-${r.assetId}`,
+        variant: "warning" as const,
+        message: `Título Vencido: O ativo ${r.ticker} atingiu a data de vencimento (${r.maturityDate}). Realize o resgate para voltar a rentabilizar seu capital.`,
+      })),
+    ...position.rows
+      .filter((r) => !r.isMatured && r.maturityDate)
+      .filter((r) => {
+        if (!r.maturityDate) return false;
+        const diffMs = new Date(r.maturityDate).getTime() - new Date(todayISOStr).getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return diffDays > 0 && diffDays <= 30;
+      })
+      .map((r) => {
+        const diffMs = new Date(r.maturityDate!).getTime() - new Date(todayISOStr).getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return {
+          id: `maturing-${r.assetId}`,
+          variant: "warning" as const,
+          message: `Vencimento Próximo: O ativo ${r.ticker} vencerá em ${diffDays} dia(s) (${r.maturityDate}). Planeje a reinvestimento do montante.`,
+        };
+      }),
+    ...position.rows
+      .filter((r) => r.fixedIncomeResult?.taxCountdown && r.fixedIncomeResult.taxCountdown.daysRemaining <= 30)
+      .map((r) => ({
+        id: `tax-opt-${r.assetId}`,
+        variant: "success" as const,
+        message: `Otimização Fiscal: A alíquota de IR de ${r.ticker} reduzirá para ${r.fixedIncomeResult!.taxCountdown!.nextRatePct}% em ${r.fixedIncomeResult!.taxCountdown!.daysRemaining} dia(s). Aguarde para resgatar com menor retenção.`,
+      })),
   ];
 
   return (

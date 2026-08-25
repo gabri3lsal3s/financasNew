@@ -109,20 +109,21 @@
     │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8)
     │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento + reconciliação de extratos
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
-    │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC)
+    │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
     │   ├── reports/               #   Central Unificada de Relatórios (§F42: Finanças & DRE A4, Investimentos & Metas, Balanço 360°, Fiscal IRPF, Excel XLSX)
     │   │                          #     components/tabs/ (financial-tab, investments-tab, balance-tab, tax-tab F61)
-    │   ├── insights/              #   Insights, projeção e corte
+    │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)
     │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: Gestão de Usuários, Moderação, Feature Flags, Convites, Auditoria)
-    │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40):
+    │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):
     │   │                          #     hub de 5 abas (Resumo / Proventos / Metas / Aporte / Relatórios & IR)
     │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, relatorios-tab, investments-page
     │   │                          #     components: targets/ (target-classes-card, target-sectors-card, target-assets-card F61),
     │   │                          #       asset-form/ (asset-sell-tab F61), asset-form-dialog, cash-form-dialog, manual-price-dialog,
+    │   │                          #       fixed-income-form-fields (F72), calibrate-fixed-income-dialog (F72), asset-detail-sheet,
     │   │                          #       transaction-form-dialog, transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
     │   │                          #       portfolio-mapping-step, portfolio-statement-dialog, portfolio-executive-report,
     │   │                          #       portfolio-tax-report, portfolio-darf-monitor com barrels components/index.ts e index.ts

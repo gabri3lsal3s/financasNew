@@ -5,6 +5,7 @@ import {
   Edit2,
   Plus,
   Receipt,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/state";
 import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
 import { AssetEditDialog } from "./asset-edit-dialog";
+import { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
 
 export interface AssetDetailSheetProps {
   asset: PortfolioAsset | null;
@@ -52,6 +54,7 @@ export function AssetDetailSheet({
   const deleteTx = useDeletePortfolioTransaction();
 
   const [editOpen, setEditOpen] = useState(false);
+  const [calibrateOpen, setCalibrateOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<string | null>(null);
 
@@ -97,6 +100,21 @@ export function AssetDetailSheet({
   const totalReturnPct = positionRow
     ? (positionRow.totalReturnPct ?? 0)
     : totalCost > 0 ? (totalReturnPnl / totalCost) * 100 : 0;
+
+  const formatRateLabel = (metadata: NonNullable<PortfolioAsset["fixed_income_metadata"]>) => {
+    switch (metadata.rate_type) {
+      case "cdi":
+        return `${metadata.rate_value}% CDI`;
+      case "selic":
+        return `${metadata.rate_value}% Selic`;
+      case "pre":
+        return `${metadata.rate_value}% a.a.`;
+      case "ipca":
+        return `IPCA + ${metadata.rate_value}% a.a.`;
+      default:
+        return `${metadata.rate_value}%`;
+    }
+  };
 
   const formatTxType = (type: PortfolioTransactionType) => {
     switch (type) {
@@ -144,11 +162,33 @@ export function AssetDetailSheet({
               <Badge variant="muted" className="text-xs">
                 {currentAsset.currency}
               </Badge>
-              {isTotalValue && (
+              {currentAsset.fixed_income_metadata ? (
+                <Badge variant="outline" className="text-xs font-semibold">
+                  {formatRateLabel(currentAsset.fixed_income_metadata)} • Projetado
+                </Badge>
+              ) : isTotalValue ? (
                 <Badge variant="muted" className="text-xs">
                   Valor Completo
                 </Badge>
-              )}
+              ) : null}
+              {positionRow?.isMatured ? (
+                <Badge variant="negative" className="text-xs font-semibold">
+                  Vencido em {positionRow.maturityDate}
+                </Badge>
+              ) : positionRow?.maturityDate ? (
+                <Badge variant="warning" className="text-xs font-semibold">
+                  Vence em {positionRow.maturityDate}
+                </Badge>
+              ) : null}
+              {currentAsset.fixed_income_metadata?.is_tax_exempt ? (
+                <Badge variant="positive" className="text-xs">
+                  Isento de IR
+                </Badge>
+              ) : positionRow?.fixedIncomeResult?.taxCountdown ? (
+                <Badge variant="muted" className="text-xs">
+                  IR {positionRow.taxRatePct}% ➔ {positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em {positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d
+                </Badge>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -167,11 +207,24 @@ export function AssetDetailSheet({
                 size="sm"
                 variant="outline"
                 onClick={() => onAction?.("sell", currentAsset)}
-                className="gap-1 text-xs flex-1 sm:flex-initial"
+                className={`gap-1 text-xs flex-1 sm:flex-initial ${positionRow?.isMatured ? "border-critical-strong/60 text-critical-strong" : ""}`}
               >
                 <ArrowDownLeft className="size-3.5" aria-hidden="true" />
-                <span>{isTotalValue ? "Resgatar" : "Vender"}</span>
+                <span>{positionRow?.isMatured ? "Liquidar Caixa" : isTotalValue ? "Resgatar" : "Vender"}</span>
               </Button>
+              {isTotalValue && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCalibrateOpen(true)}
+                  className="gap-1 text-xs text-muted-foreground flex-1 sm:flex-initial"
+                  title="Calibrar com saldo do extrato"
+                >
+                  <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+                  <span>Calibrar</span>
+                </Button>
+              )}
               <Button
                 type="button"
                 size="sm"
@@ -371,6 +424,14 @@ export function AssetDetailSheet({
         asset={currentAsset}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+
+      {/* Diálogo de Calibração de Marco Zero */}
+      <CalibrateFixedIncomeDialog
+        asset={currentAsset}
+        open={calibrateOpen}
+        onOpenChange={setCalibrateOpen}
+        currentEstimatedValueCents={numberToCents(currentValue)}
       />
 
       {/* Confirmação de Exclusão do Ativo */}

@@ -17,6 +17,7 @@ import { currentMonth } from "@/lib/date";
 import { numberToCents } from "@/domain/money";
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
+import { calculateFixedIncomeBalance } from "@/domain/portfolio/fixed-income";
 import { resolveDividendDate, resolveDividendNote, type DividendEntryMode } from "@/domain/portfolio/dividends";
 import {
   getAssetPricingMode,
@@ -125,6 +126,46 @@ export function QuickTransactionSheet({
       assetClass: targetAsset.asset_class,
     });
   }, [targetAsset, isCash, isTotalValue, parsedQty, priceCents]);
+
+  // Prévia Tributária de Renda Fixa no Resgate (Fase 63/72)
+  const fixedIncomeSellTaxPreview = useMemo(() => {
+    if (
+      type !== "sell" ||
+      !targetAsset ||
+      !targetAsset.fixed_income_metadata ||
+      (totalCents <= 0 && priceCents <= 0)
+    ) {
+      return null;
+    }
+
+    const currentCost = targetAsset.average_price > 0 ? targetAsset.average_price : 0;
+    const withdrawGross = (totalCents || priceCents) / 100;
+
+    const fiRes = calculateFixedIncomeBalance({
+      baseValue: currentCost,
+      baseDate: targetAsset.fixed_income_metadata.base_date,
+      initialInvestmentDate: targetAsset.fixed_income_metadata.initial_investment_date,
+      maturityDate: targetAsset.fixed_income_metadata.maturity_date,
+      rateType: targetAsset.fixed_income_metadata.rate_type,
+      rateValue: targetAsset.fixed_income_metadata.rate_value,
+      isTaxExempt: targetAsset.fixed_income_metadata.is_tax_exempt,
+      today: date,
+    });
+
+    const isExempt = Boolean(targetAsset.fixed_income_metadata.is_tax_exempt);
+    const proportion = currentCost > 0 ? Math.min(1, withdrawGross / currentCost) : 1;
+    const estimatedTax = isExempt ? 0 : Math.round(fiRes.taxAmount * proportion * 100) / 100;
+    const netCredit = Math.max(0, Math.round((withdrawGross - estimatedTax) * 100) / 100);
+
+    return {
+      grossAmount: withdrawGross,
+      taxRatePct: isExempt ? 0 : fiRes.taxRatePct,
+      taxAmount: estimatedTax,
+      netCredit,
+      isExempt,
+      taxCountdown: fiRes.taxCountdown,
+    };
+  }, [type, targetAsset, totalCents, priceCents, date]);
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
@@ -518,6 +559,55 @@ export function QuickTransactionSheet({
                     )}
                   />
                 </span>
+              </div>
+            )}
+
+            {/* Painel de Discriminação Fiscal de Renda Fixa (Fase 63/72) */}
+            {fixedIncomeSellTaxPreview && (
+              <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-3.5 text-xs">
+                <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                  <span className="text-xs font-semibold text-foreground">Discriminação do Resgate</span>
+                  {fixedIncomeSellTaxPreview.isExempt ? (
+                    <span className="rounded bg-positive/10 px-2 py-0.5 text-[11px] font-medium text-positive-strong">
+                      Isento de IR
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">
+                      Alíquota: {fixedIncomeSellTaxPreview.taxRatePct}%
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Valor Bruto do Resgate:</span>
+                  <span className="font-mono font-medium text-foreground">
+                    <MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.grossAmount)} />
+                  </span>
+                </div>
+
+                {!fixedIncomeSellTaxPreview.isExempt && fixedIncomeSellTaxPreview.taxAmount > 0 && (
+                  <div className="flex items-center justify-between text-warning-strong">
+                    <span>IRRF Retido na Fonte ({fixedIncomeSellTaxPreview.taxRatePct}%):</span>
+                    <span className="font-mono font-medium">
+                      −<MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.taxAmount)} />
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between border-t border-border/40 pt-2 font-bold">
+                  <span className="text-foreground">Crédito Líquido no Caixa:</span>
+                  <span className="font-mono text-positive-strong text-sm">
+                    <MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.netCredit)} />
+                  </span>
+                </div>
+
+                {fixedIncomeSellTaxPreview.taxCountdown && (
+                  <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                    A alíquota de IR reduzirá para{" "}
+                    <span className="font-semibold text-foreground">{fixedIncomeSellTaxPreview.taxCountdown.nextRatePct}%</span>{" "}
+                    em <span className="font-semibold text-foreground">{fixedIncomeSellTaxPreview.taxCountdown.daysRemaining} dias</span>.
+                  </p>
+                )}
               </div>
             )}
 

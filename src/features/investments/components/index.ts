@@ -15,14 +15,18 @@ export { TransactionFormDialog } from "./transaction-form-dialog";
 export { TransactionListDialog } from "./transaction-list-dialog";
 export { AssetDetailSheet } from "./asset-detail-sheet";
 export { AssetEditDialog } from "./asset-edit-dialog";
+export { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
+export { FixedIncomeFormFields } from "./fixed-income-form-fields";
 export { QuickTransactionSheet } from "./quick-transaction-sheet";
 
 export type { AssetFormDialogProps } from "./asset-form-dialog";
 export type { AssetSplitDialogProps } from "./asset-split-dialog";
+export type { CalibrateFixedIncomeDialogProps } from "./calibrate-fixed-income-dialog";
 export type { CashFormDialogProps } from "./cash-form-dialog";
 export type { ContributionsListDialogProps } from "./contributions-list-dialog";
 export type { ContributionsPanelProps } from "./contributions-panel";
 export type { DividendFormDialogProps } from "./dividend-form-dialog";
+export type { FixedIncomeFormFieldsProps, FixedIncomeFormFieldsValues } from "./fixed-income-form-fields";
 export type { ManualPriceDialogProps } from "./manual-price-dialog";
 export type { PortfolioDarfMonitorProps } from "./portfolio-darf-monitor";
 export type { PortfolioExecutiveReportProps } from "./portfolio-executive-report";
@@ -36,3 +40,4 @@ export type { AssetEditDialogProps } from "./asset-edit-dialog";
 export type { QuickTransactionSheetProps } from "./quick-transaction-sheet";
 
 export * from "./targets";
+

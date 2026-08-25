@@ -10,7 +10,7 @@ import { cleanTicker } from "@/domain/portfolio/tickers-catalog";
 import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
 import type { DividendEntryMode } from "@/domain/portfolio/dividends";
-import type { AssetCurrency, PortfolioAsset } from "@/types";
+import type { AssetCurrency, FixedIncomeRateType, PortfolioAsset } from "@/types";
 
 
 export type WizardMode =
@@ -36,6 +36,14 @@ export interface InvestmentWizardState {
   currency: AssetCurrency;
   isCash: boolean;
   pricingMode?: "total_value" | "unit_price";
+
+  // Parâmetros de Renda Fixa (Fase 63/72)
+  fixedIncomeRateType: FixedIncomeRateType;
+  fixedIncomeRateValue: string;
+  fixedIncomeBaseDate: string;
+  fixedIncomeInitialInvestmentDate: string;
+  fixedIncomeMaturityDate: string;
+  fixedIncomeIsTaxExempt: boolean;
 
   // Valores da Ordem / Posição
   quantityStr: string;
@@ -71,6 +79,13 @@ export const defaultWizardState: InvestmentWizardState = {
   sector: "",
   currency: "BRL",
   isCash: false,
+
+  fixedIncomeRateType: "cdi",
+  fixedIncomeRateValue: "",
+  fixedIncomeBaseDate: todayISO(),
+  fixedIncomeInitialInvestmentDate: "",
+  fixedIncomeMaturityDate: "",
+  fixedIncomeIsTaxExempt: false,
 
   quantityStr: "",
   priceCents: 0,

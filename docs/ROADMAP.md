@@ -1,5 +1,13 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.10** registra a **Conclusão da Fase 71 (Descontinuação da Densidade Manual & Padrão Canônico Universal) e o Planejamento Executivo da Fase 72 (UI Completa de Renda Fixa, Vencimentos, Radar de Insights, Cronograma de Contratos e Blindagem das 6 Fragilidades Arquiteturais)** (2026-08-25):
+> - **(1) Fase 71 — Concluída**: eliminação do card redundante de densidade nas Configurações, fixação do padding canônico universal equilibrado em `TransactionRow` e `PositionTable`, e purga de `use-density.ts`;
+> - **(2) Fase 72 — Infraestrutura SQL & Schemas Zod**: Migration 0034 (`fixed_income_metadata jsonb` em `portfolio_assets`) e `fixedIncomeMetadataSchema` em `src/domain/portfolio/schemas.ts`;
+> - **(3) Fase 72 — UI & Ergonomia de Renda Fixa (`FixedIncomeMetadata`)**: formulários no Wizard e modais de edição com indexador (CDI/Selic/Pré/IPCA), taxa acordada, Marco Zero $D_0$, data original de aplicação, vencimento e isenção tributária;
+> - **(4) Fase 72 — Carrego no Aporte, Badges & Liquidação com IRRF**: recálculo automático de $D_0$ no aporte sobre saldo consolidado preservando tempo decorrido para IR, badges visuais de rentabilidade/maturidade/alíquota, ação "Calibrar com Extrato", ação "Liquidar para o Caixa" com abatimento de IRRF retido na fonte e discriminação no resgate;
+> - **(5) Fase 72 — Radar de Vencimentos na Central de Insights**: alertas proativos de títulos próximos ao vencimento, títulos vencidos ociosos e contagem regressiva para redução de alíquota de IR;
+> - **(6) Fase 72 — Gestão Segura de Empréstimos**: edição cadastral livre com recálculo Price/SAC restrito às parcelas futuras em aberto e visualização da tabela de amortização.
+
 > **v2.08** registra o **Planejamento Executivo da Suíte de Evoluções: Fase 62 (BottomNav Mobile), Fase 63 (Renda Fixa & Vencimentos), Fase 64 (Motor de Busca Global ⌘K) e Fase 65 (Engenharia Editorial A4 & Blindagem de PDFs)** (2026-08-25):
 > - **(1) Fase 62 — Ergonomia, Tipografia Adaptativa e Responsividade da BottomNav Mobile**: eliminação definitiva de reticências/truncamento de texto (`"Investime..."`), adoção de `shortLabel` (`"Carteira"`, `"Ajustes"`, `"Extrato"`), grid dinâmico para perfis somente-leitura e suporte pleno a Safe Area (iOS/Android);
 > - **(2) Fase 63 — Automação de Renda Fixa & Marcação Oficial de Tesouro Direto**: integração com a API pública do Tesouro Nacional/B3 (Preço Unitário diário e vencimento oficial) e motor paramétrico de Marco Zero ($D_0$) com taxas diárias do Banco Central (SGS 12 CDI);
@@ -179,6 +187,22 @@
 | **F55** | Fundação de Estado, Saneamento & Primitivos de UI | Hooks `useExportData`/`useRestoreBackup`, `useAuth`, tipos canônicos, timezone/moeda e `ResponsiveDialog` | Fundação & Primitivos |
 | **F56** | Design System Responsivo, `StatCard` & Shell Global | `PageShell max-w-7xl`, tablet `md`, `MoreMenuSheet` na BottomNav e módulo `StatCard` | Responsividade & Shell |
 | **F57** | Modularização de Monólitos, Adoção Global & Governança | Decomposição `SettingsPage`/`PositionTable`, migração de diálogos, 3 estados de UI e PWA | Modularização & Governança |
+| **F58** | Central de Orçamentos com Mês de Referência & Herança | Navegação temporal com `MonthPicker`, herança dinâmica de limites e visualização por categorias | Orçamentos |
+| **F59** | Relatório de Despesas: Filtros Avançados & Mês Fechado | Filtro por tipo de pagamento, visualização de despesas fixas/variáveis e fechamento contábil | Relatórios |
+| **F60** | Gestão de Cartões: Ajuste de Limite & Fechamento | Visualização de limite disponível/comprometido, melhor dia de compra e faturas abertas | Cartões |
+| **F61** | Exportação Completa de Dados & Fechamento Anual | Exportação consolidada de todas as transações, relatórios anuais e dossiês patrimoniais | Exportação |
+| **F62** | Gestor de Metas & Previsão de Aportes com Rebalanceamento | Simulação de aportes inteligentes com base no desvio de metas por classe e ativo | Investimentos |
+| **F63** | Motor Paramétrico de Renda Fixa & Inteligência Fiscal | Capitalização em dias úteis B3, tabela regressiva de IR, trava de vencimento e IOF regressivo | Renda Fixa & IR |
+| **F64** | Central de Auditoria & Logs de Ações Críticas | Histórico imutável de exclusões, edições e exportações no banco e no painel admin | Segurança |
+| **F65** | Sistema de Alertas & Notificações de Vencimento | Notificações push/in-app para contas próximas do vencimento e faturas a fechar | Notificações |
+| **F66** | Simulação de Cenários de Estresse Financeiro | Testes de estresse de renda, inflação e taxa de juros na projeção de longo prazo | Planejamento |
+| **F67** | Gestão Avançada de Receitas: Parcelamento & Recorrências | Suporte a rendas com periodicidade customizada e parcelamentos recebíveis | Receitas |
+| **F68** | Modo Privativo & Ocultação Rápida de Valores | Toggle global para ocultar cifras sensíveis na tela em locais públicos | Privacidade UX |
+| **F69** | Auditoria e Acessibilidade WCAG 2.1 AAA | Contraste refinado, suporte completo a leitores de tela e foco navegável por teclado | Acessibilidade |
+| **F70** | PWA Avançado: Background Sync & Cache de Ativos | Armazenamento de assets de precificação em cache e sincronização em segundo plano | PWA & Offline |
+| **F71** | Blindagem e Governança Visual de Controles & Ícones | Eliminação de emojis e controles nativos, hierarquia semântica de ícones e sensory gateway | Governança Visual |
+| **F72** | UI de Parâmetros de Renda Fixa & Blindagem de Empréstimos | Subcomponente `FixedIncomeFormFields`, recálculo de $D_0$, IRRF, badges de RF, `LoanScheduleDialog` e `LoanEditDialog` | Renda Fixa & Empréstimos |
+| **F73** | Blindagem e Governança da Busca Global por Módulos | `filterSearchEntries`, controle estrito por feature flags e zero vazamento na busca | Busca & Permissões |
 
 
 
@@ -1858,7 +1882,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 4. **Etapa 36.4 — Interface do Usuário (UI/UX) Simplificada:**
    - `AssetFormDialog`: unificação de cadastro/edição em modal direto com calculadora rápida de novo preço médio ponderado.
    - `PositionTable`: ação "Editar Posição" ágil, remoção de diálogos transacionais legados.
-   - `AporteTab`: execução do aporte em 1-clique (atualiza quantidade e grava a contribuição do mês).
+- `AporteTab`: execução do aporte em 1-clique (atualiza quantidade e grava a contribuição do mês).
    - `ProventosTab`: formulário direto e calendário anual conectado a `portfolio_dividends`.
    - `PortfolioImportDialog`: importador de custódia em 3 passos com prévia clara.
    - Remoção de componentes e diálogos obsoletos (`TransactionFormDialog`, `TransactionListDialog`, `PortfolioStatementDialog`).
@@ -3525,6 +3549,197 @@ flowchart TD
 - [x] Arquivos `use-density.ts` e `use-density.test.ts` purgados do repositório.
 - [x] Chave de storage `density` e listeners síncronos removidos do ciclo de vida.
 - [x] Suíte de testes, typecheck e lint 100% verdes.
+
+---
+
+### 📈 FASE 72 — Conclusão de UI & Ergonomia de Renda Fixa, Vencimentos, Radar de Insights e Cronograma de Contratos
+
+> **Objetivo:** Materializar na interface do usuário (UI) 100% dos recursos modelados no domínio e schema para Renda Fixa privada e pública, blindando a base contra as 6 fragilidades arquiteturais identificadas (Migration SQL de metadados, validação Zod, recálculo de Marco Zero $D_0$ em novos aportes, retenção de IRRF no Caixa em resgates, recálculo seguro de parcelas em empréstimos e governança de design system).
+
+```mermaid
+flowchart TD
+    subgraph Bloco 1: Infraestrutura & Schemas Zod
+        SQL[Migration 0034: Coluna fixed_income_metadata jsonb] --> TYPE[Contratos TypeScript em schema.ts / database.ts]
+        TYPE --> ZOD[fixedIncomeMetadataSchema em domain/portfolio/schemas.ts]
+        ZOD --> FORM[Validação Zod no Wizard e AssetEditDialog]
+    end
+
+    subgraph Bloco 2: Regras de Negócio & Carrego no Domínio
+        APORTE[Novo Aporte em RF Existente] --> D0[Recalibra Marco Zero: D₀ = hoje, base_value = saldo atual + aporte]
+        APORTE --> PRESERVE_IR[Preserva initial_investment_date para IR Regressivo]
+        RESG[Resgate / Liquidação de RF] --> IRRF[Apuração de IRRF na Fonte: Bruto - IR = Líquido]
+        IRRF --> SYNC_CASH[syncCash: Caixa recebe estritamente o Valor Líquido]
+    end
+
+    subgraph Bloco 3: Interface do Usuário & Insights
+        POS[PositionTable / AssetDetailSheet] --> BADGES[Badges: % CDI Projetado, Vencimento, Virada IR]
+        POS --> CALIB_BTN[Ação: Calibrar com Extrato D₀]
+        POS --> LIQUID_BTN[Ação: Liquidar / Mover Caixa c/ IRRF]
+        INSIGHTS[Central de Insights] --> RADAR_UI[Radar: Vencendo em 30d, Vencidos Ociosos, Otimização IR]
+        DEBTS[DebtsPage: Contratos de Crédito] --> CRONO_UI[Cronograma Price/SAC + Edição Segura de Contrato]
+    end
+```
+
+---
+
+#### 1. Fase 72.1: Infraestrutura de Banco de Dados, Schemas Zod & Contratos
+- **Migration SQL Supabase (`supabase/migrations/20260101000034_portfolio_fixed_income_metadata.sql`):**
+  - Adicionar a coluna `fixed_income_metadata jsonb` na tabela `public.portfolio_assets`;
+  - Criar índice para consultas (`idx_portfolio_assets_fixed_income`);
+  - Forçar recarga do schema cache do PostgREST (`notify pgrst, 'reload schema'`).
+- **Validação com Zod (`src/domain/portfolio/schemas.ts`):**
+  - Criar `fixedIncomeMetadataSchema` com validações para `rate_type` (`"cdi" | "selic" | "pre" | "ipca"`), `rate_value` ($\ge 0$), `base_date` (formato ISO `YYYY-MM-DD`), `initial_investment_date`, `maturity_date` e `is_tax_exempt`;
+  - Integrar `fixed_income_metadata` em `newAssetSchema` e `assetMetadataSchema`.
+- **Mapeamento de Repositório (`src/data/repositories/portfolio.ts`):**
+  - Garantir que `mapAsset` repasse fielmente o objeto `fixed_income_metadata` retornado pelo Supabase.
+
+---
+
+#### 2. Fase 72.2: Formulários de Cadastro e Edição de Renda Fixa (`FixedIncomeMetadata`)
+- **Wizard de Novo Ativo (`src/features/investments/wizard/step-new-position.tsx` & `wizard-state.ts`):**
+  - Adicionar campos de metadados em `InvestmentWizardState` e no passo 2 de criação de posição quando `assetClass === "Renda Fixa"` ou `isTesouro`:
+    - Seletor de Indexador (`rate_type`: `"cdi" | "selic" | "pre" | "ipca"`);
+    - Campo de Taxa acordada (`rate_value`: percentual ao ano ou % do CDI);
+    - Seletor de Data-Base / Marco Zero (`base_date`: data do valor inicial informado);
+    - Data de Aplicação Original opcional (`initial_investment_date`: base para contagem de prazo e alíquota de IR);
+    - Data de Vencimento opcional (`maturity_date`: pré-preenchida automaticamente via catálogo oficial para Tesouro Direto);
+    - Toggle de Isenção Tributária (`is_tax_exempt`: ativado por padrão para LCI, LCA, CRI, CRA e Debêntures Incentivadas).
+- **Diálogos de Edição de Ativo (`asset-edit-dialog.tsx` e `asset-form-dialog.tsx`):**
+  - Inclusão de seção "Parâmetros de Renda Fixa" com os 6 campos para atualização de posições existentes.
+
+---
+
+#### 3. Fase 72.3: Regra de Novos Aportes ($D_0$), Resgate com IRRF e Badges de Custódia
+- **Regra de Aporte em Renda Fixa Existente (`usePortfolioMutations.ts` / `StepOrder`):**
+  - Ao realizar compra/aporte em ativo de RF parametrizado existente:
+    - Atualizar o `base_value` para o **novo saldo consolidado** ($\text{saldo anterior valorizado com juros} + \text{novo aporte}$);
+    - Atualizar a `base_date` para a data do aporte ($D_0 = \text{data da transação}$);
+    - Preservar a `initial_investment_date` original para que o título mantenha seu benefício temporal na tabela regressiva de IR.
+- **Resgate com Retenção de IRRF e Sincronização de Caixa (`QuickTransactionSheet`):**
+  - No modal de resgate, exibir discriminação transparente: *Valor Bruto*, *Alíquota Vigente de IR*, *IRRF Retido na Fonte* e *Valor Líquido creditado no Caixa*;
+  - Na mutação de resgate com `syncCash = true`, creditar no Caixa estritamente o **Valor Líquido** ($\text{Bruto} - \text{IRRF}$).
+- **Cards e Tabela de Posição (`PositionTable` & `AssetDetailSheet`):**
+  - **Badge de Rentabilidade Projetada:** Exibição do indicador formatado (ex.: `[110% CDI • Projetado]`);
+  - **Badge de Vencimento:** Sinalização semântica (`[Vence em 15 dias]` em `warning-strong` / `[Vencido em DD/MM/AAAA]` em `critical-strong`);
+  - **Badge de Otimização Tributária:** Sinalização da virada de alíquota (ex.: `[IR 20% ➔ 17,5% em 24d]`);
+  - **Ação "Calibrar com Extrato":** Botão de 1-clique para redefinir o Marco Zero ($D_0$) com o saldo atual do extrato;
+  - **Ação "Liquidar / Mover para o Caixa":** Botão em títulos vencidos que resgata o valor com desconto de IRRF e transfere o líquido para o Caixa.
+
+---
+
+#### 4. Fase 72.4: Radar de Vencimentos em Insights & Gestão Segura de Empréstimos
+- **Radar de Vencimentos na Central de Insights (`src/features/insights/`):**
+  - Renderização dos diagnósticos de títulos a vencer ($\le 30$ dias), títulos vencidos ociosos e oportunidades iminentes de virada de alíquota de IR com ações contextuais de 1-clique.
+- **Gestão de Empréstimos e Financiamentos (`src/features/debts/`):**
+  - **Diálogo de Edição Segura (`LoanEditDialog`):** Edição cadastral livre (nome, credor, notas); ajustes de taxa ou saldo recalcularão estritamente as parcelas **futuras em aberto**, preservando intacto o histórico das parcelas já quitadas;
+  - **Cronograma de Amortização (`LoanScheduleDialog`):** Tabela detalhada das parcelas Price/SAC (Parcela, Vencimento, Prestação, Amortização, Juros e Saldo Devedor).
+
+---
+
+#### 5. Fase 72.5: Verificação, Qualidade e Blindagem de Governança
+- **Conformidade Estrita com `AGENTS.md`:**
+  - Regra nº 7: Zero controles nativos (100% via `<Select>`, `<DatePicker>`, `<Input>`, `<MoneyInput>`);
+  - Regra nº 8: Zero emojis em mensagens e badges (100% `lucide-react`);
+  - Regra nº 13: Ícones de cabeçalhos no padrão icon-only em `size-4 text-muted-foreground`;
+  - Regra nº 17: Zero disparo duplo háptico (100% via `triggerSensory`).
+- **Suíte de Testes & Validação Visual:**
+  - Testes unitários para Zod schemas, mutações de aporte/resgate de RF, badges e cronograma de empréstimos;
+  - Revisão visual desktop e mobile nos 3 temas visuais (Claro, Escuro, OLED);
+  - Typecheck estrito (`tsc --noEmit`) e ESLint 100% limpos.
+
+---
+
+**✅ DoD (Definition of Done da Fase 72):**
+- [x] Migration SQL `0034` executada com coluna `fixed_income_metadata jsonb` em `portfolio_assets`.
+- [x] Schemas Zod (`newAssetSchema`, `assetMetadataSchema`, `fixedIncomeMetadataSchema`) validam `fixed_income_metadata`.
+- [x] Formulários do Wizard e modais de edição permitem preenchimento completo dos 6 campos de Renda Fixa (`FixedIncomeFormFields`).
+- [x] Novos aportes em RF recalculam o Marco Zero ($D_0$) sobre o saldo consolidado preservando `initial_investment_date`.
+- [x] Resgates de RF tributada com `syncCash = true` creditam o valor líquido (descontado IRRF) no Caixa.
+- [x] `PositionTable` e `AssetDetailSheet` exibem badges de rentabilidade projetada, vencimento e otimização de IR.
+- [x] Ações "Calibrar com Extrato" e "Liquidar para o Caixa" operando com 1-clique.
+- [x] Central de Insights renderiza o Radar de Vencimentos e avisos de virada de alíquota.
+- [x] Módulo de Dívidas inclui visualização de cronograma Price/SAC e edição segura de contratos (`LoanScheduleDialog`, `LoanEditDialog`).
+- [x] Suíte de testes, typecheck (`tsc --noEmit`) e ESLint 100% verdes.
+
+---
+
+### 🛡️ FASE 73 — Blindagem e Governança da Busca Global por Módulos & Feature Flags
+
+> **Objetivo:** Garantir que a barra de busca global (`GlobalSearch` / Command Palette ⌘K) e seu hook de agregação (`useGlobalSearchEntries`) respeitem rigorosamente a matriz de permissões e controle de acesso de módulos (`useUserAccess` / `hasFeature` / `isAdmin`), impedindo o vazamento de atalhos, páginas, ações operacionais e dados dinâmicos de módulos desativados para o usuário logado, além de suprimir requisições de rede desnecessárias.
+
+```mermaid
+flowchart TD
+    subgraph Bloco 1: Domínio & Metadados de Busca
+        ENTRY[SearchEntry] --> META[Propriedades: featureKey? + adminOnly?]
+        PAGES[STATIC_APP_PAGE_ENTRIES] --> ANOT_P[Anotação com featureKey]
+        ACTIONS[STATIC_APP_ACTION_ENTRIES] --> ANOT_A[Anotação com featureKey]
+        FILTER[filterSearchEntries] --> PURE[Função pura de filtragem por permissão]
+    end
+
+    subgraph Bloco 2: Camada de Estado & Queries Inteligentes
+        ACCESS[useUserAccess: hasFeature / isAdmin] --> USE_SEARCH[useGlobalSearchEntries]
+        USE_SEARCH --> COND_Q[enabled condicionado por módulo no TanStack Query]
+        USE_SEARCH --> MERGE[Combinação de estáticos e dinâmicos permitidos]
+        MERGE --> FILTER_FINAL[filterSearchEntries no array consolidado]
+    end
+
+    subgraph Bloco 3: Interface & Testes de Isolamento
+        SEARCH_UI[GlobalSearch / Command Palette] --> CLEAN_UI[Zero atalhos ou dados de módulos desativados]
+        TESTS[Testes Unitários & Integração] --> SEC_TESTS[Validação de isolamento com módulos parciais]
+    end
+```
+
+---
+
+#### 1. Fase 73.1: Enriquecimento do Domínio de Busca (`src/domain/search/`)
+- **Contrato de Entrada de Busca (`SearchEntry`):**
+  - Adicionar as propriedades opcionais `featureKey?: SystemFeatureKey` e `adminOnly?: boolean` à interface `SearchEntry` em `src/domain/search/index.ts`;
+- **Anotação de Catálogos Estáticos:**
+  - Anotar todas as entradas de `STATIC_APP_PAGE_ENTRIES` com o respectivo `featureKey` (`overview`, `transactions`, `cards`, `investments`, `debts`, `budgets`, `reports`, `insights`, `reminders`);
+  - Anotar todas as entradas de `STATIC_APP_ACTION_ENTRIES` com o respectivo `featureKey`;
+- **Função Pura de Filtragem:**
+  - Implementar e exportar `filterSearchEntries(entries: readonly SearchEntry[], isAdmin: boolean, hasFeature: (key: string) => boolean): SearchEntry[]`;
+- **Testes Unitários do Domínio:**
+  - Adicionar testes em `src/domain/search/index.test.ts` cobrindo cenários com módulos ativados/desativados e permissões administrativas.
+
+---
+
+#### 2. Fase 73.2: Otimização de Queries e Filtro de Estado (`src/state/queries/use-search.ts`)
+- **Consumo de Acesso:**
+  - Integrar `useUserAccess()` dentro de `useGlobalSearchEntries(enabled: boolean)`;
+- **Ativação Condicional de Queries (Zero Desperdício de Rede):**
+  - `expensesQuery` / `incomesQuery`: `enabled && (hasFeature("transactions") || hasFeature("overview"))`;
+  - `debtsQuery`: `enabled && hasFeature("debts")`;
+  - `cardsQuery`: `enabled && hasFeature("cards")`;
+  - `portfolioQuery`: `enabled && hasFeature("investments")`;
+  - `budgetsQuery`: `enabled && hasFeature("budgets")`;
+  - `recurrencesQuery`: `enabled && hasFeature("reminders")`;
+  - `categoriesQuery`: `enabled && (hasFeature("transactions") || hasFeature("budgets"))`;
+- **Consolidação Segura:**
+  - Anotar `featureKey` nos mapeamentos de registros dinâmicos e aplicar `filterSearchEntries` sobre o conjunto completo de entradas antes de retornar ao consumidor.
+
+---
+
+#### 3. Fase 73.3: Testes Automatizados e Blindagem de Layout
+- **Testes do Hook de Busca (`src/state/queries/use-search.test.tsx`):**
+  - Criação de testes com mock de `useUserAccess` validando desativação de queries e omissão de dados de módulos restritos;
+- **Testes do Componente de Busca (`src/components/layout/global-search.test.tsx`):**
+  - Teste de busca com perfil restrito garantindo que itens de módulos inativos não aparecem nos grupos de resultados;
+- **Typecheck & ESLint:**
+  - `tsc --noEmit` e `eslint .` 100% limpos.
+
+---
+
+**✅ DoD (Definition of Done da Fase 73):**
+- [x] `SearchEntry` possui campos opcionais `featureKey` e `adminOnly`.
+- [x] 100% das páginas e ações estáticas de `src/domain/search/` estão anotadas com seu respectivo `featureKey`.
+- [x] Função pura `filterSearchEntries` implementada e testada isoladamente no domínio (`src/domain/search/index.test.ts`).
+- [x] `useGlobalSearchEntries` consome `useUserAccess` e desativa queries TanStack de módulos inativos.
+- [x] Usuários sem determinado módulo (ex: `investments` ou `debts`) não visualizam páginas, ações rápidas nem dados dinâmicos daquele módulo na busca global.
+- [x] Testes unitários do domínio, do hook e do componente cobrindo isolamento de módulos (`src/state/queries/use-search.test.tsx`, `src/components/layout/global-search.test.tsx`).
+- [x] Suíte de testes (Vitest), typecheck estrito e lint 100% verdes.
+
+
 
 
 

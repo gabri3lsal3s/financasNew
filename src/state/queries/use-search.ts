@@ -9,6 +9,7 @@ import { listBudgets } from "@/data/repositories/budgets";
 import { listRecurrences } from "@/data/repositories/recurrences";
 import { DEBT_STATUS_LABELS, debtStatus } from "@/domain/debts";
 import {
+  filterSearchEntries,
   STATIC_APP_ACTION_ENTRIES,
   STATIC_APP_PAGE_ENTRIES,
   type SearchEntry,
@@ -16,63 +17,75 @@ import {
 import { formatDateBR } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { STALE_TIMES } from "@/state/cache-policy";
+import { useUserAccess } from "./use-user-access";
 
 export const allExpensesKey = ["expenses", "all"] as const;
 export const allIncomesKey = ["incomes", "all"] as const;
 
 /**
- * Dados da busca global e Command Palette (§3.9 & Fase 64):
+ * Dados da busca global e Command Palette (§3.9, Fase 64 & Fase 73):
  * Indexa 100% dos módulos (páginas, ações rápidas, despesas, rendas,
  * dívidas, cartões, investimentos, orçamentos, lembretes e categorias).
- * As queries são habilitadas apenas com a paleta aberta para máxima performance.
+ * As queries são habilitadas condicionalmente pelas permissões e Feature Flags
+ * ativas para o usuário logado (evitando requisições de rede para módulos desativados).
  */
 export function useGlobalSearchEntries(enabled: boolean) {
+  const { isAdmin, hasFeature } = useUserAccess();
+
+  const isTransactionsEnabled = hasFeature("transactions") || hasFeature("overview");
+  const isDebtsEnabled = hasFeature("debts");
+  const isCardsEnabled = hasFeature("cards");
+  const isInvestmentsEnabled = hasFeature("investments");
+  const isBudgetsEnabled = hasFeature("budgets");
+  const isRemindersEnabled = hasFeature("reminders");
+  const isCategoriesEnabled = hasFeature("transactions") || hasFeature("budgets");
+
   const expensesQuery = useQuery({
     queryKey: allExpensesKey,
     queryFn: () => listAllExpenses(),
-    enabled,
+    enabled: enabled && isTransactionsEnabled,
     staleTime: STALE_TIMES.analytical,
   });
   const incomesQuery = useQuery({
     queryKey: allIncomesKey,
     queryFn: () => listAllIncomes(),
-    enabled,
+    enabled: enabled && isTransactionsEnabled,
     staleTime: STALE_TIMES.analytical,
   });
   const debtsQuery = useQuery({
     queryKey: ["debts"] as const,
     queryFn: () => listDebts(),
-    enabled,
+    enabled: enabled && isDebtsEnabled,
     staleTime: STALE_TIMES.analytical,
   });
   const cardsQuery = useQuery({
     queryKey: ["credit_cards"] as const,
     queryFn: () => listCreditCards(),
-    enabled,
+    enabled: enabled && isCardsEnabled,
     staleTime: STALE_TIMES.analytical,
   });
   const categoriesQuery = useQuery({
     queryKey: ["categories", "all"] as const,
     queryFn: () => listAllCategories(),
-    enabled,
+    enabled: enabled && isCategoriesEnabled,
     staleTime: STALE_TIMES.analytical,
   });
   const portfolioQuery = useQuery({
     queryKey: ["portfolio", "assets"] as const,
     queryFn: () => listPortfolioAssets(),
-    enabled,
+    enabled: enabled && isInvestmentsEnabled,
     staleTime: STALE_TIMES.analytical,
   });
   const budgetsQuery = useQuery({
     queryKey: ["budgets"] as const,
     queryFn: () => listBudgets(),
-    enabled,
+    enabled: enabled && isBudgetsEnabled,
     staleTime: STALE_TIMES.analytical,
   });
   const recurrencesQuery = useQuery({
     queryKey: ["recurrences"] as const,
     queryFn: () => listRecurrences(),
-    enabled,
+    enabled: enabled && isRemindersEnabled,
     staleTime: STALE_TIMES.analytical,
   });
 
@@ -91,6 +104,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
       label: expense.description || `Despesa · ${category?.name ?? "sem categoria"}`,
       detail: `${category?.name ?? "Sem categoria"} · ${methodLabel} · ${formatDateBR(expense.date)}`,
       link: { path: "/transacoes", params: { month: expense.date.slice(0, 7), q: expense.id } },
+      featureKey: "transactions",
     };
   });
 
@@ -106,6 +120,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
       label: income.description || `Renda · ${category?.name ?? "sem categoria"}`,
       detail: `${category?.name ?? "Sem categoria"} · ${receiveLabel} · ${formatDateBR(income.date)}`,
       link: { path: "/transacoes", params: { month: income.date.slice(0, 7), q: income.id } },
+      featureKey: "transactions",
     };
   });
 
@@ -122,6 +137,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
       label: debt.name,
       detail: `${debt.type === "payable" ? "A pagar" : "A receber"} · ${DEBT_STATUS_LABELS[status]} · vence ${formatDateBR(debt.due_date)}`,
       link: { path: "/dividas", params: { q: debt.id, type: debt.type } },
+      featureKey: "debts",
     };
   });
 
@@ -132,6 +148,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
     label: card.name,
     detail: card.brand ? `Cartão ${card.brand}` : "Cartão de crédito",
     link: { path: "/cartoes", params: { card: card.id, q: card.id } },
+    featureKey: "cards",
   }));
 
   const categoriesEntries: SearchEntry[] = categories.map((category) => ({
@@ -141,6 +158,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
     label: category.name,
     detail: category.type === "expense" ? "Categoria de despesa" : "Categoria de renda",
     link: { path: "/categorias", params: { q: category.id, type: category.type } },
+    featureKey: "transactions",
   }));
 
   const investments: SearchEntry[] = (portfolioQuery.data ?? []).map((asset) => ({
@@ -151,6 +169,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
     label: `${asset.ticker}${asset.sector ? ` · ${asset.sector}` : ""}`,
     detail: `${asset.asset_class ?? "Ativo"} · ${asset.currency} ${Number(asset.quantity ?? 0).toLocaleString("pt-BR")} posições / cotas`,
     link: { path: "/investimentos", params: { q: asset.id, ticker: asset.ticker } },
+    featureKey: "investments",
   }));
 
   const budgets: SearchEntry[] = (budgetsQuery.data ?? []).map((budget) => {
@@ -163,6 +182,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
       label: `Orçamento · ${cat?.name ?? "Categoria"}`,
       detail: `Teto de R$ ${Number(budget.limit ?? 0).toFixed(2)} · Mês ${budget.month}`,
       link: { path: "/orcamentos", params: { q: budget.id, category: budget.category_id } },
+      featureKey: "budgets",
     };
   });
 
@@ -178,10 +198,11 @@ export function useGlobalSearchEntries(enabled: boolean) {
       label: `Lembrete · ${description}`,
       detail: `${rec.kind === "expense" ? "Despesa fixa" : "Renda fixa"} · R$ ${Number(rec.value ?? 0).toFixed(2)} (${rec.frequency})`,
       link: { path: "/lembretes", params: { q: rec.id } },
+      featureKey: "reminders",
     };
   });
 
-  const entries: SearchEntry[] = [
+  const rawEntries: SearchEntry[] = [
     ...STATIC_APP_ACTION_ENTRIES,
     ...STATIC_APP_PAGE_ENTRIES,
     ...investments,
@@ -193,6 +214,8 @@ export function useGlobalSearchEntries(enabled: boolean) {
     ...reminders,
     ...categoriesEntries,
   ];
+
+  const entries = filterSearchEntries(rawEntries, { isAdmin, hasFeature });
 
   return {
     entries,

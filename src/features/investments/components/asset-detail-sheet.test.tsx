@@ -81,6 +81,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue(mockAsset),
     isPending: false,
   }),
+  useSetManualPrice: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
 }));
 
 

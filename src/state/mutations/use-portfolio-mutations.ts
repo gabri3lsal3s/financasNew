@@ -15,6 +15,7 @@ import {
 } from "@/data/repositories/portfolio";
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
+import { calculateFixedIncomeBalance } from "@/domain/portfolio/fixed-income";
 import {
   getAssetPricingMode,
   isCashAssetClass,
@@ -399,11 +400,22 @@ export function useRecordOrder() {
                 : asset.quantity;
           const orderAmount = total > 0 ? total : price;
           const newTotalApplied = Math.round((currentCost + orderAmount) * 100) / 100;
+
+          const updatedFiMetadata = asset.fixed_income_metadata
+            ? {
+                ...asset.fixed_income_metadata,
+                base_date: date,
+                initial_investment_date:
+                  asset.fixed_income_metadata.initial_investment_date ?? asset.fixed_income_metadata.base_date,
+              }
+            : null;
+
           await updateAsset.mutateAsync({
             id: asset.id,
             patch: {
               quantity: 1,
               average_price: newTotalApplied,
+              ...(updatedFiMetadata ? { fixed_income_metadata: updatedFiMetadata } : {}),
             },
           });
         } else {
@@ -453,6 +465,8 @@ export function useRecordOrder() {
         const pricingMode = getAssetPricingMode(asset);
         const isTotalValue = !isCash && pricingMode === "total_value";
 
+        let netCreditBRL = totalBRL;
+
         if (isCash) {
           await updateAsset.mutateAsync({
             id: asset.id,
@@ -470,11 +484,39 @@ export function useRecordOrder() {
                 : asset.quantity;
           const orderAmount = total > 0 ? total : price;
           const newTotalApplied = Math.round(Math.max(0, currentCost - orderAmount) * 100) / 100;
+
+          // Se Renda Fixa tributada, calcula retenção de IRRF para o crédito líquido no Caixa
+          if (asset.fixed_income_metadata && !asset.fixed_income_metadata.is_tax_exempt) {
+            const fiRes = calculateFixedIncomeBalance({
+              baseValue: currentCost,
+              baseDate: asset.fixed_income_metadata.base_date,
+              initialInvestmentDate: asset.fixed_income_metadata.initial_investment_date,
+              maturityDate: asset.fixed_income_metadata.maturity_date,
+              rateType: asset.fixed_income_metadata.rate_type,
+              rateValue: asset.fixed_income_metadata.rate_value,
+              isTaxExempt: false,
+              today: date,
+            });
+            if (fiRes.taxAmount > 0) {
+              const proportion = currentCost > 0 ? Math.min(1, orderAmount / currentCost) : 1;
+              const estimatedTax = Math.round(fiRes.taxAmount * proportion * 100) / 100;
+              netCreditBRL = Math.max(0, Math.round((totalBRL - estimatedTax) * 100) / 100);
+            }
+          }
+
+          const updatedFiMetadata = asset.fixed_income_metadata
+            ? {
+                ...asset.fixed_income_metadata,
+                base_date: newTotalApplied > 0 ? date : asset.fixed_income_metadata.base_date,
+              }
+            : null;
+
           await updateAsset.mutateAsync({
             id: asset.id,
             patch: {
               quantity: newTotalApplied > 0 ? 1 : 0,
               average_price: newTotalApplied,
+              ...(updatedFiMetadata ? { fixed_income_metadata: updatedFiMetadata } : {}),
             },
           });
         } else {
@@ -493,12 +535,12 @@ export function useRecordOrder() {
           });
         }
 
-        // Credita no caixa em BRL se solicitado
-        if (syncCash && cashAsset && totalBRL > 0) {
+        // Credita no caixa em BRL se solicitado (valor líquido descontado de IRRF se aplicável)
+        if (syncCash && cashAsset && netCreditBRL > 0) {
           await updateAsset.mutateAsync({
             id: cashAsset.id,
             patch: {
-              quantity: cashAsset.quantity + totalBRL,
+              quantity: cashAsset.quantity + netCreditBRL,
               average_price: 1,
             },
           });

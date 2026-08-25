@@ -37,6 +37,7 @@ export {
   useCreateLoanContract,
   useEarlyAmortizeLoan,
   useDeleteLoan,
+  useUpdateLoan,
 } from "./mutations/use-loan-mutations";
 export {
   useCreateDebt,

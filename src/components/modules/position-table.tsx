@@ -26,7 +26,8 @@ import type { AssetPricingMode, PriceSource } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
 import { formatSignedPct } from "@/services/masks/percent";
 import { formatCentsAsBRL } from "@/services/masks/money";
-import type { AssetCurrency } from "@/types";
+import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
+import type { FixedIncomeBalanceResult } from "@/domain/portfolio";
 
 
 export interface PositionRow {
@@ -57,6 +58,11 @@ export interface PositionRow {
   totalReturnPct?: number | null;
   isCash: boolean;
   pricingMode?: AssetPricingMode;
+  fixedIncomeMetadata?: FixedIncomeMetadata | null;
+  fixedIncomeResult?: FixedIncomeBalanceResult | null;
+  isMatured?: boolean;
+  maturityDate?: string | null;
+  netValueBRL?: number;
 }
 
 export interface PositionTableProps {
@@ -418,6 +424,18 @@ export function PositionTable({
       header: headerFor("ticker", "Ativo"),
       className: "flex-[1.4]",
       cell: (row) => {
+        const rfLabel = row.isMatured
+          ? "Vencido"
+          : row.fixedIncomeMetadata
+            ? row.fixedIncomeMetadata.rate_type === "cdi"
+              ? `${row.fixedIncomeMetadata.rate_value}% CDI`
+              : row.fixedIncomeMetadata.rate_type === "selic"
+                ? `${row.fixedIncomeMetadata.rate_value}% Selic`
+                : row.fixedIncomeMetadata.rate_type === "pre"
+                  ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
+                  : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`
+            : null;
+
         return handleOpen ? (
           <button
             type="button"
@@ -429,13 +447,39 @@ export function PositionTable({
             aria-label={`Ver detalhes de ${row.ticker}`}
             title={`Ver detalhes de ${row.ticker}`}
           >
-            <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-              {row.ticker}
-            </span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                {row.ticker}
+              </span>
+              {rfLabel && (
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
+                    row.isMatured
+                      ? "bg-destructive/10 text-critical-strong"
+                      : "bg-surface-hover/80 text-muted-foreground",
+                  )}
+                >
+                  {rfLabel}
+                </span>
+              )}
+            </div>
           </button>
         ) : (
-          <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+            {rfLabel && (
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
+                  row.isMatured
+                    ? "bg-destructive/10 text-critical-strong"
+                    : "bg-surface-hover/80 text-muted-foreground",
+                )}
+              >
+                {rfLabel}
+              </span>
+            )}
           </div>
         );
       },
@@ -677,6 +721,21 @@ export function PositionTable({
         <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
+            {row.isMatured ? (
+              <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-critical-strong shrink-0">
+                Vencido
+              </span>
+            ) : row.fixedIncomeMetadata ? (
+              <span className="rounded bg-surface-hover/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0">
+                {row.fixedIncomeMetadata.rate_type === "cdi"
+                  ? `${row.fixedIncomeMetadata.rate_value}% CDI`
+                  : row.fixedIncomeMetadata.rate_type === "selic"
+                    ? `${row.fixedIncomeMetadata.rate_value}% Selic`
+                    : row.fixedIncomeMetadata.rate_type === "pre"
+                      ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
+                      : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`}
+              </span>
+            ) : null}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex flex-col items-end gap-0.5">

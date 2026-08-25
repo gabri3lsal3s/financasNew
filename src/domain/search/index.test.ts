@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  filterSearchEntries,
   matchScore,
   monthsBetween,
   normalizeSearch,
@@ -204,3 +205,50 @@ describe("domain/search (§3.9 — limites e ordenação)", () => {
     expect(resultsExpense[0]!.entry.id).toBe("action-new-expense");
   });
 });
+
+describe("domain/search (§F73 — filterSearchEntries & Feature Flags)", () => {
+  const sampleEntries: SearchEntry[] = [
+    entry({ id: "p1", type: "page", label: "Visão Geral", featureKey: "overview" }),
+    entry({ id: "p2", type: "page", label: "Investimentos", featureKey: "investments" }),
+    entry({ id: "p3", type: "page", label: "Dívidas", featureKey: "debts" }),
+    entry({ id: "p4", type: "page", label: "Configurações" }), // sem featureKey (público)
+    entry({ id: "p5", type: "page", label: "Painel Admin", adminOnly: true }),
+    entry({ id: "a1", type: "action", label: "Novo Ativo", featureKey: "investments" }),
+    entry({ id: "a2", type: "action", label: "Nova Dívida", featureKey: "debts" }),
+  ];
+
+  it("permite todos os itens para admin com todas as flags ativas", () => {
+    const filtered = filterSearchEntries(sampleEntries, {
+      isAdmin: true,
+      hasFeature: () => true,
+    });
+    expect(filtered).toHaveLength(sampleEntries.length);
+  });
+
+  it("remove itens adminOnly quando isAdmin for false", () => {
+    const filtered = filterSearchEntries(sampleEntries, {
+      isAdmin: false,
+      hasFeature: () => true,
+    });
+    expect(filtered.map((e) => e.id)).toEqual(["p1", "p2", "p3", "p4", "a1", "a2"]);
+    expect(filtered.some((e) => e.adminOnly)).toBe(false);
+  });
+
+  it("filtra itens de módulos desativados conforme hasFeature", () => {
+    const activeModules = new Set(["overview", "debts"]);
+    const filtered = filterSearchEntries(sampleEntries, {
+      isAdmin: false,
+      hasFeature: (key) => activeModules.has(key),
+    });
+
+    const ids = filtered.map((e) => e.id);
+    expect(ids).toContain("p1"); // overview
+    expect(ids).toContain("p3"); // debts
+    expect(ids).toContain("p4"); // configurações (sem featureKey)
+    expect(ids).toContain("a2"); // nova dívida
+    expect(ids).not.toContain("p2"); // investments desativado
+    expect(ids).not.toContain("a1"); // investments desativado
+    expect(ids).not.toContain("p5"); // adminOnly
+  });
+});
+

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { numberToCents } from "@/domain/money";
 import { Alert, Button, Input, Modal, MoneyInput, Select } from "@/components/ui";
-import { isCashAssetClass } from "@/domain/portfolio/valuation";
+import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { assetMetadataSchema } from "@/domain/portfolio/schemas";
 import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
+import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { useUpdatePortfolioAsset } from "@/state";
-import type { AssetCurrency, PortfolioAsset } from "@/types";
+import type { AssetCurrency, FixedIncomeMetadata, FixedIncomeRateType, PortfolioAsset } from "@/types";
+import { FixedIncomeFormFields } from "./fixed-income-form-fields";
 
 export interface AssetEditDialogProps {
   asset: PortfolioAsset | null;
@@ -30,6 +32,13 @@ const CURRENCIES: { value: AssetCurrency; label: string }[] = [
   { value: "USD", label: "USD (Dólares)" },
 ];
 
+const parseNumber = (raw: string): number => {
+  if (!raw || typeof raw !== "string") return 0;
+  const clean = raw.trim().replace(/\./g, "").replace(",", ".");
+  const val = Number(clean);
+  return Number.isFinite(val) && val >= 0 ? val : 0;
+};
+
 interface AssetEditFormContentProps {
   asset: PortfolioAsset;
   onClose: () => void;
@@ -49,20 +58,60 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   const [estimatedDividendPerShareCents, setEstimatedDividendPerShareCents] = useState(
     numberToCents(asset.estimated_monthly_dividend_per_share ?? 0),
   );
+
+  // Parâmetros de Renda Fixa (Fase 63/72)
+  const [fixedIncomeRateType, setFixedIncomeRateType] = useState<FixedIncomeRateType>(
+    asset.fixed_income_metadata?.rate_type ?? "cdi",
+  );
+  const [fixedIncomeRateValue, setFixedIncomeRateValue] = useState<string>(
+    asset.fixed_income_metadata?.rate_value !== undefined ? String(asset.fixed_income_metadata.rate_value) : "",
+  );
+  const [fixedIncomeBaseDate, setFixedIncomeBaseDate] = useState<string>(
+    asset.fixed_income_metadata?.base_date ?? todayISO(),
+  );
+  const [fixedIncomeInitialInvestmentDate, setFixedIncomeInitialInvestmentDate] = useState<string>(
+    asset.fixed_income_metadata?.initial_investment_date ?? "",
+  );
+  const [fixedIncomeMaturityDate, setFixedIncomeMaturityDate] = useState<string>(
+    asset.fixed_income_metadata?.maturity_date ?? "",
+  );
+  const [fixedIncomeIsTaxExempt, setFixedIncomeIsTaxExempt] = useState<boolean>(
+    Boolean(asset.fixed_income_metadata?.is_tax_exempt),
+  );
+
   const [error, setError] = useState<string | null>(null);
 
   const isCash = isCashAssetClass(assetClass);
+  const isTesouro = isTesouroAsset(ticker, assetClass);
+  const isFixedIncome = isFixedIncomeClass(assetClass) || isTesouro;
   const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[assetClass] ?? [];
 
   const handleClassChange = (newClass: string) => {
     setAssetClass(newClass);
     const suggested = inferSectorFromTicker(ticker, newClass);
     setSector(suggested);
+    const upper = ticker.toUpperCase();
+    if (upper.includes("LCI") || upper.includes("LCA") || upper.includes("CRI") || upper.includes("CRA")) {
+      setFixedIncomeIsTaxExempt(true);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    let fiMetadata: FixedIncomeMetadata | null = null;
+    if (isFixedIncome && !isCash) {
+      const rateVal = parseNumber(fixedIncomeRateValue);
+      fiMetadata = {
+        rate_type: fixedIncomeRateType,
+        rate_value: rateVal,
+        base_date: fixedIncomeBaseDate || todayISO(),
+        initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
+        maturity_date: fixedIncomeMaturityDate ? fixedIncomeMaturityDate.slice(0, 10) : null,
+        is_tax_exempt: fixedIncomeIsTaxExempt,
+      };
+    }
 
     const validation = assetMetadataSchema.safeParse({
       ticker,
@@ -71,6 +120,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
       currency,
       accumulated_dividends: accumulatedDividendsCents / 100,
       estimated_monthly_dividend_per_share: estimatedDividendPerShareCents / 100,
+      fixed_income_metadata: fiMetadata,
       notes: notes.trim() || null,
     });
 
@@ -89,6 +139,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           currency: validation.data.currency,
           accumulated_dividends: validation.data.accumulated_dividends,
           estimated_monthly_dividend_per_share: validation.data.estimated_monthly_dividend_per_share,
+          fixed_income_metadata: validation.data.fixed_income_metadata,
           notes: validation.data.notes,
         },
       });
@@ -168,6 +219,31 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           </div>
         )}
       </div>
+
+      {/* Bloco de Parâmetros de Renda Fixa e Tesouro Direto (Fase 63/72) */}
+      {isFixedIncome && !isCash && (
+        <FixedIncomeFormFields
+          values={{
+            rateType: fixedIncomeRateType,
+            rateValue: fixedIncomeRateValue,
+            baseDate: fixedIncomeBaseDate,
+            initialInvestmentDate: fixedIncomeInitialInvestmentDate || null,
+            maturityDate: fixedIncomeMaturityDate || null,
+            isTaxExempt: fixedIncomeIsTaxExempt,
+          }}
+          onChange={(patch) => {
+            if (patch.rateType !== undefined) setFixedIncomeRateType(patch.rateType);
+            if (patch.rateValue !== undefined) setFixedIncomeRateValue(patch.rateValue);
+            if (patch.baseDate !== undefined) setFixedIncomeBaseDate(patch.baseDate);
+            if (patch.initialInvestmentDate !== undefined)
+              setFixedIncomeInitialInvestmentDate(patch.initialInvestmentDate ?? "");
+            if (patch.maturityDate !== undefined) setFixedIncomeMaturityDate(patch.maturityDate ?? "");
+            if (patch.isTaxExempt !== undefined) setFixedIncomeIsTaxExempt(patch.isTaxExempt);
+          }}
+          idPrefix="edit-fi"
+          isTesouro={isTesouro}
+        />
+      )}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="edit-asset-notes" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

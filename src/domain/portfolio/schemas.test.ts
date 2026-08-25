@@ -24,7 +24,7 @@ describe("schemas — Módulo de Investimentos (Fase 41)", () => {
     it("rejeita tickers vazios ou com caracteres proibidos", () => {
       expect(() => assetTickerSchema.parse("")).toThrow();
       expect(() => assetTickerSchema.parse("PETR@4")).toThrow();
-      expect(() => assetTickerSchema.parse("A".repeat(25))).toThrow();
+      expect(() => assetTickerSchema.parse("A".repeat(65))).toThrow();
     });
   });
 
@@ -145,6 +145,80 @@ describe("schemas — Módulo de Investimentos (Fase 41)", () => {
       });
       expect(parsed.ticker).toBe("MXRF11");
       expect(parsed.notes).toBe("Fundo imobiliário de papel");
+    });
+  });
+
+  describe("fixedIncomeMetadataSchema", () => {
+    it("valida metadados completos de Renda Fixa parametrizada", () => {
+      const parsed = newAssetSchema.parse({
+        ticker: "CDB BANCO INTER 110% CDI",
+        asset_class: "Renda Fixa",
+        currency: "BRL",
+        quantity: 1,
+        average_price: 5000,
+        fixed_income_metadata: {
+          rate_type: "cdi",
+          rate_value: 110,
+          base_date: "2026-01-15",
+          initial_investment_date: "2025-06-01",
+          maturity_date: "2028-01-15",
+          is_tax_exempt: false,
+        },
+      });
+
+      expect(parsed.fixed_income_metadata?.rate_type).toBe("cdi");
+      expect(parsed.fixed_income_metadata?.rate_value).toBe(110);
+      expect(parsed.fixed_income_metadata?.base_date).toBe("2026-01-15");
+      expect(parsed.fixed_income_metadata?.initial_investment_date).toBe("2025-06-01");
+      expect(parsed.fixed_income_metadata?.maturity_date).toBe("2028-01-15");
+      expect(parsed.fixed_income_metadata?.is_tax_exempt).toBe(false);
+    });
+
+    it("valida metadados de ativo isento de IR (LCI/LCA)", () => {
+      const parsed = assetMetadataSchema.parse({
+        ticker: "LCI BANCO DO BRASIL",
+        asset_class: "Renda Fixa",
+        currency: "BRL",
+        fixed_income_metadata: {
+          rate_type: "cdi",
+          rate_value: 95,
+          base_date: "2026-08-01",
+          is_tax_exempt: true,
+        },
+      });
+
+      expect(parsed.fixed_income_metadata?.rate_value).toBe(95);
+      expect(parsed.fixed_income_metadata?.is_tax_exempt).toBe(true);
+    });
+
+    it("rejeita indexador inválido ou datas mal formatadas", () => {
+      expect(() =>
+        newAssetSchema.parse({
+          ticker: "CDB INVALIDO",
+          asset_class: "Renda Fixa",
+          quantity: 1,
+          average_price: 1000,
+          fixed_income_metadata: {
+            rate_type: "invalido",
+            rate_value: 100,
+            base_date: "2026-01-01",
+          },
+        }),
+      ).toThrow();
+
+      expect(() =>
+        newAssetSchema.parse({
+          ticker: "CDB DATA INVALIDA",
+          asset_class: "Renda Fixa",
+          quantity: 1,
+          average_price: 1000,
+          fixed_income_metadata: {
+            rate_type: "pre",
+            rate_value: 12.5,
+            base_date: "01/01/2026",
+          },
+        }),
+      ).toThrow();
     });
   });
 });
