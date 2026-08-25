@@ -331,6 +331,31 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(summary.taxAmountBRL).toBeGreaterThan(0);
       expect(summary.isMatured).toBe(false);
     });
+
+    it("utiliza base_value para capitalização mantendo averagePrice como custo de aquisição", () => {
+      const summary = calculatePositionSummary({
+        quantity: 1,
+        averagePrice: 10000, // Custo inicial original
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+        ticker: "CDB CALIBRADO",
+        resolvedPrice: { price: 0, source: "fallback" },
+        fixedIncomeMetadata: {
+          rate_type: "cdi",
+          rate_value: 110,
+          base_date: "2026-08-17", // Calibrado hoje
+          base_value: 10800, // Saldo calibrado do extrato
+          initial_investment_date: "2026-01-01",
+        },
+        today: "2026-08-17",
+      });
+
+      expect(summary.totalCost).toBe(10000);
+      expect(summary.averagePrice).toBe(10000);
+      expect(summary.valueBRL).toBe(10800);
+      expect(summary.unrealizedPnl).toBe(800);
+      expect(summary.unrealizedPct).toBe(8);
+    });
   });
 
   describe("isFixedIncomeClass & isTesouroAsset & getAssetPricingMode", () => {

@@ -327,6 +327,7 @@ function InvestmentWizardContent({
             rate_type: state.fixedIncomeRateType,
             rate_value: rateVal,
             base_date: state.fixedIncomeBaseDate || state.date,
+            base_value: isTotalValue && total > 0 ? total : null,
             initial_investment_date: state.fixedIncomeInitialInvestmentDate ? state.fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
             maturity_date: state.fixedIncomeMaturityDate ? state.fixedIncomeMaturityDate.slice(0, 10) : null,
             is_tax_exempt: state.fixedIncomeIsTaxExempt,

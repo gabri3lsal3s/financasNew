@@ -379,8 +379,15 @@ export function calculatePositionSummary(params: {
 
     // Se possui parametrização Marco Zero (Fase 63), calcula a evolução contábil diária
     if (fixedIncomeMetadata) {
+      const baseValue =
+        fixedIncomeMetadata.base_value !== undefined &&
+        fixedIncomeMetadata.base_value !== null &&
+        fixedIncomeMetadata.base_value > 0
+          ? fixedIncomeMetadata.base_value
+          : initialCost;
+
       const fiResult = calculateFixedIncomeBalance({
-        baseValue: initialCost,
+        baseValue,
         baseDate: fixedIncomeMetadata.base_date,
         initialInvestmentDate: fixedIncomeMetadata.initial_investment_date,
         maturityDate: fixedIncomeMetadata.maturity_date,

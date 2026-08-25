@@ -105,6 +105,7 @@ describe("AssetEditDialog", () => {
           fixed_income_metadata: expect.objectContaining({
             rate_type: "cdi",
             rate_value: 110,
+            base_value: 10500,
           }),
         }),
       });
@@ -113,6 +114,60 @@ describe("AssetEditDialog", () => {
     expect(mockSetManualPrice).toHaveBeenCalledWith({
       ticker: "CDB BANCO INTER",
       price: 10500,
+    });
+  });
+
+  it("permite editar preço inicial e saldo final de forma independente em Renda Fixa", async () => {
+    mockUpdateAsset.mockResolvedValue({ ...mockFixedIncomeAsset });
+    mockSetManualPrice.mockResolvedValue({});
+    const onOpenChange = vi.fn();
+
+    render(
+      <AssetEditDialog
+        asset={{
+          ...mockFixedIncomeAsset,
+          average_price: 10000,
+          fixed_income_metadata: {
+            rate_type: "cdi",
+            rate_value: 110,
+            base_date: "2026-01-01",
+            base_value: 10500,
+            initial_investment_date: "2026-01-01",
+            maturity_date: "2028-01-01",
+            is_tax_exempt: false,
+          },
+        }}
+        open={true}
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    // O campo inicial deve estar com 10.000 e saldo com 10.500
+    expect(screen.getByLabelText("Preço inicial investido")).toHaveValue("R$ 10.000,00");
+    expect(screen.getByLabelText("Preço atual ou saldo")).toHaveValue("R$ 10.500,00");
+
+    // Altera o preço inicial para R$ 12.000,00
+    fireEvent.change(screen.getByLabelText("Preço inicial investido"), { target: { value: "1200000" } });
+    // Altera o saldo atual para R$ 13.000,00
+    fireEvent.change(screen.getByLabelText("Preço atual ou saldo"), { target: { value: "1300000" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateAsset).toHaveBeenCalledWith({
+        id: "asset-rf-1",
+        patch: expect.objectContaining({
+          average_price: 12000,
+          fixed_income_metadata: expect.objectContaining({
+            base_value: 13000,
+          }),
+        }),
+      });
+    });
+
+    expect(mockSetManualPrice).toHaveBeenCalledWith({
+      ticker: "CDB BANCO INTER",
+      price: 13000,
     });
   });
 

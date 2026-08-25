@@ -42,21 +42,30 @@ export function CalibrateFixedIncomeDialog({
     }
 
     try {
-      const updatedFiMetadata = asset.fixed_income_metadata
+      const updatedFiMetadata: FixedIncomeMetadata = asset.fixed_income_metadata
         ? {
             ...asset.fixed_income_metadata,
+            base_value: newBalance,
             base_date: baseDate,
             initial_investment_date:
               asset.fixed_income_metadata.initial_investment_date ?? asset.fixed_income_metadata.base_date,
           }
-        : null;
+        : {
+            rate_type: "cdi",
+            rate_value: 100,
+            base_value: newBalance,
+            base_date: baseDate,
+            initial_investment_date: baseDate,
+            maturity_date: null,
+            is_tax_exempt: false,
+          };
 
       await updateAsset.mutateAsync({
         id: asset.id,
         patch: {
           quantity: 1,
-          average_price: newBalance,
-          ...(updatedFiMetadata ? { fixed_income_metadata: updatedFiMetadata } : {}),
+          average_price: asset.average_price > 0 ? asset.average_price : newBalance,
+          fixed_income_metadata: updatedFiMetadata,
         },
       });
 

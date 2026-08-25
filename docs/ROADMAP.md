@@ -3623,7 +3623,7 @@ flowchart TD
   - **Badge de Rentabilidade Projetada:** Exibição do indicador formatado (ex.: `[110% CDI • Projetado]`);
   - **Badge de Vencimento:** Sinalização semântica (`[Vence em 15 dias]` em `warning-strong` / `[Vencido em DD/MM/AAAA]` em `critical-strong`);
   - **Badge de Otimização Tributária:** Sinalização da virada de alíquota (ex.: `[IR 20% ➔ 17,5% em 24d]`);
-  - **Ação "Calibrar com Extrato":** Botão de 1-clique para redefinir o Marco Zero ($D_0$) com o saldo atual do extrato;
+  - **Ação "Calibrar com Extrato":** Botão de 1-clique para redefinir o Marco Zero ($D_0$) com o saldo atual do extrato em `fixed_income_metadata.base_value`, preservando intacto o `average_price` (Custo Original de Aplicação) para apuração real de lucro e Yield on Cost;
   - **Ação "Liquidar / Mover para o Caixa":** Botão em títulos vencidos que resgata o valor com desconto de IRRF e transfere o líquido para o Caixa.
 
 ---

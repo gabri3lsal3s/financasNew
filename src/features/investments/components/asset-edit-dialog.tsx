@@ -111,7 +111,12 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         ? asset.quantity
         : 0
     : 0;
-  const existingCurrentPrice = priceQuote?.manual_price ?? priceQuote?.price ?? existingInitialPrice;
+  const existingCurrentPrice =
+    asset.fixed_income_metadata?.base_value !== undefined &&
+    asset.fixed_income_metadata?.base_value !== null &&
+    asset.fixed_income_metadata.base_value > 0
+      ? asset.fixed_income_metadata.base_value
+      : priceQuote?.manual_price ?? priceQuote?.price ?? existingInitialPrice;
 
   const [initialPriceCents, setInitialPriceCents] = useState(numberToCents(existingInitialPrice));
   const [currentPriceCents, setCurrentPriceCents] = useState(numberToCents(existingCurrentPrice));
@@ -173,6 +178,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         rate_type: fixedIncomeRateType,
         rate_value: rateVal,
         base_date: fixedIncomeBaseDate || todayISO(),
+        base_value: isTotalValueMode && currentPriceCents > 0 ? currentPriceCents / 100 : null,
         initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
         maturity_date: fixedIncomeMaturityDate ? fixedIncomeMaturityDate.slice(0, 10) : null,
         is_tax_exempt: fixedIncomeIsTaxExempt,
@@ -378,7 +384,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
                 cents={initialPriceCents}
                 onCentsChange={(cents) => {
                   setInitialPriceCents(cents);
-                  if (currentPriceCents === 0 || currentPriceCents === initialPriceCents) {
+                  if (currentPriceCents === 0) {
                     setCurrentPriceCents(cents);
                   }
                 }}

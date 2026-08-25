@@ -53,6 +53,11 @@ export const fixedIncomeMetadataSchema = z.object({
   base_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Data-base inválida (use o formato AAAA-MM-DD)"),
+  base_value: z
+    .number({ message: "Informe um saldo base válido" })
+    .min(0, "O saldo base não pode ser negativo")
+    .nullable()
+    .optional(),
   initial_investment_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de aplicação original inválida (use o formato AAAA-MM-DD)")

@@ -58,10 +58,11 @@ describe("CalibrateFixedIncomeDialog", () => {
       expect(mockUpdateAsset).toHaveBeenCalledWith({
         id: "asset-rf-1",
         patch: expect.objectContaining({
-          average_price: 10500,
+          average_price: 10000,
           fixed_income_metadata: expect.objectContaining({
             rate_type: "cdi",
             rate_value: 110,
+            base_value: 10500,
           }),
         }),
       });

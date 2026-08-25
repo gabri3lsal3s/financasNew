@@ -285,6 +285,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
           rate_type: fixedIncomeRateType,
           rate_value: rateVal,
           base_date: fixedIncomeBaseDate || todayISO(),
+          base_value: isTotalValueMode && currentPriceCents > 0 ? currentPriceCents / 100 : null,
           initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
           maturity_date: fixedIncomeMaturityDate ? fixedIncomeMaturityDate.slice(0, 10) : null,
           is_tax_exempt: fixedIncomeIsTaxExempt,
