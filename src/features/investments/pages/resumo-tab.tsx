@@ -15,7 +15,9 @@ import { calculateAllocationDrift, calculatePortfolioConcentration, inferSectorF
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
+
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import {
   useAllocationTargets,
@@ -305,8 +307,9 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                         ? "text-negative-strong"
                         : "text-foreground",
                   )}
-                  title={`Resultado acumulado (Retorno Total): ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${(totalReturnPnlBRL ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${(unrealizedPnlBRL ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos: +${(position.totalDividendsBRL ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+                  title={`Resultado acumulado (Retorno Total): ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
                 >
+
                   <MoneyText cents={totalReturnCents} tone="auto" />
                   {totalReturnPct != null
                     ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)`

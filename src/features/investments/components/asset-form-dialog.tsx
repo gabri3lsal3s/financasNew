@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
-import { Alert, Badge, Button, Checkbox, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, Select } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, ConfirmDialog, DatePicker, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
+
 import { numberToCents } from "@/domain/money";
 import {
   calculateWeightedAveragePrice,
@@ -724,20 +725,18 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   <span>Rendimento Estimado:</span>
                   <span
                     className={cn(
-                      "font-semibold",
+                      "font-semibold flex items-center gap-1",
                       currentPriceCents >= initialPriceCents ? "text-positive-strong" : "text-negative-strong",
                     )}
                   >
                     {currentPriceCents >= initialPriceCents ? "+" : ""}
-                    {((currentPriceCents - initialPriceCents) / 100).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency,
-                    })}
+                    <MoneyText cents={currentPriceCents - initialPriceCents} currency={currency} />
                     {" "}
                     ({((currentPriceCents - initialPriceCents) / initialPriceCents * 100).toFixed(2)}%)
                   </span>
                 </div>
               ) : null}
+
 
               <p className="text-[11px] text-muted-foreground">
                 Ativo de Renda Fixa precificado por valor investido e saldo atual (sem quantidade de cotas).

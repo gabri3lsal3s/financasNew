@@ -3,8 +3,10 @@ import { ArrowRight, Check, FileSpreadsheet, Pencil, Plus, RotateCcw, Sparkles, 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Dropzone } from "@/components/ui/dropzone";
 import { Input } from "@/components/ui/input";
+
 import { Modal } from "@/components/ui/modal";
 import { MoneyText } from "@/components/ui/money-text";
 import { Select } from "@/components/ui/select";
@@ -530,13 +532,13 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
 
                       <div className="space-y-1">
                         <label className="text-[11px] font-medium text-foreground">Data</label>
-                        <Input
-                          type="date"
+                        <DatePicker
                           value={row.date}
-                          onChange={(e) => updateParsedRow(idx, { date: e.target.value })}
+                          onValueChange={(date) => updateParsedRow(idx, { date })}
                           className="h-8 text-xs font-mono"
                         />
                       </div>
+
 
                       <div className="space-y-1">
                         <label className="text-[11px] font-medium text-foreground">Tipo de Operação</label>

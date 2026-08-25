@@ -26,7 +26,9 @@ import type { AssetPricingMode, PriceSource } from "@/domain/portfolio";
 import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
 import { formatSignedPct } from "@/services/masks/percent";
+import { formatCentsAsBRL } from "@/services/masks/money";
 import type { AssetCurrency } from "@/types";
+
 
 export interface PositionRow {
   assetId: string;
@@ -614,10 +616,11 @@ export function PositionTable({
                 ) : null}
                 <span
                   className="text-portfolio font-medium"
-                  title={`Yield on Cost acumulado: ${(row.dividends ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+                  title={`Yield on Cost acumulado: ${formatCentsAsBRL(numberToCents(row.dividends ?? 0))}`}
                 >
                   YoC {yoc.toFixed(1)}%
                 </span>
+
               </div>
             ) : null}
           </div>
@@ -700,10 +703,11 @@ export function PositionTable({
                   ) : null}
                   <span
                     className="text-portfolio font-medium"
-                    title={`Yield on Cost acumulado: ${(row.dividends ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+                    title={`Yield on Cost acumulado: ${formatCentsAsBRL(numberToCents(row.dividends ?? 0))}`}
                   >
                     YoC {yoc.toFixed(1)}%
                   </span>
+
                 </div>
               ) : null}
             </div>

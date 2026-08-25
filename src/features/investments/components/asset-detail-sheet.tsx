@@ -16,6 +16,8 @@ import {
 } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
+import { formatCentsAsBRL } from "@/services/masks/money";
+
 import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { calculateYieldOnCostTotal } from "@/domain/portfolio/snowball";
 import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
@@ -200,7 +202,7 @@ export function AssetDetailSheet({
               <span className="text-[11px] font-medium text-muted-foreground truncate">
                 {isTotalValue ? "Saldo Atual" : "Posição Total"}
               </span>
-              <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate" title={currentValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}>
+              <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate" title={formatCentsAsBRL(numberToCents(currentValue))}>
                 <MoneyText cents={numberToCents(currentValue)} />
               </span>
               <span className="text-[10px] text-muted-foreground font-mono truncate">
@@ -228,8 +230,9 @@ export function AssetDetailSheet({
                 className={`font-mono text-sm sm:text-base font-bold truncate ${
                   (totalReturnPnl ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"
                 }`}
-                title={`Retorno Total: ${(totalReturnPnl ?? 0) >= 0 ? "+" : ""}${(totalReturnPnl ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} (${(totalReturnPct ?? 0).toFixed(2)}%)`}
+                title={`Retorno Total: ${(totalReturnPnl ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnl ?? 0))} (${(totalReturnPct ?? 0).toFixed(2)}%)`}
               >
+
                 {(totalReturnPnl ?? 0) >= 0 ? "+" : ""}
                 <MoneyText cents={numberToCents(totalReturnPnl ?? 0)} />
               </span>

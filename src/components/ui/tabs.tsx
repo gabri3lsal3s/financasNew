@@ -90,7 +90,7 @@ export function Tabs({
     <TabsPrimitive.Root value={value} onValueChange={handleTabChange} className={className}>
       <TabsPrimitive.List
         className={cn(
-          "flex gap-1 overflow-x-auto no-scrollbar",
+          "flex gap-1 overflow-x-auto no-scrollbar scroll-smooth",
           isFullWidth ? "w-full" : "w-full sm:w-auto",
           variant === "underline"
             ? "border-b border-border"
@@ -104,13 +104,16 @@ export function Tabs({
             value={item.value}
             aria-label={item.label}
             className={cn(
-              "inline-flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap px-1.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium tracking-tight sm:tracking-normal transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] min-w-0 [&_svg]:size-3.5 sm:[&_svg]:size-4 [&_svg]:shrink-0",
-              isFullWidth ? "flex-1 text-center" : "flex-1 sm:flex-initial text-center sm:text-left",
+              "inline-flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap py-2 text-xs sm:text-sm font-medium tracking-tight sm:tracking-normal transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none active:scale-[0.98] [&_svg]:size-3.5 sm:[&_svg]:size-4 [&_svg]:shrink-0",
+              isFullWidth
+                ? "flex-1 min-w-0 px-1.5 sm:px-3.5 text-center"
+                : "shrink-0 flex-initial min-w-fit px-3 sm:px-3.5 text-center sm:text-left",
               variant === "underline"
                 ? "border-b-2 border-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary-strong data-[state=active]:font-semibold"
                 : "rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/50 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-sm data-[state=active]:shadow-black/5",
             )}
           >
+
             {item.icon}
             <span className={cn(item.shortLabel && "hidden sm:inline")}>{item.label}</span>
             {item.shortLabel && <span aria-hidden="true" className="sm:hidden">{item.shortLabel}</span>}

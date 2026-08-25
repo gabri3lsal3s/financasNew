@@ -2752,7 +2752,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 58 — Primitivos de UI, Abas Fluidas, Controles Nativos & Formatação Canônica
 
-> **Status:** ⏳ Pendente — **Fundações de Interface e Regras DRY**: correção estrutural do primitivo `Tabs` para rolagem horizontal suave no mobile sem sobreposição, auto-fit tipográfico sem reticências em `StatCard` e `KpiCard`, erradicação de inputs nativos residuais, saneamento de datas para timezone local e padronização monetária com `formatCentsAsBRL`.
+> **Status:** ✅ Concluída (2026-08-25) — **Fundações de Interface e Regras DRY**: correção estrutural do primitivo `Tabs` para rolagem horizontal suave no mobile sem sobreposição, auto-fit tipográfico sem reticências em `StatCard` e `KpiCard`, erradicação de inputs nativos residuais, saneamento de datas para timezone local e padronização monetária com `formatCentsAsBRL`.
 
 **Objetivo:** Estabelecer a base de primitivos e formatação 100% aderente antes das adaptações de tela e decomposição:
 
@@ -2773,12 +2773,13 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
    - Substituir interpolações residuais de `toLocaleString("pt-BR", { style: "currency", currency: "BRL" })` em `position-table.tsx`, `asset-detail-sheet.tsx`, `resumo-tab.tsx`, `asset-form-dialog.tsx` e `wealth-tear-sheet-modal.tsx` por `formatCentsAsBRL(numberToCents(val))` e `<MoneyText />`.
 
 **✅ DoD (Definition of Done da Fase 58):**
-- [ ] Primitivo `Tabs` sem sobreposição ou compressão em telas de 320px–390px, com scroll horizontal livre para $\ge 4$ abas em todo o app.
-- [ ] `StatCard` e `KpiCard` com auto-fit de números $\ge 7$ dígitos sem cortes por reticências.
-- [ ] Zero `<input type="date">` nativo na aplicação — 100% via `<DatePicker />`.
-- [ ] Zero `.toISOString().slice(0, 10)` com risco de fuso horário no domínio.
-- [ ] Zero interpolações manuais de moeda com `toLocaleString` fora dos formatadores canônicos.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+- [x] Primitivo `Tabs` sem sobreposição ou compressão em telas de 320px–390px, com scroll horizontal livre para $\ge 4$ abas em todo o app.
+- [x] `StatCard` e `KpiCard` com auto-fit de números $\ge 7$ dígitos sem cortes por reticências.
+- [x] Zero `<input type="date">` nativo na aplicação — 100% via `<DatePicker />`.
+- [x] Zero `.toISOString().slice(0, 10)` com risco de fuso horário no domínio.
+- [x] Zero interpolações manuais de moeda com `toLocaleString` fora dos formatadores canônicos.
+- [x] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+
 
 ---
 

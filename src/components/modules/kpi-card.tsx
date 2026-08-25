@@ -72,7 +72,7 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
           {icon ? <span className={cn("shrink-0", toneIcon[tone])}>{icon}</span> : null}
         </div>
         {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
-        <p className={cn("num mt-1.5 sm:mt-2 truncate text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl", toneValue[tone])}>
+        <p className={cn("num mt-1.5 sm:mt-2 tabular-nums tracking-tight whitespace-nowrap text-base sm:text-lg lg:text-2xl font-semibold overflow-x-auto no-scrollbar", toneValue[tone])}>
           {cents !== undefined ? (
             <>
               {/* `formatCentsAsBRL` zera valores negativos — o sinal é prefixado
@@ -91,8 +91,9 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
             <Sparkline data={spark} height={28} strokeClassName={sparkTone[tone]} />
           </div>
         ) : null}
-        {hint ? <div className="mt-1 truncate text-xs text-muted-foreground">{hint}</div> : null}
+        {hint ? <div className="mt-1 text-xs text-muted-foreground overflow-hidden">{hint}</div> : null}
       </div>
+
     </Card>
   );
 }

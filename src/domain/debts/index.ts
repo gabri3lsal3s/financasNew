@@ -13,17 +13,22 @@ export type DebtStatus = "paid" | "overdue" | "due_today" | "due_soon" | "pendin
 /** Hoje em ISO local (YYYY-MM-DD) — injetável nos testes. */
 export function todayISO(): string {
   const now = new Date();
+  const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${month}-${day}`;
+  return `${year}-${month}-${day}`;
 }
 
-/** Soma dias a uma data ISO (YYYY-MM-DD) usando UTC (evita timezone). */
+/** Soma dias a uma data ISO (YYYY-MM-DD) preservando timezone local. */
 export function addDaysISO(iso: string, days: number): string {
-  const [year, month, day] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) + days));
-  return date.toISOString().slice(0, 10);
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(y ?? 2000, (m ?? 1) - 1, (d ?? 1) + days);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
+
 
 /**
  * Status derivado da dívida.

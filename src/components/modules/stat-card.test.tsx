@@ -24,9 +24,10 @@ describe("StatCard", () => {
       />,
     );
 
-    const valueEl = container.querySelector(".text-xl");
+    const valueEl = container.querySelector(".text-lg");
     expect(valueEl).not.toBeNull();
   });
+
 
   it("exibe badge de tendência positiva e negativa com cor semântica", () => {
     const { rerender } = render(

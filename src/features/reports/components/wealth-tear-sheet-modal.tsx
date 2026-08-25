@@ -297,12 +297,13 @@ export function WealthTearSheetModal({
                   <div className="flex items-center justify-between pt-0.5">
                     <span className="font-mono font-medium text-foreground">{sg.currentPct.toFixed(1)}%</span>
                     {sg.gapBRL > 0 ? (
-                      <span className="text-primary-strong text-[11px] font-semibold">
-                        Gap: R$ {sg.gapBRL.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+                      <span className="text-primary-strong text-[11px] font-semibold flex items-center gap-1">
+                        <span>Gap:</span> <MoneyText cents={numberToCents(sg.gapBRL)} />
                       </span>
                     ) : (
                       <span className="text-muted-foreground text-[10px]">Equilibrado</span>
                     )}
+
                   </div>
                 </div>
               ))}

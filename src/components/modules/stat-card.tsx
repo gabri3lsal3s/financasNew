@@ -70,12 +70,12 @@ export function StatCard({
     typeof value === "number" && (isCurrency ? value >= 10000000 : value >= 100000);
 
   const valueSizeClass = isLargeNumber
-    ? "text-xl sm:text-2xl font-bold tracking-tight"
-    : "text-2xl sm:text-3xl font-bold tracking-tight";
+    ? "text-lg sm:text-xl md:text-2xl font-bold tracking-tight"
+    : "text-xl sm:text-2xl md:text-3xl font-bold tracking-tight";
 
   return (
     <Card className={cn("relative overflow-hidden transition-all duration-200", VARIANT_BORDER_MAP[variant], className)}>
-      <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full gap-2">
+      <CardContent className="p-3.5 sm:p-5 flex flex-col justify-between h-full gap-2">
         <div className="flex items-start justify-between gap-2">
           <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate" title={title}>
             {title}
@@ -98,7 +98,8 @@ export function StatCard({
         </div>
 
         <div className="flex flex-col gap-1 min-w-0">
-          <div className={cn("truncate", valueSizeClass, valueClassName)}>
+          <div className={cn("tabular-nums tracking-tight whitespace-nowrap overflow-x-auto no-scrollbar", valueSizeClass, valueClassName)}>
+
             {typeof value === "number" ? (
               isCurrency ? (
                 <MoneyText
