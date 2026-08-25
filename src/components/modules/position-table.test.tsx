@@ -50,10 +50,32 @@ const rows: PositionRow[] = [
     unrealizedPct: 10,
     isCash: false,
   },
+  {
+    assetId: "rf1",
+    ticker: "CDB-BMG-JAN27",
+    assetClass: "Renda Fixa",
+    currency: "BRL",
+    quantity: 1,
+    averageCost: 1000,
+    totalCostBRL: 1000,
+    priceBRL: 1278.58,
+    source: "manual",
+    valueBRL: 1278.58,
+    pct: 40,
+    unrealizedPnl: 278.58,
+    unrealizedPct: 27.86,
+    isCash: false,
+    pricingMode: "total_value",
+    fixedIncomeMetadata: {
+      rate_type: "pre",
+      rate_value: 16.22,
+      maturity_date: "2027-01-15",
+    },
+  },
 ];
 
 describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe)", () => {
-  it("renderiza cabeçalhos das classes agrupadas e colapsadas por padrão", () => {
+  it("renderiza cabeçalhos das classes de investimento agrupadas e não exibe Caixa na tabela", () => {
     render(<PositionTable rows={rows} />);
     const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
     expect(acoesGroups.length).toBeGreaterThanOrEqual(1);
@@ -62,8 +84,11 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     const fiisGroups = screen.getAllByRole("button", { name: /Classe FIIs/i });
     expect(fiisGroups.length).toBeGreaterThanOrEqual(1);
 
-    const caixaGroups = screen.getAllByRole("button", { name: /Classe Caixa/i });
-    expect(caixaGroups.length).toBeGreaterThanOrEqual(1);
+    const rfGroups = screen.getAllByRole("button", { name: /Classe Renda Fixa/i });
+    expect(rfGroups.length).toBeGreaterThanOrEqual(1);
+
+    // Caixa vive exclusivamente no card de caixa (não deve existir na tabela)
+    expect(screen.queryByRole("button", { name: /Classe Caixa/i })).not.toBeInTheDocument();
   });
 
   it("permite expandir e colapsar um grupo de classe ao clicar no cabeçalho", async () => {
@@ -81,6 +106,38 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     // Colapsar novamente
     await user.click(acoesGroups[0]!);
     expect(acoesGroups[0]).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("renderiza colunas contextuais semânticas para Renda Fixa (Valor Aplicado, Saldo Atual, Vencimento)", async () => {
+    const user = userEvent.setup();
+    render(<PositionTable rows={rows} />);
+
+    // Expandir grupo Renda Fixa no desktop
+    const rfGroups = screen.getAllByRole("button", { name: /Classe Renda Fixa/i });
+    await user.click(rfGroups[1] ?? rfGroups[0]!);
+
+    // Deve conter os cabeçalhos semânticos de Renda Fixa
+    expect(screen.getByRole("columnheader", { name: /Valor Aplicado/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Saldo Atual/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Rendimento/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Vencimento/i })).toBeInTheDocument();
+
+    // Data de vencimento formatada
+    expect(screen.getByText("15/01/2027")).toBeInTheDocument();
+  });
+
+  it("renderiza colunas de custódia por cotas para Renda Variável (Quantidade, Preço, Custo médio)", async () => {
+    const user = userEvent.setup();
+    render(<PositionTable rows={rows} />);
+
+    // Expandir grupo Ações no desktop
+    const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
+    await user.click(acoesGroups[1] ?? acoesGroups[0]!);
+
+    // Deve conter os cabeçalhos de Renda Variável
+    expect(screen.getByRole("columnheader", { name: /Quantidade/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Preço/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Custo médio/i })).toBeInTheDocument();
   });
 
   it("sortable ordena por valor de mercado e expõe aria-sort no cabeçalho ativo", async () => {

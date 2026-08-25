@@ -743,10 +743,33 @@
   - ESLint (`npm run lint`): 0 erros / 0 avisos;
   - Testes: 40 arquivos de teste e 367/367 testes unitários e de componentes aprovados com 100% de sucesso.
 
+## F56 — Colunas Contextuais por Classe na Tabela de Posições e Governança de Caixa (2026-08-25)
+
+- **Problema:** A tabela de posições (`PositionTable`) utilizava uma grade única de 7 colunas de Renda Variável (`Ativo`, `Quantidade`, `Preço`, `Custo médio`, `Valor`, `Lucro/Prejuízo`, `Rentab.`) para todas as classes. Na Renda Fixa e Tesouro Direto, a coluna `Quantidade` ficava vazia (`—`), `Preço` e `Valor` duplicavam o mesmo número e `Custo médio` era um termo inadequado para o capital aplicado inicial. Além disso, ativos de Caixa podiam poluir a tabela de investimentos quando seu lugar exclusivo é o Card de Caixa / Hero Card.
+- **Solução:**
+  1. **Governança Estrita de Caixa:** `PositionTable` filtra `!r.isCash` por padrão; o Caixa fica concentrado exclusivamente no Card de Caixa dedicado no topo da tela, sendo removido dos filtros de classe e da listagem de posições.
+  2. **Colunas Contextuais Semânticas de Renda Fixa:**
+     - `Ativo` (Ticker + badge de taxa/indexador e atalho de detalhes);
+     - `Valor Aplicado` (Custo inicial investido via `MoneyText`);
+     - `Saldo Atual` (Saldo bruto com botão de calibragem/cotação manual);
+     - `Rendimento` (Ganho bruto em R$ com cor semântica e sinal explícito);
+     - `Rentabilidade` (% de retorno);
+     - `Vencimento` (Data formatada `dd/mm/aaaa` via `formatDateBR` com badge "Vencido" se aplicável).
+  3. **Preservação de Renda Variável:** Ações, FIIs, ETFs, BDRs e Internacional mantêm as 7 colunas clássicas de custódia por cotas (`Quantidade`, `Preço`, `Custo médio`, `Valor`, etc.).
+  4. **Ordenação Adaptativa:** Suporte a ordenação por `maturityDate` (data de vencimento) e por custo total aplicado no cabeçalho.
+- **Arquivos alterados:**
+  - `src/components/modules/position-table.tsx` — colunas contextuais (`fixedIncomeColumns`, `variableIncomeColumns`), exclusão de Caixa, `getColumnsForClass` e ordenação por `maturityDate`;
+  - `src/components/modules/position-table.test.tsx` — suite atualizada com 13 testes cobrindo colunas semânticas de RF, custódia de RV e exclusão de Caixa.
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 13/13 testes de `PositionTable` e 367/367 testes de investimentos aprovados.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
 - **Verificação:** a cada fase — typecheck, lint, testes e build verdes antes do commit (regra do ciclo, `ROADMAP.md` §6.1).
+
 
 
 
