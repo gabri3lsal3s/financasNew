@@ -447,14 +447,14 @@ export function OverviewPage() {
             >
               {visual.dashboardWidgets.flow && (
                 <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                         <Activity className="size-3.5" aria-hidden="true" />
                       </span>
-                      <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Fluxo diário</h2>
+                      <h2 className="text-sm font-semibold text-foreground min-w-0">Fluxo diário</h2>
                     </div>
-                    <div className="flex items-center gap-2 sm:gap-3 text-xs shrink-0">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs shrink-0">
                       <span className="flex items-center gap-1.5 text-muted-foreground text-[11px] shrink-0">
                         <span className="size-2 rounded-full bg-positive-strong shrink-0" /> Receitas
                       </span>
@@ -468,6 +468,7 @@ export function OverviewPage() {
                       )}
                     </div>
                   </div>
+
                   <DailyFlowChart days={dailyFlow} />
                 </section>
               )}
@@ -518,7 +519,8 @@ export function OverviewPage() {
                     className="text-2xl sm:text-3xl tracking-tight truncate"
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground min-w-0">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground min-w-0">
+
                   <div className="min-w-0 truncate">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">A receber</p>
                     <MoneyText cents={receivablePending} tone="positive" className="privacy-mask text-[11px] truncate block" />
@@ -570,12 +572,12 @@ export function OverviewPage() {
           {/* Orçamentos (§3.6): progresso e lista de atenção */}
           {visual.dashboardWidgets.budgets && (
             <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-              <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                     <Target className="size-3.5" aria-hidden="true" />
                   </span>
-                  <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Orçamentos do mês</h2>
+                  <h2 className="text-sm font-semibold text-foreground min-w-0">Orçamentos do mês</h2>
                 </div>
                 <button
                   type="button"
@@ -586,6 +588,7 @@ export function OverviewPage() {
                   <ChevronRight className="size-3.5" aria-hidden="true" />
                 </button>
               </div>
+
 
               {budgetRows.length === 0 ? (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed border-border/80 bg-surface-hover/20 p-3.5 text-xs text-muted-foreground">

@@ -214,7 +214,8 @@ export function DebtsPage() {
       <div className="flex flex-col gap-6">
         {/* Resumo financeiro consolidado */}
         {!debtsQuery.isLoading && debts.length > 0 && (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+
             <div className="flex flex-col gap-0.5 sm:gap-1 rounded-2xl border border-border/80 bg-surface/90 p-3 sm:p-4 shadow-xs">
               <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
                 A pagar

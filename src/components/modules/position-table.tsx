@@ -715,7 +715,8 @@ export function PositionTable({
         </div>
 
         {/* Linha 2: Métricas de Custódia em grid de 3 colunas legível */}
-        <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-border/40">
+        <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 text-xs pt-2 border-t border-border/40">
+
           <div className="flex flex-col">
             <span className="text-[11px] text-muted-foreground">
               {row.pricingMode === "total_value" ? "Preço Inicial" : "Quantidade"}

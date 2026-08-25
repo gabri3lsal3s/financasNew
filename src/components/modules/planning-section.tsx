@@ -208,7 +208,8 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+
           <div className="p-2.5 rounded-lg border border-border/60 bg-muted/30">
             <span className="text-[10px] text-muted-foreground block">Em 10 anos:</span>
             <MoneyText cents={habitImpact.futureValue10yCents} tone="default" className="text-xs font-semibold" />

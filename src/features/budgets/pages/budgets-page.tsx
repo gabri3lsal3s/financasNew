@@ -151,7 +151,8 @@ export function BudgetsPage() {
 
       {/* Resumo do Orçamento Geral (§3.5.2) — Régua de 3 Métricas */}
       <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
-        <div className="grid grid-cols-3 gap-2 text-left">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+
           <div className="min-w-0">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Total Gasto</p>
             <MoneyText

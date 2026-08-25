@@ -35,7 +35,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
         )}
       >
         {/* Topo do Card: Título + Badge + Ação de Calibrar */}
-        <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
             <span
               className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground"
@@ -43,7 +43,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
             >
               <Landmark className="size-3.5" aria-hidden="true" />
             </span>
-            <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground min-w-0">
               Saldo Disponível em Conta
             </h2>
           </div>
@@ -53,6 +53,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
               {hasCheckpoint ? `Aferido em ${formatDateBR(latestCheckpoint.date)}` : "Acumulado do Fluxo"}
             </Badge>
             <Button
+
               type="button"
               variant="outline"
               size="sm"

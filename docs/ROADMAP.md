@@ -2837,10 +2837,17 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
    - Ajustar campos de formulário em `CardFormDialog`, `CategoryFormDialog` e `LoanFormDialog` para `grid-cols-1 sm:grid-cols-2`, prevenindo esmagamento de controles quando o teclado virtual é acionado.
 
 **✅ DoD (Definition of Done da Fase 60):**
-- [ ] `RealCashHeroCard` com cabeçalho adaptativo sem cortes de título ou sobreposição de badges/botões.
-- [ ] 100% dos grids com $\ge 3$ colunas adaptados para mobile-first (`grid-cols-1` ou `grid-cols-2` em telas $< 640\text{px}$).
-- [ ] Formulários em diálogos adaptados para coluna única no mobile.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+- [x] `RealCashHeroCard` com cabeçalho adaptativo `flex-col sm:flex-row` sem cortes de título ou sobreposição de badges/botões.
+- [x] Card Fluxo Diário com `flex-col sm:flex-row` + `flex-wrap` nas legendas.
+- [x] Grid "A receber / A pagar / Faturas" em `overview-page.tsx` adaptado para `grid-cols-1 sm:grid-cols-3`.
+- [x] Cabeçalho do card Orçamentos adaptado para `flex-col sm:flex-row sm:items-center sm:justify-between`.
+- [x] `DebtsPage` — grid de resumo financeiro convertido para `grid-cols-1 sm:grid-cols-3`.
+- [x] `BudgetsPage` — grid de 3 métricas convertido para `grid-cols-1 sm:grid-cols-3`.
+- [x] `PositionTable` — grid de métricas de custódia do ativo convertido para `grid-cols-1 xs:grid-cols-3`.
+- [x] `PlanningSection` — grid de projeção temporal convertido para `grid-cols-1 sm:grid-cols-3`.
+- [x] `LoanFormDialog`, `CardFormDialog` — formulários já em `grid-cols-1 sm:grid-cols-2`.
+- [x] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
 
 ---
 
