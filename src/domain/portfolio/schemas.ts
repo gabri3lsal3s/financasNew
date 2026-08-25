@@ -69,6 +69,12 @@ export const fixedIncomeMetadataSchema = z.object({
     .nullable()
     .optional(),
   is_tax_exempt: z.boolean().default(false),
+  manual_tax_rate_pct: z
+    .number()
+    .min(0, "A alíquota de IR não pode ser negativa")
+    .max(22.5, "A alíquota máxima de IR é 22.5%")
+    .nullable()
+    .optional(),
 });
 
 export type FixedIncomeMetadataInput = z.infer<typeof fixedIncomeMetadataSchema>;

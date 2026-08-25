@@ -793,6 +793,37 @@
   - ESLint (`npm run lint`): 0 erros / 0 avisos;
   - Testes: 22 arquivos de teste e 95/95 testes de investimentos aprovados com 100% de sucesso.
 
+## F58 — Inteligência e Governança Tributária de Renda Fixa (Estratégia A + B) & Supressão Estrita de IR (2026-08-25)
+
+- **Problema:**
+  1. Quando um título de Renda Fixa antigo era cadastrado sem que o usuário informasse a data da aplicação original ou se a taxa de remuneração estivesse zerada (saldo manual), o sistema assumia a data de hoje ($D_0$) como início do prazo contábil;
+  2. Isso gerava uma alíquota máxima e imprecisa de $22,5\%$ e uma contagem regressiva enganosa (`IR 22.5% ➔ 20% em 181d`), quando na realidade o título poderia já estar na alíquota mínima de $15\%$ ou nem possuir dados suficientes para estimativa de IR.
+- **Solução:**
+  1. **Opção Avançada de Tributação (`FixedIncomeFormFields`, `AssetEditDialog`, `InvestmentWizard`):**
+     - Adicionado campo opcional e discreto no acordeão de configurações avançadas permitindo que o usuário selecione a alíquota fixa vigente (`15,0%`, `17,5%`, `20,0%`, `22,5%` ou `Automático pela data de aplicação`);
+     - Permite que usuários com títulos antigos na corretora travem a alíquota exata sem precisarem buscar notas de corretagem antigas.
+  2. **Motor de Domínio Puro (`src/domain/portfolio/fixed-income.ts` & `src/types/schema.ts`):**
+     - Suporte a `manual_tax_rate_pct` em `FixedIncomeMetadata` e `getFixedIncomeTaxRatePct`;
+     - Regra de supressão estrita: se a data inicial não foi informada no passado (`hasExplicitDate === false`) e a alíquota não foi fixada manualmente, a contagem regressiva `taxCountdown` é suprimida;
+     - Propriedade determinística `hasExplicitTaxInfo` para governança de renderização de badges e textos tributários.
+  3. **Interface Adaptativa (`AssetDetailSheet`):**
+     - Se o ativo não possuir taxa contratada informada E a data inicial não tiver sido preenchida retroativamente, qualquer menção/badge de IR é estritamente ocultada da interface, mantendo a visualização limpa e livre de dados imprecisos.
+- **Arquivos alterados:**
+  - `src/types/schema.ts` — inclusão de `manual_tax_rate_pct` em `FixedIncomeMetadata`;
+  - `src/domain/portfolio/schemas.ts` — validação Zod para `manual_tax_rate_pct`;
+  - `src/domain/portfolio/fixed-income.ts` — suporte a alíquota manual e `hasExplicitTaxInfo`;
+  - `src/domain/portfolio/fixed-income.test.ts` — testes unitários para alíquota manual e supressão de countdown;
+  - `src/domain/portfolio/valuation.ts` — propagação de `manual_tax_rate_pct`;
+  - `src/features/investments/components/fixed-income-form-fields.tsx` — seletor de alíquota em configurações avançadas;
+  - `src/features/investments/components/asset-edit-dialog.tsx` — persistência de `manual_tax_rate_pct`;
+  - `src/features/investments/wizard/wizard-state.ts` & `step-new-position.tsx` & `investment-wizard.tsx` — fluxo de criação no wizard;
+  - `src/features/investments/components/asset-detail-sheet.tsx` — supressão estrita de badges e legendas de IR;
+  - `src/features/investments/components/asset-detail-sheet.test.tsx` — testes para supressão de IR.
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 40 arquivos e 371/371 testes aprovados com 100% de sucesso.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

@@ -175,10 +175,16 @@ export function AssetDetailSheet({
                 <Badge variant="positive" className="text-xs">
                   Isento de IR
                 </Badge>
-              ) : positionRow?.fixedIncomeResult?.taxCountdown ? (
-                <Badge variant="muted" className="text-xs">
-                  IR {positionRow.taxRatePct}% ➔ {positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em {positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d
-                </Badge>
+              ) : positionRow?.fixedIncomeResult?.hasExplicitTaxInfo ? (
+                positionRow?.fixedIncomeResult?.taxCountdown ? (
+                  <Badge variant="muted" className="text-xs">
+                    IR {positionRow.taxRatePct}% ➔ {positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em {positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d
+                  </Badge>
+                ) : (
+                  <Badge variant="muted" className="text-xs">
+                    IR {positionRow?.taxRatePct ?? 22.5}%
+                  </Badge>
+                )
               ) : null}
             </div>
 
@@ -309,9 +315,13 @@ export function AssetDetailSheet({
                 <span className="text-[10px] text-muted-foreground font-mono truncate">
                   {positionRow?.isMatured
                     ? "Título vencido"
-                    : positionRow?.fixedIncomeResult?.taxCountdown
-                      ? `IR ${positionRow.taxRatePct}% (cai p/ ${positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em ${positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d)`
-                      : "Acumulativo"}
+                    : currentAsset.fixed_income_metadata?.is_tax_exempt
+                      ? "Isento de IR"
+                      : positionRow?.fixedIncomeResult?.hasExplicitTaxInfo
+                        ? positionRow?.fixedIncomeResult?.taxCountdown
+                          ? `IR ${positionRow.taxRatePct}% (cai p/ ${positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em ${positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d)`
+                          : `IR ${positionRow?.taxRatePct ?? 22.5}%`
+                        : "Acumulativo"}
                 </span>
               </div>
             ) : (

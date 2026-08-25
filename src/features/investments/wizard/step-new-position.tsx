@@ -248,6 +248,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             initialInvestmentDate: state.fixedIncomeInitialInvestmentDate || null,
             maturityDate: state.fixedIncomeMaturityDate || null,
             isTaxExempt: state.fixedIncomeIsTaxExempt,
+            manualTaxRatePct: state.fixedIncomeManualTaxRatePct,
           }}
           onChange={(patch) => {
             const statePatch: Partial<InvestmentWizardState> = {};
@@ -258,6 +259,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
               statePatch.fixedIncomeInitialInvestmentDate = patch.initialInvestmentDate ?? "";
             if (patch.maturityDate !== undefined) statePatch.fixedIncomeMaturityDate = patch.maturityDate ?? "";
             if (patch.isTaxExempt !== undefined) statePatch.fixedIncomeIsTaxExempt = patch.isTaxExempt;
+            if (patch.manualTaxRatePct !== undefined) statePatch.fixedIncomeManualTaxRatePct = patch.manualTaxRatePct;
             onChange(statePatch);
           }}
           idPrefix="wizard-fi"

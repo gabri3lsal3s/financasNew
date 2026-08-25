@@ -320,6 +320,7 @@ function InvestmentWizardContent({
             initial_investment_date: state.fixedIncomeInitialInvestmentDate ? state.fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
             maturity_date: state.fixedIncomeMaturityDate ? state.fixedIncomeMaturityDate.slice(0, 10) : null,
             is_tax_exempt: state.fixedIncomeIsTaxExempt,
+            manual_tax_rate_pct: state.fixedIncomeIsTaxExempt ? null : state.fixedIncomeManualTaxRatePct,
           };
         }
 

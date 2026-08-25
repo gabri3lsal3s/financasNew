@@ -149,4 +149,11 @@ describe("AssetDetailSheet (Fase 41 & F57)", () => {
     expect(screen.queryByText(/0% CDI/i)).not.toBeInTheDocument();
     expect(screen.getByText("Saldo cadastrado manual")).toBeInTheDocument();
   });
+
+  it("não exibe informação de IR quando a taxa for zerada e a data inicial não for informada", () => {
+    render(<AssetDetailSheet asset={mockRfAssetZeroRate} open={true} onOpenChange={vi.fn()} />);
+    // Não deve exibir badge nem texto de IR
+    expect(screen.queryByText(/^IR/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cai p\//i)).not.toBeInTheDocument();
+  });
 });

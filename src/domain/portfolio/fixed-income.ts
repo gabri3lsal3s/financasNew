@@ -68,8 +68,13 @@ export function getIofRatePct(calendarDays: number): number {
  *   • De 361 a 720 dias corridos: 17,5%
  *   • Acima de 720 dias corridos: 15,0%
  */
-export function getFixedIncomeTaxRatePct(calendarDays: number, isTaxExempt = false): number {
+export function getFixedIncomeTaxRatePct(
+  calendarDays: number,
+  isTaxExempt = false,
+  manualTaxRatePct?: number | null,
+): number {
   if (isTaxExempt) return 0;
+  if (manualTaxRatePct != null && manualTaxRatePct >= 0) return manualTaxRatePct;
   if (calendarDays <= 180) return 22.5;
   if (calendarDays <= 360) return 20.0;
   if (calendarDays <= 720) return 17.5;
@@ -92,9 +97,25 @@ export function calculateTaxReductionCountdown(params: {
   todayDate: string;
   accumulatedProfitBRL: number;
   isTaxExempt?: boolean;
+  manualTaxRatePct?: number | null;
+  hasExplicitDate?: boolean;
 }): TaxReductionCountdown | null {
-  const { initialInvestmentDate, todayDate, accumulatedProfitBRL, isTaxExempt } = params;
-  if (isTaxExempt || accumulatedProfitBRL <= 0) return null;
+  const {
+    initialInvestmentDate,
+    todayDate,
+    accumulatedProfitBRL,
+    isTaxExempt,
+    manualTaxRatePct,
+    hasExplicitDate = true,
+  } = params;
+  if (
+    isTaxExempt ||
+    accumulatedProfitBRL <= 0 ||
+    (manualTaxRatePct != null && manualTaxRatePct >= 0) ||
+    !hasExplicitDate
+  ) {
+    return null;
+  }
 
   const daysPassed = countCalendarDays(initialInvestmentDate, todayDate);
   const currentRate = getFixedIncomeTaxRatePct(daysPassed, false);
@@ -150,6 +171,7 @@ export interface FixedIncomeBalanceInput {
   rateType: FixedIncomeRateType;
   rateValue: number;
   isTaxExempt?: boolean;
+  manualTaxRatePct?: number | null;
   totalCost?: number;
   dailyCdiRate?: number;
   annualCdiRate?: number;
@@ -170,6 +192,7 @@ export interface FixedIncomeBalanceResult {
   isMatured: boolean;
   effectiveCutoffDate: string;
   taxCountdown: TaxReductionCountdown | null;
+  hasExplicitTaxInfo: boolean;
 }
 
 /** Taxa CDI padrão de fallback caso a API macroeconômica esteja indisponível (10.50% a.a.). */
@@ -188,11 +211,24 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
     rateType,
     rateValue,
     isTaxExempt = false,
+    manualTaxRatePct,
     totalCost,
     dailyCdiRate,
     annualCdiRate,
     today = new Date().toISOString().slice(0, 10),
   } = input;
+
+  const cleanToday = today.slice(0, 10);
+  const cleanBaseDate = baseDate ? baseDate.slice(0, 10) : cleanToday;
+  const cleanMaturity = maturityDate ? maturityDate.slice(0, 10) : null;
+  const origDate = initialInvestmentDate ? initialInvestmentDate.slice(0, 10) : cleanBaseDate;
+  const hasExplicitDate = Boolean(initialInvestmentDate && initialInvestmentDate.slice(0, 10) < cleanToday);
+  const hasExplicitTaxInfo = Boolean(
+    isTaxExempt ||
+    (manualTaxRatePct != null && manualTaxRatePct >= 0) ||
+    hasExplicitDate ||
+    rateValue > 0,
+  );
 
   if (baseValue <= 0) {
     return {
@@ -201,7 +237,7 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
       totalAccruedInterest: 0,
       totalProfit: 0,
       taxAmount: 0,
-      taxRatePct: isTaxExempt ? 0 : 22.5,
+      taxRatePct: isTaxExempt ? 0 : manualTaxRatePct ?? 22.5,
       iofAmount: 0,
       iofRatePct: 0,
       businessDaysAccrued: 0,
@@ -209,14 +245,11 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
       isMatured: false,
       effectiveCutoffDate: today,
       taxCountdown: null,
+      hasExplicitTaxInfo,
     };
   }
 
   // 1. Determinação da data de corte e trava de vencimento
-  const cleanToday = today.slice(0, 10);
-  const cleanBaseDate = baseDate.slice(0, 10);
-  const cleanMaturity = maturityDate ? maturityDate.slice(0, 10) : null;
-
   const isMatured = Boolean(cleanMaturity && cleanToday >= cleanMaturity);
   const effectiveCutoffDate = cleanMaturity && cleanToday > cleanMaturity ? cleanMaturity : cleanToday;
 
@@ -260,7 +293,6 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
   const totalProfit = Math.max(0, Math.round((grossValue - acquisitionCost) * 100) / 100);
 
   // 5. Contagem de dias corridos desde a aplicação original para tabela regressiva
-  const origDate = initialInvestmentDate ? initialInvestmentDate.slice(0, 10) : cleanBaseDate;
   const calendarDays = countCalendarDays(origDate, effectiveCutoffDate);
 
   // 6. IOF (sobre o lucro, se prazo < 30 dias)
@@ -269,7 +301,7 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
 
   // 7. Imposto de Renda (incide sobre lucro líquido de IOF)
   const profitAfterIof = Math.max(0, totalProfit - iofAmount);
-  const taxRatePct = getFixedIncomeTaxRatePct(calendarDays, isTaxExempt);
+  const taxRatePct = getFixedIncomeTaxRatePct(calendarDays, isTaxExempt, manualTaxRatePct);
   const taxAmount = taxRatePct > 0 ? Math.round(profitAfterIof * (taxRatePct / 100) * 100) / 100 : 0;
 
   const netValue = Math.max(0, Math.round((grossValue - iofAmount - taxAmount) * 100) / 100);
@@ -278,8 +310,10 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
   const taxCountdown = calculateTaxReductionCountdown({
     initialInvestmentDate: origDate,
     todayDate: effectiveCutoffDate,
-    accumulatedProfitBRL: profitAfterIof,
+    accumulatedProfitBRL: totalProfit,
     isTaxExempt,
+    manualTaxRatePct,
+    hasExplicitDate,
   });
 
   return {
@@ -296,5 +330,6 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
     isMatured,
     effectiveCutoffDate,
     taxCountdown,
+    hasExplicitTaxInfo,
   };
 }

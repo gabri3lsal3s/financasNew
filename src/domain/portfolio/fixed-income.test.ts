@@ -136,4 +136,33 @@ describe("fixed-income domain calculations", () => {
 
     expect(countdown).toBeNull();
   });
+
+  it("respeita alíquota manual de IR fixada pelo usuário", () => {
+    const res = calculateFixedIncomeBalance({
+      baseValue: 10000,
+      baseDate: "2026-08-25",
+      today: "2026-08-25",
+      rateType: "cdi",
+      rateValue: 100,
+      manualTaxRatePct: 15.0, // Usuário fixou 15%
+    });
+
+    expect(res.taxRatePct).toBe(15.0);
+    expect(res.taxCountdown).toBeNull(); // Não exibe contagem regressiva para alíquota fixa
+    expect(res.hasExplicitTaxInfo).toBe(true);
+  });
+
+  it("suprime contagem regressiva e marca hasExplicitTaxInfo como false quando taxa e data não são informadas", () => {
+    const res = calculateFixedIncomeBalance({
+      baseValue: 1000,
+      baseDate: "2026-08-25",
+      today: "2026-08-25",
+      rateType: "pre",
+      rateValue: 0, // Taxa zerada
+      initialInvestmentDate: null, // Sem data retroativa
+    });
+
+    expect(res.hasExplicitTaxInfo).toBe(false);
+    expect(res.taxCountdown).toBeNull();
+  });
 });

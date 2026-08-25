@@ -437,6 +437,8 @@ export type FixedIncomeMetadata = {
   initial_investment_date?: string | null;
   maturity_date?: string | null;
   is_tax_exempt?: boolean;
+  /** Alíquota manual de IR fixada pelo usuário (ex: 15, 17.5, 20, 22.5) ou null para cálculo automático. */
+  manual_tax_rate_pct?: number | null;
 };
 
 export type PortfolioSnapshot = {

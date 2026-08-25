@@ -85,6 +85,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   const [fixedIncomeIsTaxExempt, setFixedIncomeIsTaxExempt] = useState<boolean>(
     Boolean(asset.fixed_income_metadata?.is_tax_exempt),
   );
+  const [fixedIncomeManualTaxRatePct, setFixedIncomeManualTaxRatePct] = useState<number | null>(
+    asset.fixed_income_metadata?.manual_tax_rate_pct ?? null,
+  );
 
   const [error, setError] = useState<string | null>(null);
 
@@ -202,6 +205,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
         maturity_date: fixedIncomeMaturityDate ? fixedIncomeMaturityDate.slice(0, 10) : null,
         is_tax_exempt: fixedIncomeIsTaxExempt,
+        manual_tax_rate_pct: fixedIncomeIsTaxExempt ? null : fixedIncomeManualTaxRatePct,
       };
     }
 
@@ -480,6 +484,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
             initialInvestmentDate: fixedIncomeInitialInvestmentDate || null,
             maturityDate: fixedIncomeMaturityDate || null,
             isTaxExempt: fixedIncomeIsTaxExempt,
+            manualTaxRatePct: fixedIncomeManualTaxRatePct,
           }}
           onChange={(patch) => {
             if (patch.rateType !== undefined) setFixedIncomeRateType(patch.rateType);
@@ -492,6 +497,7 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
               setFixedIncomeInitialInvestmentDate(patch.initialInvestmentDate ?? "");
             if (patch.maturityDate !== undefined) setFixedIncomeMaturityDate(patch.maturityDate ?? "");
             if (patch.isTaxExempt !== undefined) setFixedIncomeIsTaxExempt(patch.isTaxExempt);
+            if (patch.manualTaxRatePct !== undefined) setFixedIncomeManualTaxRatePct(patch.manualTaxRatePct);
           }}
           idPrefix="edit-fi"
           isTesouro={isTesouro}

@@ -12,6 +12,7 @@ export interface FixedIncomeFormFieldsValues {
   initialInvestmentDate?: string | null;
   maturityDate?: string | null;
   isTaxExempt: boolean;
+  manualTaxRatePct?: number | null;
 }
 
 export interface FixedIncomeFormFieldsProps {
@@ -29,6 +30,14 @@ const RATE_TYPE_OPTIONS: { value: FixedIncomeRateType; label: string }[] = [
   { value: "ipca", label: "Inflação (IPCA + % ao ano)" },
 ];
 
+const TAX_RATE_OPTIONS = [
+  { value: "auto", label: "Automático (pela data de aplicação)" },
+  { value: "15", label: "15,0% (acima de 2 anos / 720 dias)" },
+  { value: "17.5", label: "17,5% (entre 1 e 2 anos / 361 a 720 dias)" },
+  { value: "20", label: "20,0% (entre 6 meses e 1 ano / 181 a 360 dias)" },
+  { value: "22.5", label: "22,5% (até 6 meses / 180 dias)" },
+];
+
 /**
  * Subcomponente canônico para parâmetros de Renda Fixa e Tesouro Direto (Fase 63/72).
  * Reutilizado no Wizard de Ativos, AssetEditDialog e AssetFormDialog (Regra DRY §4).
@@ -41,6 +50,7 @@ const RATE_TYPE_OPTIONS: { value: FixedIncomeRateType; label: string }[] = [
  * Campos no acordeão "Configurações avançadas" (colapsado por padrão):
  *   - Data-Base / Marco Zero (D₀)
  *   - Aplicação Original (IR)
+ *   - Alíquota Fixa de IR (opcional)
  *
  * Isenção de IR: ocultada para Tesouro Direto (nunca isento).
  */
@@ -53,7 +63,8 @@ export function FixedIncomeFormFields({
   // Accordion: expande automaticamente se já houver dados preenchidos
   const hasAdvancedData =
     Boolean(values.initialInvestmentDate) ||
-    (Boolean(values.baseDate) && values.baseDate !== todayISO());
+    (Boolean(values.baseDate) && values.baseDate !== todayISO()) ||
+    (values.manualTaxRatePct !== undefined && values.manualTaxRatePct !== null);
 
   const [showAdvanced, setShowAdvanced] = useState(hasAdvancedData);
 
@@ -91,6 +102,11 @@ export function FixedIncomeFormFields({
     typeof values.rateValue === "number"
       ? values.rateValue
       : parseDecimalNumber(values.rateValue);
+
+  const selectedTaxRateValue =
+    values.manualTaxRatePct !== undefined && values.manualTaxRatePct !== null
+      ? String(values.manualTaxRatePct)
+      : "auto";
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border/80 bg-surface/60 p-4">
@@ -166,7 +182,7 @@ export function FixedIncomeFormFields({
           className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           aria-expanded={showAdvanced}
         >
-          <span>Configurações avançadas</span>
+          <span>Configurações avançadas de tributação</span>
           {showAdvanced ? (
             <ChevronUp className="size-3.5" aria-hidden="true" />
           ) : (
@@ -203,6 +219,27 @@ export function FixedIncomeFormFields({
               />
               <span className="text-[11px] text-muted-foreground">Base para a tabela regressiva de IR (22,5% a 15%)</span>
             </div>
+
+            {/* Alíquota de IR Manual */}
+            {!values.isTaxExempt && (
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <span className="text-xs font-semibold text-foreground">
+                  Alíquota Vigente de IR <span className="text-muted-foreground/80 font-normal">(opcional)</span>
+                </span>
+                <Select
+                  value={selectedTaxRateValue}
+                  onValueChange={(val) => {
+                    onChange({
+                      manualTaxRatePct: val === "auto" ? null : Number(val),
+                    });
+                  }}
+                  options={TAX_RATE_OPTIONS}
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  Fixe a alíquota caso o título seja antigo e você não saiba a data exata de aplicação
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

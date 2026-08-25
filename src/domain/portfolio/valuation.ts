@@ -387,6 +387,7 @@ export function calculatePositionSummary(params: {
         rateType: fixedIncomeMetadata.rate_type,
         rateValue: fixedIncomeMetadata.rate_value,
         isTaxExempt: fixedIncomeMetadata.is_tax_exempt,
+        manualTaxRatePct: fixedIncomeMetadata.manual_tax_rate_pct,
         totalCost,
         annualCdiRate,
         today,

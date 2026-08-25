@@ -44,6 +44,7 @@ export interface InvestmentWizardState {
   fixedIncomeInitialInvestmentDate: string;
   fixedIncomeMaturityDate: string;
   fixedIncomeIsTaxExempt: boolean;
+  fixedIncomeManualTaxRatePct?: number | null;
 
   // Valores da Ordem / Posição
   quantityStr: string;
