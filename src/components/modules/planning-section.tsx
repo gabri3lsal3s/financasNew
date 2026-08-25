@@ -153,7 +153,8 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
         <div className="grid grid-cols-2 gap-3 text-xs min-w-0">
           <div className="rounded-lg border border-border/60 bg-muted/30 p-3 min-w-0">
             <p className="text-muted-foreground">Meta FIRE (4%)</p>
-            <MoneyText cents={projection.targetCents} tone="positive" className="text-sm truncate" />
+            <MoneyText cents={projection.targetCents} tone="positive" className="text-sm font-semibold whitespace-nowrap" />
+
           </div>
           <div className="rounded-lg border border-border/60 bg-muted/30 p-3 min-w-0">
             <p className="text-muted-foreground">Tempo até a meta</p>

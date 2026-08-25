@@ -61,16 +61,17 @@ export function ProjectionTab({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
                 <p className="text-muted-foreground">A receber</p>
-                <MoneyText cents={pendingSummary.receivablesCents} tone="positive" className="text-sm font-semibold truncate" />
+                <MoneyText cents={pendingSummary.receivablesCents} tone="positive" className="text-sm font-semibold whitespace-nowrap" />
               </div>
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
                 <p className="text-muted-foreground">A pagar</p>
-                <MoneyText cents={pendingSummary.payablesCents} tone="negative" className="text-sm font-semibold truncate" />
+                <MoneyText cents={pendingSummary.payablesCents} tone="negative" className="text-sm font-semibold whitespace-nowrap" />
               </div>
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
                 <p className="text-muted-foreground">Saldo projetado das pendências</p>
-                <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-sm font-semibold truncate" />
+                <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-sm font-semibold whitespace-nowrap" />
               </div>
+
             </div>
           </div>
         </div>

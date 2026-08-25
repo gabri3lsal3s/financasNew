@@ -521,18 +521,19 @@ export function OverviewPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground min-w-0">
 
-                  <div className="min-w-0 truncate">
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">A receber</p>
-                    <MoneyText cents={receivablePending} tone="positive" className="privacy-mask text-[11px] truncate block" />
+                    <MoneyText cents={receivablePending} tone="positive" className="privacy-mask text-[11px] whitespace-nowrap block font-medium" />
                   </div>
-                  <div className="min-w-0 truncate">
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">A pagar</p>
-                    <MoneyText cents={payablePending} tone="negative" className="privacy-mask text-[11px] truncate block" />
+                    <MoneyText cents={payablePending} tone="negative" className="privacy-mask text-[11px] whitespace-nowrap block font-medium" />
                   </div>
-                  <div className="min-w-0 truncate">
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">Faturas</p>
-                    <MoneyText cents={openInvoices} tone="default" className="privacy-mask text-[11px] truncate block" />
+                    <MoneyText cents={openInvoices} tone="default" className="privacy-mask text-[11px] whitespace-nowrap block font-medium" />
                   </div>
+
                 </div>
               </article>
 
