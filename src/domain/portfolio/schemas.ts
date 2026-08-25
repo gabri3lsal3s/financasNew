@@ -178,6 +178,14 @@ export const assetMetadataSchema = z.object({
   asset_class: assetClassSchema,
   sector: assetSectorSchema,
   currency: assetCurrencySchema,
+  quantity: z
+    .number({ message: "Informe uma quantidade válida" })
+    .min(0, "A quantidade não pode ser negativa")
+    .optional(),
+  average_price: z
+    .number({ message: "Informe um preço médio válido" })
+    .min(0, "O preço médio não pode ser negativo")
+    .optional(),
   /** Proventos históricos acumulados anteriores ao extrato periódico. Alimenta YoC e Bola de Neve. */
   accumulated_dividends: z
     .number({ message: "Informe um valor válido para proventos acumulados" })

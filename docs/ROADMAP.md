@@ -3818,6 +3818,48 @@ flowchart TD
 - [x] Busca de orçamentos e lembretes foca e rola até o elemento correto com destaque visual.
 - [x] Suíte de testes (Vitest), typecheck estrito e lint 100% verdes.
 
+---
+
+### 🎯 FASE 75 — Seletor Interativo de Mês e Ano no DatePicker (Month/Year Grid Overlay)
+
+> **Status:** ✅ Concluída (2026-08-25) — implementados os 3 modos de visualização (`days`, `months` e `years`) com transições fluidas e acessíveis no `DatePicker`, caption interativo no topo com `ChevronDown`, grade 3×4 de 12 meses em pt-BR com navegação de ano, grade 3×4 de 12 anos com paginação por décadas, botão de retorno aos dias, preservação dos atalhos de rodapé ("Hoje" / "Ontem") e limpeza, feedback sensorial centralizado e zero controles nativos crus. Suíte de testes 100% verde.
+>
+> **Objetivo:** Permitir ao usuário saltar diretamente para qualquer mês e ano em qualquer formulário do app através de uma grade interativa de meses e anos no `DatePicker`, eliminando o atrito de passar mês a mês exclusivamente pelas setas `<` e `>`, mantendo a conformidade com o Design System Obsidian Glass e responsividade móvel sem *layout shift*.
+
+```mermaid
+flowchart TD
+    subgraph DatePicker: 3 Modos de Visualização
+        DAYS[Modo Dias: Grid 7 colunas de dias] -->|Clique no Caption Mês/Ano| MONTHS[Modo Meses: Grid 3x4 de 12 meses]
+        MONTHS -->|Clique no Ano do Topo| YEARS[Modo Anos: Grid 3x4 de 12 anos]
+        YEARS -->|Seleciona Ano| MONTHS
+        MONTHS -->|Seleciona Mês| DAYS
+        MONTHS -->|Voltar aos dias| DAYS
+        YEARS -->|Voltar aos dias| DAYS
+    end
+```
+
+---
+
+#### 1. Entregas Realizadas
+- **Transição de Modos no `DatePicker` (`src/components/ui/date-picker.tsx`):**
+  - Adicionado suporte a 3 modos de visualização: `"days"`, `"months"` e `"years"`;
+  - Caption central no topo do calendário com botão acessível e indicador `ChevronDown` (`ThemedCaptionLabel`);
+  - Grade 3×4 com os 12 meses do ano (`renderMonthsView`), com destaque no mês selecionado, indicador do mês atual e navegação de ano anterior/próximo;
+  - Grade 3×4 com bloco de 12 anos (`renderYearsView`), com destaque no ano selecionado, indicador do ano atual e paginação por décadas;
+  - Botão "Voltar aos dias" no rodapé para escape rápido e preservação dos atalhos "Hoje" e "Ontem";
+  - Disparo de feedback tátil/sonoro via `triggerSensory("selection")` em todas as ações.
+
+---
+
+**✅ DoD (Definition of Done da Fase 75):**
+- [x] Caption central do `DatePicker` permite abrir a grade de 12 meses com 1 clique.
+- [x] Grade de meses permite escolher qualquer mês em pt-BR e retornar diretamente aos dias.
+- [x] Grade de anos permite navegar por blocos de 12 anos e selecionar anos passados ou futuros instantaneamente.
+- [x] Zero controles nativos crus (`<select>` proibido) e zero emojis.
+- [x] Dimensões do popover mantidas em `w-[calc(100vw-1.5rem)] max-w-sm` com `max-h-[85dvh]`, sem *layout shift* e sem overflow horizontal no mobile.
+- [x] Testes unitários atualizados em `date-picker.test.tsx` com 100% de aprovação.
+- [x] Typecheck (`tsc -b`) e lint (`eslint .`) 100% verdes.
+
 
 
 

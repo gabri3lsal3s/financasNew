@@ -49,9 +49,9 @@ describe("DatePicker", () => {
     expect(previous).toBeInTheDocument();
     expect(next).toBeInTheDocument();
     // O caption (Mês/Ano) muda ao navegar (header centralizado funcional).
-    const captionBefore = screen.getByRole("status").textContent ?? "";
+    const captionBefore = screen.getByRole("button", { name: "Selecionar mês e ano" }).textContent ?? "";
     await user.click(next);
-    const captionAfter = screen.getByRole("status").textContent ?? "";
+    const captionAfter = screen.getByRole("button", { name: "Selecionar mês e ano" }).textContent ?? "";
     expect(captionAfter).not.toBe(captionBefore);
   });
 
@@ -73,9 +73,76 @@ describe("DatePicker", () => {
     expect(previous).toHaveClass("absolute", "left-1", "top-1");
     expect(next).toHaveClass("absolute", "right-1", "top-1");
     // Mês/Ano centralizados entre as setas (caption com flex centrado).
-    const caption = screen.getByRole("status").parentElement;
-    if (!caption) throw new Error("Caption do mês não encontrado");
-    expect(caption).toHaveClass("flex", "items-center", "justify-center", "px-12");
+    const captionContainer = screen.getByRole("button", { name: "Selecionar mês e ano" }).closest(".rdp-month_caption");
+    if (!captionContainer) throw new Error("Caption do mês não encontrado");
+    expect(captionContainer).toHaveClass("flex", "items-center", "justify-center", "px-12");
+  });
+
+  it("F75: alterna para a grade de 12 meses ao clicar no caption do cabeçalho", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker value="2026-08-15" onValueChange={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "15/08/2026" }));
+
+    // Clica no botão do caption para abrir a grade de meses
+    const captionButton = await screen.findByRole("button", { name: "Selecionar mês e ano" });
+    await user.click(captionButton);
+
+    // Deve exibir os 12 meses em pt-BR
+    expect(screen.getByRole("button", { name: "Janeiro de 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agosto de 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dezembro de 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Voltar aos dias" })).toBeInTheDocument();
+
+    // Clica em Outubro de 2026
+    await user.click(screen.getByRole("button", { name: "Outubro de 2026" }));
+
+    // Volta para o modo dias exibindo Outubro
+    const newCaption = await screen.findByRole("button", { name: "Selecionar mês e ano" });
+    expect(newCaption.textContent?.toLowerCase()).toContain("outubro");
+  });
+
+  it("F75: navega para a grade de anos e seleciona ano e mês diretamente", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<DatePicker value="2026-08-15" onValueChange={onValueChange} />);
+    await user.click(screen.getByRole("button", { name: "15/08/2026" }));
+
+    // Abre modo meses
+    await user.click(await screen.findByRole("button", { name: "Selecionar mês e ano" }));
+
+    // Clica no ano no cabeçalho da grade de meses para abrir modo anos
+    const yearButton = screen.getByRole("button", { name: /Mudar bloco de anos/i });
+    await user.click(yearButton);
+
+    // Deve exibir bloco de 12 anos
+    expect(screen.getByRole("button", { name: "Ano 2028" })).toBeInTheDocument();
+
+    // Clica no ano 2028
+    await user.click(screen.getByRole("button", { name: "Ano 2028" }));
+
+    // Agora está no modo meses do ano 2028; escolhe Março
+    await user.click(screen.getByRole("button", { name: "Março de 2028" }));
+
+    // Agora está no modo dias de Março de 2028; seleciona o dia 20
+    const calendar = await screen.findByRole("grid");
+    const day20 = within(calendar).getAllByRole("gridcell").find((cell) => cell.textContent?.trim() === "20");
+    if (!day20) throw new Error("Dia 20 não encontrado");
+    await user.click(within(day20).getByRole("button"));
+
+    expect(onValueChange).toHaveBeenCalledWith("2028-03-20");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("F75: botão 'Voltar aos dias' retorna do modo meses sem alterar a data", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker value="2026-08-15" onValueChange={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "15/08/2026" }));
+
+    await user.click(await screen.findByRole("button", { name: "Selecionar mês e ano" }));
+    expect(screen.getByRole("button", { name: "Janeiro de 2026" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Voltar aos dias" }));
+    expect(screen.getByRole("grid")).toBeInTheDocument();
   });
 
   it("hotfix: grade de dias 100% responsiva (7 colunas sem overflow)", async () => {
