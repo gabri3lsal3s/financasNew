@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { numberToCents } from "@/domain/money";
-import { Alert, Button, Input, Modal, MoneyInput, Select } from "@/components/ui";
+import { Alert, Badge, Button, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { assetMetadataSchema } from "@/domain/portfolio/schemas";
 import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
-import { useUpdatePortfolioAsset } from "@/state";
+import { useAssetPrices, useSetManualPrice, useUpdatePortfolioAsset } from "@/state";
 import type { AssetCurrency, FixedIncomeMetadata, FixedIncomeRateType, PortfolioAsset } from "@/types";
+import { cn } from "@/lib/utils";
 import { FixedIncomeFormFields } from "./fixed-income-form-fields";
 
 export interface AssetEditDialogProps {
@@ -46,12 +47,18 @@ interface AssetEditFormContentProps {
 
 function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   const updateAsset = useUpdatePortfolioAsset();
+  const pricesQuery = useAssetPrices();
+  const setManualPrice = useSetManualPrice();
 
   const [ticker, setTicker] = useState(asset.ticker);
   const [assetClass, setAssetClass] = useState(asset.asset_class ?? "Ações");
   const [sector, setSector] = useState(asset.sector ?? inferSectorFromTicker(asset.ticker, asset.asset_class));
   const [currency, setCurrency] = useState<AssetCurrency>(asset.currency ?? "BRL");
-  const [notes, setNotes] = useState(asset.notes ?? "");
+  const [notes, setNotes] = useState(
+    asset.notes
+      ? asset.notes.replace("[PRICING:UNIT]", "").replace("[PRICING:TOTAL]", "").trim()
+      : "",
+  );
   const [accumulatedDividendsCents, setAccumulatedDividendsCents] = useState(
     numberToCents(asset.accumulated_dividends ?? 0),
   );
@@ -81,10 +88,45 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
   const [error, setError] = useState<string | null>(null);
 
-  const isCash = isCashAssetClass(assetClass);
+  const isCash = isCashAssetClass(assetClass) || ticker.trim().toUpperCase() === "CAIXA";
   const isTesouro = isTesouroAsset(ticker, assetClass);
   const isFixedIncome = isFixedIncomeClass(assetClass) || isTesouro;
   const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[assetClass] ?? [];
+
+  // Modo Tesouro: "total_value" (padrão RF) ou "unit_price" (cotas / PM)
+  const initialTesouroMode = asset.notes?.includes("[PRICING:UNIT]") ? "unit_price" : "total_value";
+  const [tesouroMode, setTesouroMode] = useState<"total_value" | "unit_price">(initialTesouroMode);
+
+  // Modo efetivo de valor total (RF e Tesouro valor completo)
+  const isTotalValueMode = !isCash && isFixedIncome && (!isTesouro || tesouroMode === "total_value");
+
+  // Preço inicial e atual para modo total_value (RF / Tesouro valor completo)
+  const priceQuote = (pricesQuery.data ?? []).find(
+    (p) => p.ticker.toUpperCase() === (asset.ticker ?? ticker).trim().toUpperCase(),
+  );
+  const existingInitialPrice = asset
+    ? asset.average_price > 0
+      ? asset.average_price
+      : asset.quantity > 0
+        ? asset.quantity
+        : 0
+    : 0;
+  const existingCurrentPrice = priceQuote?.manual_price ?? priceQuote?.price ?? existingInitialPrice;
+
+  const [initialPriceCents, setInitialPriceCents] = useState(numberToCents(existingInitialPrice));
+  const [currentPriceCents, setCurrentPriceCents] = useState(numberToCents(existingCurrentPrice));
+
+  // Modo Cotas / Preço Médio (Ações, FIIs, etc. ou Tesouro cotas) e Caixa
+  const [quantityStr, setQuantityStr] = useState(
+    asset.quantity !== undefined && asset.quantity > 0
+      ? String(asset.quantity)
+      : isCash
+        ? String(asset.quantity ?? 0)
+        : "",
+  );
+  const [averagePriceCents, setAveragePriceCents] = useState(
+    asset.average_price !== undefined ? numberToCents(asset.average_price) : 0,
+  );
 
   const handleClassChange = (newClass: string) => {
     setAssetClass(newClass);
@@ -99,6 +141,30 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const parsedQuantity = parseNumber(quantityStr);
+    const parsedAvgPrice = averagePriceCents / 100;
+
+    let payloadQuantity: number;
+    let payloadAvgPrice: number;
+    let finalNotes = notes.trim() || null;
+
+    if (isCash) {
+      payloadQuantity = parsedQuantity;
+      payloadAvgPrice = 1;
+    } else if (isTotalValueMode) {
+      payloadQuantity = 1;
+      payloadAvgPrice = initialPriceCents / 100;
+      if (isTesouro) {
+        finalNotes = finalNotes ? `${finalNotes} [PRICING:TOTAL]` : "[PRICING:TOTAL]";
+      }
+    } else {
+      payloadQuantity = Math.max(0, parsedQuantity);
+      payloadAvgPrice = Math.max(0, parsedAvgPrice);
+      if (isTesouro && tesouroMode === "unit_price") {
+        finalNotes = finalNotes ? `${finalNotes} [PRICING:UNIT]` : "[PRICING:UNIT]";
+      }
+    }
 
     let fiMetadata: FixedIncomeMetadata | null = null;
     if (isFixedIncome && !isCash) {
@@ -118,10 +184,12 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
       asset_class: assetClass,
       sector: sector.trim() || null,
       currency,
+      quantity: payloadQuantity,
+      average_price: payloadAvgPrice,
       accumulated_dividends: accumulatedDividendsCents / 100,
       estimated_monthly_dividend_per_share: estimatedDividendPerShareCents / 100,
       fixed_income_metadata: fiMetadata,
-      notes: notes.trim() || null,
+      notes: finalNotes,
     });
 
     if (!validation.success) {
@@ -137,12 +205,26 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           asset_class: validation.data.asset_class,
           sector: validation.data.sector,
           currency: validation.data.currency,
+          quantity: validation.data.quantity,
+          average_price: validation.data.average_price,
           accumulated_dividends: validation.data.accumulated_dividends,
           estimated_monthly_dividend_per_share: validation.data.estimated_monthly_dividend_per_share,
           fixed_income_metadata: validation.data.fixed_income_metadata,
           notes: validation.data.notes,
         },
       });
+
+      // Se estiver em modo total_value, grava também o preço atual / saldo no cache/manual
+      if (isTotalValueMode) {
+        const priceToSave = currentPriceCents > 0 ? currentPriceCents / 100 : initialPriceCents / 100;
+        if (priceToSave > 0) {
+          await setManualPrice.mutateAsync({
+            ticker: validation.data.ticker,
+            price: priceToSave,
+          });
+        }
+      }
+
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -219,6 +301,163 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           </div>
         )}
       </div>
+
+      {/* Seletor de Modo de Precificação para Tesouro Direto */}
+      {isTesouro ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">Modo de Precificação do Tesouro</span>
+            <span className="text-[11px] text-muted-foreground">Padrão: Valor Completo</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setTesouroMode("total_value")}
+              className={cn(
+                "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
+                tesouroMode === "total_value"
+                  ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
+                  : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className="text-xs font-semibold">Valor Completo (Padrão RF)</span>
+              <span className="text-[10px] text-muted-foreground">Preço inicial e saldo atual (sem cotas)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTesouroMode("unit_price")}
+              className={cn(
+                "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
+                tesouroMode === "unit_price"
+                  ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
+                  : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className="text-xs font-semibold">Preço Médio / Cotas</span>
+              <span className="text-[10px] text-muted-foreground">Frações de títulos e preço unitário</span>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Campos de Posição de Custódia */}
+      {isCash ? (
+        <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">Saldo Disponível em Caixa</span>
+            <Badge variant="muted" className="text-[11px]">1:1</Badge>
+          </div>
+          <label htmlFor="edit-asset-cash" className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Saldo Atual (R$)
+            <Input
+              id="edit-asset-cash"
+              value={quantityStr}
+              onChange={(e) => setQuantityStr(e.target.value)}
+              placeholder="10000,00"
+              inputMode="decimal"
+              aria-label="Saldo em caixa"
+            />
+          </label>
+        </div>
+      ) : isTotalValueMode ? (
+        <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">
+              {isTesouro ? "Posição de Custódia (Tesouro Direto)" : "Posição de Custódia (Renda Fixa)"}
+            </span>
+            <Badge variant="muted" className="text-[11px]">Valor Completo</Badge>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="edit-asset-initial-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Preço Inicial / Valor Aplicado ({currency})
+              </label>
+              <MoneyInput
+                id="edit-asset-initial-price"
+                cents={initialPriceCents}
+                onCentsChange={(cents) => {
+                  setInitialPriceCents(cents);
+                  if (currentPriceCents === 0 || currentPriceCents === initialPriceCents) {
+                    setCurrentPriceCents(cents);
+                  }
+                }}
+                placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
+                aria-label="Preço inicial investido"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="edit-asset-current-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Preço Atual / Saldo Final ({currency})
+              </label>
+              <MoneyInput
+                id="edit-asset-current-price"
+                cents={currentPriceCents}
+                onCentsChange={setCurrentPriceCents}
+                placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
+                aria-label="Preço atual ou saldo"
+              />
+            </div>
+          </div>
+
+          {initialPriceCents > 0 && currentPriceCents > 0 ? (
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40 text-muted-foreground">
+              <span>Rendimento Estimado:</span>
+              <span
+                className={cn(
+                  "font-semibold flex items-center gap-1",
+                  currentPriceCents >= initialPriceCents ? "text-positive-strong" : "text-negative-strong",
+                )}
+              >
+                {currentPriceCents >= initialPriceCents ? "+" : ""}
+                <MoneyText cents={currentPriceCents - initialPriceCents} currency={currency} />
+                {" "}
+                ({((currentPriceCents - initialPriceCents) / initialPriceCents * 100).toFixed(2)}%)
+              </span>
+            </div>
+          ) : null}
+
+          <p className="text-[11px] text-muted-foreground">
+            Ativo de Renda Fixa precificado por valor investido e saldo atual (sem quantidade de cotas).
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">Posição Atual de Custódia</span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="edit-asset-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Quantidade Atual (Cotas / Unidades)
+              </label>
+              <Input
+                id="edit-asset-qty"
+                value={quantityStr}
+                onChange={(e) => setQuantityStr(e.target.value)}
+                placeholder="100"
+                inputMode="decimal"
+                aria-label="Quantidade de cotas"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="edit-asset-avgprice" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Preço Médio por Cota ({currency})
+              </label>
+              <MoneyInput
+                id="edit-asset-avgprice"
+                cents={averagePriceCents}
+                onCentsChange={setAveragePriceCents}
+                placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
+                aria-label="Preço médio por cota"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bloco de Parâmetros de Renda Fixa e Tesouro Direto (Fase 63/72) */}
       {isFixedIncome && !isCash && (
@@ -347,6 +586,5 @@ export function AssetEditDialog({
         onClose={() => onOpenChange(false)}
       />
     </Modal>
-
   );
 }

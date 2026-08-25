@@ -3606,6 +3606,7 @@ flowchart TD
     - Toggle de Isenção Tributária (`is_tax_exempt`: ativado por padrão para LCI, LCA, CRI, CRA e Debêntures Incentivadas).
 - **Diálogos de Edição de Ativo (`asset-edit-dialog.tsx` e `asset-form-dialog.tsx`):**
   - Inclusão de seção "Parâmetros de Renda Fixa" com os 6 campos para atualização de posições existentes.
+  - Inclusão de seção "Posição de Custódia" em `AssetEditDialog` para ajuste direto do Preço Inicial / Valor Aplicado e Saldo Atual de Renda Fixa (e Tesouro Direto), além de Cotas/PM e Saldo em Caixa.
 
 ---
 
