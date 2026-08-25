@@ -128,7 +128,7 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 | `budgets` | id, user_id, category_id, month, limit | **Unique (category_id, month)**; upsert |
 | `income_goals` | id, user_id, category_id, month, expected | Unique (category_id, month); upsert |
 | `insight_feedback` | id, user_id, occurrence_key (hash estável: tipo + entidade + mês), decision (`ignore \| confirm`), created_at | Registra o aprendizado do usuário sobre insights (§3.7.4); ocorrência ignorada deixa de contar |
-| `portfolio_assets` | id, user_id, ticker, asset_class, sector (nullable), currency (BRL/USD) | Ticker único por user |
+| `portfolio_assets` | id, user_id, ticker, asset_class, sector (nullable), currency (BRL/USD), quantity, average_price, accumulated_dividends, estimated_monthly_dividend_per_share, fixed_income_metadata (jsonb nullable), notes (nullable) | Ticker único por user; custody position direta |
 | `portfolio_transactions` | id, user_id, asset_id, type (`buy \| sell \| dividend \| jcp \| fii_yield \| split \| reverse_split \| subscription`), date, quantity, price, total | Caixa derivado do ledger (nunca armazenado como saldo) |
 | `allocation_targets` | id, user_id, asset_id, target_percentage (0–100) | Soma por user ≤ 100 — **validada no domínio e no banco (trigger/RPC)**; check não cobre soma entre linhas |
 | `class_targets` / `sector_targets` | id, user_id, group_type (`class \| sector`), name, target_percentage | Metas opcionais por classe/setor |
@@ -399,7 +399,9 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
   - Cotações manuais e de mercado são precificadas na moeda nativa (`priceQuote`).
   - O Caixa da carteira e o registro de aportes no fluxo mensal são mantidos em Reais (BRL).
   - Operações de compra, venda e provento em USD com sincronização de caixa (`syncCash = true`) ou registro de aporte (`recordContribution = true`) convertem o valor da ordem para BRL pela taxa de câmbio USD/BRL (`usdRate`), sem inflar o preço médio nem duplicar conversões no recálculo patrimonial.
-- Tickers de caixa/renda fixa operam em modo Saldo Direto 1:1 (quantidade = valor, PM = 1,00, rentabilidade nula).
+- **Ativos de Caixa e Renda Fixa Parametrizada:**
+  - **Caixa / Reserva:** Opera em modo Saldo Direto 1:1 (quantidade = valor, PM = 1,00, rentabilidade nula).
+  - **Renda Fixa e Tesouro Direto (Modo Valor Total):** O `average_price` armazena estritamente o Custo de Aplicação Original ($C_0$). Metadados em `fixed_income_metadata` (`rate_type`, `rate_value`, `base_date`, `base_value`, `initial_investment_date`, `maturity_date`, `is_tax_exempt`) controlam a capitalização diária a partir do Marco Zero ($D_0$). O Saldo do extrato bancário recalibra `base_value` e `base_date` sem sobrescrever `average_price`, preservando o histórico de lucro acumulado e Yield on Cost.
 #### 3.11.3 Algoritmo de Aporte Hierárquico (`simulateCombinedAporte`)
 
 1. **Defasagem macro por classe:** classe com maior déficit relativo recebe prioridade de orçamentação.

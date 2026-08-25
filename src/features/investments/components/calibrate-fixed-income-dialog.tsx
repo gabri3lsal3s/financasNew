@@ -3,7 +3,7 @@ import { Alert, Button, DatePicker, Modal, MoneyInput } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { useSetManualPrice, useUpdatePortfolioAsset } from "@/state";
-import type { PortfolioAsset } from "@/types";
+import type { FixedIncomeMetadata, PortfolioAsset } from "@/types";
 
 export interface CalibrateFixedIncomeDialogProps {
   asset: PortfolioAsset | null;

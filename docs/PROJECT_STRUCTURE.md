@@ -123,7 +123,7 @@
     │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, relatorios-tab, investments-page
     │   │                          #     components: targets/ (target-classes-card, target-sectors-card, target-assets-card F61),
     │   │                          #       asset-form/ (asset-sell-tab F61), asset-form-dialog, cash-form-dialog, manual-price-dialog,
-    │   │                          #       fixed-income-form-fields (F72), calibrate-fixed-income-dialog (F72), asset-detail-sheet,
+    │   │                          #       fixed-income-form-fields (F72), calibrate-fixed-income-dialog (F72), asset-edit-dialog (F72), asset-detail-sheet,
     │   │                          #       transaction-form-dialog, transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
     │   │                          #       portfolio-mapping-step, portfolio-statement-dialog, portfolio-executive-report,
     │   │                          #       portfolio-tax-report, portfolio-darf-monitor com barrels components/index.ts e index.ts
