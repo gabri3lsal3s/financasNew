@@ -352,6 +352,12 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - Estados seguem §7: foco com ring `--ring`, disabled 50%, erro → borda `critical-strong` + mensagem via gateway (`getErrorMessage`).
 - `label`/`aria-label` obrigatória; erro associado via `aria-describedby`.
 
+### 13.1 PercentInput (Entrada Percentual Progressiva)
+- **Componente:** `src/components/ui/percent-input.tsx` (primitivo).
+- **Comportamento:** Segue o mesmo padrão progressivo do `MoneyInput` (estilo Nubank), onde a digitação alimenta os centésimos da direita para a esquerda (`"852"` $\to$ `"8,52"` / `8.52%`), eliminando problemas de parsing com ponto/vírgula.
+- **Sufixo Dinâmico:** Suporta indicação contextual (`%`, `% do CDI`, `% da Selic`, `% a.a.`, `% a.a. + IPCA`).
+- **Contrato:** `value?: number`, `onValueChange?: (val: number) => void`, `suffix?: string`.
+
 ---
 
 ## 14. RECURSOS VISUAIS PREMIUM & MICRO-INTERAÇÕES

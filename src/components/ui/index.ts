@@ -4,6 +4,8 @@ export type { ButtonProps } from "./button";
 export { Input } from "./input";
 export { MoneyInput } from "./money-input";
 export type { MoneyInputProps } from "./money-input";
+export { PercentInput } from "./percent-input";
+export type { PercentInputProps } from "./percent-input";
 export { Card, CardContent, CardHeader, CardTitle } from "./card";
 export { Badge } from "./badge";
 export type { BadgeProps } from "./badge";

@@ -40,7 +40,7 @@ export interface InvestmentWizardState {
 
   // Parâmetros de Renda Fixa (Fase 63/72)
   fixedIncomeRateType: FixedIncomeRateType;
-  fixedIncomeRateValue: string;
+  fixedIncomeRateValue: number | string;
   fixedIncomeBaseDate: string;
   fixedIncomeInitialInvestmentDate: string;
   fixedIncomeMaturityDate: string;

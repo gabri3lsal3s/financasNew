@@ -1,9 +1,10 @@
-import { DatePicker, Input, Select, Checkbox } from "@/components/ui";
+import { DatePicker, PercentInput, Select, Checkbox } from "@/components/ui";
+import { parseDecimalNumber } from "@/domain/money";
 import type { FixedIncomeRateType } from "@/types";
 
 export interface FixedIncomeFormFieldsValues {
   rateType: FixedIncomeRateType;
-  rateValue: string;
+  rateValue: number | string;
   baseDate: string;
   initialInvestmentDate?: string | null;
   maturityDate?: string | null;
@@ -35,18 +36,18 @@ export function FixedIncomeFormFields({
   idPrefix = "fi",
   isTesouro = false,
 }: FixedIncomeFormFieldsProps) {
-  const getRatePlaceholder = () => {
+  const getRateSuffix = () => {
     switch (values.rateType) {
       case "cdi":
-        return "Ex: 110 ou 110,50 (% do CDI)";
+        return "% do CDI";
       case "selic":
-        return "Ex: 100 ou 100,25 (% da Selic)";
+        return "% da Selic";
       case "pre":
-        return "Ex: 12,50 ou 12.50 (% a.a.)";
+        return "% a.a.";
       case "ipca":
-        return "Ex: 6,20 ou 6.20 (spread % a.a.)";
+        return "% a.a. + IPCA";
       default:
-        return "Ex: 100";
+        return "%";
     }
   };
 
@@ -64,6 +65,11 @@ export function FixedIncomeFormFields({
         return "Taxa Contratada";
     }
   };
+
+  const numericRateValue =
+    typeof values.rateValue === "number"
+      ? values.rateValue
+      : parseDecimalNumber(values.rateValue);
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border/80 bg-surface/60 p-4">
@@ -91,14 +97,12 @@ export function FixedIncomeFormFields({
           <label htmlFor={`${idPrefix}-rate-value`} className="text-xs font-semibold text-foreground">
             {getRateLabel()}
           </label>
-          <Input
+          <PercentInput
             id={`${idPrefix}-rate-value`}
-            type="text"
-            inputMode="decimal"
-            value={values.rateValue}
-            onChange={(e) => onChange({ rateValue: e.target.value })}
-            placeholder={getRatePlaceholder()}
-            className="font-mono"
+            value={numericRateValue}
+            onValueChange={(rateValue) => onChange({ rateValue })}
+            suffix={getRateSuffix()}
+            aria-label={getRateLabel()}
           />
           <span className="text-[11px] text-muted-foreground">Taxa pactuada na contratação</span>
         </div>

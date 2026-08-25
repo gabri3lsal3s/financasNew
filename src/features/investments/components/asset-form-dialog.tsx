@@ -3,7 +3,7 @@ import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Sparkles } from "luc
 import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
 
 
-import { formatDecimalNumber, numberToCents, parseDecimalNumber } from "@/domain/money";
+import { numberToCents, parseDecimalNumber } from "@/domain/money";
 import {
   calculateWeightedAveragePrice,
   DEFAULT_SECTORS_BY_CLASS,
@@ -152,8 +152,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const [fixedIncomeRateType, setFixedIncomeRateType] = useState<FixedIncomeRateType>(
     asset?.fixed_income_metadata?.rate_type ?? "cdi",
   );
-  const [fixedIncomeRateValue, setFixedIncomeRateValue] = useState<string>(
-    asset?.fixed_income_metadata?.rate_value !== undefined ? formatDecimalNumber(asset.fixed_income_metadata.rate_value) : "",
+  const [fixedIncomeRateValue, setFixedIncomeRateValue] = useState<number>(
+    asset?.fixed_income_metadata?.rate_value ?? 0,
   );
   const [fixedIncomeBaseDate, setFixedIncomeBaseDate] = useState<string>(
     asset?.fixed_income_metadata?.base_date ?? todayISO(),
@@ -274,10 +274,9 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
       let fiMetadata: FixedIncomeMetadata | null = null;
       if (isFixedIncome && !isCash) {
-        const rateVal = parseDecimalNumber(fixedIncomeRateValue);
         fiMetadata = {
           rate_type: fixedIncomeRateType,
-          rate_value: rateVal,
+          rate_value: fixedIncomeRateValue,
           base_date: fixedIncomeBaseDate || todayISO(),
           base_value: isTotalValueMode && currentPriceCents > 0 ? currentPriceCents / 100 : null,
           initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
@@ -772,7 +771,10 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               }}
               onChange={(patch) => {
                 if (patch.rateType !== undefined) setFixedIncomeRateType(patch.rateType);
-                if (patch.rateValue !== undefined) setFixedIncomeRateValue(patch.rateValue);
+                if (patch.rateValue !== undefined)
+                  setFixedIncomeRateValue(
+                    typeof patch.rateValue === "number" ? patch.rateValue : parseDecimalNumber(patch.rateValue),
+                  );
                 if (patch.baseDate !== undefined) setFixedIncomeBaseDate(patch.baseDate);
                 if (patch.initialInvestmentDate !== undefined)
                   setFixedIncomeInitialInvestmentDate(patch.initialInvestmentDate ?? "");
