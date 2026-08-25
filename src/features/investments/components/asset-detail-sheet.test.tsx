@@ -88,8 +88,39 @@ vi.mock("@/state", () => ({
 }));
 
 
-describe("AssetDetailSheet (Fase 41)", () => {
-  it("renderiza os KPIs do ativo, YoC e histórico de lançamentos", () => {
+const mockRfAsset: PortfolioAsset = {
+  id: "asset-rf",
+  user_id: "user-1",
+  ticker: "CDB-BMG-JAN27",
+  asset_class: "Renda Fixa",
+  currency: "BRL",
+  quantity: 1,
+  average_price: 1000.0,
+  notes: "CDB Prefixado",
+  fixed_income_metadata: {
+    rate_type: "pre",
+    rate_value: 16.22,
+    maturity_date: "2027-01-04",
+  },
+};
+
+const mockRfAssetZeroRate: PortfolioAsset = {
+  id: "asset-rf-zero",
+  user_id: "user-1",
+  ticker: "CDB-MANUAL",
+  asset_class: "Renda Fixa",
+  currency: "BRL",
+  quantity: 1,
+  average_price: 2000.0,
+  notes: "CDB Sem Taxa",
+  fixed_income_metadata: {
+    rate_type: "cdi",
+    rate_value: 0,
+  },
+};
+
+describe("AssetDetailSheet (Fase 41 & F57)", () => {
+  it("renderiza os KPIs do ativo, YoC e histórico de lançamentos para Renda Variável", () => {
     render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} />);
     expect(screen.getAllByText("PETR4").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/100 cota/i).length).toBeGreaterThan(0);
@@ -105,9 +136,17 @@ describe("AssetDetailSheet (Fase 41)", () => {
     expect(onAction).toHaveBeenCalledWith("buy", mockAsset);
   });
 
-  it("renderiza a badge de setor e a moeda no cabeçalho sem duplicar a classe", () => {
-    render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} />);
-    expect(screen.getByText("Petróleo, Gás e Combustíveis")).toBeInTheDocument();
-    expect(screen.getByText("BRL")).toBeInTheDocument();
+  it("renderiza corretamente para ativo de Renda Fixa com taxa e vencimento formatado pt-BR", () => {
+    render(<AssetDetailSheet asset={mockRfAsset} open={true} onOpenChange={vi.fn()} />);
+    expect(screen.getByText("CDB-BMG-JAN27")).toBeInTheDocument();
+    expect(screen.getByText("16.22% a.a. • Projetado")).toBeInTheDocument();
+    expect(screen.getByText("Valor Aplicado")).toBeInTheDocument();
+  });
+
+  it("oculta badge de taxa e sinaliza saldo manual quando a taxa for zero", () => {
+    render(<AssetDetailSheet asset={mockRfAssetZeroRate} open={true} onOpenChange={vi.fn()} />);
+    expect(screen.getByText("CDB-MANUAL")).toBeInTheDocument();
+    expect(screen.queryByText(/0% CDI/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Saldo cadastrado manual")).toBeInTheDocument();
   });
 });

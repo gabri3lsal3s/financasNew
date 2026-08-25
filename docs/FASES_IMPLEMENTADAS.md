@@ -765,6 +765,34 @@
   - ESLint (`npm run lint`): 0 erros / 0 avisos;
   - Testes: 13/13 testes de `PositionTable` e 367/367 testes de investimentos aprovados.
 
+## F57 — Refinamento dos Modais de Detalhe e Unificação do Saldo de Renda Fixa (2026-08-25)
+
+- **Problema:** 
+  1. O modal de detalhes do ativo (`AssetDetailSheet`) exibia dados duplicados (classe e setor repetidos no subtítulo e nas badges), exibia badge de moeda `BRL` desnecessária, formatava datas de vencimento em formato ISO bruto (`2027-01-04`) e exibia um card de `Yield on Cost (YoC) 0.00%` para títulos acumulativos de Renda Fixa sem proventos periódicos.
+  2. Quando títulos de Renda Fixa eram cadastrados com taxa zerada/não informada (`rate_value = 0`), badges exibiam `0% a.a. • Projetado` ou `0% CDI` de forma inconsistente.
+  3. O diálogo de cotação manual (`ManualPriceDialog`) continha terminologias de ações ("preço unitário", "cotação API", "usar cotação automática") inadequadas para Renda Fixa e Tesouro Direto.
+- **Solução:**
+  1. **Governança de Taxa Zerada em Renda Fixa:** Se a taxa contratada for $\le 0$ ou omitida, o sistema suprime badges de taxa projetada e sinaliza no card e na tabela como **"Saldo cadastrado manual"**.
+  2. **Refinamento do `AssetDetailSheet`:**
+     - Subtítulo limpo e badges sem duplicação de classe/setor e sem badge `BRL`;
+     - Data de vencimento formatada via `formatDateBR` (`04/01/2027`);
+     - Card de custo ajustado para **"Valor Aplicado"** (em vez de "Preço Inicial");
+     - Card contextual: se for Renda Fixa acumulativa sem proventos (`totalDividends === 0`), substitui o *YoC 0.00%* por **"Vencimento & Prazo"**;
+     - Botão `Rendimento` condicionado a ativos que distribuem proventos/juros periódicos.
+  3. **Unificação do Saldo de Renda Fixa via Calibração de Extrato:**
+     - O clique no **Saldo Atual** de Renda Fixa na `PositionTable` aciona diretamente o diálogo **"Calibrar com Extrato"** (`CalibrateFixedIncomeDialog`), permitindo ajustar o saldo oficial e registrar a data de Marco Zero ($D_0$) com `MoneyInput`.
+     - O diálogo `ManualPriceDialog` foi mantido 100% exclusivo para Renda Variável (Ações, FIIs, etc.).
+- **Arquivos alterados:**
+  - `src/features/investments/components/asset-detail-sheet.tsx` — badges limpas, data pt-BR, governança de taxa zerada, card "Valor Aplicado", card contextual Vencimento/YoC e botão de rendimento condicional;
+  - `src/features/investments/components/asset-detail-sheet.test.tsx` — testes para RV e RF (com e sem taxa);
+  - `src/features/investments/components/manual-price-dialog.tsx` — focado exclusivamente em Renda Variável;
+  - `src/components/modules/position-table.tsx` — suporte à prop `onCalibrateAsset` e tratamento de taxa zerada na badge de ticker;
+  - `src/features/investments/pages/resumo-tab.tsx` — integração de `onCalibrateAsset` com `CalibrateFixedIncomeDialog`.
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 22 arquivos de teste e 95/95 testes de investimentos aprovados com 100% de sucesso.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

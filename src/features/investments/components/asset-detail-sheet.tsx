@@ -22,6 +22,7 @@ import { formatCentsAsBRL } from "@/services/masks/money";
 import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { calculateYieldOnCostTotal } from "@/domain/portfolio/snowball";
 import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
+import { formatDateBR } from "@/lib/date";
 import {
   useAssetPosition,
   useDeletePortfolioAsset,
@@ -151,33 +152,23 @@ export function AssetDetailSheet({
           {/* Header de Metadados & Ações Rápidas */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-4">
             <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-              <Badge variant="muted" className="text-xs">
-                {currentAsset.asset_class ?? "Sem classe"}
-              </Badge>
-              {resolvedSector ? (
-                <Badge variant="muted" className="text-xs font-normal">
-                  {resolvedSector}
+              {currentAsset.currency !== "BRL" ? (
+                <Badge variant="muted" className="text-xs">
+                  {currentAsset.currency}
                 </Badge>
               ) : null}
-              <Badge variant="muted" className="text-xs">
-                {currentAsset.currency}
-              </Badge>
-              {currentAsset.fixed_income_metadata ? (
+              {currentAsset.fixed_income_metadata && currentAsset.fixed_income_metadata.rate_value > 0 ? (
                 <Badge variant="default" className="text-xs font-semibold">
                   {formatRateLabel(currentAsset.fixed_income_metadata)} • Projetado
-                </Badge>
-              ) : isTotalValue ? (
-                <Badge variant="muted" className="text-xs">
-                  Valor Completo
                 </Badge>
               ) : null}
               {positionRow?.isMatured ? (
                 <Badge variant="negative" className="text-xs font-semibold">
-                  Vencido em {positionRow.maturityDate}
+                  Vencido em {formatDateBR(positionRow.maturityDate ?? "")}
                 </Badge>
               ) : positionRow?.maturityDate ? (
                 <Badge variant="warning" className="text-xs font-semibold">
-                  Vence em {positionRow.maturityDate}
+                  Vence em {formatDateBR(positionRow.maturityDate)}
                 </Badge>
               ) : null}
               {currentAsset.fixed_income_metadata?.is_tax_exempt ? (
@@ -225,16 +216,18 @@ export function AssetDetailSheet({
                   <span>Calibrar</span>
                 </Button>
               )}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => onAction?.("dividend", currentAsset)}
-                className="gap-1 text-xs text-positive-strong flex-1 sm:flex-initial"
-              >
-                <Receipt className="size-3.5" aria-hidden="true" />
-                <span>{isTotalValue ? "Rendimento" : "Provento"}</span>
-              </Button>
+              {(!isTotalValue || totalDividends > 0 || (currentAsset.accumulated_dividends ?? 0) > 0) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAction?.("dividend", currentAsset)}
+                  className="gap-1 text-xs text-positive-strong flex-1 sm:flex-initial"
+                >
+                  <Receipt className="size-3.5" aria-hidden="true" />
+                  <span>{isTotalValue ? "Rendimento" : "Provento"}</span>
+                </Button>
+              )}
               <Button
                 type="button"
                 size="sm"
@@ -259,19 +252,23 @@ export function AssetDetailSheet({
                 <MoneyText cents={numberToCents(currentValue)} />
               </span>
               <span className="text-[10px] text-muted-foreground font-mono truncate">
-                {isTotalValue ? "Valor de mercado" : `${quantity} cota(s)`}
+                {isTotalValue
+                  ? (currentAsset.fixed_income_metadata?.rate_value && currentAsset.fixed_income_metadata.rate_value > 0
+                      ? "Na curva projetada"
+                      : "Saldo cadastrado manual")
+                  : `${quantity} cota(s)`}
               </span>
             </div>
 
             <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
               <span className="text-[11px] font-medium text-muted-foreground truncate">
-                {isTotalValue ? "Preço Inicial" : "Preço Médio (PM)"}
+                {isTotalValue ? "Valor Aplicado" : "Preço Médio (PM)"}
               </span>
               <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
                 <MoneyText cents={numberToCents(isTotalValue ? totalCost : averageCost)} currency={isTotalValue ? "BRL" : currentAsset.currency} />
               </span>
               <span className="text-[10px] text-muted-foreground font-mono truncate">
-                {isTotalValue ? "Valor aplicado" : <>Custo: <MoneyText cents={numberToCents(totalCost)} currency="BRL" /></>}
+                {isTotalValue ? "Aporte inicial" : <>Custo: <MoneyText cents={numberToCents(totalCost)} currency="BRL" /></>}
               </span>
             </div>
 
@@ -285,7 +282,6 @@ export function AssetDetailSheet({
                 }`}
                 title={`Retorno Total: ${(totalReturnPnl ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnl ?? 0))} (${(totalReturnPct ?? 0).toFixed(2)}%)`}
               >
-
                 {(totalReturnPnl ?? 0) >= 0 ? "+" : ""}
                 <MoneyText cents={numberToCents(totalReturnPnl ?? 0)} />
               </span>
@@ -304,29 +300,45 @@ export function AssetDetailSheet({
               </div>
             </div>
 
-            <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
-              <span className="text-[11px] font-medium text-muted-foreground truncate">Yield on Cost (YoC)</span>
-              <span className="font-mono text-sm sm:text-base font-bold text-positive-strong truncate">
-                {yieldOnCostPct.toFixed(2)}%
-              </span>
-              {accumulatedDividends > 0 ? (
-                <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
-                  <span className="text-[10px] text-muted-foreground font-mono truncate">
-                    Extrato: <MoneyText cents={numberToCents(periodicDividends)} />
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono truncate">
-                    Acumulados: <MoneyText cents={numberToCents(accumulatedDividends)} />
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono font-semibold truncate">
-                    Total: <MoneyText cents={numberToCents(totalDividends)} />
-                  </span>
-                </div>
-              ) : (
-                <span className="text-[10px] text-muted-foreground font-mono truncate">
-                  Proventos: <MoneyText cents={numberToCents(totalDividends)} />
+            {isTotalValue && totalDividends === 0 ? (
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+                <span className="text-[11px] font-medium text-muted-foreground truncate">Vencimento</span>
+                <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
+                  {positionRow?.maturityDate ? formatDateBR(positionRow.maturityDate) : "Indeterminado"}
                 </span>
-              )}
-            </div>
+                <span className="text-[10px] text-muted-foreground font-mono truncate">
+                  {positionRow?.isMatured
+                    ? "Título vencido"
+                    : positionRow?.fixedIncomeResult?.taxCountdown
+                      ? `IR ${positionRow.taxRatePct}% (cai p/ ${positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em ${positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d)`
+                      : "Acumulativo"}
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+                <span className="text-[11px] font-medium text-muted-foreground truncate">Yield on Cost (YoC)</span>
+                <span className="font-mono text-sm sm:text-base font-bold text-positive-strong truncate">
+                  {yieldOnCostPct.toFixed(2)}%
+                </span>
+                {accumulatedDividends > 0 ? (
+                  <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
+                    <span className="text-[10px] text-muted-foreground font-mono truncate">
+                      Extrato: <MoneyText cents={numberToCents(periodicDividends)} />
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono truncate">
+                      Acumulados: <MoneyText cents={numberToCents(accumulatedDividends)} />
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono font-semibold truncate">
+                      Total: <MoneyText cents={numberToCents(totalDividends)} />
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground font-mono truncate">
+                    Proventos: <MoneyText cents={numberToCents(totalDividends)} />
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Histórico de Transações do Ledger */}

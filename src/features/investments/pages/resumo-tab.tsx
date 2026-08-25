@@ -33,6 +33,7 @@ import {
 import {
   AssetDetailSheet,
   AssetEditDialog,
+  CalibrateFixedIncomeDialog,
   CashFormDialog,
   ManualPriceDialog,
 } from "../components";
@@ -107,6 +108,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [allocationMode, setAllocationMode] = useState<"class" | "sector" | "asset">("class");
+  const [calibrateFor, setCalibrateFor] = useState<{ asset: PortfolioAsset; valueCents: number } | null>(null);
   const [priceFor, setPriceFor] = useState<{
     id: string;
     ticker: string;
@@ -500,6 +502,12 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               highlightId={highlightId}
               onListTransactions={openDetail}
               onEditAsset={openEdit}
+              onCalibrateAsset={(assetId, _ticker, currentValueCents) => {
+                const asset = assetById(assetId);
+                if (asset) {
+                  setCalibrateFor({ asset, valueCents: currentValueCents });
+                }
+              }}
               onSetManualPrice={(assetId, ticker, currency, priceBRL, source, priceQuote, pricingMode, usdRate) => {
                 setPriceFor({ id: assetId, ticker, currency, priceQuote, priceBRL, usdRate, source, pricingMode });
               }}
@@ -635,6 +643,16 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             if (!open) setDismissedHighlight(true);
           }}
           asset={cashAsset ?? null}
+        />
+      ) : null}
+
+      {calibrateFor ? (
+        <CalibrateFixedIncomeDialog
+          key={calibrateFor.asset.id}
+          open={calibrateFor !== null}
+          onOpenChange={(next) => !next && setCalibrateFor(null)}
+          asset={calibrateFor.asset}
+          currentEstimatedValueCents={calibrateFor.valueCents}
         />
       ) : null}
 

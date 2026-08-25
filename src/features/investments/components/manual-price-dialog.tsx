@@ -103,21 +103,13 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
       </div>
 
       <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        {asset.pricingMode === "total_value"
-          ? `Preço Atual / Saldo (${asset.currency})`
-          : `Preço unitário manual (${asset.currency})`}
+        Preço unitário manual ({asset.currency})
         <NumberStepperInput
           value={priceInput}
           step={0.01}
           min={0}
           onValueChange={setPriceInput}
-          placeholder={
-            asset.pricingMode === "total_value"
-              ? "Ex.: 10500,00"
-              : asset.currency === "USD"
-                ? "Ex.: 150.00"
-                : "Ex.: 42,50"
-          }
+          placeholder={asset.currency === "USD" ? "Ex.: 150.00" : "Ex.: 42,50"}
           ariaLabel={`Preço manual do ativo em ${asset.currency}`}
         />
       </label>

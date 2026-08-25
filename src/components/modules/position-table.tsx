@@ -73,7 +73,9 @@ export interface PositionTableProps {
   onListTransactions?: (assetId: string, ticker: string) => void;
   /** Abre o formulário de edição cadastral do ativo (ticker/classe/moeda). */
   onEditAsset?: (assetId: string, ticker: string) => void;
-  /** Abre o diálogo de preço manual/cotação do ativo. */
+  /** Abre o diálogo de calibrar saldo com extrato para Renda Fixa / Tesouro Direto. */
+  onCalibrateAsset?: (assetId: string, ticker: string, currentValueCents: number) => void;
+  /** Abre o diálogo de preço manual/cotação do ativo (para Renda Variável). */
   onSetManualPrice?: (
     assetId: string,
     ticker: string,
@@ -241,6 +243,7 @@ export function PositionTable({
   rows,
   onListTransactions,
   onEditAsset,
+  onCalibrateAsset,
   onSetManualPrice,
   emptyMessage,
   highlightId,
@@ -477,7 +480,7 @@ export function PositionTable({
   const tickerCell = (row: PositionRow) => {
     const rfLabel = row.isMatured
       ? "Vencido"
-      : row.fixedIncomeMetadata
+      : row.fixedIncomeMetadata && row.fixedIncomeMetadata.rate_value > 0
         ? row.fixedIncomeMetadata.rate_type === "cdi"
           ? `${row.fixedIncomeMetadata.rate_value}% CDI`
           : row.fixedIncomeMetadata.rate_type === "selic"
@@ -568,6 +571,46 @@ export function PositionTable({
       cell: (row) => {
         const isManual = row.source === "manual";
         const isFallback = row.source === "fallback";
+        const valueCents = numberToCents(row.valueBRL);
+
+        if (onCalibrateAsset) {
+          return (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCalibrateAsset(row.assetId, row.ticker, valueCents);
+              }}
+              aria-label={`Calibrar saldo de ${row.ticker}`}
+              className="group inline-flex items-center justify-end gap-1.5 rounded-md px-1.5 py-0.5 -mr-1.5 transition-colors hover:bg-surface-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+              title="Calibrar saldo com extrato oficial"
+            >
+              <MoneyText
+                cents={valueCents}
+                tone="default"
+                className="group-hover:text-primary transition-colors text-sm font-semibold text-foreground"
+              />
+              {isManual ? (
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                  title="Saldo cadastrado manual"
+                />
+              ) : isFallback ? (
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-warning-strong shrink-0 ring-2 ring-warning-strong/25"
+                  title="Saldo estimado na curva"
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="size-1 rounded-full bg-muted-foreground/30 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                />
+              )}
+            </button>
+          );
+        }
 
         if (onSetManualPrice) {
           return (
@@ -591,7 +634,7 @@ export function PositionTable({
               title={`${PRICE_SOURCE_LABEL[row.source].title} — clique para alterar`}
             >
               <MoneyText
-                cents={numberToCents(row.valueBRL)}
+                cents={valueCents}
                 tone="default"
                 className="group-hover:text-primary transition-colors text-sm font-semibold text-foreground"
               />
@@ -599,11 +642,13 @@ export function PositionTable({
                 <span
                   aria-hidden="true"
                   className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                  title="Saldo cadastrado manual"
                 />
               ) : isFallback ? (
                 <span
                   aria-hidden="true"
                   className="size-1.5 rounded-full bg-warning-strong shrink-0 ring-2 ring-warning-strong/25"
+                  title="Saldo estimado na curva"
                 />
               ) : (
                 <span
@@ -615,7 +660,7 @@ export function PositionTable({
           );
         }
 
-        return <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-semibold text-foreground" />;
+        return <MoneyText cents={valueCents} tone="default" className="text-sm font-semibold text-foreground" />;
       },
     },
     {
