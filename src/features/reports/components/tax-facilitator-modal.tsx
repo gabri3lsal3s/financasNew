@@ -87,17 +87,34 @@ export function TaxFacilitatorModal({
   };
 
   const getTaxGroupCode = (assetClass?: string | null): { group: string; code: string; label: string } => {
-    switch (assetClass) {
+    const normalized = (assetClass ?? "").toLowerCase().trim();
+    switch (normalized) {
+      case "acao":
       case "acoes":
+      case "ações":
         return { group: "03", code: "01", label: "03 - 01 (Ações)" };
+      case "fii":
       case "fiis":
         return { group: "07", code: "03", label: "07 - 03 (Fundos Imobiliários)" };
       case "cripto":
+      case "bitcoin":
+      case "crypto":
         return { group: "08", code: "01", label: "08 - 01 (Criptoativos)" };
       case "renda_fixa":
-        return { group: "04", code: "02", label: "04 - 02 (Títulos Públicos / Privados)" };
+      case "rendafixa":
+      case "cdb":
+      case "tesouro":
+      case "lci":
+      case "lca":
+        return { group: "04", code: "02", label: "04 - 02 (Títulos / Renda Fixa)" };
+      case "internacional":
+      case "etf":
+      case "etfs":
+      case "bdr":
+      case "bdrs":
+        return { group: "07", code: "09", label: "07 - 09 (ETFs / Ativos Internacionais)" };
       default:
-        return { group: "99", code: "99", label: "99 - Outros Bens" };
+        return { group: "99", code: "99", label: "99 - 99 (Outros Bens)" };
     }
   };
 
@@ -213,9 +230,9 @@ export function TaxFacilitatorModal({
           <table className="w-full text-left text-xs border-collapse table-fixed">
             <thead>
               <tr className="border-b border-border/80 bg-slate-100 text-muted-foreground font-medium text-[11px]">
-                <th className="py-2 px-2.5 w-[14%]">Código / Grupo</th>
-                <th className="py-2 px-2.5 w-[12%]">Ticker</th>
-                <th className="py-2 px-2.5 w-[56%]">Discriminação para o Programa IRPF</th>
+                <th className="py-2 px-2.5 w-[18%]">Código / Grupo</th>
+                <th className="py-2 px-2 w-[10%]">Ticker</th>
+                <th className="py-2 px-2.5 w-[54%]">Discriminação para o Programa IRPF</th>
                 <th className="py-2 px-2.5 text-right w-[18%]">Situação em 31/12</th>
               </tr>
             </thead>

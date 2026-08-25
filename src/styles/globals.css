@@ -538,28 +538,53 @@
     }
   }
 
+  /* 1. Reset total de fundo e cores para impressão nítida em papel branco */
+  html,
+  html[data-theme="light"],
+  html[data-theme="dark"],
+  html[data-theme="oled"],
+  :root,
   body {
     background: #ffffff !important;
-    color: #1c1917 !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
     margin: 0 !important;
     padding: 0 !important;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+    width: 100% !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* Paleta clara fixa — sobrepõe QUALQUER tema/accento/surface-style ativo
-     (light, dark, oled, emerald/gold/sapphire/violet/rose/mono, flat/
-     elevated). As utilitárias do documento (`bg-surface`, `text-foreground`,
-     `border-border`, `bg-muted/30`, `text-positive-strong`, …) compilam para
-     `hsl(var(--…))` em runtime — redefinir as variáveis cobre todas de uma
-     vez (e qualquer utilitária futura adicionada à folha). `!important`
-     garante a vitória sobre os seletores de tema/accento de maior
-     especificidade. */
+  /* 2. OCULTAR TOTALMENTE o app (#root), modais, backdrops e portais do Radix */
+  #root,
+  body > *:not(.print-sheet),
+  [data-radix-portal],
+  [data-radix-dialog-overlay],
+  [data-radix-dialog-content],
+  [data-radix-focus-guard],
+  .fixed,
+  .modal-overlay,
+  .dialog-overlay,
+  .toaster,
+  nav,
+  aside,
+  header.app-header,
+  button,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  /* Paleta clara fixa — sobrepõe QUALQUER tema/accento/surface-style ativo */
   :root,
   html[data-theme="light"],
   html[data-theme="dark"],
   html[data-theme="oled"] {
-    --background: 204 29% 97% !important;
+    --background: 0 0% 100% !important;
     --surface: 0 0% 100% !important;
     --surface-hover: 200 22% 94% !important;
     --surface-active: 200 20% 90% !important;
@@ -586,17 +611,21 @@
     --portfolio: 201 47% 20% !important;
   }
 
+  /* 3. EXIBIR EXCLUSIVAMENTE o contêiner .print-sheet */
   .print-sheet {
     display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
     background: #ffffff !important;
-    color: #1c1917 !important;
+    color: #0f172a !important;
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 
   /* Tipografia padrão Inter */

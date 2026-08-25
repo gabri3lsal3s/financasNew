@@ -104,7 +104,7 @@ export function ReportRiskGauge({
 
       {/* Diagnóstico Contextual */}
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Maior ativo na carteira: <strong className="font-semibold text-foreground">{topItemName}</strong> representando{" "}
+        Maior ativo na carteira: <strong className="font-semibold text-foreground">{topItemName || "N/A"}</strong> representando{" "}
         <strong className="num font-mono font-bold text-foreground">{topItemPct.toFixed(1)}%</strong> do patrimônio total.
         {isSafe && " A carteira possui excelente distribuição de risco individual."}
         {isWarning && " Recomendado direcionar novos aportes para outras classes/ativos para diluir o peso."}
