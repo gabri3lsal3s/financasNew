@@ -701,13 +701,6 @@ export function PositionTable({
         );
       },
     },
-    {
-      key: "pct",
-      header: headerFor("pct", "% patrimônio"),
-      align: "right",
-      className: "flex-[0.8]",
-      cell: (row) => <span className="num text-sm text-muted-foreground">{row.pct.toFixed(1)}%</span>,
-    },
   ];
 
   const renderMobileCard = (row: PositionRow) => {
