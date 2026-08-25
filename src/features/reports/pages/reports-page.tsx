@@ -634,7 +634,7 @@ export function ReportsPage() {
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Landmark className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
-            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais &amp; DRE (A4/PDF)</h3>
+            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais & DRE (A4/PDF)</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Demonstração do Resultado do Exercício (DRE Pessoal), fluxo de caixa líquido, taxa de poupança e detalhamento de gastos.
@@ -647,7 +647,7 @@ export function ReportsPage() {
           className="gap-2 shrink-0 w-full sm:w-auto justify-center"
         >
           <Printer className="size-4" aria-hidden="true" />
-          Visualizar &amp; Imprimir Dossiê A4
+          Visualizar & Imprimir Dossiê A4
         </Button>
       </div>
 
@@ -806,7 +806,7 @@ export function ReportsPage() {
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <TrendingUp className="size-5 text-portfolio shrink-0" aria-hidden="true" />
-            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Alocação &amp; Patrimônio (A4/PDF)</h3>
+            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Alocação & Patrimônio (A4/PDF)</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Documento de consultoria patrimonial com diagnóstico de defasagem de metas (Target vs. Actual), risco de concentração e custódia.
@@ -819,7 +819,7 @@ export function ReportsPage() {
           className="gap-2 shrink-0 w-full sm:w-auto justify-center"
         >
           <Printer className="size-4" aria-hidden="true" />
-          Visualizar &amp; Imprimir Dossiê A4
+          Visualizar & Imprimir Dossiê A4
         </Button>
       </div>
 
@@ -1091,7 +1091,7 @@ export function ReportsPage() {
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2">
               <Scale className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
-              <h3 className="text-sm sm:text-base font-bold text-foreground">Balanço 360° &amp; DRE Pessoal</h3>
+              <h3 className="text-sm sm:text-base font-bold text-foreground">Balanço 360° & DRE Pessoal</h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Relatório consolidado unindo investimentos, contas, dívidas, poupança e fluxo de caixa.
