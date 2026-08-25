@@ -417,8 +417,24 @@ export type PortfolioAsset = {
    * Alimenta a Bola de Neve quando não há lançamentos periódicos (Cenário B).
    */
   estimated_monthly_dividend_per_share?: number;
+  /**
+   * Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63).
+   * Taxa, indexador, marco zero, vencimento e regime de isenção de IR.
+   */
+  fixed_income_metadata?: FixedIncomeMetadata | null;
   notes?: string | null;
   updated_at?: string;
+};
+
+export type FixedIncomeRateType = "cdi" | "selic" | "pre" | "ipca";
+
+export type FixedIncomeMetadata = {
+  rate_type: FixedIncomeRateType;
+  rate_value: number;
+  base_date: string;
+  initial_investment_date?: string | null;
+  maturity_date?: string | null;
+  is_tax_exempt?: boolean;
 };
 
 export type PortfolioSnapshot = {
