@@ -95,18 +95,20 @@ export function weightToPercentText(weight: number): string {
   return String(percent).replace(".", ",");
 }
 
-/** Rótulo do peso para a revisão (presets com texto amigável; custom em R$ e %). */
+import { formatCentsAsBRL } from "@/services/masks";
+
 export function reportWeightLabel(weight: number, baseValueCents?: number): string {
   if (weight === 1) return "100% (conta integralmente)";
   if (weight === 0) return "Não conta nos relatórios";
   if (weight === 0.75 || weight === 0.5 || weight === 0.25) return `${Math.round(weight * 100)}%`;
   if (baseValueCents != null && baseValueCents > 0) {
     const customCents = Math.round(baseValueCents * weight);
-    const formatted = (customCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const formatted = formatCentsAsBRL(customCents);
     return `${formatted} (${weightToPercentText(weight)}% no relatório)`;
   }
   return `${weightToPercentText(weight)}%`;
 }
+
 
 /**
  * Peso efetivo para persistência: presets são usados direto; peso personalizado

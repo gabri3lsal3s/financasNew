@@ -12,7 +12,9 @@ import { Tabs } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 import { numberToCents } from "@/domain/money";
+import { todayLocalIso } from "@/lib/date";
 import {
+
   detectPortfolioColumns,
   parsePortfolioFromMapping,
   parsePortfolioInput,
@@ -261,8 +263,9 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
 
   const addNewRow = () => {
     const newRow: ParsedPortfolioImportRow = {
-      date: new Date().toISOString().slice(0, 10),
+      date: todayLocalIso(),
       ticker: "NOVO3",
+
       type: "buy",
       quantity: 100,
       price: 10,

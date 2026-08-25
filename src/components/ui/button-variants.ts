@@ -20,11 +20,13 @@ export const buttonVariants = cva(
         positive: "border border-positive/40 bg-positive/10 text-positive-strong hover:bg-positive/20",
       },
       size: {
+        xs: "h-7 px-2.5 text-xs [&_svg]:size-3",
         sm: "h-8 px-3 text-xs [&_svg]:size-3.5 sm:[&_svg]:size-4",
         default: "h-9 sm:h-10 px-3.5 sm:px-4 text-sm [&_svg]:size-4 sm:[&_svg]:size-4.5",
         lg: "h-11 sm:h-12 px-5 sm:px-6 text-sm sm:text-base font-semibold [&_svg]:size-4.5 sm:[&_svg]:size-5",
         icon: "size-9 sm:size-10 [&_svg]:size-4.5 sm:[&_svg]:size-5",
       },
+
     },
     defaultVariants: {
       variant: "default",

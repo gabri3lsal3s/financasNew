@@ -8,6 +8,8 @@
  */
 
 import type { AmortizationSystem, LoanType } from "@/types";
+import { todayLocalIso } from "@/lib/date";
+
 
 export interface LoanScheduleInput {
   principalCents: number;
@@ -188,14 +190,16 @@ export interface EarlyAmortizationResult {
 
 /**
  * Calcula a antecipação de parcelas futuras com desconto a valor presente.
+
  * Desconta as parcelas de trás para frente (maior economia de juros).
  */
 export function calculateEarlyAmortization(
   remainingInstallments: readonly EarlyAmortizationInputItem[],
   monthlyRatePercent: number,
   targetPaymentCents: number,
-  referenceDateIso: string = new Date().toISOString().slice(0, 10)
+  referenceDateIso: string = todayLocalIso()
 ): EarlyAmortizationResult {
+
   const rate = Math.max(0, monthlyRatePercent) / 100;
   const budget = Math.max(0, Math.round(targetPaymentCents));
 

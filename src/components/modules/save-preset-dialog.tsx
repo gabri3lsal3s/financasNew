@@ -68,9 +68,9 @@ function SavePresetForm({
           onChange={(e) => setName(e.target.value)}
           placeholder="Ex.: Foco em Dividendos, Defensiva 2026..."
           maxLength={60}
-          autoFocus
           disabled={saving}
         />
+
       </div>
 
       <div className="flex flex-col gap-1.5">

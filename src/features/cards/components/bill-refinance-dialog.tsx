@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Alert, Button, Input, Modal, MoneyInput, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
+import { formatCentsAsBRL } from "@/services/masks";
 import { calculateBillRefinancePlan } from "@/domain/cards/refinancing";
 import { useCategories, useRefinanceCreditCardBill } from "@/state";
+
 
 export interface BillRefinanceDialogProps {
   cardId: string;
@@ -89,9 +91,10 @@ function BillRefinanceContent({
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="rounded-md border border-border/70 p-3 bg-muted/20 flex flex-col gap-1.5 text-xs text-muted-foreground">
+
         <div className="flex justify-between font-medium text-foreground">
           <span>Saldo aberto da fatura:</span>
-          <span>{(remainingBalanceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+          <span>{formatCentsAsBRL(remainingBalanceCents)}</span>
         </div>
         <p>
           O parcelamento divide o saldo restante e adiciona apenas os <strong>juros excedentes</strong> nas próximas faturas, evitando duplicar gastos de compras no orçamento.
@@ -167,26 +170,24 @@ function BillRefinanceContent({
         <div className="rounded-md border border-border p-3 bg-card flex flex-col gap-2">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Saldo a financiar:</span>
-            <span>{(balanceToFinance / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+            <span>{formatCentsAsBRL(balanceToFinance)}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Total de juros adicionais:</span>
             <span className="font-semibold text-warning">
-              {(plan.totalInterestCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              {formatCentsAsBRL(plan.totalInterestCents)}
             </span>
           </div>
           <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-t border-border/50">
             <span>Parcela estimada na fatura:</span>
             <span>
-              {((plan.installments[0]?.amountCents ?? 0) / 100).toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}{" "}
+              {formatCentsAsBRL(plan.installments[0]?.amountCents ?? 0)}{" "}
               / mês
             </span>
           </div>
         </div>
       ) : null}
+
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="ghost" onClick={onClose}>

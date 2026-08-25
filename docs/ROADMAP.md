@@ -1,5 +1,13 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.05** registra o **Refinamento e Reengenharia Sequencial das Fases 55, 56 e 57 — Pipeline Anti-Retrabalho, Fundação de Estado, Design System Responsivo & Modularização Estrutural** (2026-08-25):
+> - **(1) Eliminação de Dependências Circulares e Retrabalho**: reorganização estrita da ordem de execução: a **Fundação de Estado, Tipos Canônicos e Primitivos de UI** passa a ser o Bloco 1 (**Fase 55**), o **Design System Responsivo, Shell Global e Navegação Mobile-First** passa a ser o Bloco 2 (**Fase 56**), e a **Modularização Estrutural de Monólitos, Adoção Global e Governança** consolida-se no Bloco 3 (**Fase 57**);
+> - **(2) Zero Retrabalho em Modais e Diálogos**: o primitivo `ResponsiveDialog` (`BottomSheet` no mobile $\leftrightarrow$ `Dialog` no desktop) e a regra de ouro "Zero Auto-Focus" nascem na base (Fase 55), garantindo que a migração de diálogos na Fase 57 ocorra em um **único passe definitivo**;
+> - **(3) Zero Retrabalho na `SettingsPage`**: criação prévia dos hooks em `src/state/` (`useExportData`, `useRestoreBackup`) na Fase 55, permitindo que a decomposição nas 6 sub-abas na Fase 57 já nasça 100% aderente ao isolamento de camadas e sem stubs;
+> - **(4) Padronização Antecipada de Datas e Formatação Monetária**: unificação de `formatCentsAsBRL` e `todayLocalIso`/`toLocalIsoDate` antes da decomposição de monólitos, garantindo conformidade imediata em todos os novos subcomponentes;
+> - **(5) Módulo Universal de KPIs (`StatCard`) Preparado para o Grid Global**: concepção do `StatCard` já com suporte nativo a auto-fit de números $\ge 7$ dígitos e compatibilidade com o contêiner `max-w-7xl` do `PageShell`.
+
+
 > **v2.01** registra a **Distribuição Setorial, Diagnóstico Hierárquico e Tabela em Árvore na Calculadora de Aporte e Relatórios de Investimentos** (2026-08-24):
 > - **(1) Tabela em Árvore Hierárquica (Classe $\rightarrow$ Setor $\rightarrow$ Ativos)**: implementação da estrutura em árvore interativa tanto na Calculadora de Aporte (`AporteResult` / `aporte-tab.tsx`) quanto nos Relatórios de Investimentos (`ReportsPage`), com controle granular de expansão/recolhimento por linha e ações rápidas em lote ("Expandir tudo" / "Recolher tudo");
 > - **(2) Distribuição Meso por Setor nos Aportes**: exibição de cards analíticos detalhando meta na classe, meta efetiva consolidada, valor sugerido e gap para cada setor, além de tags visuais de setor ao lado de cada ticker na listagem de compras;
@@ -137,6 +145,21 @@
 | **F41** | Arquitetura Unificada de Investimentos: Investment Wizard & Quick Sheet | Investment Wizard unificado (Novo Ativo + Aporte), Autocomplete de tickers, Quick Sheet e Visão Dedicada | Investimentos Unificado |
 | **F42** | Central Unificada de Relatórios & Exportação Multi-Abas | Hub `/relatorios` com 4 abas, 4 Dossiês A4 Editoriais de Consultoria e Caderno Excel .xlsx multi-abas | Relatórios & Consultoria |
 | **F43** | Preparação para SaaS: Admin, RBAC, Onboarding & Flags | Painel `/admin` 5 abas, RBAC, Allowlist de convites, Kill-Switch e Feature Flags reativas | Painel Administrativo SaaS |
+| **F44** | Padronização Editorial A4, Gráficos Vetoriais & PDF | `ReportDocumentLayout`, supressão de ruídos nativos, gráficos SVG/CSS e Tear Sheet | Relatórios & PDFs |
+| **F45** | Hardening de Segurança no Banco & RLS | RLS com `is_current_user_active()`, `search_path` estrito e sanitização Formula Injection | Segurança Backend |
+| **F46** | Escalabilidade de Consultas & Índices Cobridores | Índices com `INCLUDE`, RPCs set-based e eliminação de waterfalls no client | Performance Banco |
+| **F47** | Autenticação Avançada: 2FA/MFA (TOTP) & Anti-Abuso | 2FA/TOTP nativo, Turnstile e desconexão reativa Realtime | Segurança Auth |
+| **F48** | Governança em Larga Escala & Retenção Histórica | Particionamento declarativo e rotina de retenção/expurgo de auditoria | Governança Dados |
+| **F49** | Saldo em Caixa Real & Checkpoints de Âncora | Regime de caixa estrito, checkpoints âncora "Bater com o banco" e card mestre | Caixa Real & Liquidez |
+| **F50** | Proatividade: Sobra de Caixa, Auto-Snapshots & Bola de Neve | Ponte "Sobra de Caixa → Aporte", materialização de snapshots e gatilhos de reinvestimento | Proatividade Carteira |
+| **F51** | Radar Preditivo de Descasamento & Runway Diário | Radar temporal de cash-gap, simulação de runway e prevenção de saldo negativo | Radar & Runway |
+| **F52** | Alertas de Desvio (Δ), Reserva & Impacto FIRE | Threshold alerts de alocação, termômetro temporal da Reserva e impacto de hábitos no FIRE | Alocação & FIRE |
+| **F53** | NumberTicker Universal & Animações do Design System | `MoneyText animated` com `NumberTicker` e transições numéricas harmônicas | Polish Numérico |
+| **F54** | Central de Relatórios & Admin Responsivo | Tabs swipeable em `/relatorios` e visualização adaptativa Mobile Cards vs Desktop no `/admin` | Relatórios & Admin |
+| **F55** | Fundação de Estado, Saneamento & Primitivos de UI | Hooks `useExportData`/`useRestoreBackup`, `useAuth`, tipos canônicos, timezone/moeda e `ResponsiveDialog` | Fundação & Primitivos |
+| **F56** | Design System Responsivo, `StatCard` & Shell Global | `PageShell max-w-7xl`, tablet `md`, `MoreMenuSheet` na BottomNav e módulo `StatCard` | Responsividade & Shell |
+| **F57** | Modularização de Monólitos, Adoção Global & Governança | Decomposição `SettingsPage`/`PositionTable`, migração de diálogos, 3 estados de UI e PWA | Modularização & Governança |
+
 
 
 ---
@@ -2387,89 +2410,6 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 50 — Proatividade Patrimonial: Conexão "Sobra de Caixa → Aporte Inteligente", Auto-Snapshots & Gatilhos da Bola de Neve
-
-> **Status:** ✅ Concluída (2026-08-24) — integração proativa entre o fluxo de caixa mensal e a gestão de investimentos: cálculo de capacidade real de aporte no fechamento do mês, ponte em 1-clique para a calculadora de rebalanceamento, materialização autônoma de snapshots patrimoniais no 1º dia de cada mês (Marco Zero contínuo) e gatilhos de reinvestimento para ativos que atingiram o limiar de 1 nova cota em proventos.
-
-**Objetivo:** transformar o ecossistema financeiro em um ciclo contínuo e proativo, conectando as sobras do orçamento pessoal diretamente ao motor de aporte e automatizando a evolução temporal da carteira:
-1. **Ponte Proativa "Sobra de Caixa → Aporte Inteligente":**
-   - Motor puro de cálculo em `src/domain/overview/`: apuração determinística da Sobra Líquida Real do mês (`Receitas - Despesas - Faturas Pagas - Dívidas Quitadas - Compromissos do Mês`);
-   - Card inteligente na Visão Geral (`OverviewPage`) e no Hub de Investimentos (`InvestmentsPage`): exibição da sobra calculada com botão "Simular Aporte Ideal";
-   - Deep Linking com injeção automática de valor: navegação para `/investments?aba=aporte&valor=XXXXX`, pré-preenchendo a calculadora de rebalanceamento com a verba exata disponível;
-2. **Materialização Autônoma de Snapshots Mensais (Auto-Snapshot):**
-   - Rotina client-side resiliente em `usePortfolioSnapshots`: na abertura do app em um novo mês (`targetMonth > lastSnapshotMonth`), verifica a existência do snapshot do mês anterior;
-   - Caso ausente, dispara a materialização do snapshot (`upsertPortfolioSnapshot`) calculando o valor total de mercado (`total_value`) da custódia viva naquele instante e fixando o custo (`total_cost`), garantindo que a série histórica temporal permaneça contínua e sem lacunas sem exigir preenchimento manual;
-3. **Gatilho de Reinvestimento da Bola de Neve (Snowball Reinvestment Trigger):**
-   - Motor puro em `src/domain/portfolio/snowball.ts`: verificação de ativos cuja soma de proventos acumulados no mês atinge ou supera o valor de face de 1 cota de mercado (`monthDividends >= currentPrice`);
-   - Card de ação proativa em `ProventosTab` e `ResumoTab`: *"Seus proventos de HGLG11 (R$ 165,00) já permitem adquirir 1 nova cota. Deseja registrar o reinvestimento?"*;
-   - Fast-track no `InvestmentWizard` abrindo diretamente no Step 2 pré-configurado para a compra do ativo com o valor do provento.
-
-**Organização da Implementação em 4 Etapas:**
-1. **Etapa 50.1 — Domínio Puro & Funções de Proatividade:**
-   - Criação de `src/domain/overview/surplus.ts` (+ testes) para resolução da capacidade de aporte.
-   - Atualização de `src/domain/portfolio/snowball.ts` (+ testes) com `detectReinvestmentOpportunities`.
-2. **Etapa 50.2 — Camada de Estado & Auto-Snapshot:**
-   - Criação do hook `useAutoPortfolioSnapshot` sincronizado com o ciclo de vida e cache TanStack Query.
-3. **Etapa 50.3 — Componentes Modulares de UI & Deep Links:**
-   - Módulo `SurplusAporteBanner` para Home e Investimentos com suporte aos 3 temas e tokens do Design System.
-   - Módulo `SnowballActionCard` em `ProventosTab`.
-   - Suporte a query param `?valor=` em `AporteTab`.
-4. **Etapa 50.4 — Testes Automatizados & Validação:**
-   - Testes unitários para cálculo de sobra e gatilhos de bola de neve.
-   - Suíte 100% verde com typecheck e lint estritos.
-
-**✅ DoD (critérios de aceite):**
-- Sobra líquida de caixa calculada com rigor centesimal sem misturar meses distintos.
-- 1-clique no card de sobra redireciona para a calculadora de aporte com o valor preenchido e simulação executada.
-- Snapshots mensais materializados automaticamente sem duplicidade e sem sobrescrever dados inseridos manualmente.
-- Ativos com proventos suficientes para 1 cota exibem gatilho claro de reinvestimento.
-- Conformidade total com regras de UX: sem emojis, termos simples em pt-BR, acessibilidade AA.
-- Typecheck (`tsc --noEmit`), lint e suíte de testes 100% verdes.
-
----
-
-### Fase 51 — Radar Preditivo de Descasamento de Fluxo (Cash-Gap) & Runway Diário
-
-> **Status:** ✅ Concluída (2026-08-24) — enriquecimento da inteligência temporal de fluxo de caixa com alerta preditivo de descasamento entre vencimentos de faturas/dívidas e datas habituais de recebimento de renda, acompanhado de simulação de runway diário.
-
-**Objetivo:** prevenir inadimplência, juros de mora e uso emergencial de cheque especial através de avisos prévios de saldo insuficiente:
-1. **Radar Preditivo de Descasamento Temporal (Cash-Gap Warning):**
-   - Motor de análise cronológica em `src/domain/projection/`: cruzamento entre o calendário de saídas contratadas (vencimentos de faturas `due_date` e parcelas de dívidas/empréstimos) e a projeção de receitas habituais (derivadas da mediana de datas históricas);
-   - Alerta antecipado com 5 a 10 dias de antecedência caso o saldo acumulado na data de vencimento da fatura fique negativo antes da entrada do salário;
-   - Card de recomendação com sugestão de realocação temporária de reserva/caixa ou postergação de gastos não essenciais;
-2. **Simulador de Fôlego Financeiro (Runway Diário):**
-   - Gráfico de linha de projeção de saldo diário até o último dia do mês corrente, destacando os dias de inflexão (pagamento de faturas vs. créditos de proventos e salários).
-
-**Organização da Implementação em 3 Etapas:**
-1. **Etapa 51.1 — Motores Puros de Domínio:**
-   - Criação de `src/domain/projection/cash-gap.ts` (+ testes unitários com múltiplos cenários de data e saldo).
-2. **Etapa 51.2 — Componentes & Visualização:**
-   - Módulo `CashGapAlert` em `src/components/modules/`.
-   - Integração na `OverviewPage` respeitando a preferência de widgets do usuário.
-3. **Etapa 51.3 — Testes & Refinamento Visual:**
-   - Testes unitários e de integração para projeção de liquidez.
-   - Validação em telas móveis e conformidade WCAG AA.
-
-**✅ DoD (critérios de aceite):**
-- Alerta de descasamento dispara apenas quando há risco real de saldo insuficiente na data do vencimento.
-- Interface limpa com MoneyText, cores semânticas de aviso (`warning`/`critical`) e ações de contingência claras.
-- Suíte de testes 100% verde.
-
----
-
-### Fase 52 — Inteligência Ativa de Alocação & Metas de Longo Prazo: Alertas de Desvio (Threshold Δ), Previsão da Reserva & Impacto FIRE
-
-> **Status:** ✅ Concluída (2026-08-24) — sofisticação dos motores de planejamento e alocação estratégica: monitoramento ativo de desvios de metas de classe/setor com limiares de tolerância, estimativa preditiva de conclusão da reserva de emergência e conversor de economia de despesas em tempo de liberdade financeira (FIRE).
-
-**Objetivo:** conectar a disciplina orçamentária do dia a dia com a conquista da independência financeira e a proteção patrimonial de longo prazo:
-1. **Alertas Ativos de Desvio de Alocação (Threshold Δ Alerts):**
-   - Motor puro em `src/domain/portfolio/allocation.ts`: monitoramento de desvios percentuais relativos ($\Delta > \text{Tolerância}$, ex.: classe descolando $> \pm 10\%$ da meta devido a oscilações de mercado);
-   - Diagnóstico proativo em `ResumoTab` e `InsightsPage` sugerindo o rebalanceamento via novos aportes ou contenção de exposição;
-2. **Termômetro Preditivo de Conclusão da Reserva de Emergência:**
-   - Motor em `src/domain/fire/`: cálculo da velocidade de acumulação baseado na média móvel de poupança dos últimos 3 meses;
-   - Projeção de data estimada (mês/ano) para atingir os 3, 6 e 12 meses de custo de vida essencial, com barra de progresso temporal dinâmica;
-3. **Conversor de Impacto FIRE ("O Custo do Hábito na Aposentadoria"):**
-   - Integração entre `domain/insights` (recorrências/assinaturas) e `domain/fire`: cálculo do valor futuro capitalizado de gastos supérfluos recorrentes;
    - Simulação proativa demonstrando quantos meses ou anos de antecipação da independência financeira são conquistados ao converter um corte de gastos em aporte contínuo.
 
 **Organização da Implementação em 3 Etapas:**
@@ -2520,6 +2460,285 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 3. **Qualidade & Verificação:**
    - 232 arquivos de teste e 1702 testes verdes;
    - Typecheck, ESLint e Build 100% aprovados.
+
+---
+
+### Fase 55 — Fundação de Estado, Tipos Canônicos, Saneamento de Camadas & Primitivos de UI
+
+> **Status:** 📋 Planejada (Pronta para Execução) — **Bloco 1 do Pipeline Anti-Retrabalho**: estabelecimento das fundações de estado, centralização de contratos de tipos, saneamento de dependências de camadas, fonte única de formatação/timezones, formalização da regra "Zero Auto-Focus" e criação dos novos primitivos essenciais de interface (`Button size="xs"` e `ResponsiveDialog`).
+
+**Objetivo:** Estabelecer todas as abstrações de dados e primitivos de interface antes de qualquer refatoração de telas ou monólitos, garantindo que as fases subsequentes consumam contratos estáveis, sem stubs e sem necessidade de segundas passadas:
+
+1. **Isolamento Estrito de Camadas & Hooks de Estado (`src/state/`):**
+   - **Bypass de Repositórios em Telas:** criação dos hooks `useExportData` (`src/state/queries/use-export-data.ts`) e `useRestoreBackup` (`src/state/mutations/use-restore-backup.ts`), encapsulando os repositórios `src/data/repositories/export.ts` e fornecendo estado TanStack Query com invalidação automática de cache;
+   - **Autenticação Desacoplada:** expansão de `src/hooks/use-auth.ts` com métodos reativos (`signIn`, `signUp`, `resetPassword`, `signOut`), eliminando imports diretos de `@/data/auth` nas páginas de autenticação (`LoginPage`, `RegisterPage`, `ForgotPasswordPage`);
+   - **Módulos Livres de Acesso a Dados:** desacoplamento de componentes de `src/components/modules/` (`CashCheckpointDialog`, `FeatureGate`, `NotificationsPopover`), garantindo que dados e handlers sejam repassados exclusivamente via props tipadas dos contêineres pais.
+
+2. **Centralização de Contratos e Tipos de Domínio (`src/types/`):**
+   - Exportação canônica em `src/types/` dos tipos de dados de domínio e contratos de formulário (`AdminUserRow`, `RecurrenceGroupFields`, `InstallmentInput`, `CreditCardForm`, `AllocationTargetInput`, `CategoryFormValues`, etc.);
+   - Erradicação de importações de `@/data/rpc` e `@/data/repositories/*` em features para fins de tipagem.
+
+3. **Unificação DRY de Formatação Monetária & Padronização de Timezone Local:**
+   - **Formatação Monetária Única:** substituição sistemática de interpolações manuais `(cents / 100).toLocaleString("pt-BR", ...)` pela função canônica centralizada `formatCentsAsBRL(cents)` de `@/services/masks`;
+   - **Timezone Local e Datas:** substituição de `.toISOString().slice(0, 10)` nos domínios e features (`domain/debts`, `domain/loans`, `domain/projection/cash-gap.ts`, `settle-dialog.tsx`, etc.) pelos formatadores locais padronizados `todayLocalIso()` e `toLocalIsoDate(date)` de `src/lib/date.ts`.
+
+4. **Regra de Ouro "Zero Auto-Focus em Modais" & Governança de UX:**
+   - Formalização da Regra de Ouro #9 no `AGENTS.md` e `docs/DESIGN_SYSTEM.md` §13: proibição de `autoFocus` ou foco programático imediato em campos de formulário na abertura de diálogos e gavetas;
+   - Remoção de atributos `autoFocus` de formulários existentes (`cash-checkpoint-dialog.tsx`, `save-preset-dialog.tsx`), garantindo retenção suave do foco no contêiner acessível (`Modal`) sem abertura indesejada do teclado virtual móvel.
+
+5. **Primitivos de UI de Base (`Button size="xs"` e `ResponsiveDialog`):**
+   - **Botão Compacto:** adição da variante `size="xs"` (ou `size="compact"`) ao primitivo `Button` (`src/components/ui/button.tsx`);
+   - **Primitivo Universal `ResponsiveDialog` (`src/components/ui/responsive-dialog.tsx`):** componente adaptativo que renderiza gaveta arrastável com drag handle no mobile (`< 768px`) e modal flutuante centralizado no desktop (`≥ 768px`), com contrato Radix padronizado `{ open: boolean; onOpenChange: (open: boolean) => void }`, zero `autoFocus` nativo e rodapé com `sticky bottom-0` protegido contra sobreposição de teclado virtual.
+
+---
+
+### Detalhamento da Execução da Fase 55 em 6 Etapas Granulares
+
+#### 🔹 Etapa 55.1 — Camada de Estado & Hooks Canônicos de Backup/Export
+- **Arquivos-alvo:** `src/state/queries/use-export-data.ts` (novo), `src/state/mutations/use-restore-backup.ts` (novo), `src/state/index.ts`.
+- **Ações:**
+  1. Implementar `useExportData` consumindo `fetchAllUserData` com cache gerenciado.
+  2. Implementar `useRestoreBackup` consumindo `restoreBackup` com invalidação em cascata de todas as queries ativas.
+  3. Exportar os novos hooks no barrel de `src/state/`.
+  4. Testes unitários para os hooks em `src/state/mutations/use-restore-backup.test.tsx` e `src/state/queries/use-export-data.test.tsx`.
+
+#### 🔹 Etapa 55.2 — Desacoplamento de Autenticação e Tipos Canônicos
+- **Arquivos-alvo:** `src/hooks/use-auth.ts`, `src/types/index.ts`, `src/types/schema.ts`, páginas de auth (`login-page.tsx`, `register-page.tsx`, `forgot-password-page.tsx`).
+- **Ações:**
+  1. Enriquecer `useAuth` com métodos reativos de ação (`signIn`, `signUp`, `resetPassword`, `signOut`).
+  2. Migrar as telas de autenticação para consumir exclusivamente `useAuth()`.
+  3. Centralizar interfaces de formulário e RPCs em `src/types/` e eliminar imports de repositórios para tipagem.
+  4. Testes unitários para `useAuth` e páginas de autenticação.
+
+#### 🔹 Etapa 55.3 — Unificação DRY de Formatação Monetária e Datas Locais
+- **Arquivos-alvo:** `src/services/masks/money.ts`, `src/lib/date.ts`, diálogos e domínios (`bill-refinance-dialog.tsx`, `early-amortization-dialog.tsx`, `loan-form-dialog.tsx`, `settle-dialog.tsx`, `asset-detail-sheet.tsx`, `wizard-state.ts`, etc.).
+- **Ações:**
+  1. Substituir todas as chamadas manuais `(cents / 100).toLocaleString(...)` por `formatCentsAsBRL`.
+  2. Substituir todas as chamadas `.toISOString().slice(0, 10)` por `todayLocalIso()` e `toLocalIsoDate()`.
+  3. Validar testes de domínio e máscaras com casos de borda de timezone (fuso UTC-3).
+
+#### 🔹 Etapa 55.4 — Regra "Zero Auto-Focus" & Higienização de Modais
+- **Arquivos-alvo:** `AGENTS.md`, `docs/DESIGN_SYSTEM.md`, `src/components/ui/modal.tsx`, `src/components/modules/cash-checkpoint-dialog.tsx`, `src/components/modules/save-preset-dialog.tsx`.
+- **Ações:**
+  1. Documentar a Regra de Ouro #9 no `AGENTS.md` e `docs/DESIGN_SYSTEM.md`.
+  2. Remover atributos `autoFocus` de campos de entrada em diálogos.
+  3. Validar acessibilidade de foco do `Modal` com teclado e leitor de tela sem acionamento de teclado virtual móvel.
+
+#### 🔹 Etapa 55.5 — Primitivos de UI: `Button size="xs"` e `ResponsiveDialog`
+- **Arquivos-alvo:** `src/components/ui/button.tsx`, `src/components/ui/responsive-dialog.tsx` (novo), `src/components/ui/index.ts`.
+- **Ações:**
+  1. Adicionar variante `size="xs"` ao `buttonVariants` com dimensões compactas e tipografia alinhada.
+  2. Construir o primitivo `ResponsiveDialog` integrando detecção de breakpoint `md` (768px), drawer móvel e modal desktop com Props API consistente.
+  3. Testes unitários para `button.test.tsx` e `responsive-dialog.test.tsx`.
+
+#### 🔹 Etapa 55.6 — Testes Automatizados, Typecheck & Verificação
+- **Ações:**
+  1. Executar suíte completa de testes (`npm test -- --run`).
+  2. Typecheck estrito (`npx tsc --noEmit`) e linter (`npm run lint`).
+  3. Validação de ausência de regressões funcionais.
+
+**✅ DoD (Definition of Done da Fase 55):**
+- [ ] Hooks `useExportData` e `useRestoreBackup` implementados e 100% testados em `src/state/`.
+- [ ] Telas de autenticação consomem exclusivamente `useAuth()` sem imports de `@/data/auth`.
+- [ ] 100% das formatações monetárias em centavos utilizam `formatCentsAsBRL`.
+- [ ] 100% das datas resolvidas no fuso local via `todayLocalIso()` / `toLocalIsoDate()`.
+- [ ] Regra "Zero Auto-Focus em Modais" documentada e zero ocorrências de `autoFocus` em inputs de diálogos.
+- [ ] Primitivos `Button size="xs"` e `ResponsiveDialog` criados, exportados no barrel `components/ui/index.ts` e cobertos por testes unitários.
+- [ ] Suíte de testes 100% verde, typecheck estrito e zero avisos de linter.
+
+---
+
+### Fase 56 — Design System Responsivo, Módulos Compartilhados (`StatCard`), Shell Global & Mobile Navigation
+
+> **Status:** 📋 Planejada (Pronta para Execução) — **Bloco 2 do Pipeline Anti-Retrabalho**: expansão da contenção global (`PageShell` para `max-w-7xl`), transição híbrida para tablets (`md`), menu "Mais" em `BottomSheet` na barra de navegação móvel, módulo universal de métricas `StatCard` com auto-fit dinâmico e adaptação de dados complexos.
+
+**Objetivo:** Elevar a ergonomia e responsividade multidispositivo de 360px a 1440px+, padronizar o módulo universal de métricas e garantir navegação fluida sem saltos de rota:
+
+1. **Evolução do Shell da Aplicação e Contêiner Global (`PageShell` & `tokens.css`):**
+   - **Escalonamento de Largura Máxima:** ampliação da contenção de `max-w-5xl` (1024px) para `max-w-7xl` (1280px / 1440px) no `<main>` e cabeçalho, permitindo aproveitamento nobre de espaço em monitores desktop/ultrawide;
+   - **Ajuste Fino de Gutter Inferior:** substituição do `pb-28` fixo universal por `pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-10`, removendo os 112px de espaço vazio no desktop;
+   - **Margens Seguras Progressivas:** padronização de gutters laterais em `px-3.5 sm:px-4 md:px-6 lg:px-8` e respeito integral a `safe-area-inset`.
+
+2. **Ergonomia e Transição Dedicada para Tablets (`768px – 1023px` / `md`):**
+   - **Transição no Breakpoint `md` (768px):** ativação da `Sidebar` compacta em modo ícone (`w-20`) a partir de `md:flex` (em vez de `lg:flex`), liberando a altura vertical em tablets/iPads e ocultando a `BottomNav` (`md:hidden`);
+   - **Hover-Expand Persistente:** preservação do hover flutuante com atraso de 120ms para leitura de rótulos sem layout shift;
+   - **Espaçamento Dinâmico em `PageShell`:** margem de conteúdo ajustada para `isCollapsed ? "md:pl-20" : "md:pl-20 lg:pl-64"`.
+
+3. **Menu "Mais" em Gaveta Deslizante Móvel (`MoreMenuSheet`):**
+   - Substituição da navegação para a página `/mais` por um `BottomSheet` suave (`MoreMenuSheet`) acionado no 5º slot da `BottomNav`, com backdrop blur e grade de atalhos rápidos;
+   - Preservação total da rota, scroll e estado da tela ativa do usuário, com suporte a gesto de arrastar para fechar (*drag-to-dismiss*).
+
+4. **Módulo Universal de Métricas/KPI (`StatCard` em `src/components/modules/stat-card.tsx`):**
+   - Componente modular de apresentação com suporte a `title`, `cents` (via `MoneyText` e `NumberTicker`), `subtitle`, ícone semântico, `tone` (`default | positive | negative | warning | portfolio`), `badgeText`, modo hero (`isHero` com `shadow-kpi`) e suporte nativo ao grid `max-w-7xl`;
+   - **Auto-fit Numérico Anti-Reticências:** escala tipográfica adaptativa para quantias $\ge 7$ dígitos (> R$ 1.000.000,00), impedindo truncamento de valores por `...`.
+
+5. **Adaptação Tabular, Gráficos e Barrels Estruturais:**
+   - Padronização de contêineres `overflow-x-auto` em tabelas contábeis densas com affordance visual de rolagem;
+   - Barrels universais `index.ts` em `src/components/ui/`, `src/components/layout/` e `src/components/modules/`.
+
+---
+
+### Detalhamento da Execução da Fase 56 em 6 Etapas Granulares
+
+#### 🔹 Etapa 56.1 — Refatoração do Shell Global e Contêineres
+- **Arquivos-alvo:** `src/components/layout/page-shell.tsx`, `src/styles/tokens.css`, `src/styles/globals.css`.
+- **Ações:**
+  1. Alterar a contenção do `<main>` e do `<header>` para `max-w-7xl px-3.5 sm:px-4 md:px-6 lg:px-8`.
+  2. Atualizar o padding inferior para `pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-10`.
+  3. Adicionar classes utilitárias de layout seguro em `globals.css` / `tokens.css`.
+  4. Testes unitários atualizados em `page-shell.test.tsx`.
+
+#### 🔹 Etapa 56.2 — Transição de Navegação em Tablets e Shell Híbrido
+- **Arquivos-alvo:** `src/components/layout/sidebar.tsx`, `src/components/layout/bottom-nav.tsx`, `src/components/layout/page-shell.tsx`.
+- **Ações:**
+  1. Ativar `Sidebar` compacta (`w-20`) a partir de `md:flex`.
+  2. Ocultar `BottomNav` em `md:hidden`.
+  3. Ajustar padding dinâmico em `PageShell` para refletir `md:pl-20`.
+  4. Testes unitários para `sidebar.test.tsx` e `bottom-nav.test.tsx` cobrindo o breakpoint `md`.
+
+#### 🔹 Etapa 56.3 — Menu "Mais" em BottomSheet Móvel
+- **Arquivos-alvo:** `src/components/layout/bottom-nav.tsx`, `src/components/layout/more-menu-sheet.tsx` (novo), `src/components/layout/index.ts`.
+- **Ações:**
+  1. Construir o componente `MoreMenuSheet` com grade de atalhos secundários e backdrop blur.
+  2. Conectar o slot "Mais" da `BottomNav` para abrir o `MoreMenuSheet` localmente sem alterar a URL.
+  3. Suporte a fechamento por toque no backdrop ou deslizar para baixo.
+  4. Testes unitários em `more-menu-sheet.test.tsx`.
+
+#### 🔹 Etapa 56.4 — Módulo Universal de Métricas/KPI (`StatCard`)
+- **Arquivos-alvo:** `src/components/modules/stat-card.tsx` (novo), `src/components/modules/index.ts`, `src/components/ui/money-text.tsx`.
+- **Ações:**
+  1. Implementar `StatCard` com suporte a centavos, `MoneyText`, `NumberTicker`, ícones, badges e tons semânticos.
+  2. Integrar regra de auto-fit tipográfico dinâmico para valores monetários com $\ge 7$ dígitos.
+  3. Testes unitários completos em `stat-card.test.tsx`.
+
+#### 🔹 Etapa 56.5 — Adaptação Tabular e Barrels de Componentes
+- **Arquivos-alvo:** `src/components/ui/index.ts`, `src/components/layout/index.ts`, `src/components/modules/index.ts`, `src/components/modules/category-donut.tsx`.
+- **Ações:**
+  1. Padronizar contêineres de tabela com `overflow-x-auto`.
+  2. Ajustar `CategoryDonut` com seleção de fatia por toque no mobile.
+  3. Criar e validar barrels `index.ts` completos em `ui/`, `layout/` e `modules/`.
+
+#### 🔹 Etapa 56.6 — Testes Automatizados, Typecheck & Verificação
+- **Ações:**
+  1. Executar suíte completa de testes (`npm test -- --run`).
+  2. Typecheck estrito (`npx tsc --noEmit`) e linter (`npm run lint`).
+  3. Validação de layout em 360px, 768px, 1024px e 1440px+.
+
+**✅ DoD (Definition of Done da Fase 56):**
+- [ ] Contêiner de tela grande expande para `max-w-7xl` no desktop mantendo centralização limpa.
+- [ ] Navegação adota `Sidebar` compacta (`w-20`) no tablet (`md`) e `BottomNav` oculta a partir de `768px`.
+- [ ] Rodapé no desktop sem o espaço ocioso de 112px (`md:pb-10`).
+- [ ] Menu "Mais" abre como `BottomSheet` sobreposto no smartphone, preservando rota e scroll da tela ativa.
+- [ ] Módulo `StatCard` criado e testado com suporte a auto-fit para valores $\ge 7$ dígitos.
+- [ ] Barrels universais `index.ts` em `src/components/ui/`, `src/components/layout/` e `src/components/modules/`.
+- [ ] Suíte de testes 100% verde, typecheck estrito e zero avisos de linter.
+
+---
+
+### Fase 57 — Modularização Estrutural de Monólitos, Adoção Global de Primitivos, 3 Estados de UI & Governança
+
+> **Status:** 📋 Planejada (Pronta para Execução) — **Bloco 3 do Pipeline Anti-Retrabalho**: decomposição modular das páginas monolíticas (`SettingsPage`, `PositionTable`, `ReportsPage`, `TargetsTab`, `AssetFormDialog`, `InsightsPage`), migração atômica de todos os diálogos para `ResponsiveDialog`, substituição global de `<button>` cru por `<Button>`, cobertura universal dos 3 estados de UI (`Skeleton`, `EmptyState`, `ErrorState` com retry), artefatos PWA e sincronização documental da governança.
+
+**Objetivo:** Decompor monólitos de apresentação, erradicar código duplicado inline, isolar responsabilidades e consolidar a fidelidade visual e de governança do produto:
+
+1. **Decomposição Estrutural da `SettingsPage` (1.658 linhas $\rightarrow$ Modular):**
+   - Divisão da página em 6 sub-abas dedicadas em `src/features/settings/components/tabs/`:
+     - `appearance-tab.tsx` (temas, acentos de cor, estilos de card, visual);
+     - `sensory-tab.tsx` (sons, hápticos, animações);
+     - `widgets-tab.tsx` (visibilidade e ordenação de widgets da Home e Insights);
+     - `backup-tab.tsx` (exportação JSON/CSV e restauração via `useRestoreBackup` e `useExportData`);
+     - `security-tab.tsx` (MFA/2FA TOTP, sessões ativas e alteração de senha);
+     - `reminders-tab.tsx` (preferências e janelas de notificação de faturas e dívidas);
+   - Eliminação de 100% dos imports diretos de `src/data/repositories/*` na `SettingsPage`.
+
+2. **Decomposição Estrutural da `PositionTable` (1.164 linhas $\rightarrow$ Modular):**
+   - Extração de subcomponentes coesos em `src/components/modules/portfolio/`:
+     - `position-table-header.tsx` (cabeçalho de colunas com ordenação);
+     - `position-row.tsx` (linha de ativo com renderização condicional de cotação e PnL);
+     - `position-group-card.tsx` (card de agrupamento por classe/setor);
+     - `position-actions-menu.tsx` (menu de ações rápidas do ativo).
+
+3. **Modularização de Demais Páginas e Diálogos Extensos:**
+   - Modularização de `ReportsPage` (1.424 linhas), `TargetsTab` (1.062 linhas), `AssetFormDialog` (934 linhas) e `InsightsPage` (785 linhas) em componentes atômicos menores que 500 linhas.
+
+4. **Migração Global para `ResponsiveDialog`, `StatCard` e Botões Padronizados:**
+   - Migração definitiva de todos os diálogos de detalhe e formulários para `ResponsiveDialog` com Zero Auto-Focus em um **único passe definitivo**;
+   - Substituição de cards de resumo montados inline em `OverviewPage`, `DebtsPage`, `BudgetsPage`, `InsightsPage` e `AdminPage` pelo `StatCard`;
+   - Substituição sistemática de tags HTML `<button>` cruas por `<Button variant="..." size="...">`.
+
+5. **Completude dos 3 Estados de UI (Loading, Vazio, Erro):**
+   - Garantia de que 100% das telas e abas implementem `Skeleton` durante o carregamento, `EmptyState` contextual sem registros e `ErrorState` com gateway de mensagens e botão "Tentar novamente" (`refetch`).
+
+6. **Artefatos PWA, Barrels Universais em Features & Sincronização da Governança:**
+   - Barrels `index.ts` com exports nomeados em todas as pastas e subpastas de features (`pages/`, `components/`, `wizard/`);
+   - Criação do diretório `public/pwa/screenshots/` contendo os artefatos visuais `desktop-1280x800.png` e `mobile-720x1280.png`;
+   - Atualização e sincronização da matriz documental governada em `AGENTS.md` e `docs/PROJECT_STRUCTURE.md`.
+
+---
+
+### Detalhamento da Execução da Fase 57 em 6 Etapas Granulares
+
+#### 🔹 Etapa 57.1 — Decomposição Modular da `SettingsPage`
+- **Arquivos-alvo:** `src/features/settings/pages/settings-page.tsx`, `src/features/settings/components/tabs/*` (6 novos componentes de aba), `src/features/settings/index.ts`.
+- **Ações:**
+  1. Criar `appearance-tab.tsx`, `sensory-tab.tsx`, `widgets-tab.tsx`, `backup-tab.tsx`, `security-tab.tsx` e `reminders-tab.tsx`.
+  2. Conectar `backup-tab.tsx` aos hooks `useExportData` e `useRestoreBackup` de `src/state/`.
+  3. Reduzir a `SettingsPage` para orquestradora de abas (< 250 linhas) com suporte a `Skeleton` e URL deep linking.
+  4. Testes unitários para as novas abas e `settings-page.test.tsx`.
+
+#### 🔹 Etapa 57.2 — Decomposição Modular da `PositionTable`
+- **Arquivos-alvo:** `src/features/investments/components/position-table.tsx`, `src/components/modules/portfolio/*` (4 novos subcomponentes), `src/components/modules/index.ts`.
+- **Ações:**
+  1. Extrair `position-table-header.tsx`, `position-row.tsx`, `position-group-card.tsx` e `position-actions-menu.tsx`.
+  2. Recompor a `PositionTable` utilizando os subcomponentes modulares.
+  3. Testes unitários dedicados em `position-table.test.tsx`.
+
+#### 🔹 Etapa 57.3 — Modularização de Páginas e Diálogos Monolíticos
+- **Arquivos-alvo:** `src/features/reports/pages/reports-page.tsx`, `src/features/investments/pages/targets-tab.tsx`, `src/features/investments/components/asset-form-dialog.tsx`, `src/features/insights/pages/insights-page.tsx`.
+- **Ações:**
+  1. Extrair tabelas analíticas e cards repetitivos em componentes coesos (< 500 linhas cada).
+  2. Preservar contratos de estado, queries TanStack e handlers de evento.
+  3. Testes de regressão para todas as páginas refatoradas.
+
+#### 🔹 Etapa 57.4 — Migração Global para `ResponsiveDialog`, `StatCard` e Botões Padronizados
+- **Arquivos-alvo:** Diálogos de formulário (`expense-detail-dialog.tsx`, `income-detail-dialog.tsx`, etc.), páginas principais de métricas (`OverviewPage`, `DebtsPage`, `BudgetsPage`, `InsightsPage`, `AdminPage`), componentes com `<button>` cru.
+- **Ações:**
+  1. Migrar diálogos para `ResponsiveDialog` com Zero Auto-Focus e sticky footer.
+  2. Substituir KPIs manuais pelo componente modular `StatCard`.
+  3. Substituir tags `<button>` soltas por instâncias de `<Button>`.
+
+#### 🔹 Etapa 57.5 — Completude dos 3 Estados de UI (Loading, Vazio, Erro)
+- **Arquivos-alvo:** `src/features/admin/pages/*`, `src/features/insights/pages/insights-page.tsx`, `src/features/reports/pages/reports-page.tsx`, `src/features/settings/pages/settings-page.tsx`.
+- **Ações:**
+  1. Adicionar `Skeleton` de carregamento inicial na `SettingsPage` e abas do Admin.
+  2. Adicionar `EmptyState` dedicado para períodos vazios em `InsightsPage` e `ReportsPage`.
+  3. Adicionar `ErrorState` com gateway de mensagens e botão "Tentar novamente" (`refetch`) em todas as abas.
+
+#### 🔹 Etapa 57.6 — Barrels Universais, Artefatos PWA & Sincronização de Governança
+- **Arquivos-alvo:** Todas as pastas e subpastas sob `src/features/*/`, `public/pwa/screenshots/*`, `AGENTS.md`, `docs/PROJECT_STRUCTURE.md`.
+- **Ações:**
+  1. Criar arquivos `index.ts` com exports nomeados em 100% das pastas e subpastas de features (`pages/`, `components/`, `wizard/`).
+  2. Criar o diretório `public/pwa/screenshots/` com os arquivos `desktop-1280x800.png` e `mobile-720x1280.png`.
+  3. Atualizar as tabelas de governança documental em `AGENTS.md` e `docs/PROJECT_STRUCTURE.md`.
+  4. Executar validação integral: Typecheck (`tsc --noEmit`), Linter (`npm run lint`) e Suíte de Testes (100% verde).
+
+**✅ DoD (Definition of Done da Fase 57):**
+- [ ] `SettingsPage` decomposta em 6 sub-abas limpas (< 250 linhas na página principal), consumindo exclusivamente a camada `src/state/` (zero imports de `data/`).
+- [ ] `PositionTable` decomposta em subcomponentes atômicos em `src/components/modules/portfolio/`.
+- [ ] Zero componentes ou páginas de UI com mais de 500 linhas sem justificativa técnica documentada.
+- [ ] 100% dos diálogos migrados para `ResponsiveDialog` com Zero Auto-Focus e contrato padronizado.
+- [ ] Zero tags `<button>` nativas soltas — todas as ações usam o primitivo `<Button>`.
+- [ ] 100% das páginas principais utilizam o componente modular `StatCard`.
+- [ ] 100% das telas e abas possuem `Skeleton`, `EmptyState` e `ErrorState` com retry.
+- [ ] 100% dos diretórios e subdiretórios sob `src/` possuem barrel `index.ts` com exports nomeados.
+- [ ] Diretório `public/pwa/screenshots/` criado com imagens nas dimensões especificadas.
+- [ ] Documentação governada sincronizada em `AGENTS.md` e `docs/PROJECT_STRUCTURE.md`.
+- [ ] Typecheck estrito (`tsc --noEmit`), ESLint e suite completa de testes 100% verdes.
+
+
+
+
+
 
 
 

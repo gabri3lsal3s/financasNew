@@ -2,10 +2,10 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router";
 import { Alert, Button, Input, Turnstile } from "@/components/ui";
-import { signInWithEmail } from "@/data/auth";
 import { AuthShell } from "@/features/auth/components/auth-shell";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, signInWithEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
+
 
 export function LoginPage() {
   const { session, loading, configError } = useAuth();

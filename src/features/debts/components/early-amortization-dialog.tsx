@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Alert, Button, Modal, MoneyInput, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
+import { formatCentsAsBRL } from "@/services/masks";
 import { calculateEarlyAmortization } from "@/domain/loans";
 import { useCategories, useEarlyAmortizeLoan } from "@/state";
 import type { Debt, Loan } from "@/types";
+
 
 export interface EarlyAmortizationDialogProps {
   loan: Loan;
@@ -111,31 +113,21 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Valor nominal das parcelas:</span>
-              <span>
-                {(result.totalOriginalAmountCents / 100).toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
-              </span>
+              <span>{formatCentsAsBRL(result.totalOriginalAmountCents)}</span>
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Desconto de juros obtido:</span>
               <span className="font-semibold text-success">
-                {(result.totalDiscountCents / 100).toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
+                {formatCentsAsBRL(result.totalDiscountCents)}
               </span>
             </div>
             <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-t border-border/50">
               <span>Total efetivo a pagar hoje:</span>
               <span className="text-primary font-bold">
-                {(result.totalPresentValuePaidCents / 100).toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
+                {formatCentsAsBRL(result.totalPresentValuePaidCents)}
               </span>
             </div>
+
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">

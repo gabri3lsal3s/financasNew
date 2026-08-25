@@ -12,6 +12,16 @@ import type { Session, User } from "@supabase/supabase-js";
  */
 const ensuredProfiles = new Set<string>();
 
+import {
+  signInWithEmail,
+  signUpWithEmail,
+  resetPasswordForEmail,
+  type SignUpResult,
+} from "@/data/auth";
+
+export { signInWithEmail, signUpWithEmail, resetPasswordForEmail };
+export type { SignUpResult };
+
 export interface AuthState {
   session: Session | null;
   user: User | null;
@@ -19,7 +29,11 @@ export interface AuthState {
   loading: boolean;
   /** Erro de configuração (ex.: env incompleto) — exposto em vez de crashar. */
   configError: string | null;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name?: string, inviteCode?: string) => Promise<SignUpResult>;
+  resetPassword: (email: string) => Promise<void>;
 }
+
 
 type AuthInit = { supabase: ReturnType<typeof getSupabase> } | { configError: string };
 
@@ -43,9 +57,26 @@ export function useAuth(): AuthState {
 
   const [state, setState] = useState<AuthState>(() =>
     "supabase" in init
-      ? { session: null, user: null, loading: true, configError: null }
-      : { session: null, user: null, loading: false, configError: init.configError },
+      ? {
+          session: null,
+          user: null,
+          loading: true,
+          configError: null,
+          signIn: signInWithEmail,
+          signUp: signUpWithEmail,
+          resetPassword: resetPasswordForEmail,
+        }
+      : {
+          session: null,
+          user: null,
+          loading: false,
+          configError: init.configError,
+          signIn: signInWithEmail,
+          signUp: signUpWithEmail,
+          resetPassword: resetPasswordForEmail,
+        },
   );
+
 
   // Correlaciona erros ao usuário no Sentry (no-op sem DSN) — F6.3 e sincroniza storage.
   useEffect(() => {
@@ -74,25 +105,28 @@ export function useAuth(): AuthState {
       if (!active) return;
       const uid = data.session?.user?.id ?? null;
       setActiveUserId(uid);
-      setState({
+      setState((prev) => ({
+        ...prev,
         session: data.session,
         user: data.session?.user ?? null,
         loading: false,
         configError: null,
-      });
+      }));
     });
 
     const { data: subscription } = init.supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       const uid = session?.user?.id ?? null;
       setActiveUserId(uid);
-      setState({
+      setState((prev) => ({
+        ...prev,
         session,
         user: session?.user ?? null,
         loading: false,
         configError: null,
-      });
+      }));
     });
+
 
     return () => {
       active = false;

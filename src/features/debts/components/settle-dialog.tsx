@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Alert, Button, Modal, MoneyInput, RadioGroup, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
+import { formatCentsAsBRL } from "@/services/masks";
+import { todayLocalIso } from "@/lib/date";
 import { useCategories, useExpense, usePayDebt, useReceiveDebt, useSettleIntegratedReceivable } from "@/state";
 import type { Debt } from "@/types";
 
@@ -27,8 +29,9 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
   const [userEdited, setUserEdited] = useState(false);
 
   // Encargos e descontos (dívidas a pagar)
-  const isOverdue = debt.due_date < new Date().toISOString().slice(0, 10);
+  const isOverdue = debt.due_date < todayLocalIso();
   const [showPenalties, setShowPenalties] = useState(isOverdue);
+
   const [fineCents, setFineCents] = useState(0);
   const [interestCents, setInterestCents] = useState(0);
   const [discountCents, setDiscountCents] = useState(0);
@@ -178,9 +181,10 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50 text-foreground font-medium">
                   <span>Valor efetivo pago:</span>
                   <span className="text-sm font-semibold">
-                    {(effectivePayableCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {formatCentsAsBRL(effectivePayableCents)}
                   </span>
                 </div>
+
               )}
             </div>
           ) : null}

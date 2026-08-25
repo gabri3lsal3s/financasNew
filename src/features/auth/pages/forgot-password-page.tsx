@@ -2,9 +2,10 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
 import { Alert, Button, Input, Turnstile } from "@/components/ui";
-import { resetPasswordForEmail } from "@/data/auth";
 import { AuthShell } from "@/features/auth/components/auth-shell";
+import { resetPasswordForEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
+
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

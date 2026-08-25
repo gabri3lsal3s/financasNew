@@ -60,8 +60,8 @@ function CashCheckpointForm({
           id="cash-balance-input"
           cents={balanceCents}
           onCentsChange={(cents) => setBalanceCents(cents)}
-          autoFocus
         />
+
       </div>
 
       <div className="flex flex-col gap-1.5">

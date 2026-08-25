@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { currentMonth, currentYear, formatDateBR, isValidMonth, isValidYear, monthLabel, monthRange, shiftMonth, yearRange } from "./date";
+import {
+  currentMonth,
+  currentYear,
+  formatDateBR,
+  isValidMonth,
+  isValidYear,
+  monthLabel,
+  monthRange,
+  shiftMonth,
+  todayLocalIso,
+  toLocalIsoDate,
+  yearRange,
+} from "./date";
+
+
 
 describe("lib/date (§4.1 — meses e anos em timezone local, sem toISOString)", () => {
   it("isValidMonth aceita apenas YYYY-MM", () => {
@@ -71,5 +85,19 @@ describe("lib/date (§4.1 — meses e anos em timezone local, sem toISOString)",
       expect(formatDateBR("")).toBe("");
     });
   });
+
+  describe("toLocalIsoDate & todayLocalIso", () => {
+    it("converte Date para YYYY-MM-DD no fuso local sem desvio de UTC", () => {
+      const fixedDate = new Date(2026, 7, 25, 23, 30, 0); // 25 de agosto de 2026 às 23:30 local
+      expect(toLocalIsoDate(fixedDate)).toBe("2026-08-25");
+    });
+
+    it("todayLocalIso retorna a data atual formatada como YYYY-MM-DD", () => {
+      const now = new Date();
+      const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      expect(todayLocalIso()).toBe(expected);
+    });
+  });
 });
+
 

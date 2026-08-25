@@ -27,14 +27,20 @@ vi.mock("react-router", () => ({
 }));
 
 vi.mock("@/hooks/use-auth", () => ({
-  useAuth: () => ({ session: null, user: null, loading: false, configError: null }),
-}));
-
-vi.mock("@/data/auth", () => ({
+  useAuth: () => ({
+    session: null,
+    user: null,
+    loading: false,
+    configError: null,
+    signIn: vi.fn(),
+    signUp: vi.fn(),
+    resetPassword: vi.fn(),
+  }),
   signInWithEmail: vi.fn(),
   signUpWithEmail: vi.fn(),
   resetPasswordForEmail: vi.fn(),
 }));
+
 
 const categories = [
   { id: "c1", name: "Moradia", icon: "moradia", color: null, type: "expense", is_reserved: false, is_active: true },

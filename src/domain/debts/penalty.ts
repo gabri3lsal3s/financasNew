@@ -1,3 +1,5 @@
+import { todayISO } from "./index";
+
 /**
  * Motor puro de cálculo de encargos por atraso (mora, multa e desconto) em dívidas.
  *
@@ -44,11 +46,13 @@ export function calculateDaysOverdue(dueDate: string, paymentDate: string): numb
 /**
  * Calcula os encargos e o valor final de quitação de uma dívida.
  */
+
 export function calculateOverdueDebtCharges(
   input: OverdueDebtCalculationInput
 ): OverdueDebtCalculationResult {
   const originalAmountCents = Math.max(0, Math.round(input.amountCents));
-  const paymentDate = input.paymentDate ?? new Date().toISOString().slice(0, 10);
+  const paymentDate = input.paymentDate ?? todayISO();
+
   const daysOverdue = calculateDaysOverdue(input.dueDate, paymentDate);
 
   let fineCents = 0;

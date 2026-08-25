@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Alert, Button, DatePicker, Input, Modal, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
+import { formatCentsAsBRL } from "@/services/masks";
 import { toISODate } from "@/domain/money";
+
 import {
   AMORTIZATION_SYSTEM_LABELS,
   calculateLoanSchedule,
@@ -174,34 +176,26 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Primeira parcela:</span>
               <span className="font-semibold text-foreground">
-                {((preview.schedule[0]?.amountCents ?? 0) / 100).toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
+                {formatCentsAsBRL(preview.schedule[0]?.amountCents ?? 0)}
               </span>
             </div>
             {system === "sac" && (
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Última parcela estimada:</span>
                 <span className="font-semibold text-foreground">
-                  {((preview.schedule[preview.schedule.length - 1]?.amountCents ?? 0) / 100).toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })}
+                  {formatCentsAsBRL(preview.schedule[preview.schedule.length - 1]?.amountCents ?? 0)}
                 </span>
               </div>
             )}
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Total de juros estimados:</span>
               <span className="font-semibold text-warning">
-                {(preview.totalInterestCents / 100).toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
+                {formatCentsAsBRL(preview.totalInterestCents)}
               </span>
             </div>
           </div>
         ) : null}
+
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
