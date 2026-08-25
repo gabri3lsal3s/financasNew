@@ -569,8 +569,9 @@ export function PositionTable({
       align: "right",
       className: "flex-1",
       cell: (row) => {
-        const isManual = row.source === "manual";
-        const isFallback = row.source === "fallback";
+        const hasActiveRate = Boolean(row.fixedIncomeMetadata?.rate_value && row.fixedIncomeMetadata.rate_value > 0);
+        const isManual = row.source === "manual" || !hasActiveRate;
+        const isFallback = row.source === "fallback" && hasActiveRate;
         const valueCents = numberToCents(row.valueBRL);
 
         if (onCalibrateAsset) {
@@ -1017,9 +1018,31 @@ export function PositionTable({
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-[11px] text-muted-foreground">Preço</span>
+            <span className="text-[11px] text-muted-foreground">
+              {row.pricingMode === "total_value" ? "Saldo Atual" : "Preço"}
+            </span>
             {row.isCash ? (
               <span className="font-semibold text-foreground">1:1</span>
+            ) : row.pricingMode === "total_value" && onCalibrateAsset ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCalibrateAsset(row.assetId, row.ticker, numberToCents(row.valueBRL));
+                }}
+                aria-label={`Calibrar saldo de ${row.ticker}`}
+                className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                title="Calibrar saldo com extrato oficial"
+              >
+                <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />
+                {row.source === "manual" || !row.fixedIncomeMetadata?.rate_value || row.fixedIncomeMetadata.rate_value <= 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                    title="Saldo cadastrado manual"
+                  />
+                ) : null}
+              </button>
             ) : onSetManualPrice ? (
               <button
                 type="button"
