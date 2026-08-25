@@ -48,8 +48,8 @@ export async function deleteLoan(id: string): Promise<void> {
   }
 }
 
-/** Atualização segura de metadados do contrato (nome, tipo, observações). */
-export async function updateLoan(id: string, patch: Partial<Pick<Loan, "name" | "loan_type" | "notes">>): Promise<Loan> {
+/** Atualização segura de metadados do contrato (nome, tipo). */
+export async function updateLoan(id: string, patch: Partial<Pick<Loan, "name" | "loan_type">>): Promise<Loan> {
   const { data, error } = await resolveQuery<Loan>(
     getSupabase().from("loans").update(patch).eq("id", id).select().single(),
   );
@@ -57,5 +57,6 @@ export async function updateLoan(id: string, patch: Partial<Pick<Loan, "name" | 
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
   }
-  return mapLoan(data);
+  return mapLoan(data!);
 }
+

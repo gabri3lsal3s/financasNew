@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { ArrowRight, Edit3, PiggyBank, Plus, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
+import { HighlightRow } from "@/components/modules/highlight-row";
+import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
   budgetLimitsByCategory,
   incomeGoalStatus,
@@ -35,8 +38,16 @@ import type { Category } from "@/types";
 
 /** Categorias & Orçamentos (§3.5.2) e metas de renda (§3.5.3) — Opção C unificada. */
 export function BudgetsPage() {
+  const [searchParams] = useSearchParams();
+  const { highlightId } = useHighlightTarget("q");
+  const targetCategory = searchParams.get("category");
+  const targetType = searchParams.get("type");
+  const effectiveHighlightId = highlightId ?? targetCategory;
+
   const [month, setMonth] = useState(currentMonth());
-  const [tab, setTab] = useState<"limits" | "goals">("limits");
+  const [tab, setTab] = useState<"limits" | "goals">(() =>
+    targetType === "income" ? "goals" : "limits",
+  );
   const [limitFor, setLimitFor] = useState<Category | null>(null);
   const [goalFor, setGoalFor] = useState<Category | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -98,7 +109,11 @@ export function BudgetsPage() {
     });
   const unbudgetedRows = allExpenseRows.filter((row) => row.limitCents === 0 && row.spentCents === 0);
 
-  const rows = showAllCategories ? allExpenseRows : activeRows;
+  const isHighlightedUnbudgeted = Boolean(
+    effectiveHighlightId && unbudgetedRows.some((r) => r.category.id === effectiveHighlightId),
+  );
+  const shouldShowAll = showAllCategories || isHighlightedUnbudgeted;
+  const rows = shouldShowAll ? allExpenseRows : activeRows;
 
   const totalLimitsCents = activeRows.reduce((acc, row) => acc + row.limitCents, 0);
 
@@ -234,11 +249,63 @@ export function BudgetsPage() {
         <div className="flex flex-col gap-2">
           {rows.map((row) => {
             return (
-              <div
+              <HighlightRow
                 key={row.category.id}
-                className="group flex flex-col gap-2.5 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0"
+                highlightId={effectiveHighlightId}
+                id={row.category.id}
+                className="rounded-xl"
               >
-                <div className="flex items-center justify-between gap-3 min-w-0">
+                <div
+                  className="group flex flex-col gap-2.5 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0"
+                >
+                  <div className="flex items-center justify-between gap-3 min-w-0">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Editar limite de ${row.category.name}`}
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setLimitFor(row.category);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          triggerHaptic("light");
+                          setLimitFor(row.category);
+                        }
+                      }}
+                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
+                    >
+                      <CategoryIcon icon={row.category.icon} color={row.category.color} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                            {row.category.name}
+                          </p>
+                          {row.inherited ? (
+                            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              herdado
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 text-muted-foreground hover:text-foreground"
+                        aria-label={`Editar cadastro de ${row.category.name}`}
+                        title={`Editar cadastro de ${row.category.name}`}
+                        onClick={() => handleEditCategory(row.category)}
+                      >
+                        <Edit3 className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
+
                   <div
                     role="button"
                     tabIndex={0}
@@ -254,58 +321,12 @@ export function BudgetsPage() {
                         setLimitFor(row.category);
                       }
                     }}
-                    className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
+                    className="cursor-pointer"
                   >
-                    <CategoryIcon icon={row.category.icon} color={row.category.color} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                          {row.category.name}
-                        </p>
-                        {row.inherited ? (
-                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            herdado
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="size-7 text-muted-foreground hover:text-foreground"
-                      aria-label={`Editar cadastro de ${row.category.name}`}
-                      title={`Editar cadastro de ${row.category.name}`}
-                      onClick={() => handleEditCategory(row.category)}
-                    >
-                      <Edit3 className="size-3.5" aria-hidden="true" />
-                    </Button>
+                    <BudgetProgressBar spentCents={row.spentCents} limitCents={row.limitCents} />
                   </div>
                 </div>
-
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Editar limite de ${row.category.name}`}
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setLimitFor(row.category);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      triggerHaptic("light");
-                      setLimitFor(row.category);
-                    }
-                  }}
-                  className="cursor-pointer"
-                >
-                  <BudgetProgressBar spentCents={row.spentCents} limitCents={row.limitCents} />
-                </div>
-              </div>
+              </HighlightRow>
             );
           })}
 
@@ -358,11 +379,63 @@ export function BudgetsPage() {
             const percent = expectedCents > 0 ? Math.min(100, (realizedCents / expectedCents) * 100) : 0;
 
             return (
-              <div
+              <HighlightRow
                 key={category.id}
-                className="group flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-border hover:bg-surface min-w-0"
+                highlightId={effectiveHighlightId}
+                id={category.id}
+                className="rounded-2xl"
               >
-                <div className="flex items-center justify-between gap-3 min-w-0">
+                <div
+                  className="group flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-3.5 sm:p-4 shadow-xs transition-all hover:border-border hover:bg-surface min-w-0"
+                >
+                  <div className="flex items-center justify-between gap-3 min-w-0">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Editar meta de renda de ${category.name}`}
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setGoalFor(category);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          triggerHaptic("light");
+                          setGoalFor(category);
+                        }
+                      }}
+                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
+                    >
+                      <CategoryIcon icon={category.icon} color={category.color} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                          {category.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Badge
+                        variant={expectedCents === 0 ? "muted" : status === "deficit" ? "critical" : "positive"}
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {expectedCents > 0 ? INCOME_GOAL_LABELS[status] : "Sem meta"}
+                      </Badge>
+
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 text-muted-foreground hover:text-foreground"
+                        aria-label={`Editar cadastro de ${category.name}`}
+                        title={`Editar cadastro de ${category.name}`}
+                        onClick={() => handleEditCategory(category)}
+                      >
+                        <Edit3 className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
+
                   <div
                     role="button"
                     tabIndex={0}
@@ -378,89 +451,43 @@ export function BudgetsPage() {
                         setGoalFor(category);
                       }
                     }}
-                    className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
+                    className="cursor-pointer"
                   >
-                    <CategoryIcon icon={category.icon} color={category.color} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {category.name}
-                      </p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <span>Realizado:</span>
+                        <MoneyText cents={realizedCents} tone="default" className="font-semibold text-foreground" />
+                        {expectedCents > 0 ? (
+                          <>
+                            <span>de</span>
+                            <MoneyText cents={expectedCents} tone="default" />
+                          </>
+                        ) : null}
+                      </span>
+                      {expectedCents > 0 ? (
+                        <span className="num font-medium">{Math.round(percent)}%</span>
+                      ) : (
+                        <span className="text-[11px] text-primary hover:underline">Toque para definir</span>
+                      )}
+                    </div>
+
+                    <div className="relative mt-2 h-2 w-full overflow-hidden rounded-full bg-muted/70">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          expectedCents === 0
+                            ? "bg-muted"
+                            : status === "on_track"
+                              ? "bg-positive"
+                              : status === "surplus"
+                                ? "bg-positive-strong"
+                                : "bg-warning"
+                        }`}
+                        style={{ width: `${percent}%` }}
+                      />
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Badge
-                      variant={expectedCents === 0 ? "muted" : status === "deficit" ? "critical" : "positive"}
-                      className="text-[10px] px-1.5 py-0"
-                    >
-                      {expectedCents > 0 ? INCOME_GOAL_LABELS[status] : "Sem meta"}
-                    </Badge>
-
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="size-7 text-muted-foreground hover:text-foreground"
-                      aria-label={`Editar cadastro de ${category.name}`}
-                      title={`Editar cadastro de ${category.name}`}
-                      onClick={() => handleEditCategory(category)}
-                    >
-                      <Edit3 className="size-3.5" aria-hidden="true" />
-                    </Button>
-                  </div>
                 </div>
-
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Editar meta de renda de ${category.name}`}
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setGoalFor(category);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      triggerHaptic("light");
-                      setGoalFor(category);
-                    }
-                  }}
-                  className="cursor-pointer"
-                >
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span>Realizado:</span>
-                      <MoneyText cents={realizedCents} tone="default" className="font-semibold text-foreground" />
-                      {expectedCents > 0 ? (
-                        <>
-                          <span>de</span>
-                          <MoneyText cents={expectedCents} tone="default" />
-                        </>
-                      ) : null}
-                    </span>
-                    {expectedCents > 0 ? (
-                      <span className="num font-medium">{Math.round(percent)}%</span>
-                    ) : (
-                      <span className="text-[11px] text-primary hover:underline">Toque para definir</span>
-                    )}
-                  </div>
-
-                  <div className="relative mt-2 h-2 w-full overflow-hidden rounded-full bg-muted/70">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        expectedCents === 0
-                          ? "bg-muted"
-                          : status === "on_track"
-                            ? "bg-positive"
-                            : status === "surplus"
-                              ? "bg-positive-strong"
-                              : "bg-warning"
-                      }`}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
+              </HighlightRow>
             );
           })}
         </div>

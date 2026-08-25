@@ -47,7 +47,7 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
               </span>
               <span className="text-muted-foreground/60">•</span>
               <span className="text-[11px] text-muted-foreground">
-                {AMORTIZATION_SYSTEM_LABELS[loan.amortization_system]} ({loan.monthly_interest_rate}% a.m.)
+                {AMORTIZATION_SYSTEM_LABELS[loan.amortization_system]} ({loan.interest_rate_monthly}% a.m.)
               </span>
             </div>
             <h4 className="truncate text-base font-semibold tracking-tight text-foreground">{loan.name}</h4>

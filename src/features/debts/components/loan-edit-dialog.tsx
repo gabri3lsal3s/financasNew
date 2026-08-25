@@ -26,7 +26,6 @@ function LoanEditForm({ loan, onClose }: LoanEditFormProps) {
 
   const [name, setName] = useState(loan.name);
   const [loanType, setLoanType] = useState<LoanType>(loan.loan_type);
-  const [notes, setNotes] = useState(loan.notes ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,7 +44,6 @@ function LoanEditForm({ loan, onClose }: LoanEditFormProps) {
         patch: {
           name: trimmedName,
           loan_type: loanType,
-          notes: notes.trim() ? notes.trim() : null,
         },
       });
 
@@ -81,18 +79,6 @@ function LoanEditForm({ loan, onClose }: LoanEditFormProps) {
           onValueChange={(val) => setLoanType(val as LoanType)}
           options={LOAN_TYPE_OPTIONS}
           ariaLabel="Tipo de empréstimo"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="edit-loan-notes" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Observações / Anotações (opcional)
-        </label>
-        <Input
-          id="edit-loan-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Nº do contrato, agência, condições..."
         />
       </div>
 

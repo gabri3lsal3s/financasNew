@@ -163,7 +163,7 @@ export function AssetDetailSheet({
                 {currentAsset.currency}
               </Badge>
               {currentAsset.fixed_income_metadata ? (
-                <Badge variant="outline" className="text-xs font-semibold">
+                <Badge variant="default" className="text-xs font-semibold">
                   {formatRateLabel(currentAsset.fixed_income_metadata)} • Projetado
                 </Badge>
               ) : isTotalValue ? (

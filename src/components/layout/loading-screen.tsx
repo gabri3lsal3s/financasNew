@@ -81,15 +81,13 @@ export function LoadingScreen({
   }, [externalProgress, steps]);
 
 
-  const activeProgress = Math.min(
-    100,
-    Math.max(0, externalProgress ?? simulatedProgress),
-  );
+  const activeProgress = isClosing
+    ? 100
+    : Math.min(100, Math.max(0, externalProgress ?? simulatedProgress));
 
   const activeLogText =
     statusText ??
-    steps[currentStepIndex]?.text ??
-    "Carregando informações…";
+    (isClosing ? "Pronto!" : (steps[currentStepIndex]?.text ?? "Carregando informações…"));
 
   return (
     <div

@@ -57,8 +57,8 @@ describe("TransactionListPage — deep-link da busca global (§3.9)", () => {
     // A query do mês foi usada (não o mês corrente).
     expect(requestedMonths).toContain("2026-01");
     expect(screen.getByText("Mercado antigo")).toBeInTheDocument();
-    // Destaque aplicado na linha do registro (anel portfolio).
-    expect(screen.getByText("Mercado antigo").closest(".ring-portfolio")).not.toBeNull();
+    // Destaque aplicado na linha do registro (anel primary com cor de destaque do usuário).
+    expect(screen.getByText("Mercado antigo").closest(".ring-primary")).not.toBeNull();
   });
 
   it("sem parâmetro usa o mês corrente (sem destaque)", () => {
@@ -67,6 +67,6 @@ describe("TransactionListPage — deep-link da busca global (§3.9)", () => {
     render(<TransactionListPage />);
 
     expect(requestedMonths[0]).toMatch(/^\d{4}-\d{2}$/);
-    expect(screen.getByText("Mercado antigo").closest(".ring-portfolio")).toBeNull();
+    expect(screen.getByText("Mercado antigo").closest(".ring-primary")).toBeNull();
   });
 });

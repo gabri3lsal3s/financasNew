@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   LineChart,
   PieChart,
@@ -21,6 +21,7 @@ import { formatCentsAsBRL } from "@/services/masks/money";
 import { getErrorMessage } from "@/services/errors";
 
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
+import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
   useAllocationTargets,
   useDeletePortfolioAsset,
@@ -95,7 +96,12 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     }
   };
 
+  const [searchParams] = useSearchParams();
+  const { highlightId } = useHighlightTarget("q");
+  const targetTicker = searchParams.get("ticker");
+
   const [detailAsset, setDetailAsset] = useState<PortfolioAsset | null>(null);
+  const [dismissedHighlight, setDismissedHighlight] = useState(false);
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
 
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
@@ -133,6 +139,23 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     }
   }, [assetsQuery.data, assetsQuery.isLoading, rows, syncQuotes]);
 
+  const deepLinkedAsset = useMemo(() => {
+    if (dismissedHighlight || (!highlightId && !targetTicker)) return null;
+    return (
+      (assetsQuery.data ?? []).find(
+        (a) => a.id === highlightId || (targetTicker && a.ticker.toUpperCase() === targetTicker.toUpperCase()),
+      ) ?? null
+    );
+  }, [dismissedHighlight, highlightId, targetTicker, assetsQuery.data]);
+
+  const isDeepLinkedCash = Boolean(
+    deepLinkedAsset &&
+      (isCashAssetClass(deepLinkedAsset.asset_class) || deepLinkedAsset.ticker.toUpperCase() === "CAIXA"),
+  );
+
+  const activeDetailAsset = detailAsset ?? (!isDeepLinkedCash ? deepLinkedAsset : null);
+  const activeCashDialogOpen = cashDialogOpen || isDeepLinkedCash;
+
   const assetById = (assetId: string): PortfolioAsset | undefined =>
     (assetsQuery.data ?? []).find((a) => a.id === assetId);
 
@@ -143,6 +166,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         handleOpenCash();
       } else {
         setDetailAsset(asset);
+        setDismissedHighlight(false);
       }
     }
   };
@@ -473,6 +497,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             <PositionTable
               rows={investmentRows}
               sortable
+              highlightId={highlightId}
               onListTransactions={openDetail}
               onEditAsset={openEdit}
               onSetManualPrice={(assetId, ticker, currency, priceBRL, source, priceQuote, pricingMode, usdRate) => {
@@ -575,11 +600,17 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
 
       {/* Asset Detail Sheet (Visão Dedicada) */}
       <AssetDetailSheet
-        open={detailAsset !== null}
-        onOpenChange={(open) => !open && setDetailAsset(null)}
-        asset={detailAsset}
+        open={activeDetailAsset !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailAsset(null);
+            setDismissedHighlight(true);
+          }
+        }}
+        asset={activeDetailAsset}
         onAction={(action, asset) => {
           setDetailAsset(null);
+          setDismissedHighlight(true);
           const mode: WizardMode =
             action === "sell" || action === "dividend" || action === "split" ? action : "buy";
           openWizardForAsset(asset.id, mode);
@@ -598,8 +629,11 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
       {/* CashFormDialog (quando renderizado standalone) */}
       {!onOpenCash ? (
         <CashFormDialog
-          open={cashDialogOpen}
-          onOpenChange={setCashDialogOpen}
+          open={activeCashDialogOpen}
+          onOpenChange={(open) => {
+            setCashDialogOpen(open);
+            if (!open) setDismissedHighlight(true);
+          }}
           asset={cashAsset ?? null}
         />
       ) : null}

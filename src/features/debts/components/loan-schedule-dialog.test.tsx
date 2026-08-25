@@ -10,12 +10,10 @@ const mockLoan: Loan = {
   loan_type: "financing",
   principal_amount: 100000,
   interest_rate_monthly: 1.0,
-  monthly_interest_rate: 1.0,
   total_installments: 12,
   amortization_system: "sac",
   start_date: "2026-01-01",
   installment_group_id: "group-1",
-  notes: null,
   created_at: "2026-01-01T00:00:00Z",
 };
 
@@ -28,10 +26,8 @@ const mockDebts: Debt[] = [
     type: "payable",
     due_date: "2026-02-01",
     paid_at: "2026-02-01T12:00:00Z",
-    notes: null,
+    expense_id: null,
     installment_group_id: "group-1",
-    installment_number: 1,
-    category_id: null,
     created_at: "2026-01-01T00:00:00Z",
   },
 ];

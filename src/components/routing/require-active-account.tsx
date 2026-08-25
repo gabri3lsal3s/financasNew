@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from "react-router";
+import { LoadingScreen } from "@/components/layout";
 import { useUserAccess } from "@/state";
-import { Skeleton } from "@/components/ui";
 
 /**
  * Guarda de rota que garante que o usuário possui conta com status 'active' (§F43).
@@ -11,14 +11,7 @@ export function RequireActiveAccount() {
   const { isPendingApproval, isSuspended, isBanned, isLoading } = useUserAccess();
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center p-6 bg-background">
-        <div className="flex w-full max-w-md flex-col gap-4">
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-32 w-full rounded-2xl" />
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (isPendingApproval) {

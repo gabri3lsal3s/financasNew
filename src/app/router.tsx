@@ -1,6 +1,6 @@
 import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation } from "react-router";
 import { appRoutes } from "@/app/routes";
-import { LoadingScreen, MoreMenu, PageShell } from "@/components/layout";
+import { LoadingScreen, PageShell } from "@/components/layout";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
 import { RequireActiveAccount, RequireAdmin, RequireFeature } from "@/components/routing";
 import {
@@ -14,6 +14,7 @@ import { LandingPage } from "@/features/landing";
 import { useAuth } from "@/hooks/use-auth";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
+import { useUserAccess } from "@/state";
 
 /** Mapeamento de rotas para suas respectivas Feature Flags (§F43). */
 const ROUTE_FEATURE_MAP: Record<string, string> = {
@@ -31,18 +32,23 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
 /**
  * Guard de autenticação:
  * - Sem sessão → redireciona para a tela de login preservando a rota de origem.
- * - Em transição/carregamento → exibe tela de carregamento oficial (`LoadingScreen`) com tempo mínimo anti-flicker.
- * - Sessão ativa → renderiza rotas autenticadas isoladas por `key={session.user.id}`.
+ * - Em transição/carregamento → exibe tela de carregamento oficial (`LoadingScreen`) sincronizada com Auth + Perfil/Acesso.
+ * - Sessão ativa com dados de acesso prontos → renderiza rotas autenticadas isoladas por `key={session.user.id}`.
  */
 function RequireAuth() {
-  const { session, loading, configError } = useAuth();
+  const { session, loading: authLoading, configError } = useAuth();
+  const userAccess = useUserAccess();
   const location = useLocation();
 
   // F23 — pre-fetching discreto dos chunks das rotas vizinhas (idle).
   useRoutePrefetch();
 
+  // O carregamento inicial só termina quando tanto a autenticação quanto os dados de perfil/permissões estiverem prontos
+  const hasUser = Boolean(session?.user);
+  const isDataLoading = authLoading || (hasUser && userAccess.isLoading);
+
   // Previne micro-flashes mantendo a tela de transição visível de forma estável e fluida (650ms)
-  const { isShowing: isTransitioning, isClosing } = useMinimumLoading(loading, 650);
+  const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 650);
 
   if (configError) {
     return (
@@ -54,11 +60,35 @@ function RequireAuth() {
     );
   }
 
-  if (loading || isTransitioning || !session?.user) {
-    if (!loading && !session && !isTransitioning) {
+  if (isDataLoading || isTransitioning || !session?.user) {
+    if (!isDataLoading && !session && !isTransitioning) {
       return <Navigate to="/entrar" replace state={{ from: location }} />;
     }
-    return <LoadingScreen isClosing={isClosing} />;
+
+    let targetProgress: number;
+    let stageText: string;
+
+    if (isClosing) {
+      targetProgress = 100;
+      stageText = "Pronto!";
+    } else if (authLoading) {
+      targetProgress = 35;
+      stageText = "Iniciando sessão segura…";
+    } else if (userAccess.isLoading) {
+      targetProgress = 75;
+      stageText = "Sincronizando preferências e categorias…";
+    } else {
+      targetProgress = 92;
+      stageText = "Preparando painel financeiro…";
+    }
+
+    return (
+      <LoadingScreen
+        progress={targetProgress}
+        statusText={stageText}
+        isClosing={isClosing}
+      />
+    );
   }
 
   return (
@@ -95,6 +125,8 @@ export function AppRouter() {
             {/* Redirecionamento de compatibilidade para atalhos PWA / links legados / rotas unificadas */}
             <Route path="/transacoes/novo" element={<Navigate to="/transacoes?novo=transacao" replace />} />
             <Route path="/categorias" element={<Navigate to="/orcamentos" replace />} />
+            <Route path="/investimentos" element={<Navigate to="/investments" replace />} />
+            <Route path="/carteira" element={<Navigate to="/investments" replace />} />
 
             <Route element={<PageShell />}>
               {appRoutes
@@ -120,8 +152,9 @@ export function AppRouter() {
                   ))}
               </Route>
 
-              <Route path="/mais" element={<MoreMenu />} />
-              <Route path="*" element={<MoreMenu />} />
+              {/* Redirecionamento seguro para rotas legadas e fallback catch-all */}
+              <Route path="/mais" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Route>
         </Route>

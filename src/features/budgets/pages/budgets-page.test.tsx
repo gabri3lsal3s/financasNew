@@ -1,7 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { BudgetsPage } from "./budgets-page";
+
+function renderBudgetsPage() {
+  return render(
+    <MemoryRouter>
+      <BudgetsPage />
+    </MemoryRouter>,
+  );
+}
 
 const setBudgetLimitMock = vi.fn();
 const removeBudgetLimitMock = vi.fn();
@@ -79,7 +88,7 @@ vi.mock("@/state", () => ({
 
 describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("exibe o KPI de total de limites e as categorias com progresso", () => {
-    render(<BudgetsPage />);
+    renderBudgetsPage();
     expect(screen.getByText("Total Gasto")).toBeInTheDocument();
     expect(screen.getByText("Teto Planejado")).toBeInTheDocument();
     expect(screen.getByText("R$ 2.000,00")).toBeInTheDocument();
@@ -90,7 +99,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   });
 
   it("recomenda realocação da maior folga para o maior excesso", () => {
-    render(<BudgetsPage />);
+    renderBudgetsPage();
     // Lazer (100/1.000 → folga R$ 900) → Moradia (1.200/1.000 → excesso R$ 200)
     expect(screen.getByText("Sugestão de Realocação de Limite")).toBeInTheDocument();
     expect(screen.getAllByText(/R\$ 200,00/).length).toBeGreaterThan(0);
@@ -99,7 +108,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("aplica a realocação com confirmação", async () => {
     reallocateMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
-    render(<BudgetsPage />);
+    renderBudgetsPage();
 
     await user.click(screen.getByRole("button", { name: "Aplicar realocação" }));
     await user.click(screen.getByRole("button", { name: "Aplicar" }));
@@ -114,7 +123,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("edita o limite de uma categoria com sugestão por % da renda", async () => {
     setBudgetLimitMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
-    render(<BudgetsPage />);
+    renderBudgetsPage();
 
     await user.click(screen.getAllByRole("button", { name: "Editar limite de Moradia" })[0]!);
     expect((screen.getByRole("textbox", { name: "Limite mensal da categoria" }) as HTMLInputElement).value).toMatch(/1\.000,00/);
@@ -131,7 +140,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
 
   it("metas de renda: compara realizado × esperado", async () => {
     const user = userEvent.setup();
-    render(<BudgetsPage />);
+    renderBudgetsPage();
     await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
     expect(screen.getByText("Salário")).toBeInTheDocument();
@@ -143,7 +152,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("salva uma nova meta de renda através do diálogo", async () => {
     setIncomeGoalMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
-    render(<BudgetsPage />);
+    renderBudgetsPage();
     await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
     await user.click(screen.getAllByRole("button", { name: "Editar meta de renda de Salário" })[0]!);
@@ -161,7 +170,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
   it("falha ao salvar meta mostra erro no modal", async () => {
     setIncomeGoalMock.mockRejectedValue(new Error("Falha de rede"));
     const user = userEvent.setup();
-    render(<BudgetsPage />);
+    renderBudgetsPage();
     await user.click(screen.getByRole("tab", { name: /Rendas/ }));
 
     await user.click(screen.getAllByRole("button", { name: "Editar meta de renda de Salário" })[0]!);

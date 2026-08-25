@@ -7,9 +7,14 @@ const setStateMock = vi.fn();
 const markAllMock = vi.fn();
 const navigateMock = vi.fn();
 
-vi.mock("react-router", () => ({
-  useNavigate: () => navigateMock,
-}));
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  };
+});
 
 // Dívidas variáveis por teste (para validar o caso de atrasadas de meses anteriores).
 const stateMocks = vi.hoisted(() => ({

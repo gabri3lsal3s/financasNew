@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Bell, CheckCheck } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { ReminderItem } from "@/components/modules";
+import { HighlightRow } from "@/components/modules/highlight-row";
+import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
@@ -24,7 +26,8 @@ type SubFilter = "all" | "overdue" | "bills" | "debts";
 export function RemindersPage() {
   const navigate = useNavigate();
   const today = todayISO();
-  const [mainTab, setMainTab] = useState<MainTab>("pending");
+  const { highlightId } = useHighlightTarget("q");
+  const [mainTabOverride, setMainTabOverride] = useState<MainTab | null>(null);
   const [subFilter, setSubFilter] = useState<SubFilter>("all");
 
   const { allItems, totalCount, overdueCount, isLoading, error, preferences } = useReminders(today);
@@ -32,7 +35,20 @@ export function RemindersPage() {
   const setState = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
 
-  const stateMap = new Map((statesQuery.data ?? []).map((s) => [s.key, s.kind]));
+  const stateMap = useMemo(
+    () => new Map((statesQuery.data ?? []).map((s) => [s.key, s.kind])),
+    [statesQuery.data],
+  );
+
+  const isTargetRead = useMemo(() => {
+    if (!highlightId) return false;
+    const target = allItems.find(
+      (it) => it.key === highlightId || it.link?.params?.q === highlightId || it.link?.params?.debt === highlightId,
+    );
+    return Boolean(target && stateMap.get(target.key) === "read");
+  }, [highlightId, allItems, stateMap]);
+
+  const mainTab: MainTab = mainTabOverride ?? (isTargetRead ? "read" : "pending");
 
   const handle = (occurrenceKey: string, state: { kind: "read" | "snoozed"; snoozeUntil?: string } | null) => {
     setState.mutate({ occurrenceKey, state });
@@ -195,17 +211,30 @@ export function RemindersPage() {
           />
         ) : (
           <div className="flex flex-col gap-2.5">
-            {filteredItems.map((item) => (
-              <ReminderItem
-                key={item.key}
-                item={item}
-                stateKind={stateMap.get(item.key) ?? null}
-                onMarkRead={(key) => handle(key, { kind: "read" })}
-                onSnooze={snooze}
-                onRestore={(key) => handle(key, null)}
-                onOpen={() => openReminder(item)}
-              />
-            ))}
+            {filteredItems.map((item) => {
+              const isMatch =
+                highlightId &&
+                (highlightId === item.key ||
+                  highlightId === item.link?.params?.q ||
+                  highlightId === item.link?.params?.debt);
+              return (
+                <HighlightRow
+                  key={item.key}
+                  highlightId={highlightId}
+                  id={isMatch ? highlightId : item.key}
+                  className="rounded-2xl"
+                >
+                  <ReminderItem
+                    item={item}
+                    stateKind={stateMap.get(item.key) ?? null}
+                    onMarkRead={(key) => handle(key, { kind: "read" })}
+                    onSnooze={snooze}
+                    onRestore={(key) => handle(key, null)}
+                    onOpen={() => openReminder(item)}
+                  />
+                </HighlightRow>
+              );
+            })}
           </div>
         )}
       </div>
@@ -234,17 +263,30 @@ export function RemindersPage() {
     }
     return (
       <div className="flex flex-col gap-2.5">
-        {readItems.map((item) => (
-          <ReminderItem
-            key={item.key}
-            item={item}
-            stateKind="read"
-            onMarkRead={(key) => handle(key, { kind: "read" })}
-            onSnooze={snooze}
-            onRestore={(key) => handle(key, null)}
-            onOpen={() => openReminder(item)}
-          />
-        ))}
+        {readItems.map((item) => {
+          const isMatch =
+            highlightId &&
+            (highlightId === item.key ||
+              highlightId === item.link?.params?.q ||
+              highlightId === item.link?.params?.debt);
+          return (
+            <HighlightRow
+              key={item.key}
+              highlightId={highlightId}
+              id={isMatch ? highlightId : item.key}
+              className="rounded-2xl"
+            >
+              <ReminderItem
+                item={item}
+                stateKind="read"
+                onMarkRead={(key) => handle(key, { kind: "read" })}
+                onSnooze={snooze}
+                onRestore={(key) => handle(key, null)}
+                onOpen={() => openReminder(item)}
+              />
+            </HighlightRow>
+          );
+        })}
       </div>
     );
   };
@@ -289,7 +331,7 @@ export function RemindersPage() {
           value={mainTab}
           onValueChange={(val) => {
             triggerHaptic("light");
-            setMainTab(val as MainTab);
+            setMainTabOverride(val as MainTab);
             setSubFilter("all");
           }}
           variant="underline"

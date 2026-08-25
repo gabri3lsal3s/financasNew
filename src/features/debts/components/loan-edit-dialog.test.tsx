@@ -19,12 +19,10 @@ const mockLoan: Loan = {
   loan_type: "personal",
   principal_amount: 5000,
   interest_rate_monthly: 2.5,
-  monthly_interest_rate: 2.5,
   total_installments: 10,
   amortization_system: "price",
   start_date: "2026-01-01",
   installment_group_id: "group-2",
-  notes: "Contrato inicial",
   created_at: "2026-01-01T00:00:00Z",
 };
 

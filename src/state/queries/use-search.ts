@@ -168,7 +168,7 @@ export function useGlobalSearchEntries(enabled: boolean) {
     amountCents: Math.round(Number(asset.quantity ?? 0) * Number(asset.average_price ?? 0) * 100),
     label: `${asset.ticker}${asset.sector ? ` · ${asset.sector}` : ""}`,
     detail: `${asset.asset_class ?? "Ativo"} · ${asset.currency} ${Number(asset.quantity ?? 0).toLocaleString("pt-BR")} posições / cotas`,
-    link: { path: "/investimentos", params: { q: asset.id, ticker: asset.ticker } },
+    link: { path: "/investments", params: { q: asset.id, ticker: asset.ticker } },
     featureKey: "investments",
   }));
 

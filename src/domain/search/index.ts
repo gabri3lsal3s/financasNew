@@ -212,7 +212,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     text: ["investimentos", "carteira", "patrimonio", "acoes", "fiis", "renda fixa", "tesouro"],
     label: "Investimentos & Carteira",
     detail: "Custódia consolidada e rentabilidade",
-    link: { path: "/investimentos" },
+    link: { path: "/investments" },
     featureKey: "investments",
   },
   {
@@ -221,7 +221,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     text: ["rebalanceamento", "calculadora de aporte", "onde investir", "balanceamento"],
     label: "Rebalanceamento & Aporte",
     detail: "Motor de sugestão de aportes por desvio",
-    link: { path: "/investimentos", params: { tab: "aporte" } },
+    link: { path: "/investments", params: { tab: "aporte" } },
     featureKey: "investments",
   },
   {
@@ -230,7 +230,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     text: ["proventos", "dividendos", "rendimentos", "jcp", "yield on cost"],
     label: "Proventos & Dividendos",
     detail: "Histórico de rendimentos e bola de neve",
-    link: { path: "/investimentos", params: { tab: "proventos" } },
+    link: { path: "/investments", params: { tab: "proventos" } },
     featureKey: "investments",
   },
   {
@@ -239,7 +239,7 @@ export const STATIC_APP_PAGE_ENTRIES: readonly SearchEntry[] = [
     text: ["metas de alocacao", "metas por classe", "metas por setor", "alocacao ideal"],
     label: "Metas de Alocação",
     detail: "Definição de metas por classe e ativos",
-    link: { path: "/investimentos", params: { tab: "targets" } },
+    link: { path: "/investments", params: { tab: "targets" } },
     featureKey: "investments",
   },
   {
@@ -376,7 +376,7 @@ export const STATIC_APP_ACTION_ENTRIES: readonly SearchEntry[] = [
     text: ["novo ativo", "adicionar ativo", "cadastrar investimento", "comprar acao", "comprar fii", "aplicar renda fixa"],
     label: "Novo Ativo / Aporte na Carteira",
     detail: "Cadastrar nova posição ou registrar aporte",
-    link: { path: "/investimentos", params: { action: "new-asset" } },
+    link: { path: "/investments", params: { action: "new-asset" } },
     featureKey: "investments",
   },
   {

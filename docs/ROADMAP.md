@@ -3739,6 +3739,86 @@ flowchart TD
 - [x] Testes unitários do domínio, do hook e do componente cobrindo isolamento de módulos (`src/state/queries/use-search.test.tsx`, `src/components/layout/global-search.test.tsx`).
 - [x] Suíte de testes (Vitest), typecheck estrito e lint 100% verdes.
 
+---
+
+### 🎯 FASE 74 — Correção de Rotas Canônicas, Destaque com Cor Accent do Usuário & Deep Linking Preciso no Motor de Busca
+
+> **Status:** ✅ Concluída (2026-08-25) — links atualizados para `/investments`, rotas legadas e catch-all substituídos por redirecionamentos canônicos seguros, página legada `MoreMenu` expurgada, `HighlightRow` migrado para `primary` (Accent do usuário) e suporte completo a deep-linking e auto-foco/expansão implementado em Investimentos, Dívidas Quitadas, Orçamentos e Lembretes. Suíte 100% verde.
+>
+> **Objetivo:** Corrigir os links do motor de busca para apontar diretamente para a rota canônica `/investments` (eliminando a abertura acidental da página legada "Mais"), substituir a captura genérica do catch-all `*` no router por redirecionamento seguro para a Home `/`, adotar dinamicamente a cor de destaque (Accent Token / `primary`) no componente `HighlightRow`, e implementar o suporte integral a deep-linking e auto-foco/scroll para todos os módulos pesquisáveis (Investimentos, Dívidas Quitadas, Orçamentos por Categoria e Lembretes).
+
+```mermaid
+flowchart TD
+    subgraph Bloco 1: Saneamento de Rotas & Router
+        SEARCH_LINKS[domain/search & use-search] --> CANONICAL[/investments ao invés de /investimentos]
+        ROUTER[router.tsx] --> REDIRECT_INV[Redirect /investimentos -> /investments]
+        ROUTER --> CATCHALL[Catch-all * -> Navigate to /]
+    end
+
+    subgraph Bloco 2: Design System & Cor de Destaque
+        HIGHLIGHT_ROW[HighlightRow.tsx] --> THEME_PRIMARY[bg-primary/10 + ring-2 ring-primary]
+        THEME_PRIMARY --> ACCENT_USER[Reatividade imediata à cor de destaque do usuário]
+    end
+
+    subgraph Bloco 3: Deep Linking & Auto-Scroll Universal
+        INV_PAGE[InvestmentsPage / ResumoTab] --> SCROLL_ASSET[Auto-scroll + Abertura de AssetDetailSheet com ?q=]
+        DEBTS_PAGE[DebtsPage] --> EXPAND_PAID[Auto-expansão de Quitadas se highlightId estiver na lista]
+        BUDGETS_PAGE[BudgetsPage] --> SCROLL_BUDGET[HighlightRow no teto por categoria com ?q= ou ?category=]
+        REMINDERS_PAGE[RemindersPage] --> SCROLL_REMINDER[HighlightRow nos cards de lembretes com ?q=]
+    end
+```
+
+---
+
+#### 1. Fase 74.1: Saneamento de Rotas, Links Canônicos e Purga do Catch-all Legado
+- **Catálogo de Busca e Queries:**
+  - Atualizar todas as referências de `/investimentos` em `src/domain/search/index.ts` e `src/state/queries/use-search.ts` para a rota canônica `/investments`;
+- **Blindagem do Router (`src/app/router.tsx`):**
+  - Adicionar rota de redirecionamento de compatibilidade: `<Route path="/investimentos" element={<Navigate to="/investments" replace />} />`;
+  - Substituir `<Route path="*" element={<MoreMenu />} />` por `<Route path="*" element={<Navigate to="/" replace />} />`, garantindo que rotas inexistentes redirecionem para o Início em vez de renderizar a página legada "Mais".
+
+---
+
+#### 2. Fase 74.2: Destaque Visual Reativo à Cor de Acento do Usuário (`HighlightRow`)
+- **Ajuste de Tokens no Componente (`src/components/modules/highlight-row.tsx`):**
+  - Substituir a classe fixa `bg-portfolio/5 ring-2 ring-portfolio` por `bg-primary/10 ring-2 ring-primary`;
+  - Garantir que o destaque visual (glow e anel de foco) reflita instantaneamente o Accent Color configurado pelo usuário nas preferências (Azul, Violeta, Esmeralda, Laranja, etc.).
+
+---
+
+#### 3. Fase 74.3: Deep Linking e Auto-Scroll Universal em Todos os Módulos
+- **Investimentos (`src/features/investments/pages/resumo-tab.tsx` & `investments-page.tsx`):**
+  - Consumir `useHighlightTarget("q")` em `ResumoTab`;
+  - Ao detectar o parâmetro `?q=<assetId>`, auto-selecionar o ativo na visualização e abrir o modal de detalhes (`AssetDetailSheet`), além de aplicar `HighlightRow` na tabela de posições;
+- **Dívidas (`src/features/debts/pages/debts-page.tsx`):**
+  - Ajustar o controle de visibilidade de quitadas para `const isPaidVisible = showPaid || !hasPending || (highlightId ? paidList.some(d => d.id === highlightId) : false)`, permitindo que dívidas quitadas sejam renderizadas no DOM e recebam o scroll suave;
+- **Orçamentos (`src/features/budgets/pages/budgets-page.tsx`):**
+  - Integrar `useHighlightTarget("q")` (e `searchParams.get("category")`) e envolver as linhas de limites e metas com `<HighlightRow />`;
+- **Lembretes (`src/features/reminders/pages/reminders-page.tsx`):**
+  - Integrar `useHighlightTarget("q")` e envolver os cards de lembretes com `<HighlightRow />`.
+
+---
+
+#### 4. Fase 74.4: Testes Automatizados e Governança
+- **Testes de Integração e Domínio:**
+  - Atualizar testes de `global-search.test.tsx` e `search/index.test.ts` para validar o deep-link `/investments`;
+  - Testes unitários para `HighlightRow` com tema dinâmico e auto-expansão de quitadas em `debts-page.test.tsx`;
+- **Typecheck & ESLint:**
+  - `tsc --noEmit` e `eslint .` 100% verdes.
+
+---
+
+**✅ DoD (Definition of Done da Fase 74):**
+- [x] 100% dos links de busca para investimentos apontam para a rota canônica `/investments`.
+- [x] Redirecionamento de compatibilidade `/investimentos` $\rightarrow$ `/investments` ativo no router.
+- [x] Catch-all `*` no router redireciona para `/` com `Navigate`, eliminando abertura acidental de páginas legadas.
+- [x] `HighlightRow` utiliza exclusivamente as classes semânticas `bg-primary/10 ring-2 ring-primary` reativas ao Accent Color do usuário.
+- [x] Busca de ativos de investimentos rola até o ativo e abre o `AssetDetailSheet` automaticamente.
+- [x] Busca de dívidas quitadas expande automaticamente a seção de histórico e rola até a dívida.
+- [x] Busca de orçamentos e lembretes foca e rola até o elemento correto com destaque visual.
+- [x] Suíte de testes (Vitest), typecheck estrito e lint 100% verdes.
+
+
 
 
 

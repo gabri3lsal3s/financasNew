@@ -6,7 +6,6 @@
 export type { BrandLogoProps } from "./brand-logo";
 export { BrandLogo } from "./brand-logo";
 export { CalculatorButton } from "./calculator-button";
-export { MoreMenu } from "./more-menu";
 export type { NavItem } from "./nav-items";
 export { navItems } from "./nav-items";
 export { PageShell } from "./page-shell";

@@ -26,7 +26,7 @@ const entries: SearchEntry[] = [
     amountCents: 350000,
     label: "PETR4 · Petróleo",
     detail: "Ações · 100 cotas",
-    link: { path: "/investimentos", params: { q: "ast-1", ticker: "PETR4" } },
+    link: { path: "/investments", params: { q: "ast-1", ticker: "PETR4" } },
   },
   {
     id: "e1",
@@ -146,6 +146,6 @@ describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
 
     expect(screen.getByText("Investimentos & Ativos")).toBeInTheDocument();
     await user.click(screen.getByText("PETR4 · Petróleo"));
-    expect(navigateMock).toHaveBeenCalledWith("/investimentos?q=ast-1&ticker=PETR4");
+    expect(navigateMock).toHaveBeenCalledWith("/investments?q=ast-1&ticker=PETR4");
   });
 });

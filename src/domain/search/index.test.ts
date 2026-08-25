@@ -173,7 +173,7 @@ describe("domain/search (§3.9 — limites e ordenação)", () => {
       label: "CDB BANCO INTER 110%",
       text: ["CDB BANCO INTER", "renda fixa", "110% CDI"],
       detail: "Renda Fixa · CDB Pós-fixado",
-      link: { path: "/investimentos", params: { q: "ast-1" } },
+      link: { path: "/investments", params: { q: "ast-1" } },
     });
 
     const results = searchGlobal("inter cdb 110", [asset], TODAY);

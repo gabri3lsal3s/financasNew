@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   ArrowDown,
@@ -85,6 +85,10 @@ export interface PositionTableProps {
   /** Confirma a exclusão do ativo (transações e metas em cascata). */
   onDeleteAsset?: (assetId: string, ticker: string) => void;
   emptyMessage?: string;
+  /**
+   * Id do ativo destacado vindo da busca global (?q=<assetId>).
+   */
+  highlightId?: string | null;
   /**
    * F17 — ordenação por coluna clicável (aria-sort + ícone de direção).
    * Desabilitada por padrão (a Posição atual mantém a ordem do ledger).
@@ -237,6 +241,7 @@ export function PositionTable({
   onEditAsset,
   onSetManualPrice,
   emptyMessage,
+  highlightId,
   sortable = false,
 }: PositionTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -244,6 +249,30 @@ export function PositionTable({
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+
+  const isClassExpanded = (clsName: string) => {
+    if (expandedClasses[clsName] !== undefined) return expandedClasses[clsName];
+    if (highlightId) {
+      const target = rows.find((r) => r.assetId === highlightId);
+      if (target) {
+        const targetCls = target.isCash ? "Caixa" : (target.assetClass ?? "Sem classe");
+        if (targetCls === clsName) return true;
+      }
+    }
+    return false;
+  };
+
+  // Rola até a linha do ativo destacado se highlightId fornecido
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = window.setTimeout(() => {
+      const el =
+        document.getElementById(`asset-row-${highlightId}`) ??
+        document.getElementById(`asset-card-${highlightId}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [highlightId]);
 
   const handleOpen = onListTransactions ?? onEditAsset;
 
@@ -276,10 +305,13 @@ export function PositionTable({
   };
 
   const toggleClassCollapse = (className: string) => {
-    setExpandedClasses((prev) => ({
-      ...prev,
-      [className]: !prev[className],
-    }));
+    setExpandedClasses((prev) => {
+      const current = isClassExpanded(className);
+      return {
+        ...prev,
+        [className]: !current,
+      };
+    });
   };
 
   const filteredRows = rows.filter((row) => {
@@ -698,6 +730,7 @@ export function PositionTable({
     return (
       <li
         key={row.assetId}
+        id={`asset-card-${row.assetId}`}
         role={isClickable ? "button" : undefined}
         tabIndex={isClickable ? 0 : undefined}
         aria-label={isClickable ? `Ver detalhes de ${row.ticker}` : undefined}
@@ -713,7 +746,8 @@ export function PositionTable({
             : undefined
         }
         className={cn(
-          "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors",
+          "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors scroll-mt-24",
+          highlightId === row.assetId && "bg-primary/10 ring-2 ring-primary shadow-xs",
           isClickable && "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         )}
       >
@@ -875,6 +909,7 @@ export function PositionTable({
     return (
       <div
         key={row.assetId}
+        id={`asset-row-${row.assetId}`}
         role="row"
         tabIndex={isClickable ? 0 : undefined}
         onClick={isClickable ? () => handleOpen?.(row.assetId, row.ticker) : undefined}
@@ -889,7 +924,8 @@ export function PositionTable({
             : undefined
         }
         className={cn(
-          "flex items-center gap-3 border-b border-border/60 px-4 py-2.5 sm:py-2 transition-colors last:border-b-0",
+          "flex items-center gap-3 border-b border-border/60 px-4 py-2.5 sm:py-2 transition-colors last:border-b-0 scroll-mt-24",
+          highlightId === row.assetId && "bg-primary/10 ring-2 ring-primary ring-inset shadow-xs",
           isClickable &&
             "cursor-pointer hover:bg-muted/60 active:bg-muted/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
         )}
@@ -992,7 +1028,7 @@ export function PositionTable({
           </li>
         ) : isGroupedMode && classGroups.length > 0 ? (
           classGroups.map((group) => {
-            const isExpanded = Boolean(expandedClasses[group.className]);
+            const isExpanded = isClassExpanded(group.className);
             const meta = getAssetClassMeta(group.className);
             const Icon = meta.icon;
             const groupRentab = group.totalReturnPct !== null ? group.totalReturnPct : group.unrealizedPct;
@@ -1067,7 +1103,7 @@ export function PositionTable({
               </div>
             ) : isGroupedMode && classGroups.length > 0 ? (
               classGroups.map((group) => {
-                const isExpanded = Boolean(expandedClasses[group.className]);
+                const isExpanded = isClassExpanded(group.className);
                 const meta = getAssetClassMeta(group.className);
                 const Icon = meta.icon;
                 const groupRentab = group.totalReturnPct !== null ? group.totalReturnPct : group.unrealizedPct;

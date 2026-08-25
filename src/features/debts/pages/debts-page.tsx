@@ -208,7 +208,8 @@ export function DebtsPage() {
     paidList.sort((a, b) => (b.paid_at ?? b.due_date).localeCompare(a.paid_at ?? a.due_date));
 
     const hasPending = overdueOrToday.length > 0 || thisMonthList.length > 0 || futureList.length > 0;
-    const isPaidVisible = showPaid || !hasPending;
+    const isPaidVisible =
+      showPaid || !hasPending || Boolean(highlightId && paidList.some((d) => d.id === highlightId));
 
     return (
       <div className="flex flex-col gap-6">

@@ -33,7 +33,7 @@ export function LoanScheduleDialog({
     return calculateLoanSchedule({
       principalCents: numberToCents(loan.principal_amount),
       totalInstallments: loan.total_installments,
-      monthlyRatePercent: loan.monthly_interest_rate,
+      monthlyRatePercent: loan.interest_rate_monthly,
       system: loan.amortization_system,
       startDate: loan.start_date,
     });
@@ -41,20 +41,20 @@ export function LoanScheduleDialog({
 
   if (!loan || !scheduleResult) return null;
 
-  const contractDebts = debts.filter((d) => d.installment_group_id === loan.installment_group_id);
+  const contractDebts = debts
+    .filter((d) => d.installment_group_id === loan.installment_group_id)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
   const paidMap = new Map<number, boolean>();
-  for (const d of contractDebts) {
-    if (d.installment_number) {
-      paidMap.set(d.installment_number, d.paid_at !== null);
-    }
-  }
+  contractDebts.forEach((d, idx) => {
+    paidMap.set(idx + 1, d.paid_at !== null);
+  });
 
   return (
     <Modal
       open={open}
       onOpenChange={onOpenChange}
       title={`Cronograma: ${loan.name}`}
-      description={`${LOAN_TYPE_LABELS[loan.loan_type]} · ${AMORTIZATION_SYSTEM_LABELS[loan.amortization_system]} (${loan.monthly_interest_rate}% a.m.)`}
+      description={`${LOAN_TYPE_LABELS[loan.loan_type]} · ${AMORTIZATION_SYSTEM_LABELS[loan.amortization_system]} (${loan.interest_rate_monthly}% a.m.)`}
       size="xl"
     >
       <div className="flex flex-col gap-4 pt-1">
