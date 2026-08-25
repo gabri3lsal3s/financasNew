@@ -80,4 +80,7 @@ export { CashGapAlert } from "./cash-gap-alert";
 export type { CashGapAlertProps } from "./cash-gap-alert";
 export { AllocationDriftCard } from "./allocation-drift-card";
 export type { AllocationDriftCardProps } from "./allocation-drift-card";
+export { StatCard } from "./stat-card";
+export type { StatCardProps, StatCardTrend } from "./stat-card";
 export * from "./reports";
+

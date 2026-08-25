@@ -12,6 +12,15 @@ export { navItems } from "./nav-items";
 export { PageShell } from "./page-shell";
 export type { LoadingScreenProps } from "./loading-screen";
 export { LoadingScreen } from "./loading-screen";
-export { ThemeToggle } from "./theme-toggle";
+export { Sidebar } from "./sidebar";
+export type { SidebarProps } from "./sidebar";
+export { BottomNav } from "./bottom-nav";
+export { GlobalSearch } from "./global-search";
+export { PrivacyToggle } from "./privacy-toggle";
+export { MoreMenuSheet } from "./more-menu-sheet";
+export type { MoreMenuSheetProps } from "./more-menu-sheet";
 export { NotificationsButton } from "./notifications-button";
 export { LogoProfileButton } from "./logo-profile-button";
+export { ThemeToggle } from "./theme-toggle";
+
+

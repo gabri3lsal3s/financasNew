@@ -2550,7 +2550,8 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 56 — Design System Responsivo, Módulos Compartilhados (`StatCard`), Shell Global & Mobile Navigation
 
-> **Status:** 📋 Planejada (Pronta para Execução) — **Bloco 2 do Pipeline Anti-Retrabalho**: expansão da contenção global (`PageShell` para `max-w-7xl`), transição híbrida para tablets (`md`), menu "Mais" em `BottomSheet` na barra de navegação móvel, módulo universal de métricas `StatCard` com auto-fit dinâmico e adaptação de dados complexos.
+> **Status:** ✅ Concluída — **Bloco 2 do Pipeline Anti-Retrabalho**: expansão da contenção global (`PageShell` para `max-w-7xl`), transição híbrida para tablets (`md`), menu "Mais" em `BottomSheet` na barra de navegação móvel, módulo universal de métricas `StatCard` com auto-fit dinâmico e adaptação de dados complexos.
+
 
 **Objetivo:** Elevar a ergonomia e responsividade multidispositivo de 360px a 1440px+, padronizar o módulo universal de métricas e garantir navegação fluida sem saltos de rota:
 
@@ -2625,13 +2626,14 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
   3. Validação de layout em 360px, 768px, 1024px e 1440px+.
 
 **✅ DoD (Definition of Done da Fase 56):**
-- [ ] Contêiner de tela grande expande para `max-w-7xl` no desktop mantendo centralização limpa.
-- [ ] Navegação adota `Sidebar` compacta (`w-20`) no tablet (`md`) e `BottomNav` oculta a partir de `768px`.
-- [ ] Rodapé no desktop sem o espaço ocioso de 112px (`md:pb-10`).
-- [ ] Menu "Mais" abre como `BottomSheet` sobreposto no smartphone, preservando rota e scroll da tela ativa.
-- [ ] Módulo `StatCard` criado e testado com suporte a auto-fit para valores $\ge 7$ dígitos.
-- [ ] Barrels universais `index.ts` em `src/components/ui/`, `src/components/layout/` e `src/components/modules/`.
-- [ ] Suíte de testes 100% verde, typecheck estrito e zero avisos de linter.
+- [x] Contêiner de tela grande expande para `max-w-7xl` no desktop mantendo centralização limpa.
+- [x] Navegação adota `Sidebar` compacta (`w-20`) no tablet (`md`) e `BottomNav` oculta a partir de `768px`.
+- [x] Rodapé no desktop sem o espaço ocioso de 112px (`md:pb-10`).
+- [x] Menu "Mais" abre como `BottomSheet` sobreposto no smartphone, preservando rota e scroll da tela ativa.
+- [x] Módulo `StatCard` criado e testado com suporte a auto-fit para valores $\ge 7$ dígitos.
+- [x] Barrels universais `index.ts` em `src/components/ui/`, `src/components/layout/` e `src/components/modules/`.
+- [x] Suíte de testes 100% verde, typecheck estrito e zero avisos de linter.
+
 
 ---
 

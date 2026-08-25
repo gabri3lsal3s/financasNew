@@ -91,9 +91,10 @@ describe("PageShell (F7.2/F7.3)", () => {
 
     await user.click(screen.getByRole("button", { name: "Recolher menu lateral" }));
 
-    expect(contentWrapper().className).toContain("lg:pl-20");
+    expect(contentWrapper().className).toContain("md:pl-20");
     expect(contentWrapper().className).not.toContain("lg:pl-64");
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe("1");
+
   });
 
   it("expandir novamente restaura a margem (lg:pl-64)", async () => {

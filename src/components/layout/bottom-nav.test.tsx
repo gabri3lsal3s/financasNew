@@ -40,9 +40,18 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
       "Transações",
       "Nova transação",
       "Cartões",
-      "Mais",
     ]);
+    expect(screen.getByRole("button", { name: "Mais opções" })).toBeInTheDocument();
   });
+
+  it("abre a gaveta MoreMenuSheet ao clicar no botão Mais", () => {
+    renderNav();
+    const moreBtn = screen.getByRole("button", { name: "Mais opções" });
+    fireEvent.click(moreBtn);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Mais opções")).toBeInTheDocument();
+  });
+
 
 
   it("FAB central é contextual e preserva a rota ativa: na Início/Transações abre o wizard de lançamento", () => {
