@@ -2816,7 +2816,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 60 — Ergonomia de Cards, Grids Mobile-First & Visão Geral (Home)
 
-> **Status:** ⏳ Pendente — **Refinamento de UX, Cards & Ergonomia Mobile**: redesenho responsivo dos cards da Visão Geral (`RealCashHeroCard`, legendas de fluxo diário, saldo líquido de contas, orçamentos), conversão de grids fixos de 3 colunas para layouts fluidos e harmonização de formulários em diálogos.
+> **Status:** ✅ Concluída — **Refinamento de UX, Cards & Ergonomia Mobile**: redesenho responsivo dos cards da Visão Geral (`RealCashHeroCard`, legendas de fluxo diário, saldo líquido de contas, orçamentos), conversão de grids fixos de 3 colunas para layouts fluidos e harmonização de formulários em diálogos.
 
 **Objetivo:** Eliminar sobreposições visuais, esmagamento de títulos e colisões em cards analíticos no smartphone:
 
