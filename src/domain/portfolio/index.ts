@@ -277,10 +277,13 @@ export type {
   ResolvedPrice,
 } from "./valuation";
 export {
+  normalizeTesouroTicker,
   normalizeTickerForApi,
   normalizeTickerForBrapi,
   parseAwesomeApiResponse,
+  parseBcbSgsResponse,
   parseBrapiResponse,
+  parseTesouroDiretoResponse,
   parseYahooChartResponse,
 } from "./quotes";
 export type { ParsedQuote, QuoteCurrency } from "./quotes";

@@ -311,14 +311,14 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
       });
 
       // 2. Se optou por creditar em Caixa, localiza o ativo Caixa ou atualiza o saldo
-      if (creditToCash && sellResult.grossAmount > 0) {
+      if (creditToCash && sellResult.netCreditAmount > 0) {
         const cashAsset = (allAssetsQuery.data ?? []).find((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA");
         if (cashAsset) {
           const currentCashBalance = Number(cashAsset.quantity ?? 0);
           await updateAsset.mutateAsync({
             id: cashAsset.id,
             patch: {
-              quantity: Math.round((currentCashBalance + sellResult.grossAmount) * 100) / 100,
+              quantity: Math.round((currentCashBalance + sellResult.netCreditAmount) * 100) / 100,
               average_price: 1,
             },
           });
@@ -327,8 +327,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
       triggerSensory("destructive");
       pushToast({
-        title: "Venda registrada",
-        description: `Venda de ${parsedSellQty} ${asset.ticker} por R$ ${sellResult.grossAmount.toFixed(2)} (Lucro: R$ ${sellResult.realizedPnl.toFixed(2)}).`,
+        title: isTotalValueMode ? "Resgate registrado" : "Venda registrada",
+        description: `${isTotalValueMode ? "Resgate" : "Venda"} de ${parsedSellQty} ${asset.ticker} por R$ ${sellResult.grossAmount.toFixed(2)} (Creditado no Caixa: R$ ${sellResult.netCreditAmount.toFixed(2)}).`,
       });
 
       onClose();

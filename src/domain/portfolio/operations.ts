@@ -10,6 +10,8 @@
  * - Sem dependência de UI ou banco de dados.
  */
 
+import { getFixedIncomeTaxRatePct } from "./fixed-income";
+
 export const MONTHLY_STOCK_TAX_EXEMPTION_LIMIT_BRL = 20_000.0;
 export const FII_CAPITAL_GAIN_TAX_RATE = 0.2; // 20% sobre o ganho líquido em FIIs
 
@@ -21,6 +23,10 @@ export interface SellAssetInput {
   assetClass?: string | null;
   /** Volume total de vendas de ações já realizadas pelo usuário no mês corrente. */
   monthlyAccumulatedStockSales?: number;
+  /** Dias corridos decorridos desde a aplicação original (para Renda Fixa). */
+  calendarDays?: number;
+  /** Indica se o título de Renda Fixa é isento de IR (LCI, LCA, CRI, CRA). */
+  isTaxExemptFixedIncome?: boolean;
 }
 
 export interface SellAssetResult {
@@ -32,9 +38,12 @@ export interface SellAssetResult {
   realizedPnl: number;
   realizedPnlPct: number;
   isFullyExited: boolean;
+  /** Valor líquido a ser creditado em Caixa (líquido de IRRF para Renda Fixa, bruto para Renda Variável). */
+  netCreditAmount: number;
   taxInfo: {
     isStock: boolean;
     isFii: boolean;
+    isFixedIncome: boolean;
     accumulatedSalesAfter: number;
     isTaxExempt: boolean;
     taxRate: number;
@@ -61,6 +70,7 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
   const rawClass = (input.assetClass ?? "").trim().toLowerCase();
   const isStock = rawClass === "ações" || rawClass === "acoes" || rawClass === "ação" || rawClass === "acao" || rawClass === "stock" || rawClass === "stocks";
   const isFii = rawClass === "fiis" || rawClass === "fii" || rawClass === "fundo imobiliário" || rawClass === "fundos imobiliários";
+  const isFixedIncome = rawClass === "renda fixa" || rawClass === "rendafixa" || rawClass === "rf" || rawClass === "cdb" || rawClass === "lci" || rawClass === "lca" || rawClass === "cri" || rawClass === "cra" || rawClass === "tesouro";
 
   const monthlyAccumulatedStockSales = Math.max(0, input.monthlyAccumulatedStockSales ?? 0);
   const accumulatedSalesAfter = Math.round((monthlyAccumulatedStockSales + (isStock ? grossAmount : 0)) * 100) / 100;
@@ -83,7 +93,22 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
     if (realizedPnl > 0) {
       estimatedTaxPayable = Math.round(realizedPnl * taxRate * 100) / 100;
     }
+  } else if (isFixedIncome) {
+    // Tabela regressiva de IR retido na fonte (22,5% a 15,0%)
+    const calendarDays = input.calendarDays ?? 365;
+    isTaxExempt = Boolean(input.isTaxExemptFixedIncome);
+    const taxRatePct = getFixedIncomeTaxRatePct(calendarDays, isTaxExempt);
+    taxRate = taxRatePct / 100;
+    if (!isTaxExempt && realizedPnl > 0) {
+      estimatedTaxPayable = Math.round(realizedPnl * taxRate * 100) / 100;
+    }
   }
+
+  // Para Renda Fixa tributada, o IR é retido na fonte no resgate e o valor líquido é creditado no caixa.
+  // Para Renda Variável (Ações/FIIs), o valor bruto é creditado no caixa e o DARF é apurado no mês seguinte.
+  const netCreditAmount = isFixedIncome
+    ? Math.max(0, Math.round((grossAmount - estimatedTaxPayable) * 100) / 100)
+    : grossAmount;
 
   return {
     remainingQuantity,
@@ -94,9 +119,11 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
     realizedPnl,
     realizedPnlPct: Math.round(realizedPnlPct * 100) / 100,
     isFullyExited: remainingQuantity === 0,
+    netCreditAmount,
     taxInfo: {
       isStock,
       isFii,
+      isFixedIncome,
       accumulatedSalesAfter,
       isTaxExempt,
       taxRate,

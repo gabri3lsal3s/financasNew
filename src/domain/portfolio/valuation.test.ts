@@ -303,6 +303,34 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(unitTesouro.valueBRL).toBe(5500);
       expect(unitTesouro.unrealizedPnl).toBe(500);
     });
+
+    it("calcula evolução diária de Renda Fixa parametrizada com Marco Zero e tributação", () => {
+      const summary = calculatePositionSummary({
+        quantity: 1,
+        averagePrice: 10000,
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+        ticker: "CDB BANCO INTER",
+        resolvedPrice: { price: 0, source: "fallback" },
+        fixedIncomeMetadata: {
+          rate_type: "cdi",
+          rate_value: 110, // 110% CDI
+          base_date: "2026-08-03",
+          initial_investment_date: "2026-08-03",
+          maturity_date: "2028-08-03",
+        },
+        annualCdiRate: 10.5,
+        today: "2026-08-17", // 10 dias úteis
+      });
+
+      expect(summary.pricingMode).toBe("total_value");
+      expect(summary.totalCost).toBe(10000);
+      expect(summary.valueBRL).toBeGreaterThan(10000);
+      expect(summary.netValueBRL).toBeDefined();
+      expect(summary.netValueBRL).toBeLessThan(summary.valueBRL);
+      expect(summary.taxAmountBRL).toBeGreaterThan(0);
+      expect(summary.isMatured).toBe(false);
+    });
   });
 
   describe("isFixedIncomeClass & isTesouroAsset & getAssetPricingMode", () => {

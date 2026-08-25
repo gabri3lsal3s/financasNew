@@ -10,10 +10,13 @@
 
 import {
   isCashAssetClass,
+  normalizeTesouroTicker,
   normalizeTickerForApi,
   normalizeTickerForBrapi,
   parseAwesomeApiResponse,
+  parseBcbSgsResponse,
   parseBrapiResponse,
+  parseTesouroDiretoResponse,
   parseYahooChartResponse,
   type ParsedQuote,
 } from "@/domain/portfolio";
@@ -21,6 +24,84 @@ import { setAssetPriceFromApi, setAssetPricesBatchFromApi } from "@/data/reposit
 import { getSupabase } from "@/data/client";
 
 const FETCH_TIMEOUT_MS = 5_000;
+
+/** Cache de taxas de indexadores (CDI / Selic) para 6 horas */
+let bcbRateCache: { cdiAnnual?: number; selicAnnual?: number; timestamp: number } | null = null;
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Busca taxas macroeconômicas oficiais do Banco Central (SGS).
+ *   • Série 12: CDI Diário
+ *   • Série 432: Selic Meta (% a.a.)
+ */
+export async function fetchBcbIndicator(indicator: "CDI" | "SELIC"): Promise<number | null> {
+  const now = Date.now();
+  if (bcbRateCache && now - bcbRateCache.timestamp < CACHE_TTL_MS) {
+    if (indicator === "CDI" && bcbRateCache.cdiAnnual !== undefined) return bcbRateCache.cdiAnnual;
+    if (indicator === "SELIC" && bcbRateCache.selicAnnual !== undefined) return bcbRateCache.selicAnnual;
+  }
+
+  const serie = indicator === "CDI" ? 12 : 432;
+  const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/1?formato=json`;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    const payload: unknown = await response.json();
+    const parsed = parseBcbSgsResponse(payload);
+    if (parsed && parsed.rateAnnual !== undefined) {
+      if (!bcbRateCache) bcbRateCache = { timestamp: now };
+      if (indicator === "CDI") bcbRateCache.cdiAnnual = parsed.rateAnnual;
+      if (indicator === "SELIC") bcbRateCache.selicAnnual = parsed.rateAnnual;
+      bcbRateCache.timestamp = now;
+      return parsed.rateAnnual;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Busca a cotação oficial (Preço Unitário / PU) de títulos do Tesouro Direto.
+ */
+async function fetchTesouroDireto(ticker: string): Promise<ParsedQuote | null> {
+  const tesouroCanon = normalizeTesouroTicker(ticker);
+  if (!tesouroCanon) return null;
+
+  const targetUrl = "https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/service/api/treasurybondsinfo.json";
+  const proxyEndpoints = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+    `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
+    targetUrl,
+  ];
+
+  for (const url of proxyEndpoints) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!response.ok) continue;
+      const payload: unknown = await response.json();
+      const parsed = parseTesouroDiretoResponse(tesouroCanon, payload);
+      if (parsed && parsed.price > 0) {
+        return {
+          ticker,
+          price: parsed.price,
+          currency: "BRL",
+        };
+      }
+    } catch {
+      // Tenta próximo endpoint
+    }
+  }
+
+  return null;
+}
 
 /** Busca cotação na API Brapi (ações/FIIs/BDRs). */
 async function fetchBrapi(ticker: string): Promise<ParsedQuote | null> {
@@ -140,11 +221,17 @@ export async function fetchOnlineQuote(ticker: string): Promise<ParsedQuote | nu
   const awesome = await fetchAwesomeApi(normalized);
   if (awesome) return awesome;
 
-  // 2. Brapi para B3 (se token configurado ou público)
+  // 2. Tesouro Direto oficial se for título público federal
+  if (normalizeTesouroTicker(normalized)) {
+    const tesouro = await fetchTesouroDireto(normalized);
+    if (tesouro) return tesouro;
+  }
+
+  // 3. Brapi para B3 (se token configurado ou público)
   const brapi = await fetchBrapi(ticker);
   if (brapi) return brapi;
 
-  // 3. Yahoo Finance com CORS Gateway
+  // 4. Yahoo Finance com CORS Gateway
   return await fetchYahoo(ticker);
 }
 

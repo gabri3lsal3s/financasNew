@@ -118,6 +118,23 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
       expect(results[0]!.ticker).toBe("PETR4");
       expect(results[1]!.ticker).toBe("MXRF11");
     });
+
+    it("encontra títulos públicos e privados por busca multi-token e aliases", () => {
+      const resultsSelic = searchTickers("selic 29");
+      expect(resultsSelic.some((r) => r.ticker === "TESOURO SELIC 2029")).toBe(true);
+
+      const resultsIpca = searchTickers("ipca 2035");
+      expect(resultsIpca.some((r) => r.ticker === "TESOURO IPCA+ 2035")).toBe(true);
+
+      const resultsCdb = searchTickers("cdb 110");
+      expect(resultsCdb.some((r) => r.ticker === "CDB 110% CDI")).toBe(true);
+
+      const resultsLci = searchTickers("lci 95");
+      expect(resultsLci.some((r) => r.ticker === "LCI 95% CDI")).toBe(true);
+
+      const resultsRenda = searchTickers("renda 2060");
+      expect(resultsRenda.some((r) => r.ticker === "TESOURO RENDA+ 2060")).toBe(true);
+    });
   });
 
   describe("buildAporteSuggestions", () => {

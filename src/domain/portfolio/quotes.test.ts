@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  normalizeTesouroTicker,
   normalizeTickerForApi,
   normalizeTickerForBrapi,
   parseAwesomeApiResponse,
+  parseBcbSgsResponse,
   parseBrapiResponse,
+  parseTesouroDiretoResponse,
   parseYahooChartResponse,
 } from "./quotes";
 
@@ -104,5 +107,90 @@ describe("parseYahooChartResponse", () => {
       price: 42.5,
       currency: "BRL",
     });
+  });
+
+  it("retorna null para payload inválido", () => {
+    expect(parseYahooChartResponse("PETR4", null)).toBeNull();
+    expect(parseYahooChartResponse("PETR4", {})).toBeNull();
+  });
+});
+
+describe("normalizeTesouroTicker", () => {
+  it("normaliza aliases de Tesouro Selic", () => {
+    expect(normalizeTesouroTicker("selic 29")).toBe("TESOURO SELIC 2029");
+    expect(normalizeTesouroTicker("tesouro selic 2029")).toBe("TESOURO SELIC 2029");
+    expect(normalizeTesouroTicker("lft 2027")).toBe("TESOURO SELIC 2027");
+  });
+
+  it("normaliza aliases de Tesouro IPCA+", () => {
+    expect(normalizeTesouroTicker("ipca 2035")).toBe("TESOURO IPCA+ 2035");
+    expect(normalizeTesouroTicker("ntn-b 2045")).toBe("TESOURO IPCA+ 2045");
+    expect(normalizeTesouroTicker("ipca com juros 2040")).toBe("TESOURO IPCA+ COM JUROS SEMESTRAIS 2040");
+    expect(normalizeTesouroTicker("ntnb 2055 juros")).toBe("TESOURO IPCA+ COM JUROS SEMESTRAIS 2055");
+  });
+
+  it("normaliza aliases de Tesouro Prefixado", () => {
+    expect(normalizeTesouroTicker("prefixado 2026")).toBe("TESOURO PREFIXADO 2026");
+    expect(normalizeTesouroTicker("ltn 2029")).toBe("TESOURO PREFIXADO 2029");
+    expect(normalizeTesouroTicker("prefixado com juros 2033")).toBe("TESOURO PREFIXADO COM JUROS SEMESTRAIS 2033");
+  });
+
+  it("normaliza Renda+ e Educa+", () => {
+    expect(normalizeTesouroTicker("renda mais 2060")).toBe("TESOURO RENDA+ 2060");
+    expect(normalizeTesouroTicker("educa mais 2030")).toBe("TESOURO EDUCA+ 2030");
+  });
+
+  it("retorna null para ativos que não são títulos públicos", () => {
+    expect(normalizeTesouroTicker("PETR4")).toBeNull();
+    expect(normalizeTesouroTicker("MXRF11")).toBeNull();
+    expect(normalizeTesouroTicker("")).toBeNull();
+  });
+});
+
+describe("parseTesouroDiretoResponse", () => {
+  it("extrai PU e vencimento da estrutura oficial de títulos", () => {
+    const payload = {
+      response: {
+        TrsrBdTradgList: [
+          {
+            TrsrBd: {
+              nm: "Tesouro Selic 2029",
+              untrPrc: 14520.35,
+              mtrtyDt: "2029-03-01T00:00:00",
+              anlRcrRate: 0.15,
+            },
+          },
+        ],
+      },
+    };
+
+    const quote = parseTesouroDiretoResponse("selic 29", payload);
+    expect(quote).toEqual({
+      ticker: "TESOURO SELIC 2029",
+      price: 14520.35,
+      maturityDate: "2029-03-01",
+      annualRate: 0.15,
+    });
+  });
+
+  it("retorna null se não encontrar correspondência", () => {
+    expect(parseTesouroDiretoResponse("PETR4", {})).toBeNull();
+  });
+});
+
+describe("parseBcbSgsResponse", () => {
+  it("converte taxa diária SGS 12 em taxa anual equivalente", () => {
+    const payload = [{ data: "25/08/2026", valor: "0.0416" }];
+    const res = parseBcbSgsResponse(payload);
+    expect(res).not.toBeNull();
+    expect(res?.rateDaily).toBeCloseTo(0.000416, 6);
+    expect(res?.rateAnnual).toBeGreaterThan(10);
+  });
+
+  it("interpreta taxa anual diretamente se valor >= 0.2", () => {
+    const payload = [{ data: "25/08/2026", valor: "10.50" }];
+    const res = parseBcbSgsResponse(payload);
+    expect(res).not.toBeNull();
+    expect(res?.rateAnnual).toBe(10.5);
   });
 });

@@ -198,12 +198,52 @@ export const CURATED_TICKERS_CATALOG: readonly CatalogTickerItem[] = [
   { ticker: "META34", name: "Meta Platforms Inc. BDR", assetClass: "BDRs", sector: "Tecnologia & Software", currency: "BRL" },
   { ticker: "BERK34", name: "Berkshire Hathaway Inc. BDR", assetClass: "BDRs", sector: "Financeiro", currency: "BRL" },
 
-  // Renda Fixa & Caixa
-  { ticker: "TESOURO-SELIC", name: "Tesouro Selic (LFT)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
-  { ticker: "TESOURO-IPCA", name: "Tesouro IPCA+ (NTN-B)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
-  { ticker: "TESOURO-PREFIXADO", name: "Tesouro Prefixado (LTN)", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
-  { ticker: "CDB-100-CDI", name: "CDB 100% CDI Liquidez Diária", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
-  { ticker: "LCI-LCA-CDI", name: "LCI / LCA Isenta de IR", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  // Renda Fixa & Títulos Públicos (Tesouro Direto)
+  { ticker: "TESOURO SELIC 2026", name: "Tesouro Selic 2026 (LFT)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "TESOURO SELIC 2027", name: "Tesouro Selic 2027 (LFT)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "TESOURO SELIC 2029", name: "Tesouro Selic 2029 (LFT)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "TESOURO SELIC 2031", name: "Tesouro Selic 2031 (LFT)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "TESOURO IPCA+ 2029", name: "Tesouro IPCA+ 2029 (NTN-B Principal)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO IPCA+ 2035", name: "Tesouro IPCA+ 2035 (NTN-B Principal)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO IPCA+ 2045", name: "Tesouro IPCA+ 2045 (NTN-B Principal)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO IPCA+ 2050", name: "Tesouro IPCA+ 2050 (NTN-B Principal)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO IPCA+ COM JUROS SEMESTRAIS 2032", name: "Tesouro IPCA+ com Juros Semestrais 2032 (NTN-B)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO IPCA+ COM JUROS SEMESTRAIS 2040", name: "Tesouro IPCA+ com Juros Semestrais 2040 (NTN-B)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO IPCA+ COM JUROS SEMESTRAIS 2055", name: "Tesouro IPCA+ com Juros Semestrais 2055 (NTN-B)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO PREFIXADO 2026", name: "Tesouro Prefixado 2026 (LTN)", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
+  { ticker: "TESOURO PREFIXADO 2027", name: "Tesouro Prefixado 2027 (LTN)", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
+  { ticker: "TESOURO PREFIXADO 2029", name: "Tesouro Prefixado 2029 (LTN)", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
+  { ticker: "TESOURO PREFIXADO 2031", name: "Tesouro Prefixado 2031 (LTN)", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
+  { ticker: "TESOURO PREFIXADO COM JUROS SEMESTRAIS 2033", name: "Tesouro Prefixado com Juros Semestrais 2033 (NTN-F)", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
+  { ticker: "TESOURO PREFIXADO COM JUROS SEMESTRAIS 2035", name: "Tesouro Prefixado com Juros Semestrais 2035 (NTN-F)", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
+  { ticker: "TESOURO RENDA+ 2030", name: "Tesouro Renda+ Aposentadoria Extra 2030", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO RENDA+ 2035", name: "Tesouro Renda+ Aposentadoria Extra 2035", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO RENDA+ 2040", name: "Tesouro Renda+ Aposentadoria Extra 2040", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO RENDA+ 2045", name: "Tesouro Renda+ Aposentadoria Extra 2045", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO RENDA+ 2050", name: "Tesouro Renda+ Aposentadoria Extra 2050", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO RENDA+ 2055", name: "Tesouro Renda+ Aposentadoria Extra 2055", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO RENDA+ 2060", name: "Tesouro Renda+ Aposentadoria Extra 2060", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO RENDA+ 2065", name: "Tesouro Renda+ Aposentadoria Extra 2065", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO EDUCA+ 2026", name: "Tesouro Educa+ 2026", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO EDUCA+ 2030", name: "Tesouro Educa+ 2030", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO EDUCA+ 2035", name: "Tesouro Educa+ 2035", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "TESOURO EDUCA+ 2040", name: "Tesouro Educa+ 2040", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+
+  // Renda Fixa Privada (Modelos Paramétricos Marco Zero)
+  { ticker: "CDB 100% CDI", name: "CDB 100% do CDI Liquidez Diária", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "CDB 110% CDI", name: "CDB 110% do CDI", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "CDB 120% CDI", name: "CDB 120% do CDI", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "CDB PREFIXADO 12%", name: "CDB Prefixado 12% a.a.", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
+  { ticker: "CDB PREFIXADO 14%", name: "CDB Prefixado 14% a.a.", assetClass: "Renda Fixa", sector: "Prefixado", currency: "BRL" },
+  { ticker: "LCI 90% CDI", name: "LCI 90% do CDI (Isenta de IR)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "LCI 95% CDI", name: "LCI 95% do CDI (Isenta de IR)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "LCA 90% CDI", name: "LCA 90% do CDI (Isenta de IR)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "LCA 95% CDI", name: "LCA 95% do CDI (Isenta de IR)", assetClass: "Renda Fixa", sector: "Pós-fixado (Selic / CDI)", currency: "BRL" },
+  { ticker: "LCI IPCA+ 6%", name: "LCI IPCA + 6% a.a. (Isenta de IR)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "LCA IPCA+ 6%", name: "LCA IPCA + 6% a.a. (Isenta de IR)", assetClass: "Renda Fixa", sector: "Inflação (IPCA+)", currency: "BRL" },
+  { ticker: "CRI", name: "Certificado de Recebíveis Imobiliários (Isento)", assetClass: "Renda Fixa", sector: "Crédito Privado (CRI / CRA / Debêntures)", currency: "BRL" },
+  { ticker: "CRA", name: "Certificado de Recebíveis do Agronegócio (Isento)", assetClass: "Renda Fixa", sector: "Crédito Privado (CRI / CRA / Debêntures)", currency: "BRL" },
+  { ticker: "DEBÊNTURE INCENTIVADA", name: "Debênture de Infraestrutura (Isenta de IR)", assetClass: "Renda Fixa", sector: "Crédito Privado (CRI / CRA / Debêntures)", currency: "BRL" },
   { ticker: "CAIXA", name: "Saldo em Caixa / Conta Corrente", assetClass: "Caixa", sector: "Saldo em Caixa", currency: "BRL" },
   { ticker: "RESERVA-EMERGENCIA", name: "Reserva de Emergência", assetClass: "Caixa", sector: "Reserva de Emergência / Liquidez", currency: "BRL" },
 
@@ -218,33 +258,53 @@ export const CURATED_TICKERS_CATALOG: readonly CatalogTickerItem[] = [
   { ticker: "VOO", name: "Vanguard S&P 500 ETF", assetClass: "Internacional", sector: "Mercado Amplo US (S&P 500)", currency: "USD" },
   { ticker: "IVV", name: "iShares Core S&P 500 ETF", assetClass: "Internacional", sector: "Mercado Amplo US (S&P 500)", currency: "USD" },
   { ticker: "QQQ", name: "Invesco QQQ Trust (Nasdaq 100)", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
-  { ticker: "VTI", name: "Vanguard Total Stock Market ETF", assetClass: "Internacional", sector: "Mercado Amplo US (S&P 500)", currency: "USD" },
+  { ticker: "SPY", name: "SPDR S&P 500 ETF Trust", assetClass: "Internacional", sector: "Mercado Amplo US (S&P 500)", currency: "USD" },
   { ticker: "VT", name: "Vanguard Total World Stock ETF", assetClass: "Internacional", sector: "Neutro Global (All-World)", currency: "USD" },
-  { ticker: "VNQ", name: "Vanguard Real Estate ETF (US REITs)", assetClass: "Internacional", sector: "REITs / Imobiliário", currency: "USD" },
-  { ticker: "O", name: "Realty Income Corporation (The Monthly Dividend Company)", assetClass: "Internacional", sector: "REITs / Imobiliário", currency: "USD" },
-  { ticker: "T", name: "AT&T Inc. Common Stock", assetClass: "Internacional", sector: "Comunicação & Mídia", currency: "USD" },
-  { ticker: "V", name: "Visa Inc. Class A", assetClass: "Internacional", sector: "Financeiro / Meios de Pagamento", currency: "USD" },
-  { ticker: "C", name: "Citigroup Inc. Common Stock", assetClass: "Internacional", sector: "Financeiro / Bancos Globais", currency: "USD" },
-  { ticker: "F", name: "Ford Motor Company Common Stock", assetClass: "Internacional", sector: "Consumo / Automotivo", currency: "USD" },
-  { ticker: "AAPL", name: "Apple Inc. Common Stock", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
-  { ticker: "MSFT", name: "Microsoft Corporation Common Stock", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
-  { ticker: "NVDA", name: "NVIDIA Corporation Common Stock", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
-  { ticker: "AMZN", name: "Amazon.com Inc. Common Stock", assetClass: "Internacional", sector: "Consumo & Varejo", currency: "USD" },
+  { ticker: "VTI", name: "Vanguard Total Stock Market ETF", assetClass: "Internacional", sector: "Mercado Amplo US (S&P 500)", currency: "USD" },
+  { ticker: "VNQ", name: "Vanguard Real Estate ETF (REITs)", assetClass: "Internacional", sector: "REITs / Imobiliário", currency: "USD" },
+  { ticker: "BND", name: "Vanguard Total Bond Market ETF", assetClass: "Internacional", sector: "Bonds / Renda Fixa Global", currency: "USD" },
+  { ticker: "AAPL", name: "Apple Inc.", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
+  { ticker: "MSFT", name: "Microsoft Corporation", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
+  { ticker: "NVDA", name: "NVIDIA Corporation", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
+  { ticker: "AMZN", name: "Amazon.com Inc.", assetClass: "Internacional", sector: "Consumo & Varejo", currency: "USD" },
   { ticker: "GOOGL", name: "Alphabet Inc. Class A", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
-  { ticker: "META", name: "Meta Platforms Inc. Class A", assetClass: "Internacional", sector: "Comunicação & Mídia", currency: "USD" },
-  { ticker: "TSLA", name: "Tesla Inc. Common Stock", assetClass: "Internacional", sector: "Consumo & Varejo", currency: "USD" },
+  { ticker: "META", name: "Meta Platforms Inc.", assetClass: "Internacional", sector: "Tecnologia & Software", currency: "USD" },
+  { ticker: "TSLA", name: "Tesla Inc.", assetClass: "Internacional", sector: "Consumo & Varejo", currency: "USD" },
+  { ticker: "BRK.B", name: "Berkshire Hathaway Inc. Class B", assetClass: "Internacional", sector: "Financeiro & Pagamentos", currency: "USD" },
+  { ticker: "JNJ", name: "Johnson & Johnson", assetClass: "Internacional", sector: "Saúde & Farmacêutica", currency: "USD" },
+  { ticker: "V", name: "Visa Inc.", assetClass: "Internacional", sector: "Financeiro & Pagamentos", currency: "USD" },
+  { ticker: "KO", name: "The Coca-Cola Company", assetClass: "Internacional", sector: "Consumo & Varejo", currency: "USD" },
+  { ticker: "PEP", name: "PepsiCo Inc.", assetClass: "Internacional", sector: "Consumo & Varejo", currency: "USD" },
+  { ticker: "O", name: "Realty Income Corporation (The Monthly Dividend Company)", assetClass: "Internacional", sector: "REITs / Imobiliário", currency: "USD" },
+  { ticker: "T", name: "AT&T Inc.", assetClass: "Internacional", sector: "Comunicação & Mídia", currency: "USD" },
+  { ticker: "C", name: "Citigroup Inc.", assetClass: "Internacional", sector: "Financeiro & Pagamentos", currency: "USD" },
+  { ticker: "SCHD", name: "Schwab U.S. Dividend Equity ETF", assetClass: "Internacional", sector: "Mercado Amplo US (S&P 500)", currency: "USD" },
 ];
 
 /**
- * Infere o setor canônico a partir do código do ticker e classe de ativo.
+ * Normaliza uma string de texto removendo acentos (NFD) e pontuação para busca fonética/tokenizada.
  */
-export function inferSectorFromTicker(rawTicker: string, assetClass?: string | null): string {
-  const t = cleanTicker(rawTicker);
-  const match = CURATED_TICKERS_CATALOG.find((c) => c.ticker === t);
-  if (match?.sector) return match.sector;
+export function normalizeSearchToken(str: string): string {
+  return str
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]/g, " ")
+    .trim();
+}
 
-  // Heurísticas de Renda Fixa / Tesouro Direto
-  if (t.includes("SELIC") || t === "LFT" || t.includes("CDI") || t.includes("DI")) {
+/**
+ * Infere o setor recomendado com base no ticker e na classe.
+ */
+export function inferSectorFromTicker(ticker: string, assetClass?: string | null): string {
+  const t = cleanTicker(ticker);
+
+  // Busca primeiro no catálogo
+  const catalogMatch = CURATED_TICKERS_CATALOG.find((c) => c.ticker === t);
+  if (catalogMatch?.sector) return catalogMatch.sector;
+
+  // Heurísticas de Títulos Públicos e Renda Fixa
+  if (t.includes("SELIC") || t.includes("CDI") || t.includes("DI") || t === "LFT") {
     return "Pós-fixado (Selic / CDI)";
   }
   if (t.includes("IPCA") || t.includes("RENDA") || t.includes("EDUCA") || t.includes("NTNB") || t.includes("NTN-B")) {
@@ -287,7 +347,7 @@ export function cleanTicker(raw: string): string {
 
 /**
  * Pesquisa no catálogo e mescla com ativos já cadastrados na carteira do usuário.
- * Utiliza sistema de pontuação de relevância para priorizar match exato e prefixos.
+ * Utiliza sistema de pontuação de relevância multi-token com normalização NFD.
  */
 export function searchTickers(
   query: string,
@@ -295,10 +355,12 @@ export function searchTickers(
   limit = 8,
 ): TickerSearchResult[] {
   const q = cleanTicker(query);
+  const qNorm = normalizeSearchToken(query);
+  const qTokens = qNorm.split(/\s+/).filter(Boolean);
   const existingMap = new Map(existingAssets.map((a) => [cleanTicker(a.ticker), a]));
 
   // 1. Se houver query vazia, sugere os ativos já existentes na carteira primeiro
-  if (!q) {
+  if (!q || qTokens.length === 0) {
     const results: TickerSearchResult[] = [];
     const seenTickers = new Set<string>();
 
@@ -338,7 +400,7 @@ export function searchTickers(
     name: string,
     assetClass: string,
     sector: string,
-    currency: "BRL" | "USD",
+    currency: AssetCurrency,
     isExisting: boolean,
     existingAssetId?: string,
     currentQuantity?: number,
@@ -347,29 +409,32 @@ export function searchTickers(
     const t = cleanTicker(ticker);
     if (seenTickers.has(t)) return;
 
-    const nameUpper = name.toUpperCase();
-    const matchTickerExact = t === q;
-    const matchTickerPrefix = t.startsWith(q);
-    const matchNamePrefix = nameUpper.startsWith(q);
-    const matchTickerSub = t.includes(q);
-    const matchNameSub = nameUpper.includes(q);
+    const tNorm = normalizeSearchToken(ticker);
+    const nNorm = normalizeSearchToken(name);
+    const combinedNorm = `${tNorm} ${nNorm}`;
 
-    if (!matchTickerExact && !matchTickerPrefix && !matchNamePrefix && !matchTickerSub && !matchNameSub) {
-      return;
-    }
+    // Avalia match multi-token: todos os tokens da busca precisam estar presentes
+    const allTokensMatch = qTokens.every((tok) => combinedNorm.includes(tok));
+    if (!allTokensMatch) return;
 
     seenTickers.add(t);
 
     let score = 50;
-    if (matchTickerExact) score = 0;
-    else if (matchTickerPrefix) score = 10;
-    else if (matchNamePrefix) score = 20;
-    else if (matchTickerSub) score = 30;
-    else if (matchNameSub) score = 40;
+    if (tNorm === qNorm) {
+      score = 0; // Match exato no ticker
+    } else if (tNorm.startsWith(qNorm)) {
+      score = 10; // Prefixo no ticker
+    } else if (nNorm.startsWith(qNorm)) {
+      score = 20; // Prefixo no nome
+    } else if (tNorm.includes(qNorm)) {
+      score = 30; // Substring no ticker
+    } else if (nNorm.includes(qNorm)) {
+      score = 40; // Substring no nome
+    }
 
-    // Prioridade leve para ativos existentes na carteira do usuário
+    // Prioridade para ativos que o usuário já possui
     if (isExisting) {
-      score -= 2;
+      score -= 5;
     }
 
     scoredCandidates.push({

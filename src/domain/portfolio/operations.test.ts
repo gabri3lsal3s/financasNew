@@ -89,6 +89,43 @@ describe("domain/portfolio/operations — Vendas e Desinvestimentos", () => {
     expect(resultFii.taxInfo.isTaxExempt).toBe(false);
     expect(resultFii.realizedPnl).toBe(100);
     expect(resultFii.taxInfo.estimatedTaxPayable).toBe(20); // 20% de 100
+    expect(resultFii.netCreditAmount).toBe(600); // Renda variável credita o bruto no caixa
+  });
+
+  it("calcula retenção na fonte e crédito líquido no caixa para resgate de Renda Fixa tributada (ex.: CDB)", () => {
+    // CDB aplicado a R$ 10.000, resgatado a R$ 12.000 (lucro R$ 2.000) após 400 dias (alíquota 17.5%)
+    const resultCdb = sellAssetPosition({
+      currentQuantity: 1,
+      currentAveragePrice: 10000,
+      sellQuantity: 1,
+      sellPrice: 12000,
+      assetClass: "Renda Fixa",
+      calendarDays: 400,
+      isTaxExemptFixedIncome: false,
+    });
+
+    expect(resultCdb.taxInfo.isFixedIncome).toBe(true);
+    expect(resultCdb.taxInfo.isTaxExempt).toBe(false);
+    expect(resultCdb.taxInfo.taxRate).toBe(0.175);
+    expect(resultCdb.realizedPnl).toBe(2000);
+    expect(resultCdb.taxInfo.estimatedTaxPayable).toBe(350); // 17.5% de 2000
+    expect(resultCdb.netCreditAmount).toBe(11650); // R$ 12.000 - R$ 350 de IRRF
+  });
+
+  it("credita valor integral para resgate de Renda Fixa isenta (ex.: LCI / LCA)", () => {
+    const resultLci = sellAssetPosition({
+      currentQuantity: 1,
+      currentAveragePrice: 10000,
+      sellQuantity: 1,
+      sellPrice: 11500,
+      assetClass: "Renda Fixa",
+      calendarDays: 300,
+      isTaxExemptFixedIncome: true,
+    });
+
+    expect(resultLci.taxInfo.isTaxExempt).toBe(true);
+    expect(resultLci.taxInfo.estimatedTaxPayable).toBe(0);
+    expect(resultLci.netCreditAmount).toBe(11500); // 100% creditado no caixa
   });
 });
 

@@ -2981,7 +2981,7 @@ flowchart TD
 
 ### Fase 63 — Automação de Rentabilidade de Renda Fixa & Gestão de Vencimentos (Tesouro Direto + Marco Zero Paramétrico + Radar de Vencimentos)
 
-> **Status:** ⏳ Planejada — **Automação Inteligente de Renda Fixa**: eliminação de digitação manual de saldos diários via integração direta com a API pública do Tesouro Direto (marcação a mercado oficial por PU), motor paramétrico de capitalização por dias úteis no domínio a partir do saldo base do cadastro (Marco Zero) com taxas do Banco Central (SGS), alíquotas regressivas de IR, trava no vencimento e ação rápida de liquidação para o Caixa.
+> **Status:** ✅ Concluída (2026-08-25) — **Automação Inteligente de Renda Fixa**: eliminação de digitação manual de saldos diários via integração direta com a API pública do Tesouro Direto (marcação a mercado oficial por PU), motor paramétrico de capitalização por dias úteis no domínio a partir do saldo base do cadastro (Marco Zero) com taxas do Banco Central (SGS), alíquotas regressivas de IR, trava no vencimento e ação rápida de liquidação para o Caixa.
 
 **Objetivo:** Permitir que o patrimônio investido em Renda Fixa (títulos públicos e privados) atualize sua rentabilidade diariamente sem demandar esforço manual contínuo do usuário, mantendo 100% de aderência à arquitetura de funções puras, resiliência de cotações e rebalanceamento de carteira:
 
@@ -3088,15 +3088,15 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 63):**
-- [ ] Módulos puros `business-days.ts`, `fixed-income.ts`, `normalizeTesouroTicker` e `searchTickers` atualizados e 100% testados com Vitest.
-- [ ] Tabela regressiva de IR calcula saldo líquido estimado, alíquota vigente e alerta de dias restantes para próxima alíquota com precisão.
-- [ ] Resgates de Renda Fixa tributada com `syncCash = true` creditam o valor líquido de IRRF no Caixa da carteira.
-- [ ] Motor de busca com tokenização multi-termo, insensível a acentos (NFD) e com suporte a aliases de marcas populares.
-- [ ] Parser do Tesouro Direto e sincronizador do CDI do Banco Central integrados ao pipeline de cotações com fallback seguro.
-- [ ] Posição de Renda Fixa atualiza rentabilidade diária automaticamente em memória ($O(1)$) a partir do Marco Zero sem requisições pesadas de histórico.
-- [ ] Títulos vencidos congelam rentabilidade no dia exato do vencimento e exibem badges e alertas de insight.
-- [ ] Ação de 1-clique para calibração com extrato e liquidação de títulos vencidos para o Caixa da carteira.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+- [x] Módulos puros `business-days.ts`, `fixed-income.ts`, `normalizeTesouroTicker` e `searchTickers` atualizados e 100% testados com Vitest.
+- [x] Tabela regressiva de IR calcula saldo líquido estimado, alíquota vigente e alerta de dias restantes para próxima alíquota com precisão.
+- [x] Resgates de Renda Fixa tributada com `syncCash = true` creditam o valor líquido de IRRF no Caixa da carteira.
+- [x] Motor de busca com tokenização multi-termo, insensível a acentos (NFD) e com suporte a aliases de marcas populares.
+- [x] Parser do Tesouro Direto e sincronizador do CDI do Banco Central integrados ao pipeline de cotações com fallback seguro.
+- [x] Posição de Renda Fixa atualiza rentabilidade diária automaticamente em memória ($O(1)$) a partir do Marco Zero sem requisições pesadas de histórico.
+- [x] Títulos vencidos congelam rentabilidade no dia exato do vencimento e exibem badges e alertas de insight.
+- [x] Ação de 1-clique para calibração com extrato e liquidação de títulos vencidos para o Caixa da carteira.
+- [x] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
 
 ---
 
@@ -3244,6 +3244,153 @@ flowchart TD
 - [ ] Rótulo redundante `"Ações"` corrigido nos setores de FIIs e Renda Fixa.
 - [ ] Cabeçalho das tabelas (`thead`) repete de forma alinhada no topo de todas as páginas seguintes.
 - [ ] Suíte de testes, typecheck (`tsc -b`) e ESLint 100% verdes.
+
+---
+
+### 🎨 FASE 66 — Padronização Visual & Hierarquia Balanceada de Ícones em Cards & Seções
+
+> **Objetivo:** Erradicar a falta de padronização visual nos ícones de cards e seções do aplicativo, estabelecendo a abordagem de **Hierarquia Balanceada (Calma & Propósito)** para evitar a sobrecarga/fadiga da cor de destaque (*Accent Fatigue*) e garantir previsibilidade semântica, contraste WCAG AA e elegância em 100% das telas.
+
+#### 1. Fase 66.1: Formalização de Governança & Matriz Semântica de Ícones
+- **Matriz de Decisão Semântica de Ícones:**
+  - **Informativo / Estrutural / Cabeçalhos (`CardTitle` / `CardHeader`):** Ícone em tom neutro suave (`text-muted-foreground`) no padrão *icon-only* (`size-4` / 16px, `aria-hidden="true"`). Fim do uso arbitrário de `text-primary` em ícones estáticos de cabeçalho.
+  - **Fluxo Financeiro Direto:** Cores semânticas exclusivas:
+    - *Receitas / Entradas / Saldo Positivo:* `text-positive-strong` (Teal / Verde);
+    - *Despesas / Saídas / Saldo Negativo:* `text-negative-strong` (Coral / Vermelho);
+    - *Investimentos / Carteira / Aportes:* `text-portfolio` (Sky / Azul Petróleo).
+  - **Risco & Atenção:** `text-warning-strong` (Atenção / Desvio) ou `text-critical-strong` (Atraso / Estouro).
+  - **Cor de Destaque (*Accent / Primary*):** Reservada exclusivamente para **interatividade ativa** (botões de comando/CTA, abas ativas, switches ligados, radio buttons selecionados e anel de foco `--ring`).
+- **Unificação de Formato (Fim das Caixas Decorativas Soltas):**
+  - Ícones de métricas e cabeçalhos adotam o padrão **Icon-Only limpo** (`size-4`);
+  - Caixinhas de fundo (`bg-surface-hover size-7/size-8 rounded-lg`) são restritas a elementos com **ação de clique direta** (ex.: botão de editar, excluir ou fechar).
+
+---
+
+#### 2. Fase 66.2: Refatoração dos Componentes Modulares de Métricas e Cards
+- **`KpiCard` (`src/components/modules/kpi-card.tsx`):**
+  - Garantir `toneIcon.default = "text-muted-foreground"` e dimensões `size-4 shrink-0` consistentes.
+- **`StatCard` (`src/components/modules/stat-card.tsx`):**
+  - Remover contêiner rígido `bg-surface-hover/80` em favor do padrão *icon-only* limpo;
+  - Mapear `VARIANT_ICON_COLOR_MAP.default` e `info` para `text-muted-foreground`.
+- **`RealCashHeroCard` (`src/components/modules/real-cash-hero-card.tsx`):**
+  - Padronizar ícone `Landmark` no cabeçalho para *icon-only* em `text-muted-foreground size-4`, removendo a caixa cinza com borda pesada.
+- **`CashKpiCard` (`src/components/modules/cash-kpi-card.tsx`):**
+  - Harmonizar ícone `Wallet` para *icon-only* em `text-portfolio`.
+- **`AllocationDriftCard` (`src/components/modules/allocation-drift-card.tsx`):**
+  - Alinhar estado equilibrado para neutro/suave e desvio para `warning-strong`.
+- **`ReportKpiGrid` (`src/components/modules/reports/report-kpi-grid.tsx`):**
+  - Alinhar `TONE_STYLES.default` para `text-muted-foreground` no padrão print-friendly.
+
+---
+
+#### 3. Fase 66.3: Padronização dos Cabeçalhos de Seções e Configurações
+- **Abas de Configurações (`src/features/settings/components/tabs/`):**
+  - `appearance-tab.tsx`: Padronizar ícones de `CardTitle` (`Palette`, `Layers`, `Sliders`, `Zap`, `EyeOff`) para `size-4 text-muted-foreground` e adicionar ícone temático (`Sparkles` ou `Palette`) no card "Cor de Destaque" para paridade visual total.
+  - `backup-tab.tsx`, `reminders-tab.tsx`, `security-tab.tsx`, `sensory-tab.tsx`, `widgets-tab.tsx`: Todos os cabeçalhos de cards com `size-4 text-muted-foreground`.
+- **Cards de Módulos (Visão Geral, Cartões, Dívidas, Insights, Relatórios):**
+  - Varredura e conformidade em 100% dos cards e cabeçalhos de seção.
+
+---
+
+#### 4. Fase 66.4: Blindagem das Regras na Documentação e Testes
+- **Atualização de `AGENTS.md`:** Inclusão da Regra de Ouro nº 13 estabelecendo a obrigatoriedade da Hierarquia Balanceada em qualquer nova tela/card.
+- **Atualização de `docs/DESIGN_SYSTEM.md`:** Documentação detalhada da governança na seção §14.11.
+- **Suíte de Testes & Tipagem:**
+  - Testes unitários dos cards aprovados (`kpi-card.test.tsx`, `stat-card.test.tsx`, etc.);
+  - Typecheck estrito (`tsc --noEmit`) e ESLint 100% verdes.
+
+---
+
+**✅ DoD (Definition of Done da Fase 66):**
+- [ ] Todos os cabeçalhos de cards e seções usam ícones neutros suaves (`size-4 text-muted-foreground`).
+- [ ] Eliminação de caixas decorativas estáticas ao redor de ícones em `StatCard`, `RealCashHeroCard` e similares.
+- [ ] Cores de ícones reservadas estritamente para fluxo financeiro real (verde, vermelho, sky) e alertas (âmbar, vermelho).
+- [ ] Cor de destaque (*Accent*) concentrada em elementos de interatividade ativa, eliminando a fadiga visual.
+- [ ] Regra nº 13 documentada e vinculante em `AGENTS.md` e `docs/DESIGN_SYSTEM.md`.
+- [ ] Suíte de testes, typecheck e lint 100% verdes.
+
+---
+
+### 🏷️ FASE 67 — Harmonização de Primitivos de UI, Micro-Ações & Badges Adaptativos
+
+> **Objetivo:** Estabelecer consistência dimensional e visual em primitivos fundamentais da interface (Badges, EmptyStates, Barras de Progresso e Micro-Botões), eliminando variações de padding e tipografia soltas pelo código.
+
+#### 1. Fase 67.1: Catálogo Estrito de Tamanhos no Primitivo `Badge` (`components/ui/badge.tsx`)
+- **Variantes Oficiais de Escala:**
+  - `size="xs"` (10px): chips densos em tabelas, extratos e linhas compactas (`px-1.5 py-0 text-[10px] font-medium leading-none`);
+  - `size="sm"` (11px — Padrão): badges de status em cards, cabeçalhos e diálogos (`px-2 py-0.5 text-[11px] font-medium`);
+  - `size="md"` (12px): destaque em hero cards, banners e fechamentos contábeis (`px-2.5 py-1 text-xs font-semibold`).
+- **Erradicação de Classes Manuais:** Substituição de `text-[9px]`, `text-[10px]`, `py-0 px-1` manuais pelas variantes canônicas no app inteiro.
+
+---
+
+#### 2. Fase 67.2: `EmptyState` Calmo & Foco Visual no CTA (`components/ui/empty-state.tsx`)
+- **Transição de Paradigma:** Padrão do componente ajustado para `tone="default"` (`text-muted-foreground`), transmitindo tranquilidade e sobriedade nos estados vazios.
+- **Protagonismo do Botão CTA:** A cor de destaque (*Accent / Primary*) fica concentrada unicamente no botão de ação (*"Criar primeiro lançamento"*, *"Adicionar cartão"*), guiando o usuário com clareza sem alarmismo.
+
+---
+
+#### 3. Fase 67.3: Escala Semântica de Barras de Progresso (`Progress` e `BudgetProgressBar`)
+- **Variantes Padronizadas de Altura:**
+  - `size="sm"` (4px / `h-1`): micro-indicadores em tabelas e linhas densas;
+  - `size="md"` (6px / `h-1.5` — Padrão): barras de orçamentos por categoria e metas patrimoniais;
+  - `size="lg"` (10px / `h-2.5`): barras consolidadas de fechamento e envelopes de gastos hero.
+- **Trilha Suave Unificada:** Fundo com `bg-surface-hover/70` ou `bg-muted/60` em todos os módulos.
+
+---
+
+#### 4. Fase 67.4: Padronização de Micro-Botões & Alvos de Toque
+- **Unificação de Ações Inline:**
+  - Botões de ícone secundários (ex.: editar inline, excluir, calibrar) unificados em `size-7` (28px) com `rounded-lg hover:bg-surface-hover`;
+  - Botões de texto compactos unificados em `size="xs"` (`h-7 px-2.5 text-xs font-medium`).
+
+---
+
+**✅ DoD (Definition of Done da Fase 67):**
+- [ ] Primitivo `Badge` expõe e implementa `size="xs" | "sm" | "md"` com 100% de adoção nas telas.
+- [ ] `EmptyState` usa tom neutro calmo por padrão em todas as páginas vazias.
+- [ ] Barras de progresso com 3 escalas padronizadas e trilha de fundo homogênea.
+- [ ] Ações inline e micro-botões sem divergências de altura (`h-7` / `size-7`).
+- [ ] Suíte de testes, typecheck e lint 100% verdes.
+
+---
+
+### 📝 FASE 68 — Anatomia de Formulários, Diálogos & Consistência de Superfícies
+
+> **Objetivo:** Padronizar a hierarquia de rótulos/dicas em formulários, unificar a anatomia de rodapés em todos os 18 modais e alinhar as opacidades de borda e profundidade de superfícies no design system.
+
+#### 1. Fase 68.1: Hierarquia Canônica de Labels e Dicas de Formulário
+- **Padrão Anatômico de Campos:**
+  - **Label do Campo:** `text-xs font-semibold text-foreground` com contraste AA rigoroso;
+  - **Helper Text / Dica:** `text-[11px] text-muted-foreground` abaixo do campo;
+  - **Campos Opcionais:** sufixo discreto `(opcional)` em `text-muted-foreground/80` (fim da divergência entre asteriscos e tags soltas).
+
+---
+
+#### 2. Fase 68.2: Padronização de Rodapés de Diálogos (`ModalFooter`)
+- **Ordem e Ergonomia de Ações:**
+  - Mobile: Layout empilhado seguro (`flex-col-reverse gap-2`), com o botão de confirmação no topo (fácil alcance) e cancelamento abaixo;
+  - Desktop: Layout horizontal alinhado à direita (`flex-row justify-end gap-2`), com Cancelar à esquerda e Confirmar à direita;
+  - Paridade em 100% dos 18 diálogos do sistema.
+
+---
+
+#### 3. Fase 68.3: Unificação de Opacidades de Borda e Sombras de Superfície
+- **Consistência de Superfícies (`Card`):**
+  - Borda canônica: `border-border/80`;
+  - Fundo canônico: `bg-surface`;
+  - Elevação padrão: `shadow-xs`;
+  - Erradicação de variações ad-hoc de `border-border/60` vs `border-border` soltas.
+
+---
+
+**✅ DoD (Definition of Done da Fase 68):**
+- [ ] Todos os formulários e campos possuem a mesma anatomia visual de label e helper text.
+- [ ] 18 diálogos do aplicativo seguem a mesma ordenação e comportamento responsivo de rodapé.
+- [ ] Cards de dados em todas as páginas possuem a mesma solidez de borda e sombra.
+- [ ] Suíte de testes, typecheck e lint 100% verdes.
+
+
 
 
 

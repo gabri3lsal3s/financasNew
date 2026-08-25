@@ -169,6 +169,18 @@ export function AssetSellTab({
               <ShieldAlert className="size-3.5 shrink-0" aria-hidden="true" />
               <span>FIIs: Alíquota fixa de 20% sobre o ganho líquido. DARF estimado: R$ {sellResult.taxInfo.estimatedTaxPayable.toFixed(2)}.</span>
             </div>
+          ) : sellResult.taxInfo.isFixedIncome ? (
+            sellResult.taxInfo.isTaxExempt ? (
+              <div className="flex items-center gap-1.5 text-[11px] text-positive-strong bg-positive/10 rounded-lg p-2">
+                <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+                <span>Renda Fixa Isenta de IR. Valor integral creditado no Caixa: R$ {sellResult.netCreditAmount.toFixed(2)}.</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-[11px] text-attention-strong bg-attention/10 rounded-lg p-2">
+                <ShieldAlert className="size-3.5 shrink-0" aria-hidden="true" />
+                <span>IRRF retido na fonte estimado ({(sellResult.taxInfo.taxRate * 100).toFixed(1)}%): R$ {sellResult.taxInfo.estimatedTaxPayable.toFixed(2)}. Líquido no Caixa: R$ {sellResult.netCreditAmount.toFixed(2)}.</span>
+              </div>
+            )
           ) : null}
         </div>
       ) : null}

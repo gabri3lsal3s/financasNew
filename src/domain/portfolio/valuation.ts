@@ -12,7 +12,8 @@
  * Motor puro — testável isoladamente.
  */
 
-import type { AssetCurrency } from "@/types";
+import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
+import { calculateFixedIncomeBalance, type FixedIncomeBalanceResult } from "./fixed-income";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -41,6 +42,36 @@ export interface AssetValuation {
   source: PriceSource;
   /** true quando o preço veio do override manual do usuário. */
   manual: boolean;
+}
+
+export interface ConsolidatedPositionSummary {
+  quantity: number;
+  averagePrice: number;
+  totalCost: number;
+  totalCostBRL: number;
+  averagePriceBRL: number;
+  /** Preço de mercado na moeda nativa do ativo (USD ou BRL). */
+  priceQuote: number;
+  priceBRL: number;
+  valueBRL: number;
+  source: PriceSource;
+  unrealizedPnl: number;
+  unrealizedPct: number | null;
+  totalDividends: number;
+  totalReturnPnl: number;
+  totalReturnPct: number | null;
+  isCash: boolean;
+  pricingMode: AssetPricingMode;
+  /** Valor Líquido estimado após deduções de IR/IOF (Fase 63). */
+  netValueBRL?: number;
+  /** Imposto de Renda retido na fonte estimado (Fase 63). */
+  taxAmountBRL?: number;
+  /** Alíquota de IR aplicada (22.5%, 20%, 17.5%, 15% ou 0%). */
+  taxRatePct?: number;
+  /** Trava de Vencimento e diagnóstico de maturidade (Fase 63). */
+  isMatured?: boolean;
+  maturityDate?: string | null;
+  fixedIncomeResult?: FixedIncomeBalanceResult | null;
 }
 
 /** Fallback estático de conversão USD→BRL (§1.6 / §4.2). */
@@ -265,28 +296,8 @@ export function valueAssetPosition(
   return { valueBRL, source: resolved.source, manual: resolved.source === "manual" };
 }
 
-export interface ConsolidatedPositionSummary {
-  quantity: number;
-  averagePrice: number;
-  totalCost: number;
-  totalCostBRL: number;
-  averagePriceBRL: number;
-  /** Preço de mercado na moeda nativa do ativo (USD ou BRL). */
-  priceQuote: number;
-  priceBRL: number;
-  valueBRL: number;
-  source: PriceSource;
-  unrealizedPnl: number;
-  unrealizedPct: number | null;
-  totalDividends: number;
-  totalReturnPnl: number;
-  totalReturnPct: number | null;
-  isCash: boolean;
-  pricingMode: AssetPricingMode;
-}
-
 /**
- * Valoração direta da posição consolidada (Fase 36 — O(1) sem ledger transacional).
+ * Valoração direta da posição consolidada (Fase 36 & Fase 63 — O(1) sem ledger transacional).
  */
 export function calculatePositionSummary(params: {
   quantity: number;
@@ -299,6 +310,9 @@ export function calculatePositionSummary(params: {
   notes?: string | null;
   pricingMode?: AssetPricingMode;
   totalDividends?: number;
+  fixedIncomeMetadata?: FixedIncomeMetadata | null;
+  today?: string;
+  annualCdiRate?: number;
 }): ConsolidatedPositionSummary {
   const {
     quantity,
@@ -311,6 +325,9 @@ export function calculatePositionSummary(params: {
     notes,
     pricingMode: explicitPricingMode,
     totalDividends = 0,
+    fixedIncomeMetadata,
+    today,
+    annualCdiRate,
   } = params;
 
   const effectivePricingMode =
@@ -347,8 +364,6 @@ export function calculatePositionSummary(params: {
 
   if (effectivePricingMode === "total_value") {
     // Modo Valor Completo (Renda Fixa / Tesouro Direto):
-    // Se o ativo possui quantity > 1 e averagePrice > 0 (acumulado pós-ordem), o custo total acumulado é quantity * averagePrice.
-    // Caso quantity seja 1 ou 0, initialCost é averagePrice (ou quantity se averagePrice for 0).
     const initialCost =
       quantity > 1 && averagePrice > 0
         ? Math.round(quantity * averagePrice * 100) / 100
@@ -357,11 +372,55 @@ export function calculatePositionSummary(params: {
           : quantity > 0
             ? quantity
             : averagePrice;
-    const currentPrice = resolvedPrice.price > 0 ? resolvedPrice.price : initialCost;
 
     const totalCost = Math.round(initialCost * rate * 100) / 100;
     const totalCostBRL = totalCost;
     const averagePriceBRL = totalCost;
+
+    // Se possui parametrização Marco Zero (Fase 63), calcula a evolução contábil diária
+    if (fixedIncomeMetadata) {
+      const fiResult = calculateFixedIncomeBalance({
+        baseValue: initialCost,
+        baseDate: fixedIncomeMetadata.base_date,
+        initialInvestmentDate: fixedIncomeMetadata.initial_investment_date,
+        maturityDate: fixedIncomeMetadata.maturity_date,
+        rateType: fixedIncomeMetadata.rate_type,
+        rateValue: fixedIncomeMetadata.rate_value,
+        isTaxExempt: fixedIncomeMetadata.is_tax_exempt,
+        totalCost,
+        annualCdiRate,
+        today,
+      });
+
+      const pnl = positionPnl(fiResult.grossValue, totalCostBRL, totalDividends);
+
+      return {
+        quantity: 1,
+        averagePrice: initialCost,
+        totalCost,
+        totalCostBRL,
+        averagePriceBRL,
+        priceQuote: fiResult.grossValue,
+        priceBRL: fiResult.grossValue,
+        valueBRL: fiResult.grossValue,
+        netValueBRL: fiResult.netValue,
+        taxAmountBRL: fiResult.taxAmount,
+        taxRatePct: fiResult.taxRatePct,
+        isMatured: fiResult.isMatured,
+        maturityDate: fixedIncomeMetadata.maturity_date,
+        fixedIncomeResult: fiResult,
+        source: "api",
+        unrealizedPnl: pnl.unrealizedPnl,
+        unrealizedPct: pnl.unrealizedPct,
+        totalDividends: pnl.totalDividends,
+        totalReturnPnl: pnl.totalReturnPnl,
+        totalReturnPct: pnl.totalReturnPct,
+        isCash: false,
+        pricingMode: "total_value",
+      };
+    }
+
+    const currentPrice = resolvedPrice.price > 0 ? resolvedPrice.price : initialCost;
     const priceBRL = Math.round(currentPrice * rate * 100) / 100;
     const valueBRL = priceBRL;
     const pnl = positionPnl(valueBRL, totalCostBRL, totalDividends);
