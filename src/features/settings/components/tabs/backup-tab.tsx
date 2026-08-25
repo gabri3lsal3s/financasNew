@@ -10,7 +10,6 @@ import { ExportDataHub } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { useTheme } from "@/app/theme-provider";
-import { setDensity } from "@/hooks/use-density";
 import { downloadCsv, downloadJson } from "@/services/export-actions";
 import { todayLocalIso } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
@@ -202,9 +201,7 @@ export function BackupTab() {
   const handleResetVisuals = () => {
     visual.resetToDefaults();
     setThemePref("system");
-    setDensity("comfortable");
     updateCustomSettingsMutation.mutate({
-      density: "comfortable",
       surfaceStyle: "glass",
       motionLevel: "fluid",
       soundEnabled: false,

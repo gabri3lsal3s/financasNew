@@ -3,7 +3,6 @@ import { resetAppState } from "./auth-cleanup";
 import { QueryClient } from "@tanstack/react-query";
 import { setPrivacyMasked, getPrivacyMasked } from "@/hooks/use-privacy-mask";
 import { updateVisualCustomization, getVisualCustomization } from "@/hooks/use-visual-customization";
-import { setDensity, getDensity } from "@/hooks/use-density";
 import { getActiveUserId, setActiveUserId, setUserStorageItem } from "@/services/user-storage";
 
 describe("auth-cleanup", () => {
@@ -28,9 +27,6 @@ describe("auth-cleanup", () => {
     expect(document.documentElement.getAttribute("data-surface-style")).toBe("flat");
     expect(document.documentElement.getAttribute("data-motion")).toBe("reduced");
 
-    setDensity("compact");
-    expect(getDensity()).toBe("compact");
-
     // Executa reset completo (ex: logout com nextUserId = null)
     resetAppState(queryClient, null);
 
@@ -53,32 +49,24 @@ describe("auth-cleanup", () => {
     expect(document.documentElement.getAttribute("data-accent")).toBeNull();
     expect(document.documentElement.getAttribute("data-surface-style")).toBeNull();
     expect(document.documentElement.getAttribute("data-motion")).toBeNull();
-
-    // 5. Density resetada
-    expect(getDensity()).toBe("comfortable");
   });
 
   it("ao transicionar para novo usuário, carrega configurações isoladas do novo usuário", () => {
     // Configura usuário A
     setActiveUserId("user-a");
-    setUserStorageItem("density", "compact", "user-a");
     setUserStorageItem("accent_theme", "gold", "user-a");
 
     // Configura usuário B
-    setUserStorageItem("density", "comfortable", "user-b");
     setUserStorageItem("accent_theme", "violet", "user-b");
 
     // Estado ativo inicial: Usuário A
-    setDensity("compact", "user-a");
     updateVisualCustomization({ accent: "gold" }, "user-a");
-    expect(getDensity()).toBe("compact");
     expect(getVisualCustomization().accent).toBe("gold");
 
     // Transiciona diretamente para Usuário B
     resetAppState(undefined, "user-b");
 
     expect(getActiveUserId()).toBe("user-b");
-    expect(getDensity()).toBe("comfortable");
     expect(getVisualCustomization().accent).toBe("violet");
     expect(document.documentElement.getAttribute("data-accent")).toBe("violet");
   });

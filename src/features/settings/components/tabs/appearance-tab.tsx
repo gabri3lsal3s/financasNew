@@ -21,7 +21,6 @@ import {
 } from "@/components/ui";
 import { useTheme } from "@/app/theme-provider";
 import type { ThemePreference } from "@/app/theme-provider";
-import { useDensity, setDensity } from "@/hooks/use-density";
 import { usePrivacyMask, togglePrivacyMask } from "@/hooks/use-privacy-mask";
 import {
   useVisualCustomization,
@@ -65,7 +64,6 @@ const MOTION_OPTIONS: { id: MotionLevel; label: string; desc: string }[] = [
 
 export function AppearanceTab() {
   const { preference: themePref, setPreference: setThemePref } = useTheme();
-  const density = useDensity();
   const privacyMasked = usePrivacyMask();
   const visual = useVisualCustomization();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
@@ -97,17 +95,6 @@ export function AppearanceTab() {
     pushToast({
       title: "Preferências salvas",
       description: `Estilo de superfícies alterado para ${label}.`,
-      duration: 2200,
-    });
-  };
-
-  const handleSelectDensity = (densityVal: "comfortable" | "compact", label: string) => {
-    triggerSensory("selection");
-    setDensity(densityVal);
-    updateCustomSettingsMutation.mutate({ density: densityVal });
-    pushToast({
-      title: "Preferências salvas",
-      description: `Densidade da interface alterada para ${label}.`,
       duration: 2200,
     });
   };
@@ -276,52 +263,6 @@ export function AppearanceTab() {
               );
             })}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Densidade Visual */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Sliders className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>Densidade da Interface</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col sm:flex-row gap-3">
-          <button
-            type="button"
-            onClick={() => handleSelectDensity("comfortable", "Confortável")}
-            className={`flex-1 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-              density === "comfortable"
-                ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
-                : "border-border bg-surface hover:bg-surface-hover"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-semibold text-sm text-foreground">Confortável (Padrão)</span>
-              {density === "comfortable" && <Check className="size-4 text-primary-strong" />}
-            </div>
-            <span className="text-xs text-muted-foreground">
-              Espaçamento relaxado, botões mais amplos e excelente legibilidade.
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectDensity("compact", "Compacta")}
-            className={`flex-1 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-              density === "compact"
-                ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
-                : "border-border bg-surface hover:bg-surface-hover"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-semibold text-sm text-foreground">Compacta</span>
-              {density === "compact" && <Check className="size-4 text-primary-strong" />}
-            </div>
-            <span className="text-xs text-muted-foreground">
-              Maior quantidade de informações e lançamentos visíveis por tela.
-            </span>
-          </button>
         </CardContent>
       </Card>
 

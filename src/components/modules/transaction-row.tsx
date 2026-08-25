@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
-import { useDensity } from "@/hooks/use-density";
 
 export interface TransactionRowProps {
   title: string;
@@ -51,8 +50,6 @@ export function TransactionRow({
   className,
 }: TransactionRowProps) {
   const masked = usePrivacyMask();
-  const density = useDensity();
-  const compact = density === "compact";
 
   const effectiveWeightedCents =
     weightedAmountCents !== undefined
@@ -68,9 +65,8 @@ export function TransactionRow({
   const content = (
     <div
       className={cn(
-        // Superfície consistente (F12): toda linha é um card de superfície
-        "flex w-full items-center gap-3 rounded-xl bg-surface px-2 transition-colors",
-        compact ? "py-1.5" : "py-2.5",
+        // Superfície consistente: densidade universal equilibrada (py-2.5 sm:py-2)
+        "flex w-full items-center gap-3 rounded-xl bg-surface px-2 py-2.5 sm:py-2 transition-colors",
         onClick && "cursor-pointer hover:bg-surface-hover",
         className,
       )}

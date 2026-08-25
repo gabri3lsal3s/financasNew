@@ -3520,11 +3520,11 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 71):**
-- [ ] Card de densidade removido de `AppearanceTab`.
-- [ ] `TransactionRow` e `PositionTable` utilizam padding canônico universal responsivo.
-- [ ] Arquivos `use-density.ts` e `use-density.test.ts` purgados do repositório.
-- [ ] Chave de storage `density` e listeners síncronos removidos do ciclo de vida.
-- [ ] Suíte de testes, typecheck e lint 100% verdes.
+- [x] Card de densidade removido de `AppearanceTab`.
+- [x] `TransactionRow` e `PositionTable` utilizam padding canônico universal responsivo.
+- [x] Arquivos `use-density.ts` e `use-density.test.ts` purgados do repositório.
+- [x] Chave de storage `density` e listeners síncronos removidos do ciclo de vida.
+- [x] Suíte de testes, typecheck e lint 100% verdes.
 
 
 

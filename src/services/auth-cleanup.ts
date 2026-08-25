@@ -1,7 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { setActiveUserId, sanitizeLegacyStorage } from "@/services/user-storage";
 import { resetVisualCustomization } from "@/hooks/use-visual-customization";
-import { resetDensity } from "@/hooks/use-density";
 import { resetPrivacyMask } from "@/hooks/use-privacy-mask";
 import { resetEnsuredProfiles } from "@/hooks/use-auth";
 import { setObservabilityUser } from "@/services/observability";
@@ -24,7 +23,6 @@ export function resetAppState(queryClient?: QueryClient, nextUserId: string | nu
 
   // 4. Reseta as stores em memória e atributos DOM
   resetVisualCustomization(nextUserId);
-  resetDensity(nextUserId);
   resetPrivacyMask();
   resetEnsuredProfiles();
 

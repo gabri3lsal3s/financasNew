@@ -23,7 +23,6 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { calculateYieldOnCost } from "@/domain/portfolio";
 import type { AssetPricingMode, PriceSource } from "@/domain/portfolio";
-import { useDensity } from "@/hooks/use-density";
 import { cn } from "@/lib/utils";
 import { formatSignedPct } from "@/services/masks/percent";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -234,7 +233,6 @@ export function PositionTable({
   emptyMessage,
   sortable = false,
 }: PositionTableProps) {
-  const density = useDensity();
   const containerRef = useRef<HTMLDivElement>(null);
   const [sort, setSort] = useState<SortState | null>(null);
   const [search, setSearch] = useState("");
@@ -832,10 +830,9 @@ export function PositionTable({
             : undefined
         }
         className={cn(
-          "flex items-center gap-3 border-b border-border/60 px-4 transition-colors last:border-b-0",
+          "flex items-center gap-3 border-b border-border/60 px-4 py-2.5 sm:py-2 transition-colors last:border-b-0",
           isClickable &&
             "cursor-pointer hover:bg-muted/60 active:bg-muted/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
-          density === "compact" ? "py-2" : "py-3.5",
         )}
       >
         {columns.map((col) => (
