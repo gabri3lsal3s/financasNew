@@ -8,7 +8,8 @@ export { useFeatureFlag } from "./use-feature-flag";
 export { useHighlightTarget } from "./use-highlight-target";
 export { useMinimumLoading } from "./use-minimum-loading";
 export { usePrivacyMask } from "./use-privacy-mask";
-export { usePwaInstall } from "./use-pwa-install";
+export { usePWAInstall, usePWAInstall as usePwaInstall } from "./use-pwa-install";
+
 export { useRoutePrefetch } from "./use-route-prefetch";
 export { useSidebarState } from "./use-sidebar-state";
 export { useSignOut } from "./use-sign-out";

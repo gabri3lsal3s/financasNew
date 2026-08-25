@@ -37,11 +37,41 @@ import {
   useUserAccess,
   useCategories,
   useCreditCards,
-  useCardPayments,
 } from "@/state";
+
 
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+
+interface BackupExpenseItem {
+  date: string;
+  description?: string | null;
+  category_id: string;
+  value: number;
+  report_weight?: number | null;
+  payment_method: "cash" | "debit" | "credit_card" | "pix" | "transfer" | "other";
+  card_id?: string | null;
+  installment_number?: number | null;
+  installments_total?: number | null;
+}
+
+interface BackupIncomeItem {
+  date: string;
+  description?: string | null;
+  category_id: string;
+  value: number;
+  report_weight?: number | null;
+  receive_type: "cash" | "pix" | "transfer" | "other";
+}
+
+interface BackupCardPaymentItem {
+  competence_month: string;
+  card_id: string;
+  amount: number;
+  date: string;
+  note?: string | null;
+  is_refund?: boolean;
+}
 
 export function BackupTab() {
   const visual = useVisualCustomization();
@@ -54,7 +84,6 @@ export function BackupTab() {
 
   const categoriesQuery = useCategories();
   const creditCardsQuery = useCreditCards();
-  const cardPaymentsQuery = useCardPayments();
 
   const handleExportJson = async (): Promise<void> => {
     const { data: payload } = await exportDataQuery.refetch();
@@ -73,12 +102,13 @@ export function BackupTab() {
     const categoryName = new Map(categories.map((c) => [c.id, c.name]));
     const cardName = new Map(cards.map((c) => [c.id, c.name]));
 
+    const { data: payload } = await exportDataQuery.refetch();
+
     if (kind === "expenses") {
-      const { data: rows } = await exportDataQuery.refetch();
-      const expenseRows = (rows?.expenses ?? []).filter(
+      const expenses = ((payload?.data.expenses ?? []) as unknown as BackupExpenseItem[]).filter(
         (e) => e.date >= range.start && e.date < range.end,
       );
-      const csvRows: ExportExpenseRow[] = expenseRows.map((e) => ({
+      const csvRows: ExportExpenseRow[] = expenses.map((e) => ({
         date: e.date,
         description: e.description ?? "",
         categoryName: categoryName.get(e.category_id) ?? "Sem categoria",
@@ -93,11 +123,10 @@ export function BackupTab() {
     }
 
     if (kind === "incomes") {
-      const { data: rows } = await exportDataQuery.refetch();
-      const incomeRows = (rows?.incomes ?? []).filter(
+      const incomes = ((payload?.data.incomes ?? []) as unknown as BackupIncomeItem[]).filter(
         (i) => i.date >= range.start && i.date < range.end,
       );
-      const csvRows: ExportIncomeRow[] = incomeRows.map((i) => ({
+      const csvRows: ExportIncomeRow[] = incomes.map((i) => ({
         date: i.date,
         description: i.description ?? "",
         categoryName: categoryName.get(i.category_id) ?? "Sem categoria",
@@ -110,20 +139,21 @@ export function BackupTab() {
     }
 
     if (kind === "invoices") {
-      const payments = cardPaymentsQuery.data ?? [];
-      const csvRows: ExportInvoiceRow[] = payments
-        .filter((p) => p.date >= range.start && p.date < range.end)
-        .map((p) => ({
-          competenceMonth: p.competence_month,
-          cardName: cardName.get(p.card_id) ?? "Cartão removido",
-          amountCents: numberToCents(p.amount),
-          date: p.date,
-          note: p.note,
-          isRefund: p.is_refund,
-        }));
+      const payments = ((payload?.data.card_payments ?? []) as unknown as BackupCardPaymentItem[]).filter(
+        (p) => p.date >= range.start && p.date < range.end,
+      );
+      const csvRows: ExportInvoiceRow[] = payments.map((p) => ({
+        competenceMonth: p.competence_month,
+        cardName: cardName.get(p.card_id) ?? "Cartão removido",
+        amountCents: numberToCents(p.amount),
+        date: p.date,
+        note: p.note ?? null,
+        isRefund: Boolean(p.is_refund),
+      }));
       downloadCsv(`faturas_${stamp}.csv`, serializeInvoicesCsv(csvRows));
       return;
     }
+
 
     const csvRows: ExportPositionRow[] = portfolioPosition.rows.map((r) => ({
       ticker: r.ticker,

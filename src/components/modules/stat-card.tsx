@@ -105,8 +105,8 @@ export function StatCard({
                   cents={value}
                   currency={currency}
                   animated={animated}
-                  size="inherit"
                 />
+
               ) : animated ? (
                 <NumberTicker value={value} />
               ) : (

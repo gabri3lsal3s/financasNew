@@ -27,29 +27,34 @@ function createWrapper() {
 
 const emptyBackupPayload: BackupPayload = {
   version: 1,
+  app: "Finanças Pessoais",
   exportedAt: "2026-08-25T10:00:00.000Z",
-  tables: {
-    profiles: [],
+  data: {
     categories: [],
     credit_cards: [],
-    expenses: [],
+    card_competence_overrides: [],
     incomes: [],
-    recurrences: [],
+    expenses: [],
+    card_payments: [],
     debts: [],
     budgets: [],
     income_goals: [],
+    insight_feedback: [],
+    reminder_states: [],
     portfolio_assets: [],
     portfolio_transactions: [],
+    portfolio_snapshots: [],
     portfolio_contributions: [],
     portfolio_dividends: [],
-    portfolio_snapshots: [],
-    user_preferences: [],
-    card_bill_refinances: [],
-    loan_contracts: [],
-    allocation_presets: [],
+    allocation_targets: [],
+    class_targets: [],
+    sector_targets: [],
+    asset_prices: [],
     cash_checkpoints: [],
+    user_preferences: [],
   },
 };
+
 
 describe("useRestoreBackup", () => {
   beforeEach(() => {
