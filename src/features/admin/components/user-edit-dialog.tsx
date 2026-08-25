@@ -18,8 +18,9 @@ import {
   useUserAccess,
   useUserOverrides,
 } from "@/state";
-import type { AdminUserRow } from "@/data/rpc";
-import type { UserFeatureOverride, UserRole, UserStatus } from "@/types";
+import type { AdminUserRow, UserFeatureOverride, UserRole, UserStatus } from "@/types";
+
+
 
 export interface UserEditDialogProps {
   user: AdminUserRow | null;

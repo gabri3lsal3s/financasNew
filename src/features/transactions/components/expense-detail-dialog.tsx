@@ -18,14 +18,17 @@ import {
   useUpdateExpenseGrouped,
   useUpdateRecurrenceOccurrences,
 } from "@/state";
-import type { RecurrenceGroupFields } from "@/data/rpc";
+
+import type { Category, ChargeKind, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod, RecurrenceGroupFields } from "@/types";
+
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
 import { todayISO } from "@/domain/debts";
 import { CHARGE_KIND_LABELS } from "@/domain/charges";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
-import type { Category, ChargeKind, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod } from "@/types";
+
+
 
 export interface ExpenseDetailDialogProps {
   expense: Expense | null;

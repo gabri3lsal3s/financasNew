@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { CalendarDays, Sparkles, Trash2, TrendingUp } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonTable, Tabs } from "@/components/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, Tabs } from "@/components/ui";
+
+
 import { MonthPicker, SnowballActionCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -219,15 +221,9 @@ export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
       </div>
 
       {error ? (
-        <Alert variant="error">
-          <div className="flex w-full items-center justify-between gap-3">
-            <span>{getErrorMessage(error)}</span>
-            <Button type="button" size="sm" variant="outline" onClick={() => dividendsQuery.refetch()}>
-              Tentar novamente
-            </Button>
-          </div>
-        </Alert>
+        <ErrorState message={getErrorMessage(error)} onRetry={() => dividendsQuery.refetch()} />
       ) : null}
+
 
       {loading ? (
         <div aria-hidden="true">

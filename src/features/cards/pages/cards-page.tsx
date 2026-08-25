@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, MoneyText, Skeleton } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
+
+
 import {
   CardInvoicePrintView,
   CreditCardWallet,
@@ -259,8 +261,16 @@ export function CardsPage() {
         </div>
       ) : null}
 
-      {loading ? (
+      {cardsQuery.isError || expensesQuery.isError || paymentsQuery.isError ? (
+        <ErrorState
+          message={getErrorMessage(cardsQuery.error || expensesQuery.error || paymentsQuery.error)}
+          onRetry={() => {
+            void Promise.all([cardsQuery.refetch(), expensesQuery.refetch(), paymentsQuery.refetch()]);
+          }}
+        />
+      ) : loading ? (
         <div className="flex flex-col gap-4">
+
           <Skeleton className="h-64 w-full rounded-2xl max-w-[440px] mx-auto" />
           <Skeleton className="h-12 w-full rounded-xl" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

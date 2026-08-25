@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { Calculator, Sparkles, Upload } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, MoneyInput, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
+
 import { AporteResult, type AporteRouteRow } from "@/components/modules";
 import {
   inferSectorFromTicker,
@@ -213,7 +214,17 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
               <SkeletonChart />
             </div>
           ) : error ? (
-            <Alert variant="error">{getErrorMessage(error)}</Alert>
+            <ErrorState
+              message={getErrorMessage(error)}
+              onRetry={() => {
+                position.refetch();
+                void targetsQuery.refetch();
+                void classTargetsQuery.refetch();
+                void sectorTargetsQuery.refetch();
+              }}
+            />
+
+
           ) : nonCashRows.length === 0 ? (
             <EmptyState
               icon={<Calculator className="size-6" />}

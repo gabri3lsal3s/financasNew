@@ -547,3 +547,52 @@ export type DbInsert<T> = Omit<T, "id" | "created_at" | "updated_at"> & {
   updated_at?: string;
 };
 export type DbUpdate<T> = Partial<DbInsert<T>>;
+
+export type AdminUserRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: string;
+  status: string;
+  created_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  suspended_reason: string | null;
+  total_count: number;
+};
+
+export type CreditCardForm = {
+  name: string;
+  brand: string | null;
+  credit_limit: number | null;
+  closing_day: number;
+  due_day: number;
+  color: string | null;
+  is_active: boolean;
+};
+
+export type AllocationTargetInput = {
+  assetId: string;
+  /** 0–100. */
+  target: number;
+};
+
+export type RecurrenceGroupFields = {
+  value?: number | null;
+  category_id?: string | null;
+  description?: string | null;
+  report_weight?: number | null;
+  payment_method?: string | null;
+  card_id?: string | null;
+  receive_type?: string | null;
+  bill_competence?: string | null;
+};
+
+export type InstallmentInput = {
+  date: string;
+  value: number;
+  /** Competência de fatura (snapshot) quando cartão — calculada no cliente. */
+  billCompetence?: string | null;
+};
+
+

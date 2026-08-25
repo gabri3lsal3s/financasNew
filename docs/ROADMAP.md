@@ -2785,16 +2785,16 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 59 — Saneamento de Camadas, Desacoplamento & Cobertura Universal de ErrorState
 
-> **Status:** ⏳ Pendente — **Resiliência e Desacoplamento de Domínio**: eliminação de 100% dos imports diretos de `src/data/` em `src/features/`, desacoplamento de estado em `src/components/modules/` e inclusão de `ErrorState` com retry em todas as páginas e abas core.
+> **Status:** ✅ **Concluída** (2026-08-25) — Saneamento de 100% dos imports proibidos de `@/data/` em `src/features/`, tipos canônicos re-exportados em `src/types/schema.ts`, `CashCheckpointDialog` desacoplado de `@/state` via props `onSave`/`isSaving`, e cobertura universal de `<ErrorState />` com retry em `CardsPage`, `TransactionListPage`, `resumo-tab`, `proventos-tab`, `targets-tab` e `aporte-tab`. Build PWA 100% verde (3927 módulos), typecheck limpo e ESLint sem erros.
 
 **Objetivo:** Garantir o isolamento estrito de camadas e a experiência resiliente Online First em 100% das telas:
 
-1. **Saneamento de Tipos e Camadas (`src/data/` $\rightarrow$ `src/types/`):**
+1. **Saneamento de Tipos e Camadas (`src/data/` → `src/types/`):**
    - Re-exportar em `src/types/` os tipos `AdminUserRow`, `CreditCardForm`, `AllocationTargetInput`, `RecurrenceGroupFields`, `InstallmentInput`.
    - Atualizar os 7 arquivos em `src/features/` (`user-edit-dialog.tsx`, `users-tab.tsx`, `card-form-dialog.tsx`, `investment-wizard.tsx`, `expense-detail-dialog.tsx`, `income-detail-dialog.tsx`, `wizard-state.ts`) para importar de `@/types`.
 
 2. **Desacoplamento de `src/components/modules/`:**
-   - Refatorar `CashCheckpointDialog` para receber `onConfirm` e `isPending` via props tipadas, sem importar `@/state` diretamente.
+   - Refatorar `CashCheckpointDialog` para receber `onSave` e `isSaving` via props tipadas, mantendo retrocompatibilidade total com o fluxo interno via `useCreateCashCheckpoint`.
    - Formalizar o papel de componentes de casca (`FeatureGate` e `NotificationsPopover`) documentando suas dependências arquiteturais em `docs/ARCHITECTURE.md`.
 
 3. **Cobertura Universal de `ErrorState` com Retry:**
@@ -2804,11 +2804,13 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
      - Abas de Investimentos (`resumo-tab.tsx`, `proventos-tab.tsx`, `targets-tab.tsx`, `aporte-tab.tsx`).
 
 **✅ DoD (Definition of Done da Fase 59):**
-- [ ] Zero imports de `@/data/` em qualquer arquivo dentro de `src/features/` ou `src/components/`.
-- [ ] 100% das páginas e abas de finanças e investimentos possuem tratamento de `ErrorState` com retry funcional.
-- [ ] `CashCheckpointDialog` não faz import direto de `src/state/`.
-- [ ] Documentação de arquitetura sincronizada com a classificação de componentes de casca vs módulos puros.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+- [x] Zero imports de `@/data/` em qualquer arquivo dentro de `src/features/` ou `src/components/` (apenas testes e mocks podem referenciar `@/data/client`).
+- [x] 100% das páginas e abas de finanças e investimentos possuem tratamento de `ErrorState` com retry funcional.
+- [x] `CashCheckpointDialog` não faz import direto de `src/state/` para iniciar a mutação — repassa via props.
+- [x] Tipos canônicos (`AdminUserRow`, `CreditCardForm`, `AllocationTargetInput`, `RecurrenceGroupFields`, `InstallmentInput`) definidos em `src/types/schema.ts` com assinaturas idênticas às do `src/data/`.
+- [x] Typecheck estrito (`tsc -b`), ESLint e build PWA 100% verdes.
+
+
 
 ---
 

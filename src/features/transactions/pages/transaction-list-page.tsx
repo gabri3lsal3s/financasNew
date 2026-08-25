@@ -1,10 +1,12 @@
 import { useSearchParams } from "react-router";
 import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, FileSpreadsheet, Plus, Repeat, Zap } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { MoneyText } from "@/components/ui/money-text";
+
 import { SkeletonList } from "@/components/ui/skeleton";
 import { VirtualList } from "@/components/ui/virtual-list";
 import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
@@ -225,18 +227,12 @@ export function TransactionListPage() {
       </div>
 
       {error ? (
-        <div className="flex flex-col gap-3">
-          <Alert variant="error">{getErrorMessage(error)}</Alert>
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => void Promise.all([expensesQuery.refetch(), incomesQuery.refetch(), categoriesQuery.refetch()])}
-            >
-              Tentar novamente
-            </Button>
-          </div>
-        </div>
+        <ErrorState
+          message={getErrorMessage(error)}
+          onRetry={() => void Promise.all([expensesQuery.refetch(), incomesQuery.refetch(), categoriesQuery.refetch(), recurrencesQuery.refetch()])}
+        />
       ) : loading ? (
+
         <div className="flex flex-col gap-2">
           <SkeletonList rows={4} />
         </div>

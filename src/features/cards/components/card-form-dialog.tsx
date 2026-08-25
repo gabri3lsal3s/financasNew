@@ -3,8 +3,8 @@ import { Trash2 } from "lucide-react";
 import { Alert, Button, Checkbox, ColorPicker, ConfirmDialog, Input, Modal, MoneyInput, NumberStepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCard, useDeleteCard, useUpdateCard } from "@/state";
-import type { CreditCard } from "@/types";
-import type { CreditCardForm } from "@/data/repositories/credit-cards";
+import type { CreditCard, CreditCardForm } from "@/types";
+
 
 export interface CardFormDialogProps {
   /** Cartão em edição; `null` = criação. */

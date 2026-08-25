@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Search, Settings2, Shield } from "lucide-react";
 import { Button, EmptyState, Input, Select, Skeleton } from "@/components/ui";
-
 import { ROLE_LABELS, STATUS_LABELS } from "@/domain/admin";
 import { useAdminUsers } from "@/state";
 import { UserEditDialog } from "../components";
-import type { AdminUserRow } from "@/data/rpc";
+import type { AdminUserRow } from "@/types";
+
+
+
+
 
 export function UsersTab() {
   const [search, setSearch] = useState("");

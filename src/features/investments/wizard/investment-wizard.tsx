@@ -15,8 +15,9 @@ import {
   useSaveAllocationTargets,
   useSetManualPrice,
 } from "@/state";
-import type { PortfolioAsset } from "@/types";
-import type { AllocationTargetInput } from "@/data/repositories/allocation-targets";
+import type { AllocationTargetInput, PortfolioAsset } from "@/types";
+
+
 import { StepNewPosition } from "./step-new-position";
 import { StepOrder } from "./step-order";
 import { StepReview } from "./step-review";

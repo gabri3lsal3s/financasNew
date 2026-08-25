@@ -13,35 +13,49 @@ export interface CashCheckpointDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentBalanceCents?: number;
+  onSave?: (data: { date: string; balance_cents: number; notes: string | null }) => Promise<void> | void;
+  isSaving?: boolean;
 }
 
 interface CashCheckpointFormProps {
   onOpenChange: (open: boolean) => void;
   initialBalanceCents: number;
+  onSave?: (data: { date: string; balance_cents: number; notes: string | null }) => Promise<void> | void;
+  isSaving?: boolean;
 }
 
 function CashCheckpointForm({
   onOpenChange,
   initialBalanceCents,
+  onSave,
+  isSaving,
 }: CashCheckpointFormProps) {
   const [balanceCents, setBalanceCents] = useState<number>(initialBalanceCents);
   const [date, setDate] = useState<string>(todayISO());
   const [notes, setNotes] = useState<string>("");
 
   const createMutation = useCreateCashCheckpoint();
+  const isPending = isSaving ?? createMutation.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     triggerHaptic("light");
 
-    await createMutation.mutateAsync({
+    const payload = {
       date,
       balance_cents: balanceCents,
       notes: notes.trim() || null,
-    });
+    };
+
+    if (onSave) {
+      await onSave(payload);
+    } else {
+      await createMutation.mutateAsync(payload);
+    }
 
     onOpenChange(false);
   };
+
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
@@ -89,18 +103,18 @@ function CashCheckpointForm({
           type="button"
           variant="outline"
           onClick={() => onOpenChange(false)}
-          disabled={createMutation.isPending}
+          disabled={isPending}
         >
           Cancelar
         </Button>
         <Button
           type="submit"
           variant="default"
-          disabled={createMutation.isPending}
+          disabled={isPending}
           className="gap-1.5"
         >
           <Check className="size-4" aria-hidden="true" />
-          {createMutation.isPending ? "Salvando..." : "Salvar Saldo Real"}
+          {isPending ? "Salvando..." : "Salvar Saldo Real"}
         </Button>
       </div>
     </form>
@@ -111,6 +125,8 @@ export function CashCheckpointDialog({
   open,
   onOpenChange,
   currentBalanceCents = 0,
+  onSave,
+  isSaving,
 }: CashCheckpointDialogProps) {
   return (
     <Modal
@@ -124,8 +140,11 @@ export function CashCheckpointDialog({
         <CashCheckpointForm
           onOpenChange={onOpenChange}
           initialBalanceCents={currentBalanceCents}
+          onSave={onSave}
+          isSaving={isSaving}
         />
       ) : null}
     </Modal>
   );
 }
+

@@ -18,12 +18,15 @@ import {
   useUpdateIncomeGrouped,
   useUpdateRecurrenceOccurrences,
 } from "@/state";
-import type { RecurrenceGroupFields } from "@/data/rpc";
+
+import type { Category, DbInsert, Income, InstallmentDeleteMode, ReceiveType, RecurrenceGroupFields } from "@/types";
+
 import { RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { todayISO } from "@/domain/debts";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
 import { ReportWeightField } from "./report-weight-field";
-import type { Category, DbInsert, Income, InstallmentDeleteMode, ReceiveType } from "@/types";
+
+
 
 const RECEIVE_OPTIONS = Object.entries(RECEIVE_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 

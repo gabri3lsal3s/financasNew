@@ -8,7 +8,9 @@ import {
   Shield,
   TrendingUp,
 } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, SkeletonKpi } from "@/components/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonKpi } from "@/components/ui";
+
+
 import { CategoryDonut, CashKpiCard, KpiCard, PositionTable, AllocationDriftCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { calculateAllocationDrift, calculatePortfolioConcentration, inferSectorFromTicker, isCashAssetClass } from "@/domain/portfolio";
@@ -271,8 +273,9 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   return (
     <div className="flex flex-col gap-6">
       {position.error ? (
-        <Alert variant="error">{getErrorMessage(position.error)}</Alert>
+        <ErrorState message={getErrorMessage(position.error)} onRetry={position.refetch} />
       ) : null}
+
 
       {/* Grid de KPIs da Carteira — Saldo em Caixa ocupa 2 colunas à esquerda */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

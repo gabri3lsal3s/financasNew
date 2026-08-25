@@ -5,9 +5,9 @@
  */
 import { parcelar, toISODate } from "@/domain/money";
 import { resolveBillCompetence } from "@/domain/competence";
-import type { InstallmentInput } from "@/data/rpc";
 import type { RecurrenceFrequency, RecurrenceRule } from "@/domain/recurrences";
-import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
+import type { DebtType, InstallmentInput, PaymentMethod, ReceiveType } from "@/types";
+
 
 export type EntryType = "expense" | "income";
 

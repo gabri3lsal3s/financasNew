@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Equal, RotateCcw, Save, Scale, Trash2 } from "lucide-react";
-import { Alert, Button, EmptyState, NumberStepperInput, Progress, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
+import { Alert, Button, EmptyState, ErrorState, NumberStepperInput, Progress, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
+
 import { PresetSelectorBar, SavePresetDialog, TargetEditor } from "@/components/modules";
 import {
   SYSTEM_PRESET_TEMPLATES,
@@ -588,7 +589,20 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
 
   return (
     <div className="flex flex-col gap-6">
-      {loadError ? <Alert variant="error">{getErrorMessage(loadError)}</Alert> : null}
+      {loadError ? (
+        <ErrorState
+          message={getErrorMessage(loadError)}
+          onRetry={() => {
+            position.refetch();
+            void presetsQuery.refetch();
+            void targetsQuery.refetch();
+            void classTargetsQuery.refetch();
+            void sectorTargetsQuery.refetch();
+          }}
+        />
+
+      ) : null}
+
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       {/* Barra de Controle de Cenários / Presets */}
