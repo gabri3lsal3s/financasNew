@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { updateVisualCustomization } from "@/hooks/use-visual-customization";
 import { isHapticsSupported, triggerHaptic } from "./haptics";
 
 const vibrateMock = vi.fn();
@@ -49,6 +50,15 @@ describe("haptics (F8 — Decisão 3)", () => {
     stubVibrate();
 
     expect(triggerHaptic("light", false)).toBe(false);
+    expect(vibrateMock).not.toHaveBeenCalled();
+  });
+
+  it("não dispara quando a preferência global hapticEnabled é false", () => {
+    vibrateMock.mockReturnValue(true);
+    stubVibrate();
+    updateVisualCustomization({ hapticEnabled: false });
+
+    expect(triggerHaptic("light")).toBe(false);
     expect(vibrateMock).not.toHaveBeenCalled();
   });
 

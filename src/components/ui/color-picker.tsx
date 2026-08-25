@@ -3,6 +3,7 @@ import { useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Check, Droplet, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { triggerSensory } from "@/services/sensory";
 import { Input } from "./input";
 
 export interface ColorPickerProps {
@@ -152,6 +153,7 @@ export function ColorPicker({
                     aria-checked={selected}
                     aria-label={`Cor ${swatch}`}
                     onClick={() => {
+                      triggerSensory("selection");
                       onValueChange(swatch);
                     }}
                     className={cn(

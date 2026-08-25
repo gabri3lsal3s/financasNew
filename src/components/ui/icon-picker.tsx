@@ -3,6 +3,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { ChevronDown, Search } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { triggerSensory } from "@/services/sensory";
 import { Input } from "./input";
 
 export interface IconPickerOption {
@@ -108,6 +109,7 @@ export function IconPicker({
                       aria-label={option.label ?? option.value}
                       title={option.label ?? option.value}
                       onClick={() => {
+                        triggerSensory("selection");
                         onValueChange(option.value);
                       }}
                       className={cn(

@@ -1,6 +1,7 @@
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { triggerSensory } from "@/services/sensory";
 
 export interface CheckboxProps {
   checked: boolean;
@@ -21,7 +22,10 @@ export function Checkbox({ checked, onCheckedChange, disabled, label, id, classN
       <CheckboxPrimitive.Root
         id={inputId}
         checked={checked}
-        onCheckedChange={(state) => onCheckedChange(state === true)}
+        onCheckedChange={(state) => {
+          triggerSensory("toggle");
+          onCheckedChange(state === true);
+        }}
         disabled={disabled}
         aria-label={ariaLabel}
         className={cn(

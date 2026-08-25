@@ -31,11 +31,20 @@ export function isHapticsSupported(): boolean {
  * aceitou a vibração (ou ela foi suportada); `false` em ambiente sem suporte
  * ou quando desabilitada.
  */
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
+
 export function triggerHaptic(
   pattern: HapticPattern = "light",
-  enabled = true,
+  enabled?: boolean,
 ): boolean {
-  if (!enabled || !isHapticsSupported()) return false;
+  const isEnabled =
+    enabled !== undefined
+      ? enabled
+      : typeof window !== "undefined"
+        ? getVisualCustomization().hapticEnabled
+        : false;
+
+  if (!isEnabled || !isHapticsSupported()) return false;
   try {
     return navigator.vibrate(PATTERNS[pattern]);
   } catch {

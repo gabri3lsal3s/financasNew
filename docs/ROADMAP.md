@@ -3439,13 +3439,13 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 69):**
-- [ ] `triggerHaptic` não vibra quando `hapticEnabled = false`, mesmo se invocado diretamente.
-- [ ] Eliminação de 100% dos duplos disparos táteis (*double-haptic*) no app.
-- [ ] `Checkbox`, `IconPicker` e `ColorPicker` com feedback sensorial calibrado.
-- [ ] 100% de respeito à lista de intenções desativadas (`disabledSensoryIntents`).
-- [ ] Zero vibração em inputs de digitação (`MoneyInput`, `Input`, `Textarea`).
-- [ ] Regra nº 17 documentada em `AGENTS.md` e `DESIGN_SYSTEM.md`.
-- [ ] Suíte de testes, typecheck e lint 100% verdes.
+- [x] `triggerHaptic` não vibra quando `hapticEnabled = false`, mesmo se invocado diretamente.
+- [x] Eliminação de 100% dos duplos disparos táteis (*double-haptic*) no app.
+- [x] `Checkbox`, `IconPicker` e `ColorPicker` com feedback sensorial calibrado.
+- [x] 100% de respeito à lista de intenções desativadas (`disabledSensoryIntents`).
+- [x] Zero vibração em inputs de digitação (`MoneyInput`, `Input`, `Textarea`).
+- [x] Regra nº 17 documentada em `AGENTS.md` e `DESIGN_SYSTEM.md`.
+- [x] Suíte de testes, typecheck e lint 100% verdes.
 
 ---
 
