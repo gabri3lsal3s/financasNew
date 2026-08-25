@@ -250,7 +250,10 @@ export function BackupTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Restaurar Padrões Visuais</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <RotateCcw className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>Restaurar Padrões Visuais</span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl border border-border bg-surface gap-3">

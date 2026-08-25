@@ -140,12 +140,13 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 
 | Token | Light | Uso |
 |---|---|---|
+| `--shadow-xs` | `0 1px 2px rgb(0 0 0/5%)` | Micro-elevação padrão de cards e contêineres de dados |
 | `--shadow-sm` | `0 1px 2px rgb(0 0 0/4%)` | Cards em estado padrão, linhas elevadas |
 | `--shadow-md` | `0 2px 8px rgb(0 0 0/6%)` | Cards flutuantes, dropdowns |
 | `--shadow-lg` | `0 8px 24px rgb(0 0 0/10%)` | Modais, command palette (⌘K) |
 | `--shadow-kpi` | anel accent + glow suave | **KPI principal** por tela (1 no máx.) |
 
-**Regras:** elevação por sombra, nunca por cor escura; dark/oled dependem mais de bordas do que de sombras (alpha maior); o **glow de KPI** é reservado a um único número-chave por tela (ex.: saldo do mês) — nunca vários.
+**Regras:** elevação por sombra, nunca por cor escura; dark/oled dependem mais de bordas do que de sombras (alpha maior); o **glow de KPI** é reservado a um único número-chave por tela (ex.: saldo do mês) — nunca vários. No estilo *Flat*, 100% dos tokens de sombra (`--shadow-xs` a `--shadow-lg`) são zerados; no estilo *Elevated*, a dispersão é aumentada proporcionalmente.
 
 **OLED refinado (F5.2 + F10):** sobre o true black `#000`, bordas são a principal pista de elevação — `--border` ardósia `#1C2E3D` e `--input` 22% garantem definição sem acender pixels; hover/pressed mais perceptíveis (`8%`/`12%`); `--muted-foreground` 50% assegura AA (5.3:1) para texto secundário; `--overlay` 70% escurece o conteúdo atrás de modais sem perder o preto puro; scrollbar com polegar ardósia `22%` discreto. Acentos luminosos (teal vivo/ouro) dão o caráter "Órbitas Douradas".
 
@@ -358,7 +359,7 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 ### 14.1 Number Ticker (Transição Numérica Animada)
 - **Componente:** `src/components/ui/number-ticker.tsx` (primitivo).
 - **Comportamento:** Ao alternar de mês ou atualizar valores de KPIs, os dígitos realizam interpolação suave em ~300ms via `requestAnimationFrame` em vez de um salto brusco.
-- **Acessibilidade:** Mantém fonte mono (`IBM Plex Mono`) e `tabular-nums` com largura fixa; respeita estritamente `prefers-reduced-motion: reduce` (exibição imediata sem transição).
+- **Acessibilidade & Governança de Movimento:** Mantém fonte mono (`IBM Plex Mono`) e `tabular-nums` com largura fixa; respeita estritamente `prefers-reduced-motion: reduce`, o nível de movimento interno do app (`motionLevel === "reduced"`) e o toggle de preferência do usuário (`numberTickerEnabled: false`), exibindo o valor numérico final de forma imediata e estática sem acionar o loop de animação JS.
 
 ### 14.2 Feedback Sensorial Unificado (Sound & Haptic Feedback)
 - **Gateway Central:** `src/services/sensory.ts` (`triggerSensory`, `sensory.*`).
@@ -366,18 +367,19 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Áudio: `src/services/audio-fx.ts` (Sintetizador Web Audio API de 6 efeitos: `click`, `pop`, `success`, `delete`, `warning`, `error`).
   - Háptico: `src/services/haptics.ts` (`navigator.vibrate` com 6 padrões calibrados: `light`, `medium`, `success`, `warning`, `destructive`, `error`).
 - **Taxonomia de Intenções Semânticas:**
-  - `selection` → Toque suave (`light` / `click`) em tabs, datepickers, selects, toggles de filtro.
+  - `selection` → Toque suave (`light` / `click`) em tabs, datepickers, selects, radio groups, checkboxes, color/icon pickers e toggles de filtro.
   - `action` → Disparo de botões de comando primário/secundário e FAB (`light` / `click`).
-  - `toggle` → Alternância de switches e atalhos de exibição/privacidade (`light` / `pop`).
+  - `toggle` → Alternância de switches, checkboxes e atalhos de exibição/privacidade (`light` / `pop`).
   - `success` → Confirmações de persistência, criação e importação de lançamentos (`success` [12, 40, 24]ms / acorde harmônico `success`).
   - `warning` → Avisos e atenções (`warning` [30, 40, 30]ms / bitom `warning`).
   - `destructive` → Exclusões e operações destrutivas (`destructive` [40, 60, 40]ms / tom descendente `delete`).
   - `error` → Falhas de validação e impedimentos (`error` [50, 40, 50, 40]ms / tom dissonante `error`).
-- **Governança de Preferências e Acessibilidade:**
-  - Switches independentes nas Configurações: `soundEnabled` (padrão: `false`) e `hapticEnabled` (padrão: `true`).
-  - **Personalização Granular por Categoria:** O usuário pode ativar ou silenciar individualmente qualquer uma das 7 categorias (`disabledSensoryIntents`), personalizando a experiência tátil e auditiva com botões de pré-escuta/teste instantâneo na aba Sensorial.
+- **Governança de Preferências e Blindagem Absoluta:**
+  - **Respeito Incondicional:** `triggerHaptic` consulta `getVisualCustomization().hapticEnabled` por padrão — quando desligado pelo usuário, **nenhuma vibração é disparada no dispositivo**, mesmo se chamada de forma direta.
+  - **Zero Duplos Disparos (*Anti-Double-Haptic*):** O primitivo `<Button />` já dispara `triggerSensory("action" | "destructive")` internamente. É estritamente proibido adicionar chamadas manuais a `triggerHaptic` dentro de handlers `onClick` de botões.
+  - **Silêncio Estrito na Digitação:** Proibido emitir feedback tátil/sonoro durante a digitação em campos (`MoneyInput`, `Input`, `Textarea`), no scroll passivo ou no hover de desktop.
+  - **Personalização Granular:** O usuário pode ativar ou silenciar individualmente qualquer uma das 7 categorias (`disabledSensoryIntents`), personalizando a experiência tátil e auditiva com botões de pré-escuta/teste instantâneo na aba Sensorial.
   - Degradação graciosa: sem falhas em SSR, JSDOM ou navegadores/dispositivos sem suporte a `AudioContext` ou `navigator.vibrate`.
-  - Respeito a `prefers-reduced-motion` e governança centralizada sem chamadas soltas ou duplicadas nas telas.
 
 ### 14.3 Interação Direta de Linhas (Direct Click Interaction)
 - **Componente:** `src/components/modules/transaction-row.tsx`.
@@ -413,10 +415,17 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Assets:** Gerados a partir de `identidadeVisual/` em `public/brand/` (`logo.png`, `logo-192.png`, `logo-128.png`, `logo-64.png`, `logo-32.png`, `favicon-32.png`, `favicon-16.png`, `favicon.svg`, `logo-full.png`) e `public/pwa/icons/` (`icon-192.png`, `icon-512.png` com transparência icon-only `purpose: "any"`, `maskable-192.png`, `maskable-512.png` com fundo seguro `purpose: "maskable"`, `apple-touch-icon-180.png`, `favicon.ico`, `favicon.svg`).
 - **Padrão:** O `BrandLogo` renderiza o emblema oficial com antialiasing de alta resolução, suporte a modos símbolo único, marca horizontal e lockup completo com subtítulo ("Organização & Economia"), padronizado em Header mobile, Sidebar desktop, AuthShell, MoreMenu e PWA.
 
-### 14.11 Iconografia Sem Fundo ("Icon-Only") & Tokens Semânticos
-- **Diretriz Global:** Todos os ícones da aplicação seguem o padrão *icon-only* limpo, sem containers visuais decorativos atrás (sem classes `bg-primary/10`, `rounded-full`, `rounded-lg`, `p-2` ou sombras/bordas ao redor do ícone).
-- **Herança & Tokens Semânticos:** Ícones herdam a cor semântica do tema ativo (`text-primary`, `text-primary-strong`, `text-muted-foreground`, `text-positive-strong`, `text-critical-strong`, `text-portfolio`) ou cores diretas da categoria quando aplicável (`CategoryIcon`). Cores estáticas hardcoded (ex.: `text-blue-500`, `text-purple-600`) são expressamente proibidas.
-- **Dimensões & Stroke Padronizados:** Ícones utilizam tamanhos da escala (`size-3.5`, `size-4`, `size-5`, `size-6` em empty states) com stroke uniforme (`lucide-react`), garantindo coerência visual e alinhamento impecável em todos os módulos e dispositivos.
+### 14.11 Iconografia Sem Fundo ("Icon-Only") & Hierarquia Balanceada de Ícones em Cards
+- **Diretriz Global:** Todos os ícones da aplicação seguem o padrão *icon-only* limpo, sem containers visuais decorativos atrás (sem classes `bg-primary/10`, `rounded-full`, `rounded-lg`, `p-2` ou sombras/bordas ao redor do ícone). Contêineres de fundo (`size-7`/`size-8 rounded-lg bg-surface-hover`) são restritos exclusivamente a **botões com ação de clique direta** (ex.: fechar, editar inline, excluir).
+- **Matriz de Hierarquia Semântica (Prevenção de Fadiga de Acento):**
+  - **Informativo / Estrutural / Cabeçalhos (`CardTitle` / `CardHeader`):** Ícone em tom **neutro suave (`text-muted-foreground`)** no padrão *icon-only* (`size-4` / 16px). É expressamente proibido aplicar `text-primary` arbitrariamente em ícones descritivos estáticos para evitar sobrecarga e fadiga visual (*accent fatigue*).
+  - **Fluxo Financeiro Direto:** Cores semânticas exclusivas:
+    - *Receitas / Entradas / Saldo Positivo:* `text-positive-strong` (Teal / Verde);
+    - *Despesas / Saídas / Saldo Negativo:* `text-negative-strong` (Coral / Vermelho);
+    - *Investimentos / Carteira / Aportes:* `text-portfolio` (Sky / Azul Petróleo).
+  - **Risco & Atenção:** `text-warning-strong` (Atenção / Desvio) ou `text-critical-strong` (Atraso / Estouro).
+  - **Cor de Destaque (*Accent / Primary*):** Reservada estritamente para **interatividade ativa** (botões de comando/CTA, abas ativas, switches ligados, radio buttons selecionados e anel de foco `--ring`).
+- **Dimensões & Stroke Padronizados:** Ícones utilizam tamanhos da escala (`size-3.5`, `size-4`, `size-5`, `size-6` em empty states) com stroke uniforme (`lucide-react`) e `aria-hidden="true"`, garantindo coerência visual, contraste WCAG AA e alinhamento impecável em todos os módulos e dispositivos.
 
 ### 14.12 Micro-Interações "Obsidian Glass" & Indicadores Reativos de Ação
 - **Morphing Action Buttons (`InsightList`):** Em Assinaturas & Recorrências, a ação de ignorar ou confirmar é unificada em botões de ação que transmitem transição imediata de estado com micro-animação física (`animate-spring-pop`) e remoção de badges redundantes.
@@ -476,5 +485,23 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Ícones em Abas (Nível 1 vs Nível 2):**
   - **Nível 1 (`variant="underline"`):** Utilizam **ícones padronizados `lucide-react`** (`[&_svg]:size-3.5 sm:[&_svg]:size-4 shrink-0` com `aria-hidden="true"`), proporcionando reconhecimento visual imediato e refinamento estético em paridade entre todas as páginas.
   - **Nível 2 (`variant="pills"`):** **Sem ícones (apenas texto)**, mantendo os segmentos leves, compactos e livres de poluição visual.
+
+### 14.18 Badges Estruturados e Escala Dimensional (`size="xs" | "sm" | "md"`)
+- **Componente:** `src/components/ui/badge.tsx`.
+- **Catálogo de Escala Oficial:**
+  - `size="xs"` (10px): chips densos em tabelas, extratos e listas compactas (`px-1.5 py-0 text-[10px] font-medium leading-none`);
+  - `size="sm"` (11px — Padrão): status de cards, cabeçalhos e diálogos (`px-2 py-0.5 text-[11px] font-medium`);
+  - `size="md"` (12px): destaque em hero cards, banners e fechamentos contábeis (`px-2.5 py-1 text-xs font-semibold`).
+- **Regra:** É expressamente proibido aplicar classes manuais ad-hoc de font-size e padding (`text-[10px] py-0 px-1.5`) diretamente nas telas.
+
+### 14.19 Empty States Calmos & Foco Visual no Call-to-Action
+- **Componente:** `src/components/ui/empty-state.tsx`.
+- **Diretriz de Sobriedade:** Estados vazios adotam como padrão `tone="default"` (`text-muted-foreground`), transmitindo tranquilidade visual e guiando o olhar do usuário imediatamente para o botão de ação principal (*CTA*), onde a cor de destaque (*Accent / Primary*) reside com intencionalidade.
+
+### 14.20 Anatomia de Formulários, Diálogos & Consistência de Superfícies
+- **Campos de Formulário:** Rótulo em `text-xs font-semibold text-foreground`, helper text explicativo em `text-[11px] text-muted-foreground` e campos não-obrigatórios indicados pelo sufixo discreto `(opcional)` em `text-muted-foreground/80`.
+- **Rodapés de Diálogos (`ModalFooter`):** Ordem unificada em 100% dos diálogos com Cancelar à esquerda e Confirmar à direita no desktop (`flex-row justify-end gap-2`), e empilhamento seguro no mobile (`flex-col-reverse gap-2`).
+- **Superfície Canônica de Cards:** Cards de dados utilizam consistentemente a combinação `border-border/80 bg-surface shadow-xs`.
+
 
 

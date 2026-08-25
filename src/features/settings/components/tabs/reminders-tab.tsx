@@ -1,3 +1,4 @@
+import { Bell } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -58,7 +59,10 @@ export function RemindersTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
-            <span className="min-w-0">Lembretes & Notificações Automáticas</span>
+            <span className="flex items-center gap-2 min-w-0">
+              <Bell className="size-4 text-muted-foreground" aria-hidden="true" />
+              <span>Lembretes & Notificações Automáticas</span>
+            </span>
             <Badge variant={remindersEnabled ? "positive" : "muted"} className="shrink-0">
               {remindersEnabled ? "Ativado" : "Desativado"}
             </Badge>

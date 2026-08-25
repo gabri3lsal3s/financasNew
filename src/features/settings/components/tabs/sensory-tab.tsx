@@ -38,19 +38,19 @@ const SENSORY_CATEGORIES: SensoryCategoryDefinition[] = [
     id: "selection",
     title: "Navegação & Seleção",
     description: "Abas, seletores de data, dropdowns e steppers de números.",
-    icon: <MousePointerClick className="size-4 text-primary" aria-hidden="true" />,
+    icon: <MousePointerClick className="size-4 text-muted-foreground" aria-hidden="true" />,
   },
   {
     id: "action",
     title: "Ações & Comandos",
     description: "Cliques em botões primários/secundários e botão central (+ Novo).",
-    icon: <Zap className="size-4 text-primary" aria-hidden="true" />,
+    icon: <Zap className="size-4 text-muted-foreground" aria-hidden="true" />,
   },
   {
     id: "toggle",
     title: "Alternâncias & Switches",
     description: "Modo privacidade, switches de configuração e atalhos rápidos.",
-    icon: <Sliders className="size-4 text-primary" aria-hidden="true" />,
+    icon: <Sliders className="size-4 text-muted-foreground" aria-hidden="true" />,
   },
   {
     id: "success",
@@ -62,7 +62,7 @@ const SENSORY_CATEGORIES: SensoryCategoryDefinition[] = [
     id: "warning",
     title: "Alertas & Atenções",
     description: "Avisos de confirmação e alertas de atenção.",
-    icon: <AlertTriangle className="size-4 text-amber-500" aria-hidden="true" />,
+    icon: <AlertTriangle className="size-4 text-warning-strong" aria-hidden="true" />,
   },
   {
     id: "destructive",
@@ -102,8 +102,8 @@ export function SensoryTab() {
     pushToast({
       title: "Preferências salvas",
       description: nextChecked
-        ? "Feedback háptico (vibração) ativado."
-        : "Feedback háptico (vibração) desativado.",
+        ? "Feedback háptico ativado."
+        : "Feedback háptico desativado.",
       duration: 2200,
     });
   };
@@ -150,7 +150,7 @@ export function SensoryTab() {
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Volume2 className="size-4 text-primary" />
+              <Volume2 className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Feedback Sensorial (Som & Vibração)</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -185,9 +185,9 @@ export function SensoryTab() {
             <div className="pr-4">
               <div className="font-semibold text-sm text-foreground flex items-center gap-2">
                 {visual.soundEnabled ? (
-                  <Volume2 className="size-4 text-primary" />
+                  <Volume2 className="size-4 text-muted-foreground" aria-hidden="true" />
                 ) : (
-                  <VolumeX className="size-4 text-muted-foreground" />
+                  <VolumeX className="size-4 text-muted-foreground" aria-hidden="true" />
                 )}
                 <span>Sons de Interface Sutis</span>
               </div>
@@ -223,9 +223,9 @@ export function SensoryTab() {
             <div className="pr-4">
               <div className="font-semibold text-sm text-foreground flex items-center gap-2">
                 {visual.hapticEnabled ? (
-                  <Vibrate className="size-4 text-primary" />
+                  <Vibrate className="size-4 text-muted-foreground" aria-hidden="true" />
                 ) : (
-                  <VibrateOff className="size-4 text-muted-foreground" />
+                  <VibrateOff className="size-4 text-muted-foreground" aria-hidden="true" />
                 )}
                 <span>Feedback Háptico (Vibração)</span>
               </div>

@@ -4,6 +4,7 @@ import {
   Calculator,
   Monitor,
   Eye,
+  LayoutGrid,
 } from "lucide-react";
 import {
   Card,
@@ -74,7 +75,7 @@ export function WidgetsTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <PanelTop className="size-4 text-primary" />
+            <PanelTop className="size-4 text-muted-foreground" aria-hidden="true" />
             <span>Atalhos do Header</span>
           </CardTitle>
         </CardHeader>
@@ -102,46 +103,32 @@ export function WidgetsTab() {
               >
                 <div className="flex items-center gap-3 pr-4 min-w-0">
                   <ImageIcon
-                    className={cn("size-4 shrink-0", isChecked ? "text-primary" : "text-muted-foreground")}
+                    className={cn(
+                      "size-4 shrink-0",
+                      isChecked ? "text-primary" : "text-muted-foreground",
+                    )}
                     aria-hidden="true"
                   />
                   <div className="min-w-0">
-                    <div className="font-semibold text-sm text-foreground">Logo no Header</div>
+                    <div className="font-semibold text-sm text-foreground">Logotipo Oficial</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Exibe a marca do aplicativo no cabeçalho em telas menores (mobile e tablet).
+                      Exibe o logotipo Guia Financeiro à esquerda do cabeçalho.
                     </div>
                   </div>
                 </div>
                 <Checkbox
                   checked={isChecked}
                   onCheckedChange={(checked) => handleToggleHeaderButton("logo", "Logo no Header", Boolean(checked))}
-                  aria-label="Logo no Header"
+                  aria-label="Logotipo Oficial"
                 />
               </div>
             );
           })()}
 
-          {/* --- Botões de ação com limite de 2 slots --- */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-0.5">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Botões de Ação
-              </span>
-              {(() => {
-                const activeSlots = [
-                  visual.headerButtons.calculatorButton,
-                  visual.headerButtons.themeToggle,
-                  visual.headerButtons.privacyToggle,
-                ].filter(Boolean).length;
-                return (
-                  <span className={cn(
-                    "text-xs font-medium tabular-nums",
-                    activeSlots >= 2 ? "text-warning-text" : "text-muted-foreground",
-                  )}>
-                    {activeSlots}/2 slots
-                  </span>
-                );
-              })()}
+          {/* --- Demais botões (limite de 2 ativos simultâneos) --- */}
+          <div className="space-y-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">
+              Atalhos de Ação Rápida (Máximo 2 simultâneos)
             </div>
 
             {(
@@ -245,7 +232,10 @@ export function WidgetsTab() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between">
-              <span>Widgets Visíveis na Visão Geral</span>
+              <span className="flex items-center gap-2">
+                <LayoutGrid className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>Widgets Visíveis na Visão Geral</span>
+              </span>
               <span className="text-xs text-muted-foreground font-normal">Personalize seu Início</span>
             </CardTitle>
           </CardHeader>

@@ -48,17 +48,11 @@ export function AllocationDriftCard({ analysis, className, onSimulateAporte }: A
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-xl border",
-              isBalanced
-                ? "bg-positive/10 border-positive/20 text-positive"
-                : "bg-warning/10 border-warning/20 text-warning-strong",
-            )}
-            aria-hidden="true"
-          >
-            {isBalanced ? <CheckCircle2 className="size-4.5" /> : <Compass className="size-4.5" />}
-          </span>
+          {isBalanced ? (
+            <CheckCircle2 className="size-5 shrink-0 text-positive-strong" aria-hidden="true" />
+          ) : (
+            <Compass className="size-5 shrink-0 text-warning-strong" aria-hidden="true" />
+          )}
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-foreground">

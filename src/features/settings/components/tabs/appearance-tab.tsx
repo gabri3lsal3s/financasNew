@@ -8,6 +8,7 @@ import {
   EyeOff,
   Zap,
   Sliders,
+  Sparkles,
 } from "lucide-react";
 import {
   Card,
@@ -155,7 +156,7 @@ export function AppearanceTab() {
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <Palette className="size-4 text-primary" />
+              <Palette className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Tema Visual</span>
             </span>
             <Badge variant="muted" className="text-xs font-normal">
@@ -196,7 +197,10 @@ export function AppearanceTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
-            <span>Cor de Destaque (Accent)</span>
+            <span className="flex items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" aria-hidden="true" />
+              <span>Cor de Destaque (Accent)</span>
+            </span>
             <div className="flex items-center gap-1.5">
               <LivePulseBeacon variant="primary" size="sm" />
               <span className="text-xs text-muted-foreground">Tempo Real</span>
@@ -244,7 +248,7 @@ export function AppearanceTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Layers className="size-4 text-primary" />
+            <Layers className="size-4 text-muted-foreground" aria-hidden="true" />
             <span>Estilo de Superfícies & Cards</span>
           </CardTitle>
         </CardHeader>
@@ -278,7 +282,10 @@ export function AppearanceTab() {
       {/* Densidade Visual */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Densidade da Interface</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sliders className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>Densidade da Interface</span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row gap-3">
           <button
@@ -322,7 +329,7 @@ export function AppearanceTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="size-4 text-primary" />
+            <Zap className="size-4 text-muted-foreground" aria-hidden="true" />
             <span>Nível de Fluidez & Animações</span>
           </CardTitle>
         </CardHeader>
@@ -355,7 +362,10 @@ export function AppearanceTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Efeitos Individuais</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sliders className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>Efeitos Individuais</span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div
@@ -395,7 +405,7 @@ export function AppearanceTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <EyeOff className="size-4 text-primary" />
+            <EyeOff className="size-4 text-muted-foreground" aria-hidden="true" />
             <span>Modo de Privacidade</span>
           </CardTitle>
         </CardHeader>

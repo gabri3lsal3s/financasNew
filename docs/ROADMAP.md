@@ -3300,12 +3300,12 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 66):**
-- [ ] Todos os cabeçalhos de cards e seções usam ícones neutros suaves (`size-4 text-muted-foreground`).
-- [ ] Eliminação de caixas decorativas estáticas ao redor de ícones em `StatCard`, `RealCashHeroCard` e similares.
-- [ ] Cores de ícones reservadas estritamente para fluxo financeiro real (verde, vermelho, sky) e alertas (âmbar, vermelho).
-- [ ] Cor de destaque (*Accent*) concentrada em elementos de interatividade ativa, eliminando a fadiga visual.
-- [ ] Regra nº 13 documentada e vinculante em `AGENTS.md` e `docs/DESIGN_SYSTEM.md`.
-- [ ] Suíte de testes, typecheck e lint 100% verdes.
+- [x] Todos os cabeçalhos de cards e seções usam ícones neutros suaves (`size-4 text-muted-foreground`).
+- [x] Eliminação de caixas decorativas estáticas ao redor de ícones em `StatCard`, `RealCashHeroCard` e similares.
+- [x] Cores de ícones reservadas estritamente para fluxo financeiro real (verde, vermelho, sky) e alertas (âmbar, vermelho).
+- [x] Cor de destaque (*Accent*) concentrada em elementos de interatividade ativa, eliminando a fadiga visual.
+- [x] Regra nº 13 documentada e vinculante em `AGENTS.md` e `docs/DESIGN_SYSTEM.md`.
+- [x] Suíte de testes, typecheck e lint 100% verdes.
 
 ---
 
@@ -3373,7 +3373,13 @@ flowchart TD
 
 ---
 
-#### 3. Fase 68.3: Unificação de Opacidades de Borda e Sombras de Superfície
+#### 3. Fase 68.3: Mapeamento de Tokens `--shadow-xs` & Blindagem Total dos Modos Flat, Elevated e Glass
+- **Mapeamento Canônico de Sombras nos Tokens (`src/styles/tokens.css` e `src/styles/globals.css`):**
+  - Adição do token `--shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05)` na escala padrão;
+  - No modo **Flat** (`html[data-surface-style="flat"]`): definição explícita de `--shadow-xs: none !important`, garantindo que cards que utilizam `shadow-xs` fiquem 100% planos sem micro-sombras residuais;
+  - No modo **Elevado 3D** (`html[data-surface-style="elevated"]`): definição de `--shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.08)` e ampliação harmônica das camadas;
+  - No modo **Glass** (`html:not([data-surface-style])`): preservação da transparência com blur no chrome e solidez opaca rigorosa nos cards de dados;
+  - Mapeamento explícito de `--shadow-xs: var(--shadow-xs)` dentro do bloco `@theme inline` de `globals.css`.
 - **Consistência de Superfícies (`Card`):**
   - Borda canônica: `border-border/80`;
   - Fundo canônico: `bg-surface`;
@@ -3385,6 +3391,9 @@ flowchart TD
 **✅ DoD (Definition of Done da Fase 68):**
 - [ ] Todos os formulários e campos possuem a mesma anatomia visual de label e helper text.
 - [ ] 18 diálogos do aplicativo seguem a mesma ordenação e comportamento responsivo de rodapé.
+- [ ] Token `--shadow-xs` controlado centralmente por `tokens.css` e `@theme inline`.
+- [ ] O modo "Minimalista Flat" zera 100% das sombras do app (incluindo `shadow-xs`).
+- [ ] O modo "Elevado 3D" amplia proporcionalmente a profundidade de todos os cards.
 - [ ] Cards de dados em todas as páginas possuem a mesma solidez de borda e sombra.
 - [ ] Suíte de testes, typecheck e lint 100% verdes.
 

@@ -34,7 +34,10 @@ export function SecurityTab() {
       {/* Card: Conta do Usuário */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Conta do Usuário</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span>Conta do Usuário</span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4 p-4 rounded-xl border border-border bg-muted/30">
@@ -68,7 +71,7 @@ export function SecurityTab() {
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <KeyRound className="size-4.5 text-primary-strong" />
+              <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Autenticação em Duas Etapas (2FA / TOTP)</span>
             </div>
             <Badge variant={userAccess.isAdmin ? "warning" : "muted"} className="text-xs font-normal">
@@ -98,13 +101,13 @@ export function SecurityTab() {
               onClick={() => {
                 triggerSensory("selection");
                 pushToast({
-                  title: "Autenticação em Duas Etapas",
-                  description: "Configuração de 2FA sincronizada com o provedor de autenticação.",
+                  title: "2FA Gerenciado",
+                  description: "Configurações de TOTP disponíveis no painel de autenticação.",
                 });
               }}
-              className="gap-1.5 shrink-0"
+              className="gap-2 shrink-0"
             >
-              <Lock className="size-3.5" />
+              <QrCode className="size-4" />
               <span>Gerenciar 2FA</span>
             </Button>
           </div>
@@ -123,7 +126,7 @@ export function SecurityTab() {
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Lock className="size-4.5 text-primary-strong" />
+              <Lock className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Sessão &amp; Nível de Acesso</span>
             </div>
             <Badge variant="muted" className="text-xs font-mono uppercase">

@@ -49,12 +49,7 @@ export function CashKpiCard({
       {/* Linha superior: ícone + rótulo + ações */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span
-            className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio"
-            aria-hidden="true"
-          >
-            <Wallet className="size-3.5" />
-          </span>
+          <Wallet className="size-4 shrink-0 text-portfolio" aria-hidden="true" />
           <span className="text-xs font-medium text-muted-foreground truncate">Saldo em caixa</span>
         </div>
 

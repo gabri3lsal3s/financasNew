@@ -83,16 +83,14 @@ export function StatCard({
           <div className="flex items-center gap-1.5 shrink-0">
             {action}
             {Icon && (
-              <div
+              <Icon
                 className={cn(
-                  "flex size-8 items-center justify-center rounded-lg bg-surface-hover/80",
+                  "size-4 shrink-0",
                   VARIANT_ICON_COLOR_MAP[variant],
                   iconClassName,
                 )}
                 aria-hidden="true"
-              >
-                <Icon className="size-4" />
-              </div>
+              />
             )}
           </div>
         </div>
