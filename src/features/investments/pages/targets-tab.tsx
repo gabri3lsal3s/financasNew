@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Equal, RotateCcw, Save, Scale, Trash2 } from "lucide-react";
-import { Alert, Button, EmptyState, ErrorState, NumberStepperInput, Progress, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
-
-import { PresetSelectorBar, SavePresetDialog, TargetEditor } from "@/components/modules";
+import { Save } from "lucide-react";
+import { Alert, Button, EmptyState, ErrorState, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
+import { PresetSelectorBar, SavePresetDialog } from "@/components/modules";
 import {
   SYSTEM_PRESET_TEMPLATES,
   applyPresetToPosition,
@@ -20,7 +19,6 @@ import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { cn } from "@/lib/utils";
 import {
   useAllocationPresets,
   useAllocationTargets,
@@ -33,6 +31,7 @@ import {
   useSaveGroupTarget,
   useUpdateAllocationPreset,
 } from "@/state";
+import { TargetAssetsCard, TargetClassesCard, TargetSectorsCard } from "../components/targets";
 
 /**
  * Metas de alocação (§3.11.1 e §F39) — edição hierárquica em 3 níveis:
@@ -302,7 +301,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         delete next[className];
         return next;
       });
-      triggerSensory("success");
+      triggerSensory("selection");
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -310,38 +309,21 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Handlers de Setores
-  // -------------------------------------------------------------------------
-  const handleNormalizeSectors = () => {
-    const items = availableSectors.map((s) => ({ id: s, targetPercentage: sectorTargetOf(s) }));
-    const normalized = normalizeAllocationTargets(items, 100);
-    const nextDraft: Record<string, number> = {};
-    normalized.forEach((item) => {
-      nextDraft[item.id] = item.targetPercentage;
-    });
-    setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
-    triggerSensory("selection");
-  };
-
-  const handleDistributeSectorsEqually = () => {
-    const items = availableSectors.map((s) => ({ id: s }));
-    const distributed = distributeEquallyTargets(items, 100);
-    const nextDraft: Record<string, number> = {};
-    distributed.forEach((item) => {
-      nextDraft[item.id] = item.targetPercentage;
-    });
-    setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
-    triggerSensory("selection");
-  };
-
-  const handleResetSectorsZero = () => {
-    const nextDraft: Record<string, number> = {};
-    availableSectors.forEach((s) => {
-      nextDraft[s] = 0;
-    });
-    setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
-    triggerSensory("selection");
+  const saveAllClasses = async () => {
+    setError(null);
+    setSavingClass("all");
+    try {
+      for (const className of classes) {
+        await saveClassTarget.mutateAsync({ name: className, target: classTargetOf(className) });
+      }
+      setClassDraft({});
+      triggerSensory("success");
+      pushToast({ title: "Metas de classes salvas com sucesso!", variant: "success" });
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSavingClass(null);
+    }
   };
 
   const saveSector = async (sectorName: string) => {
@@ -368,7 +350,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         delete next[sectorName];
         return next;
       });
-      triggerSensory("success");
+      triggerSensory("selection");
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -380,10 +362,12 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     setError(null);
     setSavingSector("all");
     try {
-      for (const s of availableSectors) {
-        await saveSectorTarget.mutateAsync({ name: s, target: sectorTargetOf(s) });
+      for (const sectorName of availableSectors) {
+        await saveSectorTarget.mutateAsync({ name: sectorName, target: sectorTargetOf(sectorName) });
       }
+      setSectorDraft({});
       triggerSensory("success");
+      pushToast({ title: `Metas setoriais de ${activeSectorClass} salvas!`, variant: "success" });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -391,13 +375,16 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     }
   };
 
-  const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || sectorTargetsQuery.isLoading;
-  const loadError = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? sectorTargetsQuery.error;
-
-  const classRows = classes.map((c) => ({ key: c, label: c, target: classTargetOf(c) }));
+  const classRows = classes.map((c) => ({
+    name: c,
+    key: c,
+    label: c,
+    target: classTargetOf(c),
+  }));
   const classSum = validateTargetsSum(classRows.map((r) => ({ target: r.target })));
 
   const handleNormalizeClasses = () => {
+    setError(null);
     const items = classes.map((c) => ({ id: c, targetPercentage: classTargetOf(c) }));
     const normalized = normalizeAllocationTargets(items, 100);
     const nextDraft: Record<string, number> = {};
@@ -409,6 +396,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const handleDistributeClassesEqually = () => {
+    setError(null);
     const items = classes.map((c) => ({ id: c }));
     const distributed = distributeEquallyTargets(items, 100);
     const nextDraft: Record<string, number> = {};
@@ -420,6 +408,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const handleResetClassesZero = () => {
+    setError(null);
     const nextDraft: Record<string, number> = {};
     classes.forEach((c) => {
       nextDraft[c] = 0;
@@ -428,47 +417,62 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     triggerSensory("selection");
   };
 
-  const saveAllClasses = async () => {
+  const handleNormalizeSectors = () => {
     setError(null);
-    setSavingClass("all");
-    try {
-      for (const className of classes) {
-        await saveClassTarget.mutateAsync({ name: className, target: classTargetOf(className) });
-      }
-      triggerSensory("success");
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setSavingClass(null);
-    }
+    const items = availableSectors.map((s) => ({ id: s, targetPercentage: sectorTargetOf(s) }));
+    const normalized = normalizeAllocationTargets(items, 100);
+    const nextDraft: Record<string, number> = {};
+    normalized.forEach((item) => {
+      nextDraft[item.id] = item.targetPercentage;
+    });
+    setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
   };
 
-  // -------------------------------------------------------------------------
-  // Handlers de Cenários (Presets)
-  // -------------------------------------------------------------------------
-  const isUserPreset = selectedPresetId?.startsWith("user_") ?? false;
-  const isSysPreset = selectedPresetId?.startsWith("sys_") ?? false;
-  const rawUserPresetId = isUserPreset ? selectedPresetId!.replace("user_", "") : null;
-  const rawSysPresetId = isSysPreset ? selectedPresetId!.replace("sys_", "") : null;
+  const handleDistributeSectorsEqually = () => {
+    setError(null);
+    const items = availableSectors.map((s) => ({ id: s }));
+    const distributed = distributeEquallyTargets(items, 100);
+    const nextDraft: Record<string, number> = {};
+    distributed.forEach((item) => {
+      nextDraft[item.id] = item.targetPercentage;
+    });
+    setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
+  };
 
-  const currentActiveUserPreset = rawUserPresetId
-    ? (presetsQuery.data ?? []).find((p) => p.id === rawUserPresetId) ?? null
-    : null;
+  const handleResetSectorsZero = () => {
+    setError(null);
+    const nextDraft: Record<string, number> = {};
+    availableSectors.forEach((s) => {
+      nextDraft[s] = 0;
+    });
+    setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
+  };
 
-  const currentActiveSysPreset = rawSysPresetId
-    ? SYSTEM_PRESET_TEMPLATES.find((s) => s.id === rawSysPresetId || s.id === selectedPresetId) ?? null
-    : null;
+  // Gerenciamento de Presets / Cenários
+  const userPresets = presetsQuery.data ?? [];
+  const allTemplates = SYSTEM_PRESET_TEMPLATES;
+  const currentActiveUserPreset = userPresets.find((p) => p.id === selectedPresetId);
+  const currentActiveTemplate = allTemplates.find((t) => t.id === selectedPresetId);
 
-  const activePresetName = currentActiveUserPreset?.name ?? currentActiveSysPreset?.name ?? null;
-  const activePresetDescription = currentActiveUserPreset?.description ?? currentActiveSysPreset?.description ?? null;
-  const isSimulating = selectedPresetId !== null && selectedPresetId !== "official";
+  const activePresetName = selectedPresetId === "official"
+    ? "Estratégia Atual (Oficial)"
+    : currentActiveUserPreset?.name ?? currentActiveTemplate?.name ?? "Cenário Simulado";
+
+  const activePresetDescription = selectedPresetId === "official"
+    ? "Metas vigentes gravadas na sua carteira."
+    : currentActiveUserPreset?.description ?? currentActiveTemplate?.description;
+
+  const isSimulating = selectedPresetId !== "official";
 
   const handleSelectPreset = (presetId: string) => {
     setError(null);
     setSaved(false);
+    setSelectedPresetId(presetId);
 
     if (presetId === "official") {
-      setSelectedPresetId("official");
       setAssetDraft({});
       setClassDraft({});
       setSectorDraft({});
@@ -476,30 +480,42 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       return;
     }
 
-    if (presetId.startsWith("sys_")) {
-      const rawId = presetId.replace("sys_", "");
-      const template = SYSTEM_PRESET_TEMPLATES.find((t) => t.id === rawId || t.id === presetId);
-      if (template) {
-        const applied = applyPresetToPosition(template, position.rows);
-        setAssetDraft(applied.assetDraft);
-        setClassDraft(applied.classDraft);
-        setSelectedPresetId(presetId);
-        triggerSensory("selection");
-      }
+    const template = SYSTEM_PRESET_TEMPLATES.find((t) => t.id === presetId);
+    if (template) {
+      const applied = applyPresetToPosition(
+        template,
+        position.rows.map((r) => ({
+          assetId: r.assetId,
+          ticker: r.ticker,
+          assetClass: r.assetClass,
+          pct: r.pct,
+        })),
+      );
+      setClassDraft(applied.classDraft);
+      setAssetDraft(applied.assetDraft);
+      triggerSensory("selection");
       return;
     }
 
-    if (presetId.startsWith("user_")) {
-      const rawId = presetId.replace("user_", "");
-      const preset = (presetsQuery.data ?? []).find((p) => p.id === rawId);
-      if (preset) {
-        const applied = applyPresetToPosition(preset, position.rows);
-        setAssetDraft(applied.assetDraft);
-        setClassDraft(applied.classDraft);
-        setSelectedPresetId(presetId);
-        triggerSensory("selection");
-      }
+    const userPreset = userPresets.find((p) => p.id === presetId);
+    if (userPreset) {
+      const applied = applyPresetToPosition(
+        userPreset,
+        position.rows.map((r) => ({
+          assetId: r.assetId,
+          ticker: r.ticker,
+          assetClass: r.assetClass,
+          pct: r.pct,
+        })),
+      );
+      setClassDraft(applied.classDraft);
+      setAssetDraft(applied.assetDraft);
+      triggerSensory("selection");
     }
+  };
+
+  const handleResetToOfficial = () => {
+    handleSelectPreset("official");
   };
 
   const handleSaveNewPreset = async (name: string, description?: string | null) => {
@@ -517,73 +533,69 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       })),
     });
 
-    const created = await createPreset.mutateAsync(snapshot);
-    setSelectedPresetId(`user_${created.id}`);
-    triggerSensory("success");
-    pushToast({
-      title: "Cenário salvo",
-      description: `O cenário "${name}" foi salvo com sucesso.`,
-      variant: "success",
+    const result = await createPreset.mutateAsync({
+      name: snapshot.name,
+      description: snapshot.description ?? undefined,
+      class_targets: snapshot.class_targets,
+      asset_targets: snapshot.asset_targets,
     });
+    setSelectedPresetId(result.id);
+    triggerSensory("success");
+    pushToast({ title: `Cenário "${name}" salvo!`, variant: "success" });
   };
 
   const handleOverwritePreset = async () => {
     if (!currentActiveUserPreset) return;
-    setError(null);
-    try {
-      const snapshot = createPresetSnapshot({
-        name: currentActiveUserPreset.name,
-        description: currentActiveUserPreset.description,
-        assetRows: position.rows.map((r) => ({
-          assetId: r.assetId,
-          ticker: r.ticker,
-          target: assetTargetOf(r.assetId),
-        })),
-        classRows: classes.map((c) => ({
-          name: c,
-          target: classTargetOf(c),
-        })),
-      });
 
-      await updatePreset.mutateAsync({ id: currentActiveUserPreset.id, input: snapshot });
-      triggerSensory("success");
-      pushToast({
-        title: "Cenário atualizado",
-        description: `O cenário "${currentActiveUserPreset.name}" foi atualizado com as metas atuais.`,
-        variant: "success",
-      });
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
+    const snapshot = createPresetSnapshot({
+      name: currentActiveUserPreset.name,
+      description: currentActiveUserPreset.description,
+      assetRows: position.rows.map((r) => ({
+        assetId: r.assetId,
+        ticker: r.ticker,
+        target: assetTargetOf(r.assetId),
+      })),
+      classRows: classes.map((c) => ({
+        name: c,
+        target: classTargetOf(c),
+      })),
+    });
+
+    await updatePreset.mutateAsync({
+      id: currentActiveUserPreset.id,
+      input: {
+        name: snapshot.name,
+        description: snapshot.description,
+        class_targets: snapshot.class_targets,
+        asset_targets: snapshot.asset_targets,
+      },
+    });
+    triggerSensory("success");
+    pushToast({ title: `Cenário "${currentActiveUserPreset.name}" atualizado!`, variant: "success" });
   };
 
   const handleDeletePreset = async (id: string) => {
-    setError(null);
-    try {
-      await deletePreset.mutateAsync(id);
-      setSelectedPresetId("official");
-      setAssetDraft({});
-      setClassDraft({});
-      setSectorDraft({});
-      triggerSensory("success");
-      pushToast({
-        title: "Cenário excluído",
-        description: "O cenário de metas foi removido.",
-        variant: "default",
-      });
-    } catch (err) {
-      setError(getErrorMessage(err));
+    await deletePreset.mutateAsync(id);
+    if (selectedPresetId === id) {
+      handleSelectPreset("official");
     }
+    triggerSensory("selection");
+    pushToast({ title: "Cenário excluído.", variant: "default" });
   };
 
-  const handleResetToOfficial = () => {
-    setSelectedPresetId("official");
-    setAssetDraft({});
-    setClassDraft({});
-    setSectorDraft({});
-    setError(null);
-    triggerSensory("selection");
-  };
+  const loading =
+    position.isLoading ||
+    targetsQuery.isLoading ||
+    classTargetsQuery.isLoading ||
+    sectorTargetsQuery.isLoading ||
+    presetsQuery.isLoading;
+
+  const loadError =
+    position.error ??
+    targetsQuery.error ??
+    classTargetsQuery.error ??
+    sectorTargetsQuery.error ??
+    presetsQuery.error;
 
   const [subTab, setSubTab] = useState<"classes" | "sectors" | "assets">("classes");
 
@@ -600,7 +612,6 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
             void sectorTargetsQuery.refetch();
           }}
         />
-
       ) : null}
 
       {error ? <Alert variant="error">{error}</Alert> : null}
@@ -661,411 +672,78 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
               value: "classes",
               label: "Classes",
               content: (
-                <div className="flex flex-col gap-6">
-                  {classes.length > 0 ? (
-                    <section aria-label="Metas por classe" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                      <div className="flex items-center justify-between min-w-0">
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground truncate">Metas por classe de ativo</h3>
-                          <p className="text-xs text-muted-foreground">Defina a alocação macro ideal (% do patrimônio total) entre as classes.</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground font-mono font-medium">
-                          {classes.length} {classes.length === 1 ? "classe" : "classes"}
-                        </span>
-                      </div>
-
-                      {/* Barra de Progresso e Validação da Soma de Classes */}
-                      <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-surface/70 p-4">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="font-medium">Soma das metas de classes</span>
-                          <span className={cn("num font-bold", classSum.error ? "text-critical" : classSum.sum > 0 ? "text-foreground" : "")}>
-                            {classSum.sum.toFixed(1)}% / 100%
-                          </span>
-                        </div>
-                        <Progress
-                          value={Math.min(100, Math.max(0, classSum.sum))}
-                          tone={classSum.error ? "critical" : "auto"}
-                          aria-label={`Soma das classes: ${classSum.sum.toFixed(1)}%`}
-                        />
-                        {classSum.error ? <p className="text-xs text-critical font-medium">{classSum.error}</p> : null}
-                        {classSum.error === null && classSum.sum < 100 ? (
-                          <p className="text-xs text-muted-foreground">
-                            Sobram {(100 - classSum.sum).toFixed(1)}% para caixa/reserva ou outras classes.
-                          </p>
-                        ) : null}
-                      </div>
-
-                      {/* Ações Rápidas de Classes */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleNormalizeClasses}
-                          disabled={savingClass !== null}
-                          className="gap-1.5 text-xs"
-                        >
-                          <Scale className="size-3.5 shrink-0" aria-hidden="true" />
-                          Normalizar classes para 100%
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDistributeClassesEqually}
-                          disabled={savingClass !== null}
-                          className="gap-1.5 text-xs"
-                        >
-                          <Equal className="size-3.5 shrink-0" aria-hidden="true" />
-                          Distribuir igualmente (1/N)
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleResetClassesZero}
-                          disabled={savingClass !== null}
-                          className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
-                          Zerar classes
-                        </Button>
-                      </div>
-
-                      <div className="flex flex-col gap-2 min-w-0">
-                        {classes.map((className) => {
-                          const target = classTargetOf(className);
-                          const savedTarget = storedClassTargets.get(className) ?? 0;
-                          return (
-                            <div key={className} className="flex flex-col gap-3 rounded-xl border border-border/60 bg-surface-hover/30 p-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
-                              <div className="flex min-w-0 flex-1 flex-col">
-                                <p className="truncate text-sm font-medium text-foreground">{className}</p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {position.rows.filter((r) => r.assetClass === className).length} ativo(s)
-                                </p>
-                              </div>
-                              <div className="flex w-full items-center gap-2 sm:w-auto">
-                                <div className="flex flex-1 items-center gap-2 sm:w-52 sm:flex-none min-w-0">
-                                  <NumberStepperInput
-                                    value={target}
-                                    min={0}
-                                    max={100}
-                                    step={0.5}
-                                    ariaLabel={`Meta da classe ${className} em %`}
-                                    onValueChange={(next) =>
-                                      setClassDraft((prev) => ({
-                                        ...prev,
-                                        [className]: parseTargetInput(next),
-                                      }))
-                                    }
-                                    className="flex-1 min-w-0 [&_input]:text-right"
-                                  />
-                                  <span className="shrink-0 text-sm font-semibold text-muted-foreground select-none">%</span>
-                                </div>
-                                <div className="flex shrink-0 gap-1">
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={target > 0 ? "secondary" : "outline"}
-                                    disabled={savingClass === className || savingClass === "all"}
-                                    onClick={() => void saveClass(className)}
-                                  >
-                                    {savingClass === className ? "Salvando…" : "Salvar"}
-                                  </Button>
-                                  {savedTarget > 0 ? (
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="ghost"
-                                      aria-label={`Remover meta da classe ${className}`}
-                                      disabled={savingClass === className || savingClass === "all"}
-                                      onClick={() => void removeClass(className)}
-                                    >
-                                      <Trash2 className="size-4" aria-hidden="true" />
-                                    </Button>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Botão de Salvar Todas as Classes */}
-                      <div className="flex items-center justify-end pt-2">
-                        <Button
-                          type="button"
-                          onClick={() => void saveAllClasses()}
-                          disabled={savingClass !== null || classSum.error !== null}
-                        >
-                          {savingClass === "all" ? "Salvando todas…" : "Salvar todas as classes"}
-                        </Button>
-                      </div>
-                    </section>
-                  ) : null}
-                </div>
+                <TargetClassesCard
+                  classes={classes}
+                  classTargetOf={classTargetOf}
+                  storedClassTargets={storedClassTargets}
+                  positionRows={position.rows}
+                  classSum={classSum}
+                  savingClass={savingClass}
+                  onNormalizeClasses={handleNormalizeClasses}
+                  onDistributeClassesEqually={handleDistributeClassesEqually}
+                  onResetClassesZero={handleResetClassesZero}
+                  onClassTargetChange={(c, v) => setClassDraft((prev) => ({ ...prev, [c]: v }))}
+                  onSaveClass={(c) => void saveClass(c)}
+                  onRemoveClass={(c) => void removeClass(c)}
+                  onSaveAllClasses={() => void saveAllClasses()}
+                />
               ),
             },
             {
               value: "sectors",
               label: "Setores",
               content: (
-                <div className="flex flex-col gap-6">
-                  {classes.length > 0 ? (
-                    <section aria-label="Metas por setor" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                      <div className="flex items-center justify-between min-w-0">
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground truncate">Metas setoriais por classe</h3>
-                          <p className="text-xs text-muted-foreground">
-                            Defina a proporção relativa (% da classe) de cada setor / segmento.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Seletor de Classe Ativa para os Setores */}
-                      <div className="flex flex-wrap items-center gap-1.5 border-b border-border/60 pb-3">
-                        <span className="text-xs font-medium text-muted-foreground mr-1">Classe:</span>
-                        {classes.map((cls) => (
-                          <button
-                            key={cls}
-                            type="button"
-                            onClick={() => {
-                              setSelectedSectorClass(cls);
-                              triggerSensory("selection");
-                            }}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-                              activeSectorClass === cls
-                                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                                : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            {cls}
-                          </button>
-                        ))}
-                      </div>
-
-                      {availableSectors.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border/80 p-6 text-center text-xs text-muted-foreground">
-                          Nenhum ativo com setor cadastrado na classe <strong className="text-foreground">{activeSectorClass}</strong>. Cadastre ativos nesta classe para definir suas metas setoriais.
-                        </div>
-                      ) : (
-                        <>
-                          {/* Barra de Progresso e Validação dos Setores da Classe */}
-                          <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-surface/70 p-4">
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span className="font-medium">Soma dos setores em {activeSectorClass}</span>
-                              <span className={cn("num font-bold", sectorSum.error ? "text-critical" : sectorSum.sum > 0 ? "text-foreground" : "")}>
-                                {sectorSum.sum.toFixed(1)}% / 100% da classe
-                              </span>
-                            </div>
-                            <Progress
-                              value={Math.min(100, Math.max(0, sectorSum.sum))}
-                              tone={sectorSum.error ? "critical" : "auto"}
-                              aria-label={`Soma dos setores de ${activeSectorClass}: ${sectorSum.sum.toFixed(1)}%`}
-                            />
-                            {sectorSum.error ? <p className="text-xs text-critical font-medium">{sectorSum.error}</p> : null}
-                            {sectorSum.error === null && sectorSum.sum < 100 ? (
-                              <p className="text-xs text-muted-foreground">
-                                {(100 - sectorSum.sum).toFixed(1)}% da classe {activeSectorClass} distribuídos equiponderadamente entre os demais ativos.
-                              </p>
-                            ) : null}
-                          </div>
-
-                          {/* Ações Rápidas de Setores */}
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleNormalizeSectors}
-                              disabled={savingSector !== null}
-                              className="gap-1.5 text-xs"
-                            >
-                              <Scale className="size-3.5 shrink-0" aria-hidden="true" />
-                              Normalizar setores para 100%
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleDistributeSectorsEqually}
-                              disabled={savingSector !== null}
-                              className="gap-1.5 text-xs"
-                            >
-                              <Equal className="size-3.5 shrink-0" aria-hidden="true" />
-                              Distribuir igualmente (1/N)
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleResetSectorsZero}
-                              disabled={savingSector !== null}
-                              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
-                              Zerar setores
-                            </Button>
-                          </div>
-
-                          {/* Lista de Setores */}
-                          <div className="flex flex-col gap-2 min-w-0">
-                            {availableSectors.map((sectorName) => {
-                              const target = sectorTargetOf(sectorName);
-                              const savedTarget = storedSectorTargets.get(sectorName) ?? 0;
-                              const membersCount = position.rows.filter(
-                                (r) =>
-                                  r.assetClass === activeSectorClass &&
-                                  (r.sector === sectorName || inferSectorFromTicker(r.ticker, activeSectorClass) === sectorName),
-                              ).length;
-
-                              return (
-                                <div key={sectorName} className="flex flex-col gap-3 rounded-xl border border-border/60 bg-surface-hover/30 p-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
-                                  <div className="flex min-w-0 flex-1 flex-col">
-                                    <p className="truncate text-sm font-medium text-foreground">{sectorName}</p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {membersCount} ativo(s) na carteira
-                                    </p>
-                                  </div>
-                                  <div className="flex w-full items-center gap-2 sm:w-auto">
-                                    <div className="flex flex-1 items-center gap-2 sm:w-52 sm:flex-none min-w-0">
-                                      <NumberStepperInput
-                                        value={target}
-                                        min={0}
-                                        max={100}
-                                        step={0.5}
-                                        ariaLabel={`Meta do setor ${sectorName} em % da classe`}
-                                        onValueChange={(next) =>
-                                          setSectorDraft((prev) => ({
-                                            ...prev,
-                                            [sectorName]: parseTargetInput(next),
-                                          }))
-                                        }
-                                        className="flex-1 min-w-0 [&_input]:text-right"
-                                      />
-                                      <span className="shrink-0 text-sm font-semibold text-muted-foreground select-none">%</span>
-                                    </div>
-                                    <div className="flex shrink-0 gap-1">
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant={target > 0 ? "secondary" : "outline"}
-                                        disabled={savingSector === sectorName || savingSector === "all"}
-                                        onClick={() => void saveSector(sectorName)}
-                                      >
-                                        {savingSector === sectorName ? "Salvando…" : "Salvar"}
-                                      </Button>
-                                      {savedTarget > 0 ? (
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="ghost"
-                                          aria-label={`Remover meta do setor ${sectorName}`}
-                                          disabled={savingSector === sectorName || savingSector === "all"}
-                                          onClick={() => void removeSector(sectorName)}
-                                        >
-                                          <Trash2 className="size-4" aria-hidden="true" />
-                                        </Button>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          {/* Botão de Salvar Todos os Setores da Classe */}
-                          <div className="flex items-center justify-end pt-2">
-                            <Button
-                              type="button"
-                              onClick={() => void saveAllSectorsForClass()}
-                              disabled={savingSector !== null || sectorSum.error !== null}
-                            >
-                              {savingSector === "all" ? "Salvando todos…" : `Salvar setores de ${activeSectorClass}`}
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </section>
-                  ) : null}
-                </div>
+                <TargetSectorsCard
+                  classes={classes}
+                  activeSectorClass={activeSectorClass}
+                  availableSectors={availableSectors}
+                  storedSectorTargets={storedSectorTargets}
+                  positionRows={position.rows}
+                  sectorTargetOf={sectorTargetOf}
+                  sectorSum={sectorSum}
+                  savingSector={savingSector}
+                  onSelectSectorClass={(cls) => setSelectedSectorClass(cls)}
+                  onNormalizeSectors={handleNormalizeSectors}
+                  onDistributeSectorsEqually={handleDistributeSectorsEqually}
+                  onResetSectorsZero={handleResetSectorsZero}
+                  onSectorTargetChange={(s, v) => setSectorDraft((prev) => ({ ...prev, [s]: v }))}
+                  onSaveSector={(s) => void saveSector(s)}
+                  onRemoveSector={(s) => void removeSector(s)}
+                  onSaveAllSectorsForClass={() => void saveAllSectorsForClass()}
+                />
               ),
             },
             {
               value: "assets",
               label: "Ativos",
               content: (
-                <div className="flex flex-col gap-4">
-                  {classes.length > 1 ? (
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAssetClassFilter(null);
-                            triggerSensory("selection");
-                          }}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                            assetClassFilter === null
-                              ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                              : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          Todas as classes
-                        </button>
-                        {classes.map((cls) => (
-                          <button
-                            key={cls}
-                            type="button"
-                            onClick={() => {
-                              setAssetClassFilter((prev) => (prev === cls ? null : cls));
-                              triggerSensory("selection");
-                            }}
-                            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                              assetClassFilter === cls
-                                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                                : "bg-surface-hover/60 text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            {cls}
-                          </button>
-                        ))}
-                      </div>
-
-                      {activeClassTargetSum !== null ? (
-                        <span className="text-xs text-muted-foreground">
-                          Soma {assetClassFilter}: <strong className="text-foreground">{activeClassTargetSum.toFixed(1)}%</strong>
-                          {selectedClassTarget !== null ? (
-                            <span className="ml-1 text-muted-foreground">/ meta {selectedClassTarget.toFixed(1)}%</span>
-                          ) : null}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <TargetEditor
-                    rows={visibleAssetRows}
-                    heading="Metas por ativo (% do patrimônio)"
-                    onTargetChange={(key, value) => {
-                      setError(null);
-                      setSaved(false);
-                      setAssetDraft((prev) => ({ ...prev, [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0") }));
-                    }}
-                    onNormalize={handleNormalize}
-                    normalizeLabel={normalizeLabel}
-                    onNormalizeAll={handleNormalizeAll}
-                    onDistributeEqually={handleDistributeEqually}
-                    distributeLabel={distributeLabel}
-                    onMirrorPosition={handleMirrorPosition}
-                    onResetZero={handleResetZero}
-                    onSave={() => void saveAssets()}
-                    saving={saveTargets.isPending}
-                    saveLabel={saved ? "Metas salvas" : "Salvar metas por ativo"}
-                    sumPercent={assetSum.sum}
-                    sumError={assetSum.error}
-                    emptyMessage={assetClassFilter ? `Nenhum ativo na classe ${assetClassFilter}.` : "Nenhum ativo na carteira."}
-                  />
-                </div>
+                <TargetAssetsCard
+                  classes={classes}
+                  assetClassFilter={assetClassFilter}
+                  activeClassTargetSum={activeClassTargetSum}
+                  selectedClassTarget={selectedClassTarget}
+                  visibleAssetRows={visibleAssetRows}
+                  normalizeLabel={normalizeLabel}
+                  distributeLabel={distributeLabel}
+                  saved={saved}
+                  isPending={saveTargets.isPending}
+                  assetSum={assetSum}
+                  onAssetClassFilterChange={(cls) => setAssetClassFilter(cls)}
+                  onTargetChange={(key, value) => {
+                    setError(null);
+                    setSaved(false);
+                    setAssetDraft((prev) => ({
+                      ...prev,
+                      [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0"),
+                    }));
+                  }}
+                  onNormalize={handleNormalize}
+                  onNormalizeAll={handleNormalizeAll}
+                  onDistributeEqually={handleDistributeEqually}
+                  onMirrorPosition={handleMirrorPosition}
+                  onResetZero={handleResetZero}
+                  onSave={() => void saveAssets()}
+                />
               ),
             },
           ]}

@@ -1,25 +1,9 @@
-import { Fragment, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
-
-import {
-  ChevronDown,
-  ChevronRight,
-  FileSpreadsheet,
-  Flame,
-  Landmark,
-  PieChart,
-  Printer,
-  Scale,
-  TrendingUp,
-} from "lucide-react";
+import { FileSpreadsheet, Landmark, Scale, TrendingUp } from "lucide-react";
 import { Button, ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
-import { MoneyText } from "@/components/ui/money-text";
-import {
-  MonthPicker,
-  ReportTable,
-  YearPicker,
-} from "@/components/modules";
+import { MonthPicker, YearPicker } from "@/components/modules";
 import {
   aggregateByCategory,
   aggregateByPaymentMethod,
@@ -28,18 +12,14 @@ import {
   calculateConcentrationRisk,
   calculateFreedomIndex,
   computeConsolidatedBalanceSheet,
-  mondayFirstWeekday,
   validateCustomPeriod,
-  WEEKDAY_LABELS,
 } from "@/domain/reports";
-
-
 import { isCashAssetClass } from "@/domain/portfolio";
 import { addDaysISO } from "@/domain/debts";
 import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
-import { computeOverview } from "@/domain/overview";
 import {
+
   useAllocationTargets,
   useCategories,
   useDebts,
@@ -56,32 +36,32 @@ import {
   useUserAccess,
   useUserPreferences,
 } from "@/state";
-
-
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { ExpenseDetailDialog } from "@/features/transactions";
 import { PortfolioDarfMonitor } from "@/features/investments/components";
 import {
   ConsolidatedWealthModal,
   DividendFreedomModal,
-  ExcelExportCard,
   FinancialCloseReportModal,
   ReportDetailDialog,
   TaxFacilitatorModal,
   WealthTearSheetModal,
+  FinancialTab,
+  InvestmentsTab,
+  BalanceTab,
+  TaxTab,
+  type AggregationTab,
 } from "../components";
-
 import type { Expense } from "@/types";
 import { numberToCents } from "@/domain/money";
 import type { ExcelWorkbookData } from "@/services/excel-export";
 
 type MainTab = "financas" | "investimentos" | "balanco" | "fiscal";
 type PeriodMode = "month" | "year" | "custom";
-type AggregationTab = "category" | "method" | "weekday" | "charges";
 
 /**
  * Central Unificada de Relatórios & Consultoria Patrimonial (§F42).
- * Hub consolidado com 4 abas: Finanças, Investimentos, Balanço 360° e Fiscal.
+ * Hub orquestrador com 4 sub-abas: Finanças, Investimentos, Balanço 360° e Fiscal.
  */
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -130,7 +110,6 @@ export function ReportsPage() {
     });
   };
 
-
   // Filtros de Período da Aba Finanças
   const [month, setMonth] = useState(currentMonth());
   const [year, setYear] = useState(currentYear());
@@ -144,8 +123,6 @@ export function ReportsPage() {
   } | null>(null);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
-
-
   // Modais de Dossiê de Consultoria
   const [financialReportOpen, setFinancialReportOpen] = useState(false);
   const [tearSheetOpen, setTearSheetOpen] = useState(false);
@@ -153,8 +130,6 @@ export function ReportsPage() {
   const [consolidatedWealthOpen, setConsolidatedWealthOpen] = useState(false);
   const [taxReportOpen, setTaxReportOpen] = useState(false);
   const [darfMonitorOpen, setDarfMonitorOpen] = useState(false);
-
-
 
   const range =
     mode === "month"
@@ -365,7 +340,6 @@ export function ReportsPage() {
         categoryIcon: cat?.icon,
         paymentMethod: item.payment_method,
         baseCents: numberToCents(item.value),
-        // Quando pesos estão desativados, neutraliza o weight (trata como 1)
         weight: weightsEnabled ? item.report_weight : 1,
       };
     });
@@ -383,7 +357,6 @@ export function ReportsPage() {
         categoryIcon: cat?.icon,
         paymentMethod: undefined,
         baseCents: numberToCents(item.value),
-        // Quando pesos estão desativados, neutraliza o weight (trata como 1)
         weight: weightsEnabled ? item.report_weight : 1,
       };
     });
@@ -418,15 +391,8 @@ export function ReportsPage() {
     weightsEnabled &&
     (grossIncomeBrutoCents !== currentIncomeCents || grossExpenseBrutoCents !== currentExpenseCents);
 
-  const currentOverview = useMemo(
-    () => computeOverview(currentIncomeCents, currentExpenseCents, 0),
-    [currentIncomeCents, currentExpenseCents],
-  );
-
-
   const consolidatedBalance = useMemo(() => {
-    // Usa os mesmos valores ponderados que os KPIs da página exibem (consistência)
-    // currentIncomeCents e currentExpenseCents já aplicam weightsEnabled
+
     const curMonthIncomeBRL = currentIncomeCents / 100;
     const curMonthExpenseBRL = currentExpenseCents / 100;
     const curMonthContrib = contributions
@@ -454,7 +420,6 @@ export function ReportsPage() {
     });
   }, [totalPatrimonyBRL, totalInvestedCostBRL, cashBalanceBRL, debts, currentIncomeCents, currentExpenseCents, contributions, mode, month, year, customValid, customStart, customEnd]);
 
-
   const financialDRE = useMemo(() => {
     const grossIncomeCents = currentIncomeCents;
     const totalExpensesCents = currentExpenseCents;
@@ -475,9 +440,8 @@ export function ReportsPage() {
     const investedAporteCents = numberToCents(periodContribBRL);
     const netCashFlowCents = operationalSavingsCents - investedAporteCents;
 
-    // Valores brutos (sem ponderação) — referência para exibição no modal DRE quando pesos ativos
-    const grossIncomeBrutoCents = incomes.reduce((acc, i) => acc + numberToCents(i.value), 0);
-    const totalExpensesBrutoCents = expenses.reduce((acc, e) => acc + numberToCents(e.value), 0);
+    const grossIncomeBrutoCentsVal = incomes.reduce((acc, i) => acc + numberToCents(i.value), 0);
+    const totalExpensesBrutoCentsVal = expenses.reduce((acc, e) => acc + numberToCents(e.value), 0);
 
     return {
       grossIncomeCents,
@@ -486,8 +450,8 @@ export function ReportsPage() {
       savingsRatePct,
       investedAporteCents,
       netCashFlowCents,
-      grossIncomeBrutoCents,
-      totalExpensesBrutoCents,
+      grossIncomeBrutoCents: grossIncomeBrutoCentsVal,
+      totalExpensesBrutoCents: totalExpensesBrutoCentsVal,
     };
   }, [
     currentIncomeCents,
@@ -502,7 +466,6 @@ export function ReportsPage() {
     incomes,
     expenses,
   ]);
-
 
   // Estrutura Completa do Caderno Excel
   const workbookData: ExcelWorkbookData = useMemo(() => {
@@ -627,568 +590,6 @@ export function ReportsPage() {
     );
   }
 
-  const financasContent = (
-    <div className="flex flex-col gap-6">
-      {/* Card Dossiê Executivo A4 de Finanças & DRE */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Landmark className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
-            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais & DRE (A4/PDF)</h3>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Demonstração do Resultado do Exercício (DRE Pessoal), fluxo de caixa líquido, taxa de poupança e detalhamento de gastos.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="default"
-          onClick={() => setFinancialReportOpen(true)}
-          className="gap-2 shrink-0 w-full sm:w-auto justify-center"
-        >
-          <Printer className="size-4" aria-hidden="true" />
-          Visualizar & Imprimir Dossiê A4
-        </Button>
-      </div>
-
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Receitas Totais</span>
-          <MoneyText cents={grossIncomeBrutoCents} tone="positive" animated className="text-lg sm:text-xl font-bold font-display truncate" />
-          {hasDualMetrics && (
-            <span className="text-xs text-muted-foreground">
-              Ponderada: <MoneyText cents={currentIncomeCents} tone="positive" className="inline text-xs font-medium" />
-            </span>
-          )}
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Despesas Totais</span>
-          <MoneyText cents={grossExpenseBrutoCents} tone="negative" animated className="text-lg sm:text-xl font-bold font-display truncate" />
-          {hasDualMetrics && (
-            <span className="text-xs text-muted-foreground">
-              Ponderada: <MoneyText cents={currentExpenseCents} tone="negative" className="inline text-xs font-medium" />
-            </span>
-          )}
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Poupança do Período</span>
-          <div className="flex items-center justify-between gap-2">
-            <MoneyText
-              cents={grossSavingsBrutoCents}
-              tone={grossSavingsBrutoCents >= 0 ? "positive" : "negative"}
-              animated
-              className="text-lg sm:text-xl font-bold font-display truncate"
-            />
-            <span className="text-xs font-semibold text-muted-foreground shrink-0">
-              {grossSavingsRatePercent !== null ? `${grossSavingsRatePercent.toFixed(1)}%` : "—"}
-            </span>
-          </div>
-          {hasDualMetrics && (
-            <span className="text-xs text-muted-foreground">
-              Ponderado: <MoneyText cents={currentIncomeCents - currentExpenseCents} tone={currentIncomeCents >= currentExpenseCents ? "positive" : "negative"} className="inline text-xs font-medium" /> ({currentOverview.savingsRatePercent !== null ? `${currentOverview.savingsRatePercent.toFixed(1)}%` : "—"})
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Agregações */}
-      <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-foreground">Detalhamento de Despesas</h3>
-          <div className="grid grid-cols-3 sm:flex gap-1.5 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant={aggregationTab === "category" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setAggregationTab("category")}
-              className="px-2 sm:px-3 text-xs justify-center"
-            >
-              Categorias
-            </Button>
-            <Button
-              type="button"
-              variant={aggregationTab === "method" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setAggregationTab("method")}
-              className="px-2 sm:px-3 text-xs justify-center"
-            >
-              Formas de Pgto
-            </Button>
-            <Button
-              type="button"
-              variant={aggregationTab === "weekday" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setAggregationTab("weekday")}
-              className="px-2 sm:px-3 text-xs justify-center"
-            >
-              Dias da Semana
-            </Button>
-          </div>
-        </div>
-
-        {aggregationTab === "category" ? (
-          <ReportTable
-            title="Por Categoria"
-            totalBrutoCents={grossExpenseBrutoCents}
-            totalPonderadoCents={currentExpenseCents}
-            totalCents={grossExpenseBrutoCents}
-            rows={byCategory.map((c) => ({
-              key: c.categoryId,
-              label: c.name,
-              brutoCents: c.brutoCents,
-              ponderadoCents: c.ponderadoCents,
-              valueCents: c.brutoCents,
-              percent: grossExpenseBrutoCents > 0 ? (c.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-            }))}
-            onRowClick={(row) => {
-              const catExpenses = expenses.filter((e) => e.category_id === row.key);
-              setDetailModal({
-                title: `Despesas: ${typeof row.label === "string" ? row.label : "Categoria"}`,
-                expenses: catExpenses,
-              });
-            }}
-          />
-        ) : aggregationTab === "method" ? (
-          <ReportTable
-            title="Por Forma de Pagamento"
-            totalBrutoCents={grossExpenseBrutoCents}
-            totalPonderadoCents={currentExpenseCents}
-            totalCents={grossExpenseBrutoCents}
-            rows={byMethod.map((m) => ({
-              key: m.method,
-              label: PAYMENT_METHOD_LABELS[m.method as keyof typeof PAYMENT_METHOD_LABELS] ?? m.method,
-              brutoCents: m.brutoCents,
-              ponderadoCents: m.ponderadoCents,
-              valueCents: m.brutoCents,
-              percent: grossExpenseBrutoCents > 0 ? (m.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-            }))}
-            onRowClick={(row) => {
-              const methodExpenses = expenses.filter((e) => (e.payment_method ?? "other") === row.key);
-              setDetailModal({
-                title: `Despesas: ${typeof row.label === "string" ? row.label : "Forma de Pagamento"}`,
-                expenses: methodExpenses,
-              });
-            }}
-          />
-        ) : (
-          <ReportTable
-            title="Por Dia da Semana"
-            totalBrutoCents={grossExpenseBrutoCents}
-            totalPonderadoCents={currentExpenseCents}
-            totalCents={grossExpenseBrutoCents}
-            rows={byWeekday.map((w) => ({
-              key: String(w.weekday),
-              label: WEEKDAY_LABELS[w.weekday],
-              brutoCents: w.brutoCents,
-              ponderadoCents: w.ponderadoCents,
-              valueCents: w.brutoCents,
-              percent: grossExpenseBrutoCents > 0 ? (w.brutoCents / grossExpenseBrutoCents) * 100 : 0,
-            }))}
-            onRowClick={(row) => {
-              const weekdayNum = parseInt(row.key, 10);
-              const weekdayExpenses = expenses.filter((e) => mondayFirstWeekday(e.date) === weekdayNum);
-              setDetailModal({
-                title: `Despesas: ${WEEKDAY_LABELS[weekdayNum] ?? "Dia"}`,
-                expenses: weekdayExpenses,
-              });
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-
-  const investimentosContent = (
-    <div className="flex flex-col gap-6">
-      {/* Card Dossiê Executivo A4 */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="size-5 text-portfolio shrink-0" aria-hidden="true" />
-            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Alocação & Patrimônio (A4/PDF)</h3>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Documento de consultoria patrimonial com diagnóstico de defasagem de metas (Target vs. Actual), risco de concentração e custódia.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="default"
-          onClick={() => setTearSheetOpen(true)}
-          className="gap-2 shrink-0 w-full sm:w-auto justify-center"
-        >
-          <Printer className="size-4" aria-hidden="true" />
-          Visualizar & Imprimir Dossiê A4
-        </Button>
-      </div>
-
-      {/* Resumo da Alocação, Metas & Concentração Setorial */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Patrimônio Consolidado</span>
-          <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display truncate" />
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Aderência às Metas</span>
-          <span className="text-lg sm:text-xl font-bold font-display text-primary-strong">{allocationAnalysis.alignmentScore}%</span>
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Top 5 Concentração</span>
-          <span className="text-lg sm:text-xl font-bold font-display text-foreground">{concentrationRisk.top5Pct.toFixed(1)}%</span>
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Top Setor Dominante</span>
-          <div className="flex items-center justify-between gap-1 truncate">
-            <span className="text-sm sm:text-base font-bold font-display text-foreground truncate">
-              {concentrationRisk.topSectorDominance?.sector ?? "Nenhum"}
-            </span>
-            <span className="text-xs font-bold text-portfolio shrink-0">
-              {concentrationRisk.topSectorDominance ? `${concentrationRisk.topSectorDominance.pct.toFixed(1)}%` : "0%"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabela em Árvore Hierárquica de Gaps (Classe -> Setor -> Ativos) */}
-      <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-            <h3 className="text-sm font-semibold text-foreground">Defasagem de Metas Hierárquica (Classe ➔ Setor ➔ Ativos)</h3>
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {allocationAnalysis.topDeficitClass ? (
-              <span className="text-[11px] font-semibold text-primary-strong bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                Prioridade Classe: {allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}
-              </span>
-            ) : null}
-            {allocationAnalysis.topDeficitSector ? (
-              <span className="text-[11px] font-semibold text-portfolio bg-portfolio/10 px-2 py-0.5 rounded-md border border-portfolio/20">
-                Prioridade Setor: {allocationAnalysis.topDeficitSector.sectorName}
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-          <span className="text-muted-foreground text-[11px]">
-            Clique nas linhas para expandir/recolher os setores e ativos vinculados.
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setExpandedTreeClasses(new Set(allocationAnalysis.treeNodes.map((n) => n.assetClass)));
-                setExpandedTreeSectors(
-                  new Set(
-                    allocationAnalysis.treeNodes.flatMap((n) =>
-                      n.sectors.map((s) => `${n.assetClass}::${s.sectorName}`),
-                    ),
-                  ),
-                );
-              }}
-              className="h-7 px-2 text-[11px]"
-            >
-              Expandir tudo
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setExpandedTreeClasses(new Set());
-                setExpandedTreeSectors(new Set());
-              }}
-              className="h-7 px-2 text-[11px]"
-            >
-              Recolher tudo
-            </Button>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto rounded-xl border border-border/80">
-          <table className="w-full min-w-[620px] text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
-                <th className="py-2.5 px-3">Hierarquia / Nome</th>
-                <th className="py-2.5 px-3 text-right">Atual (R$)</th>
-                <th className="py-2.5 px-3 text-right">Atual (%)</th>
-                <th className="py-2.5 px-3 text-right">Meta (%)</th>
-                <th className="py-2.5 px-3 text-right">Gap (R$)</th>
-                <th className="py-2.5 px-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {allocationAnalysis.treeNodes.map((cNode) => {
-                const isClassExpanded = expandedTreeClasses.has(cNode.assetClass);
-                return (
-                  <Fragment key={cNode.assetClass}>
-                    <tr
-                      onClick={() => {
-                        setExpandedTreeClasses((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(cNode.assetClass)) next.delete(cNode.assetClass);
-                          else next.add(cNode.assetClass);
-                          return next;
-                        });
-                      }}
-                      className="bg-muted/25 hover:bg-muted/40 cursor-pointer font-semibold select-none"
-                    >
-                      <td className="py-2.5 px-3 text-foreground">
-                        <div className="flex items-center gap-1.5">
-                          {isClassExpanded ? (
-                            <ChevronDown className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          ) : (
-                            <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          )}
-                          <span className="capitalize">{cNode.assetClass}</span>
-                          <span className="text-[10px] text-muted-foreground font-normal">
-                            ({cNode.sectors.length} setores)
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono">
-                        <MoneyText cents={numberToCents(cNode.currentBRL)} />
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono">{cNode.currentPct.toFixed(1)}%</td>
-                      <td className="py-2.5 px-3 text-right font-mono">
-                        {cNode.targetPct > 0 ? `${cNode.targetPct.toFixed(1)}%` : "—"}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono">
-                        {cNode.gapBRL > 0 ? (
-                          <MoneyText cents={numberToCents(cNode.gapBRL)} tone="portfolio" className="font-bold" />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span
-                          className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                            cNode.status === "deficit"
-                              ? "bg-primary/10 text-primary-strong border border-primary/20"
-                              : cNode.status === "surplus"
-                                ? "bg-surface-hover text-muted-foreground border border-border"
-                                : "bg-positive/10 text-positive-strong border border-positive/20"
-                          }`}
-                        >
-                          {cNode.status === "deficit" ? "Aportar" : cNode.status === "surplus" ? "Acima da Meta" : "Equilibrado"}
-                        </span>
-                      </td>
-                    </tr>
-
-                    {isClassExpanded &&
-                      cNode.sectors.map((sNode) => {
-                        const sectorKey = `${cNode.assetClass}::${sNode.sectorName}`;
-                        const isSectorExpanded = expandedTreeSectors.has(sectorKey);
-
-                        return (
-                          <Fragment key={sectorKey}>
-                            <tr
-                              onClick={() => {
-                                setExpandedTreeSectors((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(sectorKey)) next.delete(sectorKey);
-                                  else next.add(sectorKey);
-                                  return next;
-                                });
-                              }}
-                              className="bg-surface hover:bg-muted/15 cursor-pointer font-medium select-none"
-                            >
-                              <td className="py-2 px-3 pl-8 text-foreground">
-                                <div className="flex items-center gap-1.5">
-                                  {isSectorExpanded ? (
-                                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                                  ) : (
-                                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                                  )}
-                                  <span className="text-xs">{sNode.sectorName}</span>
-                                  {sNode.targetPctInClass > 0 ? (
-                                    <span className="text-[10px] text-muted-foreground font-normal">
-                                      (Meta na classe: {sNode.targetPctInClass}%)
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                <MoneyText cents={numberToCents(sNode.currentBRL)} />
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                {sNode.currentPct.toFixed(1)}%
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                {sNode.effectiveTargetPct > 0 ? `${sNode.effectiveTargetPct.toFixed(1)}%` : "—"}
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono">
-                                {sNode.gapBRL > 0 ? (
-                                  <MoneyText cents={numberToCents(sNode.gapBRL)} tone="portfolio" />
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </td>
-                              <td className="py-2 px-3 text-center">
-                                <span
-                                  className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${
-                                    sNode.status === "deficit"
-                                      ? "bg-primary/10 text-primary-strong border border-primary/20"
-                                      : sNode.status === "surplus"
-                                        ? "bg-surface-hover text-muted-foreground border border-border"
-                                        : "bg-positive/10 text-positive-strong border border-positive/20"
-                                  }`}
-                                >
-                                  {sNode.status === "deficit" ? "Aportar" : sNode.status === "surplus" ? "Na Meta" : "Equilibrado"}
-                                </span>
-                              </td>
-                            </tr>
-
-                            {isSectorExpanded &&
-                              sNode.assets.map((aNode) => (
-                                <tr key={aNode.id} className="hover:bg-muted/20 text-muted-foreground">
-                                  <td className="py-1.5 px-3 pl-14 font-mono font-semibold text-foreground">
-                                    {aNode.ticker}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    <MoneyText cents={numberToCents(aNode.currentBRL)} />
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    {aNode.currentPct.toFixed(1)}%
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    {aNode.targetPct > 0 ? `${aNode.targetPct.toFixed(1)}%` : "—"}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    {aNode.gapBRL > 0 ? (
-                                      <MoneyText cents={numberToCents(aNode.gapBRL)} tone="default" />
-                                    ) : (
-                                      <span>—</span>
-                                    )}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-center text-[10px]">
-                                    {aNode.status === "deficit" ? "Déficit" : aNode.status === "surplus" ? "Excedente" : "Ok"}
-                                  </td>
-                                </tr>
-                              ))}
-                          </Fragment>
-                        );
-                      })}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-
-  const balancoContent = (
-    <div className="flex flex-col gap-6">
-      {/* Card Duplo de Dossiês A4 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-          <div className="flex flex-col gap-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <Scale className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
-              <h3 className="text-sm sm:text-base font-bold text-foreground">Balanço 360° & DRE Pessoal</h3>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Relatório consolidado unindo investimentos, contas, dívidas, poupança e fluxo de caixa.
-            </p>
-          </div>
-          <Button type="button" variant="outline" onClick={() => setConsolidatedWealthOpen(true)} className="gap-2 w-full justify-center">
-            <Printer className="size-4" aria-hidden="true" />
-            Visualizar Balanço 360°
-          </Button>
-        </div>
-
-        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-          <div className="flex flex-col gap-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <Flame className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
-              <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê de Liberdade Financeira</h3>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Análise da cobertura de custos por proventos, calendário 12M e efeito bola de neve.
-            </p>
-          </div>
-          <Button type="button" variant="outline" onClick={() => setDividendFreedomOpen(true)} className="gap-2 w-full justify-center">
-            <Printer className="size-4" aria-hidden="true" />
-            Visualizar Dossiê de Liberdade
-          </Button>
-        </div>
-      </div>
-
-      {/* Cards de Patrimônio Líquido Real */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Patrimônio Líquido Real</span>
-          <MoneyText cents={numberToCents(consolidatedBalance.netWorthBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display truncate" />
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Grau de Liberdade Financeira</span>
-          <span className="text-lg sm:text-xl font-bold font-display text-positive-strong">{freedomAnalysis.freedomPct.toFixed(1)}%</span>
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Autonomia de Reserva (Runway)</span>
-          <span className="text-lg sm:text-xl font-bold font-display text-foreground">{freedomAnalysis.runwayMonths.toFixed(1)} meses</span>
-        </div>
-      </div>
-    </div>
-  );
-
-  const fiscalContent = (
-    <div className="flex flex-col gap-6">
-      {/* Card 1: Facilitador de Declaração de IRPF */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Landmark className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
-            <h3 className="text-sm sm:text-base font-bold text-foreground">Facilitador de Declaração de IRPF</h3>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Textos prontos com 1-clique para cópia das Fichas de Bens e Direitos e Rendimentos Isentos/Exclusivos para o programa da Receita Federal.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="default"
-          onClick={() => setTaxReportOpen(true)}
-          className="gap-2 shrink-0 w-full sm:w-auto justify-center"
-        >
-          <Printer className="size-4" aria-hidden="true" />
-          Abrir Fichas de IRPF
-        </Button>
-      </div>
-
-      {/* Card 2: Monitor Mensal de DARF & Isenção de R$ 20k */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <FileSpreadsheet className="size-5 text-warning-strong shrink-0" aria-hidden="true" />
-            <h3 className="text-sm sm:text-base font-bold text-foreground">Monitor Mensal de DARF & Isenção de R$ 20k</h3>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Apuração de operações de venda em bolsa de valores, controle da faixa de isenção mensal de R$ 20.000 para ações e cálculo de imposto a recolher.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="default"
-          onClick={() => setDarfMonitorOpen(true)}
-          className="gap-2 shrink-0 w-full sm:w-auto justify-center"
-        >
-          <FileSpreadsheet className="size-4" aria-hidden="true" />
-          Abrir Monitor DARF
-        </Button>
-      </div>
-
-      {/* Card 3: Caderno de Relatórios em Excel (.xlsx) */}
-      <ExcelExportCard workbookData={workbookData} description={excelDescription} />
-    </div>
-  );
-
   const tabItems: TabItem[] = [
     ...(hasFinanceFeatures
       ? [
@@ -1197,7 +598,25 @@ export function ReportsPage() {
             label: "Finanças & DRE",
             shortLabel: "Finanças",
             icon: <Landmark className="size-4" aria-hidden="true" />,
-            content: financasContent,
+            content: (
+              <FinancialTab
+                grossIncomeBrutoCents={grossIncomeBrutoCents}
+                grossExpenseBrutoCents={grossExpenseBrutoCents}
+                grossSavingsBrutoCents={grossSavingsBrutoCents}
+                grossSavingsRatePercent={grossSavingsRatePercent}
+                currentIncomeCents={currentIncomeCents}
+                currentExpenseCents={currentExpenseCents}
+                hasDualMetrics={hasDualMetrics}
+                aggregationTab={aggregationTab}
+                setAggregationTab={setAggregationTab}
+                byCategory={byCategory}
+                byMethod={byMethod}
+                byWeekday={byWeekday}
+                expenses={expenses}
+                onOpenFinancialReport={() => setFinancialReportOpen(true)}
+                onShowDetail={(title, expenseList) => setDetailModal({ title, expenses: expenseList })}
+              />
+            ),
           },
         ]
       : []),
@@ -1208,7 +627,18 @@ export function ReportsPage() {
             label: "Investimentos & Carteira",
             shortLabel: "Investimentos",
             icon: <TrendingUp className="size-4" aria-hidden="true" />,
-            content: investimentosContent,
+            content: (
+              <InvestmentsTab
+                totalPatrimonyBRL={totalPatrimonyBRL}
+                allocationAnalysis={allocationAnalysis}
+                concentrationRisk={concentrationRisk}
+                expandedTreeClasses={expandedTreeClasses}
+                setExpandedTreeClasses={setExpandedTreeClasses}
+                expandedTreeSectors={expandedTreeSectors}
+                setExpandedTreeSectors={setExpandedTreeSectors}
+                onOpenTearSheet={() => setTearSheetOpen(true)}
+              />
+            ),
           },
         ]
       : []),
@@ -1219,7 +649,14 @@ export function ReportsPage() {
             label: "Balanço & Liberdade",
             shortLabel: "Balanço",
             icon: <Scale className="size-4" aria-hidden="true" />,
-            content: balancoContent,
+            content: (
+              <BalanceTab
+                consolidatedBalance={consolidatedBalance}
+                freedomAnalysis={freedomAnalysis}
+                onOpenConsolidatedWealth={() => setConsolidatedWealthOpen(true)}
+                onOpenDividendFreedom={() => setDividendFreedomOpen(true)}
+              />
+            ),
           },
         ]
       : []),
@@ -1230,7 +667,14 @@ export function ReportsPage() {
             label: "Fiscal & Declaração",
             shortLabel: "Fiscal",
             icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
-            content: fiscalContent,
+            content: (
+              <TaxTab
+                workbookData={workbookData}
+                excelDescription={excelDescription}
+                onOpenTaxReport={() => setTaxReportOpen(true)}
+                onOpenDarfMonitor={() => setDarfMonitorOpen(true)}
+              />
+            ),
           },
         ]
       : []),
@@ -1333,9 +777,6 @@ export function ReportsPage() {
         showWeightedNote={weightsEnabled}
       />
 
-
-
-
       <WealthTearSheetModal
         open={tearSheetOpen}
         onOpenChange={setTearSheetOpen}
@@ -1416,9 +857,6 @@ export function ReportsPage() {
           onSelectExpense={setSelectedExpense}
         />
       ) : null}
-
     </div>
   );
 }
-
-

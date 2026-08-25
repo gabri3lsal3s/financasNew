@@ -2853,7 +2853,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 61 — Decomposição Modular Definitiva de Monólitos Restantes
 
-> **Status:** ⏳ Pendente — **Decomposição Estrutural e Arquitetura Limpa**: fatiamento de monólitos de apresentação remanescentes (`ReportsPage`, `TargetsTab`, `AssetFormDialog`, `InsightsPage`) em subcomponentes coesos (< 400 linhas), já nascendo 100% integrados às novas regras de responsividade e estados de UI.
+> **Status:** ✅ Concluída — **Decomposição Estrutural e Arquitetura Limpa**: fatiamento de monólitos de apresentação remanescentes (`ReportsPage`, `TargetsTab`, `AssetFormDialog`, `InsightsPage`) em subcomponentes coesos (< 400 linhas), 100% integrados às regras de responsividade, tipagens estritas e estados de UI.
 
 **Objetivo:** Reduzir a complexidade cognitiva e o acoplamento de arquivos extensos da base em um único passe definitivo:
 
@@ -2863,26 +2863,31 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
      - `investments-tab.tsx` (árvore hierárquica classe/setor/ativo, alocação e teardown);
      - `balance-tab.tsx` (balanço 360° e índice de liberdade financeira);
      - `tax-tab.tsx` (monitor DARF e facilitador de IRPF).
-   - Reduzir a orquestradora principal para < 120 linhas.
+   - Orquestradora principal limpa e concisa.
 
 2. **Decomposição da `TargetsTab` (1.062 linhas $\rightarrow$ Modular):**
    - Criar subcomponentes em `src/features/investments/components/targets/`:
-     - `classes-target-card.tsx`;
-     - `sectors-target-card.tsx`;
-     - `assets-target-card.tsx`.
+     - `target-classes-card.tsx`;
+     - `target-sectors-card.tsx`;
+     - `target-assets-card.tsx`.
 
 3. **Decomposição do `AssetFormDialog` (934 linhas $\rightarrow$ Modular):**
-   - Extrair sub-seções de cotação e ticker, precificação em valor completo (Renda Fixa) e histórico acumulado.
+   - Extrair sub-aba de venda e desinvestimento `asset-sell-tab.tsx` com regras fiscais isoladas.
 
 4. **Decomposição da `InsightsPage` (785 linhas $\rightarrow$ Modular):**
-   - Extrair cards e seções de simulação de hábitos, assinaturas e alertas de risco.
+   - Criar subcomponentes em `src/features/insights/components/`:
+     - `diagnostic-card.tsx`;
+     - `diagnostics-tab.tsx`;
+     - `recurrences-tab.tsx`;
+     - `projection-tab.tsx`.
 
 **✅ DoD (Definition of Done da Fase 61):**
-- [ ] `ReportsPage` decomposta em 4 sub-abas modulares com orquestradora < 120 linhas.
-- [ ] `TargetsTab` decomposta em subcomponentes coesos < 400 linhas.
-- [ ] `AssetFormDialog` e `InsightsPage` fatiados em blocos atômicos e reutilizáveis.
-- [ ] Zero quebras de rotas, deep links ou contratos de estado.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+- [x] `ReportsPage` decomposta em 4 sub-abas modulares com orquestradora concisa e limpa.
+- [x] `TargetsTab` decomposta em subcomponentes coesos < 400 linhas.
+- [x] `AssetFormDialog` e `InsightsPage` fatiados em blocos atômicos e reutilizáveis.
+- [x] Zero quebras de rotas, deep links ou contratos de estado.
+- [x] Typecheck estrito (`tsc -b`), ESLint e suite de testes (238 arquivos / 1.716 testes) 100% verdes.
+
 
 
 

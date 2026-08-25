@@ -1,35 +1,14 @@
 import { useState } from "react";
-import {
-  Activity,
-  ArrowRight,
-  Calendar,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  EyeOff,
-  Flame,
-  LineChart,
-  PiggyBank,
-  Repeat,
-  Sparkles,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-  Zap,
-} from "lucide-react";
-import { Alert, Button, ErrorState, Skeleton, Tabs } from "@/components/ui";
-import { MoneyText } from "@/components/ui/money-text";
-import { InsightList, ProjectionLine } from "@/components/modules";
+import { Activity, Calendar, LineChart, Repeat } from "lucide-react";
+import { ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
-import { partitionFeedback, type FeedbackDecision } from "@/domain/insights/feedback";
+import { partitionFeedback, type FeedbackDecision, type FeedbackMap } from "@/domain/insights/feedback";
 import {
   ESSENTIAL_CATEGORY_ICONS,
-  SERVICE_SEGMENT_LABELS,
   incomeConcentration,
   isSignificantTrend,
   savingsHealth,
-  SAVINGS_HEALTH_LABELS,
   weekendSpendingRatio,
   WEEKEND_RATIO_LIMIT,
 } from "@/domain/insights";
@@ -48,7 +27,6 @@ import { computeOverview } from "@/domain/overview";
 import { aggregateByWeekday } from "@/domain/reports";
 import { numberToCents } from "@/domain/money";
 import { currentMonth, monthLabel, shiftMonth } from "@/lib/date";
-import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
 import { getErrorMessage } from "@/services/errors";
 import {
   useBudgets,
@@ -60,7 +38,7 @@ import {
   usePortfolioPosition,
   useSetFeedback,
 } from "@/state";
-import { cn } from "@/lib/utils";
+import { DiagnosticsTab, ProjectionTab, RecurrencesTab, type WarningItem } from "../components";
 
 /**
  * Insights (§3.7) — alertas críticos, assinaturas/recorrências com
@@ -99,6 +77,7 @@ export function InsightsPage() {
     debtsQuery.isLoading ||
     feedbackQuery.isLoading ||
     position.isLoading;
+
   const error =
     month0.error ??
     month1.error ??
@@ -108,17 +87,17 @@ export function InsightsPage() {
     budgetsQuery.error ??
     categoriesQuery.error ??
     debtsQuery.error ??
-    feedbackQuery.error;
+    feedbackQuery.error ??
+    position.error;
 
   const weightedSum = (items: readonly { value: number; report_weight: number }[]) =>
     items.reduce((acc, item) => acc + numberToCents(item.value * item.report_weight), 0);
 
-  // KPIs do mês com peso de relatório + investimentos reais (F19 — entrega 6):
-  // o saldo considera a saída mensal de investimentos (aporte líquido da
-  // carteira), alinhando Insights à Home pós-F16.
+  // KPIs do mês com peso de relatório + investimentos reais (F19 — entrega 6)
   const investmentsCents = position.monthlyContributionCents;
   const totals = computeOverview(weightedSum(incomesQuery.data ?? []), weightedSum(month0.data ?? []), investmentsCents);
-  const { incomeCents, expenseCents, balanceCents, savingsRatePercent: savingsRate } = totals;
+  const { incomeCents, expenseCents, balanceCents, savingsRatePercent: savingsRateRaw } = totals;
+  const savingsRate = savingsRateRaw ?? 0;
   const burnRate = incomeCents > 0 ? (expenseCents / incomeCents) * 100 : 0;
 
   // Ritmo de gastos: acumulado ÷ esperado (1 = no trilho).
@@ -132,8 +111,6 @@ export function InsightsPage() {
   // Orçamentos estourados no mês (com herança) — helpers compartilhados (F19).
   const budgets = budgetsQuery.data ?? [];
   const limitsByCategory = budgetLimitsByCategory(budgets);
-  // F27 — mapa por mês (4 meses) para a média real dos desafios; o mapa do
-  // mês atual segue sendo usado por estouros e sugestões de limite.
   const spentByCategory = spentByCategoryMap(month0.data ?? []);
   const spentByMonth = [month0, month1, month2, month3].map((q) => spentByCategoryMap(q.data ?? []));
   const overspentBudgets = (categoriesQuery.data ?? [])
@@ -166,7 +143,6 @@ export function InsightsPage() {
   });
 
   // Assinaturas e recorrências: despesas dos últimos 4 meses (sem parcelas).
-  // Map de categorias pré-computado — O(n²) → O(n) (F19).
   const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
   const allExpenses: ExpenseLike[] = [month0, month1, month2, month3]
     .flatMap((q, index) =>
@@ -183,10 +159,9 @@ export function InsightsPage() {
       })),
     );
   const occurrences = detectRecurrences(allExpenses, { todayISO: todayISOStr });
-  const feedbackMap = (feedbackQuery.data ?? {}) as Record<string, FeedbackDecision>;
+  const feedbackMap: FeedbackMap = (feedbackQuery.data ?? {}) as Record<string, FeedbackDecision>;
   const { active: activeOccurrences, ignored: ignoredOccurrences } = partitionFeedback(occurrences, feedbackMap);
 
-  // Totais das recorrências para o painel de resumo (apenas ativas)
   const totalRecurringCents = activeOccurrences.reduce((acc, o) => acc + o.averageCents, 0);
   const totalAnnualRecurringCents = totalRecurringCents * 12;
   const canCutRecurringCents = activeOccurrences
@@ -194,7 +169,7 @@ export function InsightsPage() {
     .reduce((acc, o) => acc + (o.savingsIfCutCents ?? o.averageCents), 0);
   const canCutAnnualCents = canCutRecurringCents * 12;
 
-  // Projeção & corte.
+  // Projeção diária
   const daily = dailyBudget({
     phase: "current",
     incomesCents: incomeCents,
@@ -204,7 +179,7 @@ export function InsightsPage() {
     daysInMonth,
   });
 
-  // Pendências.
+  // Pendências
   const rangeStart = `${month}-01`;
   const pending = (debtsQuery.data ?? [])
     .filter((d) => d.paid_at === null && d.due_date >= rangeStart)
@@ -215,8 +190,7 @@ export function InsightsPage() {
     }));
   const pendingSummary = pendingProjection(pending);
 
-  // Desafios e sugestões de corte — essencialidade pela fonte única (F19) e
-  // média mensal real (F27): média dos meses com gasto, não o mês isolado.
+  // Desafios e sugestões de corte
   const categorySpends: CategorySpend[] = (categoriesQuery.data ?? [])
     .filter((c) => c.type === "expense")
     .map((c) => ({
@@ -227,9 +201,6 @@ export function InsightsPage() {
       essential: c.icon != null && ESSENTIAL_CATEGORY_ICONS.has(c.icon),
     }));
   const challenges = pickTopChallenges(buildChallengeOptions(categorySpends, incomeCents));
-  // F27 — sem repetição: com 1 única categoria elegível, o desafio individual
-  // (30% dela) já cobre o mesmo número; a linha agregada só agrega quando há
-  // 2+ categorias na base.
   const discretionary = discretionaryChallenge(categorySpends, incomeCents);
   const showDiscretionary = discretionary !== null && discretionary.categoryCount >= 2;
 
@@ -245,7 +216,7 @@ export function InsightsPage() {
     .filter((u) => u.limitCents > 0);
   const limitSuggestions = buildLimitSuggestions(usages, incomeCents);
 
-  // Diagnósticos — agregador de dia da semana compartilhado (F19).
+  // Diagnósticos
   const incomeByCategory = new Map<string, number>();
   for (const income of incomesQuery.data ?? []) {
     incomeByCategory.set(income.category_id, (incomeByCategory.get(income.category_id) ?? 0) + numberToCents(income.value * income.report_weight));
@@ -263,15 +234,11 @@ export function InsightsPage() {
       weight: e.report_weight,
     })),
   );
-  // Monday-first: 0–4 úteis, 5–6 fim de semana — médias diárias (÷5 / ÷2).
   const weekdayDaily = weekdayTotals.slice(0, 5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 5;
   const weekendDaily = weekdayTotals.slice(5).reduce((acc, w) => acc + w.ponderadoCents, 0) / 2;
   const weekendRatio = weekendSpendingRatio(weekdayDaily, weekendDaily);
-  // F27 — sem dados de dia útil a comparação não faz sentido (evita "inf" e
-  // alertas absurdos de "gastos inf maiores"): exibe "—" e não alerta.
   const weekendComparable = weekdayDaily > 0;
 
-  // Tendência significativa vs mês anterior (motor §3.7.6 — F19 entrega 5).
   const prevExpenseCents = weightedSum(month1.data ?? []);
   const trendSignificant = isSignificantTrend(expenseCents, prevExpenseCents);
   const trendPercent = prevExpenseCents > 0 ? ((expenseCents - prevExpenseCents) / prevExpenseCents) * 100 : 0;
@@ -280,8 +247,7 @@ export function InsightsPage() {
     setFeedback.mutate({ occurrenceKey, decision });
   };
 
-  // Avisos consolidados (alertas convertidos + diagnósticos contextuais)
-  const warnings = [
+  const warnings: WarningItem[] = [
     ...alerts.map((a) => ({
       id: a.id,
       variant: a.severity === "praise" ? ("success" as const) : ("warning" as const),
@@ -365,113 +331,19 @@ export function InsightsPage() {
               label: "Diagnósticos",
               icon: <Activity className="size-4" aria-hidden="true" />,
               content: (
-                <div className="flex flex-col gap-6 min-w-0">
-                  {/* Bloco 1: Avisos e Recomendações Imediatas */}
-                  <section aria-label="Avisos e recomendações" className="flex flex-col gap-2.5">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Avisos & Recomendações
-                      </h2>
-                      {warnings.length > 2 && (
-                        <span className="text-[11px] text-muted-foreground">
-                          {expandedWarnings ? `${warnings.length} de ${warnings.length}` : `2 de ${warnings.length} alertas`}
-                        </span>
-                      )}
-                    </div>
-                    {warnings.length === 0 ? (
-                      <div className="flex items-center gap-3 rounded-xl border border-positive/30 bg-positive/5 p-4 text-xs">
-                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-positive/10 text-positive-strong">
-                          <CheckCircle2 className="size-4" aria-hidden="true" />
-                        </span>
-                        <div className="flex flex-col gap-0.5">
-                          <p className="font-medium text-foreground">Nenhum aviso no momento.</p>
-                          <p className="text-muted-foreground">Seu ritmo de gastos e orçamentos estão equilibrados neste mês.</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {(expandedWarnings ? warnings : warnings.slice(0, 2)).map((w) => (
-                          <Alert key={w.id} variant={w.variant}>
-                            {w.message}
-                          </Alert>
-                        ))}
-                        {warnings.length > 2 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setExpandedWarnings(!expandedWarnings)}
-                            className="self-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mt-0.5"
-                          >
-                            {expandedWarnings ? (
-                              <>
-                                <ChevronUp className="size-3.5" aria-hidden="true" />
-                                <span>Mostrar menos alertas</span>
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="size-3.5" aria-hidden="true" />
-                                <span>Ver mais {warnings.length - 2} {warnings.length - 2 === 1 ? "alerta" : "alertas"}</span>
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </section>
-
-                  {/* Bloco 2: Diagnóstico Financeiro (Grid 3x2 equilibrado) */}
-                  <section aria-label="Diagnóstico financeiro" className="flex flex-col gap-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Diagnóstico de Hábitos & Indicadores
-                    </h2>
-
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 min-w-0">
-                      <DiagnosticCard
-                        icon={<PiggyBank className="size-4" aria-hidden="true" />}
-                        label="Saúde da poupança"
-                        value={SAVINGS_HEALTH_LABELS[health]}
-                        subtitle="Capacidade de poupar"
-                        tone={health === "forte" || health === "saudavel" ? "positive" : health === "moderado" ? "neutral" : "negative"}
-                      />
-                      <DiagnosticCard
-                        icon={<Zap className="size-4" aria-hidden="true" />}
-                        label="Taxa de poupança"
-                        value={`${savingsRate.toFixed(1)}%`}
-                        subtitle="Meta ideal: 20%+"
-                        tone={savingsRate >= 20 ? "positive" : savingsRate >= 0 ? "neutral" : "negative"}
-                      />
-                      <DiagnosticCard
-                        icon={<Flame className="size-4" aria-hidden="true" />}
-                        label="Taxa de consumo"
-                        value={`${burnRate.toFixed(0)}%`}
-                        subtitle="Despesas / Renda"
-                        tone={burnRate > 85 ? "negative" : burnRate > 70 ? "neutral" : "positive"}
-                      />
-                      <DiagnosticCard
-                        icon={<Wallet className="size-4" aria-hidden="true" />}
-                        label="Concentração de renda"
-                        value={`${concentration.topSharePercent.toFixed(0)}%`}
-                        subtitle="Na principal fonte"
-                        tone={concentration.alert ? "negative" : "positive"}
-                      />
-                      <DiagnosticCard
-                        icon={<Calendar className="size-4" aria-hidden="true" />}
-                        label="Gastos fim de semana"
-                        value={weekendComparable ? `${weekendRatio.toFixed(1)}×` : "—"}
-                        subtitle="vs. dias úteis"
-                        tone={weekendComparable ? (weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive") : "neutral"}
-                      />
-                      <DiagnosticCard
-                        icon={trendPercent >= 0 ? <TrendingUp className="size-4" aria-hidden="true" /> : <TrendingDown className="size-4" aria-hidden="true" />}
-                        label="Tendência de gastos"
-                        value={`${trendPercent >= 0 ? "+" : ""}${trendPercent.toFixed(1)}%`}
-                        subtitle="vs. mês anterior"
-                        tone={trendSignificant ? (trendPercent > 0 ? "negative" : "positive") : "neutral"}
-                      />
-                    </div>
-                  </section>
-                </div>
+                <DiagnosticsTab
+                  warnings={warnings}
+                  expandedWarnings={expandedWarnings}
+                  setExpandedWarnings={setExpandedWarnings}
+                  health={health}
+                  savingsRate={savingsRate}
+                  burnRate={burnRate}
+                  concentration={concentration}
+                  weekendComparable={weekendComparable}
+                  weekendRatio={weekendRatio}
+                  trendSignificant={trendSignificant}
+                  trendPercent={trendPercent}
+                />
               ),
             },
             {
@@ -479,144 +351,18 @@ export function InsightsPage() {
               label: "Recorrências",
               icon: <Repeat className="size-4" aria-hidden="true" />,
               content: (
-                <div className="flex flex-col gap-4">
-                  {/* Card de Resumo de Recorrências */}
-                  <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:p-5">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 w-full">
-                      <div>
-                        <span className="text-xs font-medium text-muted-foreground">Total mensal recorrente</span>
-                        <div className="flex items-baseline gap-1.5 mt-0.5">
-                          <MoneyText cents={totalRecurringCents} tone="default" animated className="text-xl sm:text-2xl font-bold" />
-                          <span className="text-xs text-muted-foreground">/mês</span>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium text-muted-foreground">Total anual projetado</span>
-                        <div className="flex items-baseline gap-1.5 mt-0.5">
-                          <MoneyText cents={totalAnnualRecurringCents} tone="default" animated className="text-xl sm:text-2xl font-bold" />
-                          <span className="text-xs text-muted-foreground">/ano</span>
-                        </div>
-                      </div>
-                      {canCutRecurringCents > 0 ? (
-                        <div>
-                          <span className="text-xs font-medium text-positive-strong">Economia potencial (corte)</span>
-                          <div className="flex items-baseline gap-1.5 mt-0.5">
-                            <MoneyText cents={canCutRecurringCents} tone="positive" animated className="text-xl sm:text-2xl font-bold" />
-                            <span className="text-xs text-muted-foreground">/mês</span>
-                          </div>
-                          <p className="text-xs font-medium text-positive-strong mt-0.5">
-                            +<MoneyText cents={canCutAnnualCents} tone="positive" /> ao ano
-                          </p>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {/* Lista de Recorrências Ativas */}
-                  <section aria-label="Lista de assinaturas e recorrências" className="flex flex-col gap-2">
-                    <InsightList
-                      items={activeOccurrences.map((o) => {
-                        const badges: { label: string; tone?: "default" | "positive" | "negative" | "warning" | "critical" | "muted" }[] = [];
-
-                        // Segmento de serviço (Streaming, Fitness, Nuvem & IA, etc.)
-                        if (o.segment && o.segment !== "other") {
-                          badges.push({ label: SERVICE_SEGMENT_LABELS[o.segment], tone: "default" });
-                        }
-
-                        // Tier de corte
-                        if (o.tier === "can_cut") {
-                          badges.push({ label: "Pode cortar", tone: "positive" });
-                        } else if (o.tier === "discretionary") {
-                          badges.push({ label: "Discricionário", tone: "default" });
-                        } else if (o.tier === "essential") {
-                          badges.push({ label: "Essencial", tone: "default" });
-                        }
-
-                        // Previsão de vencimento ou cobrança pendente
-                        if (o.missingThisMonth) {
-                          badges.push({ label: "Pendente no mês", tone: "warning" });
-                        } else if (o.daysUntilNextDue !== undefined) {
-                          if (o.daysUntilNextDue === 0) {
-                            badges.push({ label: "Vence hoje", tone: "warning" });
-                          } else if (o.daysUntilNextDue > 0 && o.daysUntilNextDue <= 7) {
-                            badges.push({ label: `Em ${o.daysUntilNextDue}d`, tone: "warning" });
-                          } else if (o.typicalDayOfMonth) {
-                            badges.push({ label: `Dia ~${o.typicalDayOfMonth}`, tone: "muted" });
-                          }
-                        }
-
-                        // Reajuste de preço detectado
-                        if (o.priceAdjustment) {
-                          badges.push({ label: `+${o.priceAdjustment.percentIncrease}% reajuste`, tone: "warning" });
-                        }
-
-                        // Cobrança duplicada no mês
-                        if (o.duplicateChargesThisMonth && o.duplicateChargesThisMonth > 1) {
-                          badges.push({ label: `${o.duplicateChargesThisMonth}x no mês`, tone: "warning" });
-                        }
-
-                        return {
-                          key: o.key,
-                          title: o.name,
-                          subtitle: `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`,
-                          confidence: o.confidence,
-                          amountCents: o.averageCents,
-                          badges,
-                          icon: <Repeat className="size-4" aria-hidden="true" />,
-                        };
-                      })}
-                      feedback={feedbackMap}
-                      onIgnore={(key) => handleFeedback(key, "ignore")}
-                      onConfirm={(key) => handleFeedback(key, "confirm")}
-                      onRestore={(key) => handleFeedback(key, null)}
-                      emptyLabel="Nenhuma assinatura ou recorrência ativa detectada nos últimos meses."
-                    />
-                  </section>
-
-                  {/* Seção colapsável de Ocorrências Ignoradas */}
-                  {ignoredOccurrences.length > 0 ? (
-                    <section aria-label="Ocorrências ignoradas" className="flex flex-col gap-2 pt-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowIgnored((prev) => !prev)}
-                        className="flex items-center justify-between gap-2 self-start text-xs text-muted-foreground hover:text-foreground"
-                        aria-expanded={showIgnored}
-                      >
-                        <span className="flex items-center gap-1.5 font-medium">
-                          <EyeOff className="size-3.5" aria-hidden="true" />
-                          Ocorrências ignoradas ({ignoredOccurrences.length})
-                        </span>
-                        {showIgnored ? (
-                          <ChevronUp className="size-3.5" aria-hidden="true" />
-                        ) : (
-                          <ChevronDown className="size-3.5" aria-hidden="true" />
-                        )}
-                      </Button>
-
-                      {showIgnored ? (
-                        <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border/80 p-3 bg-surface/40">
-                          <p className="text-xs text-muted-foreground">
-                            Ocorrências ignoradas são excluídas dos cálculos e relatórios. Clique no ícone de restaurar para devolvê-las à lista ativa.
-                          </p>
-                          <InsightList
-                            items={ignoredOccurrences.map((o) => ({
-                              key: o.key,
-                              title: o.name,
-                              subtitle: `${RECURRENCE_LEVEL_LABELS[o.level]} · ${o.months.length} mês(es)`,
-                              confidence: o.confidence,
-                              amountCents: o.averageCents,
-                              icon: <Repeat className="size-4" aria-hidden="true" />,
-                            }))}
-                            feedback={feedbackMap}
-                            onRestore={(key) => handleFeedback(key, null)}
-                          />
-                        </div>
-                      ) : null}
-                    </section>
-                  ) : null}
-                </div>
+                <RecurrencesTab
+                  totalRecurringCents={totalRecurringCents}
+                  totalAnnualRecurringCents={totalAnnualRecurringCents}
+                  canCutRecurringCents={canCutRecurringCents}
+                  canCutAnnualCents={canCutAnnualCents}
+                  activeOccurrences={activeOccurrences}
+                  ignoredOccurrences={ignoredOccurrences}
+                  feedbackMap={feedbackMap}
+                  showIgnored={showIgnored}
+                  setShowIgnored={setShowIgnored}
+                  onFeedback={handleFeedback}
+                />
               ),
             },
             {
@@ -624,162 +370,25 @@ export function InsightsPage() {
               label: "Projeção",
               icon: <LineChart className="size-4" aria-hidden="true" />,
               content: (
-                <div className="flex flex-col gap-5">
-                  {/* Bloco 1: Fechamento Projetado */}
-                  <section aria-label="Fechamento do mês" className="flex flex-col gap-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Fechamento Projetado do Mês
-                    </h2>
-
-                    <div className="flex flex-col gap-3">
-                      <ProjectionLine
-                        dailyCents={daily.dailyCents}
-                        projectedExpensesCents={projection.projectedExpensesCents}
-                        surplusCents={projection.surplusCents}
-                        onTrack={projection.onTrack}
-                        spentPercent={pace.spentPercent}
-                        elapsedPercent={pace.elapsedPercent}
-                        paceActive={pace.active}
-                      />
-
-                      {/* Pendências projetadas */}
-                      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
-                        <h3 className="text-sm font-semibold text-foreground">Pendências do período</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
-                          <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
-                            <p className="text-muted-foreground">A receber</p>
-                            <MoneyText cents={pendingSummary.receivablesCents} tone="positive" className="text-sm font-semibold truncate" />
-                          </div>
-                          <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
-                            <p className="text-muted-foreground">A pagar</p>
-                            <MoneyText cents={pendingSummary.payablesCents} tone="negative" className="text-sm font-semibold truncate" />
-                          </div>
-                          <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
-                            <p className="text-muted-foreground">Saldo projetado das pendências</p>
-                            <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-sm font-semibold truncate" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* Bloco 2: Oportunidades de Economia & Cortes */}
-                  <section aria-label="Desafios de economia" className="flex flex-col gap-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Plano de Economia & Cortes
-                    </h2>
-
-                    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-warning/10 border border-warning/20 text-warning-strong">
-                          <Sparkles className="size-3.5" aria-hidden="true" />
-                        </span>
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-foreground">Desafios de economia sugeridos</h3>
-                          <p className="text-[11px] text-muted-foreground truncate">Metas inteligentes de corte nas suas categorias de maior volume.</p>
-                        </div>
-                      </div>
-
-                      {challenges.length === 0 && !showDiscretionary ? (
-                        <p className="text-xs text-muted-foreground py-2">Nenhum desafio sugerido no momento para os seus gastos atuais.</p>
-                      ) : (
-                        <div className="flex flex-col gap-2 min-w-0">
-                          {challenges.map((challenge) => (
-                            <div key={`${challenge.categoryId}-${challenge.percent}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 p-3 text-xs min-w-0">
-                              <span className="font-medium text-foreground min-w-0 flex-1">
-                                {challenge.name} — cortar {challenge.percent}% (meta{" "}
-                                <MoneyText cents={challenge.targetCents} tone="default" className="privacy-mask text-xs" />)
-                              </span>
-                              <span className="num shrink-0 font-semibold text-positive-strong">
-                                <MoneyText cents={-challenge.savingsCents} tone="positive" sign="explicit" />/mês
-                              </span>
-                            </div>
-                          ))}
-                          {showDiscretionary && discretionary ? (
-                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-positive/40 bg-positive/5 p-3 text-xs min-w-0">
-                              <span className="font-medium text-foreground min-w-0 flex-1">30% em não essenciais</span>
-                              <span className="num shrink-0 font-semibold text-positive-strong">
-                                <MoneyText cents={-discretionary.savingsCents} tone="positive" sign="explicit" />/mês
-                              </span>
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  </section>
-
-                  {/* Bloco 3: Otimização de Limites */}
-                  <section aria-label="Sugestões de limite" className="flex flex-col gap-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Otimização de Limites
-                    </h2>
-
-                    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-foreground">Sugestões de ajuste de limite</h3>
-                        <p className="text-[11px] text-muted-foreground">Ajustes recomendados para alinhar os limites de orçamento ao consumo real.</p>
-                      </div>
-
-                      {limitSuggestions.length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-2">Nenhuma sugestão de ajuste de limite no momento.</p>
-                      ) : (
-                        <div className="flex flex-col gap-2 min-w-0">
-                          {limitSuggestions.map((s) => (
-                            <div key={`${s.categoryId}-${s.kind}`} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-border/60 p-3 text-xs min-w-0">
-                              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                <span className="font-medium text-foreground truncate">{s.name}</span>
-                                <span className="text-muted-foreground text-[11px]">{s.reason}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0 font-semibold text-foreground">
-                                <MoneyText cents={s.currentLimitCents} tone="default" />
-                                <ArrowRight className="size-3 text-muted-foreground" aria-hidden="true" />
-                                <MoneyText cents={s.suggestedLimitCents} tone="default" />
-                              </div>
-                            </div>
-                          ))}
-                          <p className="text-[11px] text-muted-foreground mt-1">
-                            Para aplicar uma sugestão, acesse a tela de Orçamentos e atualize o limite da categoria.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                </div>
+                <ProjectionTab
+                  dailyCents={daily.dailyCents}
+                  projectedExpensesCents={projection.projectedExpensesCents}
+                  surplusCents={projection.surplusCents}
+                  onTrack={projection.onTrack}
+                  spentPercent={pace.spentPercent}
+                  elapsedPercent={pace.elapsedPercent}
+                  paceActive={pace.active}
+                  pendingSummary={pendingSummary}
+                  challenges={challenges}
+                  showDiscretionary={showDiscretionary}
+                  discretionary={discretionary}
+                  limitSuggestions={limitSuggestions}
+                />
               ),
             },
           ]}
         />
       )}
-    </div>
-  );
-}
-
-interface DiagnosticCardProps {
-  icon?: React.ReactNode;
-  label: string;
-  value: string;
-  subtitle?: string;
-  tone?: "positive" | "negative" | "neutral";
-}
-
-function DiagnosticCard({ icon, label, value, subtitle, tone }: DiagnosticCardProps) {
-  return (
-    <div className="flex flex-col justify-between gap-2 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 overflow-hidden">
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
-        {icon ? <span className="shrink-0 text-muted-foreground">{icon}</span> : null}
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <span
-          className={cn(
-            "num text-lg sm:text-xl font-semibold truncate",
-            tone === "positive" ? "text-positive-strong" : tone === "negative" ? "text-critical" : "text-foreground",
-          )}
-        >
-          {value}
-        </span>
-        {subtitle ? <span className="text-[11px] text-muted-foreground truncate">{subtitle}</span> : null}
-      </div>
     </div>
   );
 }
