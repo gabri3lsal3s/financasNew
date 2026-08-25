@@ -2746,127 +2746,119 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 58 — Saneamento de Camadas, Controles Nativos & Incongruências de Datas/Moeda
+### Fase 58 — Primitivos de UI, Abas Fluidas, Controles & Formatação Canônica
 
-> **Status:** ⏳ Pendente — **Saneamento Arquitetural de Camadas e Regras DRY**: eliminação de 100% dos imports diretos de `src/data/` em `src/features/`, substituição de controles nativos residuais por primitivos encapsulados, unificação de datas com timezone local e padronização monetária com `formatCentsAsBRL`.
+> **Status:** ⏳ Pendente — **Fundações de UI, Erradicação de Sobreposição de Abas e Padronização**: correção estrutural do primitivo `Tabs` (scroll horizontal livre e largura intrínseca), auto-fit numérico sem `truncate` cego em `StatCard` e `KpiCard`, erradicação de `<input type="date">` nativo, saneamento de datas no domínio e formatação monetária canônica.
 
-**Objetivo:** Eliminar fragilidades de acoplamento de camadas e violações de regras estritas do `AGENTS.md`:
+**Objetivo:** Estabelecer a solidez e responsividade imediata dos primitivos e utilitários base antes de qualquer refatoração de página:
+
+1. **Correção Estrutural do Primitivo `Tabs` (`src/components/ui/tabs.tsx`):**
+   - No modo padrão (`fullWidth={false}`), aplicar `shrink-0 flex-initial min-w-fit px-3 py-2`, eliminando o `flex-1 min-w-0` em listas de $\ge 4$ abas e ativando a rolagem horizontal suave no mobile (`overflow-x-auto no-scrollbar scroll-smooth`).
+   - Restringir `fullWidth={true}` (`flex-1 min-w-0`) exclusivamente a conjuntos curtos de $\le 3$ itens.
+2. **Auto-Fit Numérico em `StatCard` e `KpiCard`:**
+   - Aplicar tipografia escalonável com `tabular-nums tracking-tight whitespace-nowrap` e erradicar o `truncate` cego em valores monetários e contadores.
+3. **Erradicação de Input Nativo:**
+   - Substituir o `<Input type="date">` nativo em `src/features/investments/components/portfolio-import-dialog.tsx` pelo primitivo `<DatePicker />`.
+4. **Saneamento de Datas no Domínio:**
+   - Substituir `.toISOString().slice(0, 10)` em `src/domain/debts/index.ts` (`addDaysISO`) e `src/domain/projection/cash-gap.ts` por manipulações seguras de data local.
+5. **Formatação Monetária Canônica:**
+   - Substituir interpolações residuais de `toLocaleString("pt-BR", { style: "currency", currency: "BRL" })` em `position-table.tsx`, `asset-detail-sheet.tsx`, `resumo-tab.tsx`, `asset-form-dialog.tsx` e `wealth-tear-sheet-modal.tsx` por `formatCentsAsBRL(numberToCents(val))` e `<MoneyText />`.
+
+**✅ DoD (Definition of Done da Fase 58):**
+- [ ] Primitivo `Tabs` sem sobreposição ou esmagamento em nenhuma tela no mobile (320px a 400px), com rolagem horizontal suave para $\ge 4$ abas.
+- [ ] `StatCard` e `KpiCard` com auto-fit numérico e zero `truncate` cego em valores monetários.
+- [ ] Zero `<input type="date">` nativo na aplicação — 100% via `<DatePicker />`.
+- [ ] Zero `.toISOString().slice(0, 10)` com risco de fuso horário no domínio.
+- [ ] Zero interpolações manuais de moeda com `toLocaleString` fora dos formatadores canônicos.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
+---
+
+### Fase 59 — Saneamento de Camadas, Desacoplamento & Cobertura Universal de ErrorState
+
+> **Status:** ⏳ Pendente — **Isolamento Arquitetural e Resiliência**: centralização de contratos em `src/types/`, eliminação de 100% dos imports diretos de `src/data/` em `src/features/`, desacoplamento de estado em `src/components/modules/` e implementação universal de `ErrorState` com retry.
+
+**Objetivo:** Blindar as camadas e garantir tratamento resiliente de erros em 100% das páginas de dados:
 
 1. **Saneamento de Tipos e Camadas (`src/data/` $\rightarrow$ `src/types/`):**
    - Re-exportar em `src/types/` os tipos `AdminUserRow`, `CreditCardForm`, `AllocationTargetInput`, `RecurrenceGroupFields`, `InstallmentInput`.
    - Atualizar os 7 arquivos em `src/features/` (`user-edit-dialog.tsx`, `users-tab.tsx`, `card-form-dialog.tsx`, `investment-wizard.tsx`, `expense-detail-dialog.tsx`, `income-detail-dialog.tsx`, `wizard-state.ts`) para importar de `@/types`.
-
-2. **Erradicação de Controles Nativos Residuais:**
-   - Substituir o `<Input type="date" />` nativo em `src/features/investments/components/portfolio-import-dialog.tsx` pelo primitivo `<DatePicker />` com tema unificado.
-
-3. **Correção de Datas e Fusos Horários em Domínio:**
-   - Substituir chamadas de `.toISOString().slice(0, 10)` em `src/domain/debts/index.ts` (`addDaysISO`) e `src/domain/projection/cash-gap.ts` por funções livres de distorção de fuso horário.
-
-4. **Padronização Monetária Canônica:**
-   - Substituir interpolações residuais de `toLocaleString("pt-BR", { style: "currency", currency: "BRL" })` em `position-table.tsx`, `asset-detail-sheet.tsx`, `resumo-tab.tsx`, `asset-form-dialog.tsx` e `wealth-tear-sheet-modal.tsx` por `formatCentsAsBRL(numberToCents(val))` e `<MoneyText />`.
-
-**✅ DoD (Definition of Done da Fase 58):**
-- [ ] Zero imports de `@/data/` em qualquer arquivo dentro de `src/features/` ou `src/components/`.
-- [ ] Zero `<input type="date">` nativo na aplicação — 100% via `<DatePicker />`.
-- [ ] Zero `.toISOString().slice(0, 10)` com risco de fuso horário no domínio.
-- [ ] Zero interpolações manuais de moeda com `toLocaleString` fora dos formatadores canônicos.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
-
----
-
-### Fase 59 — Cobertura Universal de ErrorState e Desacoplamento de Módulos Compartilhados
-
-> **Status:** ⏳ Pendente — **Resiliência e Desacoplamento de Domínio**: inclusão de `ErrorState` com retry em todas as páginas e abas core, e desacoplamento de chamadas diretas de estado em `src/components/modules/`.
-
-**Objetivo:** Garantir a experiência resiliente Online First em 100% das telas e conformidade com o papel puro de `components/modules`:
-
-1. **Cobertura Universal de `ErrorState` com Retry:**
+2. **Desacoplamento de `src/components/modules/`:**
+   - Refatorar `CashCheckpointDialog` para receber `onConfirm` e `isPending` via props tipadas, sem importar `@/state` diretamente.
+   - Formalizar o papel de componentes de casca (`FeatureGate` e `NotificationsPopover`) documentando suas dependências arquiteturais em `docs/ARCHITECTURE.md`.
+3. **Cobertura Universal de `ErrorState` com Retry:**
    - Implementar bloco explícito de `ErrorState` com `getErrorMessage(error)` e ação de reconexão (`refetch`) em:
      - `CardsPage` (`src/features/cards/pages/cards-page.tsx`);
      - `TransactionListPage` (`src/features/transactions/pages/transaction-list-page.tsx`);
      - Abas de Investimentos (`resumo-tab.tsx`, `proventos-tab.tsx`, `targets-tab.tsx`, `aporte-tab.tsx`).
 
-2. **Desacoplamento de `src/components/modules/`:**
-   - Refatorar `CashCheckpointDialog` para receber `onConfirm` e `isPending` via props tipadas, sem importar `@/state` diretamente.
-   - Formalizar o papel de componentes de casca (`FeatureGate` e `NotificationsPopover`) documentando suas dependências arquiteturais em `docs/ARCHITECTURE.md`.
-
 **✅ DoD (Definition of Done da Fase 59):**
-- [ ] 100% das páginas e abas de finanças e investimentos possuem tratamento de `ErrorState` com retry funcional.
+- [ ] Zero imports de `@/data/` em qualquer arquivo dentro de `src/features/` ou `src/components/`.
 - [ ] `CashCheckpointDialog` não faz import direto de `src/state/`.
+- [ ] 100% das páginas e abas de finanças e investimentos possuem tratamento de `ErrorState` com retry funcional.
 - [ ] Documentação de arquitetura sincronizada com a classificação de componentes de casca vs módulos puros.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
 
 ---
 
-### Fase 60 — Decomposição Modular de Monólitos Restantes
+### Fase 60 — Ergonomia de Cards, Grids Mobile-First & Visão Geral (Home)
 
-> **Status:** ⏳ Pendente — **Decomposição Estrutural e Arquitetura Limpa**: fatiamento de monólitos de apresentação remanescentes (`ReportsPage`, `TargetsTab`, `AssetFormDialog`, `InsightsPage`) em subcomponentes coesos (< 400 linhas).
+> **Status:** ⏳ Pendente — **Refinamento de UX, Grids e Cards de Dashboard**: redesenho responsivo dos cards da Visão Geral (`RealCashHeroCard`, legendas de fluxo diário, saldo líquido de contas e barra de uso consolidado de orçamentos), conversão de grids de 3 colunas para mobile-first e adaptação de formulários.
+
+**Objetivo:** Erradicar compressões visuais e quebras de alinhamento nos cards da tela inicial e demais páginas:
+
+1. **Redesenho Responsivo dos Cards da Página Inicial (Visão Geral):**
+   - **`RealCashHeroCard`:** Refatorar o cabeçalho para layout flexível adaptativo (`flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between`), eliminando cortes de título e colisões com o botão "Calibrar" e a badge de aferição;
+   - **Card de Fluxo Diário:** Aplicar `flex-wrap` e espaçamento responsivo nas legendas do cabeçalho;
+   - **Card de Saldo Líquido de Contas:** Refatorar as sub-colunas "A receber / A pagar / Faturas" para layout fluido sem corte de centavos;
+   - **Barra de Uso Consolidado de Orçamentos:** Ajustar o cabeçalho para `flex-col sm:flex-row sm:items-center sm:justify-between gap-1`.
+2. **Adaptação de Grids de Métricas no Restante do App:**
+   - Converter grids rígidos de `grid-cols-3` em `grid-cols-1 sm:grid-cols-3` ou `grid-cols-2 sm:grid-cols-3` em:
+     - `DebtsPage` (`src/features/debts/pages/debts-page.tsx`);
+     - `BudgetsPage` (`src/features/budgets/pages/budgets-page.tsx`);
+     - Card mobile de ativo da `PositionTable` (`src/components/modules/position-table.tsx`);
+     - `PlanningSection` (`src/components/modules/planning-section.tsx`).
+3. **Harmonização de Formulários e Diálogos Mobile:**
+   - Ajustar campos de formulário em `CardFormDialog`, `CategoryFormDialog` e `LoanFormDialog` para `grid-cols-1 sm:grid-cols-2`.
+
+**✅ DoD (Definition of Done da Fase 60):**
+- [ ] `RealCashHeroCard` com cabeçalho adaptativo sem cortes de título ou colisões em 320px–390px.
+- [ ] 100% dos grids com $\ge 3$ colunas adaptados para mobile-first (`grid-cols-1` ou `grid-cols-2` em telas $< 640\text{px}$).
+- [ ] Formulários em diálogos adaptados para coluna única no mobile.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
+---
+
+### Fase 61 — Decomposição Modular Definitiva de Monólitos Restantes
+
+> **Status:** ⏳ Pendente — **Decomposição Estrutural e Arquitetura Limpa**: fatiamento de monólitos de apresentação remanescentes (`ReportsPage`, `TargetsTab`, `AssetFormDialog`, `InsightsPage`) em subcomponentes coesos (< 400 linhas), já nascendo 100% integrados às novas regras responsivas e de estado.
 
 **Objetivo:** Reduzir a complexidade cognitiva e o acoplamento de arquivos extensos da base:
 
-1. **Decomposição da `ReportsPage` (1.424 linhas $\rightarrow$ Modular):**
+1. **Decomposição da `ReportsPage` (1.424 linhas $\rightarrow$ < 120 linhas):**
    - Criar `src/features/reports/components/tabs/`:
      - `financial-tab.tsx` (DRE, agregações por categoria/meio/dia da semana);
      - `investments-tab.tsx` (árvore hierárquica classe/setor/ativo, alocação e teardown);
      - `balance-tab.tsx` (balanço 360° e índice de liberdade financeira);
      - `tax-tab.tsx` (monitor DARF e facilitador de IRPF).
    - Reduzir a orquestradora principal para < 120 linhas.
-
-2. **Decomposição da `TargetsTab` (1.062 linhas $\rightarrow$ Modular):**
+2. **Decomposição da `TargetsTab` (1.062 linhas $\rightarrow$ < 350 linhas por componente):**
    - Criar subcomponentes em `src/features/investments/components/targets/`:
      - `classes-target-card.tsx`;
      - `sectors-target-card.tsx`;
      - `assets-target-card.tsx`.
-
 3. **Decomposição do `AssetFormDialog` (934 linhas $\rightarrow$ Modular):**
    - Extrair sub-seções de cotação e ticker, precificação em valor completo (Renda Fixa) e histórico acumulado.
-
 4. **Decomposição da `InsightsPage` (785 linhas $\rightarrow$ Modular):**
    - Extrair cards e seções de simulação de hábitos, assinaturas e alertas de risco.
 
-**✅ DoD (Definition of Done da Fase 60):**
+**✅ DoD (Definition of Done da Fase 61):**
 - [ ] `ReportsPage` decomposta em 4 sub-abas modulares com orquestradora < 120 linhas.
 - [ ] `TargetsTab` decomposta em subcomponentes coesos < 400 linhas.
 - [ ] `AssetFormDialog` e `InsightsPage` fatiados em blocos atômicos e reutilizáveis.
 - [ ] Zero quebras de rotas, deep links ou contratos de estado.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suite de testes 100% verdes.
-
----
-
-### Fase 61 — Engenharia de Responsividade Mobile-First, Ergonomia de Cards, Scroll de Abas & Auto-Fit Numérico
-
-> **Status:** ⏳ Pendente — **Refinamento de UX, Cards & Ergonomia Mobile**: correção estrutural do primitivo `Tabs` (scroll suave sem compressão/sobreposição de abas), redesenho responsivo dos cards da Visão Geral (`RealCashHeroCard`, `KpiCard`, `StatCard`), adaptação de cabeçalhos compostos, grids adaptativos e erradicação de reticências em valores monetários grandes.
-
-**Objetivo:** Eliminar 100% das sobreposições visuais, esmagamentos de layout, truncamentos forçados em valores numéricos e quebras de paddings em dispositivos móveis (320px a 400px):
-
-1. **Correção Estrutural do Primitivo `Tabs` (`src/components/ui/tabs.tsx`):**
-   - No modo padrão (`fullWidth={false}`), aplicar `shrink-0 flex-initial min-w-fit px-3 py-2`, eliminando o `flex-1 min-w-0` em listas com $\ge 4$ abas e garantindo rolagem horizontal suave com `overflow-x-auto no-scrollbar scroll-smooth`.
-   - Restringir `fullWidth={true}` (`flex-1 min-w-0`) exclusivamente a conjuntos curtos de $\le 3$ itens.
-
-2. **Redesenho Responsivo dos Cards da Página Inicial (Visão Geral):**
-   - **`RealCashHeroCard`:** Refatorar o cabeçalho para layout empilhado flexível (`flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between`), eliminando o truncamento de "Saldo Disponível em Conta" e colisões com o botão "Calibrar" e a badge de aferição;
-   - **`KpiCard` & `StatCard`:** Implementar auto-fit tipográfico proporcional com `tabular-nums tracking-tight whitespace-nowrap` e erradicar o `truncate` cego em valores monetários e contadores;
-   - **Card de Fluxo Diário:** Aplicar `flex-wrap` e espaçamento responsivo nas legendas do cabeçalho;
-   - **Card de Saldo Líquido de Contas:** Refatorar as sub-colunas "A receber / A pagar / Faturas" para layout com tipografia fluida sem corte de centavos;
-   - **Barra de Uso Consolidado de Orçamentos:** Ajustar o cabeçalho para `flex-col sm:flex-row sm:items-center sm:justify-between gap-1`.
-
-3. **Adaptação de Grids de Métricas e Cards no Restante do App:**
-   - Converter grids rígidos de `grid-cols-3` em `grid-cols-1 sm:grid-cols-3` ou `grid-cols-2 sm:grid-cols-3` em:
-     - `DebtsPage` (`src/features/debts/pages/debts-page.tsx`);
-     - `BudgetsPage` (`src/features/budgets/pages/budgets-page.tsx`);
-     - Card mobile de ativo da `PositionTable` (`src/components/modules/position-table.tsx`);
-     - `PlanningSection` (`src/components/modules/planning-section.tsx`).
-
-4. **Harmonização de Formulários e Diálogos Mobile:**
-   - Ajustar campos de formulário em `CardFormDialog`, `CategoryFormDialog` e `LoanFormDialog` para `grid-cols-1 sm:grid-cols-2`, prevenindo esmagamento de controles quando o teclado virtual é acionado.
-
-**✅ DoD (Definition of Done da Fase 61):**
-- [ ] Primitivo `Tabs` sem sobreposição ou compressão em telas de 320px–390px, com scroll horizontal livre para $\ge 4$ abas.
-- [ ] `RealCashHeroCard` com cabeçalho adaptativo sem cortes de título ou sobreposição de badges/botões.
-- [ ] Zero `truncate` cego em valores monetários em `KpiCard`, `StatCard` e cards de resumo financeiro.
-- [ ] 100% dos grids com $\ge 3$ colunas adaptados para mobile-first (`grid-cols-1` ou `grid-cols-2` em telas $< 640\text{px}$).
-- [ ] Formulários em diálogos adaptados para coluna única no mobile.
 - [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
 
 
 
