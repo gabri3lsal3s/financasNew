@@ -669,10 +669,53 @@
      - 232 arquivos de teste e 1700 testes executados com sucesso;
      - Typecheck, ESLint e Build de produção gerados com sucesso.
 
+## F54 — Simplificação Condicional do Modal de Ativo (2026-08-25)
+
+- **Problema:** O modal "Editar Ativo" (`AssetEditDialog`) e o `AssetFormDialog` exibiam todos os campos simultaneamente independentemente do tipo de ativo, resultando em um formulário longo e cognitivamente pesado com campos irrelevantes para a maioria dos casos de uso.
+
+- **Solução:** Refatoração dos três componentes afetados para exibição contextual e progressiva dos campos, sem remover nenhum dado do banco — apenas ajustando a visibilidade na UI:
+
+  1. **Campo "Moeda" condicional** (`asset-edit-dialog.tsx`, `asset-form-dialog.tsx`):
+     - Oculto automaticamente (currency fixada em `BRL`) para Ações, FIIs, ETFs, Renda Fixa, Cripto e Caixa;
+     - Visível apenas para `BDRs` e `Internacional (EUA)`, onde a escolha de USD é semanticamente relevante;
+     - Mudança de classe reseta automaticamente para `BRL` quando a nova classe não requer seleção de moeda.
+
+  2. **Campo "Setor" adaptativo por classe**:
+     - **Caixa:** oculto (sem setor útil);
+     - **Renda Fixa / Tesouro:** exibe somente chips de seleção rápida (Pós-fixado / Inflação / Prefixado / Crédito Privado) sem input de texto livre; label renomeado para "Indexador / Segmento";
+     - **Demais classes:** comportamento anterior preservado (input de texto + chips de sugestão).
+
+  3. **Modo de Precificação do Tesouro — colapsado por padrão** (`asset-edit-dialog.tsx`, `asset-form-dialog.tsx`):
+     - O seletor visual "Valor Completo / Preço Médio" inicia sempre colapsado (padrão `total_value`);
+     - Exibe um link discreto "Usar modo Preço Médio / Cotas (avançado)" para expandir quando necessário;
+     - Ativos já cadastrados em modo cotas (`[PRICING:UNIT]`) abrem o seletor automaticamente.
+
+  4. **`FixedIncomeFormFields` — campos avançados e isenção de IR condicional** (`fixed-income-form-fields.tsx`):
+     - **Data de Vencimento** promovida para a seção principal (sempre visível);
+     - **Data-Base D₀ e Aplicação Original** movidas para um acordeão "Configurações avançadas" colapsado por padrão; expande automaticamente se já houver dados preenchidos;
+     - **Isenção de IR ocultada** quando `isTesouro === true` — Tesouro Direto nunca é isento de IR, e o campo gerava confusão.
+
+  5. **Proventos — visibilidade por tipo de ativo** (`asset-edit-dialog.tsx`):
+     - **Renda Fixa / Tesouro:** bloco controlado por checkbox _"Distribui juros / cupons periodicamente (NTN-B, CRI, CRA, debêntures)"_; desmarcado limpa os campos; marcado expande o painel; ativo com dados já salvos abre o painel automaticamente;
+     - **Ações / FIIs / ETFs / BDRs / Internacional:** bloco colapsado por padrão, acessível via link "+ Adicionar proventos anteriores ao cadastro (opcional)"; ativo com dados já salvos expande automaticamente;
+     - **Cripto / Caixa:** bloco removido completamente (sem proventos no escopo do app).
+
+- **Arquivos alterados:**
+  - `src/features/investments/components/fixed-income-form-fields.tsx` — accordion avançado + isenção IR condicional;
+  - `src/features/investments/components/asset-edit-dialog.tsx` — todos os blocos condicionais (1–5);
+  - `src/features/investments/components/asset-form-dialog.tsx` — blocos 1–3 (Moeda, Setor, Tesouro);
+  - `src/features/investments/components/asset-form-dialog.test.tsx` — teste do Tesouro atualizado para o novo fluxo de expansão.
+
+- **Qualidade:**
+  - Typecheck (`tsc --noEmit`): sem erros;
+  - ESLint: sem violações;
+  - 14/14 testes de componente aprovados.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.
 - **Verificação:** a cada fase — typecheck, lint, testes e build verdes antes do commit (regra do ciclo, `ROADMAP.md` §6.1).
+
 
 
 

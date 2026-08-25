@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { DatePicker, PercentInput, Select, Checkbox } from "@/components/ui";
 import { parseDecimalNumber } from "@/domain/money";
+import { todayISO } from "@/domain/debts";
 import type { FixedIncomeRateType } from "@/types";
 
 export interface FixedIncomeFormFieldsValues {
@@ -29,6 +32,17 @@ const RATE_TYPE_OPTIONS: { value: FixedIncomeRateType; label: string }[] = [
 /**
  * Subcomponente canônico para parâmetros de Renda Fixa e Tesouro Direto (Fase 63/72).
  * Reutilizado no Wizard de Ativos, AssetEditDialog e AssetFormDialog (Regra DRY §4).
+ *
+ * Campos sempre visíveis:
+ *   - Indexador / Regime
+ *   - Taxa Contratada
+ *   - Data de Vencimento (opcional)
+ *
+ * Campos no acordeão "Configurações avançadas" (colapsado por padrão):
+ *   - Data-Base / Marco Zero (D₀)
+ *   - Aplicação Original (IR)
+ *
+ * Isenção de IR: ocultada para Tesouro Direto (nunca isento).
  */
 export function FixedIncomeFormFields({
   values,
@@ -36,6 +50,13 @@ export function FixedIncomeFormFields({
   idPrefix = "fi",
   isTesouro = false,
 }: FixedIncomeFormFieldsProps) {
+  // Accordion: expande automaticamente se já houver dados preenchidos
+  const hasAdvancedData =
+    Boolean(values.initialInvestmentDate) ||
+    (Boolean(values.baseDate) && values.baseDate !== todayISO());
+
+  const [showAdvanced, setShowAdvanced] = useState(hasAdvancedData);
+
   const getRateSuffix = () => {
     switch (values.rateType) {
       case "cdi":
@@ -77,7 +98,7 @@ export function FixedIncomeFormFields({
         <span className="text-xs font-semibold text-foreground">
           {isTesouro ? "Parâmetros do Tesouro Direto" : "Parâmetros de Renda Fixa"}
         </span>
-        <span className="text-[11px] text-muted-foreground">Cálculo & Tributação</span>
+        <span className="text-[11px] text-muted-foreground">Cálculo &amp; Tributação</span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -107,19 +128,7 @@ export function FixedIncomeFormFields({
           <span className="text-[11px] text-muted-foreground">Taxa pactuada na contratação</span>
         </div>
 
-        {/* Data-Base / Marco Zero */}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-foreground">Data-Base / Marco Zero (D₀)</span>
-          <DatePicker
-            value={values.baseDate}
-            onValueChange={(baseDate) => onChange({ baseDate })}
-            placeholder="Selecione a data-base"
-            ariaLabel="Data-base para início do cálculo de rendimento"
-          />
-          <span className="text-[11px] text-muted-foreground">Início da contagem dos juros do saldo atual</span>
-        </div>
-
-        {/* Data de Vencimento */}
+        {/* Data de Vencimento — sempre visível */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-foreground">
             Data de Vencimento <span className="text-muted-foreground/80 font-normal">(opcional)</span>
@@ -133,34 +142,69 @@ export function FixedIncomeFormFields({
           <span className="text-[11px] text-muted-foreground">Congela o rendimento e aciona o Radar de Vencimentos</span>
         </div>
 
-        {/* Data de Aplicação Original */}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-foreground">
-            Aplicação Original <span className="text-muted-foreground/80 font-normal">(opcional)</span>
-          </span>
-          <DatePicker
-            value={values.initialInvestmentDate ?? ""}
-            onValueChange={(initialInvestmentDate) =>
-              onChange({ initialInvestmentDate: initialInvestmentDate || null })
-            }
-            placeholder="dd/mm/aaaa"
-            ariaLabel="Data da primeira aplicação para contagem de IR"
-          />
-          <span className="text-[11px] text-muted-foreground">Base para a tabela regressiva de IR (22,5% a 15%)</span>
-        </div>
+        {/* Isenção de IR — oculto para Tesouro Direto (nunca isento) */}
+        {!isTesouro && (
+          <div className="flex flex-col justify-center gap-1 sm:pt-4">
+            <Checkbox
+              id={`${idPrefix}-is-tax-exempt`}
+              checked={values.isTaxExempt}
+              onCheckedChange={(isTaxExempt) => onChange({ isTaxExempt })}
+              label="Isento de IR (LCI, LCA, CRI, CRA)"
+            />
+            <span className="pl-6 text-[11px] text-muted-foreground">
+              Aplica alíquota zero de IR no resgate e relatórios
+            </span>
+          </div>
+        )}
+      </div>
 
-        {/* Isenção de IR */}
-        <div className="flex flex-col justify-center gap-1 sm:pt-4">
-          <Checkbox
-            id={`${idPrefix}-is-tax-exempt`}
-            checked={values.isTaxExempt}
-            onCheckedChange={(isTaxExempt) => onChange({ isTaxExempt })}
-            label="Isento de IR (LCI, LCA, CRI, CRA)"
-          />
-          <span className="pl-6 text-[11px] text-muted-foreground">
-            Aplica alíquota zero de IR no resgate e relatórios
-          </span>
-        </div>
+      {/* Configurações avançadas — acordeão colapsado por padrão */}
+      <div className="border-t border-border/40 pt-3">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((prev) => !prev)}
+          className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          aria-expanded={showAdvanced}
+        >
+          <span>Configurações avançadas</span>
+          {showAdvanced ? (
+            <ChevronUp className="size-3.5" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="size-3.5" aria-hidden="true" />
+          )}
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Data-Base / Marco Zero (D₀) */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-foreground">Data-Base / Marco Zero (D&#8320;)</span>
+              <DatePicker
+                value={values.baseDate}
+                onValueChange={(baseDate) => onChange({ baseDate })}
+                placeholder="Selecione a data-base"
+                ariaLabel="Data-base para início do cálculo de rendimento"
+              />
+              <span className="text-[11px] text-muted-foreground">Início da contagem dos juros do saldo atual</span>
+            </div>
+
+            {/* Data de Aplicação Original (IR) */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-foreground">
+                Aplicação Original <span className="text-muted-foreground/80 font-normal">(opcional)</span>
+              </span>
+              <DatePicker
+                value={values.initialInvestmentDate ?? ""}
+                onValueChange={(initialInvestmentDate) =>
+                  onChange({ initialInvestmentDate: initialInvestmentDate || null })
+                }
+                placeholder="dd/mm/aaaa"
+                ariaLabel="Data da primeira aplicação para contagem de IR"
+              />
+              <span className="text-[11px] text-muted-foreground">Base para a tabela regressiva de IR (22,5% a 15%)</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

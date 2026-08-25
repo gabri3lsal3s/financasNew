@@ -63,6 +63,9 @@ const ASSET_CLASS_PRESETS = [
   "Internacional",
 ];
 
+/** Classes para as quais a Moeda faz sentido (BDRs e Internacional negociam em USD). */
+const CLASSES_WITH_CURRENCY = new Set(["BDRs", "Internacional"]);
+
 function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFormContentProps) {
   const createAsset = useCreatePortfolioAsset();
   const updateAsset = useUpdatePortfolioAsset();
@@ -102,6 +105,10 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
       const suggested = inferSectorFromTicker(ticker, newClass);
       setSector(suggested);
     }
+    // Resetar moeda para BRL quando a classe não precisa de seleção de moeda
+    if (!CLASSES_WITH_CURRENCY.has(newClass)) {
+      setCurrency("BRL");
+    }
     const upper = ticker.toUpperCase();
     if (upper.includes("LCI") || upper.includes("LCA") || upper.includes("CRI") || upper.includes("CRA")) {
       setFixedIncomeIsTaxExempt(true);
@@ -112,9 +119,20 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const isTesouro = isTesouroAsset(ticker, assetClass);
   const isFixedIncome = isFixedIncomeClass(assetClass) || isTesouro;
 
+  /** Moeda só é editável para BDRs e Internacional */
+  const needsCurrencyField = CLASSES_WITH_CURRENCY.has(assetClass);
+
+  /** Setor em Renda Fixa vira chips apenas (sem input livre) */
+  const isSectorChipsOnly = isFixedIncome && !isCash;
+  const sectorLabel = isFixedIncome ? "Indexador / Segmento" : "Setor / Segmento / Indexador";
+
   // Modo Tesouro: "total_value" (padrão RF) ou "unit_price" (cotas / PM)
   const initialTesouroMode = asset?.notes?.includes("[PRICING:UNIT]") ? "unit_price" : "total_value";
   const [tesouroMode, setTesouroMode] = useState<"total_value" | "unit_price">(initialTesouroMode);
+  // Seletor de modo Tesouro: expõe se já estava em modo cotas ou se usuário clicar
+  const [showTesouroModeSelector, setShowTesouroModeSelector] = useState(
+    initialTesouroMode === "unit_price",
+  );
 
   // Modo efetivo: se Renda Fixa (não-tesouro) ou (tesouro e modo total_value) -> total_value
   const isTotalValueMode = !isCash && isFixedIncome && (!isTesouro || tesouroMode === "total_value");
@@ -494,21 +512,34 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
             ))}
           </div>
 
+
+          {/* Setor — oculto para Caixa; chips apenas para RF/Tesouro */}
           {!isCash && (
             <div className="flex flex-col gap-1.5">
-              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                Setor / Segmento / Indexador
-                <Input
-                  value={sector}
-                  onChange={(event) => setSector(event.target.value)}
-                  placeholder="Ex: Financeiro / Bancos, Imobiliário / Logística, Pós-fixado..."
-                  maxLength={60}
-                  aria-label="Setor do ativo"
-                />
-              </label>
+              {isSectorChipsOnly ? (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {sectorLabel}
+                  </span>
+                  <p className="text-[11px] text-muted-foreground">Selecione o tipo de rendimento:</p>
+                </div>
+              ) : (
+                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                  {sectorLabel}
+                  <Input
+                    value={sector}
+                    onChange={(event) => setSector(event.target.value)}
+                    placeholder="Ex: Financeiro / Bancos, Imobiliário / Logística, Pós-fixado..."
+                    maxLength={60}
+                    aria-label="Setor do ativo"
+                  />
+                </label>
+              )}
               {recommendedSectors.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] text-muted-foreground">Setores recomendados:</span>
+                  {!isSectorChipsOnly && (
+                    <span className="text-[11px] text-muted-foreground">Setores recomendados:</span>
+                  )}
                   {recommendedSectors.slice(0, 4).map((s) => (
                     <button
                       key={s}
@@ -528,61 +559,84 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              Moeda de Negociação
-              <Select
-                value={currency}
-                onValueChange={(value) => setCurrency(value as AssetCurrency)}
-                options={CURRENCY_OPTIONS}
-                ariaLabel="Moeda do ativo"
-              />
-            </label>
-          </div>
-
-          {/* Seletor de Modo de Precificação para Tesouro Direto */}
-          {isTesouro ? (
-            <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">Modo de Precificação do Tesouro</span>
-                <span className="text-[11px] text-muted-foreground">Padrão: Valor Completo</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTesouroMode("total_value");
-                    triggerSensory("selection");
-                  }}
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
-                    tesouroMode === "total_value"
-                      ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
-                      : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <span className="text-xs font-semibold">Valor Completo (Padrão RF)</span>
-                  <span className="text-[10px] text-muted-foreground">Preço inicial e saldo atual (sem cotas)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTesouroMode("unit_price");
-                    triggerSensory("selection");
-                  }}
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
-                    tesouroMode === "unit_price"
-                      ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
-                      : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <span className="text-xs font-semibold">Preço Médio / Cotas</span>
-                  <span className="text-[10px] text-muted-foreground">Frações de títulos e preço unitário</span>
-                </button>
-              </div>
+          {/* Moeda — só visível para BDRs e Internacional */}
+          {needsCurrencyField && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                Moeda de Negociação
+                <Select
+                  value={currency}
+                  onValueChange={(value) => setCurrency(value as AssetCurrency)}
+                  options={CURRENCY_OPTIONS}
+                  ariaLabel="Moeda do ativo"
+                />
+              </label>
             </div>
-          ) : null}
+          )}
+
+          {/* Seletor de Modo de Precificação para Tesouro Direto — colapsado por padrão */}
+          {isTesouro && (
+            <div className="flex flex-col gap-2">
+              {showTesouroModeSelector ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">Modo de Precificação do Tesouro</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowTesouroModeSelector(false)}
+                      className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      Recolher
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTesouroMode("total_value");
+                        triggerSensory("selection");
+                      }}
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
+                        tesouroMode === "total_value"
+                          ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
+                          : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <span className="text-xs font-semibold">Valor Completo (Padrão RF)</span>
+                      <span className="text-[10px] text-muted-foreground">Preço inicial e saldo atual (sem cotas)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTesouroMode("unit_price");
+                        triggerSensory("selection");
+                      }}
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-xs font-medium transition-all text-left flex flex-col gap-0.5 cursor-pointer",
+                        tesouroMode === "unit_price"
+                          ? "border-primary bg-surface shadow-xs text-foreground font-semibold"
+                          : "border-border/60 bg-surface/50 text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <span className="text-xs font-semibold">Preço Médio / Cotas</span>
+                      <span className="text-[10px] text-muted-foreground">Frações de títulos e preço unitário</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowTesouroModeSelector(true)}
+                  className="self-start text-xs text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
+                >
+                  Usar modo Preco Medio / Cotas (avancado)
+                </button>
+              )}
+            </div>
+          )}
+
+
 
           {/* Campos de Posição Consolidada */}
           {isCash ? (

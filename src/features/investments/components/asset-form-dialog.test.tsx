@@ -196,13 +196,17 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
 
     await user.type(screen.getByLabelText("Ticker do ativo"), "TESOURO SELIC");
 
-    // Deve exibir o seletor do Tesouro
+    // Padrão: seletor colapsado — campo de valor completo já visível
+    expect(screen.getByLabelText("Preço inicial investido")).toBeInTheDocument();
+    // O seletor de modo fica oculto por padrão; exibe link para expandir
+    expect(screen.queryByText(/Modo de Precificação do Tesouro/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Usar modo Preco Medio/i)).toBeInTheDocument();
+
+    // Abre o seletor de modo clicando no link de expansão
+    await user.click(screen.getByText(/Usar modo Preco Medio/i));
     expect(screen.getByText(/Modo de Precificação do Tesouro/i)).toBeInTheDocument();
     expect(screen.getByText(/Valor Completo \(Padrão RF\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Preço Médio \/ Cotas/i)).toBeInTheDocument();
-
-    // Padrão: campos de valor completo
-    expect(screen.getByLabelText("Preço inicial investido")).toBeInTheDocument();
 
     // Alterna para Preço Médio / Cotas
     await user.click(screen.getByText(/Preço Médio \/ Cotas/i));
@@ -223,6 +227,7 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
       }),
     );
   });
+
 
   it("impede cadastrar um segundo ativo de Caixa se já existir um na carteira", async () => {
     // Mock com caixa já existente
