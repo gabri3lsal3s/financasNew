@@ -1,5 +1,11 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.08** registra o **Planejamento e Arquitetura da Fase 62 — Automação de Rentabilidade de Renda Fixa, Marcação Oficial de Tesouro Direto, Modelo Paramétrico de Marco Zero & Gestão de Vencimentos** (2026-08-25):
+> - **(1) Automação Oficial do Tesouro Direto**: integração direta no serviço de cotações com a API pública do Tesouro Nacional/B3, capturando automaticamente Preço Unitário (PU) diário de compra/resgate e data oficial de vencimento;
+> - **(2) Motor Paramétrico de Renda Fixa Privada (Marco Zero)**: cálculo determinístico de rendimento diário para CDBs, LCIs, LCAs, CRIs e Prefixados a partir do saldo no dia do cadastro ($D_0$), capitalizando em dias úteis com taxa CDI diária do Banco Central (SGS 12), alíquotas regressivas de IR e zero necessidade de digitação diária;
+> - **(3) Gestão de Vencimentos & Ciclo de Vida**: trava automática de cálculo no vencimento ($\text{data\_limite} = \min(\text{Hoje}, \text{maturity\_date})$), badges de status, radar de vencimentos nos Insights e ação rápida de 1-clique para liquidar e transferir o saldo ao Caixa/Reserva da carteira para rebalanceamento;
+> - **(4) Ergonomia de UX & Calibração em 1-Clique**: atualização do Wizard de Ativos, badges de rentabilidade projetada e botão de ajuste rápido de saldo contra extrato bancário.
+
 > **v2.07** registra a **Reengenharia Sequencial Anti-Retrabalho das Fases 58, 59, 60 e 61 — Primitivos Fluidos, Saneamento de Camadas, Ergonomia de Cards & Decomposição Estrutural** (2026-08-25):
 > - **(1) Eliminação Total de Retrabalho na Decomposição**: as fundações e primitivos visuais (`Tabs`, `StatCard`, `KpiCard`, `DatePicker`, `ErrorState`) são corrigidos primeiro nas Fases 58–60, permitindo que a decomposição modular dos grandes monólitos na Fase 61 (`ReportsPage`, `TargetsTab`, `AssetFormDialog`, `InsightsPage`) já nasça 100% responsiva, tipada e com tratamento de 3 estados em um único passe definitivo;
 > - **(2) Fase 58 (Primitivos de UI, Abas Fluidas, Controles Nativos & Formatação Canônica)**: correção estrutural de `Tabs` com `shrink-0 flex-initial min-w-fit px-3 py-2` (eliminando a sobreposição de abas no app inteiro), auto-fit numérico sem `truncate` cego em `StatCard`/`KpiCard`, substituição de `<Input type="date">` nativo por `<DatePicker />`, saneamento de datas no domínio para timezone local e padronização monetária com `formatCentsAsBRL`;
@@ -2887,6 +2893,182 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 - [x] `AssetFormDialog` e `InsightsPage` fatiados em blocos atômicos e reutilizáveis.
 - [x] Zero quebras de rotas, deep links ou contratos de estado.
 - [x] Typecheck estrito (`tsc -b`), ESLint e suite de testes (238 arquivos / 1.716 testes) 100% verdes.
+
+---
+
+---
+
+### Fase 62 — Ergonomia, Tipografia Adaptativa e Responsividade da Barra de Navegação Mobile (BottomNav) em Todos os Cenários de Acesso
+
+> **Status:** ⏳ Planejada — **Ergonomia e Responsividade da Navegação Mobile**: eliminação definitiva de truncamentos de texto (`"Investime..."`, `"Configura..."`), suporte a micro-copy conciso (`shortLabel`), grid dinâmico adaptativo para todos os perfis de permissão (acesso completo, acesso restrito a poucos módulos e modo somente-leitura sem FAB) e suporte nativo a Safe Area (iOS/Android).
+
+**Objetivo:** Garantir uma experiência de navegação mobile polida, cristalina e ergonomicamente balanceada em qualquer resolução de smartphone e sob qualquer perfil de permissão do usuário:
+
+```mermaid
+flowchart TD
+    subgraph Resolução de Permissões e Slots
+        PERMS[Permissões do Usuário / Feature Flags] --> FILTER[filterNavItems: Itens Permitidos]
+        FILTER --> RESOLVE{Qtd de Itens Permitidos}
+        RESOLVE -- "<= 4 itens" --> DIRECT[Distribuição Direta nos Slots da Barra]
+        RESOLVE -- "> 4 itens" --> MORE[3 Prioritários + FAB + Botão 'Mais' / BottomSheet]
+    end
+
+    subgraph Adaptação Dinâmica de Layout
+        DIRECT & MORE --> HAS_FAB{Possui Ação de Escrita / FAB?}
+        HAS_FAB -- "Sim (create != null)" --> GRID5[Grid 5 Slots: Left + FAB Central + Right]
+        HAS_FAB -- "Não (Somente-Leitura)" --> GRID_AUTO[Grid Homogêneo Proporcional: 2, 3 ou 4 colunas]
+    end
+
+    subgraph Tipografia & Micro-Copy Mobile
+        GRID5 & GRID_AUTO --> COPY[Aplicação de shortLabel: 'Carteira', 'Ajustes', 'Admin'...]
+        COPY --> TYPO[Tipografia Adaptativa: text-10px line-clamp-1 sem corte com reticências]
+        TYPO --> SAFE[Safe Area: pb-env safe-area-inset-bottom]
+    end
+```
+
+---
+
+#### 1. Fase 62.1: Contrato de Navegação & Micro-Copy Mobile (`shortLabel`)
+- **Extensão do Contrato `NavItem` (`src/components/layout/nav-items.tsx`):**
+  - Adicionar campo opcional `shortLabel?: string` em `NavItem`;
+  - Definir micro-copy padronizado para telas móveis:
+    - `"Investimentos"` $\rightarrow$ `shortLabel: "Carteira"`
+    - `"Configurações"` $\rightarrow$ `shortLabel: "Ajustes"`
+    - `"Administração"` $\rightarrow$ `shortLabel: "Admin"`
+    - `"Categorias"` $\rightarrow$ `shortLabel: "Orçamento"`
+    - `"Transações"` $\rightarrow$ `shortLabel: "Extrato"`
+  - Preservar `label` completo para Sidebar desktop e gavetas de opções.
+
+---
+
+#### 2. Fase 62.2: Refatoração Tipográfica e Eliminação de Truncamento Agressivo
+- **Componente `SlotLink` (`src/components/layout/bottom-nav.tsx`):**
+  - Remover a trava estática `max-w-[64px] truncate`;
+  - Adicionar container flexível com `w-full text-center text-[10px] leading-tight tracking-tight font-medium line-clamp-1` consumindo `item.shortLabel ?? item.label`;
+  - Garantir alinhamento de baseline consistente em todas as colunas independentemente do tamanho do rótulo.
+
+---
+
+#### 3. Fase 62.3: Layout Dinâmico e Balanceamento para Todos os Perfis de Acesso
+- **Grid Adaptativo no `BottomNav` (`src/components/layout/bottom-nav.tsx`):**
+  - **Com FAB ativo (`create !== null`):** layout de 5 colunas com FAB centralizado em destaque circular e slots distribuídos simetricamente;
+  - **Sem FAB / Somente-Leitura (`create === null`):** grid proporcional dinâmico (`grid-cols-4`, `grid-cols-3` ou `grid-cols-2`), eliminando o slot vazio invisível no centro da barra;
+  - **Acesso Ultra-Restrito (1 a 2 itens):** centralização equilibrada no container `max-w-md` sem lacunas vazias.
+
+---
+
+#### 4. Fase 62.4: Suporte a Safe Area & Micro-Interações
+- **Barra Inferior (`<nav>`):**
+  - Inclusão de `pb-[env(safe-area-inset-bottom,0px)]` e fundo translúcido `backdrop-blur-md bg-surface/90 border-t border-border/80`;
+  - Área de toque mínima WCAG de 44×44px em todos os links e botões;
+  - Escala tátil de feedback (`active:scale-95`) e trigger sensorial (`triggerSensory`).
+
+---
+
+**✅ DoD (Definition of Done da Fase 62):**
+- [ ] `shortLabel` implementado em `nav-items.tsx` com rótulos concisos para mobile.
+- [ ] Truncamento estático `max-w-[64px] truncate` removido de `bottom-nav.tsx`.
+- [ ] Usuário com acesso restrito a Investimentos e Relatórios visualiza `"Carteira"`, `"Relatórios"`, FAB `(+)`, `"Lembretes"` e `"Ajustes"` 100% legíveis sem reticências.
+- [ ] Perfil somente-leitura (sem FAB) renderiza grid fluido e proporcional sem espaço fantasma no centro.
+- [ ] Suporte a `safe-area-inset-bottom` para iPhone / Android com barra de gestos.
+- [ ] Testes unitários em `bottom-nav.test.tsx` e `nav-resolver.test.ts` cobrindo todos os cenários.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
+---
+
+### Fase 63 — Automação de Rentabilidade de Renda Fixa & Gestão de Vencimentos (Tesouro Direto + Marco Zero Paramétrico + Radar de Vencimentos)
+
+> **Status:** ⏳ Planejada — **Automação Inteligente de Renda Fixa**: eliminação de digitação manual de saldos diários via integração direta com a API pública do Tesouro Direto (marcação a mercado oficial por PU), motor paramétrico de capitalização por dias úteis no domínio a partir do saldo base do cadastro (Marco Zero) com taxas do Banco Central (SGS), alíquotas regressivas de IR, trava no vencimento e ação rápida de liquidação para o Caixa.
+
+**Objetivo:** Permitir que o patrimônio investido em Renda Fixa (títulos públicos e privados) atualize sua rentabilidade diariamente sem demandar esforço manual contínuo do usuário, mantendo 100% de aderência à arquitetura de funções puras, resiliência de cotações e rebalanceamento de carteira:
+
+```mermaid
+flowchart TD
+    subgraph Pilar 1: Tesouro Direto Oficial
+        TD[Ativo Tesouro Direto] --> API_TD[API Oficial Tesouro / B3]
+        API_TD --> PU[PU Oficial de Compra / Resgate]
+        API_TD --> VENC_AUTO[Data de Vencimento Oficial]
+        PU --> VAL_TD[Valoração Automática: Qtd × PU]
+    end
+
+    subgraph Pilar 2: Renda Fixa Privada Paramétrica
+        CDB[CDB / LCI / LCA / CRI / Pré] --> MZ[Marco Zero: Saldo Base em D₀]
+        BCB[API Banco Central SGS: Série 12 CDI] --> CDI[Taxa CDI / Selic Diária]
+        MZ & CDI --> MOTOR[Motor Puro: Dias Úteis + Juros Compostos]
+        MOTOR --> VAL_CDB[Saldo Projetado Diário em Tempo Real]
+    end
+
+    subgraph Pilar 3: Gestão de Vencimento & Rebalanceamento
+        VENC[Data de Vencimento] --> CHECK{Hoje >= Vencimento?}
+        CHECK -- Sim --> CONGELA[Congela Rendimento no Valor Final]
+        CONGELA --> RADAR[Radar de Vencimentos & Insights]
+        CONGELA --> LIQUIDAR[Ação 1-Clique: Mover para Caixa]
+        LIQUIDAR --> REBAL[Saldo livre no Rebalanceamento]
+    end
+
+    VAL_TD & VAL_CDB & REBAL --> CARTEIRA[Posição Consolidada, Retorno Total e Metas]
+```
+
+---
+
+#### 1. Fase 63.1: Domínio Puro Matemático, Dias Úteis & Modelo Paramétrico
+- **Calendário e Feriados Brasileiros (`src/domain/portfolio/business-days.ts`):**
+  - Implementar funções puras `isBusinessDay(date)`, `getNationalHolidays(year)` e `countBusinessDays(startDate, endDate)` cobrindo feriados nacionais fixos e móveis da B3 (Carnaval, Sexta-Feira Santa, Corpus Christi, etc.).
+- **Motor Paramétrico de Carrego e IR (`src/domain/portfolio/fixed-income.ts`):**
+  - Implementar `calculateFixedIncomeBalance({ baseValue, baseDate, maturityDate, rateType, rateValue, isTaxExempt, totalCost, dailyCdiRate, today })`:
+    - **Pós-fixado (% do CDI):** $\text{Saldo}(t) = \text{base\_value} \times (1 + \text{CDI\_diario} \times \frac{\text{rate}}{100})^{N}$;
+    - **Prefixado (% a.a.):** $\text{Saldo}(t) = \text{base\_value} \times (1 + \frac{\text{taxa}}{100})^{\frac{N}{252}}$;
+    - **Trava de Vencimento:** $N = \text{countBusinessDays}(\text{baseDate}, \min(\text{today}, \text{maturityDate}))$;
+    - **Tabela Regressiva de IR:** cálculo de lucro bruto, retenção estimada (22,5% $\rightarrow$ 15%) e saldo líquido estimado quando `isTaxExempt === false`.
+- **Testes Unitários:** Vitest colocalizado cobrindo 100% dos cenários (dias úteis, feriados, viradas de ano, títulos vencidos, isenção tributária).
+
+---
+
+#### 2. Fase 63.2: Pipeline de Cotações, Tesouro Direto & Indicadores BCB
+- **Normalizador Heurístico & Resolução de Aliases (`src/domain/portfolio/quotes.ts`):**
+  - Implementar função pura `normalizeTesouroTicker(raw: string)` capaz de extrair a família (`SELIC/LFT`, `IPCA/NTNB`, `PREFIXADO/LTN`, `RENDA+`, `EDUCA+`), o ano de vencimento (2 ou 4 dígitos) e a presença de cupom semestral a partir de digitações livres ou extratos (ex.: `"selic 29"` $\rightarrow$ `"TESOURO SELIC 2029"`, `"ntn-b 2035"` $\rightarrow$ `"TESOURO IPCA+ 2035"`);
+  - Enriquecer o catálogo curado em `src/domain/portfolio/tickers-catalog.ts` com a grade oficial completa de títulos públicos ativos para autocomplete instantâneo no cadastro.
+- **Parser e Catálogo do Tesouro Direto (`src/domain/portfolio/quotes.ts`):**
+  - Normalização e parsing do JSON oficial do Tesouro Direto / B3 (`treasurybondsinfo.json`), extraindo Preço Unitário (`price`), código do título e data de vencimento (`maturity_date`).
+- **Serviço de Indicadores Macroeconômicos (`src/services/quotes.ts` / Edge Function):**
+  - Consumo assíncrono e resiliente da API do Banco Central (SGS Série 12 para CDI diário e 432 para Selic);
+  - Persistência e cache em `asset_prices` com tickers virtuais (`INDEX:CDI`, `INDEX:SELIC`) e fallbacks estáticos em caso de indisponibilidade de rede.
+
+---
+
+#### 3. Fase 63.3: Integração na Valoração da Carteira, Rebalanceamento & Insights
+- **Valoração Unificada (`src/domain/portfolio/valuation.ts`):**
+  - Atualizar `calculatePositionSummary` e `getAssetPricingMode` para precificar ativos paramétricos via `calculateFixedIncomeBalance` e Tesouro Direto via cotação PU oficial.
+- **Radar de Vencimentos & Insights Proativos (`src/domain/insights/`):**
+  - Emissão de diagnósticos para títulos a vencer nos próximos 30 dias (`warning`) e títulos já vencidos com capital ocioso disponível para reinvestimento (`critical`).
+- **Hooks de Estado (`src/state/`):**
+  - Integração em `usePortfolioPosition` e disponibilização reativa do CDI atual via `useAssetPrices`.
+
+---
+
+#### 4. Fase 63.4: Experiência do Usuário (UI/UX), Wizard de Ativos & Ação de Liquidação
+- **Wizard de Ativos (`InvestmentWizard` / `AssetFormDialog`):**
+  - Ao selecionar a classe Renda Fixa:
+    - Tesouro Direto: busca com autocomplete inteligente, auto-resolução de aliases, preenchimento de data de vencimento e PU oficial;
+    - Renda Fixa Privada (CDB/LCI/LCA): campos de Marco Zero (Saldo Atual em $D_0$, Indexador, % da Taxa, Data Base e Vencimento opcional).
+- **Cards e Linhas de Posição (`PositionTable` & `AssetDetailSheet`):**
+  - Badge visual de rendimento projetado (`[110% CDI • Projetado]`);
+  - Badges de vencimento: `[Vence em 15 dias]` / `[Vencido em DD/MM/AAAA]`;
+  - Botão **"Calibrar com Extrato"** (ajuste em 1-clique que redefine o Marco Zero para a data de hoje);
+  - Botão **"Liquidar / Mover para o Caixa"** em títulos vencidos (registra o resgate no extrato e transfere o saldo para o Caixa, alimentando imediatamente o Motor de Rebalanceamento).
+
+---
+
+**✅ DoD (Definition of Done da Fase 63):**
+- [ ] Módulos puros `business-days.ts`, `fixed-income.ts` e `normalizeTesouroTicker` 100% testados com Vitest.
+- [ ] Normalizador de títulos do Tesouro Direto resolve aliases abreviados, termos de corretoras e digitação livre com precisão.
+- [ ] Parser do Tesouro Direto e sincronizador do CDI do Banco Central integrados ao pipeline de cotações com fallback seguro.
+- [ ] Posição de Renda Fixa atualiza rentabilidade diária automaticamente em memória ($O(1)$) a partir do Marco Zero sem requisições pesadas de histórico.
+- [ ] Títulos vencidos congelam rentabilidade no dia exato do vencimento e exibem badges e alertas de insight.
+- [ ] Ação de 1-clique para calibração com extrato e liquidação de títulos vencidos para o Caixa da carteira.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
+
 
 
 
