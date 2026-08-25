@@ -12,6 +12,23 @@ vi.mock("react-router", () => ({
 
 const entries: SearchEntry[] = [
   {
+    id: "action-1",
+    type: "action",
+    text: ["nova despesa", "gasto"],
+    label: "Nova Despesa",
+    detail: "Lançar nova despesa ou compra",
+    link: { path: "/transacoes", params: { action: "new-expense" } },
+  },
+  {
+    id: "ast-1",
+    type: "investment",
+    text: ["PETR4", "Petrobras", "Ações"],
+    amountCents: 350000,
+    label: "PETR4 · Petróleo",
+    detail: "Ações · 100 cotas",
+    link: { path: "/investimentos", params: { q: "ast-1", ticker: "PETR4" } },
+  },
+  {
     id: "e1",
     type: "expense",
     text: ["mercado extra", "alimentacao", "pix", "despesa"],
@@ -58,13 +75,13 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-describe("GlobalSearch (busca global ⌘K §3.9)", () => {
+describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
   it("abre pelo botão e pede ao menos 2 caracteres", async () => {
     const user = userEvent.setup();
     render(<GlobalSearch />);
 
-    await user.click(screen.getByRole("button", { name: "Buscar (Ctrl+K)" }));
-    expect(screen.getByPlaceholderText(/Buscar despesas/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
+    expect(screen.getByPlaceholderText(/Buscar páginas, ações/)).toBeInTheDocument();
     expect(screen.getByText("Digite ao menos 2 caracteres para buscar.")).toBeInTheDocument();
   });
 
@@ -72,8 +89,8 @@ describe("GlobalSearch (busca global ⌘K §3.9)", () => {
     const user = userEvent.setup();
     render(<GlobalSearch />);
 
-    await user.click(screen.getByRole("button", { name: "Buscar (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar despesas/), "mercado");
+    await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
+    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "mercado");
 
     // Grupo "Despesas" com o resultado.
     expect(screen.getByText("Despesas")).toBeInTheDocument();
@@ -87,10 +104,10 @@ describe("GlobalSearch (busca global ⌘K §3.9)", () => {
     const user = userEvent.setup();
     render(<GlobalSearch />);
 
-    await user.click(screen.getByRole("button", { name: "Buscar (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar despesas/), "nubank");
+    await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
+    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "nubank");
 
-    expect(screen.getByText("Cartões")).toBeInTheDocument();
+    expect(screen.getByText("Cartões de Crédito")).toBeInTheDocument();
     expect(screen.getByText("Nubank")).toBeInTheDocument();
     await user.click(screen.getByText("Nubank"));
     expect(navigateMock).toHaveBeenCalledWith("/cartoes?card=c1");
@@ -100,11 +117,35 @@ describe("GlobalSearch (busca global ⌘K §3.9)", () => {
     const user = userEvent.setup();
     render(<GlobalSearch />);
 
-    await user.click(screen.getByRole("button", { name: "Buscar (Ctrl+K)" }));
-    await user.type(screen.getByPlaceholderText(/Buscar despesas/), "pendente");
+    await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
+    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "pendente");
 
-    expect(screen.getByText("Dívidas")).toBeInTheDocument();
+    expect(screen.getByText("Dívidas & Empréstimos")).toBeInTheDocument();
     await user.click(screen.getByText("Conta de luz"));
     expect(navigateMock).toHaveBeenCalledWith("/dividas?q=d1&type=payable");
+  });
+
+  it("busca ações operacionais rápidas e navega", async () => {
+    const user = userEvent.setup();
+    render(<GlobalSearch />);
+
+    await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
+    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "nova despesa");
+
+    expect(screen.getByText("Ações Rápidas")).toBeInTheDocument();
+    await user.click(screen.getByText("Nova Despesa"));
+    expect(navigateMock).toHaveBeenCalledWith("/transacoes?action=new-expense");
+  });
+
+  it("busca ativos de investimento e tickers", async () => {
+    const user = userEvent.setup();
+    render(<GlobalSearch />);
+
+    await user.click(screen.getByRole("button", { name: "Buscar ou executar comando (Ctrl+K)" }));
+    await user.type(screen.getByPlaceholderText(/Buscar páginas, ações/), "petr4");
+
+    expect(screen.getByText("Investimentos & Ativos")).toBeInTheDocument();
+    await user.click(screen.getByText("PETR4 · Petróleo"));
+    expect(navigateMock).toHaveBeenCalledWith("/investimentos?q=ast-1&ticker=PETR4");
   });
 });

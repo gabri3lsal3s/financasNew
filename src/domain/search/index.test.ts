@@ -164,4 +164,43 @@ describe("domain/search (§3.9 — limites e ordenação)", () => {
     const results = searchGlobal("mercado extra", expenses, TODAY);
     expect(results[0]?.entry.link).toEqual({ path: "/transacoes", params: { month: "2026-08", q: "e1" } });
   });
+
+  it("busca multi-token encontra registros mesmo com palavras espalhadas em ordem arbitrária", () => {
+    const asset = entry({
+      id: "ast-1",
+      type: "investment",
+      label: "CDB BANCO INTER 110%",
+      text: ["CDB BANCO INTER", "renda fixa", "110% CDI"],
+      detail: "Renda Fixa · CDB Pós-fixado",
+      link: { path: "/investimentos", params: { q: "ast-1" } },
+    });
+
+    const results = searchGlobal("inter cdb 110", [asset], TODAY);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.entry.id).toBe("ast-1");
+  });
+
+  it("busca e encontra páginas e atalhos de ações do catálogo estático", () => {
+    const drePage = entry({
+      id: "page-dre",
+      type: "page",
+      label: "DRE Contábil Gerencial",
+      text: ["dre", "demonstrativo", "relatorio"],
+      link: { path: "/relatorios", params: { tab: "dre" } },
+    });
+
+    const newExpenseAction = entry({
+      id: "action-new-expense",
+      type: "action",
+      label: "Nova Despesa",
+      text: ["nova despesa", "lancar despesa", "gasto"],
+      link: { path: "/transacoes", params: { action: "new-expense" } },
+    });
+
+    const resultsDre = searchGlobal("dre contabil", [drePage, newExpenseAction], TODAY);
+    expect(resultsDre[0]!.entry.id).toBe("page-dre");
+
+    const resultsExpense = searchGlobal("lancar despesa", [drePage, newExpenseAction], TODAY);
+    expect(resultsExpense[0]!.entry.id).toBe("action-new-expense");
+  });
 });

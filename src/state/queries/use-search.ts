@@ -4,8 +4,15 @@ import { listAllIncomes } from "@/data/repositories/incomes";
 import { listDebts } from "@/data/repositories/debts";
 import { listCreditCards } from "@/data/repositories/credit-cards";
 import { listAllCategories } from "@/data/repositories/categories";
+import { listPortfolioAssets } from "@/data/repositories/portfolio";
+import { listBudgets } from "@/data/repositories/budgets";
+import { listRecurrences } from "@/data/repositories/recurrences";
 import { DEBT_STATUS_LABELS, debtStatus } from "@/domain/debts";
-import type { SearchEntry } from "@/domain/search";
+import {
+  STATIC_APP_ACTION_ENTRIES,
+  STATIC_APP_PAGE_ENTRIES,
+  type SearchEntry,
+} from "@/domain/search";
 import { formatDateBR } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { STALE_TIMES } from "@/state/cache-policy";
@@ -14,9 +21,10 @@ export const allExpensesKey = ["expenses", "all"] as const;
 export const allIncomesKey = ["incomes", "all"] as const;
 
 /**
- * Dados da busca global (§3.9): despesas, rendas, dívidas, cartões e
- * categorias convertidos em `SearchEntry` (com deep-links). As queries são
- * habilitadas apenas com a paleta aberta — evita custo sem uso.
+ * Dados da busca global e Command Palette (§3.9 & Fase 64):
+ * Indexa 100% dos módulos (páginas, ações rápidas, despesas, rendas,
+ * dívidas, cartões, investimentos, orçamentos, lembretes e categorias).
+ * As queries são habilitadas apenas com a paleta aberta para máxima performance.
  */
 export function useGlobalSearchEntries(enabled: boolean) {
   const expensesQuery = useQuery({
@@ -46,6 +54,24 @@ export function useGlobalSearchEntries(enabled: boolean) {
   const categoriesQuery = useQuery({
     queryKey: ["categories", "all"] as const,
     queryFn: () => listAllCategories(),
+    enabled,
+    staleTime: STALE_TIMES.analytical,
+  });
+  const portfolioQuery = useQuery({
+    queryKey: ["portfolio", "assets"] as const,
+    queryFn: () => listPortfolioAssets(),
+    enabled,
+    staleTime: STALE_TIMES.analytical,
+  });
+  const budgetsQuery = useQuery({
+    queryKey: ["budgets"] as const,
+    queryFn: () => listBudgets(),
+    enabled,
+    staleTime: STALE_TIMES.analytical,
+  });
+  const recurrencesQuery = useQuery({
+    queryKey: ["recurrences"] as const,
+    queryFn: () => listRecurrences(),
     enabled,
     staleTime: STALE_TIMES.analytical,
   });
@@ -105,7 +131,6 @@ export function useGlobalSearchEntries(enabled: boolean) {
     text: [card.name, card.brand ?? "", "cartao"],
     label: card.name,
     detail: card.brand ? `Cartão ${card.brand}` : "Cartão de crédito",
-    // `card` seleciona (derivado); `q` destaca por um instante (§3.9).
     link: { path: "/cartoes", params: { card: card.id, q: card.id } },
   }));
 
@@ -118,7 +143,56 @@ export function useGlobalSearchEntries(enabled: boolean) {
     link: { path: "/categorias", params: { q: category.id, type: category.type } },
   }));
 
-  const entries = [...expenses, ...incomes, ...debts, ...cards, ...categoriesEntries];
+  const investments: SearchEntry[] = (portfolioQuery.data ?? []).map((asset) => ({
+    id: asset.id,
+    type: "investment",
+    text: [asset.ticker, asset.asset_class ?? "", asset.sector ?? "", "investimento", "ativo", "carteira"],
+    amountCents: Math.round(Number(asset.quantity ?? 0) * Number(asset.average_price ?? 0) * 100),
+    label: `${asset.ticker}${asset.sector ? ` · ${asset.sector}` : ""}`,
+    detail: `${asset.asset_class ?? "Ativo"} · ${asset.currency} ${Number(asset.quantity ?? 0).toLocaleString("pt-BR")} posições / cotas`,
+    link: { path: "/investimentos", params: { q: asset.id, ticker: asset.ticker } },
+  }));
+
+  const budgets: SearchEntry[] = (budgetsQuery.data ?? []).map((budget) => {
+    const cat = categoryById.get(budget.category_id);
+    return {
+      id: budget.id,
+      type: "budget",
+      text: [cat?.name ?? "", "orcamento", "teto", "meta de gasto"],
+      amountCents: Math.round(Number(budget.limit ?? 0) * 100),
+      label: `Orçamento · ${cat?.name ?? "Categoria"}`,
+      detail: `Teto de R$ ${Number(budget.limit ?? 0).toFixed(2)} · Mês ${budget.month}`,
+      link: { path: "/orcamentos", params: { q: budget.id, category: budget.category_id } },
+    };
+  });
+
+  const reminders: SearchEntry[] = (recurrencesQuery.data ?? []).map((rec) => {
+    const cat = categoryById.get(rec.category_id ?? "");
+    const description = rec.description?.trim() || (cat?.name ? `Recorrência · ${cat.name}` : "Lembrete");
+    return {
+      id: rec.id,
+      type: "reminder",
+      text: [description, cat?.name ?? "", rec.kind === "expense" ? "a pagar" : "a receber", "lembrete", "recorrencia", "fixa"],
+      amountCents: Math.round(Number(rec.value ?? 0) * 100),
+      date: rec.start_date,
+      label: `Lembrete · ${description}`,
+      detail: `${rec.kind === "expense" ? "Despesa fixa" : "Renda fixa"} · R$ ${Number(rec.value ?? 0).toFixed(2)} (${rec.frequency})`,
+      link: { path: "/lembretes", params: { q: rec.id } },
+    };
+  });
+
+  const entries: SearchEntry[] = [
+    ...STATIC_APP_ACTION_ENTRIES,
+    ...STATIC_APP_PAGE_ENTRIES,
+    ...investments,
+    ...expenses,
+    ...incomes,
+    ...debts,
+    ...cards,
+    ...budgets,
+    ...reminders,
+    ...categoriesEntries,
+  ];
 
   return {
     entries,
@@ -127,13 +201,19 @@ export function useGlobalSearchEntries(enabled: boolean) {
       incomesQuery.isLoading ||
       debtsQuery.isLoading ||
       cardsQuery.isLoading ||
-      categoriesQuery.isLoading,
+      categoriesQuery.isLoading ||
+      portfolioQuery.isLoading ||
+      budgetsQuery.isLoading ||
+      recurrencesQuery.isLoading,
     error:
       expensesQuery.error ??
       incomesQuery.error ??
       debtsQuery.error ??
       cardsQuery.error ??
-      categoriesQuery.error,
+      categoriesQuery.error ??
+      portfolioQuery.error ??
+      budgetsQuery.error ??
+      recurrencesQuery.error,
     /** Refetch de todas as fontes ("Tentar novamente" da busca). */
     refetch: () =>
       Promise.all([
@@ -142,6 +222,9 @@ export function useGlobalSearchEntries(enabled: boolean) {
         debtsQuery.refetch(),
         cardsQuery.refetch(),
         categoriesQuery.refetch(),
+        portfolioQuery.refetch(),
+        budgetsQuery.refetch(),
+        recurrencesQuery.refetch(),
       ]),
   };
 }

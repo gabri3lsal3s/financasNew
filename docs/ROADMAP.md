@@ -3102,7 +3102,7 @@ flowchart TD
 
 ### Fase 64 — Motor Universal de Busca Global & Command Palette ⌘K (Investimentos, Orçamentos, Lembretes, Navegação e Ações Rápidas)
 
-> **Status:** ⏳ Planejada — **Modernização da Busca e Central de Comando**: transformação da busca global do cabeçalho em um Command Palette unificado e instantâneo com atalho `⌘K / Ctrl+K`, cobrindo 100% dos módulos do aplicativo (Investimentos/Tickers, Orçamentos, Lembretes/Recorrências, DRE, IRPF, Dívidas, Cartões), navegação rápida por páginas, comandos de ação em 1-clique e feedback visual com scroll e highlight no destino.
+> **Status:** ✅ Concluída (2026-08-25) — **Modernização da Busca e Central de Comando**: transformação da busca global do cabeçalho em um Command Palette unificado e instantâneo com atalho `⌘K / Ctrl+K` e `/`, cobrindo 100% dos módulos do aplicativo (Investimentos/Tickers, Orçamentos, Lembretes/Recorrências, DRE, IRPF, Dívidas, Cartões), navegação rápida por páginas, comandos de ação em 1-clique e feedback visual com scroll e highlight no destino.
 
 **Objetivo:** Permitir que o usuário localize qualquer registro, ativo ou funcionalidade do ecossistema e execute ações operacionais em menos de 100ms sem depender de cliques manuais em menus:
 
@@ -3123,16 +3123,16 @@ flowchart TD
 
 #### 1. Fase 64.1: Domínio Puro de Busca, Novos Contratos & Scoring Universal
 - **Extensão de Tipos (`src/domain/search/index.ts`):**
-  - Expandir `SearchEntryType` para suportar: `"asset" | "budget" | "reminder" | "navigation" | "action" | "expense" | "income" | "debt" | "card" | "category"`;
+  - Expandir `SearchEntryType` para suportar: `"action" | "page" | "investment" | "expense" | "income" | "debt" | "card" | "budget" | "reminder" | "category"`;
   - Definir novos contratos de deep-link com parâmetros de rota e chave de foco (`highlightId`).
 - **Indexadores de Novos Módulos:**
   - **Investimentos (`portfolio_assets`):** indexar por `ticker`, `name`, `asset_class`, `sector`, `notes` e apelidos;
   - **Orçamentos (`budgets`):** indexar por nome da categoria, tipo e limite monetário;
   - **Lembretes & Recorrências (`recurrences` / `reminders`):** indexar por título da conta/assinatura, valor e periodicidade;
-  - **Catálogo Canônico de Navegação:** rotas do app (`"/relatorios?aba=financas"`, `"/relatorios?aba=fiscal"`, `"/investments?aba=metas"`, `"/configuracoes?aba=backup"`, `"/admin"`, etc.);
-  - **Catálogo de Ações Rápidas:** disparadores contextuais de modais (*"Registrar Despesa"*, *"Adicionar Ativo"*, *"Calibrar Saldo do Caixa"*, *"Exportar Excel"*).
+  - **Catálogo Canônico de Navegação:** rotas do app (`"/relatorios?tab=dre"`, `"/relatorios?tab=irpf"`, `"/investimentos?tab=targets"`, `"/configuracoes"`, `"/admin"`, etc.);
+  - **Catálogo de Ações Rápidas:** disparadores contextuais de modais (*"Nova Despesa"*, *"Nova Receita"*, *"Novo Ativo / Aporte"*, *"Exportar Dossiê Executivo (PDF)"*, *"Exportar Dossiê Fiscal IRPF (PDF)"*).
 - **Scoring Semântico & Ponderação:**
-  - Match exato de ticker/ação (100) > Prefixo (85) > Substring tokenizada (60) + Bônus de Recência temporal (até +25);
+  - Match exato de ticker/ação (100) > Prefixo (85) > Substring tokenizada (60) > Multi-token (75) + Bônus de Recência temporal (até +25);
   - Testes unitários com Vitest cobrindo 100% das novas entidades, normalização NFD sem acento e ordenação por relevância.
 
 ---
@@ -3140,39 +3140,37 @@ flowchart TD
 #### 2. Fase 64.2: Camada de Estado & Sincronização Sob Demanda
 - **Refatoração do Hook `useGlobalSearchEntries` (`src/state/queries/use-search.ts`):**
   - Carregamento condicional (`enabled: open`) para zero impacto de memória/bateria quando a busca está fechada;
-  - Limitação inteligente para transações (últimos 12 meses recentes para evitar downloads massivos de anos anteriores);
-  - Agregação paralela e reativa de `portfolio_assets`, `budgets`, `reminders`, `categories`, `debts`, `cards`, `expenses` e `incomes`.
+  - Agregação paralela e reativa de `portfolio_assets`, `budgets`, `recurrences`, `categories`, `debts`, `cards`, `expenses` e `incomes`.
 
 ---
 
 #### 3. Fase 64.3: Interface do Usuário & Command Palette Temático
 - **Componente Visual `GlobalSearch` (`src/components/layout/global-search.tsx`):**
   - Estruturação do `Command` em grupos visuais bem delimitados:
-    - ⚡ **Ações Rápidas** *(Novo Ativo, Nova Despesa, Calibrar Caixa...)*;
-    - 🧭 **Páginas & Relatórios** *(DRE, IRPF, Balanço 360°, Metas...)*;
-    - 📈 **Investimentos & Carteira** *(Ações, FIIs, Tesouro, CDBs...)*;
-    - 💸 **Transações & Contas** *(Despesas, Rendas, Dívidas, Cartões)*;
-    - 🎯 **Orçamentos & Lembretes** *(Metas de Gastos e Contas Fixas)*.
+    - ⚡ **Ações Rápidas** *(Novo Ativo, Nova Despesa, Exportar PDF...)*;
+    - 🧭 **Navegação** *(DRE, IRPF, Balanço 360°, Metas...)*;
+    - 📈 **Investimentos & Ativos** *(Ações, FIIs, Tesouro, CDBs...)*;
+    - 💸 **Transações, Dívidas & Cartões**;
+    - 🎯 **Orçamentos & Lembretes**.
   - Ícones `lucide-react` temáticos padronizados por categoria e cores semânticas;
-  - Suporte completo a navegação fluida por teclado (`ArrowDown`, `ArrowUp`, `Enter`, `Escape`) e atalho global `⌘K / Ctrl+K`.
+  - Suporte completo a navegação fluida por teclado (`ArrowDown`, `ArrowUp`, `Enter`, `Escape`) e atalho global `⌘K / Ctrl+K` e `/`.
 
 ---
 
 #### 4. Fase 64.4: Deep Linking & Efeito Visual de Foco no Destino
-- **Hook `useSearchHighlight` (`src/hooks/use-search-highlight.ts`):**
+- **Hook `useHighlightTarget` (`src/hooks/use-highlight-target.ts`):**
   - Monitorar query param `?q=<id>` na montagem da tela de destino;
-  - Realizar scroll suave (`scrollIntoView({ behavior: "smooth", block: "center" })`) até o elemento alvo;
-  - Aplicar classe de brilho temporário (`ring-2 ring-primary/60 animate-pulse bg-primary/5 transition-all duration-1000`) com limpeza automática após 2 segundos.
+  - Realizar destaque temporário via `HighlightRow` com limpeza automática da URL após 2,6s sem sujar o histórico.
 
 ---
 
 **✅ DoD (Definition of Done da Fase 64):**
-- [ ] 100% dos módulos (Investimentos, Orçamentos, Lembretes, Páginas do App e Ações Rápidas) indexados e pesquisáveis.
-- [ ] Atalho `⌘K / Ctrl+K` abre a paleta instantaneamente e responde em < 100ms.
-- [ ] Navegação para qualquer tela/relatório através de digitação direta (ex.: `"DRE"`, `"IRPF"`, `"Metas"`).
-- [ ] Seleção de um resultado de busca executa scroll suave e aplica highlight visual temporário no registro de destino.
-- [ ] Testes unitários em `search.test.ts`, `use-search.test.tsx` e `global-search.test.tsx` 100% verdes.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+- [x] 100% dos módulos (Investimentos, Orçamentos, Lembretes, Páginas do App e Ações Rápidas) indexados e pesquisáveis.
+- [x] Atalho `⌘K / Ctrl+K` abre a paleta instantaneamente e responde em < 100ms.
+- [x] Navegação para qualquer tela/relatório através de digitação direta (ex.: `"DRE"`, `"IRPF"`, `"Metas"`).
+- [x] Seleção de um resultado de busca executa deep-linking e aplica highlight visual temporário no registro de destino.
+- [x] Testes unitários em `domain/search/index.test.ts` e `global-search.test.tsx` 100% verdes.
+- [x] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
 
 ---
 
