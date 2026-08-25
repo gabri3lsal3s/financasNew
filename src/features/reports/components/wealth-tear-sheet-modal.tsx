@@ -1,3 +1,4 @@
+import { Fragment, useMemo } from "react";
 import { Layers, PieChart, TrendingUp, Landmark, Award } from "lucide-react";
 import {
   ReportDocumentLayout,
@@ -70,7 +71,7 @@ const formatQuantity = (quantity: number): string =>
  * 3. Matriz de Alocação por Classe & Setor (Target vs. Actual) com Barras de Desvio (Gaps);
  * 4. Termômetro de Concentração e Risco da Carteira (Ativo, Setor e Moeda);
  * 5. Parecer Técnico Automatizado da Consultoria;
- * 6. Tabela Completa de Custódia de Ativos;
+ * 6. Tabela Completa de Custódia de Ativos Agrupada por Classe;
  * 7. Rodapé de Confidencialidade e Autenticidade.
  */
 export function WealthTearSheetModal({
@@ -85,7 +86,7 @@ export function WealthTearSheetModal({
   appName = "Guia Financeiro",
   accountHolder,
 }: WealthTearSheetModalProps) {
-  const investmentRows = rows.filter((r) => !r.isCash);
+  const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
   const unrealizedPnlBRL = totalBRL - totalCostBRL;
   const unrealizedPnlPct = totalCostBRL > 0 ? (unrealizedPnlBRL / totalCostBRL) * 100 : 0;
 
@@ -113,6 +114,31 @@ export function WealthTearSheetModal({
     pct: investmentRows[0] && totalBRL > 0 ? (investmentRows[0].valueBRL / totalBRL) * 100 : 0,
   };
 
+  // Agrupamento por classe de ativos para a tabela de custódia com subtotais
+  const groupedRows = useMemo(() => {
+    const groups = new Map<string, WealthPositionRow[]>();
+    for (const row of investmentRows) {
+      const cls = row.assetClass || "Outros";
+      const list = groups.get(cls) ?? [];
+      list.push(row);
+      groups.set(cls, list);
+    }
+    return Array.from(groups.entries()).map(([assetClass, items]) => {
+      const subtotalBRL = items.reduce((acc, i) => acc + i.valueBRL, 0);
+      const subtotalCostBRL = items.reduce((acc, i) => acc + i.averagePrice * i.quantity, 0);
+      const subtotalPnlBRL = subtotalBRL - subtotalCostBRL;
+      const subtotalPnlPct = subtotalCostBRL > 0 ? (subtotalPnlBRL / subtotalCostBRL) * 100 : 0;
+      const pctOfTotal = totalBRL > 0 ? (subtotalBRL / totalBRL) * 100 : 0;
+      return {
+        assetClass,
+        items,
+        subtotalBRL,
+        subtotalPnlPct,
+        pctOfTotal,
+      };
+    });
+  }, [investmentRows, totalBRL]);
+
   return (
     <ReportDocumentLayout
       open={open}
@@ -121,8 +147,8 @@ export function WealthTearSheetModal({
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader
-        title="Dossiê Executivo de Investimentos &amp; Custódia"
-        subtitle="Posição Patrimonial Consolidada &amp; Diagnóstico de Metas"
+        title="Dossiê Executivo de Investimentos & Custódia"
+        subtitle="Posição Patrimonial Consolidada & Diagnóstico de Metas"
         periodLabel={periodLabel}
         appName={appName}
         icon={Landmark}
@@ -258,11 +284,11 @@ export function WealthTearSheetModal({
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Alocação Setorial &amp; Déficits Identificados
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 print:grid-cols-3">
               {allocationAnalysis.sectorGaps.slice(0, 6).map((sg) => (
                 <div
                   key={`${sg.className}::${sg.sectorName}`}
-                  className="rounded-lg border border-border/60 bg-muted/10 p-2.5 flex flex-col gap-1 text-xs"
+                  className="rounded-lg border border-border/60 bg-muted/10 p-2.5 flex flex-col gap-1 text-xs break-inside-avoid print:bg-white print:border-border"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-foreground truncate">{sg.sectorName}</span>
@@ -272,7 +298,7 @@ export function WealthTearSheetModal({
                     <span className="font-mono font-medium text-foreground">{sg.currentPct.toFixed(1)}%</span>
                     {sg.gapBRL > 0 ? (
                       <span className="text-primary-strong text-[11px] font-semibold">
-                        Gap: R$ {sg.gapBRL.toFixed(0)}
+                        Gap: R$ {sg.gapBRL.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
                       </span>
                     ) : (
                       <span className="text-muted-foreground text-[10px]">Equilibrado</span>
@@ -303,7 +329,7 @@ export function WealthTearSheetModal({
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 print:grid-cols-3">
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid">
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid print:bg-white print:border-border">
             <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Concentração Top 5
             </span>
@@ -315,7 +341,7 @@ export function WealthTearSheetModal({
             </div>
           </div>
 
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid">
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid print:bg-white print:border-border">
             <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Setor Dominante
             </span>
@@ -329,7 +355,7 @@ export function WealthTearSheetModal({
             </div>
           </div>
 
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid">
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid print:bg-white print:border-border">
             <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Exposição Cambial
             </span>
@@ -353,7 +379,7 @@ export function WealthTearSheetModal({
       {allocationAnalysis.topDeficitClass || allocationAnalysis.topDeficitSector || concentrationRisk.riskAlerts.length > 0 ? (
         <section
           aria-label="Parecer da consultoria"
-          className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-2 break-inside-avoid"
+          className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-2 break-inside-avoid print:bg-white print:border-primary/40"
         >
           <span className="text-xs font-bold uppercase tracking-wider text-primary-strong">
             Parecer do Consultor Patrimonial
@@ -392,53 +418,89 @@ export function WealthTearSheetModal({
         </section>
       ) : null}
 
-      {/* 6. Seção: Detalhamento Completo da Custódia de Ativos */}
+      {/* 6. Seção: Detalhamento Completo da Custódia de Ativos Agrupada */}
       <section aria-label="Custódia de Ativos" className="flex flex-col gap-3 pt-2">
-        <h3 className="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider">
-          Custódia Consolidada de Ativos ({investmentRows.length})
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider">
+            Custódia Consolidada de Ativos ({investmentRows.length})
+          </h3>
+          <span className="text-[11px] text-muted-foreground font-mono num">
+            Total: <MoneyText cents={numberToCents(totalBRL)} className="font-bold text-foreground inline" />
+          </span>
+        </div>
+
         <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse print:table-fixed">
             <thead>
-              <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
-                <th className="py-2.5 px-3 print:w-[13%]">Ticker</th>
-                <th className="py-2.5 px-3 print:w-[12%]">Classe</th>
-                <th className="py-2.5 px-3 print:w-[14%]">Setor</th>
+              <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium print:bg-slate-100">
+                <th className="py-2.5 px-3 print:w-[32%]">Ativo / Especificação</th>
                 <th className="py-2.5 px-3 text-right print:w-[8%]">Qtd</th>
-                <th className="py-2.5 px-3 text-right print:w-[11%]">Preço Médio</th>
-                <th className="py-2.5 px-3 text-right print:w-[11%]">Cotação</th>
-                <th className="py-2.5 px-3 text-right print:w-[13%]">Total (R$)</th>
-                <th className="py-2.5 px-3 text-right print:w-[9%]">PnL (%)</th>
-                <th className="py-2.5 px-3 text-right print:w-[9%]">YoC (%)</th>
+                <th className="py-2.5 px-3 text-right print:w-[15%]">Preço Médio</th>
+                <th className="py-2.5 px-3 text-right print:w-[15%]">Cotação</th>
+                <th className="py-2.5 px-3 text-right print:w-[16%]">Total (R$)</th>
+                <th className="py-2.5 px-3 text-right print:w-[8%]">PnL (%)</th>
+                <th className="py-2.5 px-3 text-right print:w-[6%]">YoC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {investmentRows.map((r) => (
-                <tr key={r.ticker} className="hover:bg-muted/20">
-                  <td className="py-2 px-3 font-semibold text-foreground truncate">{r.ticker}</td>
-                  <td className="py-2 px-3 capitalize text-muted-foreground truncate">{r.assetClass}</td>
-                  <td className="py-2 px-3 capitalize text-muted-foreground truncate">{r.sector ?? "Geral"}</td>
-                  <td className="py-2 px-3 text-right num font-mono">{formatQuantity(r.quantity)}</td>
-                  <td className="py-2 px-3 text-right num font-mono">
-                    <MoneyText cents={numberToCents(r.averagePrice)} />
-                  </td>
-                  <td className="py-2 px-3 text-right num font-mono">
-                    <MoneyText cents={numberToCents(r.currentPrice)} />
-                  </td>
-                  <td className="py-2 px-3 text-right num font-mono font-medium text-foreground">
-                    <MoneyText cents={numberToCents(r.valueBRL)} />
-                  </td>
-                  <td
-                    className={`py-2 px-3 text-right num font-mono font-semibold ${
-                      r.unrealizedPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
-                    }`}
-                  >
-                    {formatSignedPct(r.unrealizedPnlPct)}
-                  </td>
-                  <td className="py-2 px-3 text-right num font-mono text-positive-strong font-medium">
-                    {r.yocPct > 0 ? `${r.yocPct.toFixed(1)}%` : "—"}
-                  </td>
-                </tr>
+              {groupedRows.map((group) => (
+                <Fragment key={group.assetClass}>
+                  {/* Subcabeçalho de Classe */}
+                  <tr className="bg-muted/30 border-y border-border/70 print:bg-slate-50 break-inside-avoid">
+                    <td colSpan={4} className="py-1.5 px-3 font-bold text-foreground capitalize text-[11px]">
+                      {group.assetClass} ({group.items.length} ativos)
+                    </td>
+                    <td className="py-1.5 px-3 text-right font-mono font-bold text-foreground whitespace-nowrap">
+                      <MoneyText cents={numberToCents(group.subtotalBRL)} />
+                    </td>
+                    <td
+                      className={`py-1.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                        group.subtotalPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
+                      }`}
+                    >
+                      {formatSignedPct(group.subtotalPnlPct)}
+                    </td>
+                    <td className="py-1.5 px-3 text-right text-[10px] text-muted-foreground font-mono whitespace-nowrap">
+                      {group.pctOfTotal.toFixed(1)}%
+                    </td>
+                  </tr>
+
+                  {group.items.map((r) => {
+                    const displaySector = r.sector?.replace(/biticoin/i, "Bitcoin") ?? "Geral";
+                    return (
+                      <tr key={r.ticker} className="hover:bg-muted/20 break-inside-avoid">
+                        <td className="py-2 px-3">
+                          <div className="flex flex-col leading-tight">
+                            <span className="font-bold text-foreground text-xs">{r.ticker}</span>
+                            <span className="text-[10px] text-muted-foreground truncate">
+                              {r.name ? `${r.name} • ` : ""}{displaySector}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">{formatQuantity(r.quantity)}</td>
+                        <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">
+                          <MoneyText cents={numberToCents(r.averagePrice)} />
+                        </td>
+                        <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">
+                          <MoneyText cents={numberToCents(r.currentPrice)} />
+                        </td>
+                        <td className="py-2 px-3 text-right num font-mono font-medium text-foreground whitespace-nowrap">
+                          <MoneyText cents={numberToCents(r.valueBRL)} />
+                        </td>
+                        <td
+                          className={`py-2 px-3 text-right num font-mono font-semibold whitespace-nowrap ${
+                            r.unrealizedPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
+                          }`}
+                        >
+                          {formatSignedPct(r.unrealizedPnlPct)}
+                        </td>
+                        <td className="py-2 px-3 text-right num font-mono text-positive-strong font-medium whitespace-nowrap">
+                          {r.yocPct > 0 ? `${r.yocPct.toFixed(1)}%` : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
               ))}
             </tbody>
           </table>

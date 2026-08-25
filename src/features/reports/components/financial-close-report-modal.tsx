@@ -304,9 +304,9 @@ export function FinancialCloseReportModal({
       </section>
 
       {/* 5. Seção: Distribuição por Categorias & Formas de Pagamento */}
-      <section aria-label="Composição de Gastos" className="grid grid-cols-1 sm:grid-cols-2 gap-4 break-inside-avoid">
+      <section aria-label="Composição de Gastos" className="grid grid-cols-1 sm:grid-cols-2 gap-4 break-inside-avoid print:grid-cols-2">
         {/* Tabela de Categorias */}
-        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4">
+        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4 print:bg-white print:border-border">
           <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
             <PieChart className="size-4 text-primary-strong" aria-hidden="true" />
             <span>DESPESAS POR CATEGORIA</span>
@@ -347,7 +347,7 @@ export function FinancialCloseReportModal({
         </div>
 
         {/* Tabela de Formas de Pagamento */}
-        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4">
+        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4 print:bg-white print:border-border">
           <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
             <Wallet className="size-4 text-primary-strong" aria-hidden="true" />
             <span>FORMAS DE PAGAMENTO</span>

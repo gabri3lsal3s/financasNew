@@ -76,8 +76,8 @@ export function ConsolidatedWealthModal({
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader
-        title="Balanço Patrimonial 360° &amp; Visão Consolidada"
-        subtitle="Ativos Totais, Passivos Exigíveis, Patrimônio Líquido &amp; Alavancagem"
+        title="Balanço Patrimonial 360° & Visão Consolidada"
+        subtitle="Ativos Totais, Passivos Exigíveis, Patrimônio Líquido & Alavancagem"
         periodLabel={periodLabel}
         appName={appName}
         icon={Scale}
@@ -130,7 +130,7 @@ export function ConsolidatedWealthModal({
       )}
 
       {/* 4. Seção: Balanço Detalhado (Ativos vs. Passivos) */}
-      <section aria-label="Balanço Patrimonial" className="grid grid-cols-1 sm:grid-cols-2 gap-4 break-inside-avoid">
+      <section aria-label="Balanço Patrimonial" className="grid grid-cols-1 sm:grid-cols-2 gap-4 break-inside-avoid print:grid-cols-2">
         {/* Card de Ativos */}
         <div className="rounded-xl border border-border/80 bg-muted/10 p-4 flex flex-col gap-3 print:bg-white print:border-border">
           <div className="flex items-center justify-between border-b border-border/70 pb-2">
@@ -161,7 +161,7 @@ export function ConsolidatedWealthModal({
           <div className="flex items-center justify-between border-b border-border/70 pb-2">
             <div className="flex items-center gap-1.5 text-xs font-bold text-negative-strong">
               <ArrowDownRight className="size-4" aria-hidden="true" />
-              <span>PASSIVOS (DÍVIDAS &amp; FINANCIAMENTOS)</span>
+              <span>PASSIVOS (DÍVIDAS & FINANCIAMENTOS)</span>
             </div>
             <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="font-bold text-sm" />
           </div>

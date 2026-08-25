@@ -66,7 +66,7 @@ export function ReportRiskGauge({
       </div>
 
       {/* Barra de Zonas de Risco com Marcador */}
-      <div className="relative flex flex-col gap-1 pt-3 pb-1">
+      <div className="relative flex flex-col gap-1 pt-4 pb-1">
         {/* Barra de Gradiente / Zonas */}
         <div className="relative h-2.5 w-full rounded-full overflow-hidden flex border border-border/80">
           <div style={{ width: `${warningThresholdPct}%` }} className="h-full bg-positive-strong" title="Zona Segura" />
@@ -82,12 +82,15 @@ export function ReportRiskGauge({
           />
         </div>
 
-        {/* Marcador do Maior Ativo */}
+        {/* Marcador do Maior Ativo com indicador e valor */}
         <div
-          className="absolute top-0 transform -translate-x-1/2 flex flex-col items-center pointer-events-none"
+          className="absolute top-0 transform -translate-x-1/2 flex flex-col items-center pointer-events-none z-10"
           style={{ left: `${clampPosition}%` }}
         >
-          <span className="size-2 rounded-full bg-foreground border-2 border-surface shadow-xs" />
+          <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-foreground text-surface leading-none shadow-2xs">
+            {topItemPct.toFixed(1)}%
+          </span>
+          <span className="size-1 rotate-45 bg-foreground -mt-0.5" />
         </div>
 
         {/* Labels da Escala */}

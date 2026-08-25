@@ -58,12 +58,12 @@ export function DividendFreedomModal({
     <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
-      title="Dossiê de Proventos &amp; Liberdade Financeira"
+      title="Dossiê de Proventos & Liberdade Financeira"
     >
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader
-        title="Dossiê de Proventos &amp; Liberdade Financeira"
-        subtitle="Fluxo de Renda Passiva, Efeito Bola de Neve &amp; Cobertura do Custo de Vida"
+        title="Dossiê de Proventos & Liberdade Financeira"
+        subtitle="Fluxo de Renda Passiva, Efeito Bola de Neve & Cobertura do Custo de Vida"
         periodLabel={periodLabel}
         appName={appName}
         icon={PiggyBank}
