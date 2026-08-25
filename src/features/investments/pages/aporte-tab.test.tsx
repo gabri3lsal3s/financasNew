@@ -58,7 +58,7 @@ vi.mock("../components", () => ({
 }));
 
 describe("AporteTab — Calculadora e Aportes", () => {
-  it("renderiza os controles da calculadora e o bloco de importação contextual", () => {
+  it("renderiza os controles da calculadora", () => {
     render(
       <MemoryRouter>
         <AporteTab />
@@ -67,17 +67,23 @@ describe("AporteTab — Calculadora e Aportes", () => {
 
     expect(screen.getByText("Valor do aporte")).toBeInTheDocument();
     expect(screen.getByText("Usar saldo em caixa (R$ 1000.00)")).toBeInTheDocument();
-    expect(screen.getByText("Posição desatualizada?")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Importar Planilha/i })).toBeInTheDocument();
+    expect(screen.getByText(/Motor Hierárquico:/i)).toBeInTheDocument();
   });
 
-  it("abre o diálogo de importação ao clicar em Importar Planilha", async () => {
+  it("renderiza o histórico de aportes com o bloco de importação contextual", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
         <AporteTab />
       </MemoryRouter>,
     );
+
+    const historicoTab = screen.getByRole("tab", { name: "Histórico de Aportes" });
+    await user.click(historicoTab);
+
+    expect(screen.getByTestId("contributions-panel")).toBeInTheDocument();
+    expect(screen.getByText("Posição ou histórico desatualizado?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Importar Planilha/i })).toBeInTheDocument();
 
     const importBtn = screen.getByRole("button", { name: /Importar Planilha/i });
     await user.click(importBtn);
