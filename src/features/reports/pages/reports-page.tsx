@@ -1153,6 +1153,8 @@ export function ReportsPage() {
           Abrir Fichas de IRPF
         </Button>
       </div>
+
+      <ExcelExportCard workbookData={workbookData} description={excelDescription} />
     </div>
   );
 
@@ -1194,7 +1196,7 @@ export function ReportsPage() {
       ? [
           {
             value: "fiscal",
-            label: "Fiscal & IRPF",
+            label: "Fiscal & Declaração",
             shortLabel: "Fiscal",
             icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
             content: fiscalContent,
@@ -1273,9 +1275,6 @@ export function ReportsPage() {
         swipeable
         items={tabItems}
       />
-
-      {/* Banner / Card de Exportação Excel (.xlsx) posicionado no rodapé da página */}
-      <ExcelExportCard workbookData={workbookData} description={excelDescription} />
 
       {/* Modais de Dossiês de Consultoria */}
       <FinancialCloseReportModal

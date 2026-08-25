@@ -177,17 +177,16 @@ vi.mock("@/state", () => ({
 
 
 describe("ReportsPage (Central Unificada §F42)", () => {
-  it("renderiza o Hub com o cabeçalho padronizado, banner de exportação Excel e as 4 abas principais", () => {
+  it("renderiza o Hub com o cabeçalho padronizado e as 4 abas principais", () => {
     renderReports();
     expect(screen.getByRole("heading", { level: 1, name: "Relatórios" })).toBeInTheDocument();
     expect(
       screen.getByText("Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Caderno de Relatórios em Excel (.xlsx)")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Finanças & DRE/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Investimentos & Carteira/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Balanço & Liberdade/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Fiscal & IRPF/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Fiscal & Declaração/i })).toBeInTheDocument();
   });
 
   it("exibe os dados financeiros da aba Finanças & DRE por padrão", () => {
@@ -223,15 +222,17 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     expect(screen.getByText("Patrimônio Líquido Real")).toBeInTheDocument();
   });
 
-  it("permite alternar para a aba Fiscal & IRPF", async () => {
+  it("permite alternar para a aba Fiscal & Declaração e exibe o facilitador de IRPF e o Caderno Excel", async () => {
     const user = userEvent.setup();
     renderReports();
 
-    const fiscalTab = screen.getByRole("tab", { name: /Fiscal & IRPF/i });
+    const fiscalTab = screen.getByRole("tab", { name: /Fiscal & Declaração/i });
     await user.click(fiscalTab);
 
     expect(screen.getByText("Facilitador de Declaração de IRPF")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Abrir Fichas de IRPF/i })).toBeInTheDocument();
+    expect(screen.getByText("Caderno de Relatórios em Excel (.xlsx)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Baixar Caderno Excel/i })).toBeInTheDocument();
   });
 
   it("permite alternar as agregações de despesas (Categorias, Formas de Pgto, Dias da Semana)", async () => {
@@ -287,7 +288,7 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     expect(screen.queryByRole("tab", { name: /Finanças & DRE/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /Balanço & Liberdade/i })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Investimentos & Carteira/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Fiscal & IRPF/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Fiscal & Declaração/i })).toBeInTheDocument();
 
     mockHasFeature = () => true;
   });

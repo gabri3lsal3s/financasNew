@@ -12,7 +12,7 @@ export interface ExcelExportCardProps {
 
 export function ExcelExportCard({
   workbookData,
-  description = "Exportação completa em 5 abas (Resumo Patrimonial, Custódia de Ativos, Proventos, DRE e Dívidas) com formatações e fórmulas nativas.",
+  description = "Exportação completa das abas de Investimentos e Finanças (Resumo Patrimonial, Custódia de Ativos, Proventos e Fiscal) com formatações e fórmulas nativas.",
 }: ExcelExportCardProps) {
   const [downloading, setDownloading] = useState(false);
 
@@ -38,28 +38,20 @@ export function ExcelExportCard({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-portfolio/30 bg-portfolio/5 p-4 sm:p-5 shadow-xs">
-      <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio mt-0.5 sm:mt-0">
-          <FileSpreadsheet className="size-6" aria-hidden="true" />
-        </span>
-        <div className="flex flex-col min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm sm:text-base font-bold text-foreground">Caderno de Relatórios em Excel (.xlsx)</h2>
-            <span className="rounded-md bg-portfolio/15 px-2 py-0.5 text-[10px] font-bold text-portfolio uppercase tracking-wide">
-              Multi-Abas
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-            {description}
-          </p>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+      <div className="flex flex-col gap-1 min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <FileSpreadsheet className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
+          <h3 className="text-sm sm:text-base font-bold text-foreground">Caderno de Relatórios em Excel (.xlsx)</h3>
         </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          {description}
+        </p>
       </div>
 
       <Button
         type="button"
         variant="default"
-        size="default"
         onClick={handleExport}
         disabled={downloading}
         className="gap-2 shrink-0 w-full sm:w-auto justify-center"
@@ -70,3 +62,4 @@ export function ExcelExportCard({
     </div>
   );
 }
+
