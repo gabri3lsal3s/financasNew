@@ -1,10 +1,13 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v2.08** registra o **Planejamento e Arquitetura da Fase 62 — Automação de Rentabilidade de Renda Fixa, Marcação Oficial de Tesouro Direto, Modelo Paramétrico de Marco Zero & Gestão de Vencimentos** (2026-08-25):
-> - **(1) Automação Oficial do Tesouro Direto**: integração direta no serviço de cotações com a API pública do Tesouro Nacional/B3, capturando automaticamente Preço Unitário (PU) diário de compra/resgate e data oficial de vencimento;
-> - **(2) Motor Paramétrico de Renda Fixa Privada (Marco Zero)**: cálculo determinístico de rendimento diário para CDBs, LCIs, LCAs, CRIs e Prefixados a partir do saldo no dia do cadastro ($D_0$), capitalizando em dias úteis com taxa CDI diária do Banco Central (SGS 12), alíquotas regressivas de IR e zero necessidade de digitação diária;
-> - **(3) Gestão de Vencimentos & Ciclo de Vida**: trava automática de cálculo no vencimento ($\text{data\_limite} = \min(\text{Hoje}, \text{maturity\_date})$), badges de status, radar de vencimentos nos Insights e ação rápida de 1-clique para liquidar e transferir o saldo ao Caixa/Reserva da carteira para rebalanceamento;
-> - **(4) Ergonomia de UX & Calibração em 1-Clique**: atualização do Wizard de Ativos, badges de rentabilidade projetada e botão de ajuste rápido de saldo contra extrato bancário.
+> **v2.08** registra o **Planejamento Executivo da Suíte de Evoluções: Fase 62 (BottomNav Mobile), Fase 63 (Renda Fixa & Vencimentos), Fase 64 (Motor de Busca Global ⌘K) e Fase 65 (Engenharia Editorial A4 & Blindagem de PDFs)** (2026-08-25):
+> - **(1) Fase 62 — Ergonomia, Tipografia Adaptativa e Responsividade da BottomNav Mobile**: eliminação definitiva de reticências/truncamento de texto (`"Investime..."`), adoção de `shortLabel` (`"Carteira"`, `"Ajustes"`, `"Extrato"`), grid dinâmico para perfis somente-leitura e suporte pleno a Safe Area (iOS/Android);
+> - **(2) Fase 63 — Automação de Renda Fixa & Marcação Oficial de Tesouro Direto**: integração com a API pública do Tesouro Nacional/B3 (Preço Unitário diário e vencimento oficial) e motor paramétrico de Marco Zero ($D_0$) com taxas diárias do Banco Central (SGS 12 CDI);
+> - **(3) Fase 63 — Inteligência Fiscal & Otimizador de Resgate**: tabela regressiva de IR ($22,5\% \rightarrow 15\%$), IOF $< 30\text{d}$, crédito líquido no Caixa em resgates com IRRF retido na fonte e alertas proativos de virada de alíquota de IR nos Insights;
+> - **(4) Fase 63 — Motor de Busca Inteligente de Ativos**: busca multi-termo tokenizada, decomposição NFD sem acento, aliases de marcas populares (`"nubank"`, `"petrobras"`, `"dolar"`) e fallback de busca conectada sob demanda;
+> - **(5) Fase 63 — Gestão de Vencimentos & Liquidação em 1-Clique**: trava automática de cálculo no vencimento, radar de títulos a vencer nos Insights e ação rápida para liquidar ativos vencidos diretamente no Caixa da carteira para o Rebalanceamento;
+> - **(6) Fase 64 — Motor Universal de Busca Global & Command Palette (⌘K)**: expansão da busca do cabeçalho para 100% do ecossistema do app (Investimentos, Orçamentos, Lembretes/Recorrências, DRE, IRPF, Navegação Rápida por Páginas e Ações Rápidas de 1-clique com highlight no destino);
+> - **(7) Fase 65 — Engenharia Editorial A4, Alta Densidade Contábil & Blindagem de PDFs**: neutralização absoluta de temas escuros/acentos na impressão (papel 100% branco), eliminação de páginas em branco (`print:hidden` blindado), restauração de grids de 4 colunas nos KPIs, tabelas de alta densidade contábil (`py-1.5`) e erradicação de hífens corrompidos ().
 
 > **v2.07** registra a **Reengenharia Sequencial Anti-Retrabalho das Fases 58, 59, 60 e 61 — Primitivos Fluidos, Saneamento de Camadas, Ergonomia de Cards & Decomposição Estrutural** (2026-08-25):
 > - **(1) Eliminação Total de Retrabalho na Decomposição**: as fundações e primitivos visuais (`Tabs`, `StatCard`, `KpiCard`, `DatePicker`, `ErrorState`) são corrigidos primeiro nas Fases 58–60, permitindo que a decomposição modular dos grandes monólitos na Fase 61 (`ReportsPage`, `TargetsTab`, `AssetFormDialog`, `InsightsPage`) já nasça 100% responsiva, tipada e com tratamento de 3 estados em um único passe definitivo;
@@ -2900,7 +2903,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ### Fase 62 — Ergonomia, Tipografia Adaptativa e Responsividade da Barra de Navegação Mobile (BottomNav) em Todos os Cenários de Acesso
 
-> **Status:** ⏳ Planejada — **Ergonomia e Responsividade da Navegação Mobile**: eliminação definitiva de truncamentos de texto (`"Investime..."`, `"Configura..."`), suporte a micro-copy conciso (`shortLabel`), grid dinâmico adaptativo para todos os perfis de permissão (acesso completo, acesso restrito a poucos módulos e modo somente-leitura sem FAB) e suporte nativo a Safe Area (iOS/Android).
+> **Status:** ✅ Concluída (2026-08-25) — **Ergonomia e Responsividade da Navegação Mobile**: eliminação definitiva de truncamentos de texto (`"Investime..."`, `"Configura..."`), suporte a micro-copy conciso (`shortLabel`), grid dinâmico adaptativo para todos os perfis de permissão (acesso completo, acesso restrito a poucos módulos e modo somente-leitura sem FAB) e suporte nativo a Safe Area (iOS/Android).
 
 **Objetivo:** Garantir uma experiência de navegação mobile polida, cristalina e ergonomicamente balanceada em qualquer resolução de smartphone e sob qualquer perfil de permissão do usuário:
 
@@ -2966,13 +2969,13 @@ flowchart TD
 ---
 
 **✅ DoD (Definition of Done da Fase 62):**
-- [ ] `shortLabel` implementado em `nav-items.tsx` com rótulos concisos para mobile.
-- [ ] Truncamento estático `max-w-[64px] truncate` removido de `bottom-nav.tsx`.
-- [ ] Usuário com acesso restrito a Investimentos e Relatórios visualiza `"Carteira"`, `"Relatórios"`, FAB `(+)`, `"Lembretes"` e `"Ajustes"` 100% legíveis sem reticências.
-- [ ] Perfil somente-leitura (sem FAB) renderiza grid fluido e proporcional sem espaço fantasma no centro.
-- [ ] Suporte a `safe-area-inset-bottom` para iPhone / Android com barra de gestos.
-- [ ] Testes unitários em `bottom-nav.test.tsx` e `nav-resolver.test.ts` cobrindo todos os cenários.
-- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+- [x] `shortLabel` implementado em `nav-items.tsx` com rótulos concisos para mobile.
+- [x] Truncamento estático `max-w-[64px] truncate` removido de `bottom-nav.tsx`.
+- [x] Usuário com acesso restrito a Investimentos e Relatórios visualiza `"Carteira"`, `"Relatórios"`, FAB `(+)`, `"Lembretes"` e `"Ajustes"` 100% legíveis sem reticências.
+- [x] Perfil somente-leitura (sem FAB) renderiza grid fluido e proporcional sem espaço fantasma no centro.
+- [x] Suporte a `safe-area-inset-bottom` para iPhone / Android com barra de gestos.
+- [x] Testes unitários em `bottom-nav.test.tsx` e `nav-resolver.test.ts` cobrindo todos os cenários.
+- [x] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
 
 ---
 
@@ -3015,12 +3018,13 @@ flowchart TD
 - **Calendário e Feriados Brasileiros (`src/domain/portfolio/business-days.ts`):**
   - Implementar funções puras `isBusinessDay(date)`, `getNationalHolidays(year)` e `countBusinessDays(startDate, endDate)` cobrindo feriados nacionais fixos e móveis da B3 (Carnaval, Sexta-Feira Santa, Corpus Christi, etc.).
 - **Motor Paramétrico de Carrego e IR (`src/domain/portfolio/fixed-income.ts`):**
-  - Implementar `calculateFixedIncomeBalance({ baseValue, baseDate, maturityDate, rateType, rateValue, isTaxExempt, totalCost, dailyCdiRate, today })`:
+  - Implementar `calculateFixedIncomeBalance({ baseValue, baseDate, initialInvestmentDate, maturityDate, rateType, rateValue, isTaxExempt, totalCost, dailyCdiRate, today })`:
     - **Pós-fixado (% do CDI):** $\text{Saldo}(t) = \text{base\_value} \times (1 + \text{CDI\_diario} \times \frac{\text{rate}}{100})^{N}$;
     - **Prefixado (% a.a.):** $\text{Saldo}(t) = \text{base\_value} \times (1 + \frac{\text{taxa}}{100})^{\frac{N}{252}}$;
     - **Trava de Vencimento:** $N = \text{countBusinessDays}(\text{baseDate}, \min(\text{today}, \text{maturityDate}))$;
-    - **Tabela Regressiva de IR:** cálculo de lucro bruto, retenção estimada (22,5% $\rightarrow$ 15%) e saldo líquido estimado quando `isTaxExempt === false`.
-- **Testes Unitários:** Vitest colocalizado cobrindo 100% dos cenários (dias úteis, feriados, viradas de ano, títulos vencidos, isenção tributária).
+    - **Inteligência Fiscal & Tabela Regressiva:** cálculo de prazo total decorrido desde `initialInvestmentDate ?? baseDate` para enquadramento na alíquota exata ($22,5\% \le 180\text{d} \rightarrow 20,0\% \le 360\text{d} \rightarrow 17,5\% \le 720\text{d} \rightarrow 15,0\% > 720\text{d}$), IOF para prazos $< 30$ dias e apuração do Saldo Líquido Estimado;
+    - **Otimizador de Resgate (Alerta de Virada de Alíquota):** cálculo dos dias restantes para a próxima faixa de redução do IR e economia fiscal estimada em BRL.
+- **Testes Unitários:** Vitest colocalizado cobrindo 100% dos cenários (dias úteis, feriados, viradas de ano, títulos vencidos, isenção tributária, faixas de IR e virada de alíquotas).
 
 ---
 
@@ -3036,37 +3040,212 @@ flowchart TD
 
 ---
 
-#### 3. Fase 63.3: Integração na Valoração da Carteira, Rebalanceamento & Insights
+#### 3. Fase 63.3: Motor de Busca Inteligente de Ativos & Catálogo Aprimorado
+- **Busca Tokenizada Multi-Termo & Decomposição NFD (`src/domain/portfolio/tickers-catalog.ts`):**
+  - Implementar sanitização com remoção de diacríticos e acentos via `normalizeSearchText` (`.normalize("NFD").replace(/[\u0300-\u036f]/g, "")`);
+  - Algoritmo de correspondência multi-token: dividir a busca em palavras e validar se todos os termos estão presentes no ticker, nome, setor ou aliases, eliminando falsos negativos (ex.: `"fii btg log"`, `"cdb inter 110"`, `"apple eua"`, `"itau"`);
+  - Adicionar campo `aliases: readonly string[]` no catálogo curado para marcas e termos populares (`"nubank"`, `"petrobras"`, `"dolar"`, `"ouro"`, `"sp500"`).
+- **Busca Conectada sob Demanda (Fallback para Small Caps & Ativos Globais):**
+  - Quando a busca local retornar $\le 2$ itens e query $\ge 3$ caracteres, acionar busca assíncrona leve com debounce de 300ms na rota de busca de ativos (Brapi / Yahoo);
+  - Cache de sessão em memória para resultados externos descobertos.
+- **Ergonomia Visual & Criação Instantânea:**
+  - Highlighting dos caracteres correspondentes nos resultados do autocomplete;
+  - Opção no rodapé do seletor: *"Adicionar ativo personalizado com o código '[query]'"* para ativos customizados fora do mercado listado.
+
+---
+
+#### 4. Fase 63.4: Integração na Valoração da Carteira, Rebalanceamento & Insights
 - **Valoração Unificada (`src/domain/portfolio/valuation.ts`):**
-  - Atualizar `calculatePositionSummary` e `getAssetPricingMode` para precificar ativos paramétricos via `calculateFixedIncomeBalance` e Tesouro Direto via cotação PU oficial.
+  - Atualizar `calculatePositionSummary` e `getAssetPricingMode` para precificar ativos paramétricos via `calculateFixedIncomeBalance` e Tesouro Direto via cotação PU oficial, suportando modo Saldo Total e modo Cotas/Preço Unitário.
+- **Sincronização de Caixa & Liquidação Líquida (`src/state/mutations/use-portfolio-mutations.ts`):**
+  - No registro de resgate/venda com `syncCash = true`:
+    - **Renda Fixa Tributada (CDB, RDB, LC, Tesouro):** o Caixa recebe o **Valor Líquido** ($\text{Valor Bruto} - \text{IRRF Retido}$), refletindo fielmente a conta bancária;
+    - **Renda Fixa Isenta (LCI, LCA, CRI, CRA):** o Caixa recebe $100\%$ do valor bruto;
+    - **Renda Variável (Ações, FIIs, BDRs):** o Caixa recebe o valor bruto total da venda (a apuração do imposto ocorre via DARF no mês subsequente).
 - **Radar de Vencimentos & Insights Proativos (`src/domain/insights/`):**
-  - Emissão de diagnósticos para títulos a vencer nos próximos 30 dias (`warning`) e títulos já vencidos com capital ocioso disponível para reinvestimento (`critical`).
+  - Emissão de diagnósticos para títulos a vencer nos próximos 30 dias (`warning`), títulos já vencidos com capital ocioso disponível para reinvestimento (`critical`) e alertas de virada de alíquota de IR para otimização de resgate.
+- **Facilitador de IRPF Anual (`src/domain/portfolio/tax.ts`):**
+  - Integração de resgates e posições de Renda Fixa na Ficha 06 (Tributação Exclusiva na Fonte) e Ficha 09 (Isentos).
 - **Hooks de Estado (`src/state/`):**
   - Integração em `usePortfolioPosition` e disponibilização reativa do CDI atual via `useAssetPrices`.
 
 ---
 
-#### 4. Fase 63.4: Experiência do Usuário (UI/UX), Wizard de Ativos & Ação de Liquidação
+#### 5. Fase 63.5: Experiência do Usuário (UI/UX), Wizard de Ativos & Ação de Liquidação
 - **Wizard de Ativos (`InvestmentWizard` / `AssetFormDialog`):**
   - Ao selecionar a classe Renda Fixa:
     - Tesouro Direto: busca com autocomplete inteligente, auto-resolução de aliases, preenchimento de data de vencimento e PU oficial;
-    - Renda Fixa Privada (CDB/LCI/LCA): campos de Marco Zero (Saldo Atual em $D_0$, Indexador, % da Taxa, Data Base e Vencimento opcional).
+    - Renda Fixa Privada (CDB/LCI/LCA): campos de Marco Zero (Saldo Atual em $D_0$, Data de Aplicação Original opcional para IR, Indexador, % da Taxa, Data Base e Vencimento opcional).
+- **Modal de Resgate / Venda (`QuickTransactionSheet`):**
+  - Discriminação transparente antes de confirmar: *Valor Bruto do Resgate*, *IRRF Retido na Fonte* e *Valor Líquido a Creditar no Caixa*.
 - **Cards e Linhas de Posição (`PositionTable` & `AssetDetailSheet`):**
   - Badge visual de rendimento projetado (`[110% CDI • Projetado]`);
   - Badges de vencimento: `[Vence em 15 dias]` / `[Vencido em DD/MM/AAAA]`;
+  - Badge de otimização de IR: `[IR 20% ➔ 17,5% em 24d]`;
   - Botão **"Calibrar com Extrato"** (ajuste em 1-clique que redefine o Marco Zero para a data de hoje);
-  - Botão **"Liquidar / Mover para o Caixa"** em títulos vencidos (registra o resgate no extrato e transfere o saldo para o Caixa, alimentando imediatamente o Motor de Rebalanceamento).
+  - Botão **"Liquidar / Mover para o Caixa"** em títulos vencidos (registra o resgate com desconto de IRRF retido na fonte e transfere o saldo líquido para o Caixa, alimentando imediatamente o Motor de Rebalanceamento).
 
 ---
 
 **✅ DoD (Definition of Done da Fase 63):**
-- [ ] Módulos puros `business-days.ts`, `fixed-income.ts` e `normalizeTesouroTicker` 100% testados com Vitest.
-- [ ] Normalizador de títulos do Tesouro Direto resolve aliases abreviados, termos de corretoras e digitação livre com precisão.
+- [ ] Módulos puros `business-days.ts`, `fixed-income.ts`, `normalizeTesouroTicker` e `searchTickers` atualizados e 100% testados com Vitest.
+- [ ] Tabela regressiva de IR calcula saldo líquido estimado, alíquota vigente e alerta de dias restantes para próxima alíquota com precisão.
+- [ ] Resgates de Renda Fixa tributada com `syncCash = true` creditam o valor líquido de IRRF no Caixa da carteira.
+- [ ] Motor de busca com tokenização multi-termo, insensível a acentos (NFD) e com suporte a aliases de marcas populares.
 - [ ] Parser do Tesouro Direto e sincronizador do CDI do Banco Central integrados ao pipeline de cotações com fallback seguro.
 - [ ] Posição de Renda Fixa atualiza rentabilidade diária automaticamente em memória ($O(1)$) a partir do Marco Zero sem requisições pesadas de histórico.
 - [ ] Títulos vencidos congelam rentabilidade no dia exato do vencimento e exibem badges e alertas de insight.
 - [ ] Ação de 1-clique para calibração com extrato e liquidação de títulos vencidos para o Caixa da carteira.
 - [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
+---
+
+### Fase 64 — Motor Universal de Busca Global & Command Palette ⌘K (Investimentos, Orçamentos, Lembretes, Navegação e Ações Rápidas)
+
+> **Status:** ⏳ Planejada — **Modernização da Busca e Central de Comando**: transformação da busca global do cabeçalho em um Command Palette unificado e instantâneo com atalho `⌘K / Ctrl+K`, cobrindo 100% dos módulos do aplicativo (Investimentos/Tickers, Orçamentos, Lembretes/Recorrências, DRE, IRPF, Dívidas, Cartões), navegação rápida por páginas, comandos de ação em 1-clique e feedback visual com scroll e highlight no destino.
+
+**Objetivo:** Permitir que o usuário localize qualquer registro, ativo ou funcionalidade do ecossistema e execute ações operacionais em menos de 100ms sem depender de cliques manuais em menus:
+
+```mermaid
+flowchart TD
+    QUERY[Busca Global / ⌘K] --> PARSE[Normalização NFD + Multi-Token + Recência]
+    PARSE --> DISPATCH{Classificação Semântica}
+    DISPATCH --> NAV[Navegação: 'DRE', 'Balanço', 'Metas', 'Ajustes'...]
+    DISPATCH --> ACT[Ações Rápidas: 'Nova Despesa', 'Novo Ativo', 'Calibrar Caixa'...]
+    DISPATCH --> INV[Investimentos: Tickers, CDBs, Tesouro, Cripto, Setores...]
+    DISPATCH --> FIN[Finanças: Despesas, Rendas, Dívidas, Cartões, Orçamentos, Lembretes...]
+    NAV & ACT & INV & FIN --> PALETTE[Command Palette com Grupos Temáticos]
+    PALETTE --> SELECT[Seleção por Teclado / Clique]
+    SELECT --> HIGHLIGHT[Navegação + Deep-Link + Scroll Suave + Highlight Pulsante]
+```
+
+---
+
+#### 1. Fase 64.1: Domínio Puro de Busca, Novos Contratos & Scoring Universal
+- **Extensão de Tipos (`src/domain/search/index.ts`):**
+  - Expandir `SearchEntryType` para suportar: `"asset" | "budget" | "reminder" | "navigation" | "action" | "expense" | "income" | "debt" | "card" | "category"`;
+  - Definir novos contratos de deep-link com parâmetros de rota e chave de foco (`highlightId`).
+- **Indexadores de Novos Módulos:**
+  - **Investimentos (`portfolio_assets`):** indexar por `ticker`, `name`, `asset_class`, `sector`, `notes` e apelidos;
+  - **Orçamentos (`budgets`):** indexar por nome da categoria, tipo e limite monetário;
+  - **Lembretes & Recorrências (`recurrences` / `reminders`):** indexar por título da conta/assinatura, valor e periodicidade;
+  - **Catálogo Canônico de Navegação:** rotas do app (`"/relatorios?aba=financas"`, `"/relatorios?aba=fiscal"`, `"/investments?aba=metas"`, `"/configuracoes?aba=backup"`, `"/admin"`, etc.);
+  - **Catálogo de Ações Rápidas:** disparadores contextuais de modais (*"Registrar Despesa"*, *"Adicionar Ativo"*, *"Calibrar Saldo do Caixa"*, *"Exportar Excel"*).
+- **Scoring Semântico & Ponderação:**
+  - Match exato de ticker/ação (100) > Prefixo (85) > Substring tokenizada (60) + Bônus de Recência temporal (até +25);
+  - Testes unitários com Vitest cobrindo 100% das novas entidades, normalização NFD sem acento e ordenação por relevância.
+
+---
+
+#### 2. Fase 64.2: Camada de Estado & Sincronização Sob Demanda
+- **Refatoração do Hook `useGlobalSearchEntries` (`src/state/queries/use-search.ts`):**
+  - Carregamento condicional (`enabled: open`) para zero impacto de memória/bateria quando a busca está fechada;
+  - Limitação inteligente para transações (últimos 12 meses recentes para evitar downloads massivos de anos anteriores);
+  - Agregação paralela e reativa de `portfolio_assets`, `budgets`, `reminders`, `categories`, `debts`, `cards`, `expenses` e `incomes`.
+
+---
+
+#### 3. Fase 64.3: Interface do Usuário & Command Palette Temático
+- **Componente Visual `GlobalSearch` (`src/components/layout/global-search.tsx`):**
+  - Estruturação do `Command` em grupos visuais bem delimitados:
+    - ⚡ **Ações Rápidas** *(Novo Ativo, Nova Despesa, Calibrar Caixa...)*;
+    - 🧭 **Páginas & Relatórios** *(DRE, IRPF, Balanço 360°, Metas...)*;
+    - 📈 **Investimentos & Carteira** *(Ações, FIIs, Tesouro, CDBs...)*;
+    - 💸 **Transações & Contas** *(Despesas, Rendas, Dívidas, Cartões)*;
+    - 🎯 **Orçamentos & Lembretes** *(Metas de Gastos e Contas Fixas)*.
+  - Ícones `lucide-react` temáticos padronizados por categoria e cores semânticas;
+  - Suporte completo a navegação fluida por teclado (`ArrowDown`, `ArrowUp`, `Enter`, `Escape`) e atalho global `⌘K / Ctrl+K`.
+
+---
+
+#### 4. Fase 64.4: Deep Linking & Efeito Visual de Foco no Destino
+- **Hook `useSearchHighlight` (`src/hooks/use-search-highlight.ts`):**
+  - Monitorar query param `?q=<id>` na montagem da tela de destino;
+  - Realizar scroll suave (`scrollIntoView({ behavior: "smooth", block: "center" })`) até o elemento alvo;
+  - Aplicar classe de brilho temporário (`ring-2 ring-primary/60 animate-pulse bg-primary/5 transition-all duration-1000`) com limpeza automática após 2 segundos.
+
+---
+
+**✅ DoD (Definition of Done da Fase 64):**
+- [ ] 100% dos módulos (Investimentos, Orçamentos, Lembretes, Páginas do App e Ações Rápidas) indexados e pesquisáveis.
+- [ ] Atalho `⌘K / Ctrl+K` abre a paleta instantaneamente e responde em < 100ms.
+- [ ] Navegação para qualquer tela/relatório através de digitação direta (ex.: `"DRE"`, `"IRPF"`, `"Metas"`).
+- [ ] Seleção de um resultado de busca executa scroll suave e aplica highlight visual temporário no registro de destino.
+- [ ] Testes unitários em `search.test.ts`, `use-search.test.tsx` e `global-search.test.tsx` 100% verdes.
+- [ ] Typecheck estrito (`tsc -b`), ESLint e suíte de testes 100% verdes.
+
+---
+
+### Fase 65 — Engenharia Editorial A4, Alta Densidade Contábil & Blindagem de PDFs
+
+> **Status:** ⏳ Planejada — **Refinamento Editorial e Blindagem de Impressão**: neutralização completa de temas visuais (Dark/OLED/Accents) durante a impressão com papel 100% branco imaculado, eliminação de páginas em branco através de blindagem irrevogável de `print:hidden`, restauração de grids de 4 colunas nos KPIs (`ReportKpiGrid`), tabelas de alta densidade contábil (`py-1.5`) com cabeçalhos repetidos (`thead`) e erradicação de hífens corrompidos () em discriminações fiscais e tickers.
+
+**Objetivo:** Garantir que 100% dos relatórios impressos ou exportados em PDF (Dossiê Fiscal IRPF, Tear Sheet Patrimonial, Fechamento Financeiro, Balanço 360°, Proventos e Faturas) tenham padrão visual de auditoria contábil executiva sem desperdício de papel, vazios ou deformações:
+
+```mermaid
+flowchart TD
+    PRINT_TRIGGER[Usuário clica em 'Imprimir / Salvar PDF'] --> RESET[Reset CSS: Papel Branco Puro + Zero Vazamento de Temas]
+    RESET --> ISOLATION[Isolamento Estrito: print:hidden remove 100% dos elementos de tela]
+    ISOLATION --> GRID_RESTORE[Restauração dos Grids A4: KPIs em 4 colunas compactas]
+    GRID_RESTORE --> SANITIZE[Sanitização ASCII: Hífens normais sem caracteres quebrados]
+    SANITIZE --> DENSITY[Alta Densidade Contábil: Tabelas compactas py-1.5 com thead contínuo]
+    DENSITY --> PDF[PDF Executivo Perfeito: 2 a 3 páginas densas e organizadas]
+```
+
+---
+
+#### 1. Fase 65.1: Neutralização Absoluta de Temas e Reset do Fundo de Impressão (`globals.css`)
+- **Blindagem de Variáveis CSS no `@media print`:**
+  - Forçar `--background: 0 0% 100% !important`, `--surface: 0 0% 100% !important`, `--foreground: 222 47% 11% !important` e neutralizar `data-theme="dark|oled"` e `data-accent="*"`, garantindo que o tema escuro do usuário nunca manche o papel;
+  - `html, body, #root, .print-sheet`: background branco puro (`#ffffff !important`) e texto slate-900.
+- **Blindagem de `print:hidden` e Remoção de Regras Destrutivas:**
+  - Remover a regra destrutiva `.print-sheet section { display: flex !important; flex-direction: column !important; }` que quebrava o grid de KPIs e forçava a exibição de 62 cards de tela vazios no IRPF;
+  - Regra de prioridade máxima: `.print-hidden, .print\:hidden, [data-print-hidden="true"] { display: none !important; visibility: hidden !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }`.
+
+---
+
+#### 2. Fase 65.2: Restauração de Grids de Métricas A4 & Layout dos KPIs
+- **Restauração do `ReportKpiGrid` (`src/components/modules/reports/report-kpi-grid.tsx`):**
+  - Forçar `display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px !important;` na impressão;
+  - Redução de altura dos 4 cards de KPIs da página 1 para $\approx 4\text{cm}$, permitindo que a Matriz de Alocação e o Parecer comecem imediatamente na folha 1/2 sem empurrar a tabela.
+- **Alinhamento do Termômetro e Setores no Tear Sheet (`wealth-tear-sheet-modal.tsx`):**
+  - Remoção da tag estática redundante `"Ações"` nos cards de setores de FIIs e Renda Fixa;
+  - Ajuste de espaçamento no termômetro de risco e barras de metas.
+
+---
+
+#### 3. Fase 65.3: Sanitização de Fontes, Hífens ASCII & Densidade Contábil nas Tabelas
+- **Erradicação de Caracteres Corrompidos ():**
+  - Sanitizar `src/domain/portfolio/tax.ts` e discriminadores fiscais para utilizar exclusivamente hífens ASCII comuns (`-`, `\u002D`), eliminando `\u2011` (non-breaking hyphen) que causavam losangos de interrogação no PDF.
+- **Tabelas de Alta Densidade Contábil (`TaxFacilitatorModal` & `WealthTearSheetModal`):**
+  - Redução de padding das linhas de tabela para `py-1.5 px-2 text-[10.5px] leading-tight`;
+  - Fixação de cabeçalho `thead` (`display: table-header-group !important; break-after: avoid !important;`) com fundo cinza suave (`#f1f5f9`), repetindo de forma alinhada no topo de cada página onde a tabela continuar;
+  - Subtotais de classes com `break-after: avoid !important`.
+
+---
+
+#### 4. Fase 65.4: Validação Visual Multi-Relatórios & Calibração de Margens A4
+- **Calibração de Margens e Paginação:**
+  - `@page { size: A4 portrait; margin: 8mm 10mm 10mm 10mm; }` eliminando sobreposição com cabeçalhos nativos do navegador.
+- **Verificação nos 5 Relatórios Oficiais do App:**
+  - Dossiê Fiscal IRPF (`TaxFacilitatorModal`);
+  - Tear Sheet Patrimonial Executivo (`WealthTearSheetModal`);
+  - Fechamento Financeiro Mensal (`FinancialCloseReportModal`);
+  - Balanço Patrimonial 360° (`ConsolidatedWealthModal`);
+  - Fatura de Cartão de Crédito (`CardInvoicePrintView`).
+
+---
+
+**✅ DoD (Definition of Done da Fase 65):**
+- [ ] O tema ativo (Dark, OLED ou cores de acento) não afeta a impressão: papel 100% branco com contraste nítido.
+- [ ] Dossiê Fiscal de IRPF sem páginas em branco (reduzido de 10 páginas vazias para 2–3 páginas densas e contínuas).
+- [ ] Zero caracteres corrompidos () em tickers e textos de discriminação.
+- [ ] 4 KPIs executivos da Página 1 do Tear Sheet dispostos horizontalmente em 4 colunas compactas.
+- [ ] Rótulo redundante `"Ações"` corrigido nos setores de FIIs e Renda Fixa.
+- [ ] Cabeçalho das tabelas (`thead`) repete de forma alinhada no topo de todas as páginas seguintes.
+- [ ] Suíte de testes, typecheck (`tsc -b`) e ESLint 100% verdes.
+
+
 
 
 

@@ -1,5 +1,6 @@
 export interface NavItemConfig {
   label: string;
+  shortLabel?: string;
   path: string;
   featureKey?: string;
   adminOnly?: boolean;

@@ -96,4 +96,11 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     window.scrollTo = originalScrollTo;
     Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
   });
+
+  it("renderiza shortLabel conciso no texto visível dos links mobile", () => {
+    renderNav("/");
+    // "Transações" tem aria-label="Transações" mas texto visível "Extrato"
+    const txLink = screen.getByRole("link", { name: "Transações" });
+    expect(txLink).toHaveTextContent("Extrato");
+  });
 });

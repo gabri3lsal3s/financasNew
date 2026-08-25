@@ -81,13 +81,15 @@ function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
       className={({ isActive }) =>
         cn(
           // Área de toque mínima 44×44px e destaque semântico (DESIGN_SYSTEM §13).
-          "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors",
-          isActive ? "text-primary-strong" : "text-muted-foreground",
+          "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[10px] font-medium transition-colors w-full",
+          isActive ? "text-primary-strong font-semibold" : "text-muted-foreground",
         )
       }
     >
-      <item.icon className="size-5" aria-hidden="true" />
-      <span className="truncate max-w-[64px] text-center">{item.label}</span>
+      <item.icon className="size-5 shrink-0" aria-hidden="true" />
+      <span className="w-full text-center leading-tight tracking-tight line-clamp-1">
+        {item.shortLabel ?? item.label}
+      </span>
     </NavLink>
   );
 }
@@ -137,24 +139,58 @@ export function BottomNav() {
   const isMoreActive = isMoreRoot || Boolean(moreSubItem) || moreSheetOpen;
   const MoreIcon = moreSubItem ? moreSubItem.icon : Ellipsis;
 
+  // Botão "Mais" renderizado
+  const renderMoreButton = () => (
+    <button
+      type="button"
+      aria-label={moreSubItem ? `Mais (${moreSubItem.label})` : "Mais opções"}
+      onClick={() => {
+        triggerSensory("action");
+        setMoreSheetOpen(true);
+      }}
+      className={cn(
+        "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[10px] font-medium transition-colors relative cursor-pointer w-full",
+        isMoreActive ? "text-primary-strong font-semibold" : "text-muted-foreground",
+      )}
+    >
+      <div className="relative">
+        <MoreIcon
+          key={moreSubItem?.path ?? "mais"}
+          className="size-5 animate-spring-pop transform-gpu"
+          aria-hidden="true"
+        />
+        {totalCount > 0 && (
+          <span
+            className={cn(
+              "absolute -top-0.5 -right-1 size-2 rounded-full ring-2 ring-surface",
+              urgentCount > 0 ? "bg-danger" : "bg-primary",
+            )}
+          />
+        )}
+      </div>
+      <span className="w-full text-center leading-tight tracking-tight line-clamp-1">Mais</span>
+    </button>
+  );
+
   return (
     <>
       <MoreMenuSheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen} />
       <nav
-        className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur pb-[env(safe-area-inset-bottom,0px)] md:hidden"
         aria-label="Navegação principal"
       >
-        <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
-          {leftSlots.map((slot) => (
-            <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
-          ))}
-          {leftSlots.length < 2 &&
-            Array.from({ length: 2 - leftSlots.length }).map((_, i) => (
-              <div key={`left-empty-${i}`} className="flex min-h-11 items-center justify-center" aria-hidden="true" />
+        {create ? (
+          /* Layout Padrão com FAB Central (5 Colunas) */
+          <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-1.5 sm:px-2">
+            {leftSlots.map((slot) => (
+              <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
             ))}
+            {leftSlots.length < 2 &&
+              Array.from({ length: 2 - leftSlots.length }).map((_, i) => (
+                <div key={`left-empty-${i}`} className="flex min-h-11 items-center justify-center" aria-hidden="true" />
+              ))}
 
-          {/* Slot Central: FAB ou preenchimento */}
-          {create ? (
+            {/* Slot Central: FAB de Criação */}
             <NavLink
               to={create.to}
               aria-label={create.label}
@@ -167,51 +203,35 @@ export function BottomNav() {
                 </span>
               </span>
             </NavLink>
-          ) : (
-            <div className="flex min-h-11 items-center justify-center" />
-          )}
 
-          {rightSlots.map((slot) => (
-            <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
-          ))}
+            {rightSlots.map((slot) => (
+              <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
+            ))}
 
-          {/* Slot 5: Menu Mais via BottomSheet móvel */}
-          {moreMenuSlots.length > 0 ? (
-            <button
-              type="button"
-              aria-label={moreSubItem ? `Mais (${moreSubItem.label})` : "Mais opções"}
-              onClick={() => {
-                triggerSensory("action");
-                setMoreSheetOpen(true);
-              }}
-              className={cn(
-                "flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium transition-colors relative cursor-pointer",
-                isMoreActive ? "text-primary-strong" : "text-muted-foreground",
-              )}
-            >
-              <div className="relative">
-                <MoreIcon
-                  key={moreSubItem?.path ?? "mais"}
-                  className="size-5 animate-spring-pop transform-gpu"
-                  aria-hidden="true"
-                />
-                {totalCount > 0 && (
-                  <span
-                    className={cn(
-                      "absolute -top-0.5 -right-1 size-2 rounded-full ring-2 ring-surface",
-                      urgentCount > 0 ? "bg-danger" : "bg-primary",
-                    )}
-                  />
-                )}
-              </div>
-              <span>Mais</span>
-            </button>
-          ) : rightSlots.length < 2 ? (
-            Array.from({ length: 2 - rightSlots.length }).map((_, i) => (
-              <div key={`right-empty-${i}`} className="flex min-h-11 items-center justify-center" aria-hidden="true" />
-            ))
-          ) : null}
-        </div>
+            {moreMenuSlots.length > 0
+              ? renderMoreButton()
+              : rightSlots.length < 2
+                ? Array.from({ length: 2 - rightSlots.length }).map((_, i) => (
+                    <div key={`right-empty-${i}`} className="flex min-h-11 items-center justify-center" aria-hidden="true" />
+                  ))
+                : null}
+          </div>
+        ) : (
+          /* Layout Somente-Leitura (Sem FAB) com Distribuição Homogênea Proporcional */
+          <div
+            className={cn(
+              "mx-auto grid h-16 max-w-md items-center px-2",
+              primarySlots.length + (moreMenuSlots.length > 0 ? 1 : 0) === 2 && "grid-cols-2",
+              primarySlots.length + (moreMenuSlots.length > 0 ? 1 : 0) === 3 && "grid-cols-3",
+              primarySlots.length + (moreMenuSlots.length > 0 ? 1 : 0) >= 4 && "grid-cols-4",
+            )}
+          >
+            {primarySlots.map((slot) => (
+              <SlotLink key={slot.path} item={slot} end={slot.path === "/"} />
+            ))}
+            {moreMenuSlots.length > 0 && renderMoreButton()}
+          </div>
+        )}
       </nav>
     </>
   );
