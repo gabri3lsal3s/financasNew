@@ -16,7 +16,7 @@ import {
 } from "@/domain/reports";
 import { isCashAssetClass } from "@/domain/portfolio";
 import { addDaysISO } from "@/domain/debts";
-import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
+import { currentMonth, currentYear, monthLabel, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import {
 
@@ -253,6 +253,52 @@ export function ReportsPage() {
         .filter((d) => d.date.startsWith(String(currentYearNum)))
         .reduce((acc, d) => acc + d.amount, 0),
     [dividends, currentYearNum],
+  );
+
+  const totalAllTimeDividendsBRL = useMemo(
+    () => dividends.reduce((acc, d) => acc + d.amount, 0),
+    [dividends],
+  );
+
+  const currentMonthStr = currentMonth();
+  const currentMonthFormatted = monthLabel(currentMonthStr);
+  const monthTransactions = useMemo(
+    () => transactions.filter((t) => t.date.startsWith(currentMonthStr)),
+    [transactions, currentMonthStr],
+  );
+  const monthDividendsList = useMemo(
+    () => dividends.filter((d) => d.date.startsWith(currentMonthStr)),
+    [dividends, currentMonthStr],
+  );
+  const monthBuysBRL = useMemo(
+    () =>
+      monthTransactions
+        .filter((t) => t.type === "buy")
+        .reduce((acc, t) => acc + (t.total ?? t.quantity * t.price), 0),
+    [monthTransactions],
+  );
+  const monthSellsBRL = useMemo(
+    () =>
+      monthTransactions
+        .filter((t) => t.type === "sell")
+        .reduce((acc, t) => acc + (t.total ?? t.quantity * t.price), 0),
+    [monthTransactions],
+  );
+  const monthDividendsAmountBRL = useMemo(
+    () => monthDividendsList.reduce((acc, d) => acc + d.amount, 0),
+    [monthDividendsList],
+  );
+  const monthNetFlowBRL = monthBuysBRL - monthSellsBRL + monthDividendsAmountBRL;
+
+  const monthFlowSummary = useMemo(
+    () => ({
+      buysBRL: monthBuysBRL,
+      sellsBRL: monthSellsBRL,
+      dividendsBRL: monthDividendsAmountBRL,
+      netFlowBRL: monthNetFlowBRL,
+      monthLabel: currentMonthFormatted,
+    }),
+    [monthBuysBRL, monthSellsBRL, monthDividendsAmountBRL, monthNetFlowBRL, currentMonthFormatted],
   );
 
   // Cálculos de Consultoria de Investimentos
@@ -782,7 +828,7 @@ export function ReportsPage() {
         onOpenChange={setTearSheetOpen}
         periodLabel={periodLabel}
         rows={positionRows.map((r) => {
-          const yoc = r.totalCostBRL > 0 ? (r.dividends / r.totalCostBRL) * 100 : 0;
+          const yoc = r.totalCostBRL > 0 ? ((r.dividends ?? 0) / r.totalCostBRL) * 100 : 0;
           return {
             ticker: r.ticker,
             name: r.ticker,
@@ -790,20 +836,25 @@ export function ReportsPage() {
             sector: r.sector,
             currency: r.currency ?? "BRL",
             quantity: r.quantity,
-            averagePrice: r.averageCostBRL,
+            averagePrice: r.averageCostBRL ?? r.averageCost,
             currentPrice: r.priceBRL,
             valueBRL: r.valueBRL,
             unrealizedPnlBRL: r.unrealizedPnl,
             unrealizedPnlPct: r.unrealizedPct ?? 0,
-            yearDividendsBRL: r.dividends,
+            totalReturnPnlBRL: r.totalReturnPnl,
+            totalReturnPct: r.totalReturnPct ?? (r.unrealizedPct ?? 0),
+            dividendsBRL: r.dividends ?? 0,
+            yearDividendsBRL: r.dividends ?? 0,
             yocPct: yoc,
             isCash: isCashAssetClass(r.assetClass),
           };
         })}
         totalBRL={totalPatrimonyBRL}
         totalCostBRL={totalInvestedCostBRL}
+        totalDividendsBRL={totalAllTimeDividendsBRL}
         cashBRL={cashBalanceBRL}
         yearDividendsBRL={yearDividendsBRL}
+        monthSummary={monthFlowSummary}
         allocationAnalysis={allocationAnalysis}
         concentrationRisk={concentrationRisk}
       />

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Layers, PieChart, Landmark } from "lucide-react";
+import { Layers, PieChart, Landmark, Calendar } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
@@ -12,7 +12,7 @@ import {
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { formatSignedPct } from "@/services/masks/percent";
+import { formatSignedPct, formatPercent } from "@/services/masks/percent";
 import { sanitizeReportText, type AllocationAnalysisResult, type ConcentrationRiskResult } from "@/domain/reports";
 
 export interface WealthPositionRow {
@@ -27,9 +27,20 @@ export interface WealthPositionRow {
   valueBRL: number;
   unrealizedPnlBRL: number;
   unrealizedPnlPct: number;
+  totalReturnPnlBRL?: number;
+  totalReturnPct?: number;
+  dividendsBRL?: number;
   yearDividendsBRL: number;
   yocPct: number;
   isCash?: boolean;
+}
+
+export interface MonthFlowSummary {
+  buysBRL: number;
+  sellsBRL: number;
+  dividendsBRL: number;
+  netFlowBRL: number;
+  monthLabel: string;
 }
 
 export interface WealthTearSheetModalProps {
@@ -38,8 +49,10 @@ export interface WealthTearSheetModalProps {
   rows: readonly WealthPositionRow[];
   totalBRL: number;
   totalCostBRL: number;
+  totalDividendsBRL?: number;
   cashBRL?: number;
   yearDividendsBRL?: number;
+  monthSummary?: MonthFlowSummary;
   allocationAnalysis: AllocationAnalysisResult;
   concentrationRisk: ConcentrationRiskResult;
   periodLabel?: string;
@@ -63,12 +76,13 @@ const CLASS_COLORS: Record<string, string> = {
  *
  * Estrutura institucional completa:
  * 1. Header Oficial com Monograma e Metadados;
- * 2. Grade de 4 KPIs Executivos com tipografia tabular mono;
- * 3. Matriz de Alocação por Classe & Setor (Target vs. Actual) com Barras de Desvio (Gaps);
- * 4. Termômetro de Concentração e Risco da Carteira (Ativo, Setor e Moeda);
- * 5. Parecer Técnico Automatizado da Consultoria;
- * 6. Tabela Completa de Custódia de Ativos Agrupada por Classe;
- * 7. Rodapé de Confidencialidade e Autenticidade.
+ * 2. Grade de 4 KPIs Executivos com ênfase no Retorno Total Real;
+ * 3. Síntese Narrativa Analítica Factual (sem prescrição de compras);
+ * 4. Sumário de Movimentação do Mês Vigente (Aportes, Vendas e Proventos);
+ * 5. Matriz de Alocação por Classe & Setor (Target vs. Actual) com Barras de Desvio (Gaps);
+ * 6. Termômetro de Concentração e Risco da Carteira;
+ * 7. Tabela Completa de Custódia com Variação de Cota e Retorno Total Real;
+ * 8. Rodapé de Confidencialidade e Autenticidade.
  */
 export function WealthTearSheetModal({
   open,
@@ -76,6 +90,8 @@ export function WealthTearSheetModal({
   rows,
   totalBRL,
   totalCostBRL,
+  totalDividendsBRL,
+  monthSummary,
   allocationAnalysis,
   concentrationRisk,
   periodLabel = "Posição Atual Consolidada",
@@ -85,6 +101,16 @@ export function WealthTearSheetModal({
   const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
   const unrealizedPnlBRL = totalBRL - totalCostBRL;
   const unrealizedPnlPct = totalCostBRL > 0 ? (unrealizedPnlBRL / totalCostBRL) * 100 : 0;
+
+  // Total de proventos de todos os tempos e Retorno Total real consolidado
+  const totalDividendsAllTime = useMemo(
+    () =>
+      totalDividendsBRL ??
+      rows.reduce((acc, r) => acc + (r.dividendsBRL ?? r.yearDividendsBRL ?? 0), 0),
+    [totalDividendsBRL, rows],
+  );
+  const totalReturnBRL = unrealizedPnlBRL + totalDividendsAllTime;
+  const totalReturnPct = totalCostBRL > 0 ? (totalReturnBRL / totalCostBRL) * 100 : 0;
 
   // Segmentos para barra empilhada de alocação
   const stackedSegments = allocationAnalysis.classGaps.map((cg) => ({
@@ -139,13 +165,8 @@ export function WealthTearSheetModal({
     });
   }, [investmentRows, totalBRL]);
 
-  // Narrativa analítica factual e dinâmica (sem prescrição de compra)
+  // Narrativa analítica factual e dinâmica com Retorno Total e sem prescrição de compra
   const narrativeContent = useMemo(() => {
-    const pnlLabel =
-      unrealizedPnlBRL >= 0
-        ? "resultado não realizado de"
-        : "desvalorização não realizada de";
-
     const hasTargets = allocationAnalysis.classGaps.some((cg) => cg.targetPct > 0);
     const topDeficit = allocationAnalysis.topDeficitClass;
     const surplusClasses = allocationAnalysis.classGaps
@@ -173,18 +194,28 @@ export function WealthTearSheetModal({
         <strong>
           <MoneyText cents={numberToCents(totalCostBRL)} className="inline font-bold" />
         </strong>
-        , registrando {pnlLabel}{" "}
-        <strong>
+        , acumulando <strong>Retorno Total de{" "}
           <MoneyText
-            cents={numberToCents(unrealizedPnlBRL)}
-            tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"}
+            cents={numberToCents(totalReturnBRL)}
+            tone={totalReturnBRL >= 0 ? "positive" : "negative"}
             className="inline font-bold"
           />{" "}
-          ({formatSignedPct(unrealizedPnlPct)})
-        </strong>
+          ({formatSignedPct(totalReturnPct)})</strong> — composto por{" "}
+        <MoneyText
+          cents={numberToCents(unrealizedPnlBRL)}
+          tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"}
+          className="inline font-bold"
+        />{" "}
+        ({formatSignedPct(unrealizedPnlPct)}) de valorização de cota e{" "}
+        <MoneyText
+          cents={numberToCents(totalDividendsAllTime)}
+          tone="positive"
+          className="inline font-bold text-positive-strong"
+        />{" "}
+        em proventos recebidos
         {hasTargets && (
           <>
-            {" "}e índice de equilíbrio geral de{" "}
+            , com índice de equilíbrio geral de{" "}
             <strong>{allocationAnalysis.alignmentScore}%</strong>
           </>
         )}
@@ -216,13 +247,7 @@ export function WealthTearSheetModal({
             Em nível setorial, o maior distanciamento localiza-se em{" "}
             <strong>
               {sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)}
-            </strong>{" "}
-            (déficit de{" "}
-            <MoneyText
-              cents={numberToCents(allocationAnalysis.topDeficitSector.gapBRL)}
-              className="inline font-bold text-primary-strong"
-            />
-            ).{" "}
+            </strong>.{" "}
           </>
         )}
         {intlPct > 0 ? (
@@ -249,6 +274,9 @@ export function WealthTearSheetModal({
     totalCostBRL,
     unrealizedPnlBRL,
     unrealizedPnlPct,
+    totalDividendsAllTime,
+    totalReturnBRL,
+    totalReturnPct,
     allocationAnalysis,
     investmentRows,
     topDominance,
@@ -260,7 +288,6 @@ export function WealthTearSheetModal({
       onOpenChange={onOpenChange}
       title="Dossiê de Alocação & Risco da Carteira"
     >
-      {/* 1. Cabeçalho Institucional */}
       <ReportHeader
         title="Dossiê Executivo de Investimentos & Custódia"
         subtitle="Posição Patrimonial Consolidada & Diagnóstico de Metas"
@@ -270,6 +297,7 @@ export function WealthTearSheetModal({
         accountHolder={accountHolder}
       />
 
+      {/* 2. Síntese Executiva com Retorno Total Real */}
       <ReportExecutiveSummary
         title="SÍNTESE DA CARTEIRA & POSIÇÃO CONSOLIDADA"
         items={[
@@ -284,18 +312,18 @@ export function WealthTearSheetModal({
             subtext: "Custo de Aquisição",
           },
           {
-            label: "Resultado Não Realizado",
+            label: "Retorno Total Real",
             value: (
-              <span className={unrealizedPnlBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+              <span className={totalReturnBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}>
                 <MoneyText
-                  cents={numberToCents(unrealizedPnlBRL)}
-                  tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"}
+                  cents={numberToCents(totalReturnBRL)}
+                  tone={totalReturnBRL >= 0 ? "positive" : "negative"}
                   className="inline"
                 />{" "}
-                <span className="text-[11px] font-normal">({formatSignedPct(unrealizedPnlPct)})</span>
+                <span className="text-[11px] font-normal">({formatSignedPct(totalReturnPct)})</span>
               </span>
             ),
-            subtext: unrealizedPnlBRL >= 0 ? "Lucro Contábil" : "Desvalorização",
+            subtext: "Cotação + Proventos",
           },
           {
             label: "Aderência às Metas",
@@ -306,6 +334,23 @@ export function WealthTearSheetModal({
         narrative={narrativeContent}
       />
 
+      {/* 3. Sumário de Movimentação do Mês Vigente */}
+      {monthSummary && (
+        <div className="bg-slate-50/80 rounded-lg border border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs print:bg-slate-50 print:border-slate-300">
+          <div className="flex items-center gap-1.5 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+            <Calendar className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <span>Movimentação do Mês ({monthSummary.monthLabel}):</span>
+          </div>
+          <div className="flex items-center gap-4 font-mono text-[11px] num">
+            <span>Aportes: <strong className="text-slate-900"><MoneyText cents={numberToCents(monthSummary.buysBRL)} /></strong></span>
+            <span>Vendas: <strong className="text-slate-900"><MoneyText cents={numberToCents(monthSummary.sellsBRL)} /></strong></span>
+            <span>Proventos: <strong className="text-positive-strong"><MoneyText cents={numberToCents(monthSummary.dividendsBRL)} /></strong></span>
+            <span>Líquido: <strong className={monthSummary.netFlowBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}><MoneyText cents={numberToCents(monthSummary.netFlowBRL)} /></strong></span>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Diagnóstico de Metas & Alocação */}
       <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-2.5">
         <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
           <div className="flex items-center gap-1.5">
@@ -325,44 +370,48 @@ export function WealthTearSheetModal({
           height={10}
         />
 
-        <div className="overflow-x-auto rounded-lg border border-slate-200 print:overflow-visible shadow-2xs">
-          <table className="w-full text-left text-xs border-collapse print:table-fixed">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-2xs">
+          <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold text-[9px] uppercase tracking-wider">
-                <th className="py-1.5 px-2.5 print:w-[22%]">Classe</th>
-                <th className="py-1.5 px-2 text-right print:w-[18%]">Atual (R$)</th>
-                <th className="py-1.5 px-2 text-right print:w-[14%]">Atual (%)</th>
-                <th className="py-1.5 px-2 text-right print:w-[14%]">Meta (%)</th>
-                <th className="py-1.5 px-2 text-right print:w-[18%]">Gap (R$)</th>
-                <th className="py-1.5 px-2.5 text-center print:w-[14%]">Status</th>
+              <tr className="border-b border-slate-200 bg-slate-50 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                <th className="py-1 px-2.5">Classe</th>
+                <th className="py-1 px-2 text-right">Atual (R$)</th>
+                <th className="py-1 px-2 text-right">Atual (%)</th>
+                <th className="py-1 px-2 text-right">Meta (%)</th>
+                <th className="py-1 px-2 text-right">Gap (R$)</th>
+                <th className="py-1 px-2.5 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {allocationAnalysis.classGaps.map((cg) => (
-                <tr key={cg.assetClass} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
-                  <td className="py-1 px-2.5 font-semibold capitalize text-slate-900 text-[11px]">{cg.assetClass}</td>
-                  <td className="py-1 px-2 text-right num font-mono text-slate-800 text-[11px]">
-                    <MoneyText cents={numberToCents(cg.currentBRL)} />
+                <tr key={cg.assetClass} className="even:bg-slate-50/50">
+                  <td className="py-1 px-2.5 font-semibold text-slate-900 capitalize">
+                    {cg.assetClass}
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono text-slate-700 text-[11px]">{cg.currentPct.toFixed(1)}%</td>
-                  <td className="py-1 px-2 text-right num font-mono text-slate-700 text-[11px]">
-                    {cg.targetPct > 0 ? `${cg.targetPct.toFixed(1)}%` : "—"}
+                  <td className="py-1 px-2 text-right num font-mono font-bold text-slate-900">
+                    <MoneyText cents={numberToCents(cg.currentBRL)} tone="default" />
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono font-bold text-[11px]">
+                  <td className="py-1 px-2 text-right num font-mono text-slate-600">
+                    {formatPercent(cg.currentPct)}
+                  </td>
+                  <td className="py-1 px-2 text-right num font-mono text-slate-600">
+                    {formatPercent(cg.targetPct)}
+                  </td>
+                  <td className="py-1 px-2 text-right num font-mono">
                     {cg.gapBRL > 0 ? (
-                      <MoneyText cents={numberToCents(cg.gapBRL)} tone="default" className="text-primary-strong" />
+                      <MoneyText cents={numberToCents(cg.gapBRL)} className="font-bold text-primary-strong" />
                     ) : (
-                      <span className="text-slate-400 font-normal">—</span>
+                      <span className="text-slate-400">—</span>
                     )}
                   </td>
                   <td className="py-1 px-2.5 text-center">
                     <span
-                      className={`inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
                         cg.gapBRL > 0
                           ? "bg-primary/10 text-primary-strong border border-primary/20"
                           : cg.currentPct > cg.targetPct && cg.targetPct > 0
                             ? "bg-slate-100 text-slate-600 border border-slate-200"
-                            : "bg-positive/10 text-positive-strong border border-positive/20"
+                            : "bg-slate-100 text-slate-500 border border-slate-200"
                       }`}
                     >
                       {cg.gapBRL > 0 ? "Aportar" : cg.currentPct > cg.targetPct && cg.targetPct > 0 ? "Acima da Meta" : "Equilibrado"}
@@ -379,6 +428,7 @@ export function WealthTearSheetModal({
         </div>
       </section>
 
+      {/* 5. Termômetro de Concentração e Risco */}
       <section aria-label="Risco e Concentração" className="break-inside-avoid flex flex-col gap-2">
         <ReportRiskGauge
           topItemName={sanitizeReportText(topDominance.ticker)}
@@ -388,6 +438,7 @@ export function WealthTearSheetModal({
         />
       </section>
 
+      {/* 6. Custódia Consolidada Especializada */}
       <section aria-label="Custódia de Ativos" className="flex flex-col gap-2 pt-1 print:break-before-page">
         <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
           <div className="flex items-center gap-1.5">
@@ -415,7 +466,9 @@ export function WealthTearSheetModal({
               avgPriceCents: numberToCents(r.averagePrice),
               currentPriceCents: numberToCents(r.currentPrice),
               totalCents: numberToCents(r.valueBRL),
-              pnlPct: r.unrealizedPnlPct,
+              pricePnlPct: r.unrealizedPnlPct,
+              pnlPct: r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPnlPct,
+              dividendsCents: numberToCents(r.dividendsBRL ?? r.yearDividendsBRL ?? 0),
               yocPct: r.yocPct,
               currency: r.currency,
             })),
@@ -423,6 +476,7 @@ export function WealthTearSheetModal({
         />
       </section>
 
+      {/* 7. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer="Documento estritamente confidencial gerado pelo titular da conta via Guia Financeiro. As informações refletem a posição de custódia e cotações na data de emissão."

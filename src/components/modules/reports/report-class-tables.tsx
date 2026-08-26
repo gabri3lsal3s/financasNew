@@ -11,6 +11,8 @@ export interface ReportClassTableItem {
   currentPriceCents: number;
   totalCents: number;
   pnlPct: number;
+  pricePnlPct?: number | null;
+  dividendsCents?: number | null;
   yocPct?: number | null;
   currency?: string | null;
   indexType?: string | null;
@@ -37,9 +39,9 @@ const formatQuantity = (quantity: number): string =>
 /**
  * Tabelas de Custódia Especializadas por Classe de Ativo para Relatórios A4/PDF.
  * Renderiza seções distintas com colunas específicas para cada classe:
- * - Ações / FIIs: Ticker, Setor, Qtd, PM, Cotação, Total, Retorno %, YoC %;
- * - Renda Fixa: Título / Emissor, Indexador / Vencimento, Custo, Saldo Atual, Rendimento %;
- * - Internacional: Ticker, Tema, Qtd, Custo Médio, Cotação USD, Total, Retorno %.
+ * - Ações / FIIs: Ticker, Setor, Qtd, PM, Cotação, Total, Var. Cota %, Retorno Total %;
+ * - Renda Fixa: Título / Emissor, Indexador / Vencimento, Qtd, Saldo Atual, Rendimento %;
+ * - Internacional: Ticker, Tema, Qtd, Custo Médio, Cotação USD, Total, Var. Cota %, Retorno Total %.
  */
 export function ReportClassTables({ groups }: ReportClassTablesProps) {
   if (!groups || groups.length === 0) return null;
@@ -98,128 +100,135 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                       </>
                     ) : isInternacional ? (
                       <>
-                        <th className="py-1 px-2 print:w-[14%]">Ticker</th>
-                        <th className="py-1 px-1.5 print:w-[22%]">Classe / Tema</th>
-                        <th className="py-1 px-1.5 text-right print:w-[8%]">Qtd</th>
-                        <th className="py-1 px-1.5 text-right print:w-[16%]">Preço Médio</th>
-                        <th className="py-1 px-1.5 text-right print:w-[16%]">Cotação</th>
-                        <th className="py-1 px-1.5 text-right print:w-[16%]">Total (R$)</th>
-                        <th className="py-1 px-2 text-right print:w-[8%]">Retorno</th>
+                        <th className="py-1 px-2 print:w-[13%]">Ticker</th>
+                        <th className="py-1 px-1.5 print:w-[20%]">Classe / Tema</th>
+                        <th className="py-1 px-1.5 text-right print:w-[7%]">Qtd</th>
+                        <th className="py-1 px-1.5 text-right print:w-[13%]">Preço Médio</th>
+                        <th className="py-1 px-1.5 text-right print:w-[13%]">Cotação USD</th>
+                        <th className="py-1 px-1.5 text-right print:w-[15%]">Total (R$)</th>
+                        <th className="py-1 px-1.5 text-right print:w-[9%]">Var. Cota</th>
+                        <th className="py-1 px-2 text-right print:w-[10%]">Ret. Total</th>
                       </>
                     ) : (
                       <>
                         <th className="py-1 px-2 print:w-[13%]">Ticker</th>
-                        <th className="py-1 px-1.5 print:w-[21%]">Setor / Segmento</th>
-                        <th className="py-1 px-1 text-right print:w-[8%]">Qtd</th>
-                        <th className="py-1 px-1.5 text-right print:w-[14%]">Preço Médio</th>
-                        <th className="py-1 px-1.5 text-right print:w-[14%]">Cotação</th>
-                        <th className="py-1 px-1.5 text-right print:w-[16%]">Total (R$)</th>
-                        <th className="py-1 px-1.5 text-right print:w-[8%]">Retorno</th>
-                        <th className="py-1 px-2 text-right print:w-[6%]">YoC</th>
+                        <th className="py-1 px-1.5 print:w-[20%]">Setor / Segmento</th>
+                        <th className="py-1 px-1 text-right print:w-[7%]">Qtd</th>
+                        <th className="py-1 px-1.5 text-right print:w-[12%]">Preço Médio</th>
+                        <th className="py-1 px-1.5 text-right print:w-[12%]">Cotação</th>
+                        <th className="py-1 px-1.5 text-right print:w-[15%]">Total (R$)</th>
+                        <th className="py-1 px-1.5 text-right print:w-[9%]">Var. Cota</th>
+                        <th className="py-1 px-2 text-right print:w-[12%]">Ret. Total</th>
                       </>
                     )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {group.items.map((item) => (
-                    <tr
-                      key={item.ticker}
-                      className="even:bg-slate-50/50 print:even:bg-slate-50/50 break-inside-avoid"
-                    >
-                      {isRendaFixa ? (
-                        <>
-                          <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
-                            {sanitizeReportText(item.ticker)}
-                          </td>
-                          <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
-                            {sanitizeReportText(
-                              item.sector || item.indexType || "Renda Fixa Geral",
-                            )}
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono text-slate-700 text-[10px]">
-                            {formatQuantity(item.quantity)}
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
-                            <MoneyText cents={item.totalCents} tone="default" />
-                          </td>
-                          <td
-                            className={`py-1 px-2 text-right num font-mono font-bold text-[10px] ${
-                              item.pnlPct >= 0
-                                ? "text-positive-strong"
-                                : "text-negative-strong"
-                            }`}
-                          >
-                            {formatSignedPct(item.pnlPct)}
-                          </td>
-                        </>
-                      ) : isInternacional ? (
-                        <>
-                          <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
-                            {sanitizeReportText(item.ticker)}
-                          </td>
-                          <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
-                            {sanitizeReportText(item.sector || "Internacional")}
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono text-slate-700 text-[10px]">
-                            {formatQuantity(item.quantity)}
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono text-slate-600 text-[10px]">
-                            <MoneyText cents={item.avgPriceCents} tone="default" />
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono text-slate-900 text-[10px]">
-                            <MoneyText cents={item.currentPriceCents} tone="default" />
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
-                            <MoneyText cents={item.totalCents} tone="default" />
-                          </td>
-                          <td
-                            className={`py-1 px-2 text-right num font-mono font-bold text-[10px] ${
-                              item.pnlPct >= 0
-                                ? "text-positive-strong"
-                                : "text-negative-strong"
-                            }`}
-                          >
-                            {formatSignedPct(item.pnlPct)}
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
-                            {sanitizeReportText(item.ticker)}
-                          </td>
-                          <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
-                            {sanitizeReportText(item.sector || "Geral")}
-                          </td>
-                          <td className="py-1 px-1 text-right num font-mono text-slate-700 text-[10px]">
-                            {formatQuantity(item.quantity)}
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono text-slate-600 text-[10px]">
-                            <MoneyText cents={item.avgPriceCents} tone="default" />
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono text-slate-900 text-[10px]">
-                            <MoneyText cents={item.currentPriceCents} tone="default" />
-                          </td>
-                          <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
-                            <MoneyText cents={item.totalCents} tone="default" />
-                          </td>
-                          <td
-                            className={`py-1 px-1.5 text-right num font-mono font-bold text-[10px] ${
-                              item.pnlPct >= 0
-                                ? "text-positive-strong"
-                                : "text-negative-strong"
-                            }`}
-                          >
-                            {formatSignedPct(item.pnlPct)}
-                          </td>
-                          <td className="py-1 px-2 text-right num font-mono text-slate-600 text-[10px]">
-                            {item.yocPct != null && item.yocPct > 0
-                              ? formatPercent(item.yocPct)
-                              : "—"}
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
+                  {group.items.map((item) => {
+                    const priceVarPct = item.pricePnlPct ?? item.pnlPct;
+                    const totalRetPct = item.pnlPct;
+
+                    return (
+                      <tr
+                        key={item.ticker}
+                        className="even:bg-slate-50/50 print:even:bg-slate-50/50 break-inside-avoid"
+                      >
+                        {isRendaFixa ? (
+                          <>
+                            <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
+                              {sanitizeReportText(item.ticker)}
+                            </td>
+                            <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
+                              {sanitizeReportText(
+                                item.sector || item.indexType || "Renda Fixa Geral",
+                              )}
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono text-slate-700 text-[10px]">
+                              {formatQuantity(item.quantity)}
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
+                              <MoneyText cents={item.totalCents} tone="default" />
+                            </td>
+                            <td
+                              className={`py-1 px-2 text-right num font-mono font-bold text-[10px] ${
+                                item.pnlPct >= 0
+                                  ? "text-positive-strong"
+                                  : "text-negative-strong"
+                              }`}
+                            >
+                              {formatSignedPct(item.pnlPct)}
+                            </td>
+                          </>
+                        ) : isInternacional ? (
+                          <>
+                            <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
+                              {sanitizeReportText(item.ticker)}
+                            </td>
+                            <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
+                              {sanitizeReportText(item.sector || "Internacional")}
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono text-slate-700 text-[10px]">
+                              {formatQuantity(item.quantity)}
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono text-slate-600 text-[10px]">
+                              <MoneyText cents={item.avgPriceCents} tone="default" />
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono text-slate-900 text-[10px]">
+                              <MoneyText cents={item.currentPriceCents} tone="default" />
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
+                              <MoneyText cents={item.totalCents} tone="default" />
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono text-slate-500 text-[10px]">
+                              {formatSignedPct(priceVarPct)}
+                            </td>
+                            <td
+                              className={`py-1 px-2 text-right num font-mono font-bold text-[10.5px] ${
+                                totalRetPct >= 0
+                                  ? "text-positive-strong"
+                                  : "text-negative-strong"
+                              }`}
+                            >
+                              {formatSignedPct(totalRetPct)}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
+                              {sanitizeReportText(item.ticker)}
+                            </td>
+                            <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
+                              {sanitizeReportText(item.sector || "Geral")}
+                            </td>
+                            <td className="py-1 px-1 text-right num font-mono text-slate-700 text-[10px]">
+                              {formatQuantity(item.quantity)}
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono text-slate-600 text-[10px]">
+                              <MoneyText cents={item.avgPriceCents} tone="default" />
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono text-slate-900 text-[10px]">
+                              <MoneyText cents={item.currentPriceCents} tone="default" />
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
+                              <MoneyText cents={item.totalCents} tone="default" />
+                            </td>
+                            <td className="py-1 px-1.5 text-right num font-mono text-slate-500 text-[10px]">
+                              {formatSignedPct(priceVarPct)}
+                            </td>
+                            <td
+                              className={`py-1 px-2 text-right num font-mono font-bold text-[10.5px] ${
+                                totalRetPct >= 0
+                                  ? "text-positive-strong"
+                                  : "text-negative-strong"
+                              }`}
+                            >
+                              {formatSignedPct(totalRetPct)}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
