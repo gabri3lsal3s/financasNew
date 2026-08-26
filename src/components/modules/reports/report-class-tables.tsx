@@ -257,6 +257,11 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                     <tr>
                       <td colSpan={3} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold first:rounded-bl-[7px]">
                         Subtotal {group.className}
+                        {group.totalCostCents !== undefined && (
+                          <span className="font-normal normal-case text-muted-foreground ml-1.5">
+                            (Custo: <MoneyText cents={group.totalCostCents} tone="default" className="inline font-semibold text-[10px]" />)
+                          </span>
+                        )}
                       </td>
                       <td className="py-1.5 px-2 text-right num font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
                         <MoneyText cents={group.totalCents} tone="default" />
@@ -274,6 +279,11 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                     <tr>
                       <td colSpan={5} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold first:rounded-bl-[7px]">
                         Subtotal {group.className}
+                        {group.totalCostCents !== undefined && (
+                          <span className="font-normal normal-case text-muted-foreground ml-1.5">
+                            (Custo: <MoneyText cents={group.totalCostCents} tone="default" className="inline font-semibold text-[10px]" />)
+                          </span>
+                        )}
                       </td>
                       <td className="py-1.5 px-2 text-right num font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
                         <MoneyText cents={group.totalCents} tone="default" />
@@ -292,18 +302,13 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                     </tr>
                   ) : (
                     <tr>
-                      <td colSpan={3} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold first:rounded-bl-[7px]">
+                      <td colSpan={5} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold first:rounded-bl-[7px]">
                         Subtotal {group.className}
-                      </td>
-                      <td className="py-1.5 px-1.5 text-right num font-mono text-[10px] text-muted-foreground whitespace-nowrap">
-                        {group.totalCostCents !== undefined ? (
-                          <MoneyText cents={group.totalCostCents} tone="default" />
-                        ) : (
-                          "—"
+                        {group.totalCostCents !== undefined && (
+                          <span className="font-normal normal-case text-muted-foreground ml-1.5">
+                            (Custo: <MoneyText cents={group.totalCostCents} tone="default" className="inline font-semibold text-[10px]" />)
+                          </span>
                         )}
-                      </td>
-                      <td className="py-1.5 px-1.5 text-right num font-mono text-[10px] text-muted-foreground whitespace-nowrap">
-                        —
                       </td>
                       <td className="py-1.5 px-2 text-right num font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
                         <MoneyText cents={group.totalCents} tone="default" />

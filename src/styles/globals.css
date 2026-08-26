@@ -734,7 +734,8 @@
     page-break-after: avoid !important;
   }
 
-  .print-sheet tbody {
+  .print-sheet tbody,
+  .print-sheet tfoot {
     display: table-row-group !important;
   }
 
