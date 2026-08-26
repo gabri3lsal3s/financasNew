@@ -236,9 +236,9 @@ export function TaxFacilitatorModal({
           <table className="w-full text-left text-xs border-collapse table-fixed">
             <thead>
               <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
-                <th className="py-1.5 px-2 w-[14%]">Código / Grupo</th>
+                <th className="py-1.5 px-2 w-[16%]">Código / Grupo</th>
                 <th className="py-1.5 px-1.5 w-[12%]">Ticker</th>
-                <th className="py-1.5 px-2 w-[58%]">Discriminação para o Programa IRPF</th>
+                <th className="py-1.5 px-2 w-[56%]">Discriminação para o Programa IRPF</th>
                 <th className="py-1.5 px-2 text-right w-[16%]">Situação em 31/12</th>
               </tr>
             </thead>
@@ -253,8 +253,15 @@ export function TaxFacilitatorModal({
 
                 return (
                   <tr key={`print-tax-${asset.id}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
-                    <td className="py-1 px-2 text-[9px] font-mono text-muted-foreground truncate">
-                      {taxInfo.label}
+                    <td className="py-1 px-2 text-[9px] font-mono text-muted-foreground">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-foreground leading-tight">
+                          {taxInfo.group}-{taxInfo.code}
+                        </span>
+                        <span className="text-[8px] text-muted-foreground leading-tight">
+                          {taxInfo.label.replace(`${taxInfo.group}-${taxInfo.code} `, "")}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-1 px-1.5 font-bold text-foreground text-[11px] truncate">
                       {safeTicker}

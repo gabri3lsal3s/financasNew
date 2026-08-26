@@ -530,7 +530,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm 8mm 10mm;
+    margin: 0;
   }
 
   /* 1. Reset total de fundo e cores para impressão nítida em papel branco */
@@ -540,6 +540,7 @@
   html[data-theme="oled"],
   :root,
   body {
+    color-scheme: light !important;
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
@@ -589,6 +590,7 @@
   html[data-theme],
   html[data-accent],
   html[data-surface-style] {
+    color-scheme: light !important;
     background-color: #ffffff !important;
     background: #ffffff !important;
     color: #0f172a !important;
@@ -625,10 +627,11 @@
     visibility: visible !important;
     opacity: 1 !important;
     position: static !important;
+    color-scheme: light !important;
     background-color: #ffffff !important;
     background: #ffffff !important;
     color: #0f172a !important;
-    padding: 0 !important;
+    padding: 10mm 12mm !important;
     margin: 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -664,7 +667,7 @@
   .print-sheet > div {
     display: flex !important;
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: 8px !important;
     width: 100% !important;
   }
 

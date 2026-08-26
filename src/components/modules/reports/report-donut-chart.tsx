@@ -31,8 +31,8 @@ export function ReportDonutChart({
   segments,
   centerLabel,
   centerValue,
-  size = 140,
-  strokeWidth = 22,
+  size = 120,
+  strokeWidth = 18,
   className,
 }: ReportDonutChartProps) {
   const radius = (size - strokeWidth) / 2;
@@ -51,7 +51,7 @@ export function ReportDonutChart({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row items-center gap-6 rounded-xl border border-border/80 bg-muted/10 p-4 break-inside-avoid print:bg-white print:border-border",
+        "flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-border/80 bg-muted/10 p-3 break-inside-avoid print:bg-white print:border-border",
         className,
       )}
     >

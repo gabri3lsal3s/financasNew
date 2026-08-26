@@ -466,7 +466,7 @@ export function WealthTearSheetModal({
       </section>
 
       {/* 6. Custódia Consolidada Especializada */}
-      <section aria-label="Custódia de Ativos" className="flex flex-col gap-2 pt-1 print:break-before-page">
+      <section aria-label="Custódia de Ativos" className="flex flex-col gap-2 pt-1">
         <div className="flex items-center justify-between border-b border-border/70 pb-1">
           <div className="flex items-center gap-1.5">
             <Layers className="size-3.5 text-primary-strong" aria-hidden="true" />

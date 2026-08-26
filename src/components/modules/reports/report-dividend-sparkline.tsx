@@ -35,19 +35,19 @@ export function ReportDividendSparkline({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-border/80 bg-muted/10 p-4 break-inside-avoid print:bg-white print:border-border",
+        "flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/10 p-3 break-inside-avoid print:bg-white print:border-border",
         className,
       )}
     >
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-border/60 pb-2">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="size-4 text-primary-strong" aria-hidden="true" />
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-border/60 pb-1.5">
+        <div className="flex items-center gap-1.5">
+          <TrendingUp className="size-3.5 text-primary-strong" aria-hidden="true" />
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
             {title}
           </h4>
         </div>
 
-        <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-3 text-[10.5px]">
           <span className="text-muted-foreground">
             Média Mensal: <MoneyText cents={avgCents} className="font-bold text-foreground" />
           </span>
@@ -60,8 +60,8 @@ export function ReportDividendSparkline({
       </div>
 
       {/* Gráfico de Colunas SVG */}
-      <div className="pt-2">
-        <div className="grid grid-cols-12 gap-1.5 items-end h-20 w-full">
+      <div className="pt-1">
+        <div className="grid grid-cols-12 gap-1 items-end h-16 w-full">
           {points.map((point) => {
             const heightPct = Math.max(Math.round((point.amountCents / maxAmount) * 100), 4);
             const isZero = point.amountCents <= 0;
