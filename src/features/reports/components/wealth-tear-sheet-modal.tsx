@@ -148,12 +148,21 @@ export function WealthTearSheetModal({
       list.push(row);
       groups.set(cls, list);
     }
-    const CLASS_SORT_ORDER = ["acoes", "acao", "fiis", "fii", "internacional", "renda fixa", "renda_fixa"];
+    const normalizeClass = (name: string): string =>
+      name
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+
+    const CLASS_SORT_ORDER = ["acoes", "acao", "fiis", "fii", "internacional", "global", "renda fixa", "renda_fixa", "tesouro", "outros"];
 
     return Array.from(groups.entries())
       .sort(([clsA], [clsB]) => {
-        const idxA = CLASS_SORT_ORDER.indexOf(clsA.toLowerCase());
-        const idxB = CLASS_SORT_ORDER.indexOf(clsB.toLowerCase());
+        const normA = normalizeClass(clsA);
+        const normB = normalizeClass(clsB);
+        const idxA = CLASS_SORT_ORDER.findIndex((prefix) => normA.includes(prefix));
+        const idxB = CLASS_SORT_ORDER.findIndex((prefix) => normB.includes(prefix));
         const orderA = idxA >= 0 ? idxA : 99;
         const orderB = idxB >= 0 ? idxB : 99;
         return orderA - orderB;
@@ -176,12 +185,6 @@ export function WealthTearSheetModal({
         const topAssetTicker = topItem?.ticker ?? undefined;
         const topAssetSharePct = subtotalBRL > 0 && topItem ? (topItem.valueBRL / subtotalBRL) * 100 : undefined;
 
-        const isFII = assetClass.toLowerCase().includes("fii");
-        const isRendaFixa =
-          assetClass.toLowerCase().includes("fixa") ||
-          assetClass.toLowerCase().includes("tesouro");
-        const printBreakBefore = isFII || isRendaFixa;
-
         return {
           assetClass,
           items,
@@ -195,7 +198,6 @@ export function WealthTearSheetModal({
           pctOfTotal,
           topAssetTicker,
           topAssetSharePct,
-          printBreakBefore,
         };
       });
   }, [investmentRows, totalBRL]);
@@ -502,7 +504,6 @@ export function WealthTearSheetModal({
             totalDividendsCents: numberToCents(group.subtotalDividendsBRL),
             topAssetTicker: group.topAssetTicker,
             topAssetSharePct: group.topAssetSharePct,
-            printBreakBefore: group.printBreakBefore,
             items: group.items.map((r) => ({
               ticker: r.ticker,
               name: r.name,
