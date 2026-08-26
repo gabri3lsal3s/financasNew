@@ -87,35 +87,38 @@ export function TaxFacilitatorModal({
     }
   };
 
+  const formatMoneyBR = (cents: number): string =>
+    (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   const getTaxGroupCode = (assetClass?: string | null): { group: string; code: string; label: string } => {
     const normalized = (assetClass ?? "").toLowerCase().trim();
     switch (normalized) {
       case "acao":
       case "acoes":
       case "ações":
-        return { group: "03", code: "01", label: "03 - 01 (Ações)" };
+        return { group: "03", code: "01", label: "03-01 Ações" };
       case "fii":
       case "fiis":
-        return { group: "07", code: "03", label: "07 - 03 (Fundos Imobiliários)" };
+        return { group: "07", code: "03", label: "07-03 FIIs" };
       case "cripto":
       case "bitcoin":
       case "crypto":
-        return { group: "08", code: "01", label: "08 - 01 (Criptoativos)" };
+        return { group: "08", code: "01", label: "08-01 Cripto" };
       case "renda_fixa":
       case "rendafixa":
       case "cdb":
       case "tesouro":
       case "lci":
       case "lca":
-        return { group: "04", code: "02", label: "04 - 02 (Títulos / Renda Fixa)" };
+        return { group: "04", code: "02", label: "04-02 Renda Fixa" };
       case "internacional":
       case "etf":
       case "etfs":
       case "bdr":
       case "bdrs":
-        return { group: "07", code: "09", label: "07 - 09 (ETFs / Ativos Internacionais)" };
+        return { group: "07", code: "09", label: "07-09 Internacional" };
       default:
-        return { group: "99", code: "99", label: "99 - 99 (Outros Bens)" };
+        return { group: "99", code: "99", label: "99-99 Outros" };
     }
   };
 
@@ -161,11 +164,9 @@ export function TaxFacilitatorModal({
             const safeTicker = sanitizeReportText(asset.ticker);
             const totalCostBRL = asset.quantity * asset.average_price;
             const taxInfo = getTaxGroupCode(asset.asset_class);
-            const textToCopy = `${asset.quantity.toLocaleString("pt-BR", {
-              maximumFractionDigits: 4,
-            })} cotas de ${safeTicker}, custo médio unitário de R$ ${asset.average_price
-              .toFixed(2)
-              .replace(".", ",")}, totalizando R$ ${totalCostBRL.toFixed(2).replace(".", ",")}.`;
+            const qtyStr = asset.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+            const cotaWord = asset.quantity === 1 ? "cota" : "cotas";
+            const textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker}, custo médio unitário de R$ ${formatMoneyBR(numberToCents(asset.average_price))}, totalizando R$ ${formatMoneyBR(numberToCents(totalCostBRL))}.`;
 
             return (
               <div
@@ -218,52 +219,50 @@ export function TaxFacilitatorModal({
       </section>
 
       {/* 3.1. Seção: Ficha de Bens e Direitos — TABELA FISCAL OFICIAL NO PDF / IMPRESSÃO */}
-      <section aria-label="Bens e Direitos Impressão" className="hidden print:flex flex-col gap-2.5">
-        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
-          <div className="flex items-center gap-2">
+      <section aria-label="Bens e Direitos Impressão" className="hidden print:flex flex-col gap-2">
+        <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
+          <div className="flex items-center gap-1.5">
             <FileText className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-800">
               Ficha: Bens e Direitos — Posição em 31/12/{calendarYear} ({nonCashAssets.length} ativos)
             </h3>
           </div>
-          <span className="text-[11px] font-mono num text-muted-foreground">
-            Custo Total: <MoneyText cents={numberToCents(totalCostAllAssetsBRL)} className="font-bold text-foreground inline" />
+          <span className="text-[10px] font-mono num text-slate-600">
+            Custo Total: <MoneyText cents={numberToCents(totalCostAllAssetsBRL)} className="font-bold text-slate-900 inline" />
           </span>
         </div>
 
-        <div className="rounded-xl border border-border/80 overflow-visible">
+        <div className="rounded-lg border border-slate-200 overflow-visible">
           <table className="w-full text-left text-xs border-collapse table-fixed">
             <thead>
-              <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-2 px-2.5 w-[18%]">Código / Grupo</th>
-                <th className="py-2 px-2 w-[11%]">Ticker</th>
-                <th className="py-2 px-2.5 w-[53%]">Discriminação para o Programa IRPF</th>
-                <th className="py-2 px-2.5 text-right w-[18%]">Situação em 31/12</th>
+              <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold text-[9px] uppercase tracking-wider">
+                <th className="py-1.5 px-2 w-[14%]">Código / Grupo</th>
+                <th className="py-1.5 px-1.5 w-[12%]">Ticker</th>
+                <th className="py-1.5 px-2 w-[58%]">Discriminação para o Programa IRPF</th>
+                <th className="py-1.5 px-2 text-right w-[16%]">Situação em 31/12</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-slate-100">
               {nonCashAssets.map((asset) => {
                 const safeTicker = sanitizeReportText(asset.ticker);
                 const totalCostBRL = asset.quantity * asset.average_price;
                 const taxInfo = getTaxGroupCode(asset.asset_class);
-                const textToCopy = `${asset.quantity.toLocaleString("pt-BR", {
-                  maximumFractionDigits: 4,
-                })} cotas de ${safeTicker}, custo médio unitário de R$ ${asset.average_price
-                  .toFixed(2)
-                  .replace(".", ",")}, totalizando R$ ${totalCostBRL.toFixed(2).replace(".", ",")}.`;
+                const qtyStr = asset.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+                const cotaWord = asset.quantity === 1 ? "cota" : "cotas";
+                const textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker}, custo unitário de R$ ${formatMoneyBR(numberToCents(asset.average_price))}, totalizando R$ ${formatMoneyBR(numberToCents(totalCostBRL))}.`;
 
                 return (
                   <tr key={`print-tax-${asset.id}`} className="break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
-                    <td className="py-1.5 px-2.5 text-[10px] font-mono text-muted-foreground">
+                    <td className="py-1 px-2 text-[9px] font-mono text-slate-600 truncate">
                       {taxInfo.label}
                     </td>
-                    <td className="py-1.5 px-2 font-bold text-foreground text-xs">
+                    <td className="py-1 px-1.5 font-bold text-slate-900 text-[11px] truncate">
                       {safeTicker}
                     </td>
-                    <td className="py-1.5 px-2.5 text-[10px] text-muted-foreground leading-tight">
+                    <td className="py-1 px-2 text-[9px] text-slate-600 leading-tight">
                       {textToCopy}
                     </td>
-                    <td className="py-1.5 px-2.5 text-right num font-mono font-bold text-foreground whitespace-nowrap text-xs">
+                    <td className="py-1 px-2 text-right num font-mono font-bold text-slate-900 whitespace-nowrap text-[11px]">
                       <MoneyText cents={numberToCents(totalCostBRL)} />
                     </td>
                   </tr>
@@ -273,6 +272,7 @@ export function TaxFacilitatorModal({
           </table>
         </div>
       </section>
+
 
       {/* 4. Seção: Ficha de Rendimentos Recebidos */}
       <section aria-label="Rendimentos Recebidos" className="flex flex-col gap-2.5 pt-1 break-inside-avoid">

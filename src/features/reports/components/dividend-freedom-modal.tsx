@@ -1,8 +1,8 @@
-import { CalendarDays, Flame, PiggyBank, Sparkles, TrendingUp } from "lucide-react";
+import { Flame, PiggyBank, Sparkles } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
-  ReportKpiGrid,
+  ReportExecutiveSummary,
   ReportDividendSparkline,
   ReportFooter,
 } from "@/components/modules";
@@ -70,66 +70,63 @@ export function DividendFreedomModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Grade de 4 KPIs Executivos */}
-      <ReportKpiGrid
-        columns={4}
+      {/* 2. Síntese Executiva & KPIs em Linha Única */}
+      <ReportExecutiveSummary
+        title="SÍNTESE DE PROVENTOS & INDEPENDÊNCIA FINANCEIRA"
         items={[
           {
             label: "Proventos no Ano",
             value: <MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" />,
             subtext: `Total em ${currentYear}`,
-            icon: PiggyBank,
-            tone: "positive",
           },
           {
             label: "Média Mensal",
             value: <MoneyText cents={numberToCents(freedomAnalysis.monthlyDividendsBRL)} tone="positive" />,
             subtext: "Renda Passiva Mensal",
-            icon: TrendingUp,
-            tone: "positive",
           },
           {
             label: "Cobertura de Gastos",
             value: `${freedomAnalysis.freedomPct.toFixed(1)}%`,
             subtext: "Custo de Vida Pago",
-            icon: Flame,
-            tone: "accent",
           },
           {
             label: "Autonomia Patrimonial",
             value: `${freedomAnalysis.runwayMonths.toFixed(1)} meses`,
             subtext: "Runway de Reserva",
-            icon: CalendarDays,
-            tone: "primary",
           },
         ]}
+        narrative={
+          <span>
+            No exercício corrente (<strong>{currentYear}</strong>), o fluxo acumulado de proventos totalizou <strong><MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="inline font-bold" /></strong>, perfazendo uma média mensal de <strong><MoneyText cents={numberToCents(freedomAnalysis.monthlyDividendsBRL)} tone="positive" className="inline font-bold" /></strong>. Este fluxo cobre <strong>{freedomAnalysis.freedomPct.toFixed(1)}%</strong> do custo de vida mensal (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui <strong>{freedomAnalysis.totalSnowballAssetsCount} ativo(s) auto-sustentável(is)</strong> operando no Efeito Bola de Neve.
+          </span>
+        }
       />
 
       {/* 3. Termômetro do Estágio de Liberdade Financeira */}
       <section
         aria-label="Termômetro de Liberdade"
-        className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2.5 break-inside-avoid print:bg-white print:border-border shadow-2xs"
+        className="rounded-lg border border-slate-200/90 bg-slate-50/50 p-3 flex flex-col gap-2 break-inside-avoid print:bg-white print:border-slate-200 shadow-2xs"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Flame className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Estágio de Independência Financeira
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-800">
+              Estágio de Independência Financeira (FIRE)
             </h3>
           </div>
-          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary-strong">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary-strong">
             {freedomAnalysis.stageLabel}
           </span>
         </div>
 
-        <div className="w-full bg-muted/40 rounded-full h-3 overflow-hidden border border-border/60">
+        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden border border-slate-300">
           <div
             className="bg-primary-strong h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.min(100, Math.max(3, freedomAnalysis.freedomPct))}%` }}
           />
         </div>
 
-        <div className="flex justify-between text-[9px] text-muted-foreground font-mono num">
+        <div className="flex justify-between text-[9px] text-slate-500 font-mono num">
           <span>0% (Início)</span>
           <span>25% (1º Quarto)</span>
           <span>50% (Metade)</span>
@@ -145,6 +142,7 @@ export function DividendFreedomModal({
         averageMonthlyCents={numberToCents(freedomAnalysis.monthlyDividendsBRL)}
         projectedAnnualCents={numberToCents(freedomAnalysis.monthlyDividendsBRL * 12)}
       />
+
 
       {/* 5. Diagnóstico do Efeito Bola de Neve */}
       <section aria-label="Efeito Bola de Neve" className="break-inside-avoid flex flex-col gap-2.5 pt-1">

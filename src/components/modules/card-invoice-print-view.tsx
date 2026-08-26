@@ -120,46 +120,46 @@ export function CardInvoicePrintView({
         {expenses.length === 0 ? (
           <p className="text-sm text-muted-foreground py-1">Nenhum gasto lançado nesta competência.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
-            <table className="w-full min-w-[540px] sm:min-w-full border-collapse text-sm">
+          <div className="overflow-x-auto rounded-lg border border-slate-200 print:overflow-visible shadow-2xs">
+            <table className="w-full min-w-[540px] sm:min-w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-1.5 px-2 font-medium">Data</th>
-                  <th className="py-1.5 px-2 font-medium">Descrição</th>
-                  <th className="py-1.5 px-2 font-medium">Categoria</th>
-                  <th className="py-1.5 px-2 text-right font-medium">Valor (R$)</th>
-                  <th className="py-1.5 px-2 text-right font-medium">Valor p/ relatório</th>
-                  <th className="py-1.5 px-2 text-right font-medium">Parcelas</th>
+                <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider text-left">
+                  <th className="py-2 px-2.5">Data</th>
+                  <th className="py-2 px-2.5">Descrição</th>
+                  <th className="py-2 px-2.5">Categoria</th>
+                  <th className="py-2 px-2.5 text-right">Valor (R$)</th>
+                  <th className="py-2 px-2.5 text-right">Valor p/ Relatório</th>
+                  <th className="py-2 px-2.5 text-right">Parcelas</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/60">
+              <tbody className="divide-y divide-slate-100">
                 {expenses.map((expense, index) => (
                   <Fragment key={`${expense.date}-${expense.description}-${index}`}>
-                    <tr className="hover:bg-muted/20">
-                      <td className="py-1.5 px-2 tabular-nums">{formatDate(expense.date)}</td>
-                      <td className="py-1.5 px-2 font-medium text-foreground">{expense.description}</td>
-                      <td className="py-1.5 px-2 text-xs text-muted-foreground">{expense.categoryName}</td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">
+                    <tr className="break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                      <td className="py-1.5 px-2.5 tabular-nums font-mono text-slate-600">{formatDate(expense.date)}</td>
+                      <td className="py-1.5 px-2.5 font-bold text-slate-900">{expense.description}</td>
+                      <td className="py-1.5 px-2.5 text-[11px] text-slate-600">{expense.categoryName}</td>
+                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono">
                         <MoneyText cents={expense.valueCents} tone="negative" />
                       </td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">
+                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-slate-700">
                         <MoneyText cents={expense.reportValueCents} tone="default" />
                       </td>
-                      <td className="py-1.5 px-2 text-right tabular-nums">{expense.installments}</td>
+                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-slate-600">{expense.installments}</td>
                     </tr>
                   </Fragment>
                 ))}
-                <tr className="font-semibold bg-muted/30 border-t border-border">
-                  <td className="py-2 px-2" colSpan={3}>
+                <tr className="font-bold bg-slate-100/90 border-t border-slate-200 text-slate-900 break-inside-avoid">
+                  <td className="py-2 px-2.5 uppercase text-[10px] tracking-wider" colSpan={3}>
                     Total ({expenses.length} {expenses.length === 1 ? "gasto" : "gastos"})
                   </td>
-                  <td className="py-2 px-2 text-right tabular-nums">
+                  <td className="py-2 px-2.5 text-right tabular-nums font-mono">
                     <MoneyText cents={totalBrutoCents} tone="negative" />
                   </td>
-                  <td className="py-2 px-2 text-right tabular-nums">
+                  <td className="py-2 px-2.5 text-right tabular-nums font-mono">
                     <MoneyText cents={totalPonderadoCents} tone="default" />
                   </td>
-                  <td className="py-2 px-2 text-right" />
+                  <td className="py-2 px-2.5 text-right" />
                 </tr>
               </tbody>
             </table>
@@ -170,28 +170,28 @@ export function CardInvoicePrintView({
       {/* 4. Pagamentos e estornos da competência */}
       {payments.length > 0 ? (
         <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2 break-inside-avoid">
-          <h2 className="text-sm font-semibold text-foreground">Pagamentos e estornos</h2>
-          <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
-            <table className="w-full min-w-[440px] sm:min-w-full border-collapse text-sm">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">Pagamentos e estornos</h2>
+          <div className="overflow-x-auto rounded-lg border border-slate-200 print:overflow-visible shadow-2xs">
+            <table className="w-full min-w-[440px] sm:min-w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-1.5 px-2 font-medium">Data</th>
-                  <th className="py-1.5 px-2 font-medium">Descrição</th>
-                  <th className="py-1.5 px-2 text-right font-medium">Valor (R$)</th>
-                  <th className="py-1.5 px-2 text-right font-medium">Tipo</th>
+                <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider text-left">
+                  <th className="py-2 px-2.5">Data</th>
+                  <th className="py-2 px-2.5">Descrição</th>
+                  <th className="py-2 px-2.5 text-right">Valor (R$)</th>
+                  <th className="py-2 px-2.5 text-right">Tipo</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/60">
+              <tbody className="divide-y divide-slate-100">
                 {payments.map((payment, index) => (
-                  <tr key={`${payment.date}-${payment.note}-${index}`} className="hover:bg-muted/20">
-                    <td className="py-1.5 px-2 tabular-nums">{formatDate(payment.date)}</td>
-                    <td className="py-1.5 px-2 font-medium text-foreground">
+                  <tr key={`${payment.date}-${payment.note}-${index}`} className="break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                    <td className="py-1.5 px-2.5 tabular-nums font-mono text-slate-600">{formatDate(payment.date)}</td>
+                    <td className="py-1.5 px-2.5 font-bold text-slate-900">
                       {payment.note || (payment.isRefund ? "Estorno" : "Pagamento de fatura")}
                     </td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">
+                    <td className="py-1.5 px-2.5 text-right tabular-nums font-mono">
                       <MoneyText cents={payment.amountCents} tone={payment.isRefund ? "positive" : "negative"} />
                     </td>
-                    <td className="py-1.5 px-2 text-right text-xs text-muted-foreground">
+                    <td className="py-1.5 px-2.5 text-right text-[11px] text-slate-600">
                       {payment.isRefund ? "Estorno" : "Pagamento"}
                     </td>
                   </tr>
@@ -201,6 +201,7 @@ export function CardInvoicePrintView({
           </div>
         </section>
       ) : null}
+
 
       {/* 5. Rodapé Institucional */}
       <ReportFooter

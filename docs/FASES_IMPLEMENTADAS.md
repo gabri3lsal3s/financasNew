@@ -991,6 +991,49 @@
   - Testes: 249 arquivos e 1.798/1.798 testes aprovados (100% verde).
 
 
+## F65 — Modernização Editorial & Visual dos Relatórios e PDFs (Meio-Termo Executivo & Tabelas Especializadas) (2026-08-25)
+
+- **Problema:**
+  1. No Dossiê Fiscal de IRPF (`TaxFacilitatorModal`), códigos fiscais ocupavam muito espaço (`03 - 01 (Ações)`), a discriminação não continha separadores de milhar (`2474,55`), apresentava concordância gramatical incorreta (`1 cotas de...`), e a Ficha de Rendimentos Isentos era quebrada para uma página 4 órfã;
+  2. No Dossiê de Carteira (`WealthTearSheetModal`), cards de KPIs sofriam truncamento com reticências, havia 11 caixas/cards cinzas pesados no corpo da página e a tabela de custódia era monolítica com colunas vazias para Renda Fixa e linhas duplicadas por ativo;
+  3. O usuário solicitou um meio-termo equilibrado: manter recursos visuais de alto impacto (barras empilhadas, sparklines, donuts, termômetros lineares e cascatas DRE), eliminando caixas cinzas pesadas e organizando os ativos em tabelas especializadas por classe em linha única por ativo.
+- **Solução:**
+  1. **Componente Reutilizável de Síntese Executiva (`ReportExecutiveSummary`):**
+     - Faixa horizontal compacta com 4 métricas-chave integradas com síntese narrativa editorial contextual, eliminando a fadiga de molduras e cards cinzas pesados;
+  2. **Tabelas Especializadas por Classe (`ReportClassTables`):**
+     - Quatro tabelas com colunas sob medida para cada classe de ativos em linha única por ativo:
+       - *Ações & FIIs:* Ticker, Setor/Segmento, Qtd, Preço Médio, Cotação, Total (R$), Retorno (%) e YoC (%);
+       - *Renda Fixa / Tesouro:* Título / Emissor, Indexador / Vencimento, Qtd, Saldo Atual (R$) e Rendimento (%), sem colunas vazias de cotação ou YoC;
+       - *Internacional:* Ticker, Setor/Tema, Qtd, Preço Médio, Cotação USD, Total (R$) e Retorno (%);
+     - Zebra striping suave (`even:bg-slate-50/50 print:even:bg-slate-50/50`) e cabeçalhos de alto contraste (`bg-slate-100 text-slate-700 font-bold uppercase text-[9px]`);
+  3. **Refinamento do Dossiê Fiscal de IRPF (`TaxFacilitatorModal` e `tax.ts`):**
+     - Códigos fiscais compactados (`03-01 Ações`, `07-03 FIIs`, `04-02 Renda Fixa`, `07-09 Internacional`);
+     - Formatação com pontuação de milhar (`R$ 2.474,55`) e concordância perfeita (`1 cota de...` vs `X cotas de...`);
+     - Fluxo contínuo sem quebra de página órfã para a Ficha de Rendimentos Isentos;
+  4. **Padronização Visual em Todos os Modais de Relatório:**
+     - Aplicado `ReportExecutiveSummary` em `FinancialCloseReportModal`, `DividendFreedomModal`, `ConsolidatedWealthModal` e `PortfolioExecutiveReport`;
+     - Ajustada a impressão do extrato da carteira (`PortfolioStatementDialog`), fatura de cartões (`CardInvoicePrintView`) e fechamento mensal (`MonthlyClosePrintView`).
+- **Arquivos alterados:**
+  - `src/components/modules/reports/report-executive-summary.tsx` [NOVO]
+  - `src/components/modules/reports/report-class-tables.tsx` [NOVO]
+  - `src/components/modules/reports/report-risk-gauge.tsx`
+  - `src/components/modules/reports/index.ts`
+  - `src/domain/portfolio/tax.ts`
+  - `src/features/reports/components/tax-facilitator-modal.tsx`
+  - `src/features/reports/components/wealth-tear-sheet-modal.tsx`
+  - `src/features/reports/components/financial-close-report-modal.tsx`
+  - `src/features/reports/components/dividend-freedom-modal.tsx`
+  - `src/features/reports/components/consolidated-wealth-modal.tsx`
+  - `src/features/investments/components/portfolio-executive-report.tsx`
+  - `src/features/investments/components/portfolio-statement-dialog.tsx`
+  - `src/components/modules/card-invoice-print-view.tsx`
+  - `src/components/modules/monthly-close-print-view.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 249 arquivos e 1.798/1.798 testes aprovados (100% verde).
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

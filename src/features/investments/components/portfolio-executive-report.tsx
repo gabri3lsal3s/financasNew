@@ -1,12 +1,15 @@
-import { FileText, PieChart, TrendingUp } from "lucide-react";
+import { useMemo } from "react";
+import { TrendingUp } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
-import { ReportDocumentLayout } from "@/components/modules/reports/report-document-layout";
+import {
+  ReportDocumentLayout,
+  ReportHeader,
+  ReportFooter,
+  ReportExecutiveSummary,
+  ReportClassTables,
+} from "@/components/modules/reports";
 import { numberToCents } from "@/domain/money";
-import { formatSignedPct } from "@/services/masks/percent";
 import type { PositionRow } from "@/components/modules/position-table";
-
-const formatQuantity = (quantity: number): string =>
-  Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 
 export interface PortfolioExecutiveReportProps {
   open: boolean;
@@ -17,6 +20,7 @@ export interface PortfolioExecutiveReportProps {
   yearDividendsBRL: number;
   periodLabel?: string;
   appName?: string;
+  accountHolder?: string;
 }
 
 /**
@@ -31,38 +35,47 @@ export function PortfolioExecutiveReport({
   cashBRL,
   yearDividendsBRL,
   periodLabel = "Posição Atual Consolidada",
-  appName = "Finanças Pessoais",
+  appName = "Guia Financeiro",
+  accountHolder,
 }: PortfolioExecutiveReportProps) {
-  const generatedAt = new Date().toLocaleDateString("pt-BR");
-  const investmentRows = rows.filter((r) => !r.isCash);
+  const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
 
-  // Agrupamento por classe
-  const classTotals = new Map<string, number>();
-  for (const r of rows) {
-    const cls = r.assetClass ?? (r.isCash ? "Caixa" : "Outros");
-    classTotals.set(cls, (classTotals.get(cls) ?? 0) + r.valueBRL);
-  }
-  const classBreakdown = Array.from(classTotals.entries())
-    .map(([cls, val]) => ({
-      cls,
-      val,
-      pct: totalBRL > 0 ? (val / totalBRL) * 100 : 0,
-    }))
-    .sort((a, b) => b.val - a.val);
+  // Agrupamento por classe para ReportClassTables
+  const classGroups = useMemo(() => {
+    const map = new Map<string, PositionRow[]>();
+    for (const r of investmentRows) {
+      const cls = r.assetClass ?? "Geral";
+      if (!map.has(cls)) map.set(cls, []);
+      map.get(cls)!.push(r);
+    }
 
-  // Agrupamento por setor
-  const sectorTotals = new Map<string, number>();
-  for (const r of investmentRows) {
-    const sec = r.sector?.trim() || "Geral";
-    sectorTotals.set(sec, (sectorTotals.get(sec) ?? 0) + r.valueBRL);
-  }
-  const sectorBreakdown = Array.from(sectorTotals.entries())
-    .map(([sec, val]) => ({
-      sec,
-      val,
-      pct: totalBRL > 0 ? (val / totalBRL) * 100 : 0,
-    }))
-    .sort((a, b) => b.val - a.val);
+    return Array.from(map.entries())
+      .map(([className, items]) => {
+        const subtotalBRL = items.reduce((acc, i) => acc + i.valueBRL, 0);
+        const totalCostGroup = items.reduce((acc, i) => acc + i.quantity * i.averageCost, 0);
+        const pnlPct = totalCostGroup > 0 ? ((subtotalBRL - totalCostGroup) / totalCostGroup) * 100 : 0;
+
+        return {
+          className,
+          totalCents: numberToCents(subtotalBRL),
+          sharePct: totalBRL > 0 ? (subtotalBRL / totalBRL) * 100 : 0,
+          pnlPct,
+          items: items.map((i) => ({
+            ticker: i.ticker,
+            name: i.name,
+            sector: i.sector,
+            quantity: i.quantity,
+            avgPriceCents: numberToCents(i.averageCost),
+            currentPriceCents: numberToCents(i.priceQuote || i.priceBRL),
+            totalCents: numberToCents(i.valueBRL),
+            pnlPct: i.totalReturnPct !== undefined ? i.totalReturnPct : (i.unrealizedPct ?? 0),
+            yocPct: i.yieldOnCostPct ?? undefined,
+            currency: i.currency,
+          })),
+        };
+      })
+      .sort((a, b) => b.totalCents - a.totalCents);
+  }, [investmentRows, totalBRL]);
 
   return (
     <ReportDocumentLayout
@@ -71,149 +84,61 @@ export function PortfolioExecutiveReport({
       title="Relatório Executivo da Carteira"
       size="2xl"
     >
-      <div className="flex flex-col gap-6 w-full">
+      <div className="flex flex-col gap-4 w-full">
         {/* Cabeçalho do Relatório */}
-        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-4 print:flex-row print:items-start break-inside-avoid">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-portfolio/10 border border-portfolio/20 text-portfolio">
-              <TrendingUp className="size-5" aria-hidden="true" />
+        <ReportHeader
+          title="Relatório Executivo de Acompanhamento da Carteira"
+          subtitle="Posição Patrimonial Consolidada & Custódia de Ativos"
+          periodLabel={periodLabel}
+          appName={appName}
+          icon={TrendingUp}
+          accountHolder={accountHolder}
+        />
+
+        {/* Síntese Executiva em Linha Única */}
+        <ReportExecutiveSummary
+          title="SÍNTESE PATRIMONIAL"
+          items={[
+            {
+              label: "Patrimônio Total",
+              value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
+              subtext: "Posição Consolidada",
+            },
+            {
+              label: "Saldo em Caixa",
+              value: <MoneyText cents={numberToCents(cashBRL)} tone="default" />,
+              subtext: "Reserva de Liquidez",
+            },
+            {
+              label: "Proventos no Ano",
+              value: <MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" />,
+              subtext: "Renda Passiva Acumulada",
+            },
+            {
+              label: "Ativos em Custódia",
+              value: `${investmentRows.length} ativos`,
+              subtext: "Diversificação",
+            },
+          ]}
+          narrative={
+            <span>
+              A carteira encerra o período com <strong><MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" /></strong> sob custódia, distribuídos em <strong>{investmentRows.length} ativos</strong> e <strong>{classGroups.length} classes de investimento</strong>. O saldo em reserva de liquidez é de <MoneyText cents={numberToCents(cashBRL)} className="inline font-bold" /> e os proventos acumulados no exercício somam <MoneyText cents={numberToCents(yearDividendsBRL)} className="inline font-bold text-positive-strong" />.
             </span>
-            <div className="flex flex-col">
-              <span className="font-display text-lg font-bold tracking-tight text-foreground">{appName}</span>
-              <span className="text-xs text-muted-foreground">Relatório Executivo de Investimentos</span>
-            </div>
-          </div>
-          <div className="flex flex-col items-start sm:items-end text-left sm:text-right text-xs text-muted-foreground print:items-end print:text-right">
-            <span className="font-medium text-foreground">{periodLabel}</span>
-            <span>Emitido em {generatedAt}</span>
-          </div>
-        </header>
+          }
+        />
 
-        {/* Grade de KPIs Principais */}
-        <section aria-label="Indicadores principais" className="grid grid-cols-2 gap-3 sm:grid-cols-4 print:grid-cols-4 print:gap-2 break-inside-avoid">
-          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 print:bg-white print:border-border print:p-2 shadow-2xs">
-            <span className="text-xs text-muted-foreground print:text-[10px]">Patrimônio Total</span>
-            <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" className="text-base sm:text-lg font-bold print:text-sm" />
-          </div>
-          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 print:bg-white print:border-border print:p-2 shadow-2xs">
-            <span className="text-xs text-muted-foreground print:text-[10px]">Saldo em Caixa</span>
-            <MoneyText cents={numberToCents(cashBRL)} tone="default" className="text-base sm:text-lg font-bold print:text-sm" />
-          </div>
-          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 print:bg-white print:border-border print:p-2 shadow-2xs">
-            <span className="text-xs text-muted-foreground print:text-[10px]">Proventos no Ano</span>
-            <MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="text-base sm:text-lg font-bold print:text-sm" />
-          </div>
-          <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 print:bg-white print:border-border print:p-2 shadow-2xs">
-            <span className="text-xs text-muted-foreground print:text-[10px]">Ativos sob Custódia</span>
-            <span className="num text-base sm:text-lg font-bold text-foreground print:text-sm">{investmentRows.length} ativos</span>
-          </div>
-        </section>
-
-        {/* Distribuição por Classe e Setor */}
-        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-4 print:gap-3 break-inside-avoid">
-          <section aria-label="Distribuição por Classe" className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-2">
-              <PieChart className="size-4 text-portfolio" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider print:text-[11px]">Alocação por Classe</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {classBreakdown.map((item) => (
-                <div key={item.cls} className="rounded-lg border border-border/60 p-2 flex flex-col gap-0.5 bg-surface print:bg-white print:p-1.5 shadow-2xs">
-                  <span className="text-xs text-muted-foreground truncate print:text-[10px]">{item.cls}</span>
-                  <div className="flex items-center justify-between gap-1 pt-0.5">
-                    <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground print:text-[11px]" />
-                    <span className="num text-[11px] font-semibold text-portfolio print:text-[10px]">{item.pct.toFixed(1)}%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section aria-label="Distribuição por Setor" className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-2">
-              <PieChart className="size-4 text-portfolio" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider print:text-[11px]">Alocação por Setor</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {sectorBreakdown.slice(0, 4).map((item) => (
-                <div key={item.sec} className="rounded-lg border border-border/60 p-2 flex flex-col gap-0.5 bg-surface print:bg-white print:p-1.5 shadow-2xs">
-                  <span className="text-xs text-muted-foreground truncate print:text-[10px]">{item.sec}</span>
-                  <div className="flex items-center justify-between gap-1 pt-0.5">
-                    <MoneyText cents={numberToCents(item.val)} className="text-xs font-semibold text-foreground print:text-[11px]" />
-                    <span className="num text-[11px] font-semibold text-portfolio print:text-[10px]">{item.pct.toFixed(1)}%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        {/* Tabela Consolidada de Custódia */}
-        <section aria-label="Custódia Consolidada" className="flex flex-col gap-3 break-inside-avoid">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText className="size-4 text-portfolio" aria-hidden="true" />
-              <h3 className="text-sm font-semibold text-foreground print:text-xs">Detalhamento das Posições em Carteira</h3>
-            </div>
-            <span className="text-xs text-muted-foreground print:text-[10px]">{investmentRows.length} ativos</span>
-          </div>
-
-          <div className="rounded-xl border border-border overflow-x-auto print:overflow-visible bg-surface print:bg-white">
-            <table className="w-full text-left text-xs border-collapse print:table-fixed">
-              <thead>
-                <tr className="bg-surface-hover/60 border-b border-border text-muted-foreground print:bg-muted/30">
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold print:w-[13%]">Ticker</th>
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold print:w-[12%]">Classe</th>
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold print:w-[14%]">Setor</th>
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[8%]">Qtd</th>
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[11%]">P. Médio</th>
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[11%]">Cotação</th>
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[13%]">Valor Atual</th>
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[9%]">Rentab.</th>
-                  <th className="py-2.5 px-3 print:py-1.5 print:px-2 font-semibold text-right print:w-[9%]">% Cart.</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {investmentRows.map((r) => {
-                  const effectiveRentab = r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPct;
-                  const rentabLabel = effectiveRentab !== null ? formatSignedPct(effectiveRentab) : "-";
-                  const rentabTone = effectiveRentab !== null && effectiveRentab >= 0 ? "text-positive-strong" : "text-negative-strong";
-
-                  return (
-                    <tr key={r.assetId} className="hover:bg-surface-hover/30 transition-colors">
-                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 font-mono font-bold text-foreground truncate">{r.ticker}</td>
-                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-muted-foreground truncate">{r.assetClass ?? "Geral"}</td>
-                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-muted-foreground truncate">{r.sector ?? "Geral"}</td>
-                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right num">{formatQuantity(r.quantity)}</td>
-                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right">
-                        <MoneyText cents={numberToCents(r.averageCost)} currency={r.currency} tone="default" />
-                      </td>
-                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right">
-                        <MoneyText cents={numberToCents(r.priceQuote || r.priceBRL)} currency={r.currency} tone="default" />
-                      </td>
-                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right font-semibold">
-                        <MoneyText cents={numberToCents(r.valueBRL)} tone="default" />
-                      </td>
-                      <td className={`py-2.5 px-3 print:py-1.5 print:px-2 text-right num font-semibold ${rentabTone}`}>
-                        {rentabLabel}
-                      </td>
-                      <td className="py-2.5 px-3 print:py-1.5 print:px-2 text-right num text-muted-foreground">
-                        {r.pct.toFixed(1)}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        {/* Tabelas Especializadas por Classe */}
+        <section aria-label="Detalhamento das Posições" className="flex flex-col gap-3 pt-1">
+          <ReportClassTables groups={classGroups} />
         </section>
 
         {/* Rodapé */}
-        <footer className="mt-2 pt-4 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground break-inside-avoid">
-          <span>Relatório gerado exclusivamente para fins de acompanhamento patrimonial.</span>
-          <span>{appName}</span>
-        </footer>
+        <ReportFooter
+          accountHolder={accountHolder}
+          disclaimer="Documento estritamente confidencial gerado pelo titular da conta via Guia Financeiro. As informações refletem a posição de custódia e cotações na data de emissão."
+        />
       </div>
     </ReportDocumentLayout>
   );
 }
+

@@ -1,9 +1,10 @@
-import { Fragment, useMemo } from "react";
-import { Layers, PieChart, TrendingUp, Landmark, Award } from "lucide-react";
+import { useMemo } from "react";
+import { Layers, PieChart, Landmark } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
-  ReportKpiGrid,
+  ReportExecutiveSummary,
+  ReportClassTables,
   ReportStackedBar,
   ReportGapPinBar,
   ReportRiskGauge,
@@ -56,11 +57,6 @@ const CLASS_COLORS: Record<string, string> = {
   cripto: "#a855f7",
   outros: "#64748b",
 };
-
-const formatQuantity = (quantity: number): string =>
-  Number.isInteger(quantity)
-    ? String(quantity)
-    : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 
 /**
  * Dossiê Executivo de Investimentos & Tear Sheet Patrimonial.
@@ -155,126 +151,115 @@ export function WealthTearSheetModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Grade de 4 KPIs Executivos */}
-      <ReportKpiGrid
-        columns={4}
+      <ReportExecutiveSummary
+        title="SÍNTESE DA CARTEIRA & POSIÇÃO CONSOLIDADA"
         items={[
           {
             label: "Patrimônio Total",
             value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
             subtext: "Posição de Mercado",
-            icon: Landmark,
-            tone: "primary",
           },
           {
             label: "Capital Investido",
             value: <MoneyText cents={numberToCents(totalCostBRL)} tone="default" />,
             subtext: "Custo de Aquisição",
-            icon: Layers,
-            tone: "default",
           },
           {
             label: "Resultado Não Realizado",
             value: (
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={unrealizedPnlBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}>
                 <MoneyText
                   cents={numberToCents(unrealizedPnlBRL)}
                   tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"}
-                />
-                <span
-                  className={`text-xs font-semibold ${
-                    unrealizedPnlBRL >= 0 ? "text-positive-strong" : "text-negative-strong"
-                  }`}
-                >
-                  ({formatSignedPct(unrealizedPnlPct)})
-                </span>
-              </div>
+                  className="inline"
+                />{" "}
+                <span className="text-[11px] font-normal">({formatSignedPct(unrealizedPnlPct)})</span>
+              </span>
             ),
             subtext: unrealizedPnlBRL >= 0 ? "Lucro Contábil" : "Desvalorização",
-            icon: TrendingUp,
-            tone: unrealizedPnlBRL >= 0 ? "positive" : "negative",
           },
           {
             label: "Aderência às Metas",
             value: `${allocationAnalysis.alignmentScore}%`,
             subtext: "Índice de Equilíbrio",
-            icon: Award,
-            tone: "accent",
           },
         ]}
+        narrative={
+          <span>
+            A carteira totaliza <strong><MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" /></strong> sob custódia, com lucro contábil não realizado de <strong><MoneyText cents={numberToCents(unrealizedPnlBRL)} tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"} className="inline font-bold" /> ({formatSignedPct(unrealizedPnlPct)})</strong> e nível de equilíbrio de <strong>{allocationAnalysis.alignmentScore}%</strong>.
+            {allocationAnalysis.topDeficitClass && (
+              <> A classe prioritária para novos aportes é <strong>{allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}</strong> (déficit de <MoneyText cents={numberToCents(allocationAnalysis.topDeficitClass.gapBRL)} className="inline font-bold text-primary-strong" />).</>
+            )}
+            {allocationAnalysis.topDeficitSector && (
+              <> Em nível setorial, a principal oportunidade localiza-se em <strong>{sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)}</strong> (<MoneyText cents={numberToCents(allocationAnalysis.topDeficitSector.gapBRL)} className="inline font-bold text-primary-strong" />).</>
+            )}
+            {topDominance.ticker && (
+              <> O ativo de maior peso individual é <strong>{sanitizeReportText(topDominance.ticker)}</strong> ({topDominance.pct.toFixed(1)}% da carteira).</>
+            )}
+          </span>
+        }
       />
 
-      {/* 3. Seção: Diagnóstico de Alocação por Classe & Setor */}
       <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-2.5">
-        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
+          <div className="flex items-center gap-1.5">
             <PieChart className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
-              Diagnóstico de Alocação por Classe e Setor (Target vs. Actual)
+            <h3 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+              Diagnóstico de Alocação por Classe (Target vs. Actual)
             </h3>
           </div>
-          <span className="text-[11px] text-muted-foreground font-mono num">
-            Equilíbrio Geral: <strong className="text-foreground">{allocationAnalysis.alignmentScore}%</strong>
+          <span className="text-[10px] text-slate-500 font-mono num">
+            Equilíbrio Geral: <strong className="text-slate-900">{allocationAnalysis.alignmentScore}%</strong>
           </span>
         </div>
 
-        {/* Barra de Distribuição Empilhada */}
         <ReportStackedBar
           title="Distribuição Atual da Carteira"
           segments={stackedSegments}
-          height={12}
+          height={10}
         />
 
-        {/* Tabela de Classes e Gaps */}
-        <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 print:overflow-visible shadow-2xs">
           <table className="w-full text-left text-xs border-collapse print:table-fixed">
             <thead>
-              <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-2 px-3 print:w-[22%]">Classe</th>
-                <th className="py-2 px-3 text-right print:w-[18%]">Atual (R$)</th>
-                <th className="py-2 px-3 text-right print:w-[14%]">Atual (%)</th>
-                <th className="py-2 px-3 text-right print:w-[14%]">Meta (%)</th>
-                <th className="py-2 px-3 text-right print:w-[18%]">Gap (R$)</th>
-                <th className="py-2 px-3 text-center print:w-[14%]">Status</th>
+              <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold text-[9px] uppercase tracking-wider">
+                <th className="py-1.5 px-2.5 print:w-[22%]">Classe</th>
+                <th className="py-1.5 px-2 text-right print:w-[18%]">Atual (R$)</th>
+                <th className="py-1.5 px-2 text-right print:w-[14%]">Atual (%)</th>
+                <th className="py-1.5 px-2 text-right print:w-[14%]">Meta (%)</th>
+                <th className="py-1.5 px-2 text-right print:w-[18%]">Gap (R$)</th>
+                <th className="py-1.5 px-2.5 text-center print:w-[14%]">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-slate-100">
               {allocationAnalysis.classGaps.map((cg) => (
                 <tr key={cg.assetClass} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
-                  <td className="py-1.5 px-3 font-semibold capitalize text-foreground">{cg.assetClass}</td>
-                  <td className="py-1.5 px-3 text-right num font-mono">
+                  <td className="py-1 px-2.5 font-semibold capitalize text-slate-900 text-[11px]">{cg.assetClass}</td>
+                  <td className="py-1 px-2 text-right num font-mono text-slate-800 text-[11px]">
                     <MoneyText cents={numberToCents(cg.currentBRL)} />
                   </td>
-                  <td className="py-1.5 px-3 text-right num font-mono">{cg.currentPct.toFixed(1)}%</td>
-                  <td className="py-1.5 px-3 text-right num font-mono">
+                  <td className="py-1 px-2 text-right num font-mono text-slate-700 text-[11px]">{cg.currentPct.toFixed(1)}%</td>
+                  <td className="py-1 px-2 text-right num font-mono text-slate-700 text-[11px]">
                     {cg.targetPct > 0 ? `${cg.targetPct.toFixed(1)}%` : "—"}
                   </td>
-                  <td className="py-1.5 px-3 text-right num font-mono">
+                  <td className="py-1 px-2 text-right num font-mono font-bold text-[11px]">
                     {cg.gapBRL > 0 ? (
-                      <MoneyText
-                        cents={numberToCents(cg.gapBRL)}
-                        tone="default"
-                        className="text-primary-strong font-bold"
-                      />
+                      <MoneyText cents={numberToCents(cg.gapBRL)} tone="default" className="text-primary-strong" />
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-slate-400 font-normal">—</span>
                     )}
                   </td>
-                  <td className="py-1.5 px-3 text-center">
+                  <td className="py-1 px-2.5 text-center">
                     <span
-                      className={`inline-flex rounded-md px-2 py-0.5 text-[9px] font-bold ${
-                        cg.status === "deficit"
+                      className={`inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                        cg.gapBRL > 0
                           ? "bg-primary/10 text-primary-strong border border-primary/20"
-                          : cg.status === "surplus"
-                            ? "bg-muted/40 text-muted-foreground border border-border"
+                          : cg.currentPct > cg.targetPct && cg.targetPct > 0
+                            ? "bg-slate-100 text-slate-600 border border-slate-200"
                             : "bg-positive/10 text-positive-strong border border-positive/20"
                       }`}
                     >
-                      {cg.status === "deficit"
-                        ? "Aportar"
-                        : cg.status === "surplus"
-                          ? "Acima da Meta"
-                          : "Equilibrado"}
+                      {cg.gapBRL > 0 ? "Aportar" : cg.currentPct > cg.targetPct && cg.targetPct > 0 ? "Acima da Meta" : "Equilibrado"}
                     </span>
                   </td>
                 </tr>
@@ -283,239 +268,55 @@ export function WealthTearSheetModal({
           </table>
         </div>
 
-        {/* Tabela Resumida de Top Setores */}
-        {allocationAnalysis.sectorGaps.length > 0 ? (
-          <div className="pt-1 flex flex-col gap-1.5">
-            <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Alocação Setorial &amp; Déficits Identificados
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 print:grid-cols-3">
-              {allocationAnalysis.sectorGaps.slice(0, 6).map((sg) => (
-                <div
-                  key={`${sg.className}::${sg.sectorName}`}
-                  className="rounded-lg border border-border/70 bg-muted/10 p-2.5 flex flex-col justify-between gap-1 text-xs break-inside-avoid print:bg-white print:border-border shadow-2xs"
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-bold text-foreground truncate">{sanitizeReportText(sg.sectorName)}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground border border-border/40 font-medium shrink-0">
-                      {sanitizeReportText(sg.className)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-border/40">
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      Atual: <strong className="text-foreground">{sg.currentPct.toFixed(1)}%</strong>
-                    </span>
-                    {sg.gapBRL > 0 ? (
-                      <span className="text-primary-strong text-[11px] font-bold flex items-center gap-1 font-mono">
-                        <span className="text-[9px] font-normal text-muted-foreground">Gap:</span>{" "}
-                        <MoneyText cents={numberToCents(sg.gapBRL)} />
-                      </span>
-                    ) : (
-                      <span className="text-positive-strong text-[10px] font-semibold">Equilibrado</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {/* Comparativo Visual de Gaps */}
-        <div className="pt-1">
-          <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            Desvio das Metas por Classe
-          </h4>
+        <div className="pt-0.5">
           <ReportGapPinBar items={gapPinItems} />
         </div>
       </section>
 
-      {/* 4. Seção: Termômetro de Risco e Concentração */}
-      <section aria-label="Risco e Concentração" className="break-inside-avoid flex flex-col gap-2.5">
+      <section aria-label="Risco e Concentração" className="break-inside-avoid flex flex-col gap-2">
         <ReportRiskGauge
           topItemName={sanitizeReportText(topDominance.ticker)}
           topItemPct={topDominance.pct}
           warningThresholdPct={15}
           criticalThresholdPct={25}
         />
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 print:grid-cols-3">
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 flex flex-col gap-1 break-inside-avoid print:bg-white print:border-border shadow-2xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Concentração Top 5
-            </span>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">5 maiores ativos:</span>
-              <strong className="num font-mono font-bold text-foreground">
-                {concentrationRisk.top5Pct.toFixed(1)}%
-              </strong>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 flex flex-col gap-1 break-inside-avoid print:bg-white print:border-border shadow-2xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Setor Dominante
-            </span>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground truncate">
-                {sanitizeReportText(concentrationRisk.topSectorDominance?.sector) || "Nenhum"}:
-              </span>
-              <strong className="num font-mono font-bold text-foreground shrink-0">
-                {concentrationRisk.topSectorDominance ? `${concentrationRisk.topSectorDominance.pct.toFixed(1)}%` : "0%"}
-              </strong>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 flex flex-col gap-1 break-inside-avoid print:bg-white print:border-border shadow-2xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Exposição Cambial
-            </span>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">BRL: <strong className="num font-mono font-bold text-foreground">{concentrationRisk.currencyExposure.brlPct.toFixed(1)}%</strong></span>
-              <span className="text-muted-foreground">USD: <strong className="num font-mono font-bold text-foreground">{concentrationRisk.currencyExposure.usdPct.toFixed(1)}%</strong></span>
-            </div>
-          </div>
-        </div>
       </section>
 
-      {/* 5. Seção: Parecer Técnico da Consultoria */}
-      {allocationAnalysis.topDeficitClass || allocationAnalysis.topDeficitSector || concentrationRisk.riskAlerts.length > 0 ? (
-        <section
-          aria-label="Parecer da consultoria"
-          className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col gap-1.5 break-inside-avoid print:bg-white print:border-primary/40"
-        >
-          <span className="text-[11px] font-bold uppercase tracking-wider text-primary-strong">
-            Parecer do Consultor Patrimonial
-          </span>
-          <div className="flex flex-col gap-1 text-xs text-foreground/90 leading-relaxed">
-            {allocationAnalysis.topDeficitClass ? (
-              <p>
-                <strong>Prioridade de Classe:</strong> A classe{" "}
-                <strong>{allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}</strong> está com a maior defasagem patrimonial, demandando aproximadamente{" "}
-                <MoneyText
-                  cents={numberToCents(allocationAnalysis.topDeficitClass.gapBRL)}
-                  tone="default"
-                  className="text-primary-strong font-bold inline"
-                />{" "}
-                para restabelecer o equilíbrio das suas metas.
-              </p>
-            ) : null}
-            {allocationAnalysis.topDeficitSector ? (
-              <p>
-                <strong>Prioridade Setorial:</strong> O setor{" "}
-                <strong>{sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)}</strong> ({sanitizeReportText(allocationAnalysis.topDeficitSector.className)}) apresenta o maior déficit de alocação, necessitando de{" "}
-                <MoneyText
-                  cents={numberToCents(allocationAnalysis.topDeficitSector.gapBRL)}
-                  tone="default"
-                  className="text-portfolio font-bold inline"
-                />{" "}
-                para atingir o percentual-alvo.
-              </p>
-            ) : null}
-            {concentrationRisk.riskAlerts.map((alert) => (
-              <p key={alert.code} className="text-muted-foreground">
-                • {sanitizeReportText(alert.message)}
-              </p>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {/* 6. Seção: Detalhamento Completo da Custódia de Ativos Agrupada */}
-      <section aria-label="Custódia de Ativos" className="flex flex-col gap-2.5 pt-1">
-        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
-          <div className="flex items-center gap-2">
+      <section aria-label="Custódia de Ativos" className="flex flex-col gap-3 pt-1">
+        <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
+          <div className="flex items-center gap-1.5">
             <Layers className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
-              Custódia Consolidada de Ativos ({investmentRows.length} ativos)
+            <h3 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+              Custódia Consolidada de Ativos por Classe ({investmentRows.length} ativos)
             </h3>
           </div>
-          <span className="text-[11px] text-muted-foreground font-mono num">
-            Total: <MoneyText cents={numberToCents(totalBRL)} className="font-bold text-foreground inline" />
+          <span className="text-[10px] text-slate-600 font-mono num">
+            Total Custodiado: <MoneyText cents={numberToCents(totalBRL)} className="font-bold text-slate-900 inline" />
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
-          <table className="w-full text-left text-xs border-collapse print:table-fixed">
-            <thead>
-              <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-2 px-3 print:py-1.5 print:px-2 print:w-[32%]">Ativo / Especificação</th>
-                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[8%]">Qtd</th>
-                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[15%]">Preço Médio</th>
-                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[15%]">Cotação</th>
-                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[16%]">Total (R$)</th>
-                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[8%]">PnL (%)</th>
-                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[6%]">YoC</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {groupedRows.map((group) => (
-                <Fragment key={group.assetClass}>
-                  {/* Subcabeçalho de Classe */}
-                  <tr className="bg-slate-100/90 border-y border-border/80 print:bg-slate-100 break-inside-avoid">
-                    <td colSpan={4} className="py-1.5 px-3 print:py-1 print:px-2 font-bold text-foreground capitalize text-[10px] tracking-wider">
-                      {sanitizeReportText(group.assetClass)} ({group.items.length} ativos)
-                    </td>
-                    <td className="py-1.5 px-3 print:py-1 print:px-2 text-right font-mono font-bold text-foreground whitespace-nowrap">
-                      <MoneyText cents={numberToCents(group.subtotalBRL)} />
-                    </td>
-                    <td
-                      className={`py-1.5 px-3 print:py-1 print:px-2 text-right font-mono font-bold whitespace-nowrap ${
-                        group.subtotalPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
-                      }`}
-                    >
-                      {formatSignedPct(group.subtotalPnlPct)}
-                    </td>
-                    <td className="py-1.5 px-3 print:py-1 print:px-2 text-right text-[10px] text-muted-foreground font-mono whitespace-nowrap">
-                      {group.pctOfTotal.toFixed(1)}%
-                    </td>
-                  </tr>
-
-                  {group.items.map((r) => {
-                    const displaySector = sanitizeReportText(r.sector?.replace(/biticoin/i, "Bitcoin")) || "Geral";
-                    const safeTicker = sanitizeReportText(r.ticker);
-                    const safeName = sanitizeReportText(r.name);
-
-                    return (
-                      <tr key={r.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
-                        <td className="py-1.5 px-3 print:py-1.5 print:px-2">
-                          <div className="flex flex-col leading-tight">
-                            <span className="font-bold text-foreground text-xs">{safeTicker}</span>
-                            <span className="text-[10px] text-muted-foreground truncate">
-                              {safeName ? `${safeName} · ` : ""}{displaySector}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">{formatQuantity(r.quantity)}</td>
-                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">
-                          <MoneyText cents={numberToCents(r.averagePrice)} />
-                        </td>
-                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">
-                          <MoneyText cents={numberToCents(r.currentPrice)} />
-                        </td>
-                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap">
-                          <MoneyText cents={numberToCents(r.valueBRL)} />
-                        </td>
-                        <td
-                          className={`py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono font-bold whitespace-nowrap ${
-                            r.unrealizedPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
-                          }`}
-                        >
-                          {formatSignedPct(r.unrealizedPnlPct)}
-                        </td>
-                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono text-positive-strong font-medium whitespace-nowrap">
-                          {r.yocPct > 0 ? `${r.yocPct.toFixed(1)}%` : "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ReportClassTables
+          groups={groupedRows.map((group) => ({
+            className: group.assetClass,
+            totalCents: numberToCents(group.subtotalBRL),
+            sharePct: group.pctOfTotal,
+            pnlPct: group.subtotalPnlPct,
+            items: group.items.map((r) => ({
+              ticker: r.ticker,
+              name: r.name,
+              sector: r.sector,
+              quantity: r.quantity,
+              avgPriceCents: numberToCents(r.averagePrice),
+              currentPriceCents: numberToCents(r.currentPrice),
+              totalCents: numberToCents(r.valueBRL),
+              pnlPct: r.unrealizedPnlPct,
+              yocPct: r.yocPct,
+              currency: r.currency,
+            })),
+          }))}
+        />
       </section>
 
-      {/* 7. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer="Documento estritamente confidencial gerado pelo titular da conta via Guia Financeiro. As informações refletem a posição de custódia e cotações na data de emissão."
@@ -523,4 +324,3 @@ export function WealthTearSheetModal({
     </ReportDocumentLayout>
   );
 }
-

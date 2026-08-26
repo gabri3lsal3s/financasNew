@@ -37,25 +37,25 @@ export function ReportRiskGauge({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-border/80 bg-muted/10 p-4 break-inside-avoid print:bg-white print:border-border",
+        "flex flex-col gap-2.5 rounded-xl border border-slate-200/90 bg-slate-50/50 p-3.5 break-inside-avoid print:bg-white print:border-slate-200 shadow-2xs",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-1.5">
         <div className="flex items-center gap-2">
           {isSafe ? (
-            <ShieldCheck className="size-4 text-positive-strong" aria-hidden="true" />
+            <ShieldCheck className="size-3.5 text-positive-strong" aria-hidden="true" />
           ) : (
-            <ShieldAlert className="size-4 text-warning-strong" aria-hidden="true" />
+            <ShieldAlert className="size-3.5 text-warning-strong" aria-hidden="true" />
           )}
-          <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700">
             {title}
           </span>
         </div>
 
         <span
           className={cn(
-            "text-xs font-bold px-2 py-0.5 rounded-full border",
+            "text-[10px] font-bold px-2 py-0.5 rounded-full border",
             isSafe && "bg-positive/10 border-positive/30 text-positive-strong",
             isWarning && "bg-warning/10 border-warning/30 text-warning-strong",
             isCritical && "bg-critical/10 border-critical/30 text-critical-strong",
@@ -66,9 +66,9 @@ export function ReportRiskGauge({
       </div>
 
       {/* Barra de Zonas de Risco com Marcador */}
-      <div className="relative flex flex-col gap-1 pt-4 pb-1">
+      <div className="relative flex flex-col gap-1 pt-3 pb-0.5">
         {/* Barra de Gradiente / Zonas */}
-        <div className="relative h-2.5 w-full rounded-full overflow-hidden flex border border-border/80">
+        <div className="relative h-2 w-full rounded-full overflow-hidden flex border border-slate-300">
           <div style={{ width: `${warningThresholdPct}%` }} className="h-full bg-positive-strong" title="Zona Segura" />
           <div
             style={{ width: `${criticalThresholdPct - warningThresholdPct}%` }}
@@ -87,14 +87,14 @@ export function ReportRiskGauge({
           className="absolute top-0 transform -translate-x-1/2 flex flex-col items-center pointer-events-none z-10"
           style={{ left: `${clampPosition}%` }}
         >
-          <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-foreground text-surface leading-none shadow-2xs">
+          <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-slate-900 text-white leading-none shadow-2xs">
             {topItemPct.toFixed(1)}%
           </span>
-          <span className="size-1 rotate-45 bg-foreground -mt-0.5" />
+          <span className="size-1 rotate-45 bg-slate-900 -mt-0.5" />
         </div>
 
         {/* Labels da Escala */}
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono num pt-1">
+        <div className="flex items-center justify-between text-[9px] text-slate-500 font-mono num pt-0.5">
           <span>0%</span>
           <span>{warningThresholdPct}% (Atenção)</span>
           <span>{criticalThresholdPct}% (Crítico)</span>
@@ -103,9 +103,9 @@ export function ReportRiskGauge({
       </div>
 
       {/* Diagnóstico Contextual */}
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Maior ativo na carteira: <strong className="font-semibold text-foreground">{topItemName || "N/A"}</strong> representando{" "}
-        <strong className="num font-mono font-bold text-foreground">{topItemPct.toFixed(1)}%</strong> do patrimônio total.
+      <p className="text-[11px] text-slate-600 leading-snug">
+        Maior ativo na carteira: <strong className="font-semibold text-slate-900">{topItemName || "N/A"}</strong> representando{" "}
+        <strong className="num font-mono font-bold text-slate-900">{topItemPct.toFixed(1)}%</strong> do patrimônio total.
         {isSafe && " A carteira possui excelente distribuição de risco individual."}
         {isWarning && " Recomendado direcionar novos aportes para outras classes/ativos para diluir o peso."}
         {isCritical && " Alerta de alta dependência sobre um único ativo."}
@@ -113,3 +113,4 @@ export function ReportRiskGauge({
     </div>
   );
 }
+

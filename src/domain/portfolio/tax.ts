@@ -4,6 +4,7 @@
  */
 
 import { formatCentsAsBRL } from "@/services/masks";
+import { sanitizeReportText } from "@/domain/reports/sanitize-text";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
 
 export interface TaxAssetItem {
@@ -108,13 +109,16 @@ export function generateAnnualBensDireitosReport(
       const totalCostBRL = Math.round(totalCostNative * rate * 100) / 100;
       const totalCostCents = Math.round(totalCostBRL * 100);
       const formattedCostBRL = formatCentsAsBRL(totalCostCents).replace(/\u00A0/g, " ");
+      const safeTicker = sanitizeReportText(a.ticker);
+      const qtyStr = a.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+      const cotaWord = a.quantity === 1 ? "cota/ação" : "cotas/ações";
 
       let discrimination: string;
       if (isUSD) {
-        discrimination = `${a.quantity} cotas/ações de ${a.ticker} (${classification.itemName}) adquiridas pelo custo total de $ ${totalCostNative.toFixed(2)} (${formattedCostBRL}, cotação de referência R$ ${rate.toFixed(2)}), preço médio de $ ${a.average_price.toFixed(2)}, custodiadas no exterior em conta própria.`;
+        discrimination = `${qtyStr} ${cotaWord} de ${safeTicker} (${classification.itemName}) adquiridas pelo custo total de $ ${totalCostNative.toFixed(2)} (${formattedCostBRL}, cotação de referência R$ ${rate.toFixed(2)}), preço médio de $ ${a.average_price.toFixed(2)}, custodiadas no exterior em conta própria.`;
       } else {
         const formattedUnitPrice = formatCentsAsBRL(Math.round(a.average_price * 100)).replace(/\u00A0/g, " ");
-        discrimination = `${a.quantity} cotas/ações de ${a.ticker} (${classification.itemName}) adquiridas pelo custo total de ${formattedCostBRL} (preço médio unitário de ${formattedUnitPrice}), custodiadas em conta própria da corretora.`;
+        discrimination = `${qtyStr} ${cotaWord} de ${safeTicker} (${classification.itemName}) adquiridas pelo custo total de ${formattedCostBRL} (preço médio unitário de ${formattedUnitPrice}), custodiadas em conta própria da corretora.`;
       }
 
       return {

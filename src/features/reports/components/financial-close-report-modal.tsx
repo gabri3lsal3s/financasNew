@@ -1,15 +1,13 @@
 import {
-  Banknote,
   Landmark,
   PieChart,
-  PiggyBank,
   ReceiptText,
   Wallet,
 } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
-  ReportKpiGrid,
+  ReportExecutiveSummary,
   ReportWaterfallBar,
   ReportFooter,
 } from "@/components/modules";
@@ -146,9 +144,9 @@ export function FinancialCloseReportModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Grade de 4 KPIs Executivos */}
-      <ReportKpiGrid
-        columns={4}
+      {/* 2. Síntese Executiva & KPIs em Linha Única */}
+      <ReportExecutiveSummary
+        title="SÍNTESE DO FLUXO CONTÁBIL & RESULTADO"
         items={[
           {
             label: "Receitas Totais",
@@ -156,8 +154,6 @@ export function FinancialCloseReportModal({
             subtext: hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto ? (
               <span>Ponderada: <MoneyText cents={dre.grossIncomeCents} className="inline text-[10px]" /></span>
             ) : "Entradas no Período",
-            icon: Banknote,
-            tone: "positive",
           },
           {
             label: "Despesas Totais",
@@ -165,8 +161,6 @@ export function FinancialCloseReportModal({
             subtext: hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto ? (
               <span>Ponderada: <MoneyText cents={dre.totalExpensesCents} className="inline text-[10px]" /></span>
             ) : "Saídas no Período",
-            icon: ReceiptText,
-            tone: "negative",
           },
           {
             label: "Resultado Operacional",
@@ -177,17 +171,18 @@ export function FinancialCloseReportModal({
               />
             ),
             subtext: effectiveGrossSavingsBruto >= 0 ? "Superávit" : "Déficit",
-            icon: Landmark,
-            tone: effectiveGrossSavingsBruto >= 0 ? "positive" : "negative",
           },
           {
             label: "Taxa de Poupança",
             value: formatPercent(effectiveGrossSavingsRatePct),
             subtext: "Eficiência de Renda",
-            icon: PiggyBank,
-            tone: "primary",
           },
         ]}
+        narrative={
+          <span>
+            No período apurado (<strong>{periodLabel}</strong>), a receita operacional bruta totalizou <strong><MoneyText cents={effectiveGrossIncomeBruto} tone="positive" className="inline font-bold" /></strong> frente a despesas realizadas de <strong><MoneyText cents={effectiveTotalExpensesBruto} tone="negative" className="inline font-bold" /></strong>, gerando resultado operacional de <strong><MoneyText cents={effectiveGrossSavingsBruto} tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"} className="inline font-bold" /></strong> (taxa de poupança de <strong>{formatPercent(effectiveGrossSavingsRatePct)}</strong>). Foram direcionados <strong><MoneyText cents={dre.investedAporteCents} className="inline font-bold" /></strong> para investimentos, resultando em variação líquida de caixa de <strong><MoneyText cents={effectiveGrossSavingsBruto - dre.investedAporteCents} tone={effectiveGrossSavingsBruto - dre.investedAporteCents >= 0 ? "positive" : "negative"} className="inline font-bold" /></strong>.
+          </span>
+        }
       />
 
       {/* 3. Cascata Visual de DRE */}
@@ -200,10 +195,10 @@ export function FinancialCloseReportModal({
       )}
 
       {/* 4. Seção: Demonstração Contábil (DRE Pessoal) */}
-      <section aria-label="Demonstração do Resultado do Exercício" className="break-inside-avoid flex flex-col gap-2.5">
-        <div className="flex items-center gap-2 border-b border-border/80 pb-1.5">
+      <section aria-label="Demonstração do Resultado do Exercício" className="break-inside-avoid flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 border-b border-slate-200/80 pb-1">
           <Landmark className="size-3.5 text-primary-strong" aria-hidden="true" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
+          <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-800">
             DRE Pessoal — Demonstração do Período
           </h2>
         </div>

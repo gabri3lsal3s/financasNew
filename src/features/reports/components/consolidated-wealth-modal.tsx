@@ -1,8 +1,8 @@
-import { ArrowDownRight, ArrowUpRight, Landmark, Scale, ShieldCheck } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Landmark, Scale } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
-  ReportKpiGrid,
+  ReportExecutiveSummary,
   ReportDonutChart,
   ReportFooter,
 } from "@/components/modules";
@@ -84,40 +84,38 @@ export function ConsolidatedWealthModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Grade de 4 KPIs Executivos */}
-      <ReportKpiGrid
-        columns={4}
+      {/* 2. Síntese Executiva & KPIs em Linha Única */}
+      <ReportExecutiveSummary
+        title="SÍNTESE PATRIMONIAL & GRAU DE ALAVANCAGEM"
         items={[
           {
             label: "Patrimônio Líquido",
             value: <MoneyText cents={numberToCents(balanceSheet.netWorthBRL)} tone="portfolio" />,
             subtext: "Ativos (-) Passivos",
-            icon: ShieldCheck,
-            tone: "primary",
           },
           {
             label: "Ativos Totais",
             value: <MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" />,
             subtext: "Custódia + Caixa",
-            icon: ArrowUpRight,
-            tone: "positive",
           },
           {
             label: "Passivos Exigíveis",
             value: <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" />,
             subtext: "Dívidas Totais",
-            icon: ArrowDownRight,
-            tone: "negative",
           },
           {
             label: "Grau de Alavancagem",
             value: `${balanceSheet.debtToAssetRatioPct.toFixed(1)}%`,
             subtext: "Dívida / Ativos",
-            icon: Scale,
-            tone: balanceSheet.debtToAssetRatioPct > 30 ? "warning" : "default",
           },
         ]}
+        narrative={
+          <span>
+            O patrimônio líquido consolidado totaliza <strong><MoneyText cents={numberToCents(balanceSheet.netWorthBRL)} tone="portfolio" className="inline font-bold" /></strong>, composto por <strong><MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="inline font-bold" /></strong> em ativos totais (investimentos em custódia, reserva de liquidez e direitos a receber) e <strong><MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="inline font-bold" /></strong> em passivos exigíveis, resultando em um grau de alavancagem de <strong>{balanceSheet.debtToAssetRatioPct.toFixed(1)}%</strong> dos ativos.
+          </span>
+        }
       />
+
 
       {/* 3. Gráfico Donut de Composição dos Ativos */}
       {balanceSheet.totalAssetsBRL > 0 && (

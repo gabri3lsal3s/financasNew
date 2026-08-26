@@ -8,3 +8,5 @@ export * from "./report-risk-gauge";
 export * from "./report-dividend-sparkline";
 export * from "./report-waterfall-bar";
 export * from "./report-gap-pin-bar";
+export * from "./report-executive-summary";
+export * from "./report-class-tables";

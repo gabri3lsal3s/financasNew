@@ -289,34 +289,34 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
             icon={ListFilter}
           />
 
-          <div className="rounded-xl border border-border overflow-x-auto print:overflow-visible">
+          <div className="rounded-lg border border-slate-200 overflow-x-auto print:overflow-visible shadow-2xs">
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
-                <tr className="bg-surface-hover/60 border-b border-border text-muted-foreground">
-                  <th className="py-2.5 px-3 font-semibold print:w-[15%]">Data</th>
-                  <th className="py-2.5 px-3 font-semibold print:w-[15%]">Tipo</th>
-                  <th className="py-2.5 px-3 font-semibold print:w-[15%]">Ticker</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[15%]">Quantidade</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[20%]">Preço Unit.</th>
-                  <th className="py-2.5 px-3 font-semibold text-right print:w-[20%]">Total</th>
+                <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                  <th className="py-2 px-3 font-bold print:w-[15%]">Data</th>
+                  <th className="py-2 px-3 font-bold print:w-[15%]">Tipo</th>
+                  <th className="py-2 px-3 font-bold print:w-[15%]">Ticker</th>
+                  <th className="py-2 px-3 font-bold text-right print:w-[15%]">Quantidade</th>
+                  <th className="py-2 px-3 font-bold text-right print:w-[20%]">Preço Unit.</th>
+                  <th className="py-2 px-3 font-bold text-right print:w-[20%]">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/60">
+              <tbody className="divide-y divide-slate-100">
                 {filteredTransactions.map((tx) => {
                   const asset = assetMap.get(tx.asset_id);
                   const isSplit = tx.type === "split";
                   return (
-                    <tr key={tx.id} className="hover:bg-surface-hover/30 transition-colors">
-                      <td className="py-2.5 px-3 font-mono">{formatDateBR(tx.date)}</td>
-                      <td className="py-2.5 px-3 font-medium">{PORTFOLIO_TX_LABELS[tx.type] ?? tx.type}</td>
-                      <td className="py-2.5 px-3 font-mono font-bold">{asset?.ticker ?? "—"}</td>
-                      <td className="py-2.5 px-3 text-right num">
+                    <tr key={tx.id} className="break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                      <td className="py-1.5 px-3 font-mono text-slate-600">{formatDateBR(tx.date)}</td>
+                      <td className="py-1.5 px-3 font-medium text-slate-800">{PORTFOLIO_TX_LABELS[tx.type] ?? tx.type}</td>
+                      <td className="py-1.5 px-3 font-mono font-bold text-slate-900">{asset?.ticker ?? "—"}</td>
+                      <td className="py-1.5 px-3 text-right num font-mono text-slate-700">
                         {isSplit ? `${formatQty(tx.quantity)}:1` : formatQty(tx.quantity)}
                       </td>
-                      <td className="py-2.5 px-3 text-right">
+                      <td className="py-1.5 px-3 text-right num font-mono text-slate-700">
                         {isSplit ? "—" : <MoneyText cents={numberToCents(tx.price)} currency={asset?.currency} tone="default" />}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-semibold">
+                      <td className="py-1.5 px-3 text-right font-semibold num font-mono text-slate-900">
                         {isSplit ? "—" : <MoneyText cents={numberToCents(tx.total)} currency={asset?.currency} tone="default" />}
                       </td>
                     </tr>
