@@ -105,10 +105,14 @@ export function WealthTearSheetModal({
   }));
 
   // Ativo mais dominante para o termômetro de risco
-  const topDominance = concentrationRisk.singleAssetDominance ?? {
-    ticker: investmentRows[0]?.ticker ?? "N/A",
-    pct: investmentRows[0] && totalBRL > 0 ? (investmentRows[0].valueBRL / totalBRL) * 100 : 0,
-  };
+  const topDominance = useMemo(
+    () =>
+      concentrationRisk.singleAssetDominance ?? {
+        ticker: investmentRows[0]?.ticker ?? "N/A",
+        pct: investmentRows[0] && totalBRL > 0 ? (investmentRows[0].valueBRL / totalBRL) * 100 : 0,
+      },
+    [concentrationRisk.singleAssetDominance, investmentRows, totalBRL],
+  );
 
   // Agrupamento por classe de ativos para a tabela de custódia com subtotais
   const groupedRows = useMemo(() => {
@@ -134,6 +138,121 @@ export function WealthTearSheetModal({
       };
     });
   }, [investmentRows, totalBRL]);
+
+  // Narrativa analítica factual e dinâmica (sem prescrição de compra)
+  const narrativeContent = useMemo(() => {
+    const pnlLabel =
+      unrealizedPnlBRL >= 0
+        ? "resultado não realizado de"
+        : "desvalorização não realizada de";
+
+    const hasTargets = allocationAnalysis.classGaps.some((cg) => cg.targetPct > 0);
+    const topDeficit = allocationAnalysis.topDeficitClass;
+    const surplusClasses = allocationAnalysis.classGaps
+      .filter((cg) => cg.currentPct > cg.targetPct + 0.5 && cg.targetPct > 0)
+      .map((cg) => cg.assetClass);
+
+    const intlTotalBRL = investmentRows
+      .filter(
+        (r) =>
+          r.currency === "USD" ||
+          (r.assetClass &&
+            (r.assetClass.toLowerCase().includes("internacional") ||
+              r.assetClass.toLowerCase().includes("global"))),
+      )
+      .reduce((acc, r) => acc + r.valueBRL, 0);
+    const intlPct = totalBRL > 0 ? (intlTotalBRL / totalBRL) * 100 : 0;
+
+    return (
+      <span>
+        A carteira totaliza{" "}
+        <strong>
+          <MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" />
+        </strong>{" "}
+        sob custódia frente a um custo de aquisição de{" "}
+        <strong>
+          <MoneyText cents={numberToCents(totalCostBRL)} className="inline font-bold" />
+        </strong>
+        , registrando {pnlLabel}{" "}
+        <strong>
+          <MoneyText
+            cents={numberToCents(unrealizedPnlBRL)}
+            tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"}
+            className="inline font-bold"
+          />{" "}
+          ({formatSignedPct(unrealizedPnlPct)})
+        </strong>
+        {hasTargets && (
+          <>
+            {" "}e índice de equilíbrio geral de{" "}
+            <strong>{allocationAnalysis.alignmentScore}%</strong>
+          </>
+        )}
+        .{" "}
+        {hasTargets && topDeficit && topDeficit.gapBRL > 0 ? (
+          <>
+            Conforme a matriz de alocação definida pelo titular, a classe com maior
+            distanciamento negativo da meta é{" "}
+            <strong>{topDeficit.assetClass.toUpperCase()}</strong> (déficit de{" "}
+            <MoneyText
+              cents={numberToCents(topDeficit.gapBRL)}
+              className="inline font-bold text-primary-strong"
+            />
+            )
+            {surplusClasses.length > 0 ? (
+              <>, enquanto {surplusClasses.join(" e ")} encontram-se em patamar superior ao planejado</>
+            ) : (
+              <>, com as demais classes alinhadas aos objetivos</>
+            )}
+            .{" "}
+          </>
+        ) : hasTargets ? (
+          <>
+            Todas as classes de ativos encontram-se atualmente equilibradas em relação às metas estipuladas.{" "}
+          </>
+        ) : null}
+        {allocationAnalysis.topDeficitSector && allocationAnalysis.topDeficitSector.gapBRL > 0 && (
+          <>
+            Em nível setorial, o maior distanciamento localiza-se em{" "}
+            <strong>
+              {sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)}
+            </strong>{" "}
+            (déficit de{" "}
+            <MoneyText
+              cents={numberToCents(allocationAnalysis.topDeficitSector.gapBRL)}
+              className="inline font-bold text-primary-strong"
+            />
+            ).{" "}
+          </>
+        )}
+        {intlPct > 0 ? (
+          <>
+            O portfólio mantém <strong>{intlPct.toFixed(1)}%</strong> de exposição
+            internacional
+          </>
+        ) : (
+          <>A totalidade dos ativos está alocada no mercado doméstico</>
+        )}
+        {topDominance.ticker && topDominance.ticker !== "N/A" ? (
+          <>, e a posição de maior peso individual é{" "}
+            <strong>{sanitizeReportText(topDominance.ticker)}</strong>,
+            respondendo por <strong>{topDominance.pct.toFixed(1)}%</strong> do
+            patrimônio total.
+          </>
+        ) : (
+          <>.</>
+        )}
+      </span>
+    );
+  }, [
+    totalBRL,
+    totalCostBRL,
+    unrealizedPnlBRL,
+    unrealizedPnlPct,
+    allocationAnalysis,
+    investmentRows,
+    topDominance,
+  ]);
 
   return (
     <ReportDocumentLayout
@@ -184,20 +303,7 @@ export function WealthTearSheetModal({
             subtext: "Índice de Equilíbrio",
           },
         ]}
-        narrative={
-          <span>
-            A carteira totaliza <strong><MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" /></strong> sob custódia, com lucro contábil não realizado de <strong><MoneyText cents={numberToCents(unrealizedPnlBRL)} tone={unrealizedPnlBRL >= 0 ? "positive" : "negative"} className="inline font-bold" /> ({formatSignedPct(unrealizedPnlPct)})</strong> e nível de equilíbrio de <strong>{allocationAnalysis.alignmentScore}%</strong>.
-            {allocationAnalysis.topDeficitClass && (
-              <> A classe prioritária para novos aportes é <strong>{allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}</strong> (déficit de <MoneyText cents={numberToCents(allocationAnalysis.topDeficitClass.gapBRL)} className="inline font-bold text-primary-strong" />).</>
-            )}
-            {allocationAnalysis.topDeficitSector && (
-              <> Em nível setorial, a principal oportunidade localiza-se em <strong>{sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)}</strong> (<MoneyText cents={numberToCents(allocationAnalysis.topDeficitSector.gapBRL)} className="inline font-bold text-primary-strong" />).</>
-            )}
-            {topDominance.ticker && (
-              <> O ativo de maior peso individual é <strong>{sanitizeReportText(topDominance.ticker)}</strong> ({topDominance.pct.toFixed(1)}% da carteira).</>
-            )}
-          </span>
-        }
+        narrative={narrativeContent}
       />
 
       <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-2.5">
