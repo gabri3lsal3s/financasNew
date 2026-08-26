@@ -50,7 +50,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             {state.assetClass}
           </Badge>
           {state.currency !== "BRL" && (
-            <Badge variant="outline" className="text-xs shrink-0 font-mono">
+            <Badge variant="muted" className="text-xs shrink-0 font-mono">
               {state.currency}
             </Badge>
           )}

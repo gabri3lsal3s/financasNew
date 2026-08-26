@@ -69,6 +69,7 @@ const rows: PositionRow[] = [
     fixedIncomeMetadata: {
       rate_type: "pre",
       rate_value: 16.22,
+      base_date: "2024-01-01",
       maturity_date: "2027-01-15",
     },
   },

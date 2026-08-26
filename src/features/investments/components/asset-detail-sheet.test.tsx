@@ -100,6 +100,7 @@ const mockRfAsset: PortfolioAsset = {
   fixed_income_metadata: {
     rate_type: "pre",
     rate_value: 16.22,
+    base_date: "2024-01-01",
     maturity_date: "2027-01-04",
   },
 };
@@ -116,6 +117,7 @@ const mockRfAssetZeroRate: PortfolioAsset = {
   fixed_income_metadata: {
     rate_type: "cdi",
     rate_value: 0,
+    base_date: "2024-01-01",
   },
 };
 
