@@ -895,6 +895,43 @@
   - ESLint (`npm run lint`): 0 erros / 0 avisos;
   - Testes: 40 arquivos e 371/371 testes aprovados (100% de sucesso).
 
+## F62 — Sincronização em Cascata de Aportes, Proventos e Histórico de Operações de Ativos (2026-08-25)
+
+- **Problema:**
+  1. Ao excluir um provento na aba **Proventos**, o registro era removido apenas de `portfolio_dividends`, mantendo a transação correspondente em `portfolio_transactions` (visível no histórico do modal de detalhes do ativo);
+  2. Ao excluir um aporte financeiro na aba **Aportes**, o registro era removido apenas de `portfolio_contributions`, mantendo a transação correspondente no histórico do ativo;
+  3. Ao excluir uma transação individual no modal de detalhes do ativo (`AssetDetailSheet`), o lançamento continuava visível nas abas de Proventos e Aportes.
+- **Solução:**
+  1. **Exclusões com Matching em Cascata no Repositório (`src/data/repositories/portfolio.ts`):**
+     - Criadas funções de deleção por matching: `deletePortfolioTransactionsMatching`, `deletePortfolioDividendsMatching` e `deletePortfolioContributionsMatching`;
+  2. **Mutations Sincronizadas Bidirecionalmente (`src/state/mutations/use-portfolio-mutations.ts`):**
+     - `useDeletePortfolioDividend`: remove em `portfolio_dividends` e remove a transação vinculada em `portfolio_transactions` (matching por `asset_id`, `date`, tipo de provento e `total`);
+     - `useDeletePortfolioContribution`: remove em `portfolio_contributions` e remove a transação de compra vinculada em `portfolio_transactions`;
+     - `useDeletePortfolioTransaction`: remove em `portfolio_transactions` e remove o respectivo provento em `portfolio_dividends` (se provento) ou aporte em `portfolio_contributions` (se compra);
+     - Suporte polimórfico a ID string (com resolução de metadados do cache) ou objeto completo;
+     - Invalidação conjunta de queries (`dividends`, `contributions`, `transactions`, `allTransactions`, `assets`, `snapshots`);
+  3. **Atualização das Telas e Modais:**
+     - `proventos-tab.tsx`, `contributions-panel.tsx`, `contributions-list-dialog.tsx`, `asset-detail-sheet.tsx`, `portfolio-statement-dialog.tsx` e `transaction-list-dialog.tsx` atualizados para passar os objetos completos de exclusão;
+  4. **Suíte de Testes Dedicada:**
+     - Criado `src/state/mutations/use-portfolio-mutations.test.tsx` com 5 testes cobrindo todos os fluxos de cascata e resolução de cache.
+- **Arquivos alterados:**
+  - `src/data/repositories/portfolio.ts`
+  - `src/state/mutations/use-portfolio-mutations.ts`
+  - `src/state/mutations/use-portfolio-mutations.test.tsx` [NOVO]
+  - `src/features/investments/pages/proventos-tab.tsx`
+  - `src/features/investments/components/contributions-panel.tsx`
+  - `src/features/investments/components/contributions-list-dialog.tsx`
+  - `src/features/investments/components/asset-detail-sheet.tsx`
+  - `src/features/investments/components/portfolio-statement-dialog.tsx`
+  - `src/features/investments/components/transaction-list-dialog.tsx`
+  - `src/features/investments/components/transaction-list-dialog.test.tsx`
+  - `src/components/modules/aporte-result.test.tsx`
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc -b`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Build de Produção (`npm run build`): 100% de sucesso;
+  - Testes: 24 arquivos e 108/108 testes de investimentos e estado aprovados.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

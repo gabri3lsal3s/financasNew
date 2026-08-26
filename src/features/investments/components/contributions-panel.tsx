@@ -48,7 +48,7 @@ export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
   const handleDeleteContribution = async () => {
     if (!contributionToDelete) return;
     try {
-      await deleteContribution.mutateAsync(contributionToDelete.id);
+      await deleteContribution.mutateAsync(contributionToDelete);
       triggerSensory("destructive");
       pushToast({
         title: "Aporte removido",

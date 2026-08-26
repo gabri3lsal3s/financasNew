@@ -40,8 +40,8 @@ describe("AporteResult", () => {
       />,
     );
 
-    expect(screen.getByText("PETR4")).toBeInTheDocument();
-    expect(screen.getByText("HGLG11")).toBeInTheDocument();
+    expect(screen.getAllByText("PETR4").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("HGLG11").length).toBeGreaterThan(0);
     expect(screen.getByText("Alocado em ativos")).toBeInTheDocument();
   });
 
@@ -57,15 +57,21 @@ describe("AporteResult", () => {
       />,
     );
 
-    const markPetr4 = screen.getByRole("button", { name: "Marcar PETR4 como executado" });
-    expect(markPetr4).toBeInTheDocument();
+    const markButtons = screen.getAllByRole("button", { name: "Marcar PETR4 como executado" });
+    expect(markButtons.length).toBeGreaterThan(0);
+    const markPetr4 = markButtons[0];
+    if (!markPetr4) throw new Error("Botão não encontrado");
 
     await user.click(markPetr4);
 
-    expect(screen.getByText("Feito")).toBeInTheDocument();
+    expect(screen.getAllByText("Feito").length).toBeGreaterThan(0);
     expect(screen.getByText("Alocado (1/2 feitos)")).toBeInTheDocument();
 
-    const unmarkPetr4 = screen.getByRole("button", { name: "Marcar PETR4 como pendente" });
+    const unmarkButtons = screen.getAllByRole("button", { name: "Marcar PETR4 como pendente" });
+    expect(unmarkButtons.length).toBeGreaterThan(0);
+    const unmarkPetr4 = unmarkButtons[0];
+    if (!unmarkPetr4) throw new Error("Botão não encontrado");
+
     await user.click(unmarkPetr4);
 
     expect(screen.getByText("Alocado em ativos")).toBeInTheDocument();

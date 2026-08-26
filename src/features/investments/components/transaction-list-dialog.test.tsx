@@ -104,7 +104,7 @@ describe("TransactionListDialog — extrato de lançamentos com CRUD", () => {
     await user.click(screen.getByRole("button", { name: "Excluir" }));
 
     expect(deleteTxMock).toHaveBeenCalledTimes(1);
-    expect(deleteTxMock).toHaveBeenCalledWith("tx1");
+    expect(deleteTxMock).toHaveBeenCalledWith(expect.objectContaining({ id: "tx1" }));
     expect(triggerHaptic).toHaveBeenCalledWith("destructive");
   });
 

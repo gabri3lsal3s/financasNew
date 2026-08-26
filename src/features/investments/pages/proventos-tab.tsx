@@ -178,7 +178,7 @@ export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
   const handleDelete = async () => {
     if (!dividendToDelete) return;
     try {
-      await deleteDividend.mutateAsync(dividendToDelete.id);
+      await deleteDividend.mutateAsync(dividendToDelete);
       setDividendToDelete(null);
     } catch {
       // Toast disparado pelo hook

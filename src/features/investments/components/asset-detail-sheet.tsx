@@ -30,7 +30,7 @@ import {
   usePortfolioAssets,
   usePortfolioPosition,
 } from "@/state";
-import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
+import type { PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 import { AssetEditDialog } from "./asset-edit-dialog";
 import { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
 
@@ -57,7 +57,7 @@ export function AssetDetailSheet({
   const [editOpen, setEditOpen] = useState(false);
   const [calibrateOpen, setCalibrateOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [txToDelete, setTxToDelete] = useState<string | null>(null);
+  const [txToDelete, setTxToDelete] = useState<PortfolioTransaction | null>(null);
 
   if (!asset) return null;
 
@@ -401,7 +401,7 @@ export function AssetDetailSheet({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => setTxToDelete(tx.id)}
+                          onClick={() => setTxToDelete(tx)}
                           className="size-7 p-0 text-muted-foreground hover:text-negative-strong"
                           title="Excluir lançamento"
                           aria-label="Excluir lançamento"

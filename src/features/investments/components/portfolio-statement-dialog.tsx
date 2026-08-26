@@ -61,7 +61,7 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
   const confirmDelete = async () => {
     if (!deleting) return;
     try {
-      await deleteTx.mutateAsync(deleting.id);
+      await deleteTx.mutateAsync(deleting);
       triggerSensory("destructive");
     } catch {
       // Toast disparado pelo hook

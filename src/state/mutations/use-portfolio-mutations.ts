@@ -8,8 +8,11 @@ import {
   createPortfolioTransactionsBatch,
   deletePortfolioAsset,
   deletePortfolioContribution,
+  deletePortfolioContributionsMatching,
   deletePortfolioDividend,
+  deletePortfolioDividendsMatching,
   deletePortfolioTransaction,
+  deletePortfolioTransactionsMatching,
   updatePortfolioAsset,
   updatePortfolioTransaction,
 } from "@/data/repositories/portfolio";
@@ -43,29 +46,22 @@ export function useCreatePortfolioAsset() {
       const created = await createPortfolioAsset(input);
       void import("@/services/quotes")
         .then(({ syncQuoteForTicker }) => syncQuoteForTicker(created.ticker, created.asset_class))
-        .then((quote) => {
-          if (quote) {
-            void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assetPrices });
-          }
-        })
-        .catch(() => {
-          // Degradação graciosa: segue sem travar
-        });
+        .catch(() => undefined);
       return created;
     },
-    onSuccess: (asset) => {
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
       pushToast({
-        title: "Ativo cadastrado",
-        description: `${asset.ticker} foi adicionado à carteira.`,
+        title: "Ativo criado",
+        description: "O novo ativo foi adicionado à sua carteira.",
         variant: "success",
       });
       triggerSensory("success");
     },
     onError: (err) => {
       pushToast({
-        title: "Erro ao cadastrar ativo",
+        title: "Erro ao criar ativo",
         description: getErrorMessage(err),
         variant: "destructive",
       });
@@ -77,16 +73,16 @@ export function useCreatePortfolioAsset() {
 export function useUpdatePortfolioAsset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { id: string; patch: DbUpdate<PortfolioAsset> }) =>
-      updatePortfolioAsset(params.id, params.patch),
-    onSuccess: (asset) => {
+    mutationFn: ({ id, patch }: { id: string; patch: DbUpdate<PortfolioAsset> }) =>
+      updatePortfolioAsset(id, patch),
+    onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
-      pushToast({
-        title: "Ativo atualizado",
-        description: `${asset.ticker} foi atualizado com sucesso.`,
-        variant: "success",
-      });
+      if (updated?.ticker) {
+        void import("@/services/quotes")
+          .then(({ syncQuoteForTicker }) => syncQuoteForTicker(updated.ticker, updated.asset_class))
+          .catch(() => undefined);
+      }
       triggerSensory("success");
     },
     onError: (err) => {
@@ -107,11 +103,13 @@ export function useDeletePortfolioAsset() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allocationTargets });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
       pushToast({
         title: "Ativo excluído",
-        description: "O ativo e suas posições foram removidos.",
+        description: "O ativo e todo o seu histórico foram removidos da carteira.",
         variant: "info",
       });
       triggerSensory("destructive");
@@ -134,18 +132,14 @@ export function useCreatePortfolioTransaction() {
       createPortfolioTransaction(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
-      pushToast({
-        title: "Lançamento registrado",
-        description: "A operação foi salva com sucesso.",
-        variant: "success",
-      });
       triggerSensory("success");
     },
     onError: (err) => {
       pushToast({
-        title: "Erro ao registrar lançamento",
+        title: "Erro ao registrar transação",
         description: getErrorMessage(err),
         variant: "destructive",
       });
@@ -157,22 +151,18 @@ export function useCreatePortfolioTransaction() {
 export function useCreatePortfolioTransactionsBatch() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (rows: Omit<DbInsert<PortfolioTransaction>, "user_id">[]) =>
-      createPortfolioTransactionsBatch(rows),
-    onSuccess: (inserted) => {
+    mutationFn: (inputs: Omit<DbInsert<PortfolioTransaction>, "user_id">[]) =>
+      createPortfolioTransactionsBatch(inputs),
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
-      pushToast({
-        title: "Lançamentos importados",
-        description: `${inserted.length} operação(ões) registrada(s) com sucesso.`,
-        variant: "success",
-      });
       triggerSensory("success");
     },
     onError: (err) => {
       pushToast({
-        title: "Erro na importação em lote",
+        title: "Erro ao registrar lote de transações",
         description: getErrorMessage(err),
         variant: "destructive",
       });
@@ -184,14 +174,16 @@ export function useCreatePortfolioTransactionsBatch() {
 export function useUpdatePortfolioTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { id: string; patch: DbUpdate<PortfolioTransaction> }) =>
-      updatePortfolioTransaction(params.id, params.patch),
+    mutationFn: ({ id, patch }: { id: string; patch: DbUpdate<PortfolioTransaction> }) =>
+      updatePortfolioTransaction(id, patch),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
       pushToast({
         title: "Lançamento atualizado",
-        description: "A operação foi atualizada.",
+        description: "A movimentação foi alterada com sucesso.",
         variant: "success",
       });
       triggerSensory("success");
@@ -207,16 +199,69 @@ export function useUpdatePortfolioTransaction() {
   });
 }
 
+export type DeletePortfolioTransactionInput =
+  | string
+  | {
+      id: string;
+      asset_id?: string | null;
+      assetId?: string | null;
+      type?: string | null;
+      date?: string | null;
+      total?: number | null;
+    };
+
 export function useDeletePortfolioTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (transactionId: string) => deletePortfolioTransaction(transactionId),
+    mutationFn: async (input: DeletePortfolioTransactionInput) => {
+      const id = typeof input === "string" ? input : input.id;
+      let assetId = typeof input !== "string" ? (input.asset_id ?? input.assetId) : undefined;
+      let type = typeof input !== "string" ? input.type : undefined;
+      let date = typeof input !== "string" ? input.date : undefined;
+      let total = typeof input !== "string" ? input.total : undefined;
+
+      // Se não foram passados os metadados, tenta localizá-los no cache
+      if (!assetId || !date) {
+        const cachedAll = queryClient.getQueryData<PortfolioTransaction[]>(PORTFOLIO_QUERY_KEYS.allTransactions) ?? [];
+        const match = cachedAll.find((t) => t.id === id);
+        if (match) {
+          assetId = assetId ?? match.asset_id;
+          type = type ?? match.type;
+          date = date ?? match.date;
+          total = total ?? match.total;
+        }
+      }
+
+      // 1. Deleta a transação principal
+      await deletePortfolioTransaction(id);
+
+      // 2. Cascata em Proventos ou Aportes correspondentes
+      if (assetId && date && total !== undefined && total !== null) {
+        if (type === "dividend" || type === "jcp" || type === "fii_yield") {
+          await deletePortfolioDividendsMatching({
+            asset_id: assetId,
+            date,
+            amount: total,
+          });
+        } else if (type === "buy") {
+          await deletePortfolioContributionsMatching({
+            asset_id: assetId,
+            date,
+            amount: total,
+          });
+        }
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
       pushToast({
         title: "Lançamento excluído",
-        description: "A operação foi removida do extrato.",
+        description: "A operação e seus lançamentos vinculados foram removidos.",
         variant: "info",
       });
       triggerSensory("destructive");
@@ -258,16 +303,57 @@ export function useCreatePortfolioContribution() {
   });
 }
 
+export type DeletePortfolioContributionInput =
+  | string
+  | {
+      id: string;
+      asset_id?: string | null;
+      assetId?: string | null;
+      date?: string | null;
+      amount?: number | null;
+    };
+
 export function useDeletePortfolioContribution() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (contributionId: string) => deletePortfolioContribution(contributionId),
+    mutationFn: async (input: DeletePortfolioContributionInput) => {
+      const id = typeof input === "string" ? input : input.id;
+      let assetId = typeof input !== "string" ? (input.asset_id ?? input.assetId) : undefined;
+      let date = typeof input !== "string" ? input.date : undefined;
+      let amount = typeof input !== "string" ? input.amount : undefined;
+
+      if (!assetId || !date) {
+        const cached = queryClient.getQueryData<PortfolioContribution[]>(PORTFOLIO_QUERY_KEYS.contributions) ?? [];
+        const match = cached.find((c) => c.id === id);
+        if (match) {
+          assetId = assetId ?? match.asset_id;
+          date = date ?? match.date;
+          amount = amount ?? match.amount;
+        }
+      }
+
+      // 1. Deleta a contribuição de aporte
+      await deletePortfolioContribution(id);
+
+      // 2. Cascata em Transações de Ativos se vinculado
+      if (assetId && date && amount !== undefined && amount !== null) {
+        await deletePortfolioTransactionsMatching({
+          asset_id: assetId,
+          date,
+          types: ["buy"],
+          total: amount,
+        });
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
       pushToast({
         title: "Aporte excluído",
-        description: "O lançamento de aporte foi removido.",
+        description: "O lançamento de aporte e a operação vinculada foram removidos.",
         variant: "info",
       });
       triggerSensory("destructive");
@@ -309,16 +395,57 @@ export function useCreatePortfolioDividend() {
   });
 }
 
+export type DeletePortfolioDividendInput =
+  | string
+  | {
+      id: string;
+      asset_id?: string | null;
+      assetId?: string | null;
+      date?: string | null;
+      amount?: number | null;
+    };
+
 export function useDeletePortfolioDividend() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dividendId: string) => deletePortfolioDividend(dividendId),
+    mutationFn: async (input: DeletePortfolioDividendInput) => {
+      const id = typeof input === "string" ? input : input.id;
+      let assetId = typeof input !== "string" ? (input.asset_id ?? input.assetId) : undefined;
+      let date = typeof input !== "string" ? input.date : undefined;
+      let amount = typeof input !== "string" ? input.amount : undefined;
+
+      if (!assetId || !date) {
+        const cached = queryClient.getQueryData<PortfolioDividend[]>(PORTFOLIO_QUERY_KEYS.dividends) ?? [];
+        const match = cached.find((d) => d.id === id);
+        if (match) {
+          assetId = assetId ?? match.asset_id;
+          date = date ?? match.date;
+          amount = amount ?? match.amount;
+        }
+      }
+
+      // 1. Deleta o provento
+      await deletePortfolioDividend(id);
+
+      // 2. Cascata em Transações de Ativos se vinculado
+      if (assetId && date && amount !== undefined && amount !== null) {
+        await deletePortfolioTransactionsMatching({
+          asset_id: assetId,
+          date,
+          types: ["dividend", "jcp", "fii_yield"],
+          total: amount,
+        });
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
       pushToast({
         title: "Provento excluído",
-        description: "O rendimento foi removido do extrato.",
+        description: "O rendimento e a operação vinculada foram removidos.",
         variant: "info",
       });
       triggerSensory("destructive");

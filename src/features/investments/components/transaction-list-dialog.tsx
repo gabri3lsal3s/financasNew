@@ -36,7 +36,7 @@ export function TransactionListDialog({ open, onOpenChange, asset }: Transaction
   const confirmDelete = async () => {
     if (!deleting) return;
     try {
-      await deleteTx.mutateAsync(deleting.id);
+      await deleteTx.mutateAsync(deleting);
       triggerSensory("destructive");
     } catch {
       // Falha: o toast do hook (useDeletePortfolioTransaction) já exibiu o erro.

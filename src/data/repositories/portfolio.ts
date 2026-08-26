@@ -333,3 +333,71 @@ export async function deletePortfolioTransaction(id: string): Promise<void> {
     throw new AppError(classified.kind, classified.message, error);
   }
 }
+
+export async function deletePortfolioTransactionsMatching(filter: {
+  asset_id: string;
+  date: string;
+  types?: PortfolioTransaction["type"][];
+  total?: number;
+}): Promise<void> {
+  let query = getSupabase()
+    .from("portfolio_transactions")
+    .delete()
+    .eq("asset_id", filter.asset_id)
+    .eq("date", filter.date);
+
+  if (filter.types && filter.types.length > 0) {
+    query = query.in("type", filter.types);
+  }
+  if (filter.total !== undefined) {
+    query = query.eq("total", filter.total);
+  }
+  const { error } = await resolveQuery(query);
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+export async function deletePortfolioDividendsMatching(filter: {
+  asset_id: string;
+  date: string;
+  amount?: number;
+}): Promise<void> {
+  let query = getSupabase()
+    .from("portfolio_dividends")
+    .delete()
+    .eq("asset_id", filter.asset_id)
+    .eq("date", filter.date);
+
+  if (filter.amount !== undefined) {
+    query = query.eq("amount", filter.amount);
+  }
+  const { error } = await resolveQuery(query);
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+export async function deletePortfolioContributionsMatching(filter: {
+  asset_id: string;
+  date: string;
+  amount?: number;
+}): Promise<void> {
+  let query = getSupabase()
+    .from("portfolio_contributions")
+    .delete()
+    .eq("asset_id", filter.asset_id)
+    .eq("date", filter.date);
+
+  if (filter.amount !== undefined) {
+    query = query.eq("amount", filter.amount);
+  }
+  const { error } = await resolveQuery(query);
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
