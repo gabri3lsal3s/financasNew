@@ -163,11 +163,11 @@ export function DividendFreedomModal({
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                  <th className="py-2 px-3 print:w-[18%]">Ticker</th>
+                  <th className="py-2 px-3 print:w-[18%] first:rounded-tl-lg">Ticker</th>
                   <th className="py-2 px-3 text-right print:w-[18%]">Preço Atual</th>
                   <th className="py-2 px-3 text-right print:w-[22%]">Renda Mensal Gerada</th>
                   <th className="py-2 px-3 text-right print:w-[20%]">Cotas Compradas / Mês</th>
-                  <th className="py-2 px-3 text-center print:w-[22%]">Status da Bola de Neve</th>
+                  <th className="py-2 px-3 text-center print:w-[22%] last:rounded-tr-lg">Status da Bola de Neve</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">

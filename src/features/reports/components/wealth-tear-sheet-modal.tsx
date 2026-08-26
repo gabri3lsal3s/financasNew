@@ -401,12 +401,12 @@ export function WealthTearSheetModal({
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-1 px-2.5">Classe</th>
+                <th className="py-1 px-2.5 first:rounded-tl-lg">Classe</th>
                 <th className="py-1 px-2 text-right">Atual (R$)</th>
                 <th className="py-1 px-2 text-right">Atual (%)</th>
                 <th className="py-1 px-2 text-right">Meta (%)</th>
                 <th className="py-1 px-2 text-right">Gap (R$)</th>
-                <th className="py-1 px-2.5 text-center">Status</th>
+                <th className="py-1 px-2.5 text-center last:rounded-tr-lg">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">

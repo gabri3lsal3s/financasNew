@@ -746,6 +746,26 @@
     break-inside: auto !important;
   }
 
+  /* Arredondamento suave e sem pontas nos cantos de tabelas no PDF */
+  .print-sheet table thead th:first-child,
+  .print-sheet table thead tr:first-child th:first-child {
+    border-top-left-radius: 7px !important;
+    background-clip: padding-box !important;
+  }
+  .print-sheet table thead th:last-child,
+  .print-sheet table thead tr:first-child th:last-child {
+    border-top-right-radius: 7px !important;
+    background-clip: padding-box !important;
+  }
+  .print-sheet table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 7px !important;
+    background-clip: padding-box !important;
+  }
+  .print-sheet table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 7px !important;
+    background-clip: padding-box !important;
+  }
+
   .print-sheet .overflow-x-auto,
   .print-sheet .overflow-hidden {
     overflow: visible !important;
