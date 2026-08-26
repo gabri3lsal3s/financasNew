@@ -282,7 +282,7 @@ export function WealthTearSheetModal({
         />
       </section>
 
-      <section aria-label="Custódia de Ativos" className="flex flex-col gap-3 pt-1">
+      <section aria-label="Custódia de Ativos" className="flex flex-col gap-2 pt-1 print:break-before-page">
         <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
           <div className="flex items-center gap-1.5">
             <Layers className="size-3.5 text-primary-strong" aria-hidden="true" />

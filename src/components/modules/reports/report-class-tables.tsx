@@ -87,35 +87,35 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
             <div className="overflow-x-auto rounded-lg border border-slate-200 print:overflow-visible shadow-2xs">
               <table className="w-full text-left text-xs border-collapse print:table-fixed">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-700 font-bold text-[9px] uppercase tracking-wider">
                     {isRendaFixa ? (
                       <>
-                        <th className="py-1.5 px-2.5 print:w-[36%]">Título / Emissor</th>
-                        <th className="py-1.5 px-2 print:w-[24%]">Indexador / Vencimento</th>
-                        <th className="py-1.5 px-2 text-right print:w-[12%]">Qtd</th>
-                        <th className="py-1.5 px-2 text-right print:w-[14%]">Saldo Atual</th>
-                        <th className="py-1.5 px-2.5 text-right print:w-[14%]">Rendimento</th>
+                        <th className="py-1 px-2 print:w-[36%]">Título / Emissor</th>
+                        <th className="py-1 px-1.5 print:w-[26%]">Indexador / Vencimento</th>
+                        <th className="py-1 px-1.5 text-right print:w-[8%]">Qtd</th>
+                        <th className="py-1 px-1.5 text-right print:w-[18%]">Saldo Atual</th>
+                        <th className="py-1 px-2 text-right print:w-[12%]">Rendimento</th>
                       </>
                     ) : isInternacional ? (
                       <>
-                        <th className="py-1.5 px-2.5 print:w-[18%]">Ticker</th>
-                        <th className="py-1.5 px-2 print:w-[24%]">Classe / Tema</th>
-                        <th className="py-1.5 px-2 text-right print:w-[12%]">Qtd</th>
-                        <th className="py-1.5 px-2 text-right print:w-[14%]">Preço Médio</th>
-                        <th className="py-1.5 px-2 text-right print:w-[14%]">Cotação</th>
-                        <th className="py-1.5 px-2 text-right print:w-[18%]">Total (R$)</th>
-                        <th className="py-1.5 px-2.5 text-right print:w-[12%]">Retorno</th>
+                        <th className="py-1 px-2 print:w-[14%]">Ticker</th>
+                        <th className="py-1 px-1.5 print:w-[22%]">Classe / Tema</th>
+                        <th className="py-1 px-1.5 text-right print:w-[8%]">Qtd</th>
+                        <th className="py-1 px-1.5 text-right print:w-[16%]">Preço Médio</th>
+                        <th className="py-1 px-1.5 text-right print:w-[16%]">Cotação</th>
+                        <th className="py-1 px-1.5 text-right print:w-[16%]">Total (R$)</th>
+                        <th className="py-1 px-2 text-right print:w-[8%]">Retorno</th>
                       </>
                     ) : (
                       <>
-                        <th className="py-1.5 px-2.5 print:w-[16%]">Ticker</th>
-                        <th className="py-1.5 px-2 print:w-[24%]">Setor / Segmento</th>
-                        <th className="py-1.5 px-2 text-right print:w-[10%]">Qtd</th>
-                        <th className="py-1.5 px-2 text-right print:w-[13%]">Preço Médio</th>
-                        <th className="py-1.5 px-2 text-right print:w-[13%]">Cotação</th>
-                        <th className="py-1.5 px-2 text-right print:w-[16%]">Total (R$)</th>
-                        <th className="py-1.5 px-2 text-right print:w-[10%]">Retorno</th>
-                        <th className="py-1.5 px-2.5 text-right print:w-[10%]">YoC</th>
+                        <th className="py-1 px-2 print:w-[13%]">Ticker</th>
+                        <th className="py-1 px-1.5 print:w-[21%]">Setor / Segmento</th>
+                        <th className="py-1 px-1 text-right print:w-[8%]">Qtd</th>
+                        <th className="py-1 px-1.5 text-right print:w-[14%]">Preço Médio</th>
+                        <th className="py-1 px-1.5 text-right print:w-[14%]">Cotação</th>
+                        <th className="py-1 px-1.5 text-right print:w-[16%]">Total (R$)</th>
+                        <th className="py-1 px-1.5 text-right print:w-[8%]">Retorno</th>
+                        <th className="py-1 px-2 text-right print:w-[6%]">YoC</th>
                       </>
                     )}
                   </tr>
@@ -128,22 +128,22 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                     >
                       {isRendaFixa ? (
                         <>
-                          <td className="py-1.5 px-2.5 font-semibold text-slate-900 truncate">
+                          <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
                             {sanitizeReportText(item.ticker)}
                           </td>
-                          <td className="py-1.5 px-2 text-slate-600 text-[11px] truncate">
+                          <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
                             {sanitizeReportText(
                               item.sector || item.indexType || "Renda Fixa Geral",
                             )}
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono text-slate-700">
+                          <td className="py-1 px-1.5 text-right num font-mono text-slate-700 text-[10px]">
                             {formatQuantity(item.quantity)}
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono font-bold text-slate-900">
+                          <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
                             <MoneyText cents={item.totalCents} tone="default" />
                           </td>
                           <td
-                            className={`py-1.5 px-2.5 text-right num font-mono font-bold text-[11px] ${
+                            className={`py-1 px-2 text-right num font-mono font-bold text-[10px] ${
                               item.pnlPct >= 0
                                 ? "text-positive-strong"
                                 : "text-negative-strong"
@@ -154,26 +154,26 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                         </>
                       ) : isInternacional ? (
                         <>
-                          <td className="py-1.5 px-2.5 font-semibold text-slate-900 truncate">
+                          <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
                             {sanitizeReportText(item.ticker)}
                           </td>
-                          <td className="py-1.5 px-2 text-slate-600 text-[11px] truncate">
+                          <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
                             {sanitizeReportText(item.sector || "Internacional")}
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono text-slate-700">
+                          <td className="py-1 px-1.5 text-right num font-mono text-slate-700 text-[10px]">
                             {formatQuantity(item.quantity)}
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono text-slate-600 text-[11px]">
+                          <td className="py-1 px-1.5 text-right num font-mono text-slate-600 text-[10px]">
                             <MoneyText cents={item.avgPriceCents} tone="default" />
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono text-slate-900 text-[11px]">
+                          <td className="py-1 px-1.5 text-right num font-mono text-slate-900 text-[10px]">
                             <MoneyText cents={item.currentPriceCents} tone="default" />
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono font-bold text-slate-900">
+                          <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
                             <MoneyText cents={item.totalCents} tone="default" />
                           </td>
                           <td
-                            className={`py-1.5 px-2.5 text-right num font-mono font-bold text-[11px] ${
+                            className={`py-1 px-2 text-right num font-mono font-bold text-[10px] ${
                               item.pnlPct >= 0
                                 ? "text-positive-strong"
                                 : "text-negative-strong"
@@ -184,26 +184,26 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                         </>
                       ) : (
                         <>
-                          <td className="py-1.5 px-2.5 font-semibold text-slate-900 truncate">
+                          <td className="py-1 px-2 font-semibold text-slate-900 truncate text-[11px]">
                             {sanitizeReportText(item.ticker)}
                           </td>
-                          <td className="py-1.5 px-2 text-slate-600 text-[11px] truncate">
+                          <td className="py-1 px-1.5 text-slate-600 text-[10px] truncate">
                             {sanitizeReportText(item.sector || "Geral")}
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono text-slate-700">
+                          <td className="py-1 px-1 text-right num font-mono text-slate-700 text-[10px]">
                             {formatQuantity(item.quantity)}
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono text-slate-600 text-[11px]">
+                          <td className="py-1 px-1.5 text-right num font-mono text-slate-600 text-[10px]">
                             <MoneyText cents={item.avgPriceCents} tone="default" />
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono text-slate-900 text-[11px]">
+                          <td className="py-1 px-1.5 text-right num font-mono text-slate-900 text-[10px]">
                             <MoneyText cents={item.currentPriceCents} tone="default" />
                           </td>
-                          <td className="py-1.5 px-2 text-right num font-mono font-bold text-slate-900">
+                          <td className="py-1 px-1.5 text-right num font-mono font-bold text-slate-900 text-[11px]">
                             <MoneyText cents={item.totalCents} tone="default" />
                           </td>
                           <td
-                            className={`py-1.5 px-2 text-right num font-mono font-bold text-[11px] ${
+                            className={`py-1 px-1.5 text-right num font-mono font-bold text-[10px] ${
                               item.pnlPct >= 0
                                 ? "text-positive-strong"
                                 : "text-negative-strong"
@@ -211,7 +211,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                           >
                             {formatSignedPct(item.pnlPct)}
                           </td>
-                          <td className="py-1.5 px-2.5 text-right num font-mono text-slate-600 text-[11px]">
+                          <td className="py-1 px-2 text-right num font-mono text-slate-600 text-[10px]">
                             {item.yocPct != null && item.yocPct > 0
                               ? formatPercent(item.yocPct)
                               : "—"}
