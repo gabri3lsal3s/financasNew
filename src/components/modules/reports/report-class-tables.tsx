@@ -93,11 +93,6 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
               style={{ borderLeftWidth: "4px", borderLeftColor: classColor }}
             >
               <div className="flex items-center gap-2">
-                <span
-                  className="size-2 rounded-full shrink-0"
-                  style={{ backgroundColor: classColor }}
-                  aria-hidden="true"
-                />
                 <span className="uppercase tracking-wider">
                   {group.className} ({group.items.length}{" "}
                   {group.items.length === 1 ? "ativo" : "ativos"})
