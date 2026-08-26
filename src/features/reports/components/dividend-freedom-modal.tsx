@@ -105,12 +105,12 @@ export function DividendFreedomModal({
       {/* 3. Termômetro do Estágio de Liberdade Financeira */}
       <section
         aria-label="Termômetro de Liberdade"
-        className="rounded-lg border border-slate-200/90 bg-slate-50/50 p-3 flex flex-col gap-2 break-inside-avoid print:bg-white print:border-slate-200 shadow-2xs"
+        className="rounded-lg border border-border/80 bg-muted/30 p-3 flex flex-col gap-2 break-inside-avoid print:bg-white print:border-slate-200 shadow-2xs"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Flame className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-800">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
               Estágio de Independência Financeira (FIRE)
             </h3>
           </div>
@@ -119,14 +119,14 @@ export function DividendFreedomModal({
           </span>
         </div>
 
-        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden border border-slate-300">
+        <div className="w-full bg-muted/40 rounded-full h-2 overflow-hidden border border-border/80">
           <div
             className="bg-primary-strong h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.min(100, Math.max(3, freedomAnalysis.freedomPct))}%` }}
           />
         </div>
 
-        <div className="flex justify-between text-[9px] text-slate-500 font-mono num">
+        <div className="flex justify-between text-[9px] text-muted-foreground font-mono num">
           <span>0% (Início)</span>
           <span>25% (1º Quarto)</span>
           <span>50% (Metade)</span>
@@ -162,7 +162,7 @@ export function DividendFreedomModal({
           <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
-                <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
                   <th className="py-2 px-3 print:w-[18%]">Ticker</th>
                   <th className="py-2 px-3 text-right print:w-[18%]">Preço Atual</th>
                   <th className="py-2 px-3 text-right print:w-[22%]">Renda Mensal Gerada</th>
@@ -172,7 +172,7 @@ export function DividendFreedomModal({
               </thead>
               <tbody className="divide-y divide-border/60">
                 {freedomAnalysis.snowballAssets.map((sb) => (
-                  <tr key={sb.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                  <tr key={sb.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
                     <td className="py-1.5 px-3 font-semibold text-foreground truncate">{sanitizeReportText(sb.ticker)}</td>
                     <td className="py-1.5 px-3 text-right num font-mono">
                       <MoneyText cents={numberToCents(sb.currentPriceBRL)} />

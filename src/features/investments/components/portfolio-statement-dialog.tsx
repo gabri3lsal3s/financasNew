@@ -281,7 +281,7 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
 
       {/* Portal de Impressão A4 Multi-página */}
       <PrintSheet open={open}>
-        <div className="print-document flex flex-col gap-5 w-full bg-white text-slate-900">
+        <div className="print-document flex flex-col gap-5 w-full bg-surface text-foreground">
           <ReportHeader
             title="Extrato Consolidado da Carteira"
             subtitle="Histórico cronológico de movimentações e eventos societários"
@@ -289,10 +289,10 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
             icon={ListFilter}
           />
 
-          <div className="rounded-lg border border-slate-200 overflow-x-auto print:overflow-visible shadow-2xs">
+          <div className="rounded-lg border border-border/80 overflow-x-auto print:overflow-visible shadow-2xs">
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
                   <th className="py-2 px-3 font-bold print:w-[15%]">Data</th>
                   <th className="py-2 px-3 font-bold print:w-[15%]">Tipo</th>
                   <th className="py-2 px-3 font-bold print:w-[15%]">Ticker</th>
@@ -301,22 +301,22 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
                   <th className="py-2 px-3 font-bold text-right print:w-[20%]">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border/60">
                 {filteredTransactions.map((tx) => {
                   const asset = assetMap.get(tx.asset_id);
                   const isSplit = tx.type === "split";
                   return (
-                    <tr key={tx.id} className="break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
-                      <td className="py-1.5 px-3 font-mono text-slate-600">{formatDateBR(tx.date)}</td>
-                      <td className="py-1.5 px-3 font-medium text-slate-800">{PORTFOLIO_TX_LABELS[tx.type] ?? tx.type}</td>
-                      <td className="py-1.5 px-3 font-mono font-bold text-slate-900">{asset?.ticker ?? "—"}</td>
-                      <td className="py-1.5 px-3 text-right num font-mono text-slate-700">
+                    <tr key={tx.id} className="break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
+                      <td className="py-1.5 px-3 font-mono text-muted-foreground">{formatDateBR(tx.date)}</td>
+                      <td className="py-1.5 px-3 font-medium text-foreground">{PORTFOLIO_TX_LABELS[tx.type] ?? tx.type}</td>
+                      <td className="py-1.5 px-3 font-mono font-bold text-foreground">{asset?.ticker ?? "—"}</td>
+                      <td className="py-1.5 px-3 text-right num font-mono text-muted-foreground">
                         {isSplit ? `${formatQty(tx.quantity)}:1` : formatQty(tx.quantity)}
                       </td>
-                      <td className="py-1.5 px-3 text-right num font-mono text-slate-700">
+                      <td className="py-1.5 px-3 text-right num font-mono text-muted-foreground">
                         {isSplit ? "—" : <MoneyText cents={numberToCents(tx.price)} currency={asset?.currency} tone="default" />}
                       </td>
-                      <td className="py-1.5 px-3 text-right font-semibold num font-mono text-slate-900">
+                      <td className="py-1.5 px-3 text-right font-semibold num font-mono text-foreground">
                         {isSplit ? "—" : <MoneyText cents={numberToCents(tx.total)} currency={asset?.currency} tone="default" />}
                       </td>
                     </tr>

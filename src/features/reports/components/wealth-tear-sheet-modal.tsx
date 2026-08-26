@@ -65,6 +65,9 @@ const CLASS_COLORS: Record<string, string> = {
   acoes: "#1b6b62",
   fii: "#dda726",
   fiis: "#dda726",
+  etf: "#0284c7",
+  etfs: "#0284c7",
+  "renda fixa": "#2dd4bf",
   renda_fixa: "#2dd4bf",
   internacional: "#38bdf8",
   cripto: "#a855f7",
@@ -336,14 +339,14 @@ export function WealthTearSheetModal({
 
       {/* 3. Sumário de Movimentação do Mês Vigente */}
       {monthSummary && (
-        <div className="bg-slate-50/80 rounded-lg border border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs print:bg-slate-50 print:border-slate-300">
-          <div className="flex items-center gap-1.5 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+        <div className="bg-muted/40 rounded-lg border border-border/80 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs print:bg-slate-50 print:border-slate-300">
+          <div className="flex items-center gap-1.5 text-foreground font-bold uppercase tracking-wider text-[10px]">
             <Calendar className="size-3.5 text-primary-strong" aria-hidden="true" />
             <span>Movimentação do Mês ({monthSummary.monthLabel}):</span>
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px] num">
-            <span>Aportes: <strong className="text-slate-900"><MoneyText cents={numberToCents(monthSummary.buysBRL)} /></strong></span>
-            <span>Vendas: <strong className="text-slate-900"><MoneyText cents={numberToCents(monthSummary.sellsBRL)} /></strong></span>
+            <span>Aportes: <strong className="text-foreground"><MoneyText cents={numberToCents(monthSummary.buysBRL)} /></strong></span>
+            <span>Vendas: <strong className="text-foreground"><MoneyText cents={numberToCents(monthSummary.sellsBRL)} /></strong></span>
             <span>Proventos: <strong className="text-positive-strong"><MoneyText cents={numberToCents(monthSummary.dividendsBRL)} /></strong></span>
             <span>Líquido: <strong className={monthSummary.netFlowBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}><MoneyText cents={numberToCents(monthSummary.netFlowBRL)} /></strong></span>
           </div>
@@ -352,15 +355,15 @@ export function WealthTearSheetModal({
 
       {/* 4. Diagnóstico de Metas & Alocação */}
       <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-2.5">
-        <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
+        <div className="flex items-center justify-between border-b border-border/70 pb-1">
           <div className="flex items-center gap-1.5">
             <PieChart className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
               Diagnóstico de Alocação por Classe (Target vs. Actual)
             </h3>
           </div>
-          <span className="text-[10px] text-slate-500 font-mono num">
-            Equilíbrio Geral: <strong className="text-slate-900">{allocationAnalysis.alignmentScore}%</strong>
+          <span className="text-[10px] text-muted-foreground font-mono num">
+            Equilíbrio Geral: <strong className="text-foreground">{allocationAnalysis.alignmentScore}%</strong>
           </span>
         </div>
 
@@ -370,10 +373,10 @@ export function WealthTearSheetModal({
           height={10}
         />
 
-        <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-2xs">
+        <div className="overflow-x-auto rounded-lg border border-border/80 shadow-2xs">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
                 <th className="py-1 px-2.5">Classe</th>
                 <th className="py-1 px-2 text-right">Atual (R$)</th>
                 <th className="py-1 px-2 text-right">Atual (%)</th>
@@ -382,26 +385,26 @@ export function WealthTearSheetModal({
                 <th className="py-1 px-2.5 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border/60">
               {allocationAnalysis.classGaps.map((cg) => (
-                <tr key={cg.assetClass} className="even:bg-slate-50/50">
-                  <td className="py-1 px-2.5 font-semibold text-slate-900 capitalize">
+                <tr key={cg.assetClass} className="even:bg-muted/20">
+                  <td className="py-1 px-2.5 font-semibold text-foreground capitalize">
                     {cg.assetClass}
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono font-bold text-slate-900">
+                  <td className="py-1 px-2 text-right num font-mono font-bold text-foreground">
                     <MoneyText cents={numberToCents(cg.currentBRL)} tone="default" />
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono text-slate-600">
+                  <td className="py-1 px-2 text-right num font-mono text-muted-foreground">
                     {formatPercent(cg.currentPct)}
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono text-slate-600">
+                  <td className="py-1 px-2 text-right num font-mono text-muted-foreground">
                     {formatPercent(cg.targetPct)}
                   </td>
                   <td className="py-1 px-2 text-right num font-mono">
                     {cg.gapBRL > 0 ? (
                       <MoneyText cents={numberToCents(cg.gapBRL)} className="font-bold text-primary-strong" />
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-muted-foreground/60">—</span>
                     )}
                   </td>
                   <td className="py-1 px-2.5 text-center">
@@ -410,8 +413,8 @@ export function WealthTearSheetModal({
                         cg.gapBRL > 0
                           ? "bg-primary/10 text-primary-strong border border-primary/20"
                           : cg.currentPct > cg.targetPct && cg.targetPct > 0
-                            ? "bg-slate-100 text-slate-600 border border-slate-200"
-                            : "bg-slate-100 text-slate-500 border border-slate-200"
+                            ? "bg-muted/60 text-muted-foreground border border-border/80"
+                            : "bg-muted/60 text-muted-foreground border border-border/80"
                       }`}
                     >
                       {cg.gapBRL > 0 ? "Aportar" : cg.currentPct > cg.targetPct && cg.targetPct > 0 ? "Acima da Meta" : "Equilibrado"}
@@ -440,15 +443,15 @@ export function WealthTearSheetModal({
 
       {/* 6. Custódia Consolidada Especializada */}
       <section aria-label="Custódia de Ativos" className="flex flex-col gap-2 pt-1 print:break-before-page">
-        <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
+        <div className="flex items-center justify-between border-b border-border/70 pb-1">
           <div className="flex items-center gap-1.5">
             <Layers className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
               Custódia Consolidada de Ativos por Classe ({investmentRows.length} ativos)
             </h3>
           </div>
-          <span className="text-[10px] text-slate-600 font-mono num">
-            Total Custodiado: <MoneyText cents={numberToCents(totalBRL)} className="font-bold text-slate-900 inline" />
+          <span className="text-[10px] text-muted-foreground font-mono num">
+            Total Custodiado: <MoneyText cents={numberToCents(totalBRL)} className="font-bold text-foreground inline" />
           </span>
         </div>
 

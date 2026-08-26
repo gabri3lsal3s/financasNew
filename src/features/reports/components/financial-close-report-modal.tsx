@@ -196,9 +196,9 @@ export function FinancialCloseReportModal({
 
       {/* 4. Seção: Demonstração Contábil (DRE Pessoal) */}
       <section aria-label="Demonstração do Resultado do Exercício" className="break-inside-avoid flex flex-col gap-2">
-        <div className="flex items-center gap-1.5 border-b border-slate-200/80 pb-1">
+        <div className="flex items-center gap-1.5 border-b border-border/70 pb-1">
           <Landmark className="size-3.5 text-primary-strong" aria-hidden="true" />
-          <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-800">
+          <h2 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
             DRE Pessoal — Demonstração do Período
           </h2>
         </div>
@@ -206,7 +206,7 @@ export function FinancialCloseReportModal({
         <div className="overflow-x-auto rounded-xl border border-border/80 bg-surface print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
                 <th className="py-2 px-3">Linha / Estrutura Contábil</th>
                 <th className="py-2 px-3 text-right">Valor Bruto (R$)</th>
                 <th className="py-2 px-3 text-right">% Receita</th>
@@ -313,7 +313,7 @@ export function FinancialCloseReportModal({
             <div className="overflow-x-auto print:overflow-visible">
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-border/60 text-slate-700 font-bold text-[10px] uppercase tracking-wider text-left bg-slate-50">
+                  <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
                     <th className="py-1 px-1.5 font-bold">Categoria</th>
                     <th className="py-1 px-1.5 text-right font-bold">Total Bruto</th>
                     <th className="py-1 px-1.5 text-right font-bold">%</th>
@@ -321,7 +321,7 @@ export function FinancialCloseReportModal({
                 </thead>
                 <tbody className="divide-y divide-border/40">
                   {categories.map((cat) => (
-                    <tr key={cat.name} className="even:bg-slate-50/50 print:even:bg-slate-50/50">
+                    <tr key={cat.name} className="even:bg-muted/20 print:even:bg-slate-50/50">
                       <td className="py-1.5 px-1.5 font-medium text-foreground">{sanitizeReportText(cat.name)}</td>
                       <td className="py-1.5 px-1.5 text-right num font-mono">
                         <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" />
@@ -354,7 +354,7 @@ export function FinancialCloseReportModal({
             <div className="overflow-x-auto print:overflow-visible">
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-border/60 text-slate-700 font-bold text-[10px] uppercase tracking-wider text-left bg-slate-50">
+                  <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
                     <th className="py-1 px-1.5 font-bold">Meio de Pagamento</th>
                     <th className="py-1 px-1.5 text-right font-bold">Total Bruto</th>
                     <th className="py-1 px-1.5 text-right font-bold">%</th>
@@ -362,7 +362,7 @@ export function FinancialCloseReportModal({
                 </thead>
                 <tbody className="divide-y divide-border/40">
                   {paymentMethods.map((pm) => (
-                    <tr key={pm.method} className="even:bg-slate-50/50 print:even:bg-slate-50/50">
+                    <tr key={pm.method} className="even:bg-muted/20 print:even:bg-slate-50/50">
                       <td className="py-1.5 px-1.5 font-medium text-foreground">{sanitizeReportText(pm.label)}</td>
                       <td className="py-1.5 px-1.5 text-right num font-mono">
                         <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" className="font-bold" />
@@ -394,7 +394,7 @@ export function FinancialCloseReportModal({
           <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="border-b border-border/60 text-slate-700 font-bold text-[10px] uppercase tracking-wider text-left bg-slate-50">
+                <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
                   <th className="py-1 px-2 font-bold">Cartão</th>
                   <th className="py-1 px-2 font-bold">Competência</th>
                   <th className="py-1 px-2 font-bold">Data Pgto</th>
@@ -403,7 +403,7 @@ export function FinancialCloseReportModal({
               </thead>
               <tbody className="divide-y divide-border/40">
                 {paidInvoices.map((inv, idx) => (
-                  <tr key={`${inv.cardName}-${inv.competenceMonth}-${idx}`} className="even:bg-slate-50/50 print:even:bg-slate-50/50">
+                  <tr key={`${inv.cardName}-${inv.competenceMonth}-${idx}`} className="even:bg-muted/20 print:even:bg-slate-50/50">
                     <td className="py-1.5 px-2 font-medium text-foreground">{sanitizeReportText(inv.cardName)}</td>
                     <td className="py-1.5 px-2 text-muted-foreground">{inv.competenceMonth}</td>
                     <td className="py-1.5 px-2 text-muted-foreground">{formatDateBR(inv.date)}</td>

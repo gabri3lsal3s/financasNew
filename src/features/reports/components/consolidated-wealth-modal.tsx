@@ -187,7 +187,7 @@ export function ConsolidatedWealthModal({
           </h3>
         </div>
         <div className="rounded-xl border border-border/80 overflow-hidden text-xs">
-          <div className="flex justify-between items-center p-2.5 bg-slate-100/90 border-b border-border font-bold text-foreground">
+          <div className="flex justify-between items-center p-2.5 bg-muted/40 border-b border-border font-bold text-foreground">
             <span>(+) Receitas Brutas Totais</span>
             <MoneyText cents={numberToCents(balanceSheet.dre.grossIncomeBRL)} tone="positive" className="num font-mono font-bold" />
           </div>

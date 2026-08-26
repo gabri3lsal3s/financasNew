@@ -220,29 +220,29 @@ export function TaxFacilitatorModal({
 
       {/* 3.1. Seção: Ficha de Bens e Direitos — TABELA FISCAL OFICIAL NO PDF / IMPRESSÃO */}
       <section aria-label="Bens e Direitos Impressão" className="hidden print:flex flex-col gap-2">
-        <div className="flex items-center justify-between border-b border-slate-200/80 pb-1">
+        <div className="flex items-center justify-between border-b border-border/70 pb-1">
           <div className="flex items-center gap-1.5">
             <FileText className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-800">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
               Ficha: Bens e Direitos — Posição em 31/12/{calendarYear} ({nonCashAssets.length} ativos)
             </h3>
           </div>
-          <span className="text-[10px] font-mono num text-slate-600">
-            Custo Total: <MoneyText cents={numberToCents(totalCostAllAssetsBRL)} className="font-bold text-slate-900 inline" />
+          <span className="text-[10px] font-mono num text-muted-foreground">
+            Custo Total: <MoneyText cents={numberToCents(totalCostAllAssetsBRL)} className="font-bold text-foreground inline" />
           </span>
         </div>
 
-        <div className="rounded-lg border border-slate-200 overflow-visible">
+        <div className="rounded-lg border border-border/80 overflow-visible">
           <table className="w-full text-left text-xs border-collapse table-fixed">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold text-[9px] uppercase tracking-wider">
+              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
                 <th className="py-1.5 px-2 w-[14%]">Código / Grupo</th>
                 <th className="py-1.5 px-1.5 w-[12%]">Ticker</th>
                 <th className="py-1.5 px-2 w-[58%]">Discriminação para o Programa IRPF</th>
                 <th className="py-1.5 px-2 text-right w-[16%]">Situação em 31/12</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border/60">
               {nonCashAssets.map((asset) => {
                 const safeTicker = sanitizeReportText(asset.ticker);
                 const totalCostBRL = asset.quantity * asset.average_price;
@@ -252,17 +252,17 @@ export function TaxFacilitatorModal({
                 const textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker}, custo unitário de R$ ${formatMoneyBR(numberToCents(asset.average_price))}, totalizando R$ ${formatMoneyBR(numberToCents(totalCostBRL))}.`;
 
                 return (
-                  <tr key={`print-tax-${asset.id}`} className="break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
-                    <td className="py-1 px-2 text-[9px] font-mono text-slate-600 truncate">
+                  <tr key={`print-tax-${asset.id}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
+                    <td className="py-1 px-2 text-[9px] font-mono text-muted-foreground truncate">
                       {taxInfo.label}
                     </td>
-                    <td className="py-1 px-1.5 font-bold text-slate-900 text-[11px] truncate">
+                    <td className="py-1 px-1.5 font-bold text-foreground text-[11px] truncate">
                       {safeTicker}
                     </td>
-                    <td className="py-1 px-2 text-[9px] text-slate-600 leading-tight">
+                    <td className="py-1 px-2 text-[9px] text-muted-foreground leading-tight">
                       {textToCopy}
                     </td>
-                    <td className="py-1 px-2 text-right num font-mono font-bold text-slate-900 whitespace-nowrap text-[11px]">
+                    <td className="py-1 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[11px]">
                       <MoneyText cents={numberToCents(totalCostBRL)} />
                     </td>
                   </tr>
@@ -296,7 +296,7 @@ export function TaxFacilitatorModal({
           <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
-                <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
                   <th className="py-2 px-3 print:w-[20%]">Ticker</th>
                   <th className="py-2 px-3 print:w-[50%]">Tipo / Ficha da Declaração</th>
                   <th className="py-2 px-3 text-right print:w-[30%]">Total Recebido (R$)</th>
@@ -304,7 +304,7 @@ export function TaxFacilitatorModal({
               </thead>
               <tbody className="divide-y divide-border/60">
                 {rendimentosPorAtivo.map(({ asset, tipoRendimento, amountBRL }) => (
-                  <tr key={`div-${asset.id}`} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                  <tr key={`div-${asset.id}`} className="hover:bg-muted/20 break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
                     <td className="py-1.5 px-3 font-semibold text-foreground truncate">{sanitizeReportText(asset.ticker)}</td>
                     <td className="py-1.5 px-3 text-muted-foreground truncate">{tipoRendimento}</td>
                     <td className="py-1.5 px-3 text-right num font-mono font-bold text-positive-strong whitespace-nowrap">
@@ -312,7 +312,7 @@ export function TaxFacilitatorModal({
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-slate-100/80 border-t border-border/80 font-bold print:bg-slate-100 break-inside-avoid">
+                <tr className="bg-muted/40 border-t border-border/80 font-bold print:bg-slate-100 break-inside-avoid">
                   <td colSpan={2} className="py-2 px-3 text-foreground uppercase text-[10px] tracking-wider">
                     Total de Rendimentos no Exercício
                   </td>
