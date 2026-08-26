@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { Bell, Check, CheckCheck, CreditCard, ExternalLink, HandCoins } from "lucide-react";
+import { Bell, Check, CheckCheck, CreditCard, ExternalLink, HandCoins, Sparkles, X } from "lucide-react";
 import {
   Badge,
   Button,
@@ -10,7 +10,9 @@ import {
   PopoverTrigger,
   Skeleton,
 } from "@/components/ui";
-import { useReminders, useSetReminderState, useMarkAllRemindersAsRead } from "@/state";
+import { useOnboardingCounts, useReminders, useSetReminderState, useMarkAllRemindersAsRead } from "@/state";
+import { useOnboardingDismissed } from "@/hooks";
+import { isOnboardingComplete, onboardingProgress } from "@/domain/onboarding";
 import type { ReminderItem, ReminderStatus } from "@/domain/reminders";
 import { cn } from "@/lib/utils";
 import { triggerHaptic } from "@/services/haptics";
@@ -38,8 +40,16 @@ export interface NotificationsPopoverProps {
 export function NotificationsPopover({ children, open, onOpenChange }: NotificationsPopoverProps) {
   const navigate = useNavigate();
   const { items, totalCount, urgentCount, isLoading } = useReminders();
+  const onboardingQuery = useOnboardingCounts();
+  const { isDismissed, dismiss } = useOnboardingDismissed();
   const setReminderStateMutation = useSetReminderState();
   const markAllMutation = useMarkAllRemindersAsRead();
+
+  const showOnboarding =
+    !isDismissed && onboardingQuery?.data ? !isOnboardingComplete(onboardingQuery.data) : false;
+  const onboardingProg = onboardingQuery?.data ? onboardingProgress(onboardingQuery.data) : { done: 0, total: 4 };
+
+  const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0);
 
   const handleOpenItem = (item: ReminderItem) => {
     triggerHaptic("light");
@@ -50,6 +60,20 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
     }
     const params = new URLSearchParams(item.link.params ?? {});
     navigate(`${item.link.path}?${params.toString()}`);
+  };
+
+  const handleOpenOnboarding = () => {
+    triggerHaptic("light");
+    onOpenChange?.(false);
+    if (!onboardingQuery.data?.expenseCategories) {
+      navigate("/categorias?type=expense");
+    } else if (!onboardingQuery.data?.incomeCategories) {
+      navigate("/categorias?type=income");
+    } else if (!onboardingQuery.data?.cards) {
+      navigate("/cartoes");
+    } else {
+      navigate("/transacoes?novo=transacao");
+    }
   };
 
   const handleMarkRead = (e: React.MouseEvent, key: string) => {
@@ -84,9 +108,9 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
         <header className="flex items-center justify-between border-b border-border/80 px-4 py-3 bg-surface/50">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm">Lembretes & Avisos</span>
-            {totalCount > 0 && (
+            {effectiveTotalCount > 0 && (
               <Badge variant={urgentCount > 0 ? "critical" : "muted"}>
-                {totalCount}
+                {effectiveTotalCount}
               </Badge>
             )}
           </div>
@@ -94,7 +118,7 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
               onClick={handleMarkAllRead}
               disabled={markAllMutation.isPending}
               aria-label="Marcar todas como lidas"
@@ -112,18 +136,66 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
               <Skeleton className="h-14 w-full rounded-xl" />
               <Skeleton className="h-14 w-full rounded-xl" />
             </div>
-          ) : items.length === 0 ? (
+          ) : items.length === 0 && !showOnboarding ? (
             <div className="py-2 px-4">
               <EmptyState
                 icon={<Bell className="size-5" aria-hidden="true" />}
                 title="Tudo em dia"
-                description="Nenhuma fatura ou dívida pendente."
+                description="Nenhuma fatura ou pendência no momento."
                 tone="positive"
                 className="py-6 border-0 bg-transparent"
               />
             </div>
           ) : (
-            items.slice(0, 6).map((item) => {
+            <>
+              {showOnboarding && (
+                <div
+                  onClick={handleOpenOnboarding}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleOpenOnboarding();
+                    }
+                  }}
+                  className="group flex items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-surface-hover rounded-xl cursor-pointer"
+                >
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                      <Sparkles className="size-3.5" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium text-xs truncate max-w-[11rem]">Configuração inicial</span>
+                        <Badge variant="muted" size="xs">
+                          {onboardingProg.done}/{onboardingProg.total} passos
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                        Complete seus primeiros passos na conta.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="size-7 p-0 shrink-0 opacity-80 group-hover:opacity-100 hover:bg-surface-active cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic("medium");
+                      dismiss();
+                    }}
+                    aria-label="Ignorar configuração inicial"
+                    title="Dispensar aviso"
+                  >
+                    <X className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  </Button>
+                </div>
+              )}
+
+              {items.slice(0, 6).map((item) => {
               const Icon = item.kind === "bill" ? CreditCard : HandCoins;
               return (
                 <div
@@ -176,9 +248,10 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
                   </Button>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </>
+        )}
+      </div>
 
         {/* Rodapé */}
         <footer className="border-t border-border/80 p-2 bg-surface/50 flex items-center justify-center">

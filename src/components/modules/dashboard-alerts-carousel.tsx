@@ -155,9 +155,22 @@ export function DashboardAlertsCarousel({
         </div>
       </div>
 
-      {/* Conteúdo do Alerta Atual */}
-      <div className="w-full min-w-0 transition-opacity duration-200" key={currentItem.id} aria-live="polite">
-        {currentItem.content}
+      {/* Trilha Deslizante Horizontal (Slide Track) */}
+      <div className="w-full min-w-0 overflow-hidden rounded-2xl">
+        <div
+          className="flex w-full transition-transform duration-500 ease-out will-change-transform items-stretch"
+          style={{ transform: `translateX(-${safeIndex * 100}%)` }}
+        >
+          {validItems.map((item, idx) => (
+            <div
+              key={item.id}
+              className="w-full min-w-full shrink-0 h-full flex flex-col"
+              aria-hidden={idx !== safeIndex}
+            >
+              {item.content}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

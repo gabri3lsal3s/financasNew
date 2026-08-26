@@ -1,20 +1,28 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationsPopover } from "./notifications-popover";
 
 const mockUseReminders = vi.fn();
+const mockUseOnboardingCounts = vi.fn();
 const mockSetReminderStateMutate = vi.fn();
 const mockMarkAllMutate = vi.fn();
 
 vi.mock("@/state", () => ({
   useReminders: () => mockUseReminders(),
+  useOnboardingCounts: () => mockUseOnboardingCounts(),
   useSetReminderState: () => ({ mutate: mockSetReminderStateMutate, isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: mockMarkAllMutate, isPending: false }),
 }));
 
 describe("NotificationsPopover", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockUseOnboardingCounts.mockReturnValue({
+      data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1 },
+    });
+  });
   it("renderiza lista com lembretes e permite marcar lido", async () => {
     const user = userEvent.setup();
     mockUseReminders.mockReturnValue({
@@ -75,5 +83,35 @@ describe("NotificationsPopover", () => {
 
     await user.click(screen.getByRole("button", { name: "Sininho" }));
     expect(screen.getByText("Tudo em dia")).toBeInTheDocument();
+  });
+
+  it("renderiza item de configuração inicial quando há passos incompletos e permite dispensar", async () => {
+    const user = userEvent.setup();
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 0,
+      urgentCount: 0,
+      isLoading: false,
+    });
+    mockUseOnboardingCounts.mockReturnValue({
+      data: { expenseCategories: 1, incomeCategories: 0, cards: 0, transactions: 0 },
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationsPopover>
+          <button type="button">Sininho</button>
+        </NotificationsPopover>
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sininho" }));
+    expect(screen.getByText("Configuração inicial")).toBeInTheDocument();
+    expect(screen.getByText("1/4 passos")).toBeInTheDocument();
+
+    const dismissBtn = screen.getByRole("button", { name: /Ignorar configuração inicial/i });
+    await user.click(dismissBtn);
+
+    expect(screen.queryByText("1/4 passos")).not.toBeInTheDocument();
   });
 });

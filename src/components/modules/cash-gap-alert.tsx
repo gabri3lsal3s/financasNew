@@ -39,24 +39,23 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
     <div
       role="alert"
       className={cn(
-        "flex flex-col gap-3 rounded-2xl border p-4 sm:p-5 shadow-xs transition-all",
+        "w-full h-full min-h-[120px] sm:min-h-[96px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-4 sm:p-5 shadow-xs transition-all",
         isCritical
           ? "border-critical/40 bg-critical/5 text-foreground"
           : "border-warning/40 bg-warning/5 text-foreground",
         className,
       )}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3 min-w-0">
-          <span
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-xl border mt-0.5",
-              isCritical
-                ? "bg-critical/10 border-critical/20 text-critical-strong"
-                : "bg-warning/10 border-warning/20 text-warning-strong",
-            )}
-            aria-hidden="true"
-          >
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+        <span
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-xl border",
+            isCritical
+              ? "bg-critical/10 border-critical/20 text-critical-strong"
+              : "bg-warning/10 border-warning/20 text-warning-strong",
+          )}
+          aria-hidden="true"
+        >
             {isCritical ? <ShieldAlert className="size-4.5" /> : <AlertTriangle className="size-4.5" />}
           </span>
 
@@ -84,12 +83,11 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
           variant={isCritical ? "destructive" : "outline"}
           size="sm"
           onClick={handleAction}
-          className="gap-1.5 text-xs h-8 shrink-0 self-end sm:self-center font-medium"
+          className="gap-1.5 text-xs h-8 shrink-0 self-end sm:self-center font-medium cursor-pointer"
         >
           <span>Ver Contas e Vencimentos</span>
           <ArrowRight className="size-3.5" aria-hidden="true" />
         </Button>
-      </div>
     </div>
   );
 }

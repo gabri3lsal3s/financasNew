@@ -14,3 +14,4 @@ export { useSidebarState } from "./use-sidebar-state";
 export { useSignOut } from "./use-sign-out";
 export { useSwipeNavigation } from "./use-swipe-navigation";
 export { useVisualCustomization, getVisualCustomization } from "./use-visual-customization";
+export { useOnboardingDismissed } from "./use-onboarding-dismissed";

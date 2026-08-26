@@ -11,13 +11,11 @@ import {
   DeltaHint,
   KpiCard,
   MonthPicker,
-  OnboardingCard,
   PaceAlertBanner,
   RealCashHeroCard,
   SurplusAporteBanner,
   CashGapAlert,
 } from "@/components/modules";
-import { isOnboardingComplete } from "@/domain/onboarding";
 import {
   BUDGET_STATUS_LABELS,
   budgetLimitsByCategory,
@@ -54,7 +52,6 @@ import {
   useExpensesByRange,
   useIncomes,
   useIncomesByRange,
-  useOnboardingCounts,
   usePortfolioContributions,
   useRealCashBalance,
 } from "@/state";
@@ -91,7 +88,6 @@ export function OverviewPage() {
   const debtsQuery = useDebts();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
-  const onboardingQuery = useOnboardingCounts();
   const contributionsQuery = usePortfolioContributions();
   const realCashData = useRealCashBalance(today);
 
@@ -126,8 +122,6 @@ export function OverviewPage() {
     cardPaymentsQuery.error ??
     contributionsQuery.error ??
     realCashData.error;
-
-  const onboardingComplete = onboardingQuery.data ? isOnboardingComplete(onboardingQuery.data) : false;
 
   // Computação pura dos totais do mês (§3.6). Padrão do app: BRUTO como métrica principal, informando ponderado quando houver.
   const incomeCents = weightedSum(incomesQuery.data ?? []);
@@ -351,11 +345,6 @@ export function OverviewPage() {
       id: "surplus-aporte-banner",
       priority: 4,
       content: <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />,
-    },
-    !onboardingComplete && onboardingQuery.data && {
-      id: "onboarding-card",
-      priority: 5,
-      content: <OnboardingCard counts={onboardingQuery.data} />,
     },
   ];
 

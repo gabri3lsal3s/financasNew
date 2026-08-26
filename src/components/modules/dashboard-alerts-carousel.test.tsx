@@ -56,9 +56,9 @@ describe("DashboardAlertsCarousel", () => {
       />,
     );
 
-    // O primeiro exibido deve ser o mockItemCritical (prioridade 1)
-    expect(screen.getByTestId("alert-critical")).toBeInTheDocument();
-    expect(screen.queryByTestId("alert-surplus")).not.toBeInTheDocument();
+    // O primeiro exibido deve ser o mockItemCritical (prioridade 1 com aria-hidden="false")
+    expect(screen.getByTestId("alert-critical").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("alert-surplus").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
 
     expect(screen.getByText("1 de 3")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Próximo alerta/i })).toBeInTheDocument();

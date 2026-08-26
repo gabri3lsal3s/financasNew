@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationsPopover } from "@/components/modules/notifications-popover";
-import { useReminders } from "@/state";
+import { useOnboardingCounts, useReminders } from "@/state";
+import { useOnboardingDismissed } from "@/hooks";
+import { isOnboardingComplete } from "@/domain/onboarding";
 import { cn } from "@/lib/utils";
 import { triggerHaptic } from "@/services/haptics";
 
@@ -13,13 +15,20 @@ import { triggerHaptic } from "@/services/haptics";
 export function NotificationsButton() {
   const [open, setOpen] = useState(false);
   const { totalCount, overdueCount, dueTodayCount } = useReminders();
+  const onboardingQuery = useOnboardingCounts();
+  const { isDismissed } = useOnboardingDismissed();
 
-  if (totalCount === 0) return null;
+  const showOnboarding =
+    !isDismissed && onboardingQuery?.data ? !isOnboardingComplete(onboardingQuery.data) : false;
+
+  const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0);
+
+  if (effectiveTotalCount === 0) return null;
 
   const isUrgent = overdueCount > 0;
   const isDueToday = dueTodayCount > 0;
 
-  const displayCount = totalCount > 9 ? "9+" : String(totalCount);
+  const displayCount = effectiveTotalCount > 9 ? "9+" : String(effectiveTotalCount);
 
   return (
     <NotificationsPopover open={open} onOpenChange={setOpen}>
@@ -27,7 +36,7 @@ export function NotificationsButton() {
         type="button"
         variant="ghost"
         size="icon"
-        aria-label={`Notificações: ${totalCount} pendências`}
+        aria-label={`Notificações: ${effectiveTotalCount} pendências`}
         title="Lembretes e Avisos"
         onClick={() => triggerHaptic("light")}
         className="relative overflow-visible"
@@ -49,3 +58,4 @@ export function NotificationsButton() {
     </NotificationsPopover>
   );
 }
+

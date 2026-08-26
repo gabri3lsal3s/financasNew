@@ -36,55 +36,53 @@ export function SurplusAporteBanner({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border",
+        "w-full h-full min-h-[120px] sm:min-h-[96px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border",
         className,
       )}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3 min-w-0">
-          <span
-            className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio mt-0.5"
-            aria-hidden="true"
-          >
-            <Sparkles className="size-4.5" />
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio"
+          aria-hidden="true"
+        >
+          <Sparkles className="size-4.5" />
+        </span>
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
+              Capacidade de Aporte Estimada
+            </h2>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Você possui uma sobra líquida calculada no ciclo pronta para rebalancear sua carteira.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t border-border/40 sm:border-t-0 shrink-0 self-end sm:self-center">
+        <div className="flex flex-col sm:items-end">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Disponível
           </span>
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
-                Capacidade de Aporte Estimada
-              </h2>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Você possui uma sobra líquida calculada no ciclo pronta para rebalancear sua carteira.
-            </p>
-          </div>
+          <MoneyText
+            cents={surplusCents}
+            tone="portfolio"
+            animated
+            className="text-base sm:text-lg font-bold tracking-tight"
+          />
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t border-border/40 sm:border-t-0">
-          <div className="flex flex-col sm:items-end">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-              Disponível
-            </span>
-            <MoneyText
-              cents={surplusCents}
-              tone="portfolio"
-              animated
-              className="text-base sm:text-lg font-bold tracking-tight"
-            />
-          </div>
-
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={handleAction}
-            className="gap-1.5 text-xs h-9 shrink-0 font-medium"
-          >
-            <Calculator className="size-3.5 text-portfolio" aria-hidden="true" />
-            <span>Simular Aporte</span>
-            <ArrowUpRight className="size-3.5" aria-hidden="true" />
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          onClick={handleAction}
+          className="gap-1.5 text-xs h-9 shrink-0 font-medium cursor-pointer"
+        >
+          <Calculator className="size-3.5 text-portfolio" aria-hidden="true" />
+          <span>Simular Aporte</span>
+          <ArrowUpRight className="size-3.5" aria-hidden="true" />
+        </Button>
       </div>
     </div>
   );

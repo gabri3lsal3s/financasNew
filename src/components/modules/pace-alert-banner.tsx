@@ -38,17 +38,17 @@ export function PaceAlertBanner({
     <section
       aria-label="Atenção ao ritmo de gastos"
       className={cn(
-        "flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border p-4 sm:p-5 transition-all shadow-xs",
+        "w-full h-full min-h-[120px] sm:min-h-[96px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-4 sm:p-5 transition-all shadow-xs",
         isDeficit
           ? "border-critical/40 bg-critical/5 text-foreground"
           : "border-warning/40 bg-warning/5 text-foreground",
         className,
       )}
     >
-      <div className="flex items-start gap-3 min-w-0">
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
         <span
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-xl border mt-0.5",
+            "flex size-9 shrink-0 items-center justify-center rounded-xl border",
             isDeficit
               ? "bg-critical/10 border-critical/20 text-critical-strong"
               : "bg-warning/10 border-warning/20 text-warning-strong",
