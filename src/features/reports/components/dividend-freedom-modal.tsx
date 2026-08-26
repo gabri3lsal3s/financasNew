@@ -159,15 +159,15 @@ export function DividendFreedomModal({
         </div>
 
         {freedomAnalysis.snowballAssets.length > 0 ? (
-          <div className="overflow-x-auto print:overflow-visible">
-            <table className="w-full text-left text-xs border border-border/80 rounded-xl border-separate border-spacing-0 print:table-fixed">
+          <div className="rounded-xl border border-border/80 overflow-hidden">
+            <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
-                <tr className="bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                  <th className="py-2 px-3 print:w-[18%] border-b border-border/70 first:rounded-tl-[10px]">Ticker</th>
-                  <th className="py-2 px-3 text-right print:w-[18%] border-b border-border/70">Preço Atual</th>
-                  <th className="py-2 px-3 text-right print:w-[22%] border-b border-border/70">Renda Mensal Gerada</th>
-                  <th className="py-2 px-3 text-right print:w-[20%] border-b border-border/70">Cotas Compradas / Mês</th>
-                  <th className="py-2 px-3 text-center print:w-[22%] border-b border-border/70 last:rounded-tr-[10px]">Status da Bola de Neve</th>
+                <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
+                  <th className="py-2 px-3 print:w-[18%]">Ticker</th>
+                  <th className="py-2 px-3 text-right print:w-[18%]">Preço Atual</th>
+                  <th className="py-2 px-3 text-right print:w-[22%]">Renda Mensal Gerada</th>
+                  <th className="py-2 px-3 text-right print:w-[20%]">Cotas Compradas / Mês</th>
+                  <th className="py-2 px-3 text-center print:w-[22%]">Status da Bola de Neve</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">

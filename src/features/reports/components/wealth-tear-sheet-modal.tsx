@@ -413,16 +413,16 @@ export function WealthTearSheetModal({
           height={10}
         />
 
-        <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full text-left text-xs border border-border/80 rounded-lg border-separate border-spacing-0 shadow-2xs">
+        <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
+          <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-muted/40 text-muted-foreground font-bold text-[9.5px] uppercase tracking-wider">
-                <th className="py-1.5 px-3 border-b border-border/70 first:rounded-tl-[7px]">Classe</th>
-                <th className="py-1.5 px-2.5 border-b border-border/70 text-right">Atual (R$)</th>
-                <th className="py-1.5 px-2 border-b border-border/70 text-right">Atual (%)</th>
-                <th className="py-1.5 px-2 border-b border-border/70 text-right">Meta (%)</th>
-                <th className="py-1.5 px-2.5 border-b border-border/70 text-right">Gap (R$)</th>
-                <th className="py-1.5 px-3 border-b border-border/70 text-center last:rounded-tr-[7px]">Status</th>
+              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9.5px] uppercase tracking-wider">
+                <th className="py-1.5 px-3">Classe</th>
+                <th className="py-1.5 px-2.5 text-right">Atual (R$)</th>
+                <th className="py-1.5 px-2 text-right">Atual (%)</th>
+                <th className="py-1.5 px-2 text-right">Meta (%)</th>
+                <th className="py-1.5 px-2.5 text-right">Gap (R$)</th>
+                <th className="py-1.5 px-3 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
