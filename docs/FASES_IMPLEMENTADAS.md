@@ -1034,6 +1034,26 @@
   - ESLint (`npm run lint`): 0 erros / 0 avisos;
   - Testes: 249 arquivos e 1.798/1.798 testes aprovados (100% verde).
 
+### Refinamento de Espaçamento e Ritmo Vertical de Relatórios PDF (2026-08-26)
+- **Problema:** o estilo de impressão forçava `gap: 8px !important`, comprimindo excessivamente os blocos na Página 1; as tabelas com muitos itens quebravam em bloco inteiro gerando vácuos nas Páginas 3 e 4; e faltava o símbolo `%` nos subtotais de classe de ativos.
+- **Solução:**
+  1. Remoção do `gap: 8px !important` forçado em `globals.css`, adoção de ritmo vertical editorial (`gap-4.5` / `gap-5` entre seções, margens `@page` de `10mm 12mm 10mm 12mm`);
+  2. Aumento de padding em `ReportExecutiveSummary` e `ReportRiskGauge` (`p-4.5 print:p-4`);
+  3. Respiro de células nas tabelas de custódia (`py-1.5 px-2.5`) e quebra fluida de linhas com repetição de cabeçalho (`thead`);
+  4. Correção do percentual nos subtotais de classe (`{formatPercent(group.sharePct)}% da carteira`);
+  5. Estruturação editorial da Página 1 (Dashboard Executivo) e Página 2+ (Custódia com `print:break-before-page`).
+- **Arquivos alterados:**
+  - `src/styles/globals.css`
+  - `src/components/modules/reports/report-header.tsx`
+  - `src/components/modules/reports/report-footer.tsx`
+  - `src/components/modules/reports/report-executive-summary.tsx`
+  - `src/components/modules/reports/report-risk-gauge.tsx`
+  - `src/components/modules/reports/report-class-tables.tsx`
+  - `src/components/modules/reports/reports.test.tsx`
+  - `src/features/reports/components/wealth-tear-sheet-modal.tsx`
+  - `docs/DESIGN_SYSTEM.md`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

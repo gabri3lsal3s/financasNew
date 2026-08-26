@@ -46,7 +46,7 @@ export function ReportHeader({
   return (
     <header
       className={cn(
-        "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/80 pb-4 print:flex-row print:items-start print:pb-3",
+        "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/80 pb-4 print:flex-row print:items-start print:pb-3.5 print:border-border/80",
         className,
       )}
     >

@@ -26,17 +26,17 @@ export function ReportExecutiveSummary({
   return (
     <section
       aria-label={title}
-      className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/30 p-3.5 print:bg-white print:border-slate-200 shadow-2xs"
+      className="break-inside-avoid flex flex-col gap-3 rounded-xl border border-border/80 bg-muted/30 p-4.5 print:p-4 print:bg-white print:border-slate-200/90 shadow-2xs"
     >
       {/* Título de Seção Sutil */}
-      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/70 pb-1 flex items-center justify-between">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/70 pb-1.5 flex items-center justify-between">
         <span>{title}</span>
       </div>
 
       {/* Grade Horizontal de Métricas */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-2.5 py-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-3.5 sm:gap-4 print:gap-4 py-0.5">
         {items.map((item, idx) => (
-          <div key={idx} className="flex flex-col">
+          <div key={idx} className="flex flex-col gap-0.5">
             <span className="text-[10px] uppercase font-bold tracking-tight text-muted-foreground">
               {item.label}
             </span>
@@ -44,7 +44,7 @@ export function ReportExecutiveSummary({
               {item.value}
             </div>
             {item.subtext && (
-              <span className="text-[10px] text-muted-foreground font-medium leading-tight">
+              <span className="text-[10.5px] text-muted-foreground font-medium leading-tight">
                 {item.subtext}
               </span>
             )}
@@ -54,7 +54,7 @@ export function ReportExecutiveSummary({
 
       {/* Parecer / Contexto Narrativo */}
       {narrative && (
-        <div className="pt-1.5 border-t border-border/70 text-[11px] leading-relaxed text-foreground print:text-black">
+        <div className="pt-2.5 border-t border-border/70 text-[11px] leading-relaxed text-foreground print:text-slate-900">
           {typeof narrative === "string" ? (
             <p className="m-0 font-normal">{narrative}</p>
           ) : (

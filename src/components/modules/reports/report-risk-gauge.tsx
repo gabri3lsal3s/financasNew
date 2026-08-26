@@ -37,7 +37,7 @@ export function ReportRiskGauge({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-muted/30 p-3.5 break-inside-avoid print:bg-white print:border-slate-200 shadow-2xs",
+        "flex flex-col gap-3 rounded-xl border border-border/80 bg-muted/30 p-4.5 print:p-4 break-inside-avoid print:bg-white print:border-slate-200/90 shadow-2xs",
         className,
       )}
     >
@@ -66,7 +66,7 @@ export function ReportRiskGauge({
       </div>
 
       {/* Barra de Zonas de Risco com Marcador */}
-      <div className="relative flex flex-col gap-1 pt-3 pb-0.5">
+      <div className="relative flex flex-col gap-1 pt-3.5 pb-1">
         {/* Barra de Gradiente / Zonas */}
         <div className="relative h-2 w-full rounded-full overflow-hidden flex border border-border/80">
           <div style={{ width: `${warningThresholdPct}%` }} className="h-full bg-positive-strong" title="Zona Segura" />
@@ -84,7 +84,7 @@ export function ReportRiskGauge({
 
         {/* Marcador do Maior Ativo com indicador e valor */}
         <div
-          className="absolute top-0 transform -translate-x-1/2 flex flex-col items-center pointer-events-none z-10"
+          className="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center pointer-events-none z-10"
           style={{ left: `${clampPosition}%` }}
         >
           <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-foreground text-background leading-none shadow-2xs">
@@ -103,7 +103,7 @@ export function ReportRiskGauge({
       </div>
 
       {/* Diagnóstico Contextual Neutro / Estatístico */}
-      <p className="text-[11px] text-muted-foreground leading-snug">
+      <p className="text-[11px] text-muted-foreground leading-snug pt-0.5 print:text-slate-900">
         Maior ativo na carteira: <strong className="font-semibold text-foreground">{topItemName || "N/A"}</strong> representando{" "}
         <strong className="num font-mono font-bold text-foreground">{topItemPct.toFixed(1)}%</strong> do patrimônio total.
         {isSafe && " Concentração individual dentro do parâmetro de referência (≤ 15%)."}

@@ -6,7 +6,6 @@ import {
   ReportExecutiveSummary,
   ReportClassTables,
   ReportStackedBar,
-  ReportGapPinBar,
   ReportRiskGauge,
   ReportFooter,
 } from "@/components/modules";
@@ -128,16 +127,6 @@ export function WealthTearSheetModal({
     label: cg.assetClass.toUpperCase(),
     pct: cg.currentPct,
     color: CLASS_COLORS[cg.assetClass.toLowerCase()] ?? "#64748b",
-  }));
-
-  // Itens para barra de pin/gaps de metas por classe
-  const gapPinItems = allocationAnalysis.classGaps.map((cg) => ({
-    key: cg.assetClass,
-    label: cg.assetClass.toUpperCase(),
-    actualPct: cg.currentPct,
-    targetPct: cg.targetPct,
-    gapPct: cg.currentPct - cg.targetPct,
-    color: CLASS_COLORS[cg.assetClass.toLowerCase()] ?? "#1b6b62",
   }));
 
   // Ativo mais dominante para o termômetro de risco
@@ -357,7 +346,7 @@ export function WealthTearSheetModal({
 
       {/* 3. Sumário de Movimentação do Mês Vigente */}
       {monthSummary && (
-        <div className="bg-muted/40 rounded-lg border border-border/80 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs print:bg-slate-50 print:border-slate-300">
+        <div className="bg-muted/30 rounded-xl border border-border/80 px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs print:bg-white print:border-slate-200/90 shadow-2xs">
           <div className="flex items-center gap-1.5 text-foreground font-bold uppercase tracking-wider text-[10px]">
             <Calendar className="size-3.5 text-primary-strong" aria-hidden="true" />
             <span>Movimentação do Mês ({monthSummary.monthLabel}):</span>
@@ -378,8 +367,8 @@ export function WealthTearSheetModal({
       )}
 
       {/* 4. Diagnóstico de Metas & Alocação */}
-      <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-2.5">
-        <div className="flex items-center justify-between border-b border-border/70 pb-1">
+      <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-3">
+        <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
           <div className="flex items-center gap-1.5">
             <PieChart className="size-3.5 text-primary-strong" aria-hidden="true" />
             <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
@@ -397,43 +386,43 @@ export function WealthTearSheetModal({
           height={10}
         />
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full text-left text-xs border border-border/80 rounded-lg border-separate border-spacing-0 shadow-2xs">
             <thead>
-              <tr className="bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-1 px-2.5 border-b border-border/70 first:rounded-tl-[7px]">Classe</th>
-                <th className="py-1 px-2 border-b border-border/70 text-right">Atual (R$)</th>
-                <th className="py-1 px-2 border-b border-border/70 text-right">Atual (%)</th>
-                <th className="py-1 px-2 border-b border-border/70 text-right">Meta (%)</th>
-                <th className="py-1 px-2 border-b border-border/70 text-right">Gap (R$)</th>
-                <th className="py-1 px-2.5 border-b border-border/70 text-center last:rounded-tr-[7px]">Status</th>
+              <tr className="bg-muted/40 text-muted-foreground font-bold text-[9.5px] uppercase tracking-wider">
+                <th className="py-1.5 px-3 border-b border-border/70 first:rounded-tl-[7px]">Classe</th>
+                <th className="py-1.5 px-2.5 border-b border-border/70 text-right">Atual (R$)</th>
+                <th className="py-1.5 px-2 border-b border-border/70 text-right">Atual (%)</th>
+                <th className="py-1.5 px-2 border-b border-border/70 text-right">Meta (%)</th>
+                <th className="py-1.5 px-2.5 border-b border-border/70 text-right">Gap (R$)</th>
+                <th className="py-1.5 px-3 border-b border-border/70 text-center last:rounded-tr-[7px]">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {allocationAnalysis.classGaps.map((cg) => (
-                <tr key={cg.assetClass} className="even:bg-muted/20">
-                  <td className="py-1 px-2.5 font-semibold text-foreground capitalize">
+                <tr key={cg.assetClass} className="even:bg-muted/20 print:even:bg-slate-50/50">
+                  <td className="py-1.5 px-3 font-semibold text-foreground capitalize">
                     {cg.assetClass}
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono font-bold text-foreground">
+                  <td className="py-1.5 px-2.5 text-right num font-mono font-bold text-foreground">
                     <MoneyText cents={numberToCents(cg.currentBRL)} tone="default" />
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono text-muted-foreground">
-                    {formatPercent(cg.currentPct)}
+                  <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground">
+                    {formatPercent(cg.currentPct)}%
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono text-muted-foreground">
-                    {formatPercent(cg.targetPct)}
+                  <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground">
+                    {formatPercent(cg.targetPct)}%
                   </td>
-                  <td className="py-1 px-2 text-right num font-mono">
+                  <td className="py-1.5 px-2.5 text-right num font-mono">
                     {cg.gapBRL > 0 ? (
                       <MoneyText cents={numberToCents(cg.gapBRL)} className="font-bold text-primary-strong" />
                     ) : (
                       <span className="text-muted-foreground/60">—</span>
                     )}
                   </td>
-                  <td className="py-1 px-2.5 text-center">
+                  <td className="py-1.5 px-3 text-center">
                     <span
-                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
                         cg.gapBRL > 0
                           ? "bg-primary/10 text-primary-strong border border-primary/20"
                           : cg.currentPct > cg.targetPct && cg.targetPct > 0
@@ -449,10 +438,6 @@ export function WealthTearSheetModal({
             </tbody>
           </table>
         </div>
-
-        <div className="pt-0.5">
-          <ReportGapPinBar items={gapPinItems} />
-        </div>
       </section>
 
       {/* 5. Termômetro de Concentração e Risco */}
@@ -465,9 +450,12 @@ export function WealthTearSheetModal({
         />
       </section>
 
-      {/* 6. Custódia Consolidada Especializada */}
-      <section aria-label="Custódia de Ativos" className="flex flex-col gap-2 pt-1">
-        <div className="flex items-center justify-between border-b border-border/70 pb-1">
+      {/* 6. Custódia Consolidada Especializada (Inicia na Página 2 na Impressão) */}
+      <section
+        aria-label="Custódia de Ativos"
+        className="flex flex-col gap-3 pt-1 print:pt-0 print-break-before-page print:break-before-page"
+      >
+        <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
           <div className="flex items-center gap-1.5">
             <Layers className="size-3.5 text-primary-strong" aria-hidden="true" />
             <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">

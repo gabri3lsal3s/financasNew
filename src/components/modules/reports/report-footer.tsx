@@ -40,7 +40,7 @@ export function ReportFooter({
   return (
     <footer
       className={cn(
-        "mt-auto pt-4 border-t border-border/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[10px] text-muted-foreground print:text-[9px] print:pt-2",
+        "mt-auto pt-4 border-t border-border/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[10px] text-muted-foreground print:text-[9.5px] print:pt-3 print:mt-4 print:border-border/80",
         className,
       )}
     >

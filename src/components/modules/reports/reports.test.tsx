@@ -110,7 +110,7 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText("Termômetro de Concentração & Risco")).toBeInTheDocument();
     expect(screen.getByText(/PETR4/)).toBeInTheDocument();
     expect(screen.getAllByText("18.5%").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Atenção (Concentração Moderada)")).toBeInTheDocument();
+    expect(screen.getByText("Concentração Moderada")).toBeInTheDocument();
   });
 
   it("renderiza ReportDividendSparkline com 12 meses", () => {
