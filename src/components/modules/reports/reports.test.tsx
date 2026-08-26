@@ -11,6 +11,7 @@ import {
   ReportDividendSparkline,
   ReportWaterfallBar,
   ReportGapPinBar,
+  ReportClassTables,
   ReportDocumentLayout,
 } from "./index";
 
@@ -160,6 +161,43 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText("35.0%")).toBeInTheDocument();
     expect(screen.getByText("40.0%")).toBeInTheDocument();
     expect(screen.getByText("-5.0%")).toBeInTheDocument();
+  });
+
+  it("renderiza ReportClassTables com mini-quadro de resumo de classe e ativos", () => {
+    render(
+      <ReportClassTables
+        groups={[
+          {
+            className: "Ações",
+            totalCents: 2675306,
+            sharePct: 25.3,
+            pnlPct: 16.5,
+            totalCostCents: 2296000,
+            topAssetTicker: "PSSA3",
+            topAssetSharePct: 14.8,
+            items: [
+              {
+                ticker: "PSSA3",
+                name: "Porto Seguro",
+                sector: "Seguros",
+                quantity: 81,
+                avgPriceCents: 3564,
+                currentPriceCents: 4892,
+                totalCents: 396252,
+                pnlPct: 44.9,
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText(/Ações/i)).toBeInTheDocument();
+    expect(screen.getByText("Posição Atual")).toBeInTheDocument();
+    expect(screen.getByText("Capital Investido")).toBeInTheDocument();
+    expect(screen.getByText("Posição Dominante")).toBeInTheDocument();
+    expect(screen.getAllByText("PSSA3").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Seguros")).toBeInTheDocument();
   });
 
   it("renderiza ReportDocumentLayout com modal e ações de impressão", () => {

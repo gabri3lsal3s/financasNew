@@ -1035,15 +1035,24 @@
   - Testes: 249 arquivos e 1.798/1.798 testes aprovados (100% verde).
 
 ### Refinamento de Espaçamento e Ritmo Vertical de Relatórios PDF (2026-08-26)
-- **Problema:** o estilo de impressão forçava `gap: 8px !important`, comprimindo excessivamente os blocos na Página 1; as tabelas com muitos itens quebravam em bloco inteiro gerando vácuos nas Páginas 3 e 4; e faltava o símbolo `%` nos subtotais de classe de ativos.
+- **Problema:** o estilo de impressão forçava `gap: 8px !important`, comprimindo excessivamente os blocos na Página 1; as tabelas com muitos itens quebravam em bloco inteiro gerando vácuos nas Páginas 3 e 4; faltava o símbolo `%` nos subtotais de classe de ativos; nomes de setores eram truncados com reticências (`...`); tabelas de classes eram cortadas no meio entre páginas; e valores em USD usavam notação colada (`$430.48`).
 - **Solução:**
   1. Remoção do `gap: 8px !important` forçado em `globals.css`, adoção de ritmo vertical editorial (`gap-4.5` / `gap-5` entre seções, margens `@page` de `10mm 12mm 10mm 12mm`);
   2. Aumento de padding em `ReportExecutiveSummary` e `ReportRiskGauge` (`p-4.5 print:p-4`);
-  3. Respiro de células nas tabelas de custódia (`py-1.5 px-2.5`) e quebra fluida de linhas com repetição de cabeçalho (`thead`);
-  4. Correção do percentual nos subtotais de classe (`{formatPercent(group.sharePct)}% da carteira`);
-  5. Estruturação editorial da Página 1 (Dashboard Executivo) e Página 2+ (Custódia com `print:break-before-page`).
+  3. **Mini-Quadros Executivos por Classe (`ReportClassTables`):** adicionado painel de 4 mini-KPIs (Posição Atual, Capital Investido, Retorno Total Real e Posição Dominante com respectivo peso na classe);
+  4. **Acentos Cromáticos Institucionais:** cabeçalhos de classe com barra lateral `border-l-4` e marcadores nas cores oficiais (Teal para Ações, Âmbar para FIIs, Azul Céu para Internacional e Turquesa para Renda Fixa);
+  5. **Paginação Temática Fechada (Zero Tabelas Partidas):**
+     - Página 1: Capa Executiva & Diagnóstico Consolidado;
+     - Página 2: Ações (16 ativos + mini-resumo);
+     - Página 3: FIIs (13 ativos) + Internacional (12 ativos) com quebra no topo;
+     - Página 4: Renda Fixa (21 ativos) + Rodapé Institucional;
+  6. **Eliminação de Truncamento:** remoção de `truncate` em setores/emissores (`whitespace-normal break-words leading-tight`);
+  7. **Padronização Monetária USD:** formato em locale pt-BR com prefixo explícito (`US$ 430,48`);
+  8. Correção do percentual nos subtotais de classe (`{formatPercent(group.sharePct)}% da carteira`).
 - **Arquivos alterados:**
   - `src/styles/globals.css`
+  - `src/services/masks/money.ts`
+  - `src/services/masks/money.test.ts`
   - `src/components/modules/reports/report-header.tsx`
   - `src/components/modules/reports/report-footer.tsx`
   - `src/components/modules/reports/report-executive-summary.tsx`

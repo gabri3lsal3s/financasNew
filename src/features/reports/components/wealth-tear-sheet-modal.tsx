@@ -148,31 +148,56 @@ export function WealthTearSheetModal({
       list.push(row);
       groups.set(cls, list);
     }
-    return Array.from(groups.entries()).map(([assetClass, items]) => {
-      const subtotalBRL = items.reduce((acc, i) => acc + i.valueBRL, 0);
-      const subtotalCostBRL = items.reduce((acc, i) => {
-        const cost = i.totalCostBRL ?? (i.averagePrice * i.quantity);
-        return acc + Math.max(0, cost);
-      }, 0);
-      const subtotalPnlBRL = items.reduce((acc, i) => acc + i.unrealizedPnlBRL, 0);
-      const subtotalDividendsBRL = items.reduce((acc, i) => acc + (i.dividendsBRL ?? 0), 0);
-      const subtotalTotalReturnBRL = subtotalPnlBRL + subtotalDividendsBRL;
-      const subtotalTotalReturnPct = subtotalCostBRL > 0 ? (subtotalTotalReturnBRL / subtotalCostBRL) * 100 : 0;
-      const subtotalUnrealizedPct = subtotalCostBRL > 0 ? (subtotalPnlBRL / subtotalCostBRL) * 100 : 0;
-      const pctOfTotal = totalBRL > 0 ? (subtotalBRL / totalBRL) * 100 : 0;
-      return {
-        assetClass,
-        items,
-        subtotalBRL,
-        subtotalCostBRL,
-        subtotalPnlBRL,
-        subtotalDividendsBRL,
-        subtotalTotalReturnBRL,
-        subtotalTotalReturnPct,
-        subtotalUnrealizedPct,
-        pctOfTotal,
-      };
-    });
+    const CLASS_SORT_ORDER = ["acoes", "acao", "fiis", "fii", "internacional", "renda fixa", "renda_fixa"];
+
+    return Array.from(groups.entries())
+      .sort(([clsA], [clsB]) => {
+        const idxA = CLASS_SORT_ORDER.indexOf(clsA.toLowerCase());
+        const idxB = CLASS_SORT_ORDER.indexOf(clsB.toLowerCase());
+        const orderA = idxA >= 0 ? idxA : 99;
+        const orderB = idxB >= 0 ? idxB : 99;
+        return orderA - orderB;
+      })
+      .map(([assetClass, items]) => {
+        const subtotalBRL = items.reduce((acc, i) => acc + i.valueBRL, 0);
+        const subtotalCostBRL = items.reduce((acc, i) => {
+          const cost = i.totalCostBRL ?? (i.averagePrice * i.quantity);
+          return acc + Math.max(0, cost);
+        }, 0);
+        const subtotalPnlBRL = items.reduce((acc, i) => acc + i.unrealizedPnlBRL, 0);
+        const subtotalDividendsBRL = items.reduce((acc, i) => acc + (i.dividendsBRL ?? 0), 0);
+        const subtotalTotalReturnBRL = subtotalPnlBRL + subtotalDividendsBRL;
+        const subtotalTotalReturnPct = subtotalCostBRL > 0 ? (subtotalTotalReturnBRL / subtotalCostBRL) * 100 : 0;
+        const subtotalUnrealizedPct = subtotalCostBRL > 0 ? (subtotalPnlBRL / subtotalCostBRL) * 100 : 0;
+        const pctOfTotal = totalBRL > 0 ? (subtotalBRL / totalBRL) * 100 : 0;
+
+        const sortedItems = [...items].sort((a, b) => b.valueBRL - a.valueBRL);
+        const topItem = sortedItems[0];
+        const topAssetTicker = topItem?.ticker ?? undefined;
+        const topAssetSharePct = subtotalBRL > 0 && topItem ? (topItem.valueBRL / subtotalBRL) * 100 : undefined;
+
+        const isFII = assetClass.toLowerCase().includes("fii");
+        const isRendaFixa =
+          assetClass.toLowerCase().includes("fixa") ||
+          assetClass.toLowerCase().includes("tesouro");
+        const printBreakBefore = isFII || isRendaFixa;
+
+        return {
+          assetClass,
+          items,
+          subtotalBRL,
+          subtotalCostBRL,
+          subtotalPnlBRL,
+          subtotalDividendsBRL,
+          subtotalTotalReturnBRL,
+          subtotalTotalReturnPct,
+          subtotalUnrealizedPct,
+          pctOfTotal,
+          topAssetTicker,
+          topAssetSharePct,
+          printBreakBefore,
+        };
+      });
   }, [investmentRows, totalBRL]);
 
   // Narrativa analítica factual e dinâmica com Retorno Total e sem prescrição de compra
@@ -473,6 +498,11 @@ export function WealthTearSheetModal({
             totalCents: numberToCents(group.subtotalBRL),
             sharePct: group.pctOfTotal,
             pnlPct: group.subtotalTotalReturnPct,
+            totalCostCents: numberToCents(group.subtotalCostBRL),
+            totalDividendsCents: numberToCents(group.subtotalDividendsBRL),
+            topAssetTicker: group.topAssetTicker,
+            topAssetSharePct: group.topAssetSharePct,
+            printBreakBefore: group.printBreakBefore,
             items: group.items.map((r) => ({
               ticker: r.ticker,
               name: r.name,

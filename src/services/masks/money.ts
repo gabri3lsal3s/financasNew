@@ -13,7 +13,7 @@ const brlFormatter = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 2,
 });
 
-const usdFormatter = new Intl.NumberFormat("en-US", {
+const usdFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "USD",
   minimumFractionDigits: 2,
