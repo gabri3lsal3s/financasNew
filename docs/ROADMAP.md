@@ -27,6 +27,14 @@
 
 
 
+> **v2.06** registra a **Modernização do Motor de Relatórios Executivos & Dossiês em PDF (A4): Paginação Fluida e Dinâmica, Sanitização Tipográfica de Tickers, Zebra Striping e Blindagem do CSS de Impressão** (2026-08-25):
+> - **(1) Correção Crítica do Seletor CSS Global (`globals.css`)**: remoção do seletor genérico forçado `.print-sheet section { display: flex !important; }`, eliminando o vazamento de seções interativas de tela no PDF (que gerava 5 páginas em branco no Dossiê Fiscal) e restabelecendo o layout em grade horizontal de 4 colunas nos KPIs (`<ReportKpiGrid>`) no topo da página 1 do Dossiê de Carteira;
+> - **(2) Paginação Fluida e Adaptativa para Qualquer Volume de Dados**: eliminação de quebras artificiais de página, permitindo que carteiras enxutas ocupem 1 a 2 páginas limpas e carteiras com alto volume (60 a 100+ ativos) fluam de forma contínua com repetição automática de cabeçalho (`thead`) no topo de cada folha;
+> - **(3) Sanitização Tipográfica Pura (`sanitizeReportText`)**: função pura em `src/domain/reports/` com testes unitários normalizando hífens especiais Unicode (`\u2011`, `\u2013`), espaços sem quebra e caracteres invisíveis para ASCII padrão, eliminando os caracteres corrompidos com losango e interrogação (``) em títulos como `CDB-BMG-JAN27` e `TESOURO-IPCA-29`;
+> - **(4) Conforto Ergonômico de Leitura & Alto Contraste**: introdução de zebra striping suave (`even:bg-slate-50/50`) em todas as tabelas contábeis de custódia, Bens & Direitos, DRE e proventos, aliada a cabeçalhos em alto contraste (`bg-slate-100 text-slate-700 font-bold uppercase text-[10px]`) e alinhamento numérico à direita em fonte mono tabular;
+> - **(5) Refinamento de Gráficos Vetoriais e Indicadores**: microseparadores na barra de alocação empilhada (`ReportStackedBar`), ponteiro contido no termômetro de risco (`ReportRiskGauge`), mini-cards de déficits setoriais com hierarquia visual clara e tratamento gracioso de seções vazias (*zero-state* com avisos institucionais discretos em vez de tabelas ocas);
+> - **(6) Suíte 100% Verde**: 249 arquivos / 1.798 testes passando, zero erros de typecheck e zero violações de linter.
+
 > **v2.05** registra o **Refinamento e Reengenharia Sequencial das Fases 55, 56 e 57 — Pipeline Anti-Retrabalho, Fundação de Estado, Design System Responsivo & Modularização Estrutural** (2026-08-25):
 
 > - **(1) Eliminação de Dependências Circulares e Retrabalho**: reorganização estrita da ordem de execução: a **Fundação de Estado, Tipos Canônicos e Primitivos de UI** passa a ser o Bloco 1 (**Fase 55**), o **Design System Responsivo, Shell Global e Navegação Mobile-First** passa a ser o Bloco 2 (**Fase 56**), e a **Modularização Estrutural de Monólitos, Adoção Global e Governança** consolida-se no Bloco 3 (**Fase 57**);

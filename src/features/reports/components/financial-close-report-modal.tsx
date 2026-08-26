@@ -15,6 +15,7 @@ import {
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { formatPercent } from "@/services/masks/percent";
+import { sanitizeReportText } from "@/domain/reports";
 
 export interface FinancialDREData {
   grossIncomeCents: number;
@@ -199,10 +200,10 @@ export function FinancialCloseReportModal({
       )}
 
       {/* 4. Seção: Demonstração Contábil (DRE Pessoal) */}
-      <section aria-label="Demonstração do Resultado do Exercício" className="break-inside-avoid flex flex-col gap-3">
-        <div className="flex items-center gap-2 border-b border-border/80 pb-2">
-          <Landmark className="size-4 text-primary-strong" aria-hidden="true" />
-          <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-foreground">
+      <section aria-label="Demonstração do Resultado do Exercício" className="break-inside-avoid flex flex-col gap-2.5">
+        <div className="flex items-center gap-2 border-b border-border/80 pb-1.5">
+          <Landmark className="size-3.5 text-primary-strong" aria-hidden="true" />
+          <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
             DRE Pessoal — Demonstração do Período
           </h2>
         </div>
@@ -210,10 +211,10 @@ export function FinancialCloseReportModal({
         <div className="overflow-x-auto rounded-xl border border-border/80 bg-surface print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-semibold">
-                <th className="py-2.5 px-3">Linha / Estrutura Contábil</th>
-                <th className="py-2.5 px-3 text-right">Valor Bruto (R$)</th>
-                <th className="py-2.5 px-3 text-right">% Receita</th>
+              <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                <th className="py-2 px-3">Linha / Estrutura Contábil</th>
+                <th className="py-2 px-3 text-right">Valor Bruto (R$)</th>
+                <th className="py-2 px-3 text-right">% Receita</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -280,14 +281,14 @@ export function FinancialCloseReportModal({
                 </td>
               </tr>
               <tr className="bg-primary/5 font-bold border-t border-border">
-                <td className="py-2.5 px-3 text-primary-strong">(=) Fluxo de Caixa Líquido Final</td>
-                <td className="py-2.5 px-3 text-right num font-mono text-sm">
+                <td className="py-2 px-3 text-primary-strong">(=) Fluxo de Caixa Líquido Final</td>
+                <td className="py-2 px-3 text-right num font-mono text-sm font-bold">
                   <MoneyText
                     cents={effectiveGrossSavingsBruto - dre.investedAporteCents}
                     tone={effectiveGrossSavingsBruto - dre.investedAporteCents >= 0 ? "positive" : "negative"}
                   />
                 </td>
-                <td className="py-2.5 px-3 text-right num font-mono text-primary-strong">
+                <td className="py-2 px-3 text-right num font-mono text-primary-strong">
                   {effectiveGrossIncomeBruto > 0
                     ? `${(((effectiveGrossSavingsBruto - dre.investedAporteCents) / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
                     : "—"}
@@ -304,38 +305,38 @@ export function FinancialCloseReportModal({
       </section>
 
       {/* 5. Seção: Distribuição por Categorias & Formas de Pagamento */}
-      <section aria-label="Composição de Gastos" className="grid grid-cols-1 sm:grid-cols-2 gap-4 break-inside-avoid print:grid-cols-2">
+      <section aria-label="Composição de Gastos" className="grid grid-cols-1 sm:grid-cols-2 gap-3 break-inside-avoid print:grid-cols-2">
         {/* Tabela de Categorias */}
-        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4 print:bg-white print:border-border">
+        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 print:bg-white print:border-border shadow-2xs">
           <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
-            <PieChart className="size-4 text-primary-strong" aria-hidden="true" />
+            <PieChart className="size-3.5 text-primary-strong" aria-hidden="true" />
             <span>DESPESAS POR CATEGORIA</span>
           </div>
           {categories.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">Nenhum gasto registrado no período.</p>
+            <p className="text-xs text-muted-foreground py-2 italic">Nenhum gasto registrado no período.</p>
           ) : (
             <div className="overflow-x-auto print:overflow-visible">
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-border/60 text-muted-foreground text-left">
-                    <th className="py-1.5 font-medium">Categoria</th>
-                    <th className="py-1.5 text-right font-medium">Total Bruto</th>
-                    <th className="py-1.5 text-right font-medium">%</th>
+                  <tr className="border-b border-border/60 text-slate-700 font-bold text-[10px] uppercase tracking-wider text-left bg-slate-50">
+                    <th className="py-1 px-1.5 font-bold">Categoria</th>
+                    <th className="py-1 px-1.5 text-right font-bold">Total Bruto</th>
+                    <th className="py-1 px-1.5 text-right font-bold">%</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
                   {categories.map((cat) => (
-                    <tr key={cat.name}>
-                      <td className="py-1.5 font-medium text-foreground">{cat.name}</td>
-                      <td className="py-1.5 text-right num font-mono">
-                        <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-semibold" />
+                    <tr key={cat.name} className="even:bg-slate-50/50 print:even:bg-slate-50/50">
+                      <td className="py-1.5 px-1.5 font-medium text-foreground">{sanitizeReportText(cat.name)}</td>
+                      <td className="py-1.5 px-1.5 text-right num font-mono">
+                        <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" />
                         {hasBrutoRef && cat.brutoCents !== undefined && cat.ponderadoCents !== undefined && cat.brutoCents !== cat.ponderadoCents && (
                           <span className="block text-[10px] text-muted-foreground font-normal">
                             Ponderado: <MoneyText cents={cat.ponderadoCents} tone="default" className="inline text-[10px]" />
                           </span>
                         )}
                       </td>
-                      <td className="py-1.5 text-right num font-mono text-muted-foreground">
+                      <td className="py-1.5 px-1.5 text-right num font-mono text-muted-foreground">
                         {cat.pct.toFixed(1).replace(".", ",")}%
                       </td>
                     </tr>
@@ -347,36 +348,36 @@ export function FinancialCloseReportModal({
         </div>
 
         {/* Tabela de Formas de Pagamento */}
-        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4 print:bg-white print:border-border">
+        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 print:bg-white print:border-border shadow-2xs">
           <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
-            <Wallet className="size-4 text-primary-strong" aria-hidden="true" />
+            <Wallet className="size-3.5 text-primary-strong" aria-hidden="true" />
             <span>FORMAS DE PAGAMENTO</span>
           </div>
           {paymentMethods.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">Nenhuma transação registrada no período.</p>
+            <p className="text-xs text-muted-foreground py-2 italic">Nenhuma transação registrada no período.</p>
           ) : (
             <div className="overflow-x-auto print:overflow-visible">
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-border/60 text-muted-foreground text-left">
-                    <th className="py-1.5 font-medium">Meio de Pagamento</th>
-                    <th className="py-1.5 text-right font-medium">Total Bruto</th>
-                    <th className="py-1.5 text-right font-medium">%</th>
+                  <tr className="border-b border-border/60 text-slate-700 font-bold text-[10px] uppercase tracking-wider text-left bg-slate-50">
+                    <th className="py-1 px-1.5 font-bold">Meio de Pagamento</th>
+                    <th className="py-1 px-1.5 text-right font-bold">Total Bruto</th>
+                    <th className="py-1 px-1.5 text-right font-bold">%</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
                   {paymentMethods.map((pm) => (
-                    <tr key={pm.method}>
-                      <td className="py-1.5 font-medium text-foreground">{pm.label}</td>
-                      <td className="py-1.5 text-right num font-mono">
-                        <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" className="font-semibold" />
+                    <tr key={pm.method} className="even:bg-slate-50/50 print:even:bg-slate-50/50">
+                      <td className="py-1.5 px-1.5 font-medium text-foreground">{sanitizeReportText(pm.label)}</td>
+                      <td className="py-1.5 px-1.5 text-right num font-mono">
+                        <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" className="font-bold" />
                         {hasBrutoRef && pm.brutoCents !== undefined && pm.ponderadoCents !== undefined && pm.brutoCents !== pm.ponderadoCents && (
                           <span className="block text-[10px] text-muted-foreground font-normal">
                             Ponderado: <MoneyText cents={pm.ponderadoCents} tone="default" className="inline text-[10px]" />
                           </span>
                         )}
                       </td>
-                      <td className="py-1.5 text-right num font-mono text-muted-foreground">
+                      <td className="py-1.5 px-1.5 text-right num font-mono text-muted-foreground">
                         {pm.pct.toFixed(1).replace(".", ",")}%
                       </td>
                     </tr>
@@ -390,28 +391,28 @@ export function FinancialCloseReportModal({
 
       {/* 6. Seção: Faturas de Cartão Pagas no Período (se houver) */}
       {paidInvoices.length > 0 && (
-        <section aria-label="Faturas Pagas" className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-4">
+        <section aria-label="Faturas Pagas" className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-2xs">
           <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
-            <ReceiptText className="size-4 text-primary-strong" aria-hidden="true" />
+            <ReceiptText className="size-3.5 text-primary-strong" aria-hidden="true" />
             <span>FATURAS DE CARTÃO QUITADAS NO PERÍODO</span>
           </div>
           <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="border-b border-border/60 text-muted-foreground text-left">
-                  <th className="py-1.5 font-medium">Cartão</th>
-                  <th className="py-1.5 font-medium">Competência</th>
-                  <th className="py-1.5 font-medium">Data Pgto</th>
-                  <th className="py-1.5 text-right font-medium">Valor Pago</th>
+                <tr className="border-b border-border/60 text-slate-700 font-bold text-[10px] uppercase tracking-wider text-left bg-slate-50">
+                  <th className="py-1 px-2 font-bold">Cartão</th>
+                  <th className="py-1 px-2 font-bold">Competência</th>
+                  <th className="py-1 px-2 font-bold">Data Pgto</th>
+                  <th className="py-1 px-2 text-right font-bold">Valor Pago</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {paidInvoices.map((inv, idx) => (
-                  <tr key={`${inv.cardName}-${inv.competenceMonth}-${idx}`}>
-                    <td className="py-1.5 font-medium text-foreground">{inv.cardName}</td>
-                    <td className="py-1.5 text-muted-foreground">{inv.competenceMonth}</td>
-                    <td className="py-1.5 text-muted-foreground">{formatDateBR(inv.date)}</td>
-                    <td className="py-1.5 text-right num font-mono font-semibold">
+                  <tr key={`${inv.cardName}-${inv.competenceMonth}-${idx}`} className="even:bg-slate-50/50 print:even:bg-slate-50/50">
+                    <td className="py-1.5 px-2 font-medium text-foreground">{sanitizeReportText(inv.cardName)}</td>
+                    <td className="py-1.5 px-2 text-muted-foreground">{inv.competenceMonth}</td>
+                    <td className="py-1.5 px-2 text-muted-foreground">{formatDateBR(inv.date)}</td>
+                    <td className="py-1.5 px-2 text-right num font-mono font-bold">
                       <MoneyText cents={inv.amountCents} tone="negative" />
                     </td>
                   </tr>
@@ -430,3 +431,4 @@ export function FinancialCloseReportModal({
     </ReportDocumentLayout>
   );
 }
+

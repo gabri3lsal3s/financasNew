@@ -8,7 +8,7 @@ import {
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import type { FreedomAnalysisResult } from "@/domain/reports";
+import { sanitizeReportText, type FreedomAnalysisResult } from "@/domain/reports";
 import type { PortfolioDividend } from "@/types";
 
 export interface DividendFreedomModalProps {
@@ -108,28 +108,28 @@ export function DividendFreedomModal({
       {/* 3. Termômetro do Estágio de Liberdade Financeira */}
       <section
         aria-label="Termômetro de Liberdade"
-        className="rounded-xl border border-border/80 bg-muted/10 p-4 flex flex-col gap-3 break-inside-avoid print:bg-white print:border-border"
+        className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2.5 break-inside-avoid print:bg-white print:border-border shadow-2xs"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Flame className="size-4 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-foreground">
+            <Flame className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
               Estágio de Independência Financeira
             </h3>
           </div>
-          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary-strong">
+          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary-strong">
             {freedomAnalysis.stageLabel}
           </span>
         </div>
 
-        <div className="w-full bg-muted/40 rounded-full h-3.5 overflow-hidden border border-border/60">
+        <div className="w-full bg-muted/40 rounded-full h-3 overflow-hidden border border-border/60">
           <div
             className="bg-primary-strong h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.min(100, Math.max(3, freedomAnalysis.freedomPct))}%` }}
           />
         </div>
 
-        <div className="flex justify-between text-[10px] text-muted-foreground font-mono num">
+        <div className="flex justify-between text-[9px] text-muted-foreground font-mono num">
           <span>0% (Início)</span>
           <span>25% (1º Quarto)</span>
           <span>50% (Metade)</span>
@@ -147,15 +147,15 @@ export function DividendFreedomModal({
       />
 
       {/* 5. Diagnóstico do Efeito Bola de Neve */}
-      <section aria-label="Efeito Bola de Neve" className="break-inside-avoid flex flex-col gap-3 pt-2">
-        <div className="flex items-center justify-between">
+      <section aria-label="Efeito Bola de Neve" className="break-inside-avoid flex flex-col gap-2.5 pt-1">
+        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-foreground">
+            <Sparkles className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
               Ativos no Efeito Bola de Neve (Reinvestimento Próprio)
             </h3>
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground font-mono num">
             {freedomAnalysis.totalSnowballAssetsCount} ativo(s) auto-sustentável(is)
           </span>
         </div>
@@ -164,30 +164,30 @@ export function DividendFreedomModal({
           <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
-                <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
-                  <th className="py-2.5 px-3 print:w-[18%]">Ticker</th>
-                  <th className="py-2.5 px-3 text-right print:w-[18%]">Preço Atual</th>
-                  <th className="py-2.5 px-3 text-right print:w-[22%]">Renda Mensal Gerada</th>
-                  <th className="py-2.5 px-3 text-right print:w-[20%]">Cotas Compradas / Mês</th>
-                  <th className="py-2.5 px-3 text-center print:w-[22%]">Status da Bola de Neve</th>
+                <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                  <th className="py-2 px-3 print:w-[18%]">Ticker</th>
+                  <th className="py-2 px-3 text-right print:w-[18%]">Preço Atual</th>
+                  <th className="py-2 px-3 text-right print:w-[22%]">Renda Mensal Gerada</th>
+                  <th className="py-2 px-3 text-right print:w-[20%]">Cotas Compradas / Mês</th>
+                  <th className="py-2 px-3 text-center print:w-[22%]">Status da Bola de Neve</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {freedomAnalysis.snowballAssets.map((sb) => (
-                  <tr key={sb.ticker} className="hover:bg-muted/20">
-                    <td className="py-2 px-3 font-semibold text-foreground truncate">{sb.ticker}</td>
-                    <td className="py-2 px-3 text-right num font-mono">
+                  <tr key={sb.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                    <td className="py-1.5 px-3 font-semibold text-foreground truncate">{sanitizeReportText(sb.ticker)}</td>
+                    <td className="py-1.5 px-3 text-right num font-mono">
                       <MoneyText cents={numberToCents(sb.currentPriceBRL)} />
                     </td>
-                    <td className="py-2 px-3 text-right num font-mono text-positive-strong font-medium">
+                    <td className="py-1.5 px-3 text-right num font-mono text-positive-strong font-bold">
                       <MoneyText cents={numberToCents(sb.monthlyIncomeGeneratedBRL)} />
                     </td>
-                    <td className="py-2 px-3 text-right num font-mono font-bold text-foreground">
+                    <td className="py-1.5 px-3 text-right num font-mono font-bold text-foreground">
                       {sb.newSharesPerMonth.toFixed(2)} cota(s)
                     </td>
-                    <td className="py-2 px-3 text-center">
+                    <td className="py-1.5 px-3 text-center">
                       <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`inline-flex rounded-md px-2 py-0.5 text-[9px] font-bold ${
                           sb.isSnowballReached
                             ? "bg-positive/10 text-positive-strong border border-positive/20"
                             : "bg-muted/40 text-muted-foreground border border-border"
@@ -204,9 +204,9 @@ export function DividendFreedomModal({
             </table>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground italic py-2">
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 text-xs text-muted-foreground italic print:bg-white print:border-border">
             Nenhum ativo com proventos mensais cadastrados no momento.
-          </p>
+          </div>
         )}
       </section>
 
@@ -218,3 +218,4 @@ export function DividendFreedomModal({
     </ReportDocumentLayout>
   );
 }
+

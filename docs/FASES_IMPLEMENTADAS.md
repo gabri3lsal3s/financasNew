@@ -952,6 +952,45 @@
   - Build de Produção (`npm run build`): 100% de sucesso;
   - Testes: 7/7 testes de `proventos-tab.test.tsx` aprovados.
 
+## F64 — Modernização do Motor de Relatórios Executivos & Dossiês em PDF (A4) (2026-08-25)
+
+- **Problema:**
+  1. No Dossiê Fiscal de IRPF, 62 cards interativos de tela vazavam para a folha de impressão devido ao seletor forçado `.print-sheet section { display: flex !important; }` no CSS global, gerando 5 páginas em branco;
+  2. No Dossiê de Carteira, os 4 KPIs de topo ficavam empilhados verticalmente ocupando toda a folha 1;
+  3. Nomes e tickers de ativos como `CDB-BMG-JAN27` e `TESOURO-IPCA-29` exibiam caracteres corrompidos (losangos com ponto de interrogação ``) devido a hífens Unicode especiais não mapeados no renderer de PDF;
+  4. Falta de zebra striping e contraste em tabelas longas de custódia e ausência de tratamento gracioso de seções vazias (*zero-state*).
+- **Solução:**
+  1. **Blindagem do CSS de Impressão (`globals.css`):**
+     - Removido seletor genérico forçado `.print-sheet section`;
+     - Blindada classe `.print:hidden` (`display: none !important; height: 0 !important; overflow: hidden !important; pointer-events: none !important;`);
+     - Grade horizontal restaurada em `<ReportKpiGrid>` com `print:grid-cols-4`;
+  2. **Sanitização Tipográfica Pura (`src/domain/reports/sanitize-text.ts`):**
+     - Função pura com testes unitários em `sanitize-text.test.ts` normalizando hífens Unicode especiais (`\u2010`–`\u2015`, `\u2212` para `-`), espaços especiais (`\u00A0` para ` `) e caracteres invisíveis;
+  3. **Ergonomia e Alto Contraste em Tabelas Contábeis:**
+     - Zebra striping suave (`even:bg-slate-50/50 print:even:bg-slate-50/50`) em todas as tabelas;
+     - Cabeçalhos de alto contraste (`bg-slate-100 text-slate-700 font-bold uppercase text-[10px]`) com repetição automática no topo de cada página (`display: table-header-group !important`);
+     - Tratamento institucional gracioso de seções sem lançamentos (*zero-state*).
+- **Arquivos alterados:**
+  - `src/domain/reports/sanitize-text.ts` [NOVO]
+  - `src/domain/reports/sanitize-text.test.ts` [NOVO]
+  - `src/domain/reports/index.ts`
+  - `src/styles/globals.css`
+  - `src/components/modules/reports/report-kpi-grid.tsx`
+  - `src/components/modules/reports/report-stacked-bar.tsx`
+  - `src/components/modules/reports/report-risk-gauge.tsx`
+  - `src/features/reports/components/tax-facilitator-modal.tsx`
+  - `src/features/reports/components/wealth-tear-sheet-modal.tsx`
+  - `src/features/reports/components/financial-close-report-modal.tsx`
+  - `src/features/reports/components/dividend-freedom-modal.tsx`
+  - `src/features/reports/components/consolidated-wealth-modal.tsx`
+  - `docs/ROADMAP.md`
+  - `docs/FASES_IMPLEMENTADAS.md`
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 249 arquivos e 1.798/1.798 testes aprovados (100% verde).
+
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

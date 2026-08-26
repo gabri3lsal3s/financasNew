@@ -130,49 +130,49 @@ export function ConsolidatedWealthModal({
       )}
 
       {/* 4. Seção: Balanço Detalhado (Ativos vs. Passivos) */}
-      <section aria-label="Balanço Patrimonial" className="grid grid-cols-1 sm:grid-cols-2 gap-4 break-inside-avoid print:grid-cols-2">
+      <section aria-label="Balanço Patrimonial" className="grid grid-cols-1 sm:grid-cols-2 gap-3 break-inside-avoid print:grid-cols-2">
         {/* Card de Ativos */}
-        <div className="rounded-xl border border-border/80 bg-muted/10 p-4 flex flex-col gap-3 print:bg-white print:border-border">
-          <div className="flex items-center justify-between border-b border-border/70 pb-2">
+        <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2.5 print:bg-white print:border-border shadow-2xs">
+          <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold text-positive-strong">
-              <ArrowUpRight className="size-4" aria-hidden="true" />
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
               <span>ATIVOS TOTAIS</span>
             </div>
-            <MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="font-bold text-sm" />
+            <MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="font-bold text-xs" />
           </div>
-          <div className="flex flex-col gap-2 text-xs">
+          <div className="flex flex-col gap-1.5 text-xs">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Investimentos em Custódia:</span>
-              <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} className="num font-mono font-medium" />
+              <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} className="num font-mono font-bold text-foreground" />
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Reserva de Liquidez (Caixa):</span>
-              <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} className="num font-mono font-medium" />
+              <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} className="num font-mono font-bold text-foreground" />
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Contas a Receber (Empréstimos):</span>
-              <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} className="num font-mono font-medium" />
+              <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} className="num font-mono font-bold text-foreground" />
             </div>
           </div>
         </div>
 
         {/* Card de Passivos */}
-        <div className="rounded-xl border border-border/80 bg-muted/10 p-4 flex flex-col gap-3 print:bg-white print:border-border">
-          <div className="flex items-center justify-between border-b border-border/70 pb-2">
+        <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2.5 print:bg-white print:border-border shadow-2xs">
+          <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold text-negative-strong">
-              <ArrowDownRight className="size-4" aria-hidden="true" />
-              <span>PASSIVOS (DÍVIDAS & FINANCIAMENTOS)</span>
+              <ArrowDownRight className="size-3.5" aria-hidden="true" />
+              <span>PASSIVOS (DÍVIDAS &amp; FINANCIAMENTOS)</span>
             </div>
-            <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="font-bold text-sm" />
+            <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="font-bold text-xs" />
           </div>
-          <div className="flex flex-col gap-2 text-xs">
+          <div className="flex flex-col gap-1.5 text-xs">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Saldo Devedor Total:</span>
-              <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="num font-mono font-medium" />
+              <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="num font-mono font-bold" />
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Comprometimento de Patrimônio:</span>
-              <span className="num font-mono font-medium text-foreground">
+              <span className="num font-mono font-bold text-foreground">
                 {balanceSheet.debtToAssetRatioPct.toFixed(1)}% dos ativos
               </span>
             </div>
@@ -181,40 +181,40 @@ export function ConsolidatedWealthModal({
       </section>
 
       {/* 5. Seção: Demonstração Contábil Integrada (DRE) */}
-      <section aria-label="DRE Pessoal" className="flex flex-col gap-3 break-inside-avoid">
-        <div className="flex items-center gap-2">
-          <Landmark className="size-4 text-primary-strong" aria-hidden="true" />
-          <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-foreground">
+      <section aria-label="DRE Pessoal" className="flex flex-col gap-2.5 break-inside-avoid">
+        <div className="flex items-center gap-2 border-b border-border/80 pb-1.5">
+          <Landmark className="size-3.5 text-primary-strong" aria-hidden="true" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
             Demonstração do Resultado do Exercício (DRE Pessoal)
           </h3>
         </div>
         <div className="rounded-xl border border-border/80 overflow-hidden text-xs">
-          <div className="flex justify-between items-center p-3 bg-muted/40 border-b border-border font-semibold text-foreground">
+          <div className="flex justify-between items-center p-2.5 bg-slate-100/90 border-b border-border font-bold text-foreground">
             <span>(+) Receitas Brutas Totais</span>
-            <MoneyText cents={numberToCents(balanceSheet.dre.grossIncomeBRL)} tone="positive" className="num font-mono" />
+            <MoneyText cents={numberToCents(balanceSheet.dre.grossIncomeBRL)} tone="positive" className="num font-mono font-bold" />
           </div>
-          <div className="flex justify-between items-center p-3 border-b border-border text-muted-foreground">
+          <div className="flex justify-between items-center p-2.5 border-b border-border text-foreground">
             <span>(-) Despesas Operacionais e Custo de Vida</span>
-            <MoneyText cents={numberToCents(balanceSheet.dre.totalExpensesBRL)} tone="negative" className="num font-mono" />
+            <MoneyText cents={numberToCents(balanceSheet.dre.totalExpensesBRL)} tone="negative" className="num font-mono font-bold" />
           </div>
-          <div className="flex justify-between items-center p-3 bg-muted/20 border-b border-border font-semibold text-foreground">
+          <div className="flex justify-between items-center p-2.5 bg-muted/20 border-b border-border font-semibold text-foreground">
             <span>(=) Poupança Operacional Líquida (Margem: {balanceSheet.dre.savingsRatePct.toFixed(1)}%)</span>
             <MoneyText
               cents={numberToCents(balanceSheet.dre.operationalSavingsBRL)}
               tone={balanceSheet.dre.operationalSavingsBRL >= 0 ? "positive" : "negative"}
-              className="num font-mono"
+              className="num font-mono font-bold"
             />
           </div>
-          <div className="flex justify-between items-center p-3 border-b border-border text-muted-foreground">
+          <div className="flex justify-between items-center p-2.5 border-b border-border text-foreground">
             <span>(-) Aportes Destinados a Investimentos</span>
-            <MoneyText cents={numberToCents(balanceSheet.dre.investedAporteBRL)} tone="default" className="num font-mono" />
+            <MoneyText cents={numberToCents(balanceSheet.dre.investedAporteBRL)} tone="default" className="num font-mono font-bold" />
           </div>
-          <div className="flex justify-between items-center p-3 bg-primary/5 font-bold text-foreground">
+          <div className="flex justify-between items-center p-2.5 bg-primary/5 font-bold text-foreground">
             <span>(=) Variação Final de Caixa no Período</span>
             <MoneyText
               cents={numberToCents(balanceSheet.dre.netCashFlowBRL)}
               tone={balanceSheet.dre.netCashFlowBRL >= 0 ? "positive" : "negative"}
-              className="text-sm num font-mono text-primary-strong"
+              className="text-xs num font-mono font-bold text-primary-strong"
             />
           </div>
         </div>
@@ -228,3 +228,4 @@ export function ConsolidatedWealthModal({
     </ReportDocumentLayout>
   );
 }
+

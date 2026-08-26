@@ -12,7 +12,7 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { formatSignedPct } from "@/services/masks/percent";
-import type { AllocationAnalysisResult, ConcentrationRiskResult } from "@/domain/reports";
+import { sanitizeReportText, type AllocationAnalysisResult, type ConcentrationRiskResult } from "@/domain/reports";
 
 export interface WealthPositionRow {
   ticker: string;
@@ -205,12 +205,17 @@ export function WealthTearSheetModal({
       />
 
       {/* 3. Seção: Diagnóstico de Alocação por Classe & Setor */}
-      <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <PieChart className="size-4 text-primary-strong" aria-hidden="true" />
-          <h3 className="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider">
-            Diagnóstico de Alocação por Classe e Setor (Target vs. Actual)
-          </h3>
+      <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-2.5">
+        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
+          <div className="flex items-center gap-2">
+            <PieChart className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
+              Diagnóstico de Alocação por Classe e Setor (Target vs. Actual)
+            </h3>
+          </div>
+          <span className="text-[11px] text-muted-foreground font-mono num">
+            Equilíbrio Geral: <strong className="text-foreground">{allocationAnalysis.alignmentScore}%</strong>
+          </span>
         </div>
 
         {/* Barra de Distribuição Empilhada */}
@@ -224,40 +229,40 @@ export function WealthTearSheetModal({
         <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse print:table-fixed">
             <thead>
-              <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
-                <th className="py-2.5 px-3 print:w-[22%]">Classe</th>
-                <th className="py-2.5 px-3 text-right print:w-[18%]">Atual (R$)</th>
-                <th className="py-2.5 px-3 text-right print:w-[14%]">Atual (%)</th>
-                <th className="py-2.5 px-3 text-right print:w-[14%]">Meta (%)</th>
-                <th className="py-2.5 px-3 text-right print:w-[18%]">Gap (R$)</th>
-                <th className="py-2.5 px-3 text-center print:w-[14%]">Status</th>
+              <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                <th className="py-2 px-3 print:w-[22%]">Classe</th>
+                <th className="py-2 px-3 text-right print:w-[18%]">Atual (R$)</th>
+                <th className="py-2 px-3 text-right print:w-[14%]">Atual (%)</th>
+                <th className="py-2 px-3 text-right print:w-[14%]">Meta (%)</th>
+                <th className="py-2 px-3 text-right print:w-[18%]">Gap (R$)</th>
+                <th className="py-2 px-3 text-center print:w-[14%]">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {allocationAnalysis.classGaps.map((cg) => (
-                <tr key={cg.assetClass} className="hover:bg-muted/20">
-                  <td className="py-2 px-3 font-medium capitalize text-foreground">{cg.assetClass}</td>
-                  <td className="py-2 px-3 text-right num font-mono">
+                <tr key={cg.assetClass} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                  <td className="py-1.5 px-3 font-semibold capitalize text-foreground">{cg.assetClass}</td>
+                  <td className="py-1.5 px-3 text-right num font-mono">
                     <MoneyText cents={numberToCents(cg.currentBRL)} />
                   </td>
-                  <td className="py-2 px-3 text-right num font-mono">{cg.currentPct.toFixed(1)}%</td>
-                  <td className="py-2 px-3 text-right num font-mono">
+                  <td className="py-1.5 px-3 text-right num font-mono">{cg.currentPct.toFixed(1)}%</td>
+                  <td className="py-1.5 px-3 text-right num font-mono">
                     {cg.targetPct > 0 ? `${cg.targetPct.toFixed(1)}%` : "—"}
                   </td>
-                  <td className="py-2 px-3 text-right num font-mono">
+                  <td className="py-1.5 px-3 text-right num font-mono">
                     {cg.gapBRL > 0 ? (
                       <MoneyText
                         cents={numberToCents(cg.gapBRL)}
                         tone="default"
-                        className="text-primary-strong font-semibold"
+                        className="text-primary-strong font-bold"
                       />
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="py-2 px-3 text-center">
+                  <td className="py-1.5 px-3 text-center">
                     <span
-                      className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                      className={`inline-flex rounded-md px-2 py-0.5 text-[9px] font-bold ${
                         cg.status === "deficit"
                           ? "bg-primary/10 text-primary-strong border border-primary/20"
                           : cg.status === "surplus"
@@ -280,30 +285,34 @@ export function WealthTearSheetModal({
 
         {/* Tabela Resumida de Top Setores */}
         {allocationAnalysis.sectorGaps.length > 0 ? (
-          <div className="pt-2 flex flex-col gap-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="pt-1 flex flex-col gap-1.5">
+            <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
               Alocação Setorial &amp; Déficits Identificados
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 print:grid-cols-3">
               {allocationAnalysis.sectorGaps.slice(0, 6).map((sg) => (
                 <div
                   key={`${sg.className}::${sg.sectorName}`}
-                  className="rounded-lg border border-border/60 bg-muted/10 p-2.5 flex flex-col gap-1 text-xs break-inside-avoid print:bg-white print:border-border"
+                  className="rounded-lg border border-border/70 bg-muted/10 p-2.5 flex flex-col justify-between gap-1 text-xs break-inside-avoid print:bg-white print:border-border shadow-2xs"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground truncate">{sg.sectorName}</span>
-                    <span className="text-[10px] text-muted-foreground">{sg.className}</span>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-bold text-foreground truncate">{sanitizeReportText(sg.sectorName)}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground border border-border/40 font-medium shrink-0">
+                      {sanitizeReportText(sg.className)}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between pt-0.5">
-                    <span className="font-mono font-medium text-foreground">{sg.currentPct.toFixed(1)}%</span>
+                  <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      Atual: <strong className="text-foreground">{sg.currentPct.toFixed(1)}%</strong>
+                    </span>
                     {sg.gapBRL > 0 ? (
-                      <span className="text-primary-strong text-[11px] font-semibold flex items-center gap-1">
-                        <span>Gap:</span> <MoneyText cents={numberToCents(sg.gapBRL)} />
+                      <span className="text-primary-strong text-[11px] font-bold flex items-center gap-1 font-mono">
+                        <span className="text-[9px] font-normal text-muted-foreground">Gap:</span>{" "}
+                        <MoneyText cents={numberToCents(sg.gapBRL)} />
                       </span>
                     ) : (
-                      <span className="text-muted-foreground text-[10px]">Equilibrado</span>
+                      <span className="text-positive-strong text-[10px] font-semibold">Equilibrado</span>
                     )}
-
                   </div>
                 </div>
               ))}
@@ -312,8 +321,8 @@ export function WealthTearSheetModal({
         ) : null}
 
         {/* Comparativo Visual de Gaps */}
-        <div className="pt-2">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+        <div className="pt-1">
+          <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Desvio das Metas por Classe
           </h4>
           <ReportGapPinBar items={gapPinItems} />
@@ -321,17 +330,17 @@ export function WealthTearSheetModal({
       </section>
 
       {/* 4. Seção: Termômetro de Risco e Concentração */}
-      <section aria-label="Risco e Concentração" className="break-inside-avoid flex flex-col gap-3">
+      <section aria-label="Risco e Concentração" className="break-inside-avoid flex flex-col gap-2.5">
         <ReportRiskGauge
-          topItemName={topDominance.ticker}
+          topItemName={sanitizeReportText(topDominance.ticker)}
           topItemPct={topDominance.pct}
           warningThresholdPct={15}
           criticalThresholdPct={25}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 print:grid-cols-3">
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid print:bg-white print:border-border">
-            <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 print:grid-cols-3">
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 flex flex-col gap-1 break-inside-avoid print:bg-white print:border-border shadow-2xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Concentração Top 5
             </span>
             <div className="flex items-center justify-between text-xs">
@@ -342,13 +351,13 @@ export function WealthTearSheetModal({
             </div>
           </div>
 
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid print:bg-white print:border-border">
-            <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 flex flex-col gap-1 break-inside-avoid print:bg-white print:border-border shadow-2xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Setor Dominante
             </span>
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground truncate">
-                {concentrationRisk.topSectorDominance?.sector ?? "Nenhum"}:
+                {sanitizeReportText(concentrationRisk.topSectorDominance?.sector) || "Nenhum"}:
               </span>
               <strong className="num font-mono font-bold text-foreground shrink-0">
                 {concentrationRisk.topSectorDominance ? `${concentrationRisk.topSectorDominance.pct.toFixed(1)}%` : "0%"}
@@ -356,21 +365,13 @@ export function WealthTearSheetModal({
             </div>
           </div>
 
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-1.5 break-inside-avoid print:bg-white print:border-border">
-            <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 flex flex-col gap-1 break-inside-avoid print:bg-white print:border-border shadow-2xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Exposição Cambial
             </span>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">BRL:</span>
-              <strong className="num font-mono font-bold text-foreground">
-                {concentrationRisk.currencyExposure.brlPct.toFixed(1)}%
-              </strong>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">USD:</span>
-              <strong className="num font-mono font-bold text-foreground">
-                {concentrationRisk.currencyExposure.usdPct.toFixed(1)}%
-              </strong>
+              <span className="text-muted-foreground">BRL: <strong className="num font-mono font-bold text-foreground">{concentrationRisk.currencyExposure.brlPct.toFixed(1)}%</strong></span>
+              <span className="text-muted-foreground">USD: <strong className="num font-mono font-bold text-foreground">{concentrationRisk.currencyExposure.usdPct.toFixed(1)}%</strong></span>
             </div>
           </div>
         </div>
@@ -380,12 +381,12 @@ export function WealthTearSheetModal({
       {allocationAnalysis.topDeficitClass || allocationAnalysis.topDeficitSector || concentrationRisk.riskAlerts.length > 0 ? (
         <section
           aria-label="Parecer da consultoria"
-          className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-2 break-inside-avoid print:bg-white print:border-primary/40"
+          className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col gap-1.5 break-inside-avoid print:bg-white print:border-primary/40"
         >
-          <span className="text-xs font-bold uppercase tracking-wider text-primary-strong">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-primary-strong">
             Parecer do Consultor Patrimonial
           </span>
-          <div className="flex flex-col gap-1.5 text-xs text-foreground/90 leading-relaxed">
+          <div className="flex flex-col gap-1 text-xs text-foreground/90 leading-relaxed">
             {allocationAnalysis.topDeficitClass ? (
               <p>
                 <strong>Prioridade de Classe:</strong> A classe{" "}
@@ -401,7 +402,7 @@ export function WealthTearSheetModal({
             {allocationAnalysis.topDeficitSector ? (
               <p>
                 <strong>Prioridade Setorial:</strong> O setor{" "}
-                <strong>{allocationAnalysis.topDeficitSector.sectorName}</strong> ({allocationAnalysis.topDeficitSector.className}) apresenta o maior déficit de alocação, necessitando de{" "}
+                <strong>{sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)}</strong> ({sanitizeReportText(allocationAnalysis.topDeficitSector.className)}) apresenta o maior déficit de alocação, necessitando de{" "}
                 <MoneyText
                   cents={numberToCents(allocationAnalysis.topDeficitSector.gapBRL)}
                   tone="default"
@@ -412,7 +413,7 @@ export function WealthTearSheetModal({
             ) : null}
             {concentrationRisk.riskAlerts.map((alert) => (
               <p key={alert.code} className="text-muted-foreground">
-                • {alert.message}
+                • {sanitizeReportText(alert.message)}
               </p>
             ))}
           </div>
@@ -420,11 +421,14 @@ export function WealthTearSheetModal({
       ) : null}
 
       {/* 6. Seção: Detalhamento Completo da Custódia de Ativos Agrupada */}
-      <section aria-label="Custódia de Ativos" className="flex flex-col gap-3 pt-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider">
-            Custódia Consolidada de Ativos ({investmentRows.length})
-          </h3>
+      <section aria-label="Custódia de Ativos" className="flex flex-col gap-2.5 pt-1">
+        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
+          <div className="flex items-center gap-2">
+            <Layers className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
+              Custódia Consolidada de Ativos ({investmentRows.length} ativos)
+            </h3>
+          </div>
           <span className="text-[11px] text-muted-foreground font-mono num">
             Total: <MoneyText cents={numberToCents(totalBRL)} className="font-bold text-foreground inline" />
           </span>
@@ -433,23 +437,23 @@ export function WealthTearSheetModal({
         <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse print:table-fixed">
             <thead>
-              <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium print:bg-slate-100">
-                <th className="py-2.5 px-3 print:py-1.5 print:px-2 print:w-[32%]">Ativo / Especificação</th>
-                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[8%]">Qtd</th>
-                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[15%]">Preço Médio</th>
-                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[15%]">Cotação</th>
-                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[16%]">Total (R$)</th>
-                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[8%]">PnL (%)</th>
-                <th className="py-2.5 px-3 print:py-1.5 print:px-2 text-right print:w-[6%]">YoC</th>
+              <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                <th className="py-2 px-3 print:py-1.5 print:px-2 print:w-[32%]">Ativo / Especificação</th>
+                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[8%]">Qtd</th>
+                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[15%]">Preço Médio</th>
+                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[15%]">Cotação</th>
+                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[16%]">Total (R$)</th>
+                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[8%]">PnL (%)</th>
+                <th className="py-2 px-3 print:py-1.5 print:px-2 text-right print:w-[6%]">YoC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {groupedRows.map((group) => (
                 <Fragment key={group.assetClass}>
                   {/* Subcabeçalho de Classe */}
-                  <tr className="bg-muted/30 border-y border-border/70 print:bg-slate-50 break-inside-avoid">
-                    <td colSpan={4} className="py-1.5 px-3 print:py-1 print:px-2 font-bold text-foreground capitalize text-[11px]">
-                      {group.assetClass} ({group.items.length} ativos)
+                  <tr className="bg-slate-100/90 border-y border-border/80 print:bg-slate-100 break-inside-avoid">
+                    <td colSpan={4} className="py-1.5 px-3 print:py-1 print:px-2 font-bold text-foreground capitalize text-[10px] tracking-wider">
+                      {sanitizeReportText(group.assetClass)} ({group.items.length} ativos)
                     </td>
                     <td className="py-1.5 px-3 print:py-1 print:px-2 text-right font-mono font-bold text-foreground whitespace-nowrap">
                       <MoneyText cents={numberToCents(group.subtotalBRL)} />
@@ -467,35 +471,38 @@ export function WealthTearSheetModal({
                   </tr>
 
                   {group.items.map((r) => {
-                    const displaySector = r.sector?.replace(/biticoin/i, "Bitcoin") ?? "Geral";
+                    const displaySector = sanitizeReportText(r.sector?.replace(/biticoin/i, "Bitcoin")) || "Geral";
+                    const safeTicker = sanitizeReportText(r.ticker);
+                    const safeName = sanitizeReportText(r.name);
+
                     return (
-                      <tr key={r.ticker} className="hover:bg-muted/20 break-inside-avoid">
-                        <td className="py-2 px-3 print:py-1.5 print:px-2">
+                      <tr key={r.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                        <td className="py-1.5 px-3 print:py-1.5 print:px-2">
                           <div className="flex flex-col leading-tight">
-                            <span className="font-bold text-foreground text-xs">{r.ticker}</span>
+                            <span className="font-bold text-foreground text-xs">{safeTicker}</span>
                             <span className="text-[10px] text-muted-foreground truncate">
-                              {r.name ? `${r.name} · ` : ""}{displaySector}
+                              {safeName ? `${safeName} · ` : ""}{displaySector}
                             </span>
                           </div>
                         </td>
-                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">{formatQuantity(r.quantity)}</td>
-                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">
+                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">{formatQuantity(r.quantity)}</td>
+                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">
                           <MoneyText cents={numberToCents(r.averagePrice)} />
                         </td>
-                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">
+                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono whitespace-nowrap">
                           <MoneyText cents={numberToCents(r.currentPrice)} />
                         </td>
-                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono font-medium text-foreground whitespace-nowrap">
+                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap">
                           <MoneyText cents={numberToCents(r.valueBRL)} />
                         </td>
                         <td
-                          className={`py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono font-semibold whitespace-nowrap ${
+                          className={`py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono font-bold whitespace-nowrap ${
                             r.unrealizedPnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
                           }`}
                         >
                           {formatSignedPct(r.unrealizedPnlPct)}
                         </td>
-                        <td className="py-2 px-3 print:py-1.5 print:px-2 text-right num font-mono text-positive-strong font-medium whitespace-nowrap">
+                        <td className="py-1.5 px-3 print:py-1.5 print:px-2 text-right num font-mono text-positive-strong font-medium whitespace-nowrap">
                           {r.yocPct > 0 ? `${r.yocPct.toFixed(1)}%` : "-"}
                         </td>
                       </tr>
@@ -516,3 +523,4 @@ export function WealthTearSheetModal({
     </ReportDocumentLayout>
   );
 }
+
