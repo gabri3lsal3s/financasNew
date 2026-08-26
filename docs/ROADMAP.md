@@ -1,5 +1,10 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.11** registra a **Unificação Inteligente de Alertas e Banners do Dashboard (`DashboardAlertsCarousel`)** (2026-08-26):
+> - **(1) Consolidação de Alertas na Home (`OverviewPage`)**: eliminação da dispersão vertical de avisos contextuais (`PaceAlertBanner`, `CashGapAlert`, `SurplusAporteBanner`, `OnboardingCard`) em favor de uma única posição no topo;
+> - **(2) Pass-through Inteligente & Prioridade Estrita de Severidade**: renderização direta quando há apenas 1 alerta ativo e ordenação automática por nível de urgência financeira quando múltiplos alertas disparam;
+> - **(3) Smart Autoplay, Pausa em Interação & Suporte Mobile**: rotação a cada 7 segundos, congelamento imediato em toque/hover e suporte completo a navegação manual via dots, botões e swipe no mobile.
+
 > **v2.10** registra a **Conclusão da Fase 71 (Descontinuação da Densidade Manual & Padrão Canônico Universal) e o Planejamento Executivo da Fase 72 (UI Completa de Renda Fixa, Vencimentos, Radar de Insights, Cronograma de Contratos e Blindagem das 6 Fragilidades Arquiteturais)** (2026-08-25):
 > - **(1) Fase 71 — Concluída**: eliminação do card redundante de densidade nas Configurações, fixação do padding canônico universal equilibrado em `TransactionRow` e `PositionTable`, e purga de `use-density.ts`;
 > - **(2) Fase 72 — Infraestrutura SQL & Schemas Zod**: Migration 0034 (`fixed_income_metadata jsonb` em `portfolio_assets`) e `fixedIncomeMetadataSchema` em `src/domain/portfolio/schemas.ts`;

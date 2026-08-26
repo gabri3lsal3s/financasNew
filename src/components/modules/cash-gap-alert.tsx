@@ -62,9 +62,9 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
 
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-semibold text-foreground">
+              <h2 className="text-sm font-semibold text-foreground">
                 {isCritical ? "Alerta de Iminência de Saldo Insuficiente" : "Radar de Descasamento de Fluxo"}
-              </h3>
+              </h2>
               <Badge
                 variant={isCritical ? "critical" : "warning"}
                 size="xs"

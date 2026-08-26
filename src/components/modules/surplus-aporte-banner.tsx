@@ -50,9 +50,9 @@ export function SurplusAporteBanner({
           </span>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold tracking-tight text-foreground truncate">
+              <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
                 Capacidade de Aporte Estimada
-              </h3>
+              </h2>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Você possui uma sobra líquida calculada no ciclo pronta para rebalancear sua carteira.

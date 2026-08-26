@@ -6,6 +6,8 @@ import {
   CategoryDonut,
   CategoryIcon,
   DailyFlowChart,
+  DashboardAlertsCarousel,
+  type DashboardAlertItem,
   DeltaHint,
   KpiCard,
   MonthPicker,
@@ -325,6 +327,38 @@ export function OverviewPage() {
     ],
   });
 
+  const alertItems: (DashboardAlertItem | null | undefined | false)[] = [
+    isCurrentMonth && cashGapResult.isCashGapDetected && {
+      id: "cash-gap-alert",
+      priority: cashGapResult.severity === "critical" ? 1 : 3,
+      content: <CashGapAlert result={cashGapResult} />,
+    },
+    visual.dashboardWidgets.contextBanners && showPaceAlert && {
+      id: "pace-alert-banner",
+      priority: projection.surplusCents !== null && projection.surplusCents < 0 ? 2 : 3,
+      content: (
+        <PaceAlertBanner
+          spentPercent={pace.spentPercent}
+          elapsedPercent={pace.elapsedPercent}
+          dailyCents={daily.dailyCents}
+          daysRemaining={daily.daysRemaining}
+          surplusCents={projection.surplusCents}
+          onNavigateInsights={() => navigate("/insights")}
+        />
+      ),
+    },
+    surplusCapacity.hasSurplus && isCurrentMonth && {
+      id: "surplus-aporte-banner",
+      priority: 4,
+      content: <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />,
+    },
+    !onboardingComplete && onboardingQuery.data && {
+      id: "onboarding-card",
+      priority: 5,
+      content: <OnboardingCard counts={onboardingQuery.data} />,
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       {/* F12 — sem header visual: o app mostra direto o seletor de mês.
@@ -335,20 +369,7 @@ export function OverviewPage() {
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
-      {!loading && !error && !onboardingComplete && onboardingQuery.data ? (
-        <OnboardingCard counts={onboardingQuery.data} />
-      ) : null}
-
-      {!loading && !error && visual.dashboardWidgets.contextBanners && showPaceAlert ? (
-        <PaceAlertBanner
-          spentPercent={pace.spentPercent}
-          elapsedPercent={pace.elapsedPercent}
-          dailyCents={daily.dailyCents}
-          daysRemaining={daily.daysRemaining}
-          surplusCents={projection.surplusCents}
-          onNavigateInsights={() => navigate("/insights")}
-        />
-      ) : null}
+      {!loading && !error && <DashboardAlertsCarousel items={alertItems} />}
 
       {loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
@@ -364,14 +385,6 @@ export function OverviewPage() {
       ) : (
         <>
           <RealCashHeroCard realCashData={realCashData} />
-
-          {isCurrentMonth && cashGapResult.isCashGapDetected && (
-            <CashGapAlert result={cashGapResult} />
-          )}
-
-          {surplusCapacity.hasSurplus && isCurrentMonth && (
-            <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />
-          )}
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
           {visual.dashboardWidgets.kpis && (

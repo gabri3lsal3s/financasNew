@@ -84,6 +84,8 @@ export { StatCard } from "./stat-card";
 export type { StatCardProps, StatCardTrend } from "./stat-card";
 export { InteractiveTargetDonut } from "./interactive-target-donut";
 export type { InteractiveTargetDonutProps, TargetDonutItem } from "./interactive-target-donut";
+export { DashboardAlertsCarousel } from "./dashboard-alerts-carousel";
+export type { DashboardAlertsCarouselProps, DashboardAlertItem } from "./dashboard-alerts-carousel";
 export * from "./portfolio";
 export * from "./reports";
 
