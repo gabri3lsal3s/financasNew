@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Equal, RotateCcw, Scale, Trash2 } from "lucide-react";
-import { Button, NumberStepperInput, Progress } from "@/components/ui";
+import { Button, NumberStepperInput } from "@/components/ui";
+import { InteractiveTargetDonut, type TargetDonutItem } from "@/components/modules";
 import { inferSectorFromTicker, parseTargetInput } from "@/domain/portfolio";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
@@ -42,7 +44,20 @@ export function TargetSectorsCard({
   onRemoveSector,
   onSaveAllSectorsForClass,
 }: TargetSectorsCardProps) {
+  const [selectedSector, setSelectedSector] = useState<string | null>(null);
+
   if (classes.length === 0) return null;
+
+  const donutItems: TargetDonutItem[] = availableSectors.map((sectorName) => ({
+    key: sectorName,
+    label: sectorName,
+    targetPercent: sectorTargetOf(sectorName),
+    countAssets: positionRows.filter(
+      (r) =>
+        r.assetClass === activeSectorClass &&
+        (r.sector === sectorName || inferSectorFromTicker(r.ticker, activeSectorClass) === sectorName),
+    ).length,
+  }));
 
   return (
     <section
@@ -86,31 +101,24 @@ export function TargetSectorsCard({
         </div>
       ) : (
         <>
-          {/* Barra de Progresso e Validação dos Setores da Classe */}
-          <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-surface/70 p-4">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-medium">Soma dos setores em {activeSectorClass}</span>
-              <span
-                className={cn(
-                  "num font-bold",
-                  sectorSum.error ? "text-critical" : sectorSum.sum > 0 ? "text-foreground" : "",
-                )}
-              >
-                {sectorSum.sum.toFixed(1)}% / 100% da classe
-              </span>
+          {/* Donut Interativo de Metas Setoriais */}
+          <InteractiveTargetDonut
+            title={`Alocação Setorial (${activeSectorClass})`}
+            items={donutItems}
+            selectedKey={selectedSector}
+            onSelectKey={setSelectedSector}
+            onChangeTarget={(sectorName, nextTarget) => onSectorTargetChange(sectorName, nextTarget)}
+            totalCeiling={100}
+            unitLabel="%"
+            disabled={savingSector !== null}
+          />
+
+          {/* Validação de Erro dos Setores da Classe */}
+          {sectorSum.error ? (
+            <div className="rounded-xl border border-critical/40 bg-critical/10 p-3 text-xs text-critical font-medium">
+              {sectorSum.error}
             </div>
-            <Progress
-              value={Math.min(100, Math.max(0, sectorSum.sum))}
-              tone={sectorSum.error ? "critical" : "auto"}
-              aria-label={`Soma dos setores de ${activeSectorClass}: ${sectorSum.sum.toFixed(1)}%`}
-            />
-            {sectorSum.error ? <p className="text-xs text-critical font-medium">{sectorSum.error}</p> : null}
-            {sectorSum.error === null && sectorSum.sum < 100 ? (
-              <p className="text-xs text-muted-foreground">
-                {(100 - sectorSum.sum).toFixed(1)}% da classe {activeSectorClass} distribuídos equiponderadamente entre os demais ativos.
-              </p>
-            ) : null}
-          </div>
+          ) : null}
 
           {/* Ações Rápidas de Setores */}
           <div className="flex flex-wrap items-center gap-2">
@@ -154,6 +162,7 @@ export function TargetSectorsCard({
             {availableSectors.map((sectorName) => {
               const target = sectorTargetOf(sectorName);
               const savedTarget = storedSectorTargets.get(sectorName) ?? 0;
+              const isSelected = selectedSector === sectorName;
               const membersCount = positionRows.filter(
                 (r) =>
                   r.assetClass === activeSectorClass &&
@@ -163,16 +172,24 @@ export function TargetSectorsCard({
               return (
                 <div
                   key={sectorName}
-                  className="flex flex-col gap-3 rounded-xl border border-border/60 bg-surface-hover/30 p-3 sm:flex-row sm:items-center sm:justify-between min-w-0"
+                  className={cn(
+                    "flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between min-w-0 transition-all",
+                    isSelected
+                      ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30 shadow-xs"
+                      : "border-border/60 bg-surface-hover/30 hover:border-border/80",
+                  )}
                 >
-                  <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex min-w-0 flex-1 flex-col cursor-pointer" onClick={() => setSelectedSector(isSelected ? null : sectorName)}>
                     <p className="truncate text-sm font-medium text-foreground">{sectorName}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {membersCount} ativo(s) na carteira
                     </p>
                   </div>
                   <div className="flex w-full items-center gap-2 sm:w-auto">
-                    <div className="flex flex-1 items-center gap-2 sm:w-52 sm:flex-none min-w-0">
+                    <div
+                      className="flex flex-1 items-center gap-2 sm:w-52 sm:flex-none min-w-0"
+                      onFocusCapture={() => setSelectedSector(sectorName)}
+                    >
                       <NumberStepperInput
                         value={target}
                         min={0}

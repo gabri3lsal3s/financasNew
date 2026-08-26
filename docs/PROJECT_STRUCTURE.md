@@ -86,7 +86,7 @@
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, onboarding-card, pwa-update-toast,
     │   │   │                      #   notifications-popover, install-app-button,
-    │   │   │                      #   category-donut, daily-flow-chart (F8),
+    │   │   │                      #   category-donut, interactive-target-donut, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   credit-card-3d + credit-card-wallet (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,

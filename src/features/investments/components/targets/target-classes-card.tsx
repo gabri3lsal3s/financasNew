@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Equal, RotateCcw, Scale, Trash2 } from "lucide-react";
-import { Button, NumberStepperInput, Progress } from "@/components/ui";
+import { Button, NumberStepperInput } from "@/components/ui";
+import { InteractiveTargetDonut, type TargetDonutItem } from "@/components/modules";
 import { parseTargetInput } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
 import type { PortfolioPositionRow } from "@/state";
@@ -35,7 +37,16 @@ export function TargetClassesCard({
   onRemoveClass,
   onSaveAllClasses,
 }: TargetClassesCardProps) {
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
+
   if (classes.length === 0) return null;
+
+  const donutItems: TargetDonutItem[] = classes.map((className) => ({
+    key: className,
+    label: className,
+    targetPercent: classTargetOf(className),
+    countAssets: positionRows.filter((r) => r.assetClass === className).length,
+  }));
 
   return (
     <section
@@ -54,31 +65,23 @@ export function TargetClassesCard({
         </span>
       </div>
 
-      {/* Barra de Progresso e Validação da Soma de Classes */}
-      <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-surface/70 p-4">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-medium">Soma das metas de classes</span>
-          <span
-            className={cn(
-              "num font-bold",
-              classSum.error ? "text-critical" : classSum.sum > 0 ? "text-foreground" : "",
-            )}
-          >
-            {classSum.sum.toFixed(1)}% / 100%
-          </span>
+      {/* Donut Interativo de Metas de Classes */}
+      <InteractiveTargetDonut
+        title="Alocação por Classe"
+        items={donutItems}
+        selectedKey={selectedClass}
+        onSelectKey={setSelectedClass}
+        onChangeTarget={(className, nextTarget) => onClassTargetChange(className, nextTarget)}
+        totalCeiling={100}
+        disabled={savingClass !== null}
+      />
+
+      {/* Validação de Erro da Soma de Classes */}
+      {classSum.error ? (
+        <div className="rounded-xl border border-critical/40 bg-critical/10 p-3 text-xs text-critical font-medium">
+          {classSum.error}
         </div>
-        <Progress
-          value={Math.min(100, Math.max(0, classSum.sum))}
-          tone={classSum.error ? "critical" : "auto"}
-          aria-label={`Soma das classes: ${classSum.sum.toFixed(1)}%`}
-        />
-        {classSum.error ? <p className="text-xs text-critical font-medium">{classSum.error}</p> : null}
-        {classSum.error === null && classSum.sum < 100 ? (
-          <p className="text-xs text-muted-foreground">
-            Sobram {(100 - classSum.sum).toFixed(1)}% para caixa/reserva ou outras classes.
-          </p>
-        ) : null}
-      </div>
+      ) : null}
 
       {/* Ações Rápidas de Classes */}
       <div className="flex flex-wrap items-center gap-2">
@@ -121,19 +124,28 @@ export function TargetClassesCard({
         {classes.map((className) => {
           const target = classTargetOf(className);
           const savedTarget = storedClassTargets.get(className) ?? 0;
+          const isSelected = selectedClass === className;
           return (
             <div
               key={className}
-              className="flex flex-col gap-3 rounded-xl border border-border/60 bg-surface-hover/30 p-3 sm:flex-row sm:items-center sm:justify-between min-w-0"
+              className={cn(
+                "flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between min-w-0 transition-all",
+                isSelected
+                  ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30 shadow-xs"
+                  : "border-border/60 bg-surface-hover/30 hover:border-border/80",
+              )}
             >
-              <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex min-w-0 flex-1 flex-col cursor-pointer" onClick={() => setSelectedClass(isSelected ? null : className)}>
                 <p className="truncate text-sm font-medium text-foreground">{className}</p>
                 <p className="text-xs text-muted-foreground truncate">
                   {positionRows.filter((r) => r.assetClass === className).length} ativo(s)
                 </p>
               </div>
               <div className="flex w-full items-center gap-2 sm:w-auto">
-                <div className="flex flex-1 items-center gap-2 sm:w-52 sm:flex-none min-w-0">
+                <div
+                  className="flex flex-1 items-center gap-2 sm:w-52 sm:flex-none min-w-0"
+                  onFocusCapture={() => setSelectedClass(className)}
+                >
                   <NumberStepperInput
                     value={target}
                     min={0}

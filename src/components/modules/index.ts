@@ -82,6 +82,8 @@ export { AllocationDriftCard } from "./allocation-drift-card";
 export type { AllocationDriftCardProps } from "./allocation-drift-card";
 export { StatCard } from "./stat-card";
 export type { StatCardProps, StatCardTrend } from "./stat-card";
+export { InteractiveTargetDonut } from "./interactive-target-donut";
+export type { InteractiveTargetDonutProps, TargetDonutItem } from "./interactive-target-donut";
 export * from "./portfolio";
 export * from "./reports";
 
