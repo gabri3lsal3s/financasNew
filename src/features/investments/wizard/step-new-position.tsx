@@ -1,6 +1,7 @@
-import { Input, MoneyInput, Select } from "@/components/ui";
+import { useState } from "react";
+import { Badge, Checkbox, Input, MoneyInput, Select } from "@/components/ui";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
-import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
+import { DEFAULT_SECTORS_BY_CLASS } from "@/domain/portfolio/tickers-catalog";
 import type { AssetCurrency } from "@/types";
 import { FixedIncomeFormFields } from "../components/fixed-income-form-fields";
 import type { InvestmentWizardState } from "./wizard-state";
@@ -10,16 +11,8 @@ export interface StepNewPositionProps {
   onChange: (patch: Partial<InvestmentWizardState>) => void;
 }
 
-const ASSET_CLASS_OPTIONS = [
-  { value: "Ações", label: "Ações" },
-  { value: "FIIs", label: "FIIs / Imobiliário" },
-  { value: "ETFs", label: "ETFs / Fundos de Índice" },
-  { value: "BDRs", label: "BDRs" },
-  { value: "Renda Fixa", label: "Renda Fixa" },
-  { value: "Cripto", label: "Criptomoedas" },
-  { value: "Caixa", label: "Caixa / Reserva" },
-  { value: "Internacional", label: "Internacional (EUA)" },
-];
+const CLASSES_WITH_CURRENCY = new Set(["BDRs", "Internacional"]);
+const CLASSES_WITHOUT_DIVIDENDS = new Set(["Cripto", "Caixa"]);
 
 const CURRENCY_OPTIONS: { value: AssetCurrency; label: string }[] = [
   { value: "BRL", label: "BRL (Reais)" },
@@ -31,100 +24,45 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
   const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
   const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
   const isTotalValueMode = !isCash && isFixedIncome;
+  const isCrypto = state.assetClass === "Cripto";
+  const needsCurrencyField = CLASSES_WITH_CURRENCY.has(state.assetClass);
   const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[state.assetClass] ?? [];
 
-  const handleTickerChange = (ticker: string) => {
-    const patch: Partial<InvestmentWizardState> = { ticker };
-    if (!state.sector) {
-      patch.sector = inferSectorFromTicker(ticker, state.assetClass);
-    }
-    const upper = ticker.toUpperCase();
-    if (upper.includes("LCI") || upper.includes("LCA") || upper.includes("CRI") || upper.includes("CRA")) {
-      patch.fixedIncomeIsTaxExempt = true;
-    }
-    onChange(patch);
-  };
+  const hasStoredDividends =
+    (state.accumulatedDividendsCents ?? 0) > 0 ||
+    (state.estimatedDividendPerShareCents ?? 0) > 0;
 
-  const handleClassChange = (assetClass: string) => {
-    const patch: Partial<InvestmentWizardState> = {
-      assetClass,
-      isCash: isCashAssetClass(assetClass),
-    };
-    if (!state.sector) {
-      patch.sector = inferSectorFromTicker(state.ticker, assetClass);
-    }
-    const upper = state.ticker.toUpperCase();
-    if (upper.includes("LCI") || upper.includes("LCA") || upper.includes("CRI") || upper.includes("CRA")) {
-      patch.fixedIncomeIsTaxExempt = true;
-    }
-    onChange(patch);
-  };
+  const [distributesInterest, setDistributesInterest] = useState(
+    isFixedIncome ? hasStoredDividends : false,
+  );
+  const [showDividendPanel, setShowDividendPanel] = useState(hasStoredDividends);
+  const [showNotes, setShowNotes] = useState(Boolean(state.notes && state.notes.trim().length > 0));
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Código do Ativo */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="wizard-new-ticker" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Código do Ativo (Ticker)
-          </label>
-          <Input
-            id="wizard-new-ticker"
-            value={state.ticker}
-            onChange={(e) => handleTickerChange(e.target.value.toUpperCase().trim())}
-            placeholder={isCash ? "CAIXA" : "Ex: CDB BANCO INTER, PETR4, TESOURO SELIC…"}
-            className="font-mono uppercase font-bold"
-          />
-        </div>
-
-        {/* Classe do Ativo */}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Classe do Ativo
+      {/* Resumo Compacto da Identificação (Evita repetição de Ticker e Classe) */}
+      <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-base font-bold text-foreground truncate">
+            {state.ticker || "NOVO ATIVO"}
           </span>
-          <Select
-            value={state.assetClass}
-            onValueChange={handleClassChange}
-            options={ASSET_CLASS_OPTIONS}
-          />
+          <Badge variant="muted" className="text-xs shrink-0 font-medium">
+            {state.assetClass}
+          </Badge>
+          {state.currency !== "BRL" && (
+            <Badge variant="outline" className="text-xs shrink-0 font-mono">
+              {state.currency}
+            </Badge>
+          )}
         </div>
+        <span className="text-[11px] text-muted-foreground shrink-0 font-mono">
+          Passo 2 de 4
+        </span>
+      </div>
 
-        {/* Setor / Segmento */}
-        {!isCash && (
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <label htmlFor="wizard-new-sector" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Setor / Segmento / Indexador
-            </label>
-            <Input
-              id="wizard-new-sector"
-              value={state.sector}
-              onChange={(e) => onChange({ sector: e.target.value })}
-              placeholder="Ex: Financeiro / Bancos, Imobiliário / Logística, Pós-fixado..."
-            />
-            {recommendedSectors.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                <span className="text-[11px] text-muted-foreground">Recomendados:</span>
-                {recommendedSectors.slice(0, 4).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => onChange({ sector: s })}
-                    className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
-                      state.sector === s
-                        ? "bg-primary text-primary-foreground font-semibold"
-                        : "border border-border/70 bg-surface-hover/50 text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Moeda */}
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
+      {/* Seletor de Moeda (Apenas para BDRs e Internacional) */}
+      {needsCurrencyField && (
+        <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Moeda de Negociação
           </span>
@@ -134,17 +72,49 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             options={CURRENCY_OPTIONS}
           />
         </div>
-      </div>
+      )}
 
-
+      {/* Setor / Segmento para Renda Variável (Opcional) */}
+      {!isCash && !isFixedIncome && !isCrypto && (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="wizard-new-sector" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Setor / Segmento <span className="text-muted-foreground/70 font-normal">(opcional)</span>
+          </label>
+          <Input
+            id="wizard-new-sector"
+            value={state.sector}
+            onChange={(e) => onChange({ sector: e.target.value })}
+            placeholder="Ex: Financeiro / Bancos, Imobiliário / Logística..."
+          />
+          {recommendedSectors.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="text-[11px] text-muted-foreground">Sugestões:</span>
+              {recommendedSectors.slice(0, 4).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => onChange({ sector: s })}
+                  className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                    state.sector === s
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "border border-border/70 bg-surface-hover/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bloco de Posição Inicial */}
       {isCash ? (
-        <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-4">
+        <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-3">
           <span className="text-xs font-semibold text-foreground">Saldo Inicial em Caixa</span>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="wizard-new-cash" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Saldo Inicial em Caixa (R$)
+              Saldo em Conta (R$)
             </label>
             <MoneyInput
               id="wizard-new-cash"
@@ -166,7 +136,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="wizard-new-initial-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Preço Inicial / Valor Aplicado ({state.currency})
+                Valor Aplicado ({state.currency})
               </label>
               <MoneyInput
                 id="wizard-new-initial-price"
@@ -181,11 +151,12 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
                 placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço inicial investido"
               />
+              <span className="text-[11px] text-muted-foreground">Aporte inicial</span>
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="wizard-new-current-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Preço Atual / Saldo Final ({state.currency})
+                Saldo Atual ({state.currency})
               </label>
               <MoneyInput
                 id="wizard-new-current-price"
@@ -195,12 +166,9 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
                 placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço atual ou saldo"
               />
+              <span className="text-[11px] text-muted-foreground">Saldo do extrato bancário</span>
             </div>
           </div>
-
-          <p className="text-[11px] text-muted-foreground">
-            Ativo de Renda Fixa precificado por valor investido e saldo atual (sem quantidade de cotas).
-          </p>
         </div>
       ) : (
         <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-4">
@@ -224,7 +192,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="wizard-new-avgprice" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Preço Médio de Aquisição ({state.currency})
+                Preço Médio por Cota ({state.currency})
               </label>
               <MoneyInput
                 id="wizard-new-avgprice"
@@ -267,29 +235,66 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
         />
       )}
 
-      {/* Notas / Observações */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="wizard-new-notes" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Notas ou Descrição (Opcional)
-        </label>
-        <Input
-          id="wizard-new-notes"
-          value={state.notes}
-          onChange={(e) => onChange({ notes: e.target.value })}
-          placeholder="Ex: Tese de investimento, corretora..."
-        />
-      </div>
+      {/* RF / Tesouro: toggle "Distribui juros/cupons" controla o painel de proventos */}
+      {isFixedIncome && !isCash && (
+        <div className="flex flex-col gap-2">
+          <Checkbox
+            id="wizard-fi-distributes-interest"
+            checked={distributesInterest}
+            onCheckedChange={(v) => {
+              const checked = Boolean(v);
+              setDistributesInterest(checked);
+              setShowDividendPanel(checked);
+              if (!checked) {
+                onChange({
+                  accumulatedDividendsCents: 0,
+                  estimatedDividendPerShareCents: 0,
+                });
+              }
+            }}
+            label="Distribui juros / cupons periodicamente (NTN-B, CRI, CRA, debêntures)"
+          />
+          {distributesInterest && (
+            <p className="pl-6 text-[11px] text-muted-foreground">
+              Informe os proventos anteriores ao cadastro para alimentar o Yield on Cost e a Bola de Neve.
+            </p>
+          )}
+        </div>
+      )}
 
-      {/* Proventos Anteriores ao Cadastro — oculto para ativos de caixa */}
-      {!isCash && (
+      {/* Ações / FIIs / ETFs / BDRs: link colapsável para proventos anteriores */}
+      {!isFixedIncome && !isCash && !isCrypto && !showDividendPanel && (
+        <button
+          type="button"
+          onClick={() => setShowDividendPanel(true)}
+          className="self-start text-xs text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
+        >
+          + Adicionar proventos anteriores ao cadastro (opcional)
+        </button>
+      )}
+
+      {/* Painel de Proventos Anteriores (se ativo) */}
+      {showDividendPanel && !CLASSES_WITHOUT_DIVIDENDS.has(state.assetClass) && (
         <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-surface/50 p-4">
-          <div className="flex flex-col gap-0.5">
+          <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">
-              Proventos Anteriores ao Cadastro (Opcional)
+              Proventos Anteriores ao Cadastro
             </span>
-            <span className="text-[11px] text-muted-foreground">
-              Informe proventos recebidos antes deste cadastro. Eles alimentam o Yield on Cost e a Bola de Neve, mas nao aparecem no extrato mensal nem no calendario.
-            </span>
+            {!isFixedIncome && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDividendPanel(false);
+                  onChange({
+                    accumulatedDividendsCents: 0,
+                    estimatedDividendPerShareCents: 0,
+                  });
+                }}
+                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                Ocultar
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -315,7 +320,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
                 htmlFor="wizard-estimated-div-per-share"
                 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
               >
-                Dividendo Estimado / Cota / Mes ({state.currency})
+                Dividendo Estimado / Cota / Mês ({state.currency})
               </label>
               <MoneyInput
                 id="wizard-estimated-div-per-share"
@@ -323,14 +328,45 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
                 currency={state.currency}
                 onCentsChange={(estimatedDividendPerShareCents) => onChange({ estimatedDividendPerShareCents })}
                 placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
-                aria-label="Dividendo mensal estimado por cota para calculo da Bola de Neve"
+                aria-label="Dividendo mensal estimado por cota para cálculo da Bola de Neve"
               />
             </div>
           </div>
+        </div>
+      )}
 
-          <p className="text-[10px] text-muted-foreground">
-            O dividendo estimado por cota e usado apenas quando nao ha lancamentos periodicos registrados para este ativo.
-          </p>
+      {/* Notas / Observações (Colapsável) */}
+      {!showNotes ? (
+        <button
+          type="button"
+          onClick={() => setShowNotes(true)}
+          className="self-start text-xs text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
+        >
+          + Adicionar anotações ou descrição (opcional)
+        </button>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <label htmlFor="wizard-new-notes" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Anotações / Descrição <span className="text-muted-foreground/70 font-normal">(opcional)</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setShowNotes(false);
+                onChange({ notes: "" });
+              }}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              Ocultar
+            </button>
+          </div>
+          <Input
+            id="wizard-new-notes"
+            value={state.notes}
+            onChange={(e) => onChange({ notes: e.target.value })}
+            placeholder="Ex: Tese de investimento, corretora..."
+          />
         </div>
       )}
     </div>

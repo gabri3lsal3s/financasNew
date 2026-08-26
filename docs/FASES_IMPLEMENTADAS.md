@@ -824,6 +824,32 @@
   - ESLint (`npm run lint`): 0 erros / 0 avisos;
   - Testes: 40 arquivos e 371/371 testes aprovados com 100% de sucesso.
 
+## F59 — Simplificação, Remoção de Redundâncias & Harmonização Visual do Wizard de Novo Ativo (2026-08-25)
+
+- **Problema:**
+  1. No Passo 2 (Posição) do Wizard de Novo Ativo, os formulários reexibiam inputs de Ticker e Classe de Ativo que o usuário já havia acabado de preencher no Passo 1 (Identificação);
+  2. O seletor de Moeda aparecia com valor BRL para todas as classes nacionais, ocupando espaço desnecessário;
+  3. O bloco de proventos históricos ficava sempre aberto com múltiplos campos monetários, poluindo ativos que não possuem fluxo de dividendos (como CDBs acumulativos e Criptomoedas);
+  4. Fragmentação excessiva em cards empilhados causando scroll longo no modal.
+- **Solução:**
+  1. **Cabeçalho Compacto de Resumo:**
+     - Substituição dos inputs de Ticker e Classe por um cabeçalho limpo no topo do Passo 2 (`[ TICKER ] · [ Nome da Classe ]` + badge de moeda se estrangeiro);
+  2. **Divulgação Progressiva de Moeda & Setor:**
+     - O campo de Moeda é exibido exclusivamente para classes que aceitam moedas estrangeiras (`Internacional`, `BDRs`), sendo omitido para ativos 100% em BRL;
+     - Campo de Setor/Segmento contextual para Renda Variável;
+  3. **Proventos & Anotações Colapsáveis:**
+     - Para Renda Fixa: checkbox discreto `[ ] Distribui juros / cupons periodicamente (NTN-B, CRI, CRA, debêntures)` (desmarcado por padrão para CDBs e LCIs/LCAs);
+     - Para Renda Variável: link textual discreto `+ Adicionar proventos anteriores ao cadastro (opcional)`;
+     - Para Cripto e Caixa: bloco de proventos completamente desabilitado (não aplicável);
+     - Anotações integradas via link colapsável `+ Adicionar anotações ou descrição (opcional)`.
+- **Arquivos alterados:**
+  - `src/features/investments/wizard/step-new-position.tsx` — reestruturação completa com layout compacto e contextual por classe;
+  - `src/features/investments/wizard/investment-wizard.test.tsx` — asserções atualizadas para o novo cabeçalho de resumo.
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 2 arquivos e 20/20 testes do wizard aprovados (100% de sucesso).
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

@@ -101,7 +101,7 @@ describe("InvestmentWizard (Fase 41)", () => {
     if (resultButton) {
       fireEvent.click(resultButton);
     }
-    expect(screen.getByLabelText("Código do Ativo (Ticker)")).toHaveValue("O");
+    expect(screen.getAllByText("O").length).toBeGreaterThan(0);
     expect(screen.getByLabelText(/Quantidade Inicial de Cotas/i)).toBeInTheDocument();
   });
 
