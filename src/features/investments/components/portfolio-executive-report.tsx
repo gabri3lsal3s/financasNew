@@ -62,14 +62,12 @@ export function PortfolioExecutiveReport({
           pnlPct,
           items: items.map((i) => ({
             ticker: i.ticker,
-            name: i.name,
             sector: i.sector,
             quantity: i.quantity,
             avgPriceCents: numberToCents(i.averageCost),
             currentPriceCents: numberToCents(i.priceQuote || i.priceBRL),
             totalCents: numberToCents(i.valueBRL),
-            pnlPct: i.totalReturnPct !== undefined ? i.totalReturnPct : (i.unrealizedPct ?? 0),
-            yocPct: i.yieldOnCostPct ?? undefined,
+            pnlPct: (i.totalReturnPct ?? i.unrealizedPct) ?? 0,
             currency: i.currency,
           })),
         };

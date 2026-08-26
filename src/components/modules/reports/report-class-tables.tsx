@@ -4,17 +4,17 @@ import { sanitizeReportText } from "@/domain/reports";
 
 export interface ReportClassTableItem {
   ticker: string;
-  name?: string;
-  sector?: string;
+  name?: string | null;
+  sector?: string | null;
   quantity: number;
   avgPriceCents: number;
   currentPriceCents: number;
   totalCents: number;
   pnlPct: number;
-  yocPct?: number;
-  currency?: string;
-  indexType?: string;
-  maturityDate?: string;
+  yocPct?: number | null;
+  currency?: string | null;
+  indexType?: string | null;
+  maturityDate?: string | null;
 }
 
 export interface ReportClassGroup {
@@ -212,7 +212,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                             {formatSignedPct(item.pnlPct)}
                           </td>
                           <td className="py-1.5 px-2.5 text-right num font-mono text-slate-600 text-[11px]">
-                            {item.yocPct !== undefined && item.yocPct > 0
+                            {item.yocPct != null && item.yocPct > 0
                               ? formatPercent(item.yocPct)
                               : "—"}
                           </td>
