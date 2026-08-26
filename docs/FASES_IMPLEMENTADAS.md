@@ -850,6 +850,26 @@
   - ESLint (`npm run lint`): 0 erros / 0 avisos;
   - Testes: 2 arquivos e 20/20 testes do wizard aprovados (100% de sucesso).
 
+## F60 — Responsividade Mobile do Resultado de Aportes (`AporteResult`) via Cards Adaptativos (2026-08-25)
+
+- **Problema:**
+  1. A tabela de simulação de aportes (`AporteResult`) continha 7 colunas com `flex-1` que, em telas mobile (< 640px), esmagavam cabeçalhos e valores monetários em colunas de ~45px;
+  2. Textos quebravam de forma desalinhada e o botão de execução (*"Pendente" / "Feito"*) ficava deformado;
+  3. A tabela em árvore hierárquica sofria compressão horizontal em telas estreitas.
+- **Solução:**
+  1. **Padrão Dual Canônico (Cards no Mobile + Tabela no Desktop):**
+     - **No Mobile (`sm:hidden`):** Cada ativo sugerido para aporte é renderizado como um Card de Aporte Adaptativo (`border-border/80 bg-surface shadow-xs p-3.5`), com cabeçalho contendo Ticker, Classe, Setor e botão de Execução de toque fácil no canto superior direito, além de um grid 2 colunas com o *Aporte Sugerido* em destaque verde (`text-portfolio`) e *Atual ➔ Alvo*;
+     - **No Desktop (`hidden sm:block`):** Tabela tabular completa preservada com `min-w-[700px]`, mantendo alinhamento numérico à direita e alta densidade;
+  2. **Visualização em Árvore com Rolagem Destravada:**
+     - Adicionado `min-w-[660px]` com `overflow-x-auto` na tabela hierárquica (Classe ➔ Setor ➔ Ativos), permitindo scroll suave sem corte de texto.
+- **Arquivos alterados:**
+  - `src/components/modules/aporte-result.tsx` — implementação da renderização dual mobile/desktop e largura segura para árvore;
+  - `src/features/investments/pages/aporte-tab.test.tsx` — testes de AporteTab mantidos 100% verdes.
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 2/2 testes de `aporte-tab.test.tsx` aprovados.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

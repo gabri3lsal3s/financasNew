@@ -522,17 +522,118 @@ export function AporteResult({
           </div>
 
           {viewMode === "list" ? (
-            <DataList
-              columns={columns}
-              rows={sortedRoutes}
-              rowKey={(row, index) => `${row.ticker}:${index}`}
-              density="compact"
-              emptyMessage="Sem sugestão de aporte."
-            />
+            <>
+              {/* Tabela Tabular Completa para Desktop (≥ 640px) */}
+              <div className="hidden sm:block overflow-x-auto rounded-xl border border-border/80 bg-surface shadow-xs">
+                <DataList
+                  columns={columns}
+                  rows={sortedRoutes}
+                  rowKey={(row, index) => `${row.ticker}:${index}`}
+                  density="compact"
+                  className="border-none shadow-none min-w-[700px]"
+                  emptyMessage="Sem sugestão de aporte."
+                />
+              </div>
+
+              {/* Cards de Aporte Adaptativos para Mobile (< 640px) */}
+              <div className="sm:hidden flex flex-col gap-2.5">
+                {sortedRoutes.length === 0 ? (
+                  <div className="rounded-xl border border-border bg-surface p-6 text-center text-xs text-muted-foreground">
+                    Sem sugestão de aporte.
+                  </div>
+                ) : (
+                  sortedRoutes.map((row, index) => {
+                    const isDone = completedTickers.has(row.ticker);
+                    return (
+                      <div
+                        key={`${row.ticker}:${index}`}
+                        className={cn(
+                          "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors",
+                          isDone && "bg-muted/10 opacity-75",
+                        )}
+                      >
+                        {/* Cabeçalho do Card: Ticker + Badges à esquerda, Botão de Execução à direita */}
+                        <div className="flex items-start justify-between gap-2 min-w-0">
+                          <div className="flex flex-col gap-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-sm font-bold text-foreground truncate">
+                                {row.ticker}
+                              </span>
+                              {row.assetClass ? (
+                                <Badge variant="muted" className="text-[10px] shrink-0 font-medium">
+                                  {row.assetClass}
+                                </Badge>
+                              ) : null}
+                            </div>
+                            {row.sector ? (
+                              <span className="text-[11px] text-muted-foreground font-medium truncate">
+                                {row.sector}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleTicker(row.ticker)}
+                            aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
+                            className={cn(
+                              "inline-flex items-center justify-center gap-1 rounded-pill px-3 py-1 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0",
+                              isDone
+                                ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
+                                : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-95",
+                            )}
+                          >
+                            {isDone ? (
+                              <>
+                                <Check className="size-3.5" aria-hidden="true" />
+                                <span>Feito</span>
+                              </>
+                            ) : (
+                              <span>Pendente</span>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Grid 2 Colunas: Aporte Sugerido (Destaque) & Posição Alvo vs Atual */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60">
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Aporte Sugerido
+                            </span>
+                            <MoneyText
+                              cents={numberToCents(row.allocatedBRL)}
+                              tone="portfolio"
+                              className="text-sm font-bold truncate"
+                            />
+                            <span className="text-[10px] text-muted-foreground font-mono truncate">
+                              {formatQuantity(row.quantity)} un • R$ {row.priceBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col gap-0.5 items-end text-right min-w-0">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Atual ➔ Alvo
+                            </span>
+                            <div className="flex items-center gap-1 font-mono text-xs truncate">
+                              <span className="text-muted-foreground">
+                                <MoneyText cents={numberToCents(row.currentValueBRL)} tone="default" />
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-medium text-foreground font-mono truncate">
+                              Alvo: <MoneyText cents={numberToCents(row.targetValueBRL)} tone="default" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
           ) : (
             /* Visualização em Árvore Hierárquica */
-            <div className="overflow-x-auto rounded-xl border border-border/80 bg-surface">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="overflow-x-auto rounded-xl border border-border/80 bg-surface shadow-xs">
+              <table className="w-full min-w-[660px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
                     <th className="py-2.5 px-3">Hierarquia / Ativo</th>
