@@ -104,7 +104,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                         <th className="py-1 px-1.5 print:w-[20%]">Classe / Tema</th>
                         <th className="py-1 px-1.5 text-right print:w-[7%]">Qtd</th>
                         <th className="py-1 px-1.5 text-right print:w-[13%]">Preço Médio</th>
-                        <th className="py-1 px-1.5 text-right print:w-[13%]">Cotação USD</th>
+                        <th className="py-1 px-1.5 text-right print:w-[13%]">Cotação</th>
                         <th className="py-1 px-1.5 text-right print:w-[15%]">Total (R$)</th>
                         <th className="py-1 px-1.5 text-right print:w-[9%]">Var. Cota</th>
                         <th className="py-1 px-2 text-right print:w-[10%]">Ret. Total</th>
@@ -140,7 +140,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                             </td>
                             <td className="py-1 px-1.5 text-muted-foreground text-[10px] truncate">
                               {sanitizeReportText(
-                                item.sector || item.indexType || "Renda Fixa Geral",
+                                item.sector || item.indexType || "Renda Fixa",
                               )}
                             </td>
                             <td className="py-1 px-1.5 text-right num font-mono text-muted-foreground text-[10px]">
@@ -165,16 +165,16 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                               {sanitizeReportText(item.ticker)}
                             </td>
                             <td className="py-1 px-1.5 text-muted-foreground text-[10px] truncate">
-                              {sanitizeReportText(item.sector || "Internacional")}
+                              {sanitizeReportText(item.sector || " — ")}
                             </td>
                             <td className="py-1 px-1.5 text-right num font-mono text-muted-foreground text-[10px]">
                               {formatQuantity(item.quantity)}
                             </td>
                             <td className="py-1 px-1.5 text-right num font-mono text-muted-foreground text-[10px]">
-                              <MoneyText cents={item.avgPriceCents} tone="default" />
+                              <MoneyText cents={item.avgPriceCents} currency={(item.currency as "BRL" | "USD") ?? "BRL"} tone="default" />
                             </td>
                             <td className="py-1 px-1.5 text-right num font-mono text-foreground text-[10px]">
-                              <MoneyText cents={item.currentPriceCents} tone="default" />
+                              <MoneyText cents={item.currentPriceCents} currency={(item.currency as "BRL" | "USD") ?? "BRL"} tone="default" />
                             </td>
                             <td className="py-1 px-1.5 text-right num font-mono font-bold text-foreground text-[11px]">
                               <MoneyText cents={item.totalCents} tone="default" />
@@ -198,7 +198,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                               {sanitizeReportText(item.ticker)}
                             </td>
                             <td className="py-1 px-1.5 text-muted-foreground text-[10px] truncate">
-                              {sanitizeReportText(item.sector || "Geral")}
+                              {sanitizeReportText(item.sector || " — ")}
                             </td>
                             <td className="py-1 px-1 text-right num font-mono text-muted-foreground text-[10px]">
                               {formatQuantity(item.quantity)}

@@ -362,12 +362,18 @@ export function WealthTearSheetModal({
             <Calendar className="size-3.5 text-primary-strong" aria-hidden="true" />
             <span>Movimentação do Mês ({monthSummary.monthLabel}):</span>
           </div>
-          <div className="flex items-center gap-4 font-mono text-[11px] num">
-            <span>Aportes: <strong className="text-foreground"><MoneyText cents={numberToCents(monthSummary.buysBRL)} /></strong></span>
-            <span>Vendas: <strong className="text-foreground"><MoneyText cents={numberToCents(monthSummary.sellsBRL)} /></strong></span>
-            <span>Proventos: <strong className="text-positive-strong"><MoneyText cents={numberToCents(monthSummary.dividendsBRL)} /></strong></span>
-            <span>Líquido: <strong className={monthSummary.netFlowBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}><MoneyText cents={numberToCents(monthSummary.netFlowBRL)} /></strong></span>
-          </div>
+          {monthSummary.buysBRL === 0 && monthSummary.sellsBRL === 0 && monthSummary.dividendsBRL === 0 ? (
+            <span className="text-muted-foreground text-[11px] italic">
+              Sem movimentações financeiras registradas na competência
+            </span>
+          ) : (
+            <div className="flex items-center gap-4 font-mono text-[11px] num">
+              <span>Aportes: <strong className="text-foreground"><MoneyText cents={numberToCents(monthSummary.buysBRL)} /></strong></span>
+              <span>Vendas: <strong className="text-foreground"><MoneyText cents={numberToCents(monthSummary.sellsBRL)} /></strong></span>
+              <span>Proventos: <strong className="text-positive-strong"><MoneyText cents={numberToCents(monthSummary.dividendsBRL)} /></strong></span>
+              <span>Líquido: <strong className={monthSummary.netFlowBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}><MoneyText cents={numberToCents(monthSummary.netFlowBRL)} /></strong></span>
+            </div>
+          )}
         </div>
       )}
 
@@ -435,7 +441,7 @@ export function WealthTearSheetModal({
                             : "bg-muted/60 text-muted-foreground border border-border/80"
                       }`}
                     >
-                      {cg.gapBRL > 0 ? "Aportar" : cg.currentPct > cg.targetPct && cg.targetPct > 0 ? "Acima da Meta" : "Equilibrado"}
+                      {cg.gapBRL > 0 ? "Abaixo da Meta" : cg.currentPct > cg.targetPct && cg.targetPct > 0 ? "Acima da Meta" : "Equilibrado"}
                     </span>
                   </td>
                 </tr>
@@ -500,7 +506,7 @@ export function WealthTearSheetModal({
       {/* 7. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento estritamente confidencial gerado pelo titular da conta via Guia Financeiro. As informações refletem a posição de custódia e cotações na data de emissão."
+        disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021). Rentabilidade passada não representa garantia de retorno futuro."
       />
     </ReportDocumentLayout>
   );

@@ -221,7 +221,7 @@ export function ConsolidatedWealthModal({
       {/* 6. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento estritamente confidencial emitido pelo titular da conta via Guia Financeiro. Consolidação patrimonial integrando custódia de investimentos, saldo em caixa e passivos."
+        disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021)."
       />
     </ReportDocumentLayout>
   );

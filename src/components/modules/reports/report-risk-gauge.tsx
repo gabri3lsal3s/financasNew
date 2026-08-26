@@ -61,7 +61,7 @@ export function ReportRiskGauge({
             isCritical && "bg-critical/10 border-critical/30 text-critical-strong",
           )}
         >
-          {isSafe ? "Diversificação Saudável" : isWarning ? "Atenção (Concentração Moderada)" : "Alerta de Sobrepeso"}
+          {isSafe ? "Concentração Baixa" : isWarning ? "Concentração Moderada" : "Concentração Elevada"}
         </span>
       </div>
 
@@ -102,13 +102,13 @@ export function ReportRiskGauge({
         </div>
       </div>
 
-      {/* Diagnóstico Contextual */}
+      {/* Diagnóstico Contextual Neutro / Estatístico */}
       <p className="text-[11px] text-muted-foreground leading-snug">
         Maior ativo na carteira: <strong className="font-semibold text-foreground">{topItemName || "N/A"}</strong> representando{" "}
         <strong className="num font-mono font-bold text-foreground">{topItemPct.toFixed(1)}%</strong> do patrimônio total.
-        {isSafe && " A carteira possui excelente distribuição de risco individual."}
-        {isWarning && " Recomendado direcionar novos aportes para outras classes/ativos para diluir o peso."}
-        {isCritical && " Alerta de alta dependência sobre um único ativo."}
+        {isSafe && " Concentração individual dentro do parâmetro de referência (≤ 15%)."}
+        {isWarning && " Posição individual acima do patamar de referência de 15% do patrimônio total."}
+        {isCritical && " Posição individual acima de 25% do patrimônio total."}
       </p>
     </div>
   );

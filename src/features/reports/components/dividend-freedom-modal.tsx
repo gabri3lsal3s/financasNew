@@ -211,7 +211,7 @@ export function DividendFreedomModal({
       {/* 6. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento estritamente confidencial emitido pelo titular da conta via Guia Financeiro. Cálculos de independência e projeção baseados na média histórica de rendimentos."
+        disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021). Rentabilidade passada não representa garantia de retorno futuro."
       />
     </ReportDocumentLayout>
   );

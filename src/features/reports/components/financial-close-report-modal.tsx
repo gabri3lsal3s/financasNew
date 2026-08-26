@@ -421,7 +421,7 @@ export function FinancialCloseReportModal({
       {/* 7. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento estritamente confidencial emitido pelo titular da conta via Guia Financeiro. Demonstração de fluxo de caixa baseada nos registros efetivamente conciliados."
+        disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
       />
     </ReportDocumentLayout>
   );

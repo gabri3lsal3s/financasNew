@@ -327,7 +327,7 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
           </div>
 
           <ReportFooter
-            disclaimer="Extrato consolidado emitido para simples conferência e acompanhamento de custódia patrimonial."
+            disclaimer="Extrato consolidado emitido para simples conferência e acompanhamento de custódia patrimonial. Não constitui recomendação de investimento."
           />
         </div>
       </PrintSheet>
