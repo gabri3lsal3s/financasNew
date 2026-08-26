@@ -530,7 +530,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 8mm 10mm 8mm 10mm;
   }
 
   /* 1. Reset total de fundo e cores para impressão nítida em papel branco */
@@ -631,7 +631,7 @@
     background-color: #ffffff !important;
     background: #ffffff !important;
     color: #0f172a !important;
-    padding: 10mm 12mm !important;
+    padding: 0 !important;
     margin: 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
