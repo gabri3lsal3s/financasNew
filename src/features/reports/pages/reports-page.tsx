@@ -247,18 +247,13 @@ export function ReportsPage() {
   const totalInvestedCostBRL = positionQuery.totalCostBRL ?? 0;
 
   const currentYearNum = new Date().getFullYear();
-  const yearDividendsBRL = useMemo(
-    () =>
-      dividends
-        .filter((d) => d.date.startsWith(String(currentYearNum)))
-        .reduce((acc, d) => acc + d.amount, 0),
-    [dividends, currentYearNum],
-  );
-
-  const totalAllTimeDividendsBRL = useMemo(
-    () => dividends.reduce((acc, d) => acc + d.amount, 0),
-    [dividends],
-  );
+  const yearDividendsBRL = useMemo(() => {
+    const tableDivs = dividends
+      .filter((d) => d.date.startsWith(String(currentYearNum)))
+      .reduce((acc, d) => acc + d.amount, 0);
+    if (tableDivs > 0) return tableDivs;
+    return positionQuery.totalDividendsBRL;
+  }, [dividends, currentYearNum, positionQuery.totalDividendsBRL]);
 
   const currentMonthStr = currentMonth();
   const currentMonthFormatted = monthLabel(currentMonthStr);
@@ -839,6 +834,7 @@ export function ReportsPage() {
             averagePrice: r.averageCostBRL ?? r.averageCost,
             currentPrice: r.priceBRL,
             valueBRL: r.valueBRL,
+            totalCostBRL: r.totalCostBRL,
             unrealizedPnlBRL: r.unrealizedPnl,
             unrealizedPnlPct: r.unrealizedPct ?? 0,
             totalReturnPnlBRL: r.totalReturnPnl,
@@ -851,7 +847,7 @@ export function ReportsPage() {
         })}
         totalBRL={totalPatrimonyBRL}
         totalCostBRL={totalInvestedCostBRL}
-        totalDividendsBRL={totalAllTimeDividendsBRL}
+        totalDividendsBRL={positionQuery.totalDividendsBRL}
         cashBRL={cashBalanceBRL}
         yearDividendsBRL={yearDividendsBRL}
         monthSummary={monthFlowSummary}

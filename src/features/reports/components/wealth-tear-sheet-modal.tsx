@@ -18,20 +18,21 @@ import { sanitizeReportText, type AllocationAnalysisResult, type ConcentrationRi
 export interface WealthPositionRow {
   ticker: string;
   name?: string | null;
-  assetClass: string;
+  assetClass: string | null;
   sector?: string | null;
   currency: string;
   quantity: number;
   averagePrice: number;
   currentPrice: number;
   valueBRL: number;
+  totalCostBRL?: number;
   unrealizedPnlBRL: number;
   unrealizedPnlPct: number;
   totalReturnPnlBRL?: number;
   totalReturnPct?: number;
   dividendsBRL?: number;
-  yearDividendsBRL: number;
-  yocPct: number;
+  yearDividendsBRL?: number;
+  yocPct?: number;
   isCash?: boolean;
 }
 
@@ -106,12 +107,18 @@ export function WealthTearSheetModal({
   const unrealizedPnlPct = totalCostBRL > 0 ? (unrealizedPnlBRL / totalCostBRL) * 100 : 0;
 
   // Total de proventos de todos os tempos e Retorno Total real consolidado
-  const totalDividendsAllTime = useMemo(
-    () =>
-      totalDividendsBRL ??
-      rows.reduce((acc, r) => acc + (r.dividendsBRL ?? r.yearDividendsBRL ?? 0), 0),
-    [totalDividendsBRL, rows],
-  );
+  const totalDividendsAllTime = useMemo(() => {
+    if (totalDividendsBRL !== undefined && totalDividendsBRL > 0) {
+      return totalDividendsBRL;
+    }
+    const sumDividendsFromRows = rows.reduce(
+      (acc, r) => acc + (r.dividendsBRL ?? r.yearDividendsBRL ?? 0),
+      0,
+    );
+    if (sumDividendsFromRows > 0) return sumDividendsFromRows;
+    return totalDividendsBRL ?? 0;
+  }, [totalDividendsBRL, rows]);
+
   const totalReturnBRL = unrealizedPnlBRL + totalDividendsAllTime;
   const totalReturnPct = totalCostBRL > 0 ? (totalReturnBRL / totalCostBRL) * 100 : 0;
 
@@ -143,7 +150,7 @@ export function WealthTearSheetModal({
     [concentrationRisk.singleAssetDominance, investmentRows, totalBRL],
   );
 
-  // Agrupamento por classe de ativos para a tabela de custódia com subtotais
+  // Agrupamento por classe de ativos para a tabela de custódia com subtotais e Retorno Total por classe
   const groupedRows = useMemo(() => {
     const groups = new Map<string, WealthPositionRow[]>();
     for (const row of investmentRows) {
@@ -154,15 +161,26 @@ export function WealthTearSheetModal({
     }
     return Array.from(groups.entries()).map(([assetClass, items]) => {
       const subtotalBRL = items.reduce((acc, i) => acc + i.valueBRL, 0);
-      const subtotalCostBRL = items.reduce((acc, i) => acc + i.averagePrice * i.quantity, 0);
-      const subtotalPnlBRL = subtotalBRL - subtotalCostBRL;
-      const subtotalPnlPct = subtotalCostBRL > 0 ? (subtotalPnlBRL / subtotalCostBRL) * 100 : 0;
+      const subtotalCostBRL = items.reduce((acc, i) => {
+        const cost = i.totalCostBRL ?? (i.averagePrice * i.quantity);
+        return acc + Math.max(0, cost);
+      }, 0);
+      const subtotalPnlBRL = items.reduce((acc, i) => acc + i.unrealizedPnlBRL, 0);
+      const subtotalDividendsBRL = items.reduce((acc, i) => acc + (i.dividendsBRL ?? 0), 0);
+      const subtotalTotalReturnBRL = subtotalPnlBRL + subtotalDividendsBRL;
+      const subtotalTotalReturnPct = subtotalCostBRL > 0 ? (subtotalTotalReturnBRL / subtotalCostBRL) * 100 : 0;
+      const subtotalUnrealizedPct = subtotalCostBRL > 0 ? (subtotalPnlBRL / subtotalCostBRL) * 100 : 0;
       const pctOfTotal = totalBRL > 0 ? (subtotalBRL / totalBRL) * 100 : 0;
       return {
         assetClass,
         items,
         subtotalBRL,
-        subtotalPnlPct,
+        subtotalCostBRL,
+        subtotalPnlBRL,
+        subtotalDividendsBRL,
+        subtotalTotalReturnBRL,
+        subtotalTotalReturnPct,
+        subtotalUnrealizedPct,
         pctOfTotal,
       };
     });
@@ -460,7 +478,7 @@ export function WealthTearSheetModal({
             className: group.assetClass,
             totalCents: numberToCents(group.subtotalBRL),
             sharePct: group.pctOfTotal,
-            pnlPct: group.subtotalPnlPct,
+            pnlPct: group.subtotalTotalReturnPct,
             items: group.items.map((r) => ({
               ticker: r.ticker,
               name: r.name,
