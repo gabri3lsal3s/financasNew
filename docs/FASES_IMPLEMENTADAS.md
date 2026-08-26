@@ -1035,15 +1035,16 @@
   - Testes: 249 arquivos e 1.798/1.798 testes aprovados (100% verde).
 
 ### Refinamento de Espaçamento e Ritmo Vertical de Relatórios PDF (2026-08-26)
-- **Problema:** o estilo de impressão forçava quebras artificiais estáticas por classe, gerando páginas semipreenchidas ou órfãs; nomes de classes acentuadas desordenavam a lista; valores em USD sofriam colisão por colunas estreitas; e faltava o símbolo `%` nos subtotais.
+- **Problema:** o estilo de impressão forçava quebras artificiais estáticas por classe, gerando páginas semipreenchidas ou órfãs; a sobreposição de faixas de cabeçalho e mini-resumo no topo causava poluição visual e redundância de dados; valores em USD sofriam colisão por colunas estreitas; e faltava o símbolo `%` nos subtotais.
 - **Solução:**
-  1. **Fluxo Contínuo Natural:** remoção de quebras artificiais intermediárias (`printBreakBefore`) entre classes, mantendo apenas a quebra editorial da Capa (Página 1) para a Custódia (Página 2+);
-  2. **Cabeçalho Unificado Compacto:** cabeçalho da classe e mini-resumo integrados em um bloco único (`break-after: avoid; break-inside: avoid;`) com acento cromático institucional (`border-l-4`), economizando ~50px de altura vertical;
-  3. **Ordenação Normalizada de Classes:** ordenação imune a acentuação (`Ações` $\rightarrow$ `FIIs` $\rightarrow$ `Internacional` $\rightarrow$ `Renda Fixa`);
-  4. **Redistribuição Proporcional de Colunas:** colunas de moeda em dólar ampliadas (`15%` / `15%` / `17%`) com padding e `whitespace-nowrap`, eliminando colisão de valores monetários;
-  5. **Eliminação de Truncamento:** substituição de `truncate` por `whitespace-normal break-words leading-tight`;
-  6. **Padronização Monetária USD:** formato em locale pt-BR com prefixo explícito (`US$ 430,48`);
-  7. Correção do percentual nos subtotais de classe (`{formatPercent(group.sharePct)}% da carteira`).
+  1. **Padrão Contábil / Auditoria com `<tfoot>`:** substituição do mini-quadro pesado no topo por uma linha de subtotal consolidado no rodapé da tabela (`<tfoot>`), alinhando Custo, Saldo e Retorno diretamente sob suas colunas numéricas;
+  2. **Cabeçalho Leve em Linha Única:** cabeçalho da classe simplificado para uma única barra elegante com acento cromático (`border-l-4`), contador de ativos e participação na carteira (`%`), eliminando repetições de dados;
+  3. **Fluxo Contínuo Natural:** remoção de quebras artificiais intermediárias (`printBreakBefore`) entre classes, mantendo apenas a quebra editorial da Capa (Página 1) para a Custódia (Página 2+);
+  4. **Ordenação Normalizada de Classes:** ordenação imune a acentuação (`Ações` $\rightarrow$ `FIIs` $\rightarrow$ `Internacional` $\rightarrow$ `Renda Fixa`);
+  5. **Redistribuição Proporcional de Colunas:** colunas de moeda em dólar ampliadas (`15%` / `15%` / `17%`) com padding e `whitespace-nowrap`, eliminando colisão de valores monetários;
+  6. **Eliminação de Truncamento:** substituição de `truncate` por `whitespace-normal break-words leading-tight`;
+  7. **Padronização Monetária USD:** formato em locale pt-BR com prefixo explícito (`US$ 430,48`);
+  8. Correção do percentual nos subtotais de classe (`{formatPercent(group.sharePct)}% da carteira`).
 - **Arquivos alterados:**
   - `src/styles/globals.css`
   - `src/services/masks/money.ts`

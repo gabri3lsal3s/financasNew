@@ -58,7 +58,7 @@ const formatQuantity = (quantity: number): string =>
 
 /**
  * Tabelas de Custódia Especializadas por Classe de Ativo para Relatórios A4/PDF.
- * Renderiza seções distintas com cabeçalho unificado compacto, mini-resumo e colunas proporcionais:
+ * Renderiza seções de custódia com cabeçalho leve e linha de subtotais contábeis no tfoot:
  * - Ações / FIIs: Ticker, Setor, Qtd, PM, Cotação, Total, Var. Cota %, Retorno Total %;
  * - Renda Fixa: Título / Emissor, Indexador / Vencimento, Qtd, Saldo Atual, Rendimento %;
  * - Internacional: Ticker, Tema, Qtd, Custo Médio, Cotação USD, Total, Var. Cota %, Retorno Total %.
@@ -87,87 +87,30 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
             aria-label={`Posições de ${group.className}`}
             className="flex flex-col gap-1.5 break-inside-auto print:break-inside-auto"
           >
-            {/* 1. Cabeçalho Unificado da Classe + Mini-Resumo Integrado (sempre juntos) */}
-            <div className="break-inside-avoid print:break-inside-avoid break-after-avoid print:break-after-avoid flex flex-col rounded-lg border border-border/80 overflow-hidden shadow-2xs">
-              {/* Linha Principal do Cabeçalho */}
-              <div
-                className="report-group-header flex items-center justify-between bg-muted/40 px-3.5 py-1.5 text-xs font-bold text-foreground print:bg-slate-100"
-                style={{ borderLeftWidth: "4px", borderLeftColor: classColor }}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="size-2 rounded-full shrink-0"
-                    style={{ backgroundColor: classColor }}
-                    aria-hidden="true"
-                  />
-                  <span className="uppercase tracking-wider">
-                    {group.className} ({group.items.length}{" "}
-                    {group.items.length === 1 ? "ativo" : "ativos"})
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 font-mono num text-xs">
-                  <span>
-                    Total: <MoneyText cents={group.totalCents} tone="default" className="font-bold" />
-                  </span>
-                  <span
-                    className={
-                      group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong"
-                    }
-                  >
-                    {formatSignedPct(group.pnlPct)}
-                  </span>
-                  <span className="text-muted-foreground font-normal">
-                    {formatPercent(group.sharePct)}% da carteira
-                  </span>
-                </div>
+            {/* 1. Cabeçalho Leve em Linha Única */}
+            <div
+              className="report-group-header flex items-center justify-between bg-muted/40 px-3.5 py-1.5 rounded-lg border border-border/80 text-xs font-bold text-foreground print:bg-slate-100 print:border-slate-300 break-inside-avoid print:break-inside-avoid break-after-avoid print:break-after-avoid"
+              style={{ borderLeftWidth: "4px", borderLeftColor: classColor }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="size-2 rounded-full shrink-0"
+                  style={{ backgroundColor: classColor }}
+                  aria-hidden="true"
+                />
+                <span className="uppercase tracking-wider">
+                  {group.className} ({group.items.length}{" "}
+                  {group.items.length === 1 ? "ativo" : "ativos"})
+                </span>
               </div>
-
-              {/* Faixa Compacta de Mini-KPIs */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 bg-muted/15 border-t border-border/60 px-3.5 py-1 gap-2 text-xs print:bg-slate-50/70">
-                <div className="flex items-center gap-1.5 text-[10px]">
-                  <span className="text-muted-foreground uppercase font-bold text-[9px]">Posição Atual</span>
-                  <span className="font-mono num font-bold text-foreground">
-                    <MoneyText cents={group.totalCents} tone="default" />
-                  </span>
-                </div>
-                {group.totalCostCents !== undefined && (
-                  <div className="flex items-center gap-1.5 text-[10px]">
-                    <span className="text-muted-foreground uppercase font-bold text-[9px]">Capital Investido</span>
-                    <span className="font-mono num font-bold text-foreground">
-                      <MoneyText cents={group.totalCostCents} tone="default" />
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5 text-[10px]">
-                  <span className="text-muted-foreground uppercase font-bold text-[9px]">Retorno Total Real</span>
-                  <span className={cn(
-                    "font-mono num font-bold",
-                    group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
-                  )}>
-                    {formatSignedPct(group.pnlPct)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px]">
-                  <span className="text-muted-foreground uppercase font-bold text-[9px]">Posição Dominante</span>
-                  <span className="font-medium text-foreground truncate">
-                    {group.topAssetTicker ? (
-                      <>
-                        <strong>{sanitizeReportText(group.topAssetTicker)}</strong>
-                        {group.topAssetSharePct !== undefined && (
-                          <span className="text-[9px] text-muted-foreground ml-1">
-                            ({group.topAssetSharePct.toFixed(1)}%)
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span>{group.items.length} ativos</span>
-                    )}
-                  </span>
-                </div>
+              <div className="flex items-center gap-2 font-mono num text-xs">
+                <span className="text-muted-foreground font-normal">
+                  {formatPercent(group.sharePct)}% da carteira
+                </span>
               </div>
             </div>
 
-            {/* 2. Tabela Especializada com Células sem Truncamento e sem Colisão */}
+            {/* 2. Tabela de Custódia com Totais Contábeis no tfoot */}
             <div className="overflow-x-auto print:overflow-visible">
               <table className="w-full text-left text-xs border border-border/80 rounded-lg border-separate border-spacing-0 shadow-2xs print:table-fixed">
                 <thead>
@@ -309,6 +252,76 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                     );
                   })}
                 </tbody>
+                <tfoot className="border-t-2 border-border/80 bg-muted/30 font-bold text-foreground print:bg-slate-100/90 break-inside-avoid">
+                  {isRendaFixa ? (
+                    <tr>
+                      <td colSpan={3} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold first:rounded-bl-[7px]">
+                        Subtotal {group.className}
+                      </td>
+                      <td className="py-1.5 px-2 text-right num font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
+                        <MoneyText cents={group.totalCents} tone="default" />
+                      </td>
+                      <td
+                        className={cn(
+                          "py-1.5 px-2.5 text-right num font-mono text-[10.5px] font-bold whitespace-nowrap last:rounded-br-[7px]",
+                          group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                        )}
+                      >
+                        {formatSignedPct(group.pnlPct)}
+                      </td>
+                    </tr>
+                  ) : isInternacional ? (
+                    <tr>
+                      <td colSpan={5} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold first:rounded-bl-[7px]">
+                        Subtotal {group.className}
+                      </td>
+                      <td className="py-1.5 px-2 text-right num font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
+                        <MoneyText cents={group.totalCents} tone="default" />
+                      </td>
+                      <td className="py-1.5 px-1.5 text-right num font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+                        —
+                      </td>
+                      <td
+                        className={cn(
+                          "py-1.5 px-2.5 text-right num font-mono text-[10.5px] font-bold whitespace-nowrap last:rounded-br-[7px]",
+                          group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                        )}
+                      >
+                        {formatSignedPct(group.pnlPct)}
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold first:rounded-bl-[7px]">
+                        Subtotal {group.className}
+                      </td>
+                      <td className="py-1.5 px-1.5 text-right num font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+                        {group.totalCostCents !== undefined ? (
+                          <MoneyText cents={group.totalCostCents} tone="default" />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-1.5 px-1.5 text-right num font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+                        —
+                      </td>
+                      <td className="py-1.5 px-2 text-right num font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
+                        <MoneyText cents={group.totalCents} tone="default" />
+                      </td>
+                      <td className="py-1.5 px-1.5 text-right num font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+                        —
+                      </td>
+                      <td
+                        className={cn(
+                          "py-1.5 px-2.5 text-right num font-mono text-[10.5px] font-bold whitespace-nowrap last:rounded-br-[7px]",
+                          group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                        )}
+                      >
+                        {formatSignedPct(group.pnlPct)}
+                      </td>
+                    </tr>
+                  )}
+                </tfoot>
               </table>
             </div>
           </section>
