@@ -49,7 +49,7 @@ export function ReportKpiGrid({
   return (
     <section
       aria-label="Grade de Indicadores Chave"
-      className={cn("grid gap-3", colClass, className)}
+      className={cn("grid gap-3 break-inside-avoid", colClass, className)}
     >
       {items.map((item, index) => {
         const tone = item.tone ?? "default";

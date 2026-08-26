@@ -32,7 +32,7 @@ export function ReportRiskGauge({
   const isWarning = !isCritical && topItemPct >= warningThresholdPct;
   const isSafe = !isCritical && !isWarning;
 
-  const clampPosition = Math.min(Math.max(topItemPct, 0), 100);
+  const clampPosition = Math.min(Math.max(topItemPct, 4), 96);
 
   return (
     <div

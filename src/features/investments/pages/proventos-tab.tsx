@@ -294,8 +294,77 @@ export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
                 </Badge>
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-border/80">
-                <table className="w-full text-left text-xs">
+              {/* Visualização Mobile: Cards Adaptativos de Proventos por Ativo */}
+              <div className="flex flex-col gap-2.5 sm:hidden">
+                {assetsWithDividends.map(({ asset, isUSD, initialHistorical, periodicAmount, totalAmount, totalAmountBRL, yoc }) => (
+                  <div
+                    key={asset.id}
+                    className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs"
+                  >
+                    {/* Cabeçalho do Card: Ticker + Classe + YoC */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-foreground text-sm font-mono">{asset.ticker}</span>
+                        {asset.asset_class && (
+                          <Badge variant="muted" className="text-[10px] px-1.5 py-0 font-medium">
+                            {asset.asset_class}
+                          </Badge>
+                        )}
+                      </div>
+                      {yoc > 0 ? (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[11px] text-muted-foreground font-medium">YoC:</span>
+                          <span className="font-mono text-xs font-semibold text-foreground">{yoc}%</span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Linha de Valores: Detalhamento à esquerda vs Total à direita */}
+                    <div className="flex items-end justify-between gap-2 border-t border-border/60 pt-2 text-xs">
+                      <div className="flex flex-col gap-0.5 text-[11px] text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <span>Inicial:</span>
+                          <span className="font-mono text-foreground">
+                            {initialHistorical > 0 ? (
+                              <MoneyText cents={numberToCents(initialHistorical)} currency={asset.currency} />
+                            ) : (
+                              "—"
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>No App:</span>
+                          <span className="font-mono text-foreground">
+                            {periodicAmount > 0 ? (
+                              <MoneyText cents={numberToCents(periodicAmount)} currency={asset.currency} />
+                            ) : (
+                              "—"
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                        <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground">
+                          Total Recebido
+                        </span>
+                        <span className="font-semibold text-positive-strong text-sm">
+                          <MoneyText cents={numberToCents(totalAmount)} currency={asset.currency} tone="positive" />
+                        </span>
+                        {isUSD && totalAmountBRL > 0 && (
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            (≈ <MoneyText cents={numberToCents(totalAmountBRL)} currency="BRL" />)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Visualização Desktop: Tabela Tabular Completa */}
+              <div className="hidden sm:block overflow-x-auto rounded-xl border border-border/80">
+                <table className="w-full text-left text-xs min-w-[620px]">
                   <thead className="bg-surface-hover/50 text-muted-foreground border-b border-border/70">
                     <tr>
                       <th className="py-2.5 px-3 font-semibold">Ativo</th>

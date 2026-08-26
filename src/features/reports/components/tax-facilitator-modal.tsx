@@ -9,6 +9,7 @@ import { Alert, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { isCashAssetClass } from "@/domain/portfolio";
+import { sanitizeReportText } from "@/domain/reports";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
 
 export interface TaxFacilitatorModalProps {
@@ -142,7 +143,7 @@ export function TaxFacilitatorModal({
       </div>
 
       {/* 3. Seção: Ficha de Bens e Direitos — VISÃO INTERATIVA EM TELA */}
-      <section aria-label="Bens e Direitos Tela" className="flex flex-col gap-3 print:hidden">
+      <section aria-label="Bens e Direitos Tela" className="flex flex-col gap-3 print:hidden print:pointer-events-none">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="size-4 text-primary-strong" aria-hidden="true" />
@@ -157,11 +158,12 @@ export function TaxFacilitatorModal({
 
         <div className="flex flex-col gap-2.5">
           {nonCashAssets.map((asset) => {
+            const safeTicker = sanitizeReportText(asset.ticker);
             const totalCostBRL = asset.quantity * asset.average_price;
             const taxInfo = getTaxGroupCode(asset.asset_class);
             const textToCopy = `${asset.quantity.toLocaleString("pt-BR", {
               maximumFractionDigits: 4,
-            })} cotas de ${asset.ticker}, custo médio unitário de R$ ${asset.average_price
+            })} cotas de ${safeTicker}, custo médio unitário de R$ ${asset.average_price
               .toFixed(2)
               .replace(".", ",")}, totalizando R$ ${totalCostBRL.toFixed(2).replace(".", ",")}.`;
 
@@ -172,7 +174,7 @@ export function TaxFacilitatorModal({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground text-sm">{asset.ticker}</span>
+                    <span className="font-bold text-foreground text-sm">{safeTicker}</span>
                     <span className="rounded-md bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground font-medium border border-border/40">
                       {taxInfo.label}
                     </span>
@@ -216,11 +218,14 @@ export function TaxFacilitatorModal({
       </section>
 
       {/* 3.1. Seção: Ficha de Bens e Direitos — TABELA FISCAL OFICIAL NO PDF / IMPRESSÃO */}
-      <section aria-label="Bens e Direitos Impressão" className="hidden print:flex flex-col gap-3">
+      <section aria-label="Bens e Direitos Impressão" className="hidden print:flex flex-col gap-2.5">
         <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-            Ficha: Bens e Direitos — Posição em 31/12/{calendarYear} ({nonCashAssets.length} ativos)
-          </h3>
+          <div className="flex items-center gap-2">
+            <FileText className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+              Ficha: Bens e Direitos — Posição em 31/12/{calendarYear} ({nonCashAssets.length} ativos)
+            </h3>
+          </div>
           <span className="text-[11px] font-mono num text-muted-foreground">
             Custo Total: <MoneyText cents={numberToCents(totalCostAllAssetsBRL)} className="font-bold text-foreground inline" />
           </span>
@@ -229,30 +234,31 @@ export function TaxFacilitatorModal({
         <div className="rounded-xl border border-border/80 overflow-visible">
           <table className="w-full text-left text-xs border-collapse table-fixed">
             <thead>
-              <tr className="border-b border-border/80 bg-slate-100 text-muted-foreground font-medium text-[11px]">
+              <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
                 <th className="py-2 px-2.5 w-[18%]">Código / Grupo</th>
-                <th className="py-2 px-2 w-[10%]">Ticker</th>
-                <th className="py-2 px-2.5 w-[54%]">Discriminação para o Programa IRPF</th>
+                <th className="py-2 px-2 w-[11%]">Ticker</th>
+                <th className="py-2 px-2.5 w-[53%]">Discriminação para o Programa IRPF</th>
                 <th className="py-2 px-2.5 text-right w-[18%]">Situação em 31/12</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {nonCashAssets.map((asset) => {
+                const safeTicker = sanitizeReportText(asset.ticker);
                 const totalCostBRL = asset.quantity * asset.average_price;
                 const taxInfo = getTaxGroupCode(asset.asset_class);
                 const textToCopy = `${asset.quantity.toLocaleString("pt-BR", {
                   maximumFractionDigits: 4,
-                })} cotas de ${asset.ticker}, custo médio unitário de R$ ${asset.average_price
+                })} cotas de ${safeTicker}, custo médio unitário de R$ ${asset.average_price
                   .toFixed(2)
                   .replace(".", ",")}, totalizando R$ ${totalCostBRL.toFixed(2).replace(".", ",")}.`;
 
                 return (
-                  <tr key={`print-tax-${asset.id}`} className="break-inside-avoid">
+                  <tr key={`print-tax-${asset.id}`} className="break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
                     <td className="py-1.5 px-2.5 text-[10px] font-mono text-muted-foreground">
                       {taxInfo.label}
                     </td>
-                    <td className="py-1.5 px-2.5 font-bold text-foreground text-xs">
-                      {asset.ticker}
+                    <td className="py-1.5 px-2 font-bold text-foreground text-xs">
+                      {safeTicker}
                     </td>
                     <td className="py-1.5 px-2.5 text-[10px] text-muted-foreground leading-tight">
                       {textToCopy}
@@ -269,51 +275,55 @@ export function TaxFacilitatorModal({
       </section>
 
       {/* 4. Seção: Ficha de Rendimentos Recebidos */}
-      <section aria-label="Rendimentos Recebidos" className="flex flex-col gap-3 pt-2">
-        <div className="flex items-center justify-between">
+      <section aria-label="Rendimentos Recebidos" className="flex flex-col gap-2.5 pt-1 break-inside-avoid">
+        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
           <div className="flex items-center gap-2">
-            <PiggyBank className="size-4 text-positive-strong" aria-hidden="true" />
-            <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-foreground">
-              Ficha: Rendimentos Isentos & Exclusivos ({calendarYear})
+            <PiggyBank className="size-3.5 text-positive-strong" aria-hidden="true" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+              Ficha: Rendimentos Isentos &amp; Exclusivos ({calendarYear})
             </h3>
           </div>
-          <span className="text-xs text-muted-foreground font-mono num">
+          <span className="text-[11px] text-muted-foreground font-mono num">
             Total Recebido: <MoneyText cents={numberToCents(totalRendimentosBRL)} className="font-bold text-positive-strong inline" />
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
-          <table className="w-full text-left text-xs border-collapse print:table-fixed">
-            <thead>
-              <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium print:bg-slate-100">
-                <th className="py-2.5 px-3 print:w-[20%]">Ticker</th>
-                <th className="py-2.5 px-3 print:w-[50%]">Tipo / Ficha da Declaração</th>
-                <th className="py-2.5 px-3 text-right print:w-[30%]">Total Recebido (R$)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {rendimentosPorAtivo.map(({ asset, tipoRendimento, amountBRL }) => (
-                <tr key={`div-${asset.id}`} className="hover:bg-muted/20 break-inside-avoid">
-                  <td className="py-2 px-3 font-semibold text-foreground truncate">{asset.ticker}</td>
-                  <td className="py-2 px-3 text-muted-foreground truncate">{tipoRendimento}</td>
-                  <td className="py-2 px-3 text-right num font-mono font-medium text-positive-strong whitespace-nowrap">
-                    <MoneyText cents={numberToCents(amountBRL)} />
-                  </td>
+        {rendimentosPorAtivo.length === 0 ? (
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 text-xs text-muted-foreground italic print:bg-white print:border-border">
+            Nenhum rendimento isento ou tributado exclusivamente na fonte apurado no ano-base {calendarYear}.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
+            <table className="w-full text-left text-xs border-collapse print:table-fixed">
+              <thead>
+                <tr className="border-b border-border/80 bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                  <th className="py-2 px-3 print:w-[20%]">Ticker</th>
+                  <th className="py-2 px-3 print:w-[50%]">Tipo / Ficha da Declaração</th>
+                  <th className="py-2 px-3 text-right print:w-[30%]">Total Recebido (R$)</th>
                 </tr>
-              ))}
-              {rendimentosPorAtivo.length > 0 && (
-                <tr className="bg-muted/30 border-t border-border/80 font-bold print:bg-slate-50 break-inside-avoid">
-                  <td colSpan={2} className="py-2 px-3 text-foreground uppercase text-[11px]">
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {rendimentosPorAtivo.map(({ asset, tipoRendimento, amountBRL }) => (
+                  <tr key={`div-${asset.id}`} className="hover:bg-muted/20 break-inside-avoid even:bg-slate-50/50 print:even:bg-slate-50/50">
+                    <td className="py-1.5 px-3 font-semibold text-foreground truncate">{sanitizeReportText(asset.ticker)}</td>
+                    <td className="py-1.5 px-3 text-muted-foreground truncate">{tipoRendimento}</td>
+                    <td className="py-1.5 px-3 text-right num font-mono font-bold text-positive-strong whitespace-nowrap">
+                      <MoneyText cents={numberToCents(amountBRL)} />
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-100/80 border-t border-border/80 font-bold print:bg-slate-100 break-inside-avoid">
+                  <td colSpan={2} className="py-2 px-3 text-foreground uppercase text-[10px] tracking-wider">
                     Total de Rendimentos no Exercício
                   </td>
                   <td className="py-2 px-3 text-right num font-mono text-positive-strong whitespace-nowrap">
                     <MoneyText cents={numberToCents(totalRendimentosBRL)} />
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* 5. Rodapé Institucional */}
@@ -324,3 +334,4 @@ export function TaxFacilitatorModal({
     </ReportDocumentLayout>
   );
 }
+

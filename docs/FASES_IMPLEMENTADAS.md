@@ -932,6 +932,26 @@
   - Build de Produção (`npm run build`): 100% de sucesso;
   - Testes: 24 arquivos e 108/108 testes de investimentos e estado aprovados.
 
+## F63 — Responsividade Mobile de Proventos por Ativo via Cards Adaptativos (2026-08-25)
+
+- **Problema:**
+  1. A tabela de consolidação de proventos por ativo (`ProventosTab`) continha 5 colunas monetárias e percentuais rígidas que sofriam compressão ou causavam quebra de visualização em dispositivos móveis (< 640px);
+  2. A hierarquia visual não dava o devido destaque ao valor principal (*Total Recebido* e *Yield on Cost*).
+- **Solução:**
+  1. **Padrão Dual Canônico (Cards no Mobile + Tabela no Desktop):**
+     - **No Mobile (`sm:hidden`):** Cada ativo é renderizado como um Card de Provento Adaptativo (`border-border/80 bg-surface shadow-xs p-3.5`), com cabeçalho contendo Ticker, Badge da Classe e indicador de Yield on Cost (*YoC: XX.XX%*) no canto superior direito, além de divisão horizontal comparando *Histórico Inicial / No App* à esquerda e o *Total Recebido* com destaque positivo verde (`text-positive-strong`) à direita;
+     - **No Desktop (`hidden sm:block`):** Tabela tabular completa preservada com `min-w-[620px]` e rolagem horizontal suave;
+  2. **Normalização Tipográfica em Relatórios:**
+     - Ajustado `INVISIBLE_CHARS_REGEX` em `src/domain/reports/sanitize-text.ts` para conformidade com regras estritas de ESLint.
+- **Arquivos alterados:**
+  - `src/features/investments/pages/proventos-tab.tsx`
+  - `src/domain/reports/sanitize-text.ts`
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc -b`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Build de Produção (`npm run build`): 100% de sucesso;
+  - Testes: 7/7 testes de `proventos-tab.test.tsx` aprovados.
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

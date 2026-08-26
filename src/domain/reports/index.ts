@@ -339,3 +339,5 @@ export {
   type ConsolidatedBalanceSheetResult,
 } from "./consolidated-balance";
 
+export { sanitizeReportText } from "./sanitize-text";
+

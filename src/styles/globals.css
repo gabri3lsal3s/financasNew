@@ -574,10 +574,18 @@
   header.app-header,
   button,
   .print-hidden,
-  .print\:hidden {
+  .print\:hidden,
+  .print-sheet .print-hidden,
+  .print-sheet .print\:hidden {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    pointer-events: none !important;
   }
 
   /* Paleta clara fixa — sobrepõe QUALQUER tema/acento/surface-style ativo */
@@ -656,15 +664,8 @@
   .print-sheet > div {
     display: flex !important;
     flex-direction: column !important;
-    gap: 14px !important;
+    gap: 12px !important;
     width: 100% !important;
-  }
-
-  .print-sheet section {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    margin-bottom: 0 !important;
   }
 
   /* Reforço explícito das cores-chave do Design System */
@@ -690,14 +691,14 @@
   .print-sheet .border-border\/60,
   .print-sheet .border-border\/70,
   .print-sheet .border-border\/80 {
-    border-color: #d6d3d1 !important;
+    border-color: #cbd5e1 !important;
   }
 
   .print-sheet .bg-muted\/10,
   .print-sheet .bg-muted\/20,
   .print-sheet .bg-muted\/30,
   .print-sheet .bg-muted\/40 {
-    background-color: #f5f5f4 !important;
+    background-color: #f8fafc !important;
   }
 
   /* Prevenção estrita de fragmentação atômica (linhas de tabela e cards individuais) */
@@ -738,6 +739,8 @@
     width: 100% !important;
     max-width: 100% !important;
     border-collapse: collapse !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
   .print-sheet .overflow-x-auto,
@@ -750,6 +753,7 @@
   .print-sheet .report-footer {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    margin-top: 12px !important;
+    margin-top: 10px !important;
   }
 }
+
