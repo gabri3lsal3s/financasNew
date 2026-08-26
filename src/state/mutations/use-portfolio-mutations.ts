@@ -356,6 +356,7 @@ export interface RecordOrderParams {
  */
 export function useRecordOrder() {
   const queryClient = useQueryClient();
+  const createAsset = useCreatePortfolioAsset();
   const createTx = useCreatePortfolioTransaction();
   const updateAsset = useUpdatePortfolioAsset();
   const createContrib = useCreatePortfolioContribution();
@@ -536,14 +537,25 @@ export function useRecordOrder() {
         }
 
         // Credita no caixa em BRL se solicitado (valor líquido descontado de IRRF se aplicável)
-        if (syncCash && cashAsset && netCreditBRL > 0) {
-          await updateAsset.mutateAsync({
-            id: cashAsset.id,
-            patch: {
-              quantity: cashAsset.quantity + netCreditBRL,
+        if (syncCash && netCreditBRL > 0) {
+          if (cashAsset) {
+            await updateAsset.mutateAsync({
+              id: cashAsset.id,
+              patch: {
+                quantity: cashAsset.quantity + netCreditBRL,
+                average_price: 1,
+              },
+            });
+          } else {
+            await createAsset.mutateAsync({
+              ticker: "CAIXA",
+              asset_class: "Caixa",
+              sector: "Reserva / Liquidez",
+              quantity: netCreditBRL,
               average_price: 1,
-            },
-          });
+              currency: "BRL",
+            });
+          }
         }
       }
 
@@ -558,14 +570,25 @@ export function useRecordOrder() {
         });
 
         // Credita no caixa em BRL se solicitado
-        if (syncCash && cashAsset && totalBRL > 0) {
-          await updateAsset.mutateAsync({
-            id: cashAsset.id,
-            patch: {
-              quantity: cashAsset.quantity + totalBRL,
+        if (syncCash && totalBRL > 0) {
+          if (cashAsset) {
+            await updateAsset.mutateAsync({
+              id: cashAsset.id,
+              patch: {
+                quantity: cashAsset.quantity + totalBRL,
+                average_price: 1,
+              },
+            });
+          } else {
+            await createAsset.mutateAsync({
+              ticker: "CAIXA",
+              asset_class: "Caixa",
+              sector: "Reserva / Liquidez",
+              quantity: totalBRL,
               average_price: 1,
-            },
-          });
+              currency: "BRL",
+            });
+          }
         }
       }
 

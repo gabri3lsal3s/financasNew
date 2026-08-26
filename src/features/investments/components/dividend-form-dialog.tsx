@@ -1,14 +1,15 @@
-import { useState } from "react";
-import { Alert, Button, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
+import { useState, useMemo } from "react";
+import { Alert, Button, Checkbox, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
 import { resolveDividendDate, resolveDividendNote, type DividendEntryMode } from "@/domain/portfolio/dividends";
+import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { useCreatePortfolioDividend, usePortfolioAssets } from "@/state";
+import { usePortfolioAssets, useRecordOrder } from "@/state";
 
 export interface DividendFormDialogProps {
   open: boolean;
@@ -24,10 +25,11 @@ const DIVIDEND_OPTIONS: { value: string; label: string }[] = [
 
 export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: DividendFormDialogProps) {
   const assetsQuery = usePortfolioAssets();
-  const createDividend = useCreatePortfolioDividend();
+  const recordOrder = useRecordOrder();
 
-  const assets = assetsQuery.data ?? [];
-  const [selectedAssetId, setSelectedAssetId] = useState(defaultAssetId ?? (assets[0]?.id ?? ""));
+  const rawAssets = assetsQuery.data ?? [];
+  const assets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
+  const [selectedAssetId, setSelectedAssetId] = useState(defaultAssetId ?? (rawAssets[0]?.id ?? ""));
   const [type, setType] = useState("dividend");
 
   // Modo de registro de data: Diário (data exata) ou Extrato do Mês (competência)
@@ -37,7 +39,13 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
 
   const [amountCents, setAmountCents] = useState(0);
   const [notes, setNotes] = useState("");
+  const [syncCash, setSyncCash] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const cashAsset = useMemo(
+    () => assets.find((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA") ?? null,
+    [assets],
+  );
 
   const selectedAsset = assets.find((a) => a.id === selectedAssetId) ?? assets[0];
   const assetQuantity = selectedAsset?.quantity ?? 0;
@@ -85,10 +93,15 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
       const userNote = notes.trim() ? `${notes.trim()}${perShareNote}` : perShareNote.trim();
       const resolvedNote = resolveDividendNote(entryMode, userNote, type);
 
-      await createDividend.mutateAsync({
-        asset_id: selectedAsset.id,
+      await recordOrder.mutateAsync({
+        asset: selectedAsset,
+        type: type as "dividend" | "jcp" | "fii_yield",
         date: resolvedDate,
-        amount: amountCents / 100,
+        quantity: 0,
+        price: 0,
+        total: amountCents / 100,
+        syncCash,
+        cashAsset,
         notes: resolvedNote,
       });
 
@@ -292,12 +305,21 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
           />
         </div>
 
+        <div className="flex items-center gap-2 pt-1">
+          <Checkbox
+            id="dividend-sync-cash"
+            checked={syncCash}
+            onCheckedChange={(checked) => setSyncCash(Boolean(checked))}
+            label="Creditar provento no saldo em caixa (corretora)"
+          />
+        </div>
+
         <div className="mt-2 flex items-center justify-end gap-2 border-t border-border pt-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={createDividend.isPending || amountCents <= 0}>
-            {createDividend.isPending ? "Salvando..." : "Salvar Provento"}
+          <Button type="submit" disabled={recordOrder.isPending || amountCents <= 0}>
+            {recordOrder.isPending ? "Salvando..." : "Salvar Provento"}
           </Button>
         </div>
       </form>

@@ -870,6 +870,31 @@
   - ESLint (`npm run lint`): 0 erros / 0 avisos;
   - Testes: 2/2 testes de `aporte-tab.test.tsx` aprovados.
 
+## F61 — Auto-Criação de Ativo Caixa & Sincronização Consistente de Proventos e Vendas (2026-08-25)
+
+- **Problema:**
+  1. Ao registrar proventos ou vendas no Wizard com a opção `syncCash: true` (*"Creditar no saldo em caixa"*), caso a carteira do usuário ainda não contivesse um ativo pré-existente de classe `Caixa`, a variável `cashAsset` vinha nula;
+  2. O motor `useRecordOrder` continha a guarda estrita `if (syncCash && cashAsset && totalBRL > 0)`, o que silenciosamente descartava o crédito do valor em caixa em vez de criar o ativo correspondente;
+  3. O modal rápido de proventos (`DividendFormDialog`) não possuía o controle de sincronização com o Caixa (`syncCash`).
+- **Solução:**
+  1. **Auto-Criação Inteligente de Ativo Caixa no Motor Central (`useRecordOrder`):**
+     - Em transações de **Provento** (`dividend`, `jcp`, `fii_yield`) e de **Venda** (`sell`), se `syncCash` estiver ativo:
+       - Se o ativo `Caixa` já existir: soma o valor ao saldo atual (`updateAsset`);
+       - Se o ativo `Caixa` NÃO existir: cria automaticamente o ativo `CAIXA` (`createAsset`) com Ticker `CAIXA`, Classe `Caixa`, Setor `Reserva / Liquidez`, Quantidade = valor creditado, Preço Médio = `1.00` e Moeda `BRL`;
+  2. **Paridade no `DividendFormDialog`:**
+     - Adicionado o checkbox `[x] Creditar provento no saldo em caixa (corretora)` (marcado por padrão) e integração completa com `useRecordOrder`;
+  3. **Lookup Resiliente no Wizard:**
+     - Busca do `cashAsset` por classe (`isCashAssetClass`) ou por ticker (`CAIXA`).
+- **Arquivos alterados:**
+  - `src/state/mutations/use-portfolio-mutations.ts` — suporte a auto-criação de ativo Caixa em `useRecordOrder`;
+  - `src/features/investments/components/dividend-form-dialog.tsx` — adição de `syncCash` e uso de `recordOrder`;
+  - `src/features/investments/components/dividend-form-dialog.test.tsx` — testes atualizados com mock de `useRecordOrder`;
+  - `src/features/investments/wizard/investment-wizard.tsx` — busca resiliente por ticker ou classe de Caixa.
+- **Qualidade & Verificação:**
+  - Typecheck (`tsc --noEmit`): 0 erros;
+  - ESLint (`npm run lint`): 0 erros / 0 avisos;
+  - Testes: 40 arquivos e 371/371 testes aprovados (100% de sucesso).
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

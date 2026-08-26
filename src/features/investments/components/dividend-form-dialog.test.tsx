@@ -3,15 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DividendFormDialog } from "./dividend-form-dialog";
 
-const createDividendMock = vi.fn();
+const recordOrderMock = vi.fn();
 
 vi.mock("@/state", () => ({
   usePortfolioAssets: () => ({
     data: [{ id: "a-1", ticker: "MXRF11", asset_class: "FIIs", currency: "BRL", quantity: 100, average_price: 10 }],
     isLoading: false,
   }),
-  useCreatePortfolioDividend: () => ({
-    mutateAsync: createDividendMock,
+  useRecordOrder: () => ({
+    mutateAsync: recordOrderMock,
     isPending: false,
   }),
 }));
@@ -22,11 +22,12 @@ describe("DividendFormDialog — Fase 39 Inteligência de Proventos", () => {
 
     expect(screen.getByText("Registrar Provento Recebido")).toBeInTheDocument();
     expect(screen.getByText("Tipo de Provento")).toBeInTheDocument();
+    expect(screen.getByText("Creditar provento no saldo em caixa (corretora)")).toBeInTheDocument();
     expect(screen.getByText("Salvar Provento")).toBeInTheDocument();
   });
 
   it("permite alternar para 'Por Cota' e calcula o valor total automaticamente", async () => {
-    createDividendMock.mockResolvedValue({});
+    recordOrderMock.mockResolvedValue({});
     const user = userEvent.setup();
     render(<DividendFormDialog open={true} onOpenChange={vi.fn()} />);
 
@@ -43,16 +44,19 @@ describe("DividendFormDialog — Fase 39 Inteligência de Proventos", () => {
     // Salva o provento
     await user.click(screen.getByRole("button", { name: "Salvar Provento" }));
 
-    expect(createDividendMock).toHaveBeenCalledWith({
-      asset_id: "a-1",
-      date: expect.any(String),
-      amount: 10,
-      notes: expect.stringContaining("R$ 0.10/cota x 100"),
-    });
+    expect(recordOrderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        asset: expect.objectContaining({ id: "a-1", ticker: "MXRF11" }),
+        type: "dividend",
+        total: 10,
+        syncCash: true,
+        notes: expect.stringContaining("R$ 0.10/cota x 100"),
+      }),
+    );
   });
 
   it("permite alternar para 'Extrato do Mês' e salva com o primeiro dia do mês", async () => {
-    createDividendMock.mockResolvedValue({});
+    recordOrderMock.mockResolvedValue({});
     const user = userEvent.setup();
     render(<DividendFormDialog open={true} onOpenChange={vi.fn()} />);
 
@@ -66,12 +70,16 @@ describe("DividendFormDialog — Fase 39 Inteligência de Proventos", () => {
     // Salva o provento
     await user.click(screen.getByRole("button", { name: "Salvar Provento" }));
 
-    expect(createDividendMock).toHaveBeenCalledWith({
-      asset_id: "a-1",
-      date: expect.stringMatching(/^\d{4}-\d{2}-01$/),
-      amount: 50,
-      notes: expect.stringContaining("[MENSAL]"),
-    });
+    expect(recordOrderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        asset: expect.objectContaining({ id: "a-1", ticker: "MXRF11" }),
+        type: "dividend",
+        date: expect.stringMatching(/^\d{4}-\d{2}-01$/),
+        total: 50,
+        syncCash: true,
+        notes: expect.stringContaining("[MENSAL]"),
+      }),
+    );
   });
 });
 

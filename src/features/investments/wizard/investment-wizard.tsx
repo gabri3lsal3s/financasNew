@@ -84,7 +84,8 @@ function InvestmentWizardContent({
       target_percentage: st.target_percentage,
     }));
   });
-  const cashAsset = existingAssets.find((a) => isCashAssetClass(a.asset_class)) ?? null;
+  const cashAsset =
+    existingAssets.find((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA") ?? null;
 
   const [state, setState] = useState<InvestmentWizardState>(() => {
     if (initialAsset) {
