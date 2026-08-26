@@ -120,7 +120,7 @@ export function CardInvoicePrintView({
         {expenses.length === 0 ? (
           <p className="text-sm text-muted-foreground py-1">Nenhum gasto lançado nesta competência.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border/80 print:overflow-visible shadow-2xs">
+          <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
             <table className="w-full min-w-[540px] sm:min-w-full border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
@@ -171,7 +171,7 @@ export function CardInvoicePrintView({
       {payments.length > 0 ? (
         <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2 break-inside-avoid">
           <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Pagamentos e estornos</h2>
-          <div className="overflow-x-auto rounded-lg border border-border/80 print:overflow-visible shadow-2xs">
+          <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
             <table className="w-full min-w-[440px] sm:min-w-full border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">

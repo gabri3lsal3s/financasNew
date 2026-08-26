@@ -115,7 +115,7 @@ export function MonthlyClosePrintView({
         {categories.length === 0 ? (
           <p className="text-sm text-muted-foreground py-1">Nenhuma despesa registrada no período.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border/80 print:overflow-visible shadow-2xs">
+          <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
             <table className="w-full min-w-[340px] sm:min-w-full border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
@@ -165,7 +165,7 @@ export function MonthlyClosePrintView({
                     <MoneyText cents={category.totalCents} tone="negative" />
                   </span>
                 </div>
-                <div className="overflow-x-auto rounded-lg border border-border/80 mt-1.5 print:overflow-visible shadow-2xs">
+                <div className="rounded-lg border border-border/80 mt-1.5 overflow-hidden shadow-2xs">
                   <table className="w-full min-w-[420px] sm:min-w-full border-collapse text-xs">
                     <tbody>
                       {category.days.map((day) => (

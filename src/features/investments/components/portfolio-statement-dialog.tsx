@@ -289,7 +289,7 @@ export function PortfolioStatementDialog({ open, onOpenChange, onNewTransaction 
             icon={ListFilter}
           />
 
-          <div className="rounded-lg border border-border/80 overflow-x-auto print:overflow-visible shadow-2xs">
+          <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
             <table className="w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">

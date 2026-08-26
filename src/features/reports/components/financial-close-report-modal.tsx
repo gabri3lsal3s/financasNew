@@ -203,7 +203,7 @@ export function FinancialCloseReportModal({
           </h2>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-border/80 bg-surface print:overflow-visible">
+        <div className="rounded-xl border border-border/80 bg-surface overflow-hidden shadow-2xs">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
