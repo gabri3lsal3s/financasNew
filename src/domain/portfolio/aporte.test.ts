@@ -374,4 +374,91 @@ describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fas
     expect(hglg?.allocatedBRL).toBe(1000);
     expect(result.totalAllocated).toBe(2000);
   });
+
+  it("não sugere aporte para classe sobre-alocada (ex: Mercado Internacional a 40% de exposição com meta de 25%)", () => {
+    const assets: AporteAssetInput[] = [
+      // Mercado Internacional: Atual = R$ 400 (40% de 1000), Meta = 25% (R$ 375 de 1500) -> Excesso de R$ 25!
+      asset({
+        id: "aapl",
+        ticker: "AAPL",
+        assetClass: "Internacional",
+        currency: "USD",
+        currentValueBRL: 400,
+        priceBRL: 100,
+        targetPercentage: null,
+      }),
+      // Ações Brasil: Atual = R$ 600 (60% de 1000), Meta = 75% (R$ 1125 de 1500) -> Déficit de R$ 525!
+      asset({
+        id: "petr",
+        ticker: "PETR4",
+        assetClass: "Ações",
+        currency: "BRL",
+        currentValueBRL: 600,
+        priceBRL: 25,
+        targetPercentage: null,
+      }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 500,
+      assets,
+      classTargets: [
+        { className: "Internacional", targetPercentage: 25 },
+        { className: "Ações", targetPercentage: 75 },
+      ],
+    });
+
+    // Nenhum centavo deve ir para AAPL / Internacional
+    expect(result.routes.map((r) => r.ticker)).toEqual(["PETR4"]);
+    expect(result.routes.find((r) => r.ticker === "AAPL")).toBeUndefined();
+    expect(result.totalAllocated).toBe(500);
+
+    const intSummary = result.classSummaries.find((c) => c.className === "Internacional");
+    expect(intSummary?.gapBRL).toBe(0);
+    expect(intSummary?.actualAllocatedBRL).toBe(0);
+
+    const skippedAAPL = result.skippedAssets.find((s) => s.ticker === "AAPL");
+    expect(skippedAAPL).toBeDefined();
+    expect(skippedAAPL?.reason).toBe("above_target");
+  });
+
+  it("ignora ativos internamente defasados quando a classe inteira já ultrapassou a meta", () => {
+    const assets: AporteAssetInput[] = [
+      // Internacional tem 2 ativos: total 400 (40% da carteira de 1000). Meta da classe = 25%.
+      // IVV está superalocado (350), AAPL está defasado (50).
+      asset({ id: "ivv", ticker: "IVV", assetClass: "Internacional", currentValueBRL: 350, priceBRL: 50, targetPercentage: null }),
+      asset({ id: "aapl", ticker: "AAPL", assetClass: "Internacional", currentValueBRL: 50, priceBRL: 50, targetPercentage: null }),
+      // Renda Fixa: 600 (60%), meta = 75%.
+      asset({ id: "cdb", ticker: "CDB", assetClass: "Renda Fixa", currentValueBRL: 600, priceBRL: 1, targetPercentage: null }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 500,
+      assets,
+      classTargets: [
+        { className: "Internacional", targetPercentage: 25 },
+        { className: "Renda Fixa", targetPercentage: 75 },
+      ],
+    });
+
+    // Apenas Renda Fixa deve receber aporte; AAPL não deve receber mesmo estando defasado internamente
+    expect(result.routes.map((r) => r.ticker)).toEqual(["CDB"]);
+    expect(result.routes.find((r) => r.ticker === "AAPL")).toBeUndefined();
+    expect(result.routes.find((r) => r.ticker === "IVV")).toBeUndefined();
+  });
+
+  it("reconhece metas de classe com correspondência normalizada de strings (casing e acentos)", () => {
+    const assets: AporteAssetInput[] = [
+      asset({ id: "a", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, targetPercentage: null }),
+    ];
+
+    const result = simulateCombinedAporte({
+      aporte: 300,
+      assets,
+      classTargets: [{ className: "acoes", targetPercentage: 100 }], // minúsculo e sem acento
+    });
+
+    expect(result.routes.map((r) => r.ticker)).toEqual(["PETR4"]);
+    expect(result.totalAllocated).toBe(300);
+  });
 });

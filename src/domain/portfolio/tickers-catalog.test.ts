@@ -251,5 +251,25 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
       expect(suggestions.map((s) => s.ticker)).toEqual(["MXRF11"]);
       expect(suggestions.find((s) => s.ticker === "PETR4")).toBeUndefined();
     });
+
+    it("não sugere ativos pertencentes a classes sobre-alocadas no wizard (ex: Internacional 40% vs 25% meta)", () => {
+      const assets: PortfolioAsset[] = [
+        { id: "a-1", user_id: "u-1", ticker: "AAPL", asset_class: "Internacional", currency: "USD", quantity: 4, average_price: 100 },
+        { id: "a-2", user_id: "u-1", ticker: "PETR4", asset_class: "Ações", currency: "BRL", quantity: 20, average_price: 30 },
+      ];
+      const rows = [
+        { assetId: "a-1", ticker: "AAPL", valueBRL: 400, pct: 40, assetClass: "Internacional" },
+        { assetId: "a-2", ticker: "PETR4", valueBRL: 600, pct: 60, assetClass: "Ações" },
+      ];
+      const classTargets = [
+        { name: "Internacional", target_percentage: 25 },
+        { name: "Ações", target_percentage: 75 },
+      ];
+
+      const suggestions = buildAporteSuggestions(assets, rows, [], 1000, 3, classTargets);
+      // Apenas PETR4 (Ações Brasil) deve ser sugerido, AAPL está em classe acima da meta
+      expect(suggestions.map((s) => s.ticker)).toEqual(["PETR4"]);
+      expect(suggestions.find((s) => s.ticker === "AAPL")).toBeUndefined();
+    });
   });
 });

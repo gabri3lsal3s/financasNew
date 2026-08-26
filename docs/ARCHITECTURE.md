@@ -234,7 +234,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
   - Histórico patrimonial via snapshots mensais (`portfolio_snapshots`), gravados automaticamente e lidos em $O(1)$, dispensando o processamento de ledger transacional de ponta a ponta.
   - Aportes mensais (`portfolio_contributions`) e proventos (`portfolio_dividends`) desacoplados para integração direta com os fluxos da Overview e Insights.
   - **Rebalanceamento Hierárquico Unificado Classe $\rightarrow$ Ativo (`simulateCombinedAporte`):**
-    1. *Nível Macro (Classe):* estabiliza primeiro as classes deficitárias com base no déficit relativo das metas de classe;
+    1. *Nível Macro (Classe):* estabiliza primeiro as classes deficitárias com base no déficit relativo das metas de classe; classes com exposição atual igual ou superior à meta ($Atual \ge Alvo$) são travadas com gap zero e excluídas de aportes;
     2. *Nível Micro (Ativo):* a verba designada à classe é distribuída exclusivamente entre seus membros com base no gap das metas individuais ou equiponderação $1/N$;
     3. *Transbordamento & Fracionários:* sobras internas de classe retornam ao pool para atender a próxima classe; suporte nativo a cotas decimais em Cripto (até 8 casas) e painel diagnóstico de ativos não contemplados;
     4. *Gravação Atômica Transacional:* execução em 1-clique via RPC `execute_portfolio_batch_aporte`, atualizando posições em `portfolio_assets`, lançando compras individuais em `portfolio_transactions` e registrando a contribuição em `portfolio_contributions` numa única transação PostgreSQL.

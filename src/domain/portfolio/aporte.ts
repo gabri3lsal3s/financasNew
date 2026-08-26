@@ -304,17 +304,18 @@ export function simulateAporte(opts: {
 
   const classTargetMap = new Map<string, number>();
   for (const ct of opts.classTargets) {
-    classTargetMap.set(ct.className, nonNegative(ct.targetPercentage));
+    classTargetMap.set(normalizeClassName(ct.className), nonNegative(ct.targetPercentage));
   }
 
   const sectorTargetMap = new Map<string, Map<string, number>>();
   for (const st of opts.sectorTargets ?? []) {
-    let sMap = sectorTargetMap.get(st.className);
+    const normClass = normalizeClassName(st.className);
+    let sMap = sectorTargetMap.get(normClass);
     if (!sMap) {
       sMap = new Map<string, number>();
-      sectorTargetMap.set(st.className, sMap);
+      sectorTargetMap.set(normClass, sMap);
     }
-    sMap.set(st.sectorName, nonNegative(st.targetPercentage));
+    sMap.set(st.sectorName.trim(), nonNegative(st.targetPercentage));
   }
 
   // -------------------------------------------------------------------------
@@ -346,10 +347,11 @@ export function simulateAporte(opts: {
     }
 
     for (const [className, sectorMap] of assetsByClassAndSector) {
-      const classTargetPct = classTargetMap.get(className) ?? 0;
+      const normClass = normalizeClassName(className);
+      const classTargetPct = classTargetMap.get(normClass) ?? 0;
       if (!(classTargetPct > 0)) continue;
 
-      const sectorsWithTarget = sectorTargetMap.get(className);
+      const sectorsWithTarget = sectorTargetMap.get(normClass);
       const hasConfiguredSectorTargets = sectorsWithTarget && sectorsWithTarget.size > 0;
 
       if (hasConfiguredSectorTargets) {
@@ -461,13 +463,14 @@ export function simulateAporte(opts: {
   const sectorMacrosByClass = new Map<string, InternalSectorMacro[]>();
 
   for (const [className, sectorMap] of assetsByClassAndSector) {
+    const normClass = normalizeClassName(className);
     let classTargetValueBRL = 0;
-    let classTargetPct = classTargetMap.get(className) ?? 0;
+    let classTargetPct = classTargetMap.get(normClass) ?? 0;
     let classCurrentValueBRL = 0;
     let sumMemberGapsBRL = 0;
 
     const sectorMacroList: InternalSectorMacro[] = [];
-    const sectorsWithTarget = sectorTargetMap.get(className);
+    const sectorsWithTarget = sectorTargetMap.get(normClass);
 
     for (const [sectorName, members] of sectorMap) {
       let sectorTargetValBRL = 0;
@@ -523,9 +526,9 @@ export function simulateAporte(opts: {
     sumMemberGapsBRL = round2(sumMemberGapsBRL);
 
     let gapBRL: number;
-    if (opts.mode === "class" || (opts.mode === "both" && (classTargetMap.get(className) ?? 0) > 0)) {
+    if (opts.mode === "class" || (opts.mode === "both" && classTargetPct > 0)) {
       const classLevelGap = round2(Math.max(0, classTargetValueBRL - classCurrentValueBRL));
-      gapBRL = Math.min(sumMemberGapsBRL, classLevelGap > 0 ? classLevelGap : sumMemberGapsBRL);
+      gapBRL = Math.min(sumMemberGapsBRL, classLevelGap);
     } else {
       gapBRL = sumMemberGapsBRL;
     }
@@ -702,7 +705,8 @@ export function simulateAporte(opts: {
         return b.gapBRL - a.gapBRL;
       });
 
-    const hasSectorTargets = (sectorTargetMap.get(classMacro.className)?.size ?? 0) > 0;
+    const normClass = normalizeClassName(classMacro.className);
+    const hasSectorTargets = (sectorTargetMap.get(normClass)?.size ?? 0) > 0;
 
     if (hasSectorTargets && sectorMacros.length > 0) {
       const totalSectorsGap = sectorMacros.reduce((acc, s) => acc + s.gapBRL, 0);
@@ -804,7 +808,8 @@ export function simulateAporte(opts: {
         return b.gapBRL - a.gapBRL;
       });
 
-    const hasSectorTargets = (sectorTargetMap.get(classMacro.className)?.size ?? 0) > 0;
+    const normClass = normalizeClassName(classMacro.className);
+    const hasSectorTargets = (sectorTargetMap.get(normClass)?.size ?? 0) > 0;
 
     if (hasSectorTargets && sectorMacros.length > 0) {
       for (const sectorMacro of sectorMacros) {
@@ -879,6 +884,37 @@ export function simulateAporte(opts: {
         budgetAllocatedBRL: 0,
         actualAllocatedBRL: 0,
       });
+    }
+  }
+
+  // Adiciona ativos que tinham gap individual mas não receberam aporte (ex: classe sobre-alocada ou saldo insuficiente)
+  for (const asset of opts.assets) {
+    const isAllocated = (allocatedMap.get(asset.id)?.allocatedBRL ?? 0) > 0;
+    const isAlreadySkipped = skippedAssets.some((s) => s.assetId === asset.id);
+    if (!isAllocated && !isAlreadySkipped) {
+      const sector = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, asset.assetClass);
+      const classMacro = classMacros.find((c) => c.className === (asset.assetClass?.trim() || "Outros"));
+      const isClassAboveTarget = classMacro && classMacro.targetPct > 0 && classMacro.currentValueBRL >= classMacro.targetValueBRL;
+
+      if (isClassAboveTarget) {
+        skippedAssets.push({
+          assetId: asset.id,
+          ticker: asset.ticker,
+          assetClass: asset.assetClass,
+          sector,
+          reason: "above_target",
+          detail: `Classe ${asset.assetClass || "Sem classe"} já atingiu ou superou a meta de alocação.`,
+        });
+      } else {
+        skippedAssets.push({
+          assetId: asset.id,
+          ticker: asset.ticker,
+          assetClass: asset.assetClass,
+          sector,
+          reason: "price_exceeds_budget",
+          detail: "Saldo restante insuficiente para a cota mínima.",
+        });
+      }
     }
   }
 

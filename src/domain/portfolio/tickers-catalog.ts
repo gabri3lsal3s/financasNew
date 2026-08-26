@@ -1,6 +1,6 @@
 import type { AssetCurrency, PortfolioAsset } from "@/types";
 import { inferAssetClassFromTicker } from "./import-parser";
-import { inferCurrencyFromTicker } from "./valuation";
+import { inferCurrencyFromTicker, normalizeClassName } from "./valuation";
 
 export interface CatalogTickerItem {
   ticker: string;
@@ -534,16 +534,17 @@ export function buildAporteSuggestions(
   if (totalPortfolioBRL <= 0 || !hasTargets) return [];
 
   const targetMap = new Map(targets.map((t) => [t.asset_id, t.target_percentage]));
-  const classTargetMap = new Map((classTargets ?? []).map((t) => [t.name, t.target_percentage]));
+  const classTargetMap = new Map((classTargets ?? []).map((t) => [normalizeClassName(t.name), t.target_percentage]));
 
   const sectorTargetMap = new Map<string, Map<string, number>>();
   for (const st of sectorTargets ?? []) {
-    let sMap = sectorTargetMap.get(st.className);
+    const normClass = normalizeClassName(st.className);
+    let sMap = sectorTargetMap.get(normClass);
     if (!sMap) {
       sMap = new Map<string, number>();
-      sectorTargetMap.set(st.className, sMap);
+      sectorTargetMap.set(normClass, sMap);
     }
-    sMap.set(st.sectorName, st.target_percentage);
+    sMap.set(st.sectorName.trim(), st.target_percentage);
   }
 
   const rowMap = new Map(assetRows.map((r) => [r.assetId, r]));
@@ -585,10 +586,11 @@ export function buildAporteSuggestions(
 
   // 2. Metas de setor e classe em 3 níveis
   for (const [className, sectorMap] of assetsByClassAndSector) {
-    const classTargetPct = classTargetMap.get(className) ?? 0;
+    const normClass = normalizeClassName(className);
+    const classTargetPct = classTargetMap.get(normClass) ?? 0;
     if (!(classTargetPct > 0)) continue;
 
-    const sectorsWithTarget = sectorTargetMap.get(className);
+    const sectorsWithTarget = sectorTargetMap.get(normClass);
     const hasConfiguredSectorTargets = sectorsWithTarget && sectorsWithTarget.size > 0;
 
     if (hasConfiguredSectorTargets) {
@@ -645,7 +647,8 @@ export function buildAporteSuggestions(
   // Estatísticas macro por classe para ordenação hierárquica
   const classDeficitMap = new Map<string, number>();
   for (const [className, members] of assetsByClass) {
-    const classTargetPct = classTargetMap.get(className) ?? 0;
+    const normClass = normalizeClassName(className);
+    const classTargetPct = classTargetMap.get(normClass) ?? 0;
     const classTargetValueBRL = (totalPortfolioBRL * classTargetPct) / 100;
     const classCurrentValueBRL = members.reduce((acc, a) => acc + (rowMap.get(a.id)?.valueBRL ?? 0), 0);
 
@@ -666,6 +669,16 @@ export function buildAporteSuggestions(
     const targetPct = effectiveTargetMap.get(asset.id);
     if (!targetPct || targetPct <= 0) continue;
 
+    const className = asset.asset_class ?? "Ações";
+    const normClass = normalizeClassName(className);
+    const hasClassTarget = (classTargetMap.get(normClass) ?? 0) > 0;
+    const classDeficit = classDeficitMap.get(className) ?? 0;
+
+    // Trava Hierárquica Estrita: se a classe possui meta definida e já atingiu/superou o alvo, nenhum membro da classe recebe recomendação
+    if (hasClassTarget && classDeficit <= 0) {
+      continue;
+    }
+
     const row = rowMap.get(asset.id);
     const currentValueBRL = row?.valueBRL ?? 0;
     const currentPct = row?.pct ?? 0;
@@ -673,7 +686,6 @@ export function buildAporteSuggestions(
     const gapBRL = targetValueBRL - currentValueBRL;
 
     if (gapBRL > 0) {
-      const className = asset.asset_class ?? "Ações";
       const sector = asset.sector ?? row?.sector ?? inferSectorFromTicker(asset.ticker, className);
       suggestions.push({
         assetId: asset.id,
@@ -685,7 +697,7 @@ export function buildAporteSuggestions(
         gapBRL: Math.round(gapBRL * 100) / 100,
         targetPercentage: targetPct,
         currentPercentage: currentPct,
-        classDeficitRel: classDeficitMap.get(asset.asset_class ?? "") ?? 0,
+        classDeficitRel: classDeficit,
       });
     }
   }

@@ -402,20 +402,21 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Ativos de Caixa e Renda Fixa Parametrizada:**
   - **Caixa / Reserva:** Opera em modo Saldo Direto 1:1 (quantidade = valor, PM = 1,00, rentabilidade nula).
   - **Renda Fixa e Tesouro Direto (Modo Valor Total):** O `average_price` armazena estritamente o Custo de Aplicação Original ($C_0$). Metadados em `fixed_income_metadata` (`rate_type`, `rate_value`, `base_date`, `base_value`, `initial_investment_date`, `maturity_date`, `is_tax_exempt`) controlam a capitalização diária a partir do Marco Zero ($D_0$). O Saldo do extrato bancário recalibra `base_value` e `base_date` sem sobrescrever `average_price`, preservando o histórico de lucro acumulado e Yield on Cost.
-#### 3.11.3 Algoritmo de Aporte Hierárquico (`simulateCombinedAporte`)
+#### 3.11.3 Algoritmo de Aporte Hierárquico (`simulateCombinedAporte`) & Sugestões do Wizard
 
 1. **Defasagem macro por classe:** classe com maior déficit relativo recebe prioridade de orçamentação.
-2. **Orçamentação meso por setor:** a verba da classe é distribuída entre seus setores conforme o déficit das metas setoriais relativas ou equiponderação setorial.
-3. **Distribuição micro por ativo:** a verba setorial é distribuída entre os ativos membros com base nas metas individuais ou cota equiponderada ($1/N$).
-4. **Precisão fracionária adaptativa (`resolveAssetPrecision`):**
+2. **Prevalência Macro Estrita (Hard Cap por Classe):** se uma classe atingiu ou superou o percentual-alvo ($classCurrentValueBRL \ge classTargetValueBRL$), o gap macro da classe é travado em `0` e nenhum centavo é direcionado a ela. Nenhum ativo membro daquela classe recebe sugestão de aporte ou recomendação no Wizard, mesmo que possua defasagem interna ou meta individual.
+3. **Orçamentação meso por setor:** a verba da classe é distribuída entre seus setores conforme o déficit das metas setoriais relativas ou equiponderação setorial.
+4. **Distribuição micro por ativo:** a verba setorial é distribuída entre os ativos membros com base nas metas individuais ou cota equiponderada ($1/N$).
+5. **Precisão fracionária adaptativa (`resolveAssetPrecision`):**
    - **Moeda Estrangeira (USD / Internacional):** compras fracionárias com até **4 casas decimais** (`0.1234 VOO`).
    - **Criptoativos:** compras fracionárias com até **8 casas decimais** (`0.00012345 BTC`).
    - **Mercado Nacional (B3):** estritamente cotas inteiras ($\ge 1$ cota).
-5. **Elegibilidade:** meta definida (individual, setorial ou de classe), cotação disponível, abaixo da meta (gap > 0).
-6. **Ordenação:** prioridade da classe com maior déficit relativo desc; dentro da classe, setor com maior déficit desc; dentro do setor, gap financeiro desc.
-7. **Transbordamento:** sobras internas de setor retornam para a classe; sobras da classe retornam ao pool global para atender a próxima classe defasada.
-8. **Sobra:** resíduos não alocados por restrição de cota mínima retornam ao caixa/reserva.
-9. **Log de roteamento:** por ativo — valor alvo, atual, aporte sugerido, quantidade (fracionária ou inteira), preço; sobra final e diagnósticos.
+6. **Elegibilidade:** meta definida (individual, setorial ou de classe), cotação disponível, abaixo da meta (gap > 0) e pertencente a classe com déficit relativo positivo.
+7. **Ordenação:** prioridade da classe com maior déficit relativo desc; dentro da classe, setor com maior déficit desc; dentro do setor, gap financeiro desc.
+8. **Transbordamento:** sobras internas de setor retornam para a classe; sobras da classe retornam ao pool global para atender a próxima classe defasada.
+9. **Sobra:** resíduos não alocados por restrição de cota mínima retornam ao caixa/reserva.
+10. **Log de roteamento & Diagnóstico:** por ativo — valor alvo, atual, aporte sugerido, quantidade (fracionária ou inteira), preço; sobra final e diagnóstico de ativos não contemplados (indicando motivo e classe no limite).
 
 **Consistência:** soma dos aportes nunca excede o aporte informado; ativo sem meta não recebe aporte; aporte só para ativos **abaixo** da meta (gap > 0); motor hierárquico único e opinado.
 
