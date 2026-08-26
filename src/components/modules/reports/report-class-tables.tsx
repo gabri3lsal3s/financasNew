@@ -76,10 +76,23 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
           group.className.toLowerCase().includes("internacional") ||
           group.className.toLowerCase().includes("global");
 
+        const normKey = group.className
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
         const classColor =
           group.color ??
-          DEFAULT_CLASS_COLORS[group.className.toLowerCase()] ??
-          "#1b6b62";
+          DEFAULT_CLASS_COLORS[normKey] ??
+          (normKey.includes("acao") || normKey.includes("acoes")
+            ? "#1b6b62"
+            : normKey.includes("fii")
+              ? "#dda726"
+              : normKey.includes("internacional") || normKey.includes("global")
+                ? "#38bdf8"
+                : normKey.includes("renda fixa") || normKey.includes("tesouro") || normKey.includes("cdb")
+                  ? "#2dd4bf"
+                  : "#64748b");
 
         return (
           <section
@@ -87,12 +100,16 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
             aria-label={`Posições de ${group.className}`}
             className="flex flex-col gap-1.5 break-inside-auto print:break-inside-auto"
           >
-            {/* 1. Cabeçalho Leve em Linha Única */}
+            {/* 1. Cabeçalho Leve com Barra Lateral Arredondada Discreta */}
             <div
-              className="report-group-header flex items-center justify-between bg-muted/40 px-3.5 py-1.5 rounded-lg border border-border/80 text-xs font-bold text-foreground print:bg-slate-100 print:border-slate-300 break-inside-avoid print:break-inside-avoid break-after-avoid print:break-after-avoid"
-              style={{ borderLeftWidth: "4px", borderLeftColor: classColor }}
+              className="report-group-header flex items-center justify-between bg-muted/40 px-3 py-1.5 rounded-lg border border-border/80 text-xs font-bold text-foreground print:bg-slate-100 print:border-slate-300 break-inside-avoid print:break-inside-avoid break-after-avoid print:break-after-avoid"
             >
               <div className="flex items-center gap-2">
+                <span
+                  className="w-1 h-3.5 rounded-full shrink-0"
+                  style={{ backgroundColor: classColor }}
+                  aria-hidden="true"
+                />
                 <span className="uppercase tracking-wider">
                   {group.className} ({group.items.length}{" "}
                   {group.items.length === 1 ? "ativo" : "ativos"})

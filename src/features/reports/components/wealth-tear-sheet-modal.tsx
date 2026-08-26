@@ -495,30 +495,35 @@ export function WealthTearSheetModal({
         </div>
 
         <ReportClassTables
-          groups={groupedRows.map((group) => ({
-            className: group.assetClass,
-            totalCents: numberToCents(group.subtotalBRL),
-            sharePct: group.pctOfTotal,
-            pnlPct: group.subtotalTotalReturnPct,
-            totalCostCents: numberToCents(group.subtotalCostBRL),
-            totalDividendsCents: numberToCents(group.subtotalDividendsBRL),
-            topAssetTicker: group.topAssetTicker,
-            topAssetSharePct: group.topAssetSharePct,
-            items: group.items.map((r) => ({
-              ticker: r.ticker,
-              name: r.name,
-              sector: r.sector,
-              quantity: r.quantity,
-              avgPriceCents: numberToCents(r.averagePrice),
-              currentPriceCents: numberToCents(r.currentPrice),
-              totalCents: numberToCents(r.valueBRL),
-              pricePnlPct: r.unrealizedPnlPct,
-              pnlPct: r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPnlPct,
-              dividendsCents: numberToCents(r.dividendsBRL ?? r.yearDividendsBRL ?? 0),
-              yocPct: r.yocPct,
-              currency: r.currency,
-            })),
-          }))}
+          groups={groupedRows.map((group) => {
+            const normCls = group.assetClass.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            const color = CLASS_COLORS[group.assetClass.toLowerCase()] ?? CLASS_COLORS[normCls];
+            return {
+              className: group.assetClass,
+              color,
+              totalCents: numberToCents(group.subtotalBRL),
+              sharePct: group.pctOfTotal,
+              pnlPct: group.subtotalTotalReturnPct,
+              totalCostCents: numberToCents(group.subtotalCostBRL),
+              totalDividendsCents: numberToCents(group.subtotalDividendsBRL),
+              topAssetTicker: group.topAssetTicker,
+              topAssetSharePct: group.topAssetSharePct,
+              items: group.items.map((r) => ({
+                ticker: r.ticker,
+                name: r.name,
+                sector: r.sector,
+                quantity: r.quantity,
+                avgPriceCents: numberToCents(r.averagePrice),
+                currentPriceCents: numberToCents(r.currentPrice),
+                totalCents: numberToCents(r.valueBRL),
+                pricePnlPct: r.unrealizedPnlPct,
+                pnlPct: r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPnlPct,
+                dividendsCents: numberToCents(r.dividendsBRL ?? r.yearDividendsBRL ?? 0),
+                yocPct: r.yocPct,
+                currency: r.currency,
+              })),
+            };
+          })}
         />
       </section>
 
