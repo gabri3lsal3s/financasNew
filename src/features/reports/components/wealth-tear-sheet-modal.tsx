@@ -397,16 +397,16 @@ export function WealthTearSheetModal({
           height={10}
         />
 
-        <div className="overflow-x-auto rounded-lg border border-border/80 shadow-2xs">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border border-border/80 rounded-lg border-separate border-spacing-0 shadow-2xs">
             <thead>
-              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-1 px-2.5 first:rounded-tl-lg">Classe</th>
-                <th className="py-1 px-2 text-right">Atual (R$)</th>
-                <th className="py-1 px-2 text-right">Atual (%)</th>
-                <th className="py-1 px-2 text-right">Meta (%)</th>
-                <th className="py-1 px-2 text-right">Gap (R$)</th>
-                <th className="py-1 px-2.5 text-center last:rounded-tr-lg">Status</th>
+              <tr className="bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
+                <th className="py-1 px-2.5 border-b border-border/70 first:rounded-tl-[7px]">Classe</th>
+                <th className="py-1 px-2 border-b border-border/70 text-right">Atual (R$)</th>
+                <th className="py-1 px-2 border-b border-border/70 text-right">Atual (%)</th>
+                <th className="py-1 px-2 border-b border-border/70 text-right">Meta (%)</th>
+                <th className="py-1 px-2 border-b border-border/70 text-right">Gap (R$)</th>
+                <th className="py-1 px-2.5 border-b border-border/70 text-center last:rounded-tr-[7px]">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">

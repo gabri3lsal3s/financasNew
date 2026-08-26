@@ -232,14 +232,14 @@ export function TaxFacilitatorModal({
           </span>
         </div>
 
-        <div className="rounded-lg border border-border/80 overflow-visible">
-          <table className="w-full text-left text-xs border-collapse table-fixed">
+        <div className="overflow-visible">
+          <table className="w-full text-left text-xs border border-border/80 rounded-lg border-separate border-spacing-0 table-fixed">
             <thead>
-              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
-                <th className="py-1.5 px-2 w-[16%] first:rounded-tl-lg">Código / Grupo</th>
-                <th className="py-1.5 px-1.5 w-[12%]">Ticker</th>
-                <th className="py-1.5 px-2 w-[56%]">Discriminação para o Programa IRPF</th>
-                <th className="py-1.5 px-2 text-right w-[16%] last:rounded-tr-lg">Situação em 31/12</th>
+              <tr className="bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
+                <th className="py-1.5 px-2 w-[16%] border-b border-border/70 first:rounded-tl-[7px]">Código / Grupo</th>
+                <th className="py-1.5 px-1.5 w-[12%] border-b border-border/70">Ticker</th>
+                <th className="py-1.5 px-2 w-[56%] border-b border-border/70">Discriminação para o Programa IRPF</th>
+                <th className="py-1.5 px-2 text-right w-[16%] border-b border-border/70 last:rounded-tr-[7px]">Situação em 31/12</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">

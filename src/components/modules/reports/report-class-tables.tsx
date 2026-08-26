@@ -86,39 +86,39 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
             </div>
 
             {/* Tabela Especializada */}
-            <div className="overflow-x-auto rounded-lg border border-border/80 print:overflow-visible shadow-2xs">
-              <table className="w-full text-left text-xs border-collapse print:table-fixed">
+            <div className="overflow-x-auto print:overflow-visible">
+              <table className="w-full text-left text-xs border border-border/80 rounded-lg border-separate border-spacing-0 shadow-2xs print:table-fixed">
                 <thead>
-                  <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
+                  <tr className="bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
                     {isRendaFixa ? (
                       <>
-                        <th className="py-1 px-2 print:w-[36%] first:rounded-tl-lg">Título / Emissor</th>
-                        <th className="py-1 px-1.5 print:w-[26%]">Indexador / Vencimento</th>
-                        <th className="py-1 px-1.5 text-right print:w-[8%]">Qtd</th>
-                        <th className="py-1 px-1.5 text-right print:w-[18%]">Saldo Atual</th>
-                        <th className="py-1 px-2 text-right print:w-[12%] last:rounded-tr-lg">Rendimento</th>
+                        <th className="py-1 px-2 border-b border-border/70 print:w-[36%] first:rounded-tl-[7px]">Título / Emissor</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 print:w-[26%]">Indexador / Vencimento</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[8%]">Qtd</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[18%]">Saldo Atual</th>
+                        <th className="py-1 px-2 border-b border-border/70 text-right print:w-[12%] last:rounded-tr-[7px]">Rendimento</th>
                       </>
                     ) : isInternacional ? (
                       <>
-                        <th className="py-1 px-2 print:w-[13%] first:rounded-tl-lg">Ticker</th>
-                        <th className="py-1 px-1.5 print:w-[20%]">Classe / Tema</th>
-                        <th className="py-1 px-1.5 text-right print:w-[7%]">Qtd</th>
-                        <th className="py-1 px-1.5 text-right print:w-[13%]">Preço Médio</th>
-                        <th className="py-1 px-1.5 text-right print:w-[13%]">Cotação</th>
-                        <th className="py-1 px-1.5 text-right print:w-[15%]">Total (R$)</th>
-                        <th className="py-1 px-1.5 text-right print:w-[9%]">Var. Cota</th>
-                        <th className="py-1 px-2 text-right print:w-[10%] last:rounded-tr-lg">Ret. Total</th>
+                        <th className="py-1 px-2 border-b border-border/70 print:w-[13%] first:rounded-tl-[7px]">Ticker</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 print:w-[20%]">Classe / Tema</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[7%]">Qtd</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[13%]">Preço Médio</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[13%]">Cotação</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[15%]">Total (R$)</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[9%]">Var. Cota</th>
+                        <th className="py-1 px-2 border-b border-border/70 text-right print:w-[10%] last:rounded-tr-[7px]">Ret. Total</th>
                       </>
                     ) : (
                       <>
-                        <th className="py-1 px-2 print:w-[13%] first:rounded-tl-lg">Ticker</th>
-                        <th className="py-1 px-1.5 print:w-[20%]">Setor / Segmento</th>
-                        <th className="py-1 px-1 text-right print:w-[7%]">Qtd</th>
-                        <th className="py-1 px-1.5 text-right print:w-[12%]">Preço Médio</th>
-                        <th className="py-1 px-1.5 text-right print:w-[12%]">Cotação</th>
-                        <th className="py-1 px-1.5 text-right print:w-[15%]">Total (R$)</th>
-                        <th className="py-1 px-1.5 text-right print:w-[9%]">Var. Cota</th>
-                        <th className="py-1 px-2 text-right print:w-[12%] last:rounded-tr-lg">Ret. Total</th>
+                        <th className="py-1 px-2 border-b border-border/70 print:w-[13%] first:rounded-tl-[7px]">Ticker</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 print:w-[20%]">Setor / Segmento</th>
+                        <th className="py-1 px-1 border-b border-border/70 text-right print:w-[7%]">Qtd</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[12%]">Preço Médio</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[12%]">Cotação</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[15%]">Total (R$)</th>
+                        <th className="py-1 px-1.5 border-b border-border/70 text-right print:w-[9%]">Var. Cota</th>
+                        <th className="py-1 px-2 border-b border-border/70 text-right print:w-[12%] last:rounded-tr-[7px]">Ret. Total</th>
                       </>
                     )}
                   </tr>
