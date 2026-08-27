@@ -64,7 +64,7 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
           : undefined
       }
       onClick={onClick}
-      className="flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 lg:p-5"
+      className="flex flex-col justify-between overflow-hidden p-3 sm:p-4 lg:p-5 h-full min-h-[136px] sm:min-h-[148px]"
     >
       <div>
         <div className="flex items-center justify-between gap-1.5">

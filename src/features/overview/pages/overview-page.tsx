@@ -428,7 +428,8 @@ export function OverviewPage() {
                 hint={
                   totals.investmentCents > 0 ? (
                     <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground truncate">
-                      <span>Caixa pós-aportes:</span>
+                      <span className="hidden sm:inline">Caixa pós-aportes:</span>
+                      <span className="sm:hidden">Pós-aportes:</span>
                       <MoneyText
                         cents={totals.cashFlowBalanceCents}
                         tone={totals.cashFlowBalanceCents >= 0 ? "default" : "negative"}
@@ -494,7 +495,7 @@ export function OverviewPage() {
           {/* Resumo financeiro (§3.6): saldo líquido de contas e taxa de poupança */}
           {visual.dashboardWidgets.summary && (
             <section aria-label="Resumo financeiro" className="grid gap-3 md:grid-cols-2 min-w-0">
-              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
                 <div className="flex items-center justify-between gap-2 min-w-0">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
@@ -509,7 +510,7 @@ export function OverviewPage() {
                     </span>
                     <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Saldo líquido de contas</h2>
                   </div>
-                  <Badge variant="muted" className="text-[11px] shrink-0">Projeção</Badge>
+                  <Badge variant="muted" size="xs">Projeção</Badge>
                 </div>
                 <div>
                   <MoneyText
@@ -521,8 +522,7 @@ export function OverviewPage() {
                     className="text-2xl sm:text-3xl tracking-tight truncate"
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground min-w-0">
-
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2 border-t border-border/50 pt-2.5 sm:pt-3 text-[11px] text-muted-foreground min-w-0">
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">A receber</p>
                     <MoneyText cents={receivablePending} tone="positive" className="privacy-mask text-[11px] whitespace-nowrap block font-medium" />
@@ -535,11 +535,10 @@ export function OverviewPage() {
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate">Faturas</p>
                     <MoneyText cents={openInvoices} tone="default" className="privacy-mask text-[11px] whitespace-nowrap block font-medium" />
                   </div>
-
                 </div>
               </article>
 
-              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
                 <div className="flex items-center justify-between gap-2 min-w-0">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
@@ -556,7 +555,7 @@ export function OverviewPage() {
                     </span>
                     <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Taxa de poupança</h2>
                   </div>
-                  <Badge variant={totals.savingsRatePercent >= 20 ? "positive" : totals.savingsRatePercent >= 0 ? "muted" : "critical"} className="shrink-0">
+                  <Badge variant={totals.savingsRatePercent >= 20 ? "positive" : totals.savingsRatePercent >= 0 ? "muted" : "critical"} size="xs">
                     {totals.savingsRatePercent >= 20 ? "Meta atingida" : totals.savingsRatePercent >= 0 ? "Regular" : "Abaixo"}
                   </Badge>
                 </div>
@@ -565,7 +564,7 @@ export function OverviewPage() {
                     <NumberTicker value={totals.savingsRatePercent} format={(v: number) => `${formatPercent(v)}%`} />
                   </p>
                 </div>
-                <div className="border-t border-border/50 pt-3 text-xs text-muted-foreground">
+                <div className="border-t border-border/50 pt-2.5 sm:pt-3 text-xs text-muted-foreground">
                   {totals.savingsRatePercent >= 20 ? "Poupança saudável (≥20% da renda)." : totals.savingsRatePercent >= 0 ? "Saldo positivo neste mês." : "Saldo negativo: revise os gastos."}
                 </div>
               </article>

@@ -83,7 +83,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
           variant={isCritical ? "destructive" : "warning"}
           size="sm"
           onClick={handleAction}
-          className="gap-1.5 text-xs h-8 shrink-0 self-end sm:self-center font-medium cursor-pointer"
+          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer w-full sm:w-auto justify-center self-stretch sm:self-center"
         >
           <span>Ver Contas e Vencimentos</span>
           <ArrowRight className="size-3.5" aria-hidden="true" />

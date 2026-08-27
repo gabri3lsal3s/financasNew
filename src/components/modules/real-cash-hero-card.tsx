@@ -30,25 +30,24 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
     <>
       <div
         className={cn(
-          "flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border",
+          "flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0",
           className,
         )}
       >
         {/* Topo do Card: Título + Badge + Ação de Calibrar */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2 min-w-0">
             <Landmark className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-sm font-semibold tracking-tight text-foreground min-w-0">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">
               Saldo Disponível em Conta
             </h2>
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <Badge variant="muted" className="text-[11px] shrink-0 font-normal">
+            <Badge variant="muted" size="xs">
               {hasCheckpoint ? `Aferido em ${formatDateBR(latestCheckpoint.date)}` : "Acumulado do Fluxo"}
             </Badge>
             <Button
-
               type="button"
               variant="outline"
               size="sm"
@@ -73,10 +72,13 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
         </div>
 
         {/* Linha de Projeção Safe-to-Spend */}
-        <div className="flex flex-col gap-2 rounded-xl bg-surface-hover/50 border border-border/60 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-            <ArrowDownRight className="size-3.5 shrink-0 text-negative" aria-hidden="true" />
-            <span className="truncate">Faturas e contas a pagar do ciclo (bruto):</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 rounded-xl bg-surface-hover/50 border border-border/60 p-2.5 sm:p-3 text-xs">
+          <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+              <ArrowDownRight className="size-3.5 shrink-0 text-negative" aria-hidden="true" />
+              <span className="truncate hidden sm:inline">Faturas e contas a pagar do ciclo (bruto):</span>
+              <span className="truncate sm:hidden">Obrigações do ciclo:</span>
+            </div>
             <MoneyText
               cents={safeToSpend.committedObligationsCents}
               tone="negative"
@@ -85,14 +87,16 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
             />
           </div>
 
-          <div className="flex items-center gap-1.5 pt-1 sm:pt-0 border-t border-border/40 sm:border-t-0 shrink-0">
-            <ShieldCheck className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <span className="text-muted-foreground">Saldo Livre Real:</span>
+          <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-t-0 min-w-0">
+            <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+              <ShieldCheck className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+              <span className="truncate text-muted-foreground">Saldo Livre Real:</span>
+            </div>
             <MoneyText
               cents={safeToSpend.safeToSpendCents}
               tone={safeToSpend.safeToSpendCents >= 0 ? "positive" : "negative"}
               animated
-              className="font-semibold text-xs sm:text-sm"
+              className="font-semibold text-xs sm:text-sm shrink-0"
             />
           </div>
         </div>

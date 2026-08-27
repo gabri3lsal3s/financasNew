@@ -1073,6 +1073,23 @@
   - `src/components/modules/dashboard-alerts-carousel.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+### Padronização e Harmonização dos Cards da Home (2026-08-26)
+- **Problema:** no mobile e desktop, o card de Saldo Disponível quebrava em linhas desalinhadas no rodapé com frases compridas; o grid 2x2 de KPIs principais apresentava alturas desiguais entre cards com e sem sparkline; o Resumo Financeiro empilhava 3 linhas verticais no Saldo Líquido criando assimetria com a Taxa de Poupança; e os botões de CTA dos banners ficavam flutuando à direita.
+- **Solução:**
+  1. **Saldo Disponível em Conta (`RealCashHeroCard`):** cabeçalho flex adaptativo, badge `size="xs"` e sub-grid de 2 colunas no box inferior com rótulo conciso (*"Obrigações do ciclo"* e *"Saldo Livre Real"*);
+  2. **Grid de KPIs Principais (`KpiCard`):** container com altura unificada (`min-h-[136px] sm:min-h-[148px]` e `h-full flex flex-col justify-between`), garantindo simetria perfeita na grade 2x2 no mobile;
+  3. **Resumo Financeiro:** rodapé de *Saldo Líquido de Contas* com `grid-cols-3` no mobile (1 linha com 3 colunas compactas: *A receber*, *A pagar*, *Faturas*), alinhando a altura com o card de *Taxa de Poupança*;
+  4. **Banners de Alerta (`PaceAlertBanner`, `CashGapAlert`, `SurplusAporteBanner`):** botões de CTA adaptativos (`w-full sm:w-auto`) para melhor ergonomia ao toque em smartphones;
+  5. **Conformidade de Tokens:** migração de `bg-surface/90` para `bg-surface` canônico e padronização de todos os Badges com `size="xs"`.
+- **Arquivos alterados:**
+  - `src/components/modules/real-cash-hero-card.tsx`
+  - `src/components/modules/kpi-card.tsx`
+  - `src/features/overview/pages/overview-page.tsx`
+  - `src/components/modules/pace-alert-banner.tsx`
+  - `src/components/modules/cash-gap-alert.tsx`
+  - `src/components/modules/surplus-aporte-banner.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

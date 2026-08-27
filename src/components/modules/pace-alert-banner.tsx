@@ -90,13 +90,13 @@ export function PaceAlertBanner({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center self-end sm:self-center">
+      <div className="flex shrink-0 items-center w-full sm:w-auto">
         <Button
           type="button"
           size="sm"
           variant={isDeficit ? "destructive" : "warning"}
           onClick={onNavigateInsights}
-          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer"
+          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer w-full sm:w-auto justify-center"
         >
           <span>Simular cortes e projeção</span>
           <ArrowRight className="size-3.5" aria-hidden="true" />
