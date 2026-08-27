@@ -17,10 +17,8 @@ import {
   CashGapAlert,
 } from "@/components/modules";
 import {
-  BUDGET_STATUS_LABELS,
   budgetLimitsByCategory,
   budgetStatus,
-  globalUsedPercent,
   isInheritedLimit,
   progressTone,
   resolveEffectiveLimit,
@@ -175,32 +173,43 @@ export function OverviewPage() {
   const dailyFlow = buildDailyFlow(month, dailyItems);
 
   // Orçamentos compactos (§3.6): progresso e lista de atenção.
-  // Padrão do app: valor BRUTO como métrica principal, informando ponderado quando houver diferença.
+  // Métrica principal: gasto efetivo ponderado (alinhado com Orçamentos e Categorias).
   const budgets = budgetsQuery.data ?? [];
   const limitsByCategory = budgetLimitsByCategory(budgets);
   const spentWeightedByCategory = spentByCategoryMap(expensesQuery.data ?? []);
   const spentGrossByCategory = spentGrossByCategoryMap(expensesQuery.data ?? []);
   const budgetRows = (expenseCategories.data ?? [])
     .map((category) => {
-      const spentGrossCents = spentGrossByCategory.get(category.id) ?? 0;
       const spentWeightedCents = spentWeightedByCategory.get(category.id) ?? 0;
+      const limitCents = resolveEffectiveLimit(limitsByCategory.get(category.id) ?? [], month);
       return {
         category,
-        limitCents: resolveEffectiveLimit(limitsByCategory.get(category.id) ?? [], month),
-        spentGrossCents,
-        spentWeightedCents,
-        spentCents: spentGrossCents,
-        hasWeighting: spentGrossCents !== spentWeightedCents,
+        limitCents,
+        spentCents: spentWeightedCents,
+        remainingCents: limitCents - spentWeightedCents,
         inherited: isInheritedLimit(limitsByCategory.get(category.id) ?? [], month),
       };
     })
     .filter((row) => row.limitCents > 0);
   const totalLimitsCents = budgetRows.reduce((acc, row) => acc + row.limitCents, 0);
-  const globalPercent = globalUsedPercent(grossExpenseCents, totalLimitsCents, grossIncomeCents);
+  const totalRemainingCents = totalLimitsCents - expenseCents;
+  const globalPercent = totalLimitsCents > 0 ? (expenseCents / totalLimitsCents) * 100 : 0;
   const attentionRows = budgetRows
-    .map((row) => ({ ...row, status: budgetStatus(row.spentGrossCents, row.limitCents) }))
+    .map((row) => ({ ...row, status: budgetStatus(row.spentCents, row.limitCents) }))
     .filter((row) => row.status !== "ok")
-    .sort((a, b) => b.spentGrossCents / b.limitCents - a.spentGrossCents / a.limitCents);
+    .sort((a, b) => (b.limitCents > 0 ? b.spentCents / b.limitCents : 0) - (a.limitCents > 0 ? a.spentCents / a.limitCents : 0));
+
+  const displayBudgetRows = (
+    attentionRows.length > 0
+      ? attentionRows.slice(0, 4)
+      : [...budgetRows]
+          .sort((a, b) => (b.limitCents > 0 ? b.spentCents / b.limitCents : 0) - (a.limitCents > 0 ? a.spentCents / a.limitCents : 0))
+          .slice(0, 4)
+  ).map((row) => ({
+    ...row,
+    status: budgetStatus(row.spentCents, row.limitCents),
+    percent: row.limitCents > 0 ? (row.spentCents / row.limitCents) * 100 : 0,
+  }));
 
   // Donut de categorias: principais despesas do mês (bruto).
   const donutSlices = (expenseCategories.data ?? [])
@@ -384,11 +393,13 @@ export function OverviewPage() {
                 tone="positive"
                 icon={<TrendingUp className="size-4" aria-hidden="true" />}
                 hint={
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-col gap-0.5 min-w-0">
                     <DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />
                     {grossIncomeCents !== incomeCents ? (
-                      <span className="text-[10px] text-muted-foreground truncate">
-                        Ponderada: <MoneyText cents={incomeCents} tone="default" className="text-[10px]" />
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
+                        <span className="hidden sm:inline">Ponderada: </span>
+                        <span className="sm:hidden">Pond: </span>
+                        <MoneyText cents={incomeCents} tone="default" className="text-[10px] tabular-nums" />
                       </span>
                     ) : null}
                   </div>
@@ -401,11 +412,13 @@ export function OverviewPage() {
                 tone="negative"
                 icon={<TrendingDown className="size-4" aria-hidden="true" />}
                 hint={
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-col gap-0.5 min-w-0">
                     <DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />
                     {grossExpenseCents !== expenseCents ? (
-                      <span className="text-[10px] text-muted-foreground truncate">
-                        Ponderada: <MoneyText cents={expenseCents} tone="default" className="text-[10px]" />
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
+                        <span className="hidden sm:inline">Ponderada: </span>
+                        <span className="sm:hidden">Pond: </span>
+                        <MoneyText cents={expenseCents} tone="default" className="text-[10px] tabular-nums" />
                       </span>
                     ) : null}
                   </div>
@@ -421,19 +434,24 @@ export function OverviewPage() {
                 spark={investmentSpark}
               />
               <KpiCard
-                label="Resultado do mês"
+                label={
+                  <>
+                    <span className="hidden sm:inline">Resultado do mês</span>
+                    <span className="sm:hidden">Resultado</span>
+                  </>
+                }
                 cents={totals.operatingBalanceCents}
                 tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
                 icon={<DollarSign className="size-4" aria-hidden="true" />}
                 hint={
                   totals.investmentCents > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground truncate">
+                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap min-w-0">
                       <span className="hidden sm:inline">Caixa pós-aportes:</span>
                       <span className="sm:hidden">Pós-aportes:</span>
                       <MoneyText
                         cents={totals.cashFlowBalanceCents}
                         tone={totals.cashFlowBalanceCents >= 0 ? "default" : "negative"}
-                        className="text-[10px]"
+                        className="text-[10px] tabular-nums"
                       />
                     </span>
                   ) : undefined
@@ -573,12 +591,10 @@ export function OverviewPage() {
 
           {/* Orçamentos (§3.6): progresso e lista de atenção */}
           {visual.dashboardWidgets.budgets && (
-            <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <section aria-label="Orçamentos" className="flex flex-col gap-3.5 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
               <div className="flex items-center justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
-                    <Target className="size-3.5" aria-hidden="true" />
-                  </span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Target className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Orçamentos do mês</h2>
                 </div>
                 <button
@@ -603,36 +619,40 @@ export function OverviewPage() {
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3.5">
-                  <div className="flex flex-col gap-2.5 rounded-xl bg-surface-hover/40 border border-border/50 p-3 sm:p-3.5">
-                    <div className="flex items-center justify-between gap-2 text-xs min-w-0">
-                      <span className="text-xs font-medium text-muted-foreground">Uso consolidado</span>
+                <div className="flex flex-col gap-3">
+                  {/* Resumo Consolidado com Saldo Disponível */}
+                  <div className="flex flex-col gap-2 rounded-xl bg-surface-hover/30 p-3 sm:p-3.5 border border-border/40">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          {totalRemainingCents >= 0 ? "Saldo disponível nos orçamentos" : "Orçamento total excedido em"}
+                        </span>
+                        <div className="flex items-baseline gap-1.5 flex-wrap">
+                          <MoneyText
+                            cents={Math.abs(totalRemainingCents)}
+                            tone="default"
+                            className={cn(
+                              "text-lg sm:text-xl font-bold tracking-tight",
+                              totalRemainingCents >= 0 ? "text-positive-strong" : "text-critical-strong",
+                            )}
+                          />
+                          <span className="text-xs text-muted-foreground font-normal">
+                            de <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground" />
+                          </span>
+                        </div>
+                      </div>
                       <Badge
                         variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"}
                         size="xs"
                       >
-                        {Math.round(globalPercent)}%
+                        {Math.round(globalPercent)}% usado
                       </Badge>
                     </div>
 
-                    <div className="flex items-baseline justify-between gap-2 flex-wrap min-w-0">
-                      <div className="flex items-baseline gap-1.5 min-w-0">
-                        <MoneyText cents={grossExpenseCents} tone="default" className="text-base sm:text-lg font-bold text-foreground tracking-tight" />
-                        <span className="text-xs text-muted-foreground font-normal">
-                          de <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground" />
-                        </span>
-                      </div>
-                      {grossExpenseCents !== expenseCents ? (
-                        <span className="text-[11px] text-muted-foreground">
-                          Ponderado: <MoneyText cents={expenseCents} tone="default" className="font-medium text-foreground text-[11px]" />
-                        </span>
-                      ) : null}
-                    </div>
-
                     <Progress
-                      value={globalPercent}
+                      value={Math.min(globalPercent, 100)}
                       tone={progressTone(globalPercent)}
-                      className="h-2"
+                      className="h-1.5"
                       aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`}
                     />
                   </div>
@@ -644,61 +664,51 @@ export function OverviewPage() {
                     </div>
                   ) : null}
 
-                  <div className="flex flex-col gap-2">
-                    {(attentionRows.length > 0
-                      ? attentionRows.slice(0, 4)
-                      : [...budgetRows]
-                          .sort((a, b) => (b.limitCents > 0 ? b.spentGrossCents / b.limitCents : 0) - (a.limitCents > 0 ? a.spentGrossCents / a.limitCents : 0))
-                          .slice(0, 4)
-                    ).map((row) => {
-                      const percent = row.limitCents > 0 ? (row.spentGrossCents / row.limitCents) * 100 : 0;
-                      const status = budgetStatus(row.spentGrossCents, row.limitCents);
-                      const isOver = status === "exceeded";
-                      const isAttention = status !== "ok";
+                  {/* Lista fluida de categorias */}
+                  <div className="flex flex-col divide-y divide-border/40">
+                    {displayBudgetRows.map((row) => {
+                      const isExceeded = row.remainingCents < 0;
 
                       return (
                         <div
                           key={row.category.id}
                           onClick={() => navigate("/orcamentos")}
-                          className="group flex flex-col gap-2 rounded-xl border border-border/60 bg-surface-hover/20 p-2.5 sm:p-3 hover:border-border hover:bg-surface-hover/50 transition-colors cursor-pointer"
+                          className="group py-2.5 first:pt-0.5 last:pb-0 flex flex-col gap-1.5 cursor-pointer -mx-1 px-1 rounded-lg hover:bg-surface-hover/30 transition-colors"
                         >
-                          <div className="flex items-center justify-between gap-2 min-w-0">
+                          <div className="flex items-center justify-between gap-2 text-xs min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
-                              <CategoryIcon icon={row.category.icon} color={row.category.color} className="size-4 sm:size-4.5 shrink-0" />
-                              <span className="font-semibold text-foreground truncate group-hover:text-primary transition-colors text-xs">
+                              <CategoryIcon icon={row.category.icon} color={row.category.color} className="size-4 shrink-0" />
+                              <span className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
                                 {row.category.name}
                               </span>
                             </div>
-                            {isAttention ? (
-                              <Badge variant={isOver ? "critical" : "warning"} size="xs">
-                                {BUDGET_STATUS_LABELS[status]}
-                              </Badge>
-                            ) : (
-                              <span className="num text-[11px] font-medium text-muted-foreground">{Math.round(percent)}%</span>
-                            )}
-                          </div>
 
-                          <div className="flex items-center justify-between gap-2 text-[11px] min-w-0">
-                            <div className="flex items-center gap-1 text-muted-foreground min-w-0 truncate">
-                              <MoneyText cents={row.spentGrossCents} tone="default" className="font-medium text-foreground" />
-                              <span>/</span>
-                              <MoneyText cents={row.limitCents} tone="default" />
-                            </div>
-                            {row.hasWeighting ? (
-                              <span className="text-[10px] text-muted-foreground shrink-0">
-                                Pond: <MoneyText cents={row.spentWeightedCents} tone="default" className="text-[10px]" />
-                              </span>
-                            ) : null}
-                          </div>
-
-                          <div className="w-full h-1 bg-surface-hover rounded-full overflow-hidden">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all duration-300",
-                                percent >= 100 ? "bg-critical" : percent >= 85 ? "bg-warning" : "bg-positive",
+                            <div className="flex items-center gap-1.5 shrink-0 text-xs tabular-nums">
+                              {isExceeded ? (
+                                <span className="text-critical-strong font-semibold">
+                                  +<MoneyText cents={Math.abs(row.remainingCents)} tone="negative" /> acima
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  Resta <MoneyText cents={row.remainingCents} tone="default" className="font-medium text-foreground" />
+                                </span>
                               )}
-                              style={{ width: `${Math.min(percent, 100)}%` }}
-                            />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-full h-1.5 bg-surface-hover rounded-full overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all duration-300",
+                                  row.percent >= 100 ? "bg-critical" : row.percent >= 85 ? "bg-warning" : "bg-positive",
+                                )}
+                                style={{ width: `${Math.min(row.percent, 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0 w-7 text-right">
+                              {Math.round(row.percent)}%
+                            </span>
                           </div>
                         </div>
                       );

@@ -6,7 +6,7 @@ import { Sparkline } from "@/components/ui/sparkline";
 import { formatCentsAsBRL } from "@/services/masks";
 
 export interface KpiCardProps {
-  label: string;
+  label: ReactNode;
   /** Valor já formatado (não monetário — ex.: contagem) — quando `cents` não é informado. */
   value?: string;
   /** Valor em centavos — renderiza o NumberTicker animado com formatação pt-BR (F8/F12). */
@@ -52,7 +52,7 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
       variant={onClick ? "interactive" : "default"}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={onClick ? label : undefined}
+      aria-label={onClick && typeof label === "string" ? label : undefined}
       onKeyDown={
         onClick
           ? (event) => {
@@ -91,7 +91,7 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
             <Sparkline data={spark} height={28} strokeClassName={sparkTone[tone]} />
           </div>
         ) : null}
-        {hint ? <div className="mt-1 text-xs text-muted-foreground overflow-hidden">{hint}</div> : null}
+        {hint ? <div className="mt-1 text-xs text-muted-foreground min-w-0">{hint}</div> : null}
       </div>
 
     </Card>
