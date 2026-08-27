@@ -39,7 +39,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
     <div
       role="alert"
       className={cn(
-        "w-full h-full min-h-[120px] sm:min-h-[96px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-4 sm:p-5 shadow-xs transition-all",
+        "w-full flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-4 sm:p-5 shadow-xs transition-all",
         isCritical
           ? "border-critical/40 bg-critical/5 text-foreground"
           : "border-warning/40 bg-warning/5 text-foreground",

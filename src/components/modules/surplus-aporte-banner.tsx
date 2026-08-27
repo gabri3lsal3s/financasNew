@@ -36,7 +36,7 @@ export function SurplusAporteBanner({
   return (
     <div
       className={cn(
-        "w-full h-full min-h-[120px] sm:min-h-[96px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border",
+        "w-full flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border",
         className,
       )}
     >

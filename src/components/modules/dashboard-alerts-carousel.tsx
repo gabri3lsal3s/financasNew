@@ -189,8 +189,8 @@ export function DashboardAlertsCarousel({
         </div>
       </div>
 
-      {/* Trilha Deslizante Horizontal em Loop Infinito */}
-      <div className="w-full min-w-0 overflow-hidden rounded-2xl">
+      {/* Trilha Deslizante Horizontal em Loop Infinito com Gutter */}
+      <div className="w-full min-w-0 overflow-hidden py-0.5">
         <div
           onTransitionEnd={handleTransitionEnd}
           className={cn(
@@ -202,7 +202,7 @@ export function DashboardAlertsCarousel({
           {extendedItems.map((item, idx) => (
             <div
               key={item.id}
-              className="w-full min-w-full shrink-0 h-full flex flex-col"
+              className="w-full min-w-full shrink-0 flex flex-col px-1 sm:px-1.5"
               aria-hidden={idx !== physicalIndex}
             >
               {item.content}

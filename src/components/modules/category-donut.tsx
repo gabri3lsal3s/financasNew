@@ -120,14 +120,14 @@ export function CategoryDonut({
 
   return (
     <div
-      className={cn("flex flex-col items-center gap-6 md:flex-row md:items-start w-full min-w-0", className)}
+      className={cn("flex flex-col items-center gap-4 sm:gap-5 md:gap-6 md:flex-row md:items-start w-full min-w-0", className)}
       data-swipe-nav-ignore
     >
       {/* Anel SVG de alto contraste e interativo */}
       <div className="relative shrink-0 flex items-center justify-center py-1">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="size-36 sm:size-40 -rotate-90"
+          className="size-28 sm:size-36 md:size-40 -rotate-90"
           aria-hidden="true"
         >
           <circle
@@ -173,7 +173,7 @@ export function CategoryDonut({
       </div>
 
       {/* Lista de fatias com legendas detalhadas em grid responsivo */}
-      <ul className={cn("w-full min-w-0 space-y-2.5", listClassName)}>
+      <ul className={cn("w-full min-w-0 space-y-1.5 sm:space-y-2", listClassName)}>
         {slices.map((slice, index) => {
           const percent = total > 0 ? (slice.valueCents / total) * 100 : 0;
           const colorStyle = getSliceColor(slice, index);
@@ -200,7 +200,7 @@ export function CategoryDonut({
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
               className={cn(
-                "group flex flex-col gap-1.5 rounded-xl px-2.5 py-1.5 transition-all min-w-0 w-full border border-transparent",
+                "group flex flex-col gap-1 sm:gap-1.5 rounded-xl px-2.5 py-1.5 transition-all min-w-0 w-full border border-transparent",
                 isClickable && "cursor-pointer hover:bg-surface-hover/80 hover:border-border/60 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 isHovered && "bg-surface-hover/80 border-border/80 shadow-xs",
               )}
@@ -238,7 +238,7 @@ export function CategoryDonut({
                   className="privacy-mask min-w-[4.5rem] text-right text-xs font-semibold shrink-0 tabular-nums"
                 />
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/50 dark:bg-border/60" aria-hidden="true">
+              <div className="h-1 w-full overflow-hidden rounded-full bg-border/40 dark:bg-border/60" aria-hidden="true">
                 <div
                   className="h-full rounded-full transition-all duration-300"
                   style={{
