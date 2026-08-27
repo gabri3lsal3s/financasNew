@@ -80,7 +80,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
 
         <Button
           type="button"
-          variant={isCritical ? "destructive" : "outline"}
+          variant={isCritical ? "destructive" : "warning"}
           size="sm"
           onClick={handleAction}
           className="gap-1.5 text-xs h-8 shrink-0 self-end sm:self-center font-medium cursor-pointer"

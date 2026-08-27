@@ -17,7 +17,9 @@ export const buttonVariants = cva(
         outline: "border border-border bg-surface text-foreground hover:bg-surface-hover hover:border-primary/40",
         ghost: "text-foreground hover:bg-surface-hover hover:text-primary",
         destructive: "border border-critical/40 bg-critical/10 text-critical-strong hover:bg-critical/20",
+        warning: "border border-warning/40 bg-warning/10 text-warning-strong hover:bg-warning/20",
         positive: "border border-positive/40 bg-positive/10 text-positive-strong hover:bg-positive/20",
+        portfolio: "border border-portfolio/40 bg-portfolio/10 text-portfolio-strong hover:bg-portfolio/20",
       },
       size: {
         xs: "h-7 px-2.5 text-xs [&_svg]:size-3",

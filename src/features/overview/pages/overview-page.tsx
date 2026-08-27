@@ -575,12 +575,12 @@ export function OverviewPage() {
           {/* Orçamentos (§3.6): progresso e lista de atenção */}
           {visual.dashboardWidgets.budgets && (
             <section aria-label="Orçamentos" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
                     <Target className="size-3.5" aria-hidden="true" />
                   </span>
-                  <h2 className="text-sm font-semibold text-foreground min-w-0">Orçamentos do mês</h2>
+                  <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Orçamentos do mês</h2>
                 </div>
                 <button
                   type="button"
@@ -591,7 +591,6 @@ export function OverviewPage() {
                   <ChevronRight className="size-3.5" aria-hidden="true" />
                 </button>
               </div>
-
 
               {budgetRows.length === 0 ? (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed border-border/80 bg-surface-hover/20 p-3.5 text-xs text-muted-foreground">
@@ -606,25 +605,31 @@ export function OverviewPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-3.5">
-                  <div className="flex flex-col gap-2 rounded-xl bg-surface-hover/30 border border-border/40 p-3">
-                    <div className="flex items-center justify-between text-xs min-w-0">
-                      <span className="text-muted-foreground">Uso consolidado</span>
-                      <div className="flex flex-col items-end">
-                        <span className="flex items-center gap-1.5 font-medium">
-                          <MoneyText cents={grossExpenseCents} tone="default" className="font-semibold text-foreground" />
-                          <span className="text-muted-foreground font-normal">de</span>
-                          <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground" />
-                          <Badge variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"} className="text-[10px] px-1.5 py-0">
-                            {Math.round(globalPercent)}%
-                          </Badge>
-                        </span>
-                        {grossExpenseCents !== expenseCents ? (
-                          <span className="text-[10px] text-muted-foreground">
-                            Ponderado: <MoneyText cents={expenseCents} tone="default" className="text-[10px]" />
-                          </span>
-                        ) : null}
-                      </div>
+                  <div className="flex flex-col gap-2.5 rounded-xl bg-surface-hover/40 border border-border/50 p-3 sm:p-3.5">
+                    <div className="flex items-center justify-between gap-2 text-xs min-w-0">
+                      <span className="text-xs font-medium text-muted-foreground">Uso consolidado</span>
+                      <Badge
+                        variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"}
+                        size="xs"
+                      >
+                        {Math.round(globalPercent)}%
+                      </Badge>
                     </div>
+
+                    <div className="flex items-baseline justify-between gap-2 flex-wrap min-w-0">
+                      <div className="flex items-baseline gap-1.5 min-w-0">
+                        <MoneyText cents={grossExpenseCents} tone="default" className="text-base sm:text-lg font-bold text-foreground tracking-tight" />
+                        <span className="text-xs text-muted-foreground font-normal">
+                          de <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground" />
+                        </span>
+                      </div>
+                      {grossExpenseCents !== expenseCents ? (
+                        <span className="text-[11px] text-muted-foreground">
+                          Ponderado: <MoneyText cents={expenseCents} tone="default" className="font-medium text-foreground text-[11px]" />
+                        </span>
+                      ) : null}
+                    </div>
+
                     <Progress
                       value={globalPercent}
                       tone={progressTone(globalPercent)}
@@ -656,34 +661,45 @@ export function OverviewPage() {
                         <div
                           key={row.category.id}
                           onClick={() => navigate("/orcamentos")}
-                          className="group flex items-center justify-between gap-2 rounded-xl border border-border/50 bg-surface/50 p-2.5 hover:border-border hover:bg-surface-hover/50 transition-colors cursor-pointer"
+                          className="group flex flex-col gap-2 rounded-xl border border-border/60 bg-surface-hover/20 p-2.5 sm:p-3 hover:border-border hover:bg-surface-hover/50 transition-colors cursor-pointer"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <CategoryIcon icon={row.category.icon} color={row.category.color} className="size-5 shrink-0" />
-                            <span className="font-medium text-foreground truncate group-hover:text-primary transition-colors text-xs">
-                              {row.category.name}
-                            </span>
-                          </div>
-                          <div className="flex flex-col items-end shrink-0 text-[11px]">
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">
-                                <MoneyText cents={row.spentGrossCents} tone="default" className="font-medium text-foreground" />
-                                {" / "}
-                                <MoneyText cents={row.limitCents} tone="default" />
+                          <div className="flex items-center justify-between gap-2 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CategoryIcon icon={row.category.icon} color={row.category.color} className="size-4 sm:size-4.5 shrink-0" />
+                              <span className="font-semibold text-foreground truncate group-hover:text-primary transition-colors text-xs">
+                                {row.category.name}
                               </span>
-                              {isAttention ? (
-                                <Badge variant={isOver ? "critical" : "warning"} className="text-[9px] px-1 py-0">
-                                  {BUDGET_STATUS_LABELS[status]}
-                                </Badge>
-                              ) : (
-                                <span className="num text-muted-foreground font-medium">{Math.round(percent)}%</span>
-                              )}
+                            </div>
+                            {isAttention ? (
+                              <Badge variant={isOver ? "critical" : "warning"} size="xs">
+                                {BUDGET_STATUS_LABELS[status]}
+                              </Badge>
+                            ) : (
+                              <span className="num text-[11px] font-medium text-muted-foreground">{Math.round(percent)}%</span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 text-[11px] min-w-0">
+                            <div className="flex items-center gap-1 text-muted-foreground min-w-0 truncate">
+                              <MoneyText cents={row.spentGrossCents} tone="default" className="font-medium text-foreground" />
+                              <span>/</span>
+                              <MoneyText cents={row.limitCents} tone="default" />
                             </div>
                             {row.hasWeighting ? (
-                              <span className="text-[10px] text-muted-foreground">
-                                Ponderado: <MoneyText cents={row.spentWeightedCents} tone="default" className="text-[10px]" />
+                              <span className="text-[10px] text-muted-foreground shrink-0">
+                                Pond: <MoneyText cents={row.spentWeightedCents} tone="default" className="text-[10px]" />
                               </span>
                             ) : null}
+                          </div>
+
+                          <div className="w-full h-1 bg-surface-hover rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-300",
+                                percent >= 100 ? "bg-critical" : percent >= 85 ? "bg-warning" : "bg-positive",
+                              )}
+                              style={{ width: `${Math.min(percent, 100)}%` }}
+                            />
                           </div>
                         </div>
                       );
@@ -691,7 +707,7 @@ export function OverviewPage() {
                   </div>
 
                   {attentionRows.length > 4 ? (
-                    <p className="text-[11px] text-muted-foreground text-center">
+                    <p className="text-[11px] text-muted-foreground text-center pt-1">
                       +{attentionRows.length - 4} outra(s) categoria(s) em atenção no mês.
                     </p>
                   ) : null}

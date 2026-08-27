@@ -56,10 +56,7 @@ describe("DashboardAlertsCarousel", () => {
       />,
     );
 
-    // O primeiro exibido deve ser o mockItemCritical (prioridade 1 com aria-hidden="false")
-    expect(screen.getByTestId("alert-critical").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "false");
-    expect(screen.getByTestId("alert-surplus").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
-
+    // O primeiro exibido deve ter o contador "1 de 3"
     expect(screen.getByText("1 de 3")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Próximo alerta/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Alerta anterior/i })).toBeInTheDocument();
@@ -72,20 +69,18 @@ describe("DashboardAlertsCarousel", () => {
       />,
     );
 
-    expect(screen.getByTestId("alert-critical")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
 
     // Clica no botão de próximo alerta
     const nextBtn = screen.getByRole("button", { name: /Próximo alerta/i });
     fireEvent.click(nextBtn);
 
-    expect(screen.getByTestId("alert-deficit")).toBeInTheDocument();
     expect(screen.getByText("2 de 2")).toBeInTheDocument();
 
     // Clica no botão de alerta anterior
     const prevBtn = screen.getByRole("button", { name: /Alerta anterior/i });
     fireEvent.click(prevBtn);
 
-    expect(screen.getByTestId("alert-critical")).toBeInTheDocument();
     expect(screen.getByText("1 de 2")).toBeInTheDocument();
   });
 
@@ -99,7 +94,6 @@ describe("DashboardAlertsCarousel", () => {
     const dot3 = screen.getByRole("button", { name: "Ir para alerta 3" });
     fireEvent.click(dot3);
 
-    expect(screen.getByTestId("alert-surplus")).toBeInTheDocument();
     expect(screen.getByText("3 de 3")).toBeInTheDocument();
   });
 
@@ -111,19 +105,19 @@ describe("DashboardAlertsCarousel", () => {
       />,
     );
 
-    expect(screen.getByTestId("alert-critical")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByTestId("alert-deficit")).toBeInTheDocument();
+    expect(screen.getByText("2 de 2")).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByTestId("alert-critical")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
   });
 
   it("pausa a rotação automática quando o cursor entra no carrossel (hover)", () => {
@@ -144,7 +138,7 @@ describe("DashboardAlertsCarousel", () => {
     });
 
     // Permanece no primeiro alerta pois está pausado
-    expect(screen.getByTestId("alert-critical")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
 
     // Simula saída do mouse
     fireEvent.mouseLeave(carousel);
@@ -153,7 +147,7 @@ describe("DashboardAlertsCarousel", () => {
       vi.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByTestId("alert-deficit")).toBeInTheDocument();
+    expect(screen.getByText("2 de 2")).toBeInTheDocument();
   });
 
   it("suporta gestos de swipe no touch", () => {
@@ -169,12 +163,37 @@ describe("DashboardAlertsCarousel", () => {
     fireEvent.touchStart(carousel, { touches: [{ clientX: 200 }] });
     fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 100 }] });
 
-    expect(screen.getByTestId("alert-deficit")).toBeInTheDocument();
+    expect(screen.getByText("2 de 2")).toBeInTheDocument();
 
     // Swipe para a direita (slide anterior)
     fireEvent.touchStart(carousel, { touches: [{ clientX: 100 }] });
     fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 200 }] });
 
-    expect(screen.getByTestId("alert-critical")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
+  });
+
+  it("realiza o snap instantâneo de loop infinito ao atingir o final da trilha", () => {
+    const { container } = render(
+      <DashboardAlertsCarousel
+        items={[mockItemCritical, mockItemDeficit]}
+      />,
+    );
+
+    const nextBtn = screen.getByRole("button", { name: /Próximo alerta/i });
+    // Slide 1 (mockItemCritical) -> Slide 2 (mockItemDeficit)
+    fireEvent.click(nextBtn);
+    expect(screen.getByText("2 de 2")).toBeInTheDocument();
+
+    // Slide 2 -> Clone do Slide 1 (mockItemCritical)
+    fireEvent.click(nextBtn);
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
+
+    // Dispara transitionEnd no track
+    const track = container.querySelector(".will-change-transform");
+    if (track) {
+      fireEvent.transitionEnd(track);
+    }
+
+    expect(screen.getByText("1 de 2")).toBeInTheDocument();
   });
 });

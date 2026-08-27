@@ -1,4 +1,4 @@
-import { ChevronRight, TrendingDown } from "lucide-react";
+import { ArrowRight, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
@@ -94,12 +94,12 @@ export function PaceAlertBanner({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant={isDeficit ? "destructive" : "warning"}
           onClick={onNavigateInsights}
-          className="gap-1.5 text-xs font-medium cursor-pointer"
+          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer"
         >
           <span>Simular cortes e projeção</span>
-          <ChevronRight className="size-3.5" aria-hidden="true" />
+          <ArrowRight className="size-3.5" aria-hidden="true" />
         </Button>
       </div>
     </section>

@@ -30,20 +30,59 @@ export function DashboardAlertsCarousel({
       .sort((a, b) => a.priority - b.priority);
   }, [items]);
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const total = validItems.length;
+
+  // Lista estendida com clones nas pontas para loop infinito contínuo
+  const extendedItems = useMemo(() => {
+    if (total <= 1) return validItems;
+    const firstClone = { ...validItems[0]!, id: `${validItems[0]!.id}-clone-end` };
+    const lastClone = { ...validItems[total - 1]!, id: `${validItems[total - 1]!.id}-clone-start` };
+    return [lastClone, ...validItems, firstClone];
+  }, [validItems, total]);
+
+  const [physicalIndex, setPhysicalIndex] = useState(1);
+  const [isTransitioning, setIsTransitioning] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
 
-  const total = validItems.length;
-  const safeIndex = total > 0 ? Math.min(currentIndex, total - 1) : 0;
+  // Índice lógico do card ativo (0 a total - 1)
+  const logicalIndex = total > 0 ? (physicalIndex - 1 + total) % total : 0;
+
+  // Reativa transição suave após o snap invisível
+  useEffect(() => {
+    if (!isTransitioning) {
+      const raf = requestAnimationFrame(() => {
+        setIsTransitioning(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [isTransitioning]);
 
   const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % (total || 1));
-  }, [total]);
+    setIsTransitioning(true);
+    setPhysicalIndex((prev) => prev + 1);
+  }, []);
 
   const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + (total || 1)) % (total || 1));
-  }, [total]);
+    setIsTransitioning(true);
+    setPhysicalIndex((prev) => prev - 1);
+  }, []);
+
+  const goToSlide = useCallback((targetLogicalIndex: number) => {
+    setIsTransitioning(true);
+    setPhysicalIndex(targetLogicalIndex + 1);
+  }, []);
+
+  // Snap instantâneo nas extremidades (loop infinito sem nunca rebobinar)
+  const handleTransitionEnd = () => {
+    if (physicalIndex === total + 1) {
+      setIsTransitioning(false);
+      setPhysicalIndex(1);
+    } else if (physicalIndex === 0) {
+      setIsTransitioning(false);
+      setPhysicalIndex(total);
+    }
+  };
 
   // Autoplay inteligente
   useEffect(() => {
@@ -95,11 +134,6 @@ export function DashboardAlertsCarousel({
     return <div className={cn("w-full min-w-0", className)}>{firstItem.content}</div>;
   }
 
-  const currentItem = validItems[safeIndex] ?? firstItem;
-  if (!currentItem) {
-    return null;
-  }
-
   return (
     <section
       aria-label="Alertas e avisos contextuais"
@@ -114,24 +148,24 @@ export function DashboardAlertsCarousel({
     >
       {/* Barra de controle e paginação superior/integrada */}
       <div className="flex items-center justify-between px-1 text-xs">
-        <div className="flex items-center gap-1.5" aria-label={`Aviso ${safeIndex + 1} de ${total}`}>
+        <div className="flex items-center gap-1.5" aria-label={`Aviso ${logicalIndex + 1} de ${total}`}>
           {validItems.map((item, idx) => (
             <button
               key={item.id}
               type="button"
-              onClick={() => setCurrentIndex(idx)}
+              onClick={() => goToSlide(idx)}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                idx === safeIndex
+                idx === logicalIndex
                   ? "w-5 bg-foreground"
                   : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50",
               )}
               aria-label={`Ir para alerta ${idx + 1}`}
-              aria-current={idx === safeIndex ? "true" : undefined}
+              aria-current={idx === logicalIndex ? "true" : undefined}
             />
           ))}
           <span className="text-[11px] font-medium text-muted-foreground ml-1.5 tabular-nums">
-            {safeIndex + 1} de {total}
+            {logicalIndex + 1} de {total}
           </span>
         </div>
 
@@ -155,17 +189,21 @@ export function DashboardAlertsCarousel({
         </div>
       </div>
 
-      {/* Trilha Deslizante Horizontal (Slide Track) */}
+      {/* Trilha Deslizante Horizontal em Loop Infinito */}
       <div className="w-full min-w-0 overflow-hidden rounded-2xl">
         <div
-          className="flex w-full transition-transform duration-500 ease-out will-change-transform items-stretch"
-          style={{ transform: `translateX(-${safeIndex * 100}%)` }}
+          onTransitionEnd={handleTransitionEnd}
+          className={cn(
+            "flex w-full will-change-transform items-stretch",
+            isTransitioning ? "transition-transform duration-500 ease-out" : "transition-none",
+          )}
+          style={{ transform: `translateX(-${physicalIndex * 100}%)` }}
         >
-          {validItems.map((item, idx) => (
+          {extendedItems.map((item, idx) => (
             <div
               key={item.id}
               className="w-full min-w-full shrink-0 h-full flex flex-col"
-              aria-hidden={idx !== safeIndex}
+              aria-hidden={idx !== physicalIndex}
             >
               {item.content}
             </div>

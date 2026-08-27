@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { ArrowUpRight, Calculator, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
@@ -74,14 +74,13 @@ export function SurplusAporteBanner({
 
         <Button
           type="button"
-          variant="default"
+          variant="portfolio"
           size="sm"
           onClick={handleAction}
-          className="gap-1.5 text-xs h-9 shrink-0 font-medium cursor-pointer"
+          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer"
         >
-          <Calculator className="size-3.5 text-portfolio" aria-hidden="true" />
           <span>Simular Aporte</span>
-          <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          <ArrowRight className="size-3.5" aria-hidden="true" />
         </Button>
       </div>
     </div>
