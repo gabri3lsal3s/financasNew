@@ -1090,6 +1090,18 @@
   - `src/components/modules/surplus-aporte-banner.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+### Correção do Desacoplamento de Compras no Cartão do Saldo Disponível (2026-08-27)
+- **Problema:** compras no cartão de crédito cadastradas como `payment_method: "credit_card"` ou com `card_id` estavam sendo indevidamente deduzidas do Saldo Disponível em Conta no dia da compra, porque o motor de caixa (`cash-ledger.ts`) verificava apenas o literal `"credit"`.
+- **Solução:**
+  1. **Motor de Fluxo de Caixa (`src/domain/cash/cash-ledger.ts`):** expansão do filtro para ignorar `credit_card`, `credit` e despesas com `card_id != null`. Compras no cartão agora afetam estritamente as *Obrigações do Ciclo* e o *Saldo Livre Real*, deduzindo o saldo bancário apenas no registro de liquidação da fatura (`card_payments`);
+  2. **Suíte de Testes (`src/domain/cash/cash-ledger.test.ts`):** cobertura completa com o enum canônico `credit_card`, `card_id` e verificação de eventos de caixa;
+  3. **Estabilidade de Testes (`src/features/debts/pages/debts-page.test.tsx`):** isolamento temporal no mock de vencimento para evitar flakiness na derivação de status.
+- **Arquivos alterados:**
+  - `src/domain/cash/cash-ledger.ts`
+  - `src/domain/cash/cash-ledger.test.ts`
+  - `src/features/debts/pages/debts-page.test.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

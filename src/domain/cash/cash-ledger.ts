@@ -72,6 +72,7 @@ export interface CalculateCashBalanceParams {
     date: string;
     value: number;
     payment_method: string;
+    card_id?: string | null;
     description?: string | null;
     created_at?: string | null;
   }[];
@@ -134,10 +135,16 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
   }
 
   // 2. Despesas à Vista / Débito / PIX (Saídas de Caixa)
-  // Ignora 'credit' (cartão de crédito só sai do caixa no pagamento da fatura)
+  // Ignora cartão de crédito ('credit_card', 'credit' ou com card_id vinculado)
+  // Compras no cartão só saem do caixa no pagamento da fatura (card_payments)
   for (const exp of expenses) {
     if (exp.date > referenceDate) continue;
-    if (exp.payment_method === "credit") continue;
+    const isCreditCard =
+      exp.payment_method === "credit_card" ||
+      exp.payment_method === "credit" ||
+      Boolean(exp.card_id);
+    if (isCreditCard) continue;
+
     const amountCents = numberToCents(exp.value);
     if (amountCents <= 0) continue;
     events.push({

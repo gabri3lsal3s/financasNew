@@ -30,19 +30,22 @@ describe("Cash Ledger Domain — calculateRealCashBalance & resolveCashFlowEvent
     expect(res.eventsSinceCheckpoint).toHaveLength(4);
   });
 
-  it("NÃO desconta compras no cartão de crédito do caixa diário", () => {
+  it("NÃO desconta compras no cartão de crédito ('credit_card' ou com card_id) do caixa diário", () => {
     const res = calculateRealCashBalance({
       incomes: [{ id: "inc-1", date: "2026-08-01", value: 3000 }],
       expenses: [
-        { id: "exp-1", date: "2026-08-02", value: 500, payment_method: "credit", description: "Compra Crédito" },
+        { id: "exp-1", date: "2026-08-02", value: 500, payment_method: "credit_card", card_id: "card-1", description: "Compra Crédito Oficial" },
         { id: "exp-2", date: "2026-08-03", value: 150, payment_method: "pix", description: "Farmácia PIX" },
+        { id: "exp-3", date: "2026-08-04", value: 300, payment_method: "credit", description: "Compra Crédito Legado" },
+        { id: "exp-4", date: "2026-08-05", value: 200, payment_method: "other", card_id: "card-2", description: "Compra Cartão sem method explícito" },
       ],
       referenceDate: "2026-08-24",
     });
 
-    // Apenas a despesa em PIX desconta do caixa (150). A compra de crédito (500) NÃO afeta o caixa.
+    // Apenas a despesa em PIX desconta do caixa (150). As compras de crédito NÃO afetam o caixa.
     // Saldo = 3000 - 150 = 2850
     expect(res.currentBalanceCents).toBe(285000);
+    expect(res.outflowSinceCheckpointCents).toBe(15000);
     expect(res.eventsSinceCheckpoint.map((e) => e.kind)).toEqual(["income", "cash_expense"]);
   });
 
@@ -50,7 +53,7 @@ describe("Cash Ledger Domain — calculateRealCashBalance & resolveCashFlowEvent
     const res = calculateRealCashBalance({
       incomes: [{ id: "inc-1", date: "2026-08-01", value: 5000 }],
       expenses: [
-        { id: "exp-credit", date: "2026-08-05", value: 1800, payment_method: "credit" },
+        { id: "exp-credit", date: "2026-08-05", value: 1800, payment_method: "credit_card", card_id: "card-nubank" },
       ],
       cardPayments: [
         { id: "pay-1", date: "2026-08-10", amount: 1800, note: "Pagamento Fatura Nubank" },
