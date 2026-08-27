@@ -21,7 +21,7 @@ const SWIPE_THRESHOLD_PX = 40;
 export function DashboardAlertsCarousel({
   items,
   className,
-  autoplayIntervalMs = 7000,
+  autoplayIntervalMs = 8000,
 }: DashboardAlertsCarouselProps) {
   // Filtra itens vazios/nulos e ordena por prioridade crescente (1 = mais urgente)
   const validItems = useMemo(() => {
@@ -155,7 +155,7 @@ export function DashboardAlertsCarousel({
               type="button"
               onClick={() => goToSlide(idx)}
               className={cn(
-                "h-1.5 rounded-full transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                "h-1.5 rounded-full transition-all duration-500 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary",
                 idx === logicalIndex
                   ? "w-5 bg-foreground"
                   : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50",
@@ -195,7 +195,7 @@ export function DashboardAlertsCarousel({
           onTransitionEnd={handleTransitionEnd}
           className={cn(
             "flex w-full will-change-transform items-stretch",
-            isTransitioning ? "transition-transform duration-500 ease-out" : "transition-none",
+            isTransitioning ? "transition-transform duration-[850ms] ease-[cubic-bezier(0.16,1,0.3,1)]" : "transition-none",
           )}
           style={{ transform: `translateX(-${physicalIndex * 100}%)` }}
         >
