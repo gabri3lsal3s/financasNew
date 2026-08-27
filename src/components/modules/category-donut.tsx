@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
@@ -36,6 +36,8 @@ export interface CategoryDonutProps {
   listClassName?: string;
   /** Texto para estado vazio quando não há fatias. */
   emptyText?: string;
+  /** Número máximo de fatias desenhadas no anel SVG antes de agrupar em "Outros" (default: 7). */
+  maxVisualSlices?: number;
   /** Callback global acionado ao clicar em uma fatia ou legenda. */
   onSliceClick?: (slice: DonutSlice, index: number) => void;
 }
@@ -68,11 +70,20 @@ const CENTER = SIZE / 2;
 const GAP_SPACING = 5; // espaçamento visual limpo entre pílulas em px
 const TOTAL_GAP = STROKE_WIDTH + GAP_SPACING; // compensação do raio do round cap
 
+interface InternalVisualSlice {
+  key: string;
+  label: string;
+  valueCents: number;
+  colorStyle: string;
+  isOthersGroup?: boolean;
+  memberKeys: string[];
+}
+
 /**
- * Normaliza proporções visuais para garantir que fatias minúsculas (ex.: 0.02% / R$ 4,60)
- * tenham um tamanho mínimo de arco visível, renderizando como pílulas arredondadas consistentes.
+ * Normaliza proporções visuais para garantir que fatias visíveis no anel
+ * tenham um tamanho mínimo de arco visível e renderizem como pílulas arredondadas consistentes.
  */
-function computeVisualShares(slices: DonutSlice[], total: number, minShare = 0.045): number[] {
+function computeVisualShares(slices: InternalVisualSlice[], total: number, minShare = 0.05): number[] {
   const n = slices.length;
   if (n <= 1) return slices.map(() => 1);
 
@@ -101,8 +112,15 @@ function computeVisualShares(slices: DonutSlice[], total: number, minShare = 0.0
 /**
  * CategoryDonut — distribuição visual interativa de categorias ou ativos.
  * Anel SVG de alto contraste com bordas arredondadas (pill arcs), dimensionamento
- * confortável para mobile e alternância dinâmica no centro entre o Total e a Categoria ativa.
+ * confortável para mobile, agrupamento elegante de cauda longa (Top N + Outros)
+ * e alternância dinâmica no centro entre o Total e a Categoria ativa.
  */
+function getDynamicValueSize(valueCents: number): string {
+  if (valueCents >= 100000000) return "text-[11px] sm:text-xs md:text-sm font-extrabold"; // >= R$ 1.000.000,00
+  if (valueCents >= 10000000) return "text-xs sm:text-sm md:text-base font-extrabold"; // >= R$ 100.000,00
+  return "text-xs sm:text-base md:text-lg font-extrabold";
+}
+
 export function CategoryDonut({
   slices,
   totalCents,
@@ -112,12 +130,82 @@ export function CategoryDonut({
   className,
   listClassName,
   emptyText = "Sem despesas",
+  maxVisualSlices = 7,
   onSliceClick,
 }: CategoryDonutProps) {
   const [internalSelectedKey, setInternalSelectedKey] = useState<string | null>(null);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [hoveredSliceKey, setHoveredSliceKey] = useState<string | null>(null);
 
   const total = totalCents ?? slices.reduce((acc, slice) => acc + slice.valueCents, 0);
+
+  const activeSelectedKey = controlledSelectedKey !== undefined ? controlledSelectedKey : internalSelectedKey;
+  const validSlices = useMemo(() => slices.filter((s) => s.valueCents > 0), [slices]);
+
+  // Agrupamento visual: quando há mais fatias do que maxVisualSlices, consolida a cauda longa em "Outros" no anel SVG
+  const visualRingSlices = useMemo<InternalVisualSlice[]>(() => {
+    if (validSlices.length <= maxVisualSlices) {
+      return validSlices.map((s, idx) => {
+        const key = s.key ?? `${s.label}-${idx}`;
+        return {
+          key,
+          label: s.label,
+          valueCents: s.valueCents,
+          colorStyle: getSliceColor(s, idx),
+          memberKeys: [key],
+        };
+      });
+    }
+
+    const topCount = Math.max(1, maxVisualSlices - 1);
+    const topSlices = validSlices.slice(0, topCount);
+    const others = validSlices.slice(topCount);
+    const othersValueCents = others.reduce((acc, s) => acc + s.valueCents, 0);
+
+    const mappedTop: InternalVisualSlice[] = topSlices.map((s, idx) => {
+      const key = s.key ?? `${s.label}-${idx}`;
+      return {
+        key,
+        label: s.label,
+        valueCents: s.valueCents,
+        colorStyle: getSliceColor(s, idx),
+        memberKeys: [key],
+      };
+    });
+
+    const othersKeys = others.map((s, idx) => s.key ?? `${s.label}-${topCount + idx}`);
+    mappedTop.push({
+      key: "__donut_others__",
+      label: `Outros (${others.length})`,
+      valueCents: othersValueCents,
+      colorStyle: "hsl(var(--muted-foreground) / 0.55)",
+      isOthersGroup: true,
+      memberKeys: othersKeys,
+    });
+
+    return mappedTop;
+  }, [validSlices, maxVisualSlices]);
+
+  // Localiza o item ativo para o centro (hover tem precedência temporária sobre selecionado)
+  const activeKey = hoveredSliceKey ?? activeSelectedKey;
+
+  const activeDisplayItem = useMemo(() => {
+    if (!activeKey) return null;
+    if (activeKey === "__donut_others__") {
+      const othersSlice = visualRingSlices.find((v) => v.key === "__donut_others__");
+      return othersSlice ? { ...othersSlice, icon: null } : null;
+    }
+    const foundSlice = slices.find((s, idx) => (s.key ? s.key === activeKey : `${s.label}-${idx}` === activeKey));
+    if (foundSlice) {
+      const idx = slices.findIndex((s) => s === foundSlice);
+      return {
+        label: foundSlice.label,
+        valueCents: foundSlice.valueCents,
+        icon: foundSlice.icon,
+        colorStyle: getSliceColor(foundSlice, idx >= 0 ? idx : 0),
+      };
+    }
+    return visualRingSlices.find((v) => v.key === activeKey) ?? null;
+  }, [activeKey, slices, visualRingSlices]);
 
   if (total <= 0 || slices.length === 0) {
     return (
@@ -129,25 +217,12 @@ export function CategoryDonut({
     );
   }
 
-  const activeSelectedKey = controlledSelectedKey !== undefined ? controlledSelectedKey : internalSelectedKey;
+  const hasMultipleRingSlices = visualRingSlices.length > 1;
 
-  const validSlices = slices.filter((s) => s.valueCents > 0);
-  const hasMultipleSlices = validSlices.length > 1;
-
-  // Localiza o item ativo (hover tem prioridade temporária de visualização; se não houver hover, usa o selecionado)
-  const activeHoveredSlice = hoveredIndex !== null ? slices[hoveredIndex] : null;
-  const activeSelectedSlice = activeSelectedKey
-    ? slices.find((s, idx) => (s.key ? s.key === activeSelectedKey : `${s.label}-${idx}` === activeSelectedKey)) ?? null
-    : null;
-  const activeDisplaySlice = activeHoveredSlice ?? activeSelectedSlice;
-  const activeDisplayIndex = activeDisplaySlice ? slices.findIndex((s) => s === activeDisplaySlice) : null;
   const activeDisplayPercent =
-    activeDisplaySlice && total > 0 ? (activeDisplaySlice.valueCents / total) * 100 : 0;
-  const activeDisplayColor =
-    activeDisplaySlice && activeDisplayIndex !== null ? getSliceColor(activeDisplaySlice, activeDisplayIndex) : undefined;
+    activeDisplayItem && total > 0 ? (activeDisplayItem.valueCents / total) * 100 : 0;
 
-  const handleItemClick = (slice: DonutSlice, index: number) => {
-    const key = slice.key ?? `${slice.label}-${index}`;
+  const handleItemClick = (key: string, slice?: DonutSlice) => {
     const nextKey = activeSelectedKey === key ? null : key;
     triggerSensory("selection");
 
@@ -155,8 +230,11 @@ export function CategoryDonut({
       setInternalSelectedKey(nextKey);
     }
     onSelectKey?.(nextKey);
-    slice.onClick?.();
-    onSliceClick?.(slice, index);
+    slice?.onClick?.();
+    if (slice) {
+      const idx = slices.findIndex((s) => s === slice);
+      onSliceClick?.(slice, idx >= 0 ? idx : 0);
+    }
   };
 
   const handleResetSelection = () => {
@@ -169,62 +247,58 @@ export function CategoryDonut({
     }
   };
 
-  // Cálculo das proporções visuais para os arcos válidos com tamanho mínimo de fatia garantido
-  const visualShares = computeVisualShares(validSlices, total, 0.045);
-  const totalGapBudget = hasMultipleSlices ? validSlices.length * TOTAL_GAP : 0;
+  // Cálculo das proporções visuais para os arcos do anel SVG
+  const visualShares = computeVisualShares(visualRingSlices, total, 0.05);
+  const totalGapBudget = hasMultipleRingSlices ? visualRingSlices.length * TOTAL_GAP : 0;
   const availableDashBudget = Math.max(10, CIRCUMFERENCE - totalGapBudget);
 
-  // Mapeamento dos arcos sem sobreposição e com extremidades arredondadas uniformes
-  const arcs = slices.map((slice, index) => {
-    const sliceKey = slice.key ?? `${slice.label}-${index}`;
-    const validIdx = validSlices.findIndex((s) => s === slice);
-    const isVisible = slice.valueCents > 0 && validIdx >= 0;
+  // Mapeamento dos arcos do anel SVG
+  const arcs = visualRingSlices.map((vSlice, index) => {
+    let dash: number;
+    let offset: number;
 
-    let dash = 0;
-    let offset = 0;
+    if (hasMultipleRingSlices) {
+      const visualShare = visualShares[index] ?? 0;
+      dash = Math.max(0.1, visualShare * availableDashBudget);
 
-    if (isVisible) {
-      if (hasMultipleSlices) {
-        const visualShare = visualShares[validIdx] ?? 0;
-        dash = Math.max(0.1, visualShare * availableDashBudget);
-
-        const priorVisualShare = visualShares.slice(0, validIdx).reduce((sum, v) => sum + v, 0);
-        const priorOffset = priorVisualShare * availableDashBudget + validIdx * TOTAL_GAP;
-        offset = priorOffset + TOTAL_GAP / 2;
-      } else {
-        dash = CIRCUMFERENCE;
-        offset = 0;
-      }
+      const priorVisualShare = visualShares.slice(0, index).reduce((sum, v) => sum + v, 0);
+      const priorOffset = priorVisualShare * availableDashBudget + index * TOTAL_GAP;
+      offset = priorOffset + TOTAL_GAP / 2;
+    } else {
+      dash = CIRCUMFERENCE;
+      offset = 0;
     }
 
+    const isRingSelected = activeSelectedKey !== null && vSlice.memberKeys.includes(activeSelectedKey);
+    const isRingHovered = hoveredSliceKey !== null && vSlice.memberKeys.includes(hoveredSliceKey);
+
     return {
-      key: sliceKey,
+      key: vSlice.key,
+      label: vSlice.label,
+      valueCents: vSlice.valueCents,
       dash,
       offset,
-      colorStyle: getSliceColor(slice, index),
-      slice,
-      index,
-      isSelected: activeSelectedKey === sliceKey,
-      isHovered: hoveredIndex === index,
-      strokeLinecap: (hasMultipleSlices ? "round" : "butt") as "round" | "butt",
-      isVisible,
+      colorStyle: vSlice.colorStyle,
+      isSelected: isRingSelected,
+      isHovered: isRingHovered,
+      isOthersGroup: vSlice.isOthersGroup,
+      strokeLinecap: (hasMultipleRingSlices ? "round" : "butt") as "round" | "butt",
     };
   });
-
 
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-5 sm:gap-6 md:flex-row md:items-center w-full min-w-0",
+        "flex flex-col items-center gap-6 md:flex-row md:items-center lg:gap-8 w-full min-w-0",
         className,
       )}
       data-swipe-nav-ignore
     >
-      {/* Anel SVG de alto contraste, bordas arredondadas e furo interno expandido */}
-      <div className="relative shrink-0 flex items-center justify-center py-1">
+      {/* Anel SVG responsivo de alto contraste, bordas arredondadas e furo interno expandido */}
+      <div className="relative shrink-0 flex items-center justify-center py-2 self-center">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="size-36 sm:size-40 md:size-44 -rotate-90 transition-transform duration-300"
+          className="size-44 sm:size-48 md:size-52 lg:size-56 xl:size-60 -rotate-90 transition-transform duration-300"
           aria-hidden="true"
         >
           {/* Trilha de fundo suave */}
@@ -239,13 +313,12 @@ export function CategoryDonut({
 
           {/* Arcos preenchidos com extremidades arredondadas sem sobreposição */}
           {arcs
-            .filter((arc) => arc.isVisible && arc.dash > 0)
+            .filter((arc) => arc.dash > 0)
             .map((arc) => {
               const isHighlighted = arc.isHovered || arc.isSelected;
-              const hasAnyActive = hoveredIndex !== null || activeSelectedKey !== null;
+              const hasAnyActive = hoveredSliceKey !== null || activeSelectedKey !== null;
               const opacity = hasAnyActive ? (isHighlighted ? 1 : 0.35) : 1;
               const strokeWidth = isHighlighted ? STROKE_WIDTH + 2.5 : STROKE_WIDTH;
-              const isClickable = true;
 
               return (
                 <circle
@@ -261,17 +334,16 @@ export function CategoryDonut({
                   style={{
                     stroke: arc.colorStyle,
                     opacity,
-                    cursor: isClickable ? "pointer" : "default",
+                    cursor: "pointer",
                   }}
                   className="transition-all duration-200"
-                  onMouseEnter={() => setHoveredIndex(arc.index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                  onClick={() => handleItemClick(arc.slice, arc.index)}
+                  onMouseEnter={() => setHoveredSliceKey(arc.key)}
+                  onMouseLeave={() => setHoveredSliceKey(null)}
+                  onClick={() => handleItemClick(arc.key)}
                 />
               );
             })}
         </svg>
-
 
         {/* Centro Dinâmico e Confortável: Total <-> Categoria Selecionada */}
         <div
@@ -289,65 +361,84 @@ export function CategoryDonut({
               : undefined
           }
           className={cn(
-            "absolute inset-0 flex flex-col items-center justify-center text-center px-3 rounded-full transition-all select-none",
-            activeSelectedKey ? "cursor-pointer group hover:bg-surface-hover/30" : "pointer-events-none",
+            "absolute inset-[10%] flex flex-col items-center justify-center text-center p-2 rounded-full transition-all select-none overflow-hidden",
+            activeSelectedKey ? "cursor-pointer group hover:bg-surface-hover/40 ring-1 ring-border/50" : "pointer-events-none",
           )}
-          aria-label={activeDisplaySlice ? `${activeDisplaySlice.label}: ${activeDisplayPercent.toFixed(1)}%` : "Total geral"}
+          aria-label={activeDisplayItem ? `${activeDisplayItem.label}: ${activeDisplayPercent.toFixed(1)}%` : "Total geral"}
         >
-          {activeDisplaySlice ? (
-            <>
-              <div className="flex items-center gap-1 max-w-[105px] sm:max-w-[125px] min-w-0">
-                {activeDisplaySlice.icon && activeDisplayColor ? (
-                  <CategoryIcon icon={activeDisplaySlice.icon} color={activeDisplayColor} className="size-3 shrink-0" />
+          {activeDisplayItem ? (
+            <div className="flex flex-col items-center justify-center w-full max-w-[85%] min-w-0">
+              <div className="flex items-center justify-center gap-1.5 w-full min-w-0">
+                {"icon" in activeDisplayItem && activeDisplayItem.icon && activeDisplayItem.colorStyle ? (
+                  <CategoryIcon icon={activeDisplayItem.icon} color={activeDisplayItem.colorStyle} className="size-3.5 shrink-0" />
                 ) : (
                   <span
                     aria-hidden="true"
-                    style={{ backgroundColor: activeDisplayColor }}
+                    style={{ backgroundColor: activeDisplayItem.colorStyle }}
                     className="size-2 rounded-full shrink-0"
                   />
                 )}
                 <span
-                  className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate"
-                  style={{ color: activeDisplayColor }}
+                  className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate"
+                  style={{ color: activeDisplayItem.colorStyle }}
+                  title={activeDisplayItem.label}
                 >
-                  {activeDisplaySlice.label}
+                  {activeDisplayItem.label}
                 </span>
               </div>
-              <p className="privacy-mask text-xs sm:text-sm md:text-base font-bold text-foreground tracking-tight tabular-nums mt-0.5 leading-snug">
-                <MoneyText cents={activeDisplaySlice.valueCents} tone="default" />
+              <p
+                className={cn(
+                  "privacy-mask text-foreground tracking-tight tabular-nums mt-0.5 leading-snug whitespace-nowrap",
+                  getDynamicValueSize(activeDisplayItem.valueCents),
+                )}
+              >
+                <MoneyText cents={activeDisplayItem.valueCents} tone="default" />
               </p>
-              <span className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold tabular-nums mt-0.5">
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold tabular-nums mt-0.5 whitespace-nowrap">
                 {Math.round(activeDisplayPercent)}% <span className="font-normal text-[9px] text-muted-foreground/80">do total</span>
               </span>
-            </>
+            </div>
           ) : (
-            <>
-              <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
+            <div className="flex flex-col items-center justify-center w-full max-w-[85%] min-w-0">
+              <span className="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-muted-foreground truncate max-w-full">
                 Total
               </span>
-              <p className="privacy-mask text-xs sm:text-sm md:text-base font-bold text-foreground tracking-tight tabular-nums mt-0.5 leading-snug">
+              <p
+                className={cn(
+                  "privacy-mask text-foreground tracking-tight tabular-nums mt-0.5 leading-snug whitespace-nowrap",
+                  getDynamicValueSize(total),
+                )}
+              >
                 {centerValue ? (
                   centerValue
                 ) : (
                   <MoneyText cents={total} tone="default" />
                 )}
               </p>
-              <span className="text-[10px] text-muted-foreground/80 font-medium mt-0.5">
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground/80 font-medium mt-0.5 whitespace-nowrap">
                 {slices.length} {slices.length === 1 ? "item" : "itens"}
               </span>
-            </>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Lista de fatias com legendas detalhadas e sincronização de clique/hover */}
-      <ul className={cn("w-full min-w-0 space-y-1.5 sm:space-y-2", listClassName)}>
+      {/* Lista de fatias com legendas detalhadas em 2 colunas no desktop quando houver múltiplos itens */}
+      <ul
+        className={cn(
+          "w-full min-w-0",
+          slices.length > 4
+            ? "grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2"
+            : "flex flex-col space-y-1.5 sm:space-y-2",
+          listClassName,
+        )}
+      >
         {slices.map((slice, index) => {
           const sliceKey = slice.key ?? `${slice.label}-${index}`;
           const percent = total > 0 ? (slice.valueCents / total) * 100 : 0;
           const colorStyle = getSliceColor(slice, index);
           const isSelected = activeSelectedKey === sliceKey;
-          const isHovered = hoveredIndex === index;
+          const isHovered = hoveredSliceKey === sliceKey;
           const isHighlighted = isSelected || isHovered;
 
           return (
@@ -356,9 +447,9 @@ export function CategoryDonut({
                 type="button"
                 aria-label={`Selecionar ${slice.label}`}
                 aria-pressed={isSelected}
-                onClick={() => handleItemClick(slice, index)}
-                onMouseEnter={() => setHoveredIndex(index)}
-                onMouseLeave={() => setHoveredIndex(null)}
+                onClick={() => handleItemClick(sliceKey, slice)}
+                onMouseEnter={() => setHoveredSliceKey(sliceKey)}
+                onMouseLeave={() => setHoveredSliceKey(null)}
                 className={cn(
                   "group flex flex-col gap-1 sm:gap-1.5 rounded-xl px-2.5 py-1.5 transition-all min-w-0 w-full border text-left cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   isSelected
@@ -419,8 +510,6 @@ export function CategoryDonut({
           );
         })}
       </ul>
-
     </div>
   );
 }
-

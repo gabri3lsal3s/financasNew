@@ -185,7 +185,7 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
         <div className="relative shrink-0 flex items-center justify-center">
           <svg
             viewBox={`0 0 ${SIZE} ${SIZE}`}
-            className="size-36 sm:size-40 md:size-44 -rotate-90"
+            className="size-40 sm:size-48 md:size-52 lg:size-56 -rotate-90 transition-transform duration-300"
             aria-label={`Gráfico de metas: ${title}`}
             role="img"
           >
@@ -238,31 +238,31 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
 
           {/* Conteúdo central do Donut */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-3"
+            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-3 sm:px-4"
             aria-live="polite"
           >
             {selectedItem ? (
               <>
                 <span
-                  className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate max-w-[95px] sm:max-w-[110px]"
+                  className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider truncate max-w-[110px] sm:max-w-[140px]"
                   style={{ color: selectedColor }}
                 >
                   {selectedItem.label}
                 </span>
-                <span className="num font-mono text-sm sm:text-base font-bold text-foreground leading-tight mt-0.5">
+                <span className="num font-mono text-sm sm:text-base md:text-lg font-bold text-foreground leading-tight mt-0.5">
                   {selectedItem.targetPercent.toFixed(1)}
                   <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
                 </span>
-                <span className="text-[10px] text-muted-foreground font-medium mt-0.5">selecionado</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">selecionado</span>
               </>
             ) : (
               <>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
+                <span className="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-muted-foreground">
                   Alocado
                 </span>
                 <span
                   className={cn(
-                    "num font-mono text-sm sm:text-base font-bold leading-tight mt-0.5",
+                    "num font-mono text-sm sm:text-base md:text-lg font-bold leading-tight mt-0.5",
                     isOverflow ? "text-critical-strong" : "text-foreground",
                   )}
                 >
@@ -270,15 +270,15 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
                   <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
                 </span>
                 {freePercent > 0 ? (
-                  <span className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                  <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">
                     {freePercent.toFixed(1)}{unitLabel} livre
                   </span>
                 ) : isOverflow ? (
-                  <span className="text-[10px] text-critical-strong font-semibold mt-0.5">
+                  <span className="text-[10px] sm:text-xs text-critical-strong font-semibold mt-0.5">
                     +{overflowPercent.toFixed(1)}{unitLabel}
                   </span>
                 ) : (
-                  <span className="text-[10px] text-positive-strong font-medium mt-0.5">100% calibrado</span>
+                  <span className="text-[10px] sm:text-xs text-positive-strong font-medium mt-0.5">100% calibrado</span>
                 )}
               </>
             )}

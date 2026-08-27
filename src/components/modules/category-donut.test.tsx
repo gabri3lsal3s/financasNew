@@ -108,6 +108,31 @@ describe("CategoryDonut (F8)", () => {
     expect(arcs[2]).toHaveAttribute("stroke-linecap", "round");
   });
 
+  it("agrupa cauda longa em 'Outros' no anel SVG quando há muitos itens (ex: 27 ativos), mantendo lista completa", () => {
+    const manySlices = Array.from({ length: 27 }, (_, i) => ({
+      key: `asset-${i + 1}`,
+      label: `Ativo ${i + 1}`,
+      valueCents: (27 - i) * 1000,
+    }));
+
+    const { container } = render(<CategoryDonut slices={manySlices} maxVisualSlices={7} />);
+
+    // No anel SVG, apenas 7 arcos (Top 6 + 1 Outros)
+    const arcs = container.querySelectorAll<SVGCircleElement>("circle[stroke-dasharray]");
+    expect(arcs).toHaveLength(7);
+
+    // Na lista abaixo, todos os 27 itens são renderizados para o usuário poder consultar qualquer um
+    expect(screen.getByText("Ativo 1")).toBeInTheDocument();
+    expect(screen.getByText("Ativo 27")).toBeInTheDocument();
+
+    // Ao clicar em um item da cauda longa (ex: Ativo 20), o centro exibe o valor do Ativo 20
+    const itemBtn = screen.getByRole("button", { name: /Selecionar Ativo 20/i });
+    fireEvent.click(itemBtn);
+
+    expect(screen.getAllByText("Ativo 20")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /Ativo 20: 2\.1%/i })).toBeInTheDocument();
+  });
+
   it("sem violações de acessibilidade (axe)", async () => {
     const { container } = render(
       <CategoryDonut
@@ -120,5 +145,6 @@ describe("CategoryDonut (F8)", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
 
 

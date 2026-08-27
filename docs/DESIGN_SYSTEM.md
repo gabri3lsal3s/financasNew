@@ -509,5 +509,20 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Rodapés de Diálogos (`ModalFooter`):** Ordem unificada em 100% dos diálogos com Cancelar à esquerda e Confirmar à direita no desktop (`flex-row justify-end gap-2`), e empilhamento seguro no mobile (`flex-col-reverse gap-2`).
 - **Superfície Canônica de Cards:** Cards de dados utilizam consistentemente a combinação `border-border/80 bg-surface shadow-xs`.
 
-
-
+### 14.21 Gráficos Donut Padronizados, Arcos Arredondados e Normalização Geométrica
+- **Componentes:** `src/components/modules/category-donut.tsx`, `src/components/modules/interactive-target-donut.tsx`, `src/components/modules/reports/report-donut-chart.tsx`.
+- **Geometria de Arcos Pill & Zero Sobreposição:**
+  - Fatias com valor $\le 0$ são ignoradas no SVG (não geram arcos fantasmas).
+  - Todas as fatias ativas utilizam `strokeLinecap="round"` com compensação angular e gap limpo garantido de **5px** entre si.
+  - Normalização geométrica (`computeVisualShares`): fatias de valor muito baixo recebem uma cota mínima visual ($\approx 5\%$) no anel, mantendo todas as fatias encorpadas e arredondadas sem agulhas ou deformações visuais.
+- **Agrupamento de Cauda Longa (Top 6 + Outros):**
+  - Quando houver mais de 7 itens (ex.: carteira de investimentos com 20+ ativos), o anel SVG renderiza os Top 6 maiores e consolida a cauda longa em uma única fatia elegante **`Outros (N)`**, evitando o efeito "colar de pontos".
+  - A lista de legendas completa mantém todos os itens acessíveis e navegáveis.
+- **Layout de Legendas em 2 Colunas (`grid-cols-1 sm:grid-cols-2`):**
+  - Quando a lista possui mais de 4 itens, ela se organiza automaticamente em **2 colunas** no tablet e desktop, reduzindo a altura vertical pela metade.
+- **Centro Dinâmico e Governança Tipográfica:**
+  - O miolo do Donut alterna fluidamente entre `"TOTAL"` e a fatia ativa (ao passar o mouse ou clicar), com feedback tátil sensorial centralizado (`triggerSensory("selection")`).
+  - O rótulo e o ponto indicador ficam alinhados em **linha única** com truncamento elegante no nome para preservar a simetria central.
+  - Valores monetários são sempre 100% visíveis em linha (`whitespace-nowrap tabular-nums tracking-tight`) com auto-fit dinâmico, sem reticências (Regra 11).
+- **Dimensionamento Responsivo Fluido:**
+  - Escala progressiva do anel: `size-44` (mobile 176px) $\rightarrow$ `sm:size-48` (192px) $\rightarrow$ `md:size-52` (208px) $\rightarrow$ `lg:size-56` (224px) $\rightarrow$ `xl:size-60` (240px no desktop), centralizado verticalmente no card (`self-center md:items-center`).
