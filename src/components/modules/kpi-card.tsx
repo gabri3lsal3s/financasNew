@@ -64,15 +64,15 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
           : undefined
       }
       onClick={onClick}
-      className="flex flex-col justify-between overflow-hidden p-3 sm:p-4 lg:p-5 h-full min-h-[136px] sm:min-h-[148px]"
+      className="flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 lg:p-5 h-full rounded-2xl border-border/80 bg-surface shadow-xs transition-all hover:border-border"
     >
       <div>
-        <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center justify-between gap-1.5 min-w-0">
           <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
           {icon ? <span className={cn("shrink-0", toneIcon[tone])}>{icon}</span> : null}
         </div>
         {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
-        <p className={cn("num mt-1.5 sm:mt-2 tabular-nums tracking-tight whitespace-nowrap text-base sm:text-lg lg:text-2xl font-semibold overflow-x-auto no-scrollbar", toneValue[tone])}>
+        <p className={cn("num mt-1 sm:mt-1.5 tabular-nums tracking-tight whitespace-nowrap text-lg sm:text-xl lg:text-2xl font-bold overflow-x-auto no-scrollbar", toneValue[tone])}>
           {cents !== undefined ? (
             <>
               {/* `formatCentsAsBRL` zera valores negativos — o sinal é prefixado
@@ -85,15 +85,14 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
           )}
         </p>
       </div>
-      <div>
+      <div className="min-w-0">
         {spark && spark.length > 1 ? (
-          <div className="mt-2" aria-hidden="true">
-            <Sparkline data={spark} height={28} strokeClassName={sparkTone[tone]} />
+          <div className="mt-1.5" aria-hidden="true">
+            <Sparkline data={spark} height={22} strokeClassName={sparkTone[tone]} />
           </div>
         ) : null}
-        {hint ? <div className="mt-1 text-xs text-muted-foreground min-w-0">{hint}</div> : null}
+        {hint ? <div className="mt-1 text-[11px] font-medium leading-tight text-muted-foreground min-w-0">{hint}</div> : null}
       </div>
-
     </Card>
   );
 }

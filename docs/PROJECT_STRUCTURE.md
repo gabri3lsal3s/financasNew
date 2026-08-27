@@ -107,7 +107,8 @@
     │       └── index.ts           #   barrel (AGENTS.md §7 — importações externas via @/components/layout)
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
-    │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8)
+    │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8, layout compacto de orçamentos)
+    │   │                          #     components/ (category-breakdown-dialog, other-budgets-dialog)
     │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento + reconciliação de extratos
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72)

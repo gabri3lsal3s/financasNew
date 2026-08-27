@@ -31,27 +31,54 @@ export function ReportDonutChart({
   segments,
   centerLabel,
   centerValue,
-  size = 120,
-  strokeWidth = 18,
+  size = 130,
+  strokeWidth = 14,
   className,
 }: ReportDonutChartProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const validSegments = segments.filter((s) => s.pct > 0 && !isNaN(s.pct));
+  const hasMultiple = validSegments.length > 1;
+  const gap = strokeWidth + 4;
 
   const preparedSegments = validSegments.map((segment, index) => {
+    const rawDash = (segment.pct / 100) * circumference;
     const priorPct = validSegments.slice(0, index).reduce((sum, s) => sum + s.pct, 0);
+
+    let dash: number;
+    let offset: number;
+    let strokeLinecap: "round" | "butt" = "butt";
+
+    if (hasMultiple) {
+      if (rawDash >= gap + 2) {
+        dash = rawDash - gap;
+        offset = (priorPct / 100) * circumference + gap / 2;
+        strokeLinecap = "round";
+      } else {
+        const safeGap = Math.min(4, rawDash * 0.4);
+        dash = Math.max(1, rawDash - safeGap);
+        offset = (priorPct / 100) * circumference + safeGap / 2;
+        strokeLinecap = "butt";
+      }
+    } else {
+      dash = circumference;
+      offset = 0;
+      strokeLinecap = "butt";
+    }
+
     return {
       ...segment,
-      strokeDasharray: `${(segment.pct / 100) * circumference} ${circumference}`,
-      strokeDashoffset: -((priorPct / 100) * circumference),
+      dash,
+      strokeDasharray: `${dash} ${circumference - dash}`,
+      strokeDashoffset: -offset,
+      strokeLinecap,
     };
   });
 
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-border/80 bg-muted/10 p-3 break-inside-avoid print:bg-white print:border-border",
+        "flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-border/80 bg-muted/10 p-3.5 break-inside-avoid print:bg-white print:border-border",
         className,
       )}
     >
@@ -71,26 +98,29 @@ export function ReportDonutChart({
             r={radius}
             fill="transparent"
             stroke="currentColor"
-            className="text-muted/40 print:text-slate-200"
+            className="text-muted/30 print:text-slate-200"
             strokeWidth={strokeWidth}
           />
 
-          {/* Fatias proporcionais */}
-          {preparedSegments.map((segment) => (
-            <circle
-              key={segment.key}
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="transparent"
-              stroke={segment.color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={segment.strokeDasharray}
-              strokeDashoffset={segment.strokeDashoffset}
-              strokeLinecap="butt"
-            />
-          ))}
+          {/* Fatias proporcionais com extremidades arredondadas sem sobreposição */}
+          {preparedSegments
+            .filter((s) => s.dash > 0)
+            .map((segment) => (
+              <circle
+                key={segment.key}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="transparent"
+                stroke={segment.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={segment.strokeDasharray}
+                strokeDashoffset={segment.strokeDashoffset}
+                strokeLinecap={segment.strokeLinecap}
+              />
+            ))}
         </svg>
+
 
         {/* Centro com rótulo/valor */}
         {(centerLabel || centerValue) && (
@@ -108,6 +138,7 @@ export function ReportDonutChart({
           </div>
         )}
       </div>
+
 
       {/* Legenda com Cores e Percentuais */}
       <div className="flex-1 w-full flex flex-col gap-2">

@@ -15,6 +15,10 @@ export interface AllocationDonutProps {
   slices: AllocationSlice[];
   /** Centro do donut: valor total formatado (default). */
   centerValue?: string;
+  /** Chave selecionada (modo controlado). */
+  selectedKey?: string | null;
+  /** Callback acionado ao alterar a seleção. */
+  onSelectKey?: (key: string | null) => void;
   className?: string;
   listClassName?: string;
   onSliceClick?: (slice: DonutSlice, index: number) => void;
@@ -25,7 +29,15 @@ export interface AllocationDonutProps {
  * Contrato próprio de alocação (label + centavos); o anel/legenda reusam o
  * `CategoryDonut` (DRY — regra de ouro: zero JSX duplicado entre módulos).
  */
-export function AllocationDonut({ slices, centerValue, className, listClassName, onSliceClick }: AllocationDonutProps) {
+export function AllocationDonut({
+  slices,
+  centerValue,
+  selectedKey,
+  onSelectKey,
+  className,
+  listClassName,
+  onSliceClick,
+}: AllocationDonutProps) {
   return (
     <CategoryDonut
       slices={slices.map((slice) => ({
@@ -36,9 +48,12 @@ export function AllocationDonut({ slices, centerValue, className, listClassName,
         onClick: slice.onClick,
       }))}
       centerValue={centerValue}
+      selectedKey={selectedKey}
+      onSelectKey={onSelectKey}
       className={className}
       listClassName={listClassName}
       onSliceClick={onSliceClick}
     />
   );
 }
+

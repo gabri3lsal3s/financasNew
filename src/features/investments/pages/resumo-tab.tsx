@@ -303,13 +303,13 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
       ) : null}
 
 
-      {/* Grid de KPIs da Carteira — Saldo em Caixa ocupa 2 colunas à esquerda */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Grid de KPIs da Carteira — Saldo em Caixa ocupa 2 colunas no mobile e desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {position.isLoading ? (
           <>
-            <SkeletonKpi className="sm:col-span-2 lg:col-span-2" />
-            <SkeletonKpi />
-            <SkeletonKpi />
+            <SkeletonKpi className="col-span-2 sm:col-span-2 lg:col-span-2" />
+            <SkeletonKpi className="col-span-1" />
+            <SkeletonKpi className="col-span-1" />
           </>
         ) : (
           <>
@@ -321,7 +321,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               onDelete={() => {
                 if (cashAsset) setAssetToDelete(cashAsset);
               }}
-              className="sm:col-span-2 lg:col-span-2"
+              className="col-span-2 sm:col-span-2 lg:col-span-2"
             />
             <KpiCard
               label="Patrimônio Total"
@@ -338,8 +338,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                   )}
                   title={`Resultado acumulado (Retorno Total): ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
                 >
-
-                  <MoneyText cents={totalReturnCents} tone="auto" />
+                  <MoneyText cents={totalReturnCents} tone="auto" className="text-[11px] tabular-nums" />
                   {totalReturnPct != null
                     ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)`
                     : ""}

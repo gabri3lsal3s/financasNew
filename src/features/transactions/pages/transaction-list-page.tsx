@@ -169,16 +169,17 @@ export function TransactionListPage() {
 
       <MonthPicker value={month} onValueChange={handleMonthChange} />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <KpiCard
           label="Receitas"
           cents={incomesTotalCents}
           tone="positive"
           hint={
             incomesTotalCents !== incomesWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                <span>Ponderada:</span>
-                <MoneyText cents={incomesWeightedCents} tone="default" />
+              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+                <span className="hidden sm:inline">Ponderada:</span>
+                <span className="sm:hidden">Pond:</span>
+                <MoneyText cents={incomesWeightedCents} tone="default" className="text-[11px] tabular-nums" />
               </span>
             ) : undefined
           }
@@ -189,9 +190,10 @@ export function TransactionListPage() {
           tone="negative"
           hint={
             expensesTotalCents !== expensesWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                <span>Ponderada:</span>
-                <MoneyText cents={expensesWeightedCents} tone="default" />
+              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+                <span className="hidden sm:inline">Ponderada:</span>
+                <span className="sm:hidden">Pond:</span>
+                <MoneyText cents={expensesWeightedCents} tone="default" className="text-[11px] tabular-nums" />
               </span>
             ) : undefined
           }
@@ -202,9 +204,10 @@ export function TransactionListPage() {
           tone={balanceCents >= 0 ? "positive" : "negative"}
           hint={
             balanceCents !== balanceWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                <span>Ponderado:</span>
-                <MoneyText cents={balanceWeightedCents} tone="default" />
+              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+                <span className="hidden sm:inline">Ponderado:</span>
+                <span className="sm:hidden">Pond:</span>
+                <MoneyText cents={balanceWeightedCents} tone="default" className="text-[11px] tabular-nums" />
               </span>
             ) : undefined
           }

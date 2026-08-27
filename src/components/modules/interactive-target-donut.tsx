@@ -44,11 +44,13 @@ function getItemColor(item: TargetDonutItem, index: number): string {
   return `hsl(${varName})`;
 }
 
-const SIZE = 150;
-const STROKE_WIDTH = 18;
-const RADIUS = (SIZE - STROKE_WIDTH) / 2;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const SIZE = 160;
+const STROKE_WIDTH = 15;
+const RADIUS = (SIZE - STROKE_WIDTH) / 2; // 72.5
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS; // ~455.53
 const CENTER = SIZE / 2;
+const GAP_SPACING = 5;
+const TOTAL_GAP = STROKE_WIDTH + GAP_SPACING;
 
 /**
  * InteractiveTargetDonut — Gráfico Donut Vetorial Nativo (Pure SVG)
@@ -57,6 +59,7 @@ const CENTER = SIZE / 2;
  * Características:
  * - Renderização em alta resolução (Pure SVG sem libs canvas pesadas);
  * - Sincronização bidirecional (seleção de fatia $\leftrightarrow$ lista externa);
+ * - Extremidades arredondadas elegantes com micro-gaps proporcionais;
  * - Ajuste rápido no painel do Donut com passos de $\pm 1\%$ e $\pm 5\%$;
  * - Indicação visual de margem livre ou excesso percentual.
  */
@@ -84,6 +87,7 @@ export function InteractiveTargetDonut({
   const effectiveDenominator = denominator > 0 ? denominator : 100;
 
   const validItems = items.filter((item) => item.targetPercent > 0);
+  const hasMultipleItems = validItems.length > 1;
 
   const selectedItem = items.find((item) => item.key === selectedKey) ?? null;
   const selectedIndex = selectedItem ? items.findIndex((i) => i.key === selectedItem.key) : -1;
@@ -104,7 +108,7 @@ export function InteractiveTargetDonut({
     onChangeTarget(selectedItem.key, next);
   };
 
-  // Cálculo das posições dos arcos sem mutação de variáveis externas
+  // Cálculo das posições dos arcos com bordas arredondadas e gaps seguros sem sobreposição
   const arcs = validItems.reduce<
     {
       key: string;
@@ -115,13 +119,35 @@ export function InteractiveTargetDonut({
       offset: number;
       isSelected: boolean;
       isHovered: boolean;
+      strokeLinecap: "round" | "butt";
     }[]
-  >((acc, item) => {
+  >((acc, item, index) => {
     const itemIndex = items.findIndex((i) => i.key === item.key);
     const color = getItemColor(item, itemIndex >= 0 ? itemIndex : 0);
-    const dash = (item.targetPercent / effectiveDenominator) * CIRCUMFERENCE;
-    const previous = acc[acc.length - 1];
-    const offset = previous ? previous.offset + previous.dash : 0;
+    const rawDash = (item.targetPercent / effectiveDenominator) * CIRCUMFERENCE;
+
+    let dash: number;
+    let offset: number;
+    let strokeLinecap: "round" | "butt" = "butt";
+
+    if (hasMultipleItems) {
+      const priorRawOffset = validItems.slice(0, index).reduce((sum, it) => sum + (it.targetPercent / effectiveDenominator) * CIRCUMFERENCE, 0);
+
+      if (rawDash >= TOTAL_GAP + 2) {
+        dash = rawDash - TOTAL_GAP;
+        offset = priorRawOffset + TOTAL_GAP / 2;
+        strokeLinecap = "round";
+      } else {
+        const safeGap = Math.min(GAP_SPACING, rawDash * 0.4);
+        dash = Math.max(1, rawDash - safeGap);
+        offset = priorRawOffset + safeGap / 2;
+        strokeLinecap = "butt";
+      }
+    } else {
+      dash = CIRCUMFERENCE;
+      offset = 0;
+      strokeLinecap = "butt";
+    }
 
     acc.push({
       key: item.key,
@@ -132,6 +158,7 @@ export function InteractiveTargetDonut({
       offset,
       isSelected: selectedKey === item.key,
       isHovered: hoveredKey === item.key,
+      strokeLinecap,
     });
     return acc;
   }, []);
@@ -149,7 +176,7 @@ export function InteractiveTargetDonut({
         <div className="relative shrink-0 flex items-center justify-center">
           <svg
             viewBox={`0 0 ${SIZE} ${SIZE}`}
-            className="size-36 sm:size-40 -rotate-90"
+            className="size-36 sm:size-40 md:size-44 -rotate-90"
             aria-label={`Gráfico de metas: ${title}`}
             role="img"
           >
@@ -160,13 +187,13 @@ export function InteractiveTargetDonut({
               r={RADIUS}
               fill="none"
               strokeWidth={STROKE_WIDTH}
-              className="stroke-border/40 dark:stroke-border/60"
+              className="stroke-border/30 dark:stroke-border/50"
             />
 
-            {/* Arcos preenchidos */}
+            {/* Arcos preenchidos com extremidades arredondadas sem sobreposição */}
             {arcs.map((arc) => {
-              const strokeWidth = arc.isSelected ? STROKE_WIDTH + 3 : arc.isHovered ? STROKE_WIDTH + 1.5 : STROKE_WIDTH;
-              const opacity = (selectedKey && !arc.isSelected) || (hoveredKey && !arc.isHovered && !arc.isSelected) ? 0.45 : 1;
+              const strokeWidth = arc.isSelected ? STROKE_WIDTH + 2.5 : arc.isHovered ? STROKE_WIDTH + 1.5 : STROKE_WIDTH;
+              const opacity = (selectedKey && !arc.isSelected) || (hoveredKey && !arc.isHovered && !arc.isSelected) ? 0.4 : 1;
 
               return (
                 <circle
@@ -179,6 +206,7 @@ export function InteractiveTargetDonut({
                   strokeWidth={strokeWidth}
                   strokeDasharray={`${arc.dash} ${CIRCUMFERENCE - arc.dash}`}
                   strokeDashoffset={-arc.offset}
+                  strokeLinecap={arc.strokeLinecap}
                   role="button"
                   tabIndex={0}
                   aria-label={`${arc.label}: ${arc.targetPercent.toFixed(1)}${unitLabel}`}
@@ -198,6 +226,7 @@ export function InteractiveTargetDonut({
             })}
           </svg>
 
+
           {/* Conteúdo central do Donut */}
           <div
             className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-3"
@@ -206,15 +235,16 @@ export function InteractiveTargetDonut({
             {selectedItem ? (
               <>
                 <span
-                  className="text-[10px] font-bold uppercase tracking-wider truncate max-w-[85px]"
+                  className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate max-w-[95px] sm:max-w-[110px]"
                   style={{ color: selectedColor }}
                 >
                   {selectedItem.label}
                 </span>
-                <span className="num font-mono text-sm sm:text-base font-bold text-foreground leading-tight">
+                <span className="num font-mono text-sm sm:text-base font-bold text-foreground leading-tight mt-0.5">
                   {selectedItem.targetPercent.toFixed(1)}
                   <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
                 </span>
+                <span className="text-[10px] text-muted-foreground font-medium mt-0.5">selecionado</span>
               </>
             ) : (
               <>
@@ -223,7 +253,7 @@ export function InteractiveTargetDonut({
                 </span>
                 <span
                   className={cn(
-                    "num font-mono text-sm sm:text-base font-bold leading-tight",
+                    "num font-mono text-sm sm:text-base font-bold leading-tight mt-0.5",
                     isOverflow ? "text-critical-strong" : "text-foreground",
                   )}
                 >
@@ -231,20 +261,21 @@ export function InteractiveTargetDonut({
                   <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
                 </span>
                 {freePercent > 0 ? (
-                  <span className="text-[10px] text-muted-foreground font-medium">
+                  <span className="text-[10px] text-muted-foreground font-medium mt-0.5">
                     {freePercent.toFixed(1)}{unitLabel} livre
                   </span>
                 ) : isOverflow ? (
-                  <span className="text-[10px] text-critical-strong font-semibold">
+                  <span className="text-[10px] text-critical-strong font-semibold mt-0.5">
                     +{overflowPercent.toFixed(1)}{unitLabel}
                   </span>
                 ) : (
-                  <span className="text-[10px] text-positive-strong font-medium">100% calibrado</span>
+                  <span className="text-[10px] text-positive-strong font-medium mt-0.5">100% calibrado</span>
                 )}
               </>
             )}
           </div>
         </div>
+
 
         {/* Legendas e Tags Rápidas das Fatias */}
         <div className="flex flex-col gap-1.5 min-w-0 w-full sm:w-auto">

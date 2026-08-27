@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, ShieldCheck, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Badge, EmptyState, ErrorState, MoneyText, NumberTicker, Progress, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
+import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Badge, Button, EmptyState, ErrorState, MoneyText, NumberTicker, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
-  CategoryIcon,
   DailyFlowChart,
   DashboardAlertsCarousel,
   type DashboardAlertItem,
@@ -18,9 +17,7 @@ import {
 } from "@/components/modules";
 import {
   budgetLimitsByCategory,
-  budgetStatus,
   isInheritedLimit,
-  progressTone,
   resolveEffectiveLimit,
   spentByCategoryMap,
   spentGrossByCategoryMap,
@@ -55,12 +52,15 @@ import {
 } from "@/state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { cn } from "@/lib/utils";
+import { CategoryBreakdownDialog, OtherBudgetsDialog } from "../components";
 
 const weightedSum = (items: readonly { value: number; report_weight: number }[]) =>
   items.reduce((acc, item) => acc + numberToCents(item.value * item.report_weight), 0);
 
 export function OverviewPage() {
   const [month, setMonth] = useState(currentMonth);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
   const visual = useVisualCustomization();
   const navigate = useNavigate();
 
@@ -150,6 +150,7 @@ export function OverviewPage() {
   const expenseSpark = rangeMonths.map((m) =>
     (expensesRangeQuery.data ?? []).filter((e) => e.date.startsWith(m)).reduce((acc, e) => acc + Math.round(e.value * 100), 0),
   );
+  const balanceSpark = rangeMonths.map((_, idx) => (incomeSpark[idx] ?? 0) - (expenseSpark[idx] ?? 0));
 
   // Resumo de contas e faturas.
   const debts = debtsQuery.data ?? [];
@@ -172,7 +173,7 @@ export function OverviewPage() {
   ];
   const dailyFlow = buildDailyFlow(month, dailyItems);
 
-  // Orçamentos compactos (§3.6): progresso e lista de atenção.
+  // Orçamentos compactos (§3.6): barra segmentada consolidada e diagnóstico executivo.
   // Métrica principal: gasto efetivo ponderado (alinhado com Orçamentos e Categorias).
   const budgets = budgetsQuery.data ?? [];
   const limitsByCategory = budgetLimitsByCategory(budgets);
@@ -187,6 +188,7 @@ export function OverviewPage() {
         limitCents,
         spentCents: spentWeightedCents,
         remainingCents: limitCents - spentWeightedCents,
+        percent: limitCents > 0 ? (spentWeightedCents / limitCents) * 100 : 0,
         inherited: isInheritedLimit(limitsByCategory.get(category.id) ?? [], month),
       };
     })
@@ -194,34 +196,62 @@ export function OverviewPage() {
   const totalLimitsCents = budgetRows.reduce((acc, row) => acc + row.limitCents, 0);
   const totalRemainingCents = totalLimitsCents - expenseCents;
   const globalPercent = totalLimitsCents > 0 ? (expenseCents / totalLimitsCents) * 100 : 0;
-  const attentionRows = budgetRows
-    .map((row) => ({ ...row, status: budgetStatus(row.spentCents, row.limitCents) }))
-    .filter((row) => row.status !== "ok")
-    .sort((a, b) => (b.limitCents > 0 ? b.spentCents / b.limitCents : 0) - (a.limitCents > 0 ? a.spentCents / a.limitCents : 0));
 
-  const displayBudgetRows = (
-    attentionRows.length > 0
-      ? attentionRows.slice(0, 4)
-      : [...budgetRows]
-          .sort((a, b) => (b.limitCents > 0 ? b.spentCents / b.limitCents : 0) - (a.limitCents > 0 ? a.spentCents / a.limitCents : 0))
-          .slice(0, 4)
-  ).map((row) => ({
-    ...row,
-    status: budgetStatus(row.spentCents, row.limitCents),
-    percent: row.limitCents > 0 ? (row.spentCents / row.limitCents) * 100 : 0,
-  }));
+  // Segmentos da Barra Única:
+  const segmentBaseCents = Math.max(1, totalLimitsCents, expenseCents);
+  const activeBudgetSpentRows = [...budgetRows]
+    .filter((r) => r.spentCents > 0)
+    .sort((a, b) => b.spentCents - a.spentCents);
+  const topBudgetSegments = activeBudgetSpentRows.slice(0, 4);
+  const otherBudgetRows = activeBudgetSpentRows.slice(4);
+  const otherBudgetSpentCents = otherBudgetRows.reduce((acc, r) => acc + r.spentCents, 0);
+  const budgetSegments = [
+    ...topBudgetSegments.map((row) => ({
+      id: row.category.id,
+      label: row.category.name,
+      color: row.category.color ?? undefined,
+      spentCents: row.spentCents,
+      percent: (row.spentCents / segmentBaseCents) * 100,
+    })),
+    ...(otherBudgetSpentCents > 0
+      ? [
+          {
+            id: "others",
+            label: "Outros",
+            color: "#64748b",
+            spentCents: otherBudgetSpentCents,
+            percent: (otherBudgetSpentCents / segmentBaseCents) * 100,
+          },
+        ]
+      : []),
+  ];
 
-  // Donut de categorias: principais despesas do mês (bruto).
+  // Donut de categorias: principais despesas do mês (bruto) com suporte a clique.
   const donutSlices = (expenseCategories.data ?? [])
     .map((category) => ({
+      key: category.id,
       label: category.name,
       valueCents: spentGrossByCategory.get(category.id) ?? 0,
       icon: category.icon,
       color: category.color,
+      onClick: () => setSelectedCategoryId(category.id),
     }))
     .filter((slice) => slice.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents)
     .slice(0, 5);
+
+  // Detalhes da Categoria Selecionada para o Diálogo de Raio-X
+  const prevSpentWeightedByCategory = spentByCategoryMap(prevExpensesQuery.data ?? []);
+  const selectedCategory = (expenseCategories.data ?? []).find((c) => c.id === selectedCategoryId) ?? null;
+  const selectedLimitCents = selectedCategory
+    ? resolveEffectiveLimit(limitsByCategory.get(selectedCategory.id) ?? [], month)
+    : 0;
+  const selectedSpentWeightedCents = selectedCategory ? (spentWeightedByCategory.get(selectedCategory.id) ?? 0) : 0;
+  const selectedSpentGrossCents = selectedCategory ? (spentGrossByCategory.get(selectedCategory.id) ?? 0) : 0;
+  const selectedPrevSpentWeightedCents = selectedCategory
+    ? (prevSpentWeightedByCategory.get(selectedCategory.id) ?? 0)
+    : 0;
+  const selectedExpenses = (expensesQuery.data ?? []).filter((e) => e.category_id === selectedCategoryId);
 
   // Projeção e ritmo de gastos (§3.8) para o mês atual.
   const isCurrentMonth = month === currentMonth();
@@ -430,7 +460,6 @@ export function OverviewPage() {
                 cents={totals.investmentCents}
                 tone="portfolio"
                 icon={<TrendingUp className="size-4" aria-hidden="true" />}
-                hint={<DeltaHint currentCents={totals.investmentCents} previousCents={prevTotals.investmentCents} />}
                 spark={investmentSpark}
               />
               <KpiCard
@@ -443,19 +472,7 @@ export function OverviewPage() {
                 cents={totals.operatingBalanceCents}
                 tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
                 icon={<DollarSign className="size-4" aria-hidden="true" />}
-                hint={
-                  totals.investmentCents > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap min-w-0">
-                      <span className="hidden sm:inline">Caixa pós-aportes:</span>
-                      <span className="sm:hidden">Pós-aportes:</span>
-                      <MoneyText
-                        cents={totals.cashFlowBalanceCents}
-                        tone={totals.cashFlowBalanceCents >= 0 ? "default" : "negative"}
-                        className="text-[10px] tabular-nums"
-                      />
-                    </span>
-                  ) : undefined
-                }
+                spark={balanceSpark}
               />
             </div>
           )}
@@ -504,7 +521,12 @@ export function OverviewPage() {
                     </div>
                     <Badge variant="muted" size="xs">{donutSlices.length} categorias</Badge>
                   </div>
-                  <CategoryDonut slices={donutSlices} />
+                  <CategoryDonut
+                    slices={donutSlices}
+                    onSliceClick={(slice) => {
+                      if (slice.key) setSelectedCategoryId(slice.key);
+                    }}
+                  />
                 </section>
               ) : null}
             </section>
@@ -589,22 +611,26 @@ export function OverviewPage() {
             </section>
           )}
 
-          {/* Orçamentos (§3.6): progresso e lista de atenção */}
+          {/* Orçamentos (§3.6): Layout Revolut / Apple Wallet (Compacto & Lado a Lado) */}
           {visual.dashboardWidgets.budgets && (
-            <section aria-label="Orçamentos" className="flex flex-col gap-3.5 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <section aria-label="Orçamentos" className="flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              {/* Header do Card: Título + Botão de Ação */}
               <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <Target className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                  <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Orçamentos do mês</h2>
+                  <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Orçamentos do mês</h2>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => navigate("/orcamentos")}
-                  className="flex items-center gap-1 text-xs text-primary hover:underline font-medium shrink-0 cursor-pointer"
+                  aria-label="Ver todos os orçamentos"
+                  className="h-7 gap-1 px-2 sm:px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80 shrink-0"
                 >
-                  <span>Ver todos</span>
-                  <ChevronRight className="size-3.5" aria-hidden="true" />
-                </button>
+                  <span className="hidden sm:inline">Ver todos</span>
+                  <ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                </Button>
               </div>
 
               {budgetRows.length === 0 ? (
@@ -619,111 +645,123 @@ export function OverviewPage() {
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {/* Resumo Consolidado com Saldo Disponível */}
-                  <div className="flex flex-col gap-2 rounded-xl bg-surface-hover/30 p-3 sm:p-3.5 border border-border/40">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="text-[11px] font-medium text-muted-foreground">
-                          {totalRemainingCents >= 0 ? "Saldo disponível nos orçamentos" : "Orçamento total excedido em"}
+                <div className="flex flex-col gap-3 sm:gap-3.5">
+                  {/* Bloco de Métricas: Saldo à esquerda e Badge de Consumo à direita */}
+                  <div className="flex items-end justify-between gap-2 pt-0.5">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        {totalRemainingCents >= 0 ? "Saldo disponível no teto" : "Orçamento ultrapassado em"}
+                      </span>
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <MoneyText
+                          cents={Math.abs(totalRemainingCents)}
+                          tone="default"
+                          className={cn(
+                            "text-2xl sm:text-3xl font-bold tracking-tight",
+                            totalRemainingCents >= 0 ? "text-positive-strong" : "text-critical-strong",
+                          )}
+                        />
+                        <span className="text-xs text-muted-foreground font-normal">
+                          de <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground font-medium" /> planejado
                         </span>
-                        <div className="flex items-baseline gap-1.5 flex-wrap">
-                          <MoneyText
-                            cents={Math.abs(totalRemainingCents)}
-                            tone="default"
-                            className={cn(
-                              "text-lg sm:text-xl font-bold tracking-tight",
-                              totalRemainingCents >= 0 ? "text-positive-strong" : "text-critical-strong",
-                            )}
-                          />
-                          <span className="text-xs text-muted-foreground font-normal">
-                            de <MoneyText cents={totalLimitsCents} tone="default" className="text-muted-foreground" />
-                          </span>
-                        </div>
                       </div>
-                      <Badge
-                        variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"}
-                        size="xs"
-                      >
-                        {Math.round(globalPercent)}% usado
-                      </Badge>
                     </div>
 
-                    <Progress
-                      value={Math.min(globalPercent, 100)}
-                      tone={progressTone(globalPercent)}
-                      className="h-1.5"
-                      aria-label={`Uso global de limites: ${Math.round(globalPercent)}%`}
-                    />
+                    <Badge
+                      variant={globalPercent > 100 ? "critical" : globalPercent >= 85 ? "warning" : "positive"}
+                      size="xs"
+                      className="shrink-0 mb-1"
+                    >
+                      {Math.round(globalPercent)}% utilizado
+                    </Badge>
                   </div>
 
-                  {attentionRows.length === 0 ? (
-                    <div className="flex items-center gap-2 rounded-lg border border-positive/20 bg-positive/5 px-3 py-2 text-xs text-positive-strong">
-                      <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span>Todos os limites sob controle neste mês.</span>
+                  {/* Barra Segmentada Única (Estilo Apple / Linear) com clique para Raio-X */}
+                  <div className="w-full flex flex-col gap-2.5">
+                    <div
+                      className="flex w-full h-2.5 sm:h-3 rounded-full overflow-hidden bg-surface-hover/70 p-0.5 border border-border/40 gap-0.5"
+                      role="group"
+                      aria-label={`Uso do orçamento: ${Math.round(globalPercent)}%`}
+                    >
+                      {budgetSegments.map((seg) => (
+                        <button
+                          type="button"
+                          key={seg.id}
+                          style={{
+                            width: `${Math.max(1.5, seg.percent)}%`,
+                            backgroundColor: seg.color ?? undefined,
+                          }}
+                          className="h-full rounded-full transition-all duration-300 first:rounded-l-full last:rounded-r-full shrink-0 outline-none cursor-pointer hover:brightness-110 active:scale-95 focus-visible:ring-1 focus-visible:ring-ring"
+                          title={`${seg.label}: ${(seg.spentCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — clique para ver detalhes`}
+                          onClick={() => {
+                            if (seg.id === "others") {
+                              setIsOthersBudgetOpen(true);
+                            } else {
+                              setSelectedCategoryId(seg.id);
+                            }
+                          }}
+                        />
+                      ))}
                     </div>
-                  ) : null}
 
-                  {/* Lista fluida de categorias */}
-                  <div className="flex flex-col divide-y divide-border/40">
-                    {displayBudgetRows.map((row) => {
-                      const isExceeded = row.remainingCents < 0;
-
-                      return (
-                        <div
-                          key={row.category.id}
-                          onClick={() => navigate("/orcamentos")}
-                          className="group py-2.5 first:pt-0.5 last:pb-0 flex flex-col gap-1.5 cursor-pointer -mx-1 px-1 rounded-lg hover:bg-surface-hover/30 transition-colors"
-                        >
-                          <div className="flex items-center justify-between gap-2 text-xs min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <CategoryIcon icon={row.category.icon} color={row.category.color} className="size-4 shrink-0" />
-                              <span className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                                {row.category.name}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0 text-xs tabular-nums">
-                              {isExceeded ? (
-                                <span className="text-critical-strong font-semibold">
-                                  +<MoneyText cents={Math.abs(row.remainingCents)} tone="negative" /> acima
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  Resta <MoneyText cents={row.remainingCents} tone="default" className="font-medium text-foreground" />
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-full h-1.5 bg-surface-hover rounded-full overflow-hidden">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all duration-300",
-                                  row.percent >= 100 ? "bg-critical" : row.percent >= 85 ? "bg-warning" : "bg-positive",
-                                )}
-                                style={{ width: `${Math.min(row.percent, 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0 w-7 text-right">
-                              {Math.round(row.percent)}%
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {/* Legenda Estruturada em 2 Colunas Simétricas no Mobile e Flex no Desktop */}
+                    {budgetSegments.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 text-xs pt-0.5 min-w-0">
+                        {budgetSegments.map((seg) => (
+                          <button
+                            type="button"
+                            key={seg.id}
+                            onClick={() => {
+                              if (seg.id === "others") {
+                                setIsOthersBudgetOpen(true);
+                              } else {
+                                setSelectedCategoryId(seg.id);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 min-w-0 text-muted-foreground transition-all duration-150 rounded-lg p-1 -m-1 cursor-pointer hover:bg-surface-hover hover:text-foreground active:scale-95 text-left"
+                          >
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: seg.color ?? undefined }}
+                              aria-hidden="true"
+                            />
+                            <span className="font-medium text-foreground truncate min-w-0">{seg.label}</span>
+                            <span className="hidden sm:inline font-medium text-foreground">:</span>
+                            <MoneyText cents={seg.spentCents} tone="default" className="hidden sm:inline-block text-muted-foreground shrink-0 tabular-nums font-medium" />
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
-
-                  {attentionRows.length > 4 ? (
-                    <p className="text-[11px] text-muted-foreground text-center pt-1">
-                      +{attentionRows.length - 4} outra(s) categoria(s) em atenção no mês.
-                    </p>
-                  ) : null}
                 </div>
               )}
             </section>
           )}
+
+          {/* Diálogo Raio-X de Categoria (Responsivo / BottomSheet no mobile / Modal no desktop) */}
+          <CategoryBreakdownDialog
+            open={selectedCategoryId !== null}
+            onOpenChange={(open) => {
+              if (!open) setSelectedCategoryId(null);
+            }}
+            category={selectedCategory}
+            month={month}
+            limitCents={selectedLimitCents}
+            spentWeightedCents={selectedSpentWeightedCents}
+            spentGrossCents={selectedSpentGrossCents}
+            prevSpentWeightedCents={selectedPrevSpentWeightedCents}
+            expenses={selectedExpenses}
+            cards={cardsQuery.data ?? []}
+          />
+
+          {/* Diálogo Outros Orçamentos (Responsivo / BottomSheet no mobile / Modal no desktop) */}
+          <OtherBudgetsDialog
+            open={isOthersBudgetOpen}
+            onOpenChange={setIsOthersBudgetOpen}
+            month={month}
+            rows={otherBudgetRows}
+            onSelectCategory={(catId) => setSelectedCategoryId(catId)}
+          />
 
           {(incomesQuery.data ?? []).length === 0 && (expensesQuery.data ?? []).length === 0 ? (
             <EmptyState

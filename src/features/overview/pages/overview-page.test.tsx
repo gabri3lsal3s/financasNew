@@ -196,9 +196,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
   it("lista categorias em atenção nos orçamentos", () => {
     render(<OverviewPage />);
-    // Moradia R$ 3.000/2.000 → Excedida (aparece no donut e nos orçamentos)
-    expect(screen.getByText("Excedida")).toBeInTheDocument();
-    expect(screen.getAllByText("Moradia").length).toBeGreaterThan(0);
+    // Moradia R$ 3.000/2.000 aparece na barra segmentada de orçamentos
+    expect(screen.getByText("Orçamentos do mês")).toBeInTheDocument();
+    expect(screen.getAllByText(/Moradia/).length).toBeGreaterThan(0);
   });
 
   it("KPI de investimentos reflete os aportes realizados no mês", () => {
@@ -211,14 +211,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     render(<OverviewPage />);
 
     // Investimentos no mês 2026-08: 1.500 + 500 = R$ 2.000,00
-    // (valor aparece no KPI e no DeltaHint do comparativo)
     expect(screen.getAllByText("R$ 2.000,00").length).toBeGreaterThan(0);
-    // Comparativo com mês anterior (2.000 vs 1.000 → +100%)
-    expect(screen.getByText("100,0%")).toBeInTheDocument();
-
-    // Saldo do mês exibe o operacional (1.900) e detalha o caixa pós-aportes (-100)
-    expect(screen.getByText("Caixa pós-aportes:")).toBeInTheDocument();
-    expect(screen.getByText("R$ 100,00")).toBeInTheDocument();
+    // Saldo operacional do mês
+    expect(screen.getAllByText("R$ 1.900,00").length).toBeGreaterThan(0);
   });
 
   it("não exibe o card Carteira em Resumo na Home (permanece na Carteira)", () => {
@@ -254,6 +249,32 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
   it("exibe valor bruto como padrão no card de caixa e detalha obrigações de ciclo", () => {
     render(<OverviewPage />);
     expect(screen.getByText("Faturas e contas a pagar do ciclo (bruto):")).toBeInTheDocument();
+  });
+
+  it("abre o diálogo de Raio-X ao clicar em uma categoria no gráfico ou na legenda", async () => {
+    const user = userEvent.setup();
+    render(<OverviewPage />);
+
+    const moradiaButtons = screen.getAllByRole("button", { name: /Moradia/i });
+    expect(moradiaButtons.length).toBeGreaterThan(0);
+    const firstMoradiaButton = moradiaButtons[0];
+    expect(firstMoradiaButton).toBeDefined();
+    if (firstMoradiaButton) {
+      await user.click(firstMoradiaButton);
+    }
+
+    expect(screen.getByText(/Raio-X de Moradia/i)).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 3.000,00").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Ver no extrato/i })).toBeInTheDocument();
+  });
+
+  it("permite clicar em Outros quando houver mais de 4 categorias", async () => {
+    render(<OverviewPage />);
+    // O botão de Outros não deve ter cursor default ou estar desabilitado
+    const otherButtons = screen.queryAllByRole("button", { name: /Outros/i });
+    for (const btn of otherButtons) {
+      expect(btn).not.toBeDisabled();
+    }
   });
 });
 
