@@ -511,9 +511,10 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 
 ### 14.21 Gráficos Donut Padronizados, Arcos Arredondados e Normalização Geométrica
 - **Componentes:** `src/components/modules/category-donut.tsx`, `src/components/modules/interactive-target-donut.tsx`, `src/components/modules/reports/report-donut-chart.tsx`.
-- **Geometria de Arcos Pill & Zero Sobreposição:**
+- **Geometria de Arcos Pill & Fundo 100% Transparente (Floating Pills):**
   - Fatias com valor $\le 0$ são ignoradas no SVG (não geram arcos fantasmas).
   - Todas as fatias ativas utilizam `strokeLinecap="round"` com compensação angular e gap limpo garantido de **5px** entre si.
+  - O anel SVG **não utiliza trilha de fundo cinza** (`stroke-border`), deixando os vãos 100% transparentes e integrados à cor exata do card (`bg-surface`) em todos os temas.
   - Normalização geométrica (`computeVisualShares`): fatias de valor muito baixo recebem uma cota mínima visual ($\approx 5\%$) no anel, mantendo todas as fatias encorpadas e arredondadas sem agulhas ou deformações visuais.
 - **Agrupamento de Cauda Longa (Top 6 + Outros):**
   - Quando houver mais de 7 itens (ex.: carteira de investimentos com 20+ ativos), o anel SVG renderiza os Top 6 maiores e consolida a cauda longa em uma única fatia elegante **`Outros (N)`**, evitando o efeito "colar de pontos".

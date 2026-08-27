@@ -301,17 +301,7 @@ export function CategoryDonut({
           className="size-44 sm:size-48 md:size-52 lg:size-56 xl:size-60 -rotate-90 transition-transform duration-300"
           aria-hidden="true"
         >
-          {/* Trilha de fundo suave */}
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={RADIUS}
-            fill="none"
-            strokeWidth={STROKE_WIDTH}
-            className="stroke-border/30 dark:stroke-border/50"
-          />
-
-          {/* Arcos preenchidos com extremidades arredondadas sem sobreposição */}
+          {/* Arcos preenchidos com extremidades arredondadas flutuantes sem trilha cinza */}
           {arcs
             .filter((arc) => arc.dash > 0)
             .map((arc) => {

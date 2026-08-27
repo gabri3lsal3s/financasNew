@@ -114,18 +114,7 @@ export function ReportDonutChart({
           className="transform -rotate-90"
           aria-hidden="true"
         >
-          {/* Trilha de fundo */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="transparent"
-            stroke="currentColor"
-            className="text-muted/30 print:text-slate-200"
-            strokeWidth={strokeWidth}
-          />
-
-          {/* Fatias proporcionais com extremidades arredondadas sem sobreposição */}
+          {/* Fatias proporcionais com extremidades arredondadas flutuantes sem trilha cinza */}
           {preparedSegments
             .filter((s) => s.dash > 0)
             .map((segment) => (

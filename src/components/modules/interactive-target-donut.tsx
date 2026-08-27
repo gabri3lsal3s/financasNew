@@ -189,17 +189,7 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
             aria-label={`Gráfico de metas: ${title}`}
             role="img"
           >
-            {/* Trilha de fundo neutra */}
-            <circle
-              cx={CENTER}
-              cy={CENTER}
-              r={RADIUS}
-              fill="none"
-              strokeWidth={STROKE_WIDTH}
-              className="stroke-border/30 dark:stroke-border/50"
-            />
-
-            {/* Arcos preenchidos com extremidades arredondadas sem sobreposição */}
+            {/* Arcos preenchidos com extremidades arredondadas flutuantes sem trilha cinza */}
             {arcs.map((arc) => {
               const strokeWidth = arc.isSelected ? STROKE_WIDTH + 2.5 : arc.isHovered ? STROKE_WIDTH + 1.5 : STROKE_WIDTH;
               const opacity = (selectedKey && !arc.isSelected) || (hoveredKey && !arc.isHovered && !arc.isSelected) ? 0.4 : 1;
