@@ -26,6 +26,33 @@ export interface ReportDonutChartProps {
  * Renderiza fatias proporcionais com stroke-dasharray sem bibliotecas canvas,
  * garantindo resolução perfeita em 300 DPI no PDF e em qualquer tema.
  */
+function computeVisualSegmentShares(segments: readonly ReportDonutSegment[], minShare = 0.045): number[] {
+  const n = segments.length;
+  if (n <= 1) return segments.map(() => 1);
+
+  const totalPct = segments.reduce((sum, s) => sum + s.pct, 0);
+  const effectiveMin = Math.min(minShare, 0.85 / n);
+  const rawShares = segments.map((s) => (totalPct > 0 ? s.pct / totalPct : 1 / n));
+
+  let underAllocatedSum = 0;
+  let overAllocatedRawSum = 0;
+  const isSmall = rawShares.map((share) => share < effectiveMin);
+
+  for (let i = 0; i < n; i++) {
+    if (isSmall[i]) {
+      underAllocatedSum += effectiveMin;
+    } else {
+      overAllocatedRawSum += rawShares[i] ?? 0;
+    }
+  }
+
+  const remainingBudget = Math.max(0, 1 - underAllocatedSum);
+  return rawShares.map((share, i) => {
+    if (isSmall[i]) return effectiveMin;
+    return overAllocatedRawSum > 0 ? (share / overAllocatedRawSum) * remainingBudget : remainingBudget / (n - underAllocatedSum / effectiveMin);
+  });
+}
+
 export function ReportDonutChart({
   title,
   segments,
@@ -41,29 +68,24 @@ export function ReportDonutChart({
   const hasMultiple = validSegments.length > 1;
   const gap = strokeWidth + 4;
 
-  const preparedSegments = validSegments.map((segment, index) => {
-    const rawDash = (segment.pct / 100) * circumference;
-    const priorPct = validSegments.slice(0, index).reduce((sum, s) => sum + s.pct, 0);
+  const visualShares = computeVisualSegmentShares(validSegments, 0.045);
+  const totalGapBudget = hasMultiple ? validSegments.length * gap : 0;
+  const availableDashBudget = Math.max(10, circumference - totalGapBudget);
 
+  const preparedSegments = validSegments.map((segment, index) => {
     let dash: number;
     let offset: number;
-    let strokeLinecap: "round" | "butt" = "butt";
 
     if (hasMultiple) {
-      if (rawDash >= gap + 2) {
-        dash = rawDash - gap;
-        offset = (priorPct / 100) * circumference + gap / 2;
-        strokeLinecap = "round";
-      } else {
-        const safeGap = Math.min(4, rawDash * 0.4);
-        dash = Math.max(1, rawDash - safeGap);
-        offset = (priorPct / 100) * circumference + safeGap / 2;
-        strokeLinecap = "butt";
-      }
+      const visualShare = visualShares[index] ?? 0;
+      dash = Math.max(0.1, visualShare * availableDashBudget);
+
+      const priorVisualShare = visualShares.slice(0, index).reduce((sum, v) => sum + v, 0);
+      const priorOffset = priorVisualShare * availableDashBudget + index * gap;
+      offset = priorOffset + gap / 2;
     } else {
       dash = circumference;
       offset = 0;
-      strokeLinecap = "butt";
     }
 
     return {
@@ -71,9 +93,10 @@ export function ReportDonutChart({
       dash,
       strokeDasharray: `${dash} ${circumference - dash}`,
       strokeDashoffset: -offset,
-      strokeLinecap,
+      strokeLinecap: (hasMultiple ? "round" : "butt") as "round" | "butt",
     };
   });
+
 
   return (
     <div

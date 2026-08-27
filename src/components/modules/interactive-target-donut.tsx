@@ -108,48 +108,57 @@ export function InteractiveTargetDonut({
     onChangeTarget(selectedItem.key, next);
   };
 
+function computeVisualTargetShares(items: readonly TargetDonutItem[], denominator: number, minShare = 0.045): number[] {
+  const n = items.length;
+  if (n <= 1) return items.map(() => 1);
+
+  const effectiveMin = Math.min(minShare, 0.85 / n);
+  const rawShares = items.map((item) => (denominator > 0 ? item.targetPercent / denominator : 1 / n));
+
+  let underAllocatedSum = 0;
+  let overAllocatedRawSum = 0;
+  const isSmall = rawShares.map((share) => share < effectiveMin);
+
+  for (let i = 0; i < n; i++) {
+    if (isSmall[i]) {
+      underAllocatedSum += effectiveMin;
+    } else {
+      overAllocatedRawSum += rawShares[i] ?? 0;
+    }
+  }
+
+  const remainingBudget = Math.max(0, 1 - underAllocatedSum);
+  return rawShares.map((share, i) => {
+    if (isSmall[i]) return effectiveMin;
+    return overAllocatedRawSum > 0 ? (share / overAllocatedRawSum) * remainingBudget : remainingBudget / (n - underAllocatedSum / effectiveMin);
+  });
+}
+
   // Cálculo das posições dos arcos com bordas arredondadas e gaps seguros sem sobreposição
-  const arcs = validItems.reduce<
-    {
-      key: string;
-      label: string;
-      targetPercent: number;
-      color: string;
-      dash: number;
-      offset: number;
-      isSelected: boolean;
-      isHovered: boolean;
-      strokeLinecap: "round" | "butt";
-    }[]
-  >((acc, item, index) => {
+  const visualShares = computeVisualTargetShares(validItems, effectiveDenominator, 0.045);
+  const totalGapBudget = hasMultipleItems ? validItems.length * TOTAL_GAP : 0;
+  const availableDashBudget = Math.max(10, CIRCUMFERENCE - totalGapBudget);
+
+  const arcs = validItems.map((item, index) => {
     const itemIndex = items.findIndex((i) => i.key === item.key);
     const color = getItemColor(item, itemIndex >= 0 ? itemIndex : 0);
-    const rawDash = (item.targetPercent / effectiveDenominator) * CIRCUMFERENCE;
 
     let dash: number;
     let offset: number;
-    let strokeLinecap: "round" | "butt" = "butt";
 
     if (hasMultipleItems) {
-      const priorRawOffset = validItems.slice(0, index).reduce((sum, it) => sum + (it.targetPercent / effectiveDenominator) * CIRCUMFERENCE, 0);
+      const visualShare = visualShares[index] ?? 0;
+      dash = Math.max(0.1, visualShare * availableDashBudget);
 
-      if (rawDash >= TOTAL_GAP + 2) {
-        dash = rawDash - TOTAL_GAP;
-        offset = priorRawOffset + TOTAL_GAP / 2;
-        strokeLinecap = "round";
-      } else {
-        const safeGap = Math.min(GAP_SPACING, rawDash * 0.4);
-        dash = Math.max(1, rawDash - safeGap);
-        offset = priorRawOffset + safeGap / 2;
-        strokeLinecap = "butt";
-      }
+      const priorVisualShare = visualShares.slice(0, index).reduce((sum, v) => sum + v, 0);
+      const priorOffset = priorVisualShare * availableDashBudget + index * TOTAL_GAP;
+      offset = priorOffset + TOTAL_GAP / 2;
     } else {
       dash = CIRCUMFERENCE;
       offset = 0;
-      strokeLinecap = "butt";
     }
 
-    acc.push({
+    return {
       key: item.key,
       label: item.label,
       targetPercent: item.targetPercent,
@@ -158,10 +167,10 @@ export function InteractiveTargetDonut({
       offset,
       isSelected: selectedKey === item.key,
       isHovered: hoveredKey === item.key,
-      strokeLinecap,
-    });
-    return acc;
-  }, []);
+      strokeLinecap: (hasMultipleItems ? "round" : "butt") as "round" | "butt",
+    };
+  });
+
 
   return (
     <div

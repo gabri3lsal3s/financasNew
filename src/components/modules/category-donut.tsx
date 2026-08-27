@@ -69,6 +69,36 @@ const GAP_SPACING = 5; // espaçamento visual limpo entre pílulas em px
 const TOTAL_GAP = STROKE_WIDTH + GAP_SPACING; // compensação do raio do round cap
 
 /**
+ * Normaliza proporções visuais para garantir que fatias minúsculas (ex.: 0.02% / R$ 4,60)
+ * tenham um tamanho mínimo de arco visível, renderizando como pílulas arredondadas consistentes.
+ */
+function computeVisualShares(slices: DonutSlice[], total: number, minShare = 0.045): number[] {
+  const n = slices.length;
+  if (n <= 1) return slices.map(() => 1);
+
+  const effectiveMin = Math.min(minShare, 0.85 / n);
+  const rawShares = slices.map((s) => (total > 0 ? s.valueCents / total : 1 / n));
+
+  let underAllocatedSum = 0;
+  let overAllocatedRawSum = 0;
+  const isSmall = rawShares.map((share) => share < effectiveMin);
+
+  for (let i = 0; i < n; i++) {
+    if (isSmall[i]) {
+      underAllocatedSum += effectiveMin;
+    } else {
+      overAllocatedRawSum += rawShares[i] ?? 0;
+    }
+  }
+
+  const remainingBudget = Math.max(0, 1 - underAllocatedSum);
+  return rawShares.map((share, i) => {
+    if (isSmall[i]) return effectiveMin;
+    return overAllocatedRawSum > 0 ? (share / overAllocatedRawSum) * remainingBudget : remainingBudget / (n - underAllocatedSum / effectiveMin);
+  });
+}
+
+/**
  * CategoryDonut — distribuição visual interativa de categorias ou ativos.
  * Anel SVG de alto contraste com bordas arredondadas (pill arcs), dimensionamento
  * confortável para mobile e alternância dinâmica no centro entre o Total e a Categoria ativa.
@@ -139,55 +169,35 @@ export function CategoryDonut({
     }
   };
 
-  // Cálculo preciso dos arcos com suporte a extremidades arredondadas e gaps geométricos sem sobreposição
-  const arcs = slices.reduce<
-    {
-      key: string;
-      dash: number;
-      offset: number;
-      colorStyle: string;
-      slice: DonutSlice;
-      index: number;
-      isSelected: boolean;
-      isHovered: boolean;
-      strokeLinecap: "round" | "butt";
-      isVisible: boolean;
-    }[]
-  >((acc, slice, index) => {
+  // Cálculo das proporções visuais para os arcos válidos com tamanho mínimo de fatia garantido
+  const visualShares = computeVisualShares(validSlices, total, 0.045);
+  const totalGapBudget = hasMultipleSlices ? validSlices.length * TOTAL_GAP : 0;
+  const availableDashBudget = Math.max(10, CIRCUMFERENCE - totalGapBudget);
+
+  // Mapeamento dos arcos sem sobreposição e com extremidades arredondadas uniformes
+  const arcs = slices.map((slice, index) => {
     const sliceKey = slice.key ?? `${slice.label}-${index}`;
-    const rawDash = total > 0 ? (slice.valueCents / total) * CIRCUMFERENCE : 0;
+    const validIdx = validSlices.findIndex((s) => s === slice);
+    const isVisible = slice.valueCents > 0 && validIdx >= 0;
 
     let dash = 0;
     let offset = 0;
-    let strokeLinecap: "round" | "butt" = "butt";
-    const isVisible = slice.valueCents > 0;
 
     if (isVisible) {
       if (hasMultipleSlices) {
-        const priorRawOffset = slices
-          .slice(0, index)
-          .reduce((sum, s) => sum + (s.valueCents > 0 && total > 0 ? (s.valueCents / total) * CIRCUMFERENCE : 0), 0);
+        const visualShare = visualShares[validIdx] ?? 0;
+        dash = Math.max(0.1, visualShare * availableDashBudget);
 
-        if (rawDash >= TOTAL_GAP + 2) {
-          // Fatia grande o suficiente para extremidades arredondadas elegantes sem colisão
-          dash = rawDash - TOTAL_GAP;
-          offset = priorRawOffset + TOTAL_GAP / 2;
-          strokeLinecap = "round";
-        } else {
-          // Fatia pequena: corte preciso (butt) estritamente contido no seu setor angular
-          const safeGap = Math.min(GAP_SPACING, rawDash * 0.4);
-          dash = Math.max(1, rawDash - safeGap);
-          offset = priorRawOffset + safeGap / 2;
-          strokeLinecap = "butt";
-        }
+        const priorVisualShare = visualShares.slice(0, validIdx).reduce((sum, v) => sum + v, 0);
+        const priorOffset = priorVisualShare * availableDashBudget + validIdx * TOTAL_GAP;
+        offset = priorOffset + TOTAL_GAP / 2;
       } else {
         dash = CIRCUMFERENCE;
         offset = 0;
-        strokeLinecap = "butt";
       }
     }
 
-    acc.push({
+    return {
       key: sliceKey,
       dash,
       offset,
@@ -196,11 +206,11 @@ export function CategoryDonut({
       index,
       isSelected: activeSelectedKey === sliceKey,
       isHovered: hoveredIndex === index,
-      strokeLinecap,
+      strokeLinecap: (hasMultipleSlices ? "round" : "butt") as "round" | "butt",
       isVisible,
-    });
-    return acc;
-  }, []);
+    };
+  });
+
 
   return (
     <div

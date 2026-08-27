@@ -102,11 +102,10 @@ describe("CategoryDonut (F8)", () => {
     // Apenas 3 arcos (o de valor 0 não deve gerar elemento circle visível)
     expect(arcs).toHaveLength(3);
 
-    // As fatias grandes usam round
+    // Todas as fatias ativas possuem tamanho mínimo garantido e usam round sem colisão
     expect(arcs[0]).toHaveAttribute("stroke-linecap", "round");
     expect(arcs[1]).toHaveAttribute("stroke-linecap", "round");
-    // A fatia minúscula usa butt para não sangrar sobre a fatia vizinha
-    expect(arcs[2]).toHaveAttribute("stroke-linecap", "butt");
+    expect(arcs[2]).toHaveAttribute("stroke-linecap", "round");
   });
 
   it("sem violações de acessibilidade (axe)", async () => {

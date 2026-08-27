@@ -303,11 +303,11 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
       ) : null}
 
 
-      {/* Grid de KPIs da Carteira — Saldo em Caixa ocupa 2 colunas no mobile e desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+      {/* Grid de KPIs da Carteira — 1 coluna fluida no mobile, 4 colunas no desktop */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {position.isLoading ? (
           <>
-            <SkeletonKpi className="col-span-2 sm:col-span-2 lg:col-span-2" />
+            <SkeletonKpi className="sm:col-span-2 lg:col-span-2" />
             <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
           </>
@@ -321,7 +321,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               onDelete={() => {
                 if (cashAsset) setAssetToDelete(cashAsset);
               }}
-              className="col-span-2 sm:col-span-2 lg:col-span-2"
+              className="sm:col-span-2 lg:col-span-2"
             />
             <KpiCard
               label="Patrimônio Total"
@@ -346,10 +346,15 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               }
             />
             <KpiCard
-              label="Proventos deste Mês"
+              label={
+                <>
+                  <span className="hidden sm:inline">Proventos deste Mês</span>
+                  <span className="sm:hidden">Proventos do mês</span>
+                </>
+              }
               cents={dividendsCents}
               tone={dividendsCents > 0 ? "positive" : "default"}
-              hint="Dividendos / JCP / Rendimentos"
+              hint="Dividendos / JCP"
             />
           </>
         )}
