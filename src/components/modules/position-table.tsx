@@ -969,7 +969,9 @@ export function PositionTable({
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex flex-col items-end gap-0.5">
               <div className="flex items-center gap-1.5">
-                <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
+                {row.pricingMode !== "total_value" && (
+                  <MoneyText cents={numberToCents(row.valueBRL)} tone="default" className="text-sm font-bold text-foreground" />
+                )}
                 <span className={cn("num text-xs font-bold px-1.5 py-0.5 rounded", pctTone, effectivePct !== null && effectivePct >= 0 ? "bg-positive/10" : "bg-negative/10")}>
                   {pctLabel}
                 </span>
@@ -993,7 +995,6 @@ export function PositionTable({
                   >
                     YoC {yoc.toFixed(1)}%
                   </span>
-
                 </div>
               ) : null}
             </div>
@@ -1001,24 +1002,23 @@ export function PositionTable({
         </div>
 
         {/* Linha 2: Métricas de Custódia em grid de 3 colunas legível */}
-        <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 text-xs pt-2 border-t border-border/40">
-
-          <div className="flex flex-col">
-            <span className="text-[11px] text-muted-foreground">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs pt-2.5 border-t border-border/50">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium truncate">
               {row.pricingMode === "total_value" ? "Preço Inicial" : "Quantidade"}
             </span>
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-foreground truncate">
               {row.isCash ? (
                 "—"
               ) : row.pricingMode === "total_value" ? (
-                <MoneyText cents={numberToCents(row.averageCost)} currency={row.currency} tone="default" />
+                <MoneyText cents={numberToCents(row.totalCostBRL ?? row.totalCost ?? row.averageCost)} currency={row.currency} tone="default" />
               ) : (
                 formatQuantity(row.quantity)
               )}
             </span>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[11px] text-muted-foreground">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium truncate">
               {row.pricingMode === "total_value" ? "Saldo Atual" : "Preço"}
             </span>
             {row.isCash ? (
@@ -1031,7 +1031,7 @@ export function PositionTable({
                   onCalibrateAsset(row.assetId, row.ticker, numberToCents(row.valueBRL));
                 }}
                 aria-label={`Calibrar saldo de ${row.ticker}`}
-                className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded truncate"
                 title="Calibrar saldo com extrato oficial"
               >
                 <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />
@@ -1060,7 +1060,7 @@ export function PositionTable({
                   );
                 }}
                 aria-label={`Cotação de ${row.ticker}`}
-                className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded truncate"
               >
                 <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
                 {row.source === "manual" ? (
@@ -1072,7 +1072,7 @@ export function PositionTable({
                 ) : null}
               </button>
             ) : (
-              <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+              <span className="inline-flex items-center gap-1 font-semibold text-foreground truncate">
                 <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
                 {row.source === "manual" ? (
                   <span
@@ -1084,12 +1084,12 @@ export function PositionTable({
               </span>
             )}
           </div>
-          <div className="flex flex-col">
-            <span className="text-[11px] text-muted-foreground">Lucro/Prejuízo</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium truncate">Lucro/Prejuízo</span>
             {row.isCash ? (
               <span className="font-semibold text-muted-foreground">—</span>
             ) : (
-              <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" className="font-semibold" />
+              <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" className="font-semibold truncate" />
             )}
           </div>
         </div>

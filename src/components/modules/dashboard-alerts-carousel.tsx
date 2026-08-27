@@ -12,11 +12,12 @@ export interface DashboardAlertItem {
 export interface DashboardAlertsCarouselProps {
   items: (DashboardAlertItem | null | undefined | false)[];
   className?: string;
-  /** Intervalo em milissegundos para rotação automática (padrão: 7000ms = 7s). */
+  /** Intervalo em milissegundos para rotação automática (padrão: 8000ms = 8s). */
   autoplayIntervalMs?: number;
 }
 
 const SWIPE_THRESHOLD_PX = 40;
+const TRANSITION_DURATION_MS = 850;
 
 export function DashboardAlertsCarousel({
   items,
@@ -45,10 +46,17 @@ export function DashboardAlertsCarousel({
   const [isPaused, setIsPaused] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
 
-  // Índice lógico do card ativo (0 a total - 1)
+  const [prevTotal, setPrevTotal] = useState(total);
+  if (prevTotal !== total) {
+    setPrevTotal(total);
+    setPhysicalIndex(1);
+    setIsTransitioning(false);
+  }
+
+  // Índice lógico do card ativo para exibição de dots e contadores (0 a total - 1)
   const logicalIndex = total > 0 ? (physicalIndex - 1 + total) % total : 0;
 
-  // Reativa transição suave após o snap invisível
+  // Reativa transição suave no próximo frame após o snap invisível
   useEffect(() => {
     if (!isTransitioning) {
       const raf = requestAnimationFrame(() => {
@@ -58,14 +66,48 @@ export function DashboardAlertsCarousel({
     }
   }, [isTransitioning]);
 
+  // Função centralizada para snap de borda
+  const snapToBounds = useCallback(() => {
+    setPhysicalIndex((prev) => {
+      if (prev >= total + 1) {
+        setIsTransitioning(false);
+        return 1;
+      }
+      if (prev <= 0) {
+        setIsTransitioning(false);
+        return total;
+      }
+      return prev;
+    });
+  }, [total]);
+
+  // Timer de segurança: caso o browser mobile engula ou cancele o evento onTransitionEnd,
+  // força o snap após o tempo da animação (evitando tela preta/vazia)
+  useEffect(() => {
+    if (physicalIndex >= total + 1 || physicalIndex <= 0) {
+      const timer = setTimeout(() => {
+        snapToBounds();
+      }, TRANSITION_DURATION_MS + 50);
+      return () => clearTimeout(timer);
+    }
+  }, [physicalIndex, total, snapToBounds]);
+
   const nextSlide = useCallback(() => {
-    setIsTransitioning(true);
-    setPhysicalIndex((prev) => prev + 1);
-  }, []);
+    setPhysicalIndex((prev) => {
+      // Bloqueia avanço além do clone final se ainda não fez o snap
+      if (prev >= total + 1) return total + 1;
+      setIsTransitioning(true);
+      return prev + 1;
+    });
+  }, [total]);
 
   const prevSlide = useCallback(() => {
-    setIsTransitioning(true);
-    setPhysicalIndex((prev) => prev - 1);
+    setPhysicalIndex((prev) => {
+      // Bloqueia recuo abaixo do clone inicial se ainda não fez o snap
+      if (prev <= 0) return 0;
+      setIsTransitioning(true);
+      return prev - 1;
+    });
   }, []);
 
   const goToSlide = useCallback((targetLogicalIndex: number) => {
@@ -73,15 +115,8 @@ export function DashboardAlertsCarousel({
     setPhysicalIndex(targetLogicalIndex + 1);
   }, []);
 
-  // Snap instantâneo nas extremidades (loop infinito sem nunca rebobinar)
   const handleTransitionEnd = () => {
-    if (physicalIndex === total + 1) {
-      setIsTransitioning(false);
-      setPhysicalIndex(1);
-    } else if (physicalIndex === 0) {
-      setIsTransitioning(false);
-      setPhysicalIndex(total);
-    }
+    snapToBounds();
   };
 
   // Autoplay inteligente
@@ -133,6 +168,10 @@ export function DashboardAlertsCarousel({
   if (total === 1 && firstItem) {
     return <div className={cn("w-full min-w-0", className)}>{firstItem.content}</div>;
   }
+
+  // Índice blindado que nunca excede o range de extendedItems (Zero tela preta)
+  const maxExtendedIndex = Math.max(extendedItems.length - 1, 0);
+  const safePhysicalIndex = Math.min(Math.max(physicalIndex, 0), maxExtendedIndex);
 
   return (
     <section
@@ -189,7 +228,7 @@ export function DashboardAlertsCarousel({
         </div>
       </div>
 
-      {/* Trilha Deslizante Horizontal em Loop Infinito com Gutter */}
+      {/* Trilha Deslizante Horizontal em Loop Infinito com Gutter e Índice Blindado */}
       <div className="w-full min-w-0 overflow-hidden py-0.5">
         <div
           onTransitionEnd={handleTransitionEnd}
@@ -197,13 +236,13 @@ export function DashboardAlertsCarousel({
             "flex w-full will-change-transform items-stretch",
             isTransitioning ? "transition-transform duration-[850ms] ease-[cubic-bezier(0.16,1,0.3,1)]" : "transition-none",
           )}
-          style={{ transform: `translateX(-${physicalIndex * 100}%)` }}
+          style={{ transform: `translateX(-${safePhysicalIndex * 100}%)` }}
         >
           {extendedItems.map((item, idx) => (
             <div
               key={item.id}
               className="w-full min-w-full shrink-0 flex flex-col px-1 sm:px-1.5"
-              aria-hidden={idx !== physicalIndex}
+              aria-hidden={idx !== safePhysicalIndex}
             >
               {item.content}
             </div>

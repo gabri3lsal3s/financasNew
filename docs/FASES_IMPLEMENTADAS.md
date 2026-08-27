@@ -1059,6 +1059,20 @@
   - `docs/DESIGN_SYSTEM.md`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+### Otimização de Responsividade e Organização Visual Mobile (2026-08-26)
+- **Problema:** no mobile (< 400px), o widget de orçamentos espremia os nomes de categorias ao lado de valores monetários longos e badges com classes ad-hoc; o cabeçalho do Fluxo Diário quebrava a legenda em coluna ocupando altura excessiva; o anel Donut de categorias gerava rolagem longa; e o card de ativo da carteira usava `grid-cols-1 xs:grid-cols-3` (empilhando 3 linhas verticais em mobile) e duplicava a exibição do Saldo Atual.
+- **Solução:**
+  1. **Widget de Orçamentos:** reorganizado em hierarquia de 2 linhas por categoria com micro-barra de progresso colorida (`h-1`), espaço total para o nome da categoria e bloco de uso consolidado com métrica em destaque;
+  2. **Cabeçalho do Fluxo Diário:** alinhamento compacto em linha única adaptativa com micro-legendas (*Rec*, *Desp*, *Inv*), maximizando a área do gráfico;
+  3. **Donut de Categorias:** anel SVG adaptativo (`size-28` em mobile até `size-40` em desktop) com redução do gap e espaçamento da lista (`space-y-1.5`);
+  4. **Card de Ativo da Carteira (Mobile):** grid de 3 colunas nativo no mobile (`grid-cols-3 gap-1.5 sm:gap-2`), eliminação da duplicação do *Saldo Atual* para Renda Fixa e foco do topo em Ticker + Taxa e Rentabilidade percentual (`pctLabel`).
+- **Arquivos alterados:**
+  - `src/features/overview/pages/overview-page.tsx`
+  - `src/components/modules/category-donut.tsx`
+  - `src/components/modules/position-table.tsx`
+  - `src/components/modules/dashboard-alerts-carousel.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

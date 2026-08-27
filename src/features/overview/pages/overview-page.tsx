@@ -448,24 +448,24 @@ export function OverviewPage() {
               className={cn("grid gap-3 min-w-0", visual.dashboardWidgets.flow && visual.dashboardWidgets.donut && donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
             >
               {visual.dashboardWidgets.flow && (
-                <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap sm:flex-nowrap">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover border border-border/60 text-muted-foreground">
                         <Activity className="size-3.5" aria-hidden="true" />
                       </span>
-                      <h2 className="text-sm font-semibold text-foreground min-w-0">Fluxo diário</h2>
+                      <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Fluxo diário</h2>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs shrink-0">
-                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px] shrink-0">
-                        <span className="size-2 rounded-full bg-positive-strong shrink-0" /> Receitas
+                    <div className="flex items-center gap-2 sm:gap-2.5 text-[11px] shrink-0">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <span className="size-1.5 rounded-full bg-positive-strong shrink-0" /> Receitas
                       </span>
-                      <span className="flex items-center gap-1.5 text-muted-foreground text-[11px] shrink-0">
-                        <span className="size-2 rounded-full bg-negative-strong shrink-0" /> Despesas
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <span className="size-1.5 rounded-full bg-negative-strong shrink-0" /> Despesas
                       </span>
                       {totals.investmentCents > 0 && (
-                        <span className="flex items-center gap-1.5 text-muted-foreground text-[11px] shrink-0">
-                          <span className="size-2 rounded-full bg-portfolio shrink-0" /> Investimentos
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <span className="size-1.5 rounded-full bg-portfolio shrink-0" /> Investimentos
                         </span>
                       )}
                     </div>
@@ -475,15 +475,15 @@ export function OverviewPage() {
                 </section>
               )}
               {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
-                <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
                   <div className="flex items-center justify-between gap-2 min-w-0">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover/80 border border-border/60 text-muted-foreground">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover border border-border/60 text-muted-foreground">
                         <PieChart className="size-3.5" aria-hidden="true" />
                       </span>
                       <h2 className="text-sm font-semibold text-foreground truncate min-w-0">Distribuição por categoria</h2>
                     </div>
-                    <Badge variant="muted" className="text-[11px] shrink-0">{donutSlices.length} categorias</Badge>
+                    <Badge variant="muted" size="xs">{donutSlices.length} categorias</Badge>
                   </div>
                   <CategoryDonut slices={donutSlices} />
                 </section>
