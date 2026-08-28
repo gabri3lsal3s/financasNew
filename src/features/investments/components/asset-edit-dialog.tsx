@@ -197,12 +197,14 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
     let fiMetadata: FixedIncomeMetadata | null = null;
     if (isFixedIncome && !isCash) {
+      const existingFi = asset.fixed_income_metadata;
+      const currentBalance = currentPriceCents > 0 ? currentPriceCents / 100 : initialPriceCents / 100;
       fiMetadata = {
         rate_type: fixedIncomeRateType,
         rate_value: fixedIncomeRateValue,
-        base_date: fixedIncomeBaseDate || todayISO(),
-        base_value: isTotalValueMode && currentPriceCents > 0 ? currentPriceCents / 100 : null,
-        initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
+        base_date: fixedIncomeBaseDate || existingFi?.base_date || todayISO(),
+        base_value: isTotalValueMode && currentBalance > 0 ? currentBalance : (existingFi?.base_value ?? null),
+        initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : (existingFi?.initial_investment_date ?? null),
         maturity_date: fixedIncomeMaturityDate ? fixedIncomeMaturityDate.slice(0, 10) : null,
         is_tax_exempt: fixedIncomeIsTaxExempt,
         manual_tax_rate_pct: fixedIncomeIsTaxExempt ? null : fixedIncomeManualTaxRatePct,

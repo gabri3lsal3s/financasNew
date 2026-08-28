@@ -16,8 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { numberToCents } from "@/domain/money";
 import { todayLocalIso } from "@/lib/date";
 import {
-
   detectPortfolioColumns,
+  isFixedIncomeClass,
+  isTesouroAsset,
   parsePortfolioFromMapping,
   parsePortfolioInput,
   parseXlsxToCsv,
@@ -32,7 +33,7 @@ import {
   usePortfolioAssets,
   useUpdatePortfolioAsset,
 } from "@/state";
-import type { PortfolioTransactionType } from "@/types";
+import type { FixedIncomeMetadata, FixedIncomeRateType, PortfolioTransactionType } from "@/types";
 import { PortfolioMappingStep } from "./portfolio-mapping-step";
 
 export interface PortfolioImportDialogProps {
@@ -310,12 +311,40 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
       const assetMap = new Map(existingTickerMap);
       for (const item of uniqueTickers.values()) {
         const matchingRow = selectedRows.find((r) => r.ticker.trim().toUpperCase() === item.ticker);
+        const isFi = isFixedIncomeClass(item.assetClass) || isTesouroAsset(item.ticker, item.assetClass);
+        let fixedIncomeMetadata: FixedIncomeMetadata | null = null;
+
+        if (isFi) {
+          const upper = item.ticker.toUpperCase();
+          const isExempt = upper.includes("LCI") || upper.includes("LCA") || upper.includes("CRI") || upper.includes("CRA");
+          const rateType: FixedIncomeRateType = upper.includes("SELIC")
+            ? "selic"
+            : upper.includes("IPCA")
+              ? "ipca"
+              : upper.includes("PRE")
+                ? "pre"
+                : "cdi";
+          const rateValue = rateType === "cdi" || rateType === "selic" ? 100 : rateType === "ipca" ? 6 : 12;
+          const importDate = matchingRow?.date || todayLocalIso();
+
+          fixedIncomeMetadata = {
+            rate_type: rateType,
+            rate_value: rateValue,
+            base_date: importDate,
+            base_value: matchingRow && matchingRow.price > 0 ? matchingRow.price : null,
+            initial_investment_date: importDate,
+            maturity_date: null,
+            is_tax_exempt: isExempt,
+          };
+        }
+
         const created = await createAsset.mutateAsync({
           ticker: item.ticker,
-          asset_class: item.assetClass ?? "Ações",
+          asset_class: item.assetClass ?? (isFi ? "Renda Fixa" : "Ações"),
           currency: item.currency,
           quantity: matchingRow ? matchingRow.quantity : 0,
           average_price: matchingRow ? matchingRow.price : 0,
+          fixed_income_metadata: fixedIncomeMetadata,
         });
         assetMap.set(item.ticker, created);
       }

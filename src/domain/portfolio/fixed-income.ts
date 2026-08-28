@@ -13,6 +13,7 @@
 
 import type { FixedIncomeRateType } from "@/types";
 import { countBusinessDays, countCalendarDays } from "./business-days";
+import { todayISO } from "@/domain/debts";
 
 /**
  * Tabela oficial de alíquotas regressivas de IOF (Decreto 6.306/2007).
@@ -175,6 +176,7 @@ export interface FixedIncomeBalanceInput {
   totalCost?: number;
   dailyCdiRate?: number;
   annualCdiRate?: number;
+  annualIpcaRate?: number;
   today?: string;
 }
 
@@ -198,27 +200,35 @@ export interface FixedIncomeBalanceResult {
 /** Taxa CDI padrão de fallback caso a API macroeconômica esteja indisponível (10.50% a.a.). */
 export const DEFAULT_ANNUAL_CDI_RATE = 10.5;
 
+/** Taxa de inflação anual padrão de referência para títulos IPCA+ (4.00% a.a. Focus/Meta). */
+export const DEFAULT_ANNUAL_IPCA_RATE = 4.0;
+
 /**
  * Calcula o saldo projetado, juros acumulados, tributação e trava de vencimento
  * para qualquer ativo de Renda Fixa parametrizado no Marco Zero (D₀).
  */
 export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): FixedIncomeBalanceResult {
   const {
-    baseValue,
+    baseValue: rawBaseValue,
     baseDate,
     initialInvestmentDate,
     maturityDate,
     rateType,
-    rateValue,
+    rateValue: rawRateValue,
     isTaxExempt = false,
     manualTaxRatePct,
-    totalCost,
+    totalCost: rawTotalCost,
     dailyCdiRate,
     annualCdiRate,
-    today = new Date().toISOString().slice(0, 10),
+    annualIpcaRate = DEFAULT_ANNUAL_IPCA_RATE,
+    today = todayISO(),
   } = input;
 
-  const cleanToday = today.slice(0, 10);
+  const baseValue = Number(rawBaseValue) || 0;
+  const rateValue = Number(rawRateValue) || 0;
+  const totalCost = rawTotalCost !== undefined ? Number(rawTotalCost) : undefined;
+
+  const cleanToday = today ? today.slice(0, 10) : todayISO();
   const cleanBaseDate = baseDate ? baseDate.slice(0, 10) : cleanToday;
   const cleanMaturity = maturityDate ? maturityDate.slice(0, 10) : null;
   const origDate = initialInvestmentDate ? initialInvestmentDate.slice(0, 10) : cleanBaseDate;
@@ -243,7 +253,7 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
       businessDaysAccrued: 0,
       calendarDaysTotal: 0,
       isMatured: false,
-      effectiveCutoffDate: today,
+      effectiveCutoffDate: cleanToday,
       taxCountdown: null,
       hasExplicitTaxInfo,
     };
@@ -274,8 +284,10 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
         break;
       }
       case "ipca": {
-        // Para IPCA+, rateValue é o spread pré (ex.: 6.5% a.a.)
-        effectiveDailyRate = annualRateToDaily(rateValue);
+        // IPCA+: capitalização composta da inflação anual estimada + spread pré
+        const ipcaAnnual = annualIpcaRate ?? DEFAULT_ANNUAL_IPCA_RATE;
+        const totalAnnualRatePct = ((1 + ipcaAnnual / 100) * (1 + rateValue / 100) - 1) * 100;
+        effectiveDailyRate = annualRateToDaily(totalAnnualRatePct);
         break;
       }
     }

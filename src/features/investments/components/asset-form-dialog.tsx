@@ -134,13 +134,18 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     (p) => p.ticker.toUpperCase() === (asset?.ticker ?? ticker).trim().toUpperCase(),
   );
   const existingInitialPrice = asset
-    ? asset.average_price > 1
+    ? asset.average_price > 0
       ? asset.average_price
       : asset.quantity > 0
         ? asset.quantity
-        : asset.average_price
+        : 0
     : 0;
-  const existingCurrentPrice = priceQuote?.manual_price ?? priceQuote?.price ?? existingInitialPrice;
+  const existingCurrentPrice =
+    asset?.fixed_income_metadata?.base_value !== undefined &&
+    asset.fixed_income_metadata?.base_value !== null &&
+    asset.fixed_income_metadata.base_value > 0
+      ? asset.fixed_income_metadata.base_value
+      : priceQuote?.manual_price ?? priceQuote?.price ?? existingInitialPrice;
 
   const [initialPriceCents, setInitialPriceCents] = useState(numberToCents(existingInitialPrice));
   const [currentPriceCents, setCurrentPriceCents] = useState(numberToCents(existingCurrentPrice));
@@ -163,13 +168,15 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     asset?.fixed_income_metadata?.rate_type ?? "cdi",
   );
   const [fixedIncomeRateValue, setFixedIncomeRateValue] = useState<number>(
-    asset?.fixed_income_metadata?.rate_value ?? 0,
+    asset?.fixed_income_metadata?.rate_value !== undefined
+      ? asset.fixed_income_metadata.rate_value
+      : 100,
   );
   const [fixedIncomeBaseDate, setFixedIncomeBaseDate] = useState<string>(
     asset?.fixed_income_metadata?.base_date ?? todayISO(),
   );
   const [fixedIncomeInitialInvestmentDate, setFixedIncomeInitialInvestmentDate] = useState<string>(
-    asset?.fixed_income_metadata?.initial_investment_date ?? "",
+    asset?.fixed_income_metadata?.initial_investment_date ?? asset?.fixed_income_metadata?.base_date ?? "",
   );
   const [fixedIncomeMaturityDate, setFixedIncomeMaturityDate] = useState<string>(
     asset?.fixed_income_metadata?.maturity_date ?? "",
@@ -278,12 +285,14 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
       let fiMetadata: FixedIncomeMetadata | null = null;
       if (isFixedIncome && !isCash) {
+        const existingFi = asset?.fixed_income_metadata;
+        const currentBalance = currentPriceCents > 0 ? currentPriceCents / 100 : initialPriceCents / 100;
         fiMetadata = {
           rate_type: fixedIncomeRateType,
           rate_value: fixedIncomeRateValue,
-          base_date: fixedIncomeBaseDate || todayISO(),
-          base_value: isTotalValueMode && currentPriceCents > 0 ? currentPriceCents / 100 : null,
-          initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
+          base_date: fixedIncomeBaseDate || existingFi?.base_date || todayISO(),
+          base_value: isTotalValueMode && currentBalance > 0 ? currentBalance : (existingFi?.base_value ?? null),
+          initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : (existingFi?.initial_investment_date ?? null),
           maturity_date: fixedIncomeMaturityDate ? fixedIncomeMaturityDate.slice(0, 10) : null,
           is_tax_exempt: fixedIncomeIsTaxExempt,
         };

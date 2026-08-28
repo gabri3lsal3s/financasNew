@@ -96,6 +96,7 @@ export {
 export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";
 export { usePortfolioPosition } from "./queries/use-portfolio-position";
 export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";
+export { useMacroIndicators, type MacroIndicatorsData, MACRO_INDICATORS_QUERY_KEY } from "./queries/use-macro-indicators";
 
 export {
   useAllocationTargets,

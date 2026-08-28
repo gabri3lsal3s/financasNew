@@ -574,6 +574,11 @@ export function PositionTable({
         const isFallback = row.source === "fallback" && hasActiveRate;
         const valueCents = numberToCents(row.valueBRL);
 
+        const tooltipTitle =
+          row.fixedIncomeResult && row.fixedIncomeResult.businessDaysAccrued > 0
+            ? `Saldo projetado (+${row.fixedIncomeResult.businessDaysAccrued}d úteis desde ${formatDateBR(row.fixedIncomeMetadata?.base_date ?? "")}) — clique para calibrar`
+            : "Calibrar saldo com extrato oficial";
+
         if (onCalibrateAsset) {
           return (
             <button
@@ -584,7 +589,7 @@ export function PositionTable({
               }}
               aria-label={`Calibrar saldo de ${row.ticker}`}
               className="group inline-flex items-center justify-end gap-1.5 rounded-md px-1.5 py-0.5 -mr-1.5 transition-colors hover:bg-surface-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
-              title="Calibrar saldo com extrato oficial"
+              title={tooltipTitle}
             >
               <MoneyText
                 cents={valueCents}

@@ -108,6 +108,21 @@ export function FixedIncomeFormFields({
       ? String(values.manualTaxRatePct)
       : "auto";
 
+  const handleRateTypeChange = (newRateType: FixedIncomeRateType) => {
+    const patch: Partial<FixedIncomeFormFieldsValues> = { rateType: newRateType };
+    // Se a taxa estiver zerada ou vazia, pré-preenche sugestão inteligente
+    if (!numericRateValue || numericRateValue === 0) {
+      if (newRateType === "cdi" || newRateType === "selic") {
+        patch.rateValue = 100;
+      } else if (newRateType === "pre") {
+        patch.rateValue = 12.0;
+      } else if (newRateType === "ipca") {
+        patch.rateValue = 6.0;
+      }
+    }
+    onChange(patch);
+  };
+
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border/80 bg-surface/60 p-4">
       <div className="flex items-center justify-between">
@@ -123,7 +138,7 @@ export function FixedIncomeFormFields({
           <span className="text-xs font-semibold text-foreground">Indexador / Regime</span>
           <Select
             value={values.rateType}
-            onValueChange={(rateType) => onChange({ rateType: rateType as FixedIncomeRateType })}
+            onValueChange={(rateType) => handleRateTypeChange(rateType as FixedIncomeRateType)}
             options={RATE_TYPE_OPTIONS}
           />
           <span className="text-[11px] text-muted-foreground">Referência da taxa de rendimento</span>
@@ -144,6 +159,24 @@ export function FixedIncomeFormFields({
           <span className="text-[11px] text-muted-foreground">Taxa pactuada na contratação</span>
         </div>
 
+        {/* Data-Base / Início do Rendimento (D₀) — SEMPRE VISÍVEL */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-foreground">Data da Aplicação / Início dos Juros (D&#8320;)</span>
+          <DatePicker
+            value={values.baseDate}
+            onValueChange={(baseDate) => {
+              const patch: Partial<FixedIncomeFormFieldsValues> = { baseDate };
+              if (!values.initialInvestmentDate) {
+                patch.initialInvestmentDate = baseDate;
+              }
+              onChange(patch);
+            }}
+            placeholder="Selecione a data de início"
+            ariaLabel="Data de início para contagem dos juros"
+          />
+          <span className="text-[11px] text-muted-foreground">Data em que os juros começam a render</span>
+        </div>
+
         {/* Data de Vencimento — sempre visível */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-foreground">
@@ -160,7 +193,7 @@ export function FixedIncomeFormFields({
 
         {/* Isenção de IR — oculto para Tesouro Direto (nunca isento) */}
         {!isTesouro && (
-          <div className="flex flex-col justify-center gap-1 sm:pt-4">
+          <div className="flex flex-col justify-center gap-1 sm:col-span-2 sm:pt-1">
             <Checkbox
               id={`${idPrefix}-is-tax-exempt`}
               checked={values.isTaxExempt}
@@ -192,22 +225,10 @@ export function FixedIncomeFormFields({
 
         {showAdvanced && (
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* Data-Base / Marco Zero (D₀) */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-foreground">Data-Base / Marco Zero (D&#8320;)</span>
-              <DatePicker
-                value={values.baseDate}
-                onValueChange={(baseDate) => onChange({ baseDate })}
-                placeholder="Selecione a data-base"
-                ariaLabel="Data-base para início do cálculo de rendimento"
-              />
-              <span className="text-[11px] text-muted-foreground">Início da contagem dos juros do saldo atual</span>
-            </div>
-
             {/* Data de Aplicação Original (IR) */}
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-foreground">
-                Aplicação Original <span className="text-muted-foreground/80 font-normal">(opcional)</span>
+                Aplicação Original para IR <span className="text-muted-foreground/80 font-normal">(opcional)</span>
               </span>
               <DatePicker
                 value={values.initialInvestmentDate ?? ""}
@@ -222,7 +243,7 @@ export function FixedIncomeFormFields({
 
             {/* Alíquota de IR Manual */}
             {!values.isTaxExempt && (
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-foreground">
                   Alíquota Vigente de IR <span className="text-muted-foreground/80 font-normal">(opcional)</span>
                 </span>
@@ -236,7 +257,7 @@ export function FixedIncomeFormFields({
                   options={TAX_RATE_OPTIONS}
                 />
                 <span className="text-[11px] text-muted-foreground">
-                  Fixe a alíquota caso o título seja antigo e você não saiba a data exata de aplicação
+                  Fixe a alíquota caso não saiba a data exata de aplicação
                 </span>
               </div>
             )}

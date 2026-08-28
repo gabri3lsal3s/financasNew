@@ -7,6 +7,7 @@ import {
   useUpsertPortfolioSnapshot,
 } from "./use-portfolio";
 import { useAssetPrices } from "./use-asset-prices";
+import { useMacroIndicators } from "./use-macro-indicators";
 import {
   buildPortfolioMonthlySeries,
   calculatePortfolioTotalReturn,
@@ -20,6 +21,7 @@ import {
   type PortfolioMonthlySeriesPoint,
   type PriceSource,
 } from "@/domain/portfolio";
+import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
 import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
 
@@ -109,6 +111,7 @@ export interface PortfolioPosition {
 export function usePortfolioPosition(): PortfolioPosition {
   const assetsQuery = usePortfolioAssets();
   const pricesQuery = useAssetPrices();
+  const macroQuery = useMacroIndicators();
   const contributionsQuery = usePortfolioContributions();
   const dividendsQuery = usePortfolioDividends();
   const snapshotsQuery = usePortfolioSnapshots();
@@ -117,6 +120,8 @@ export function usePortfolioPosition(): PortfolioPosition {
   const prices = pricesQuery.data ?? [];
   const usdRate = usdRateFromPrices(prices);
   const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
+  const annualCdiRate = macroQuery.data?.annualCdiRate;
+  const today = todayISO();
 
   // Agrupa proventos periódicos por ativo (lançamentos em portfolio_dividends)
   const dividendsByAsset = new Map<string, number>();
@@ -182,6 +187,8 @@ export function usePortfolioPosition(): PortfolioPosition {
       notes: asset.notes,
       totalDividends: assetDividends,
       fixedIncomeMetadata: asset.fixed_income_metadata,
+      annualCdiRate,
+      today,
     });
 
     totalBRL = round2(totalBRL + summary.valueBRL);
@@ -305,6 +312,7 @@ export function usePortfolioPosition(): PortfolioPosition {
     refetch: () => {
       void assetsQuery.refetch();
       void pricesQuery.refetch();
+      void macroQuery.refetch();
       void contributionsQuery.refetch();
       void dividendsQuery.refetch();
       void snapshotsQuery.refetch();

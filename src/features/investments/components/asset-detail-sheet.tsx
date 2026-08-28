@@ -171,6 +171,11 @@ export function AssetDetailSheet({
                   Vence em {formatDateBR(positionRow.maturityDate)}
                 </Badge>
               ) : null}
+              {positionRow?.fixedIncomeResult && positionRow.fixedIncomeResult.businessDaysAccrued > 0 ? (
+                <Badge variant="muted" className="text-xs">
+                  {positionRow.fixedIncomeResult.businessDaysAccrued}d úteis desde {formatDateBR(currentAsset.fixed_income_metadata?.base_date ?? "")}
+                </Badge>
+              ) : null}
               {currentAsset.fixed_income_metadata?.is_tax_exempt ? (
                 <Badge variant="positive" className="text-xs">
                   Isento de IR

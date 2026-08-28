@@ -197,14 +197,14 @@
     ├── state/                     # CONTRATOS DE ESTADO para a UI
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
-    │   ├── queries/               #   useExpenses({month}), useInvoices(cardId)…
+    │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB)…
     │   └── mutations/             #   useCreateExpense(), useDeleteInstallment()…
     │                              #     (use-expense-mutations, use-card-mutations,
     │                              #      use-budget-mutations, use-debt-mutations,
     │                              #      use-category-mutations, use-income-mutations,
     │                              #      use-recurrence-mutations — F32: grupo/recorrência)
-    │                              #   optimistic-cache.ts (F30 — helpers de snapshot/
-    │                              #     rollback e updaters das listas em cache)
+    │   │                          #   optimistic-cache.ts (F30 — helpers de snapshot/
+    │   │                          #     rollback e updaters das listas em cache)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
