@@ -69,14 +69,11 @@
 
 ## 4. ESTRUTURA DE CONFIGURAÇÃO ESTÁTICA (`public/`)
 
-- **`public/_redirects`**:
-  ```text
-  /*  /index.html  200
-  ```
-  Garante o fallback SPA para o React Router v8 em todas as rotas.
-
 - **`public/_headers`**:
   Configura cabeçalhos de segurança (`nosniff`, `DENY`, `XSS`, `Referrer-Policy`) e regras de cache imutável para a pasta `/assets/` e revalidação de Service Worker (`sw.js`).
+
+- **SPA Fallback Nativo**:
+  O Cloudflare Pages redireciona automaticamente rotas não encontradas para o `dist/index.html` (SPA fallback nativo para Vite/React), dispensando o arquivo `_redirects`.
 
 ---
 
