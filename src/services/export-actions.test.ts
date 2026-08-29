@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { shareText } from "./export-actions";
+import { sanitizeFilename, shareText } from "./export-actions";
 
 describe("services/export-actions — shareText", () => {
   const originalNav = globalThis.navigator;
@@ -45,5 +45,26 @@ describe("services/export-actions — shareText", () => {
     mockNavigator({});
     const result = await shareText("Título", "Texto");
     expect(result).toBe("unsupported");
+  });
+});
+
+describe("services/export-actions — sanitizeFilename", () => {
+  it("remove sequências de path traversal (../ e ..\\)", () => {
+    expect(sanitizeFilename("../../etc/passwd.csv")).toBe("etc_passwd.csv");
+    expect(sanitizeFilename("..\\..\\windows\\system32.json")).toBe("windows_system32.json");
+  });
+
+  it("substitui caracteres perigosos e reservados por underscore", () => {
+    expect(sanitizeFilename("relatorio:financeiro*2026?teste.csv")).toBe("relatorio_financeiro_2026_teste.csv");
+    expect(sanitizeFilename("arquivo<com>tags|pipes.json")).toBe("arquivo_com_tags_pipes.json");
+  });
+
+  it("remove caracteres de controle e whitespace excessivo", () => {
+    expect(sanitizeFilename("  relatorio\x00\x1F.csv  ")).toBe("relatorio.csv");
+  });
+
+  it("retorna defaultName quando o resultado fica vazio", () => {
+    expect(sanitizeFilename("")).toBe("export");
+    expect(sanitizeFilename("   ", "fallback.csv")).toBe("fallback.csv");
   });
 });

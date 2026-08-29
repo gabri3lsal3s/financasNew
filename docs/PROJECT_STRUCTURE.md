@@ -37,10 +37,17 @@
 ├── ESPECIFICACAO_TECNICA.md       # Spec executável: regras de negócio, schema, UI/UX
 ├── docs/                          # Documentação — UPPER_SNAKE_CASE.md (ver §7)
 │   ├── ARCHITECTURE.md            # Camadas, dependências, convenções
+│   ├── DATA_MIGRATION_GUIDE.md    # Guia de migração e batimento de dados legados
+│   ├── DEPLOYMENT.md              # Guia de deploy (Vercel + Supabase) e env vars
 │   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
+│   ├── FASES_IMPLEMENTADAS.md     # Histórico de fases e soluções implementadas
 │   ├── PROJECT_STRUCTURE.md       # Este documento
 │   ├── PWA_GUIDELINES.md          # Requisitos PWA (manifest, SW, instalação)
-│   └── ROADMAP.md                 # Fases de execução e Definition of Done
+│   ├── RELEASE.md                 # Checklist de release e homologação
+│   ├── ROADMAP.md                 # Fases de execução e Definition of Done
+│   └── security-audit/            # Artefatos da Auditoria de Segurança SAST
+│       ├── generate_report.py     #   Script gerador do relatório em PDF (ReportLab/Matplotlib)
+│       └── relatorio-auditoria-seguranca.pdf # Relatório executivo oficial de auditoria
 │
 ├── public/                        # Assets estáticos servidos na raiz (não processados)
 │   ├── favicon.ico / favicon.svg  # Multi-resolução (16, 32, 48) e SVG transparente
@@ -52,9 +59,9 @@
 │       └── offline.html           # Fallback offline (App Shell mínimo)
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
-│   ├── migrations/                # 0001..0020_set_based_recurrences.sql
-│   │                              # (schema, RLS, triggers, RPCs transacionais,
-│   │                              # índices estruturais e materialização set-based)
+│   ├── migrations/                # 0001..0039_security_fixes_and_feature_flag_triggers.sql
+│   │                              # (schema, RLS estrito com is_current_user_active, triggers,
+│   │                              # RPCs transacionais, backend feature flag enforcement)
 │   └── functions/                 # Edge functions (runtime Deno — fora do bundle Vite)
 │       ├── _shared/quotes-core.ts #   Motor puro de cotações (F1.7) — TS sem I/O, testável
 │       │                          #   em src/tests/quotes-core.test.ts

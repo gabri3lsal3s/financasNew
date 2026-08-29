@@ -1,5 +1,22 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.13** registra a **Conclusão da Auditoria de Segurança Completa, Relatório Executivo em PDF e Remediações (Migration 0039, Feature Flags Triggers & Cron Hardening)** (2026-08-29):
+> - **(1) Auditoria Completa das 5 Categorias de Segurança**: Varredura em 100% do código (Frontend React 19, Backend PostgreSQL/RLS, Edge Functions Deno, CI/CD e Histórico Git);
+> - **(2) Relatório Executivo em PDF Gerado (`docs/security-audit/relatorio-auditoria-seguranca.pdf`)**: Documento oficial com resumo executivo, gráficos de rosca e barras de alta resolução, tabela detalhada de achados e issues prontas para o GitHub;
+> - **(3) Script Automatizado de Auditoria (`docs/security-audit/generate_report.py`)**: Script independente com ReportLab e Matplotlib para regerar o relatório;
+> - **(4) Blindagem de Status Ativo na RPC `delete_card_payment` (Migration 0039)**: Inclusão de `is_current_user_active()` para barrar contas suspensas ou inativas;
+> - **(5) Validação de Feature Flags no PostgreSQL (Migration 0039)**: Triggers `BEFORE INSERT OR UPDATE` vinculadas a `is_feature_enabled()` para `portfolio_assets`, `portfolio_transactions`, `loans` e `budgets`, garantindo bloqueio no banco de módulos desativados por Kill-Switch;
+> - **(6) Hardening de Permissões no Agendador `pg_cron`**: Revogação de acesso ao schema `cron` para roles públicas (`public`, `anon`, `authenticated`) em `quotes-cron.sql` e `deploy-quotes.mjs`;
+> - **(7) Suíte 100% Verde**: 253 arquivos de teste / 1.842 testes passando (100% verde), zero erros de typecheck e lint.
+
+> **v2.12** registra a **Conclusão da Remediação de Segurança & IDOR Hardening (Migration 0036, Edge Functions & RLS)** (2026-08-29):
+> - **(1) Blindagem da Função de Expurgo de Auditoria (Achado 1 - Crítica)**: `cleanup_old_audit_events` agora exige permissão de `superadmin` internamente e teve privilégio público revogado com `REVOKE EXECUTE FROM public, anon`;
+> - **(2) Blindagem de Autenticação na Edge Function de Cotações (Achado 2 - Alta)**: `supabase/functions/quotes/index.ts` agora valida criptograficamente o JWT via `supabase.auth.getUser()` para chamadas de clientes autenticados, isola consultas ao próprio `user_id` e restringe acesso global administrativo estritamente à `SUPABASE_SERVICE_ROLE_KEY` do cron;
+> - **(3) Imunização contra IDOR no RPC `restore_backup` (Achado 3 - Alta)**: inserção em `card_competence_overrides` agora filtra estritamente por `c.user_id = v_uid` via join com `credit_cards`;
+> - **(4) Imunização contra IDOR em RPCs Transacionais (Achados 4, 5, 6 e 8 - Médias/Baixas)**: verificação de posse (`user_id = auth.uid()`) para `card_id`, `category_id` e `asset_id` em `create_expense_with_debt`, `create_recurrence`, `update_recurrence_occurrences`, `update_expense_installments_group`, `refinance_credit_card_bill`, `set_allocation_targets`, `import_statement_expenses` e `import_bank_transactions`;
+> - **(5) Hardening de RLS em `portfolio_snapshots` e `portfolio_contributions` (Achado 7 - Média)**: aplicação canônica de `((select auth.uid()) = user_id and public.is_current_user_active())`;
+> - **(6) Suíte 100% Verde**: 251 arquivos de teste / 1.828 testes passando, zero erros de typecheck e zero advertências de lint.
+
 > **v2.11** registra a **Unificação Inteligente de Alertas e Banners do Dashboard (`DashboardAlertsCarousel`)** (2026-08-26):
 > - **(1) Consolidação de Alertas na Home (`OverviewPage`)**: eliminação da dispersão vertical de avisos contextuais (`PaceAlertBanner`, `CashGapAlert`, `SurplusAporteBanner`, `OnboardingCard`) em favor de uma única posição no topo;
 > - **(2) Pass-through Inteligente & Prioridade Estrita de Severidade**: renderização direta quando há apenas 1 alerta ativo e ordenação automática por nível de urgência financeira quando múltiplos alertas disparam;

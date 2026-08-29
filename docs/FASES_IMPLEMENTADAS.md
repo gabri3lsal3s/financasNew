@@ -1102,6 +1102,27 @@
   - `src/features/debts/pages/debts-page.test.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+### Auditoria de Segurança Completa, Relatório Executivo & Remediações (2026-08-29)
+- **Problema:** necessidade de certificar a segurança da aplicação contra as 5 principais categorias de vulnerabilidade (Banco sem Tranca/RLS, Permissão no Navegador vs Backend, IDOR, Chaves Expostas e XSS/Inputs), gerar relatório oficial auditável em PDF e remediar pontos residuais de segurança identificados.
+- **Solução:**
+  1. **Auditoria Estática & Revisão Arquitetural:** Varredura em 100% dos arquivos do repositório (PostgreSQL RLS, RPCs transacionais PL/pgSQL, Edge Functions Deno, Frontend React 19, workflows CI/CD e histórico Git completo);
+  2. **Relatório Executivo em PDF (`docs/security-audit/relatorio-auditoria-seguranca.pdf`):** Produzido em padrão A4, 4 páginas, alta densidade e legibilidade, contendo capa, nota metodológica, resumo executivo, gráficos de rosca e barras de alta resolução, pontos fortes comprovados, tabela de achados com chips coloridos, recomendações priorizadas P1–P3 e as 3 issues do GitHub em formato Markdown prontas para uso;
+  3. **Script Automatizado (`docs/security-audit/generate_report.py`):** Script Python isolado (ReportLab + Matplotlib) para gerar e atualizar o relatório em PDF;
+  4. **Blindagem de Status Ativo na RPC `delete_card_payment` (Migration 0039):** Inclusão da trava `public.is_current_user_active()` para impedir que usuários suspensos ou inativos excluam pagamentos de cartão e cancelem estornos;
+  5. **Backend Enforcement de Feature Flags no PostgreSQL (Migration 0039):** Criação da trigger `public.enforce_feature_flag_trigger()` em `portfolio_assets`, `portfolio_transactions`, `loans` e `budgets`, bloqueando mutações diretas via API REST caso a funcionalidade esteja desativada por Kill-Switch global ou restrição de usuário;
+  6. **Hardening de Permissões no Schema `cron`:** Revogação explícita de acesso ao schema `cron` e tabelas `cron.job` para as roles `public`, `anon` e `authenticated` em `quotes-cron.sql` e `scripts/deploy-quotes.mjs`;
+  7. **Cobertura de Testes Automatizados:** Criação de `src/data/repositories/feature-flags-backend.test.ts` e expansão de `card-payments.test.ts` para validar o bloqueio e propagação de erros pt-BR.
+- **Arquivos alterados:**
+  - `supabase/migrations/20260101000039_security_fixes_and_feature_flag_triggers.sql` [NOVO]
+  - `docs/security-audit/generate_report.py` [NOVO]
+  - `docs/security-audit/relatorio-auditoria-seguranca.pdf` [NOVO]
+  - `src/data/repositories/feature-flags-backend.test.ts` [NOVO]
+  - `src/data/repositories/card-payments.test.ts`
+  - `supabase/quotes-cron.sql`
+  - `scripts/deploy-quotes.mjs`
+  - `docs/ROADMAP.md`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

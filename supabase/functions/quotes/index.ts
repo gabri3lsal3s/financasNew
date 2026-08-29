@@ -151,28 +151,37 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Autenticação: aceita Bearer token (JWT do usuário autenticado ou service role key).
   const auth = req.headers.get("authorization") ?? "";
   const apiKey = req.headers.get("apikey") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-
-  const isAuthorized =
-    auth.startsWith("Bearer ") ||
-    apiKey === serviceRoleKey ||
-    apiKey === anonKey;
-
-  if (!isAuthorized) {
-    return json({ error: "unauthorized" }, 401);
-  }
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+
   if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: "missing env" }, 500);
   }
+
+  const token = auth.replace(/^Bearer\s+/i, "").trim();
+  const isServiceRole =
+    (token.length > 0 && token === serviceRoleKey) ||
+    (apiKey.length > 0 && apiKey === serviceRoleKey);
+
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
+
+  let callerUserId: string | null = null;
+
+  if (!isServiceRole) {
+    if (!token) {
+      return json({ error: "unauthorized" }, 401);
+    }
+    // Valida criptograficamente o JWT do usuário
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user) {
+      return json({ error: "unauthorized" }, 401);
+    }
+    callerUserId = userData.user.id;
+  }
 
   // Lê tickers customizados do body se fornecidos
   let requestedTickers: string[] = [];
@@ -189,11 +198,16 @@ Deno.serve(async (req) => {
 
   let tickers: string[] = requestedTickers;
 
-  // 1) Se não foram passados tickers no body, busca todos os da carteira
+  // 1) Se não foram passados tickers no body:
+  // - Service Role (Cron): busca todos os ativos da base
+  // - Usuário autenticado: busca apenas os ativos do próprio usuário
   if (tickers.length === 0) {
-    const { data: assets, error: assetsError } = await supabase
-      .from("portfolio_assets")
-      .select("ticker, asset_class");
+    let query = supabase.from("portfolio_assets").select("ticker, asset_class");
+    if (callerUserId) {
+      query = query.eq("user_id", callerUserId);
+    }
+
+    const { data: assets, error: assetsError } = await query;
     if (assetsError) {
       return json({ error: assetsError.message }, 500);
     }

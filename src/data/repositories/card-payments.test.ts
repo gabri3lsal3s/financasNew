@@ -91,4 +91,9 @@ describe("card-payments repository (entrega 5)", () => {
     await deleteCardPayment("p1");
     expect(deleteCardPaymentRpcMock).toHaveBeenCalledWith("p1");
   });
+
+  it("propaga AppError ao falhar na exclusão por conta inativa ou erro de RPC", async () => {
+    deleteCardPaymentRpcMock.mockRejectedValue(new Error("Acesso negado: conta inativa, pendente de aprovação ou suspensa."));
+    await expect(deleteCardPayment("p1")).rejects.toThrow("Acesso negado");
+  });
 });

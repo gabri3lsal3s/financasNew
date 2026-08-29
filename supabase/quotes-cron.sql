@@ -18,11 +18,15 @@
 --     (ou: create extension if not exists pg_cron; create extension if not exists pg_net;)
 -- ============================================================================
 
--- 1) Remove agendamento anterior, se existir (idempotente — permite re-rodar).
+-- 1) Hardening de permissões: revoga acesso ao schema cron para roles públicas/não-admin
+revoke all on schema cron from public, anon, authenticated;
+revoke all on all tables in schema cron from public, anon, authenticated;
+
+-- 2) Remove agendamento anterior, se existir (idempotente — permite re-rodar).
 select cron.unschedule('quotes-6h')
 where exists (select 1 from cron.job where jobname = 'quotes-6h');
 
--- 2) Agenda a atualização a cada 6h (ou o intervalo de <CRON_SCHEDULE>).
+-- 3) Agenda a atualização a cada 6h (ou o intervalo de <CRON_SCHEDULE>).
 select cron.schedule(
   'quotes-6h',                  -- nome do job (identificador)
   '<CRON_SCHEDULE>',            -- expressão cron (ex.: 0 */6 * * *)
@@ -38,5 +42,5 @@ select cron.schedule(
   $cron$
 );
 
--- 3) Verificação: lista os jobs agendados.
+-- 4) Verificação: lista os jobs agendados.
 -- select jobid, jobname, schedule, active from cron.job order by jobid;

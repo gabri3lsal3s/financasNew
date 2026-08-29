@@ -9,12 +9,27 @@
 
 export type ShareResult = "shared" | "copied" | "unsupported";
 
+/** Sanitiza o nome do arquivo prevenindo path traversal e caracteres inválidos. */
+export function sanitizeFilename(filename: string, defaultName = "export"): string {
+  const clean = Array.from(filename)
+    .filter((ch) => {
+      const code = ch.charCodeAt(0);
+      return code >= 32 && code !== 127;
+    })
+    .join("")
+    .replace(/\.\.[/\\]/g, "")
+    .replace(/[/\\?%*:|"<>]/g, "_")
+    .trim();
+  return clean.length > 0 ? clean : defaultName;
+}
+
 /** Baixa um Blob com nome de arquivo (dispara o download nativo). */
 function downloadBlob(filename: string, blob: Blob): void {
+  const safeFilename = sanitizeFilename(filename);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = filename;
+  anchor.download = safeFilename;
   anchor.rel = "noopener";
   anchor.click();
   URL.revokeObjectURL(url);

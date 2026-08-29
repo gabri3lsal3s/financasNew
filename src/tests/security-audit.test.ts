@@ -159,3 +159,88 @@ describe("F6.2 — segredos e ambiente", () => {
     }
   });
 });
+
+describe("F50 — Remediação de Segurança & IDOR Hardening (Migration 0036)", () => {
+  it("cleanup_old_audit_events valida is_superadmin() e revoga execução pública", () => {
+    const migration36 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000036_security_remediation_and_hardening.sql"),
+      "utf8",
+    );
+    expect(migration36).toMatch(/is_superadmin\(\)/);
+    expect(migration36).toMatch(/revoke execute on function public\.cleanup_old_audit_events/i);
+  });
+
+  it("restore_backup valida pertencimento de card_competence_overrides e portfolio_assets", () => {
+    const migration36 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000036_security_remediation_and_hardening.sql"),
+      "utf8",
+    );
+    expect(migration36).toMatch(/join public\.credit_cards c on c\.id = o\.card_id\s+where c\.user_id = v_uid/i);
+    expect(migration36).toMatch(/join public\.portfolio_assets a on a\.id = pt\.asset_id\s+where a\.user_id = v_uid/i);
+  });
+
+  it("create_expense_with_debt e rotinas de recorrência validam posse de cartão", () => {
+    const migration36 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000036_security_remediation_and_hardening.sql"),
+      "utf8",
+    );
+    expect(migration36).toMatch(/select 1 from public\.credit_cards where id = p_card_id and user_id = v_user_id/i);
+  });
+
+  it("portfolio_snapshots e portfolio_contributions checam is_current_user_active()", () => {
+    const migration36 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000036_security_remediation_and_hardening.sql"),
+      "utf8",
+    );
+    expect(migration36).toMatch(
+      /create policy "portfolio_snapshots_all_own" on public\.portfolio_snapshots\s+for all using \(\(select auth\.uid\(\)\) = user_id and public\.is_current_user_active\(\)\)/i,
+    );
+    expect(migration36).toMatch(
+      /create policy "portfolio_contributions_all_own" on public\.portfolio_contributions\s+for all using \(\(select auth\.uid\(\)\) = user_id and public\.is_current_user_active\(\)\)/i,
+    );
+  });
+});
+
+describe("F51 — Hardening de Segurança (Migrations 0037 e 0038)", () => {
+  it("import_bank_transactions valida posse de category_id e fixa search_path (0037)", () => {
+    const migration37 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000037_security_fixes_and_rpc_hardening.sql"),
+      "utf8",
+    );
+    expect(migration37).toMatch(/set search_path = public, pg_temp/i);
+    expect(migration37).toMatch(/is_current_user_active\(\)/);
+    expect(migration37).toMatch(/select 1 from public\.categories\s+where id = v_cat_id and user_id = v_user_id/i);
+  });
+
+  it("early_amortize_loan valida vínculo estrito de installment_group_id (0037)", () => {
+    const migration37 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000037_security_fixes_and_rpc_hardening.sql"),
+      "utf8",
+    );
+    expect(migration37).toMatch(/installment_group_id = v_loan\.installment_group_id/i);
+  });
+
+  it("class_targets, sector_targets e insight_feedback usam is_current_user_active() (0038)", () => {
+    const migration38 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000038_security_hardening_tables_and_rpcs.sql"),
+      "utf8",
+    );
+    expect(migration38).toMatch(/create policy "class_targets_all_own" on public\.class_targets[\s\S]+is_current_user_active\(\)/i);
+    expect(migration38).toMatch(/create policy "sector_targets_all_own" on public\.sector_targets[\s\S]+is_current_user_active\(\)/i);
+    expect(migration38).toMatch(/create policy "insight_feedback_all_own" on public\.insight_feedback[\s\S]+is_current_user_active\(\)/i);
+  });
+
+  it("RPCs legadas de cartões e categorias checam is_current_user_active() (0038)", () => {
+    const migration38 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000038_security_hardening_tables_and_rpcs.sql"),
+      "utf8",
+    );
+    expect(migration38).toMatch(/create or replace function public\.create_card_payment[\s\S]+is_current_user_active\(\)/i);
+    expect(migration38).toMatch(/create or replace function public\.update_credit_card[\s\S]+is_current_user_active\(\)/i);
+    expect(migration38).toMatch(/create or replace function public\.delete_credit_card[\s\S]+is_current_user_active\(\)/i);
+    expect(migration38).toMatch(/create or replace function public\.settle_integrated_receivable[\s\S]+is_current_user_active\(\)/i);
+    expect(migration38).toMatch(/create or replace function public\.set_budget_limit[\s\S]+is_current_user_active\(\)/i);
+  });
+});
+
+

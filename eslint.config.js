@@ -49,7 +49,7 @@ const noDecorativeUnicode = {
 };
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules", "coverage", "public/pwa/icons"] },
+  { ignores: ["dist", "node_modules", "coverage", "public/pwa/icons", "**/.venv/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

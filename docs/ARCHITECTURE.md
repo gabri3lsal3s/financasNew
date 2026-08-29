@@ -293,14 +293,15 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 | D9 — Temas light/dark/oled | `src/styles` (tokens) + ThemeProvider |
 | D10 — Wizard guiado | `features/transactions/wizard` |
 | ~~D11~~ — ~~Cloudflare R2~~ | ~~`services/storage` + endpoint de presigned URLs~~ — **REMOVIDO DO ESCOPO** (decisão do usuário, 2026-08-15) |
-| D12 — Parcelamento | Cliente calcula (`domain/money`) + servidor valida invariantes | Lógica única em TS; SQL só valida |
+| D13 — Hardening de Segurança & IDOR | 100% de validação de FKs em RPCs, RLS com `is_current_user_active()` e isolamento de Edge Functions (Migration 0036/0037) | Defesa em profundidade no Postgres e Deno |
+| D14 — Backend Feature Flag Triggers & Governança | Triggers no Postgres (`enforce_feature_flag_trigger`), RLS em RPCs residuais (`delete_card_payment`) e isolamento no schema `cron` (Migration 0039) | Kill-Switch com bloqueio atômico na API e agendador blindado |
 
 ---
 
 ## 11. DECISÕES EM ABERTO E RESOLVIDAS
 
 - ~~Cor primária e identidade da marca~~ — **RESOLVIDA** em `docs/DESIGN_SYSTEM.md` (tokens em `src/styles/tokens.css`).
-- ~~Hosting do frontend~~ — **RESOLVIDA**: **Vercel** (`vercel.json` configurado com SPA rewrites, headers de segurança e cache PWA).
+- ~~Hosting do frontend~~ — **RESOLVIDA**: **Cloudflare Pages** (`public/_redirects` com SPA fallback, `public/_headers` com headers de segurança e cache PWA, Git integration nativa sem GitHub Actions).
 - ~~Backend e banco de dados~~ — **RESOLVIDA**: **Supabase** (Postgres 17 + RLS + Auth + Migrations versionadas em `supabase/migrations/`).
 - ~~Notificações~~ — **RESOLVIDA**: in-app centralizado (`/lembretes`).
 - ~~Observabilidade/erros~~ — **RESOLVIDA**: **Sentry** (F6.3) — SDK `@sentry/react` com **dynamic import** env-gated por `VITE_SENTRY_DSN` (no-op sem DSN; Web Vitals LCP/INP/CLS via `browserTracingIntegration`; `reportError`/`setObservabilityUser` em `services/observability`).

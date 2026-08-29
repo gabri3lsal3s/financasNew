@@ -81,11 +81,15 @@ function cron() {
 -- Requer as extensões pg_cron e pg_net (Dashboard > Database > Extensions).
 -- ============================================================================
 
--- 1) Remove agendamento anterior, se existir (idempotente).
+-- 1) Hardening de permissões: revoga acesso ao schema cron para roles públicas/não-admin
+revoke all on schema cron from public, anon, authenticated;
+revoke all on all tables in schema cron from public, anon, authenticated;
+
+-- 2) Remove agendamento anterior, se existir (idempotente).
 select cron.unschedule('quotes-6h')
 where exists (select 1 from cron.job where jobname = 'quotes-6h');
 
--- 2) Agenda a atualização (${schedule}).
+-- 3) Agenda a atualização (${schedule}).
 select cron.schedule(
   'quotes-6h',
   '${schedule}',
