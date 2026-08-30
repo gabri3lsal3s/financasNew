@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Copy, Crown, KeyRound, Plus, Trash2 } from "lucide-react";
-import { Button, EmptyState, Skeleton } from "@/components/ui";
+import { Button, EmptyState, Skeleton, Badge } from "@/components/ui";
 import { getInviteBenefitDescription } from "@/domain/admin";
 import { useAdminInvites, useAdminRevokeInvite } from "@/state";
 import { CreateInviteDialog } from "../components";
 import { pushToast } from "@/services/toast";
+import { triggerSensory } from "@/services/sensory";
 
 export function InvitesTab() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -17,10 +18,11 @@ export function InvitesTab() {
     const link = `${window.location.origin}/criar-conta?convite=${code}`;
     try {
       await navigator.clipboard.writeText(link);
+      triggerSensory("action");
       pushToast({
         title: "Link de cadastro copiado",
         description: "O link com o código de convite embutido foi copiado.",
-        variant: "success",
+        variant: "default",
       });
     } catch {
       // no-op
@@ -28,17 +30,16 @@ export function InvitesTab() {
   };
 
   const handleRevoke = (inviteId: string) => {
+    triggerSensory("destructive");
     revokeMutation.mutate({ inviteId });
   };
 
   return (
     <div className="flex flex-col gap-5 w-full min-w-0">
       {/* Cabeçalho com Ação de Criar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface/90 shadow-xs transition-all hover:border-border">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all hover:border-border">
         <div className="flex items-center gap-3.5 min-w-0">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-portfolio/10 border border-portfolio/20 text-portfolio" aria-hidden="true">
-            <KeyRound className="size-5" aria-hidden="true" />
-          </span>
+          <KeyRound className="size-5 text-portfolio shrink-0" aria-hidden="true" />
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-bold text-foreground truncate">Gestão de Convites &amp; Allowlist</span>
             <span className="text-xs text-muted-foreground leading-relaxed">
@@ -50,7 +51,10 @@ export function InvitesTab() {
         <Button
           type="button"
           variant="default"
-          onClick={() => setCreateOpen(true)}
+          onClick={() => {
+            triggerSensory("selection");
+            setCreateOpen(true);
+          }}
           className="gap-2 w-full sm:w-auto justify-center shrink-0 h-9"
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -59,7 +63,7 @@ export function InvitesTab() {
       </div>
 
       {/* Lista / Tabela de Convites com Layout Adaptativo */}
-      <div className="rounded-2xl border border-border/80 bg-surface/90 shadow-xs overflow-hidden">
+      <div className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
         {invitesQuery.isLoading ? (
           <div className="p-6 flex flex-col gap-3">
             <Skeleton className="h-12 w-full rounded-xl" />
@@ -97,16 +101,17 @@ export function InvitesTab() {
                         </span>
                       </div>
 
-                      <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold shrink-0 ${
+                      <Badge
+                        variant={
                           invite.is_revoked
-                            ? "bg-critical/10 text-critical border border-critical/20"
+                            ? "critical"
                             : isExpired
-                              ? "bg-warning/10 text-warning border border-warning/20"
+                              ? "warning"
                               : isExhausted
-                                ? "bg-surface-hover text-muted-foreground border border-border"
-                                : "bg-positive/10 text-positive-strong border border-positive/20"
-                        }`}
+                                ? "muted"
+                                : "positive"
+                        }
+                        size="xs"
                       >
                         {invite.is_revoked
                           ? "Revogado"
@@ -115,7 +120,7 @@ export function InvitesTab() {
                             : isExhausted
                               ? "Esgotado"
                               : "Disponível"}
-                      </span>
+                      </Badge>
                     </div>
 
                     <div className="flex flex-col gap-1 text-xs text-muted-foreground pt-1 border-t border-border/60">
@@ -192,7 +197,7 @@ export function InvitesTab() {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full min-w-[620px] text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
+                  <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground font-medium">
                     <th className="py-3 px-4">Código</th>
                     <th className="py-3 px-4">Plano / Benefício</th>
                     <th className="py-3 px-4">Usos</th>
@@ -207,39 +212,29 @@ export function InvitesTab() {
                     const isExpired = invite.expires_at ? new Date(invite.expires_at) < new Date() : false;
                     const isExhausted = invite.used_count >= invite.max_uses;
                     const benefit = getInviteBenefitDescription(invite);
-                    const hasModuleGrants = invite.module_grants && Object.keys(invite.module_grants).length > 0;
 
                     return (
                       <tr key={invite.id} className="hover:bg-surface-hover/30 transition-colors">
-                        <td className="py-3 px-4 font-mono font-bold text-foreground whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            {invite.code}
-                            {invite.target_tier === "lifetime" && (
-                              <span title="Acesso Vitalício VIP">
-                                <Crown className="size-3 text-portfolio" aria-hidden="true" />
-                              </span>
-                            )}
-                          </div>
-                        </td>
                         <td className="py-3 px-4">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-foreground truncate max-w-[180px]">
-                              {benefit}
-                            </span>
-                            {hasModuleGrants && (
-                              <span className="text-[10px] text-primary">
-                                {Object.keys(invite.module_grants || {}).length} regras modulares
-                              </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-foreground">{invite.code}</span>
+                            {invite.target_tier === "lifetime" && (
+                              <Crown className="size-3.5 text-portfolio" aria-hidden="true" />
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-mono whitespace-nowrap">
-                          {invite.used_count} / {invite.max_uses}
-                        </td>
-                        <td className="py-3 px-4 text-muted-foreground">
-                          <span className="truncate max-w-[140px] block">
-                            {invite.target_email || "Qualquer e-mail"}
+                        <td className="py-3 px-4 max-w-[200px]">
+                          <span className="font-medium text-foreground truncate block" title={benefit}>
+                            {benefit}
                           </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="tabular-nums">
+                            <strong>{invite.used_count}</strong> / {invite.max_uses}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
+                          {invite.target_email || "Livre"}
                         </td>
                         <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
                           {invite.expires_at
@@ -247,16 +242,17 @@ export function InvitesTab() {
                             : "Permanente"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                          <Badge
+                            variant={
                               invite.is_revoked
-                                ? "bg-critical/10 text-critical border border-critical/20"
+                                ? "critical"
                                 : isExpired
-                                  ? "bg-warning/10 text-warning border border-warning/20"
+                                  ? "warning"
                                   : isExhausted
-                                    ? "bg-surface-hover text-muted-foreground border border-border"
-                                    : "bg-positive/10 text-positive-strong border border-positive/20"
-                            }`}
+                                    ? "muted"
+                                    : "positive"
+                            }
+                            size="xs"
                           >
                             {invite.is_revoked
                               ? "Revogado"
@@ -265,7 +261,7 @@ export function InvitesTab() {
                                 : isExhausted
                                   ? "Esgotado"
                                   : "Disponível"}
-                          </span>
+                          </Badge>
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
@@ -275,9 +271,9 @@ export function InvitesTab() {
                               size="sm"
                               onClick={() => handleCopyLink(invite.code)}
                               disabled={invite.is_revoked || isExpired || isExhausted}
-                              className="gap-1 text-xs h-8 px-2.5"
+                              className="gap-1 text-xs h-7 px-2"
                             >
-                              <Copy className="size-3.5" aria-hidden="true" />
+                              <Copy className="size-3" aria-hidden="true" />
                               Copiar Link
                             </Button>
                             {!invite.is_revoked ? (
@@ -287,10 +283,10 @@ export function InvitesTab() {
                                 size="sm"
                                 onClick={() => handleRevoke(invite.id)}
                                 disabled={revokeMutation.isPending}
-                                className="size-8 p-0 shrink-0"
+                                className="size-7 p-0"
                                 title="Revogar convite"
                               >
-                                <Trash2 className="size-3.5" aria-hidden="true" />
+                                <Trash2 className="size-3" aria-hidden="true" />
                               </Button>
                             ) : null}
                           </div>
@@ -305,7 +301,11 @@ export function InvitesTab() {
         )}
       </div>
 
-      <CreateInviteDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {/* Modal de Criação de Convite */}
+      <CreateInviteDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+      />
     </div>
   );
 }

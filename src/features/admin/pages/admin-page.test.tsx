@@ -103,6 +103,7 @@ describe("AdminPage Component", () => {
     expect(screen.getByRole("heading", { name: "Painel Administrativo" })).toBeInTheDocument();
     expect(screen.getByText("Total de Usuários")).toBeInTheDocument();
     expect(screen.getByText("120")).toBeInTheDocument();
+    expect(screen.getByText("Status Operacional da Plataforma")).toBeInTheDocument();
     expect(screen.getByText("Fila de Aprovação Imediata")).toBeInTheDocument();
     expect(screen.getAllByText("Carlos Silva")[0]).toBeInTheDocument();
   });
@@ -120,19 +121,6 @@ describe("AdminPage Component", () => {
     expect(screen.getAllByText("carlos@teste.com")[0]).toBeInTheDocument();
   });
 
-  it("permite alternar para a aba de Funcionalidades & Flags", async () => {
-    const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={["/admin"]}>
-        <AdminPage />
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole("tab", { name: /Funcionalidades & Flags/i }));
-    expect(screen.getByText("Módulo de Investimentos")).toBeInTheDocument();
-    expect(screen.getByText("Ativo Globalmente")).toBeInTheDocument();
-  });
-
   it("permite alternar para a aba de Convites & Allowlist", async () => {
     const user = userEvent.setup();
     render(
@@ -146,7 +134,7 @@ describe("AdminPage Component", () => {
     expect(screen.getByRole("button", { name: /Gerar Novo Convite/i })).toBeInTheDocument();
   });
 
-  it("permite alternar para a aba de Auditoria", async () => {
+  it("permite alternar para a aba de Sistema & Auditoria e exibe flags e logs", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={["/admin"]}>
@@ -154,7 +142,20 @@ describe("AdminPage Component", () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole("tab", { name: /Auditoria/i }));
+    await user.click(screen.getByRole("tab", { name: /Sistema & Auditoria/i }));
+    expect(screen.getByText("Funcionalidades & Kill-Switches Globais")).toBeInTheDocument();
+    expect(screen.getByText("Módulo de Investimentos")).toBeInTheDocument();
+    expect(screen.getByText("Trilha de Auditoria & Segurança")).toBeInTheDocument();
     expect(screen.getAllByText("UPDATE_STATUS")[0]).toBeInTheDocument();
+  });
+
+  it("resolve deep-links legados (?aba=funcionalidades ou ?tab=auditoria) para a aba Sistema", () => {
+    render(
+      <MemoryRouter initialEntries={["/admin?aba=funcionalidades"]}>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Funcionalidades & Kill-Switches Globais")).toBeInTheDocument();
   });
 });

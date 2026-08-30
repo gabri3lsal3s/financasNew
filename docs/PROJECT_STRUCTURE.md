@@ -128,7 +128,7 @@
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
     │   ├── settings/              #   Configurações consolidadas em 3 pilares: Personalização (visual/experiência/interface/lembretes), Plano e Segurança (conta/2FA/backup)
-    │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: Gestão de Usuários, Moderação, Feature Flags, Convites, Auditoria)
+    │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: 4 pilares consolidados — Visão Geral & KPIs SaaS, Gestão de Usuários, Convites & Allowlist, Sistema & Auditoria)
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout /subscription/checkout
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):
     │   │                          #     hub de 5 abas (Resumo / Proventos / Metas / Aporte / Relatórios & IR)

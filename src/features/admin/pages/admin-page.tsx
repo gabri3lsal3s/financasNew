@@ -1,27 +1,44 @@
 import { useSearchParams } from "react-router";
-import { History, KeyRound, Layers, ShieldCheck, Users } from "lucide-react";
+import { KeyRound, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
 import { Tabs, type TabItem } from "@/components/ui";
 import { OverviewTab } from "./overview-tab";
 import { UsersTab } from "./users-tab";
-import { FeaturesTab } from "./features-tab";
 import { InvitesTab } from "./invites-tab";
-import { AuditTab } from "./audit-tab";
+import { SystemTab } from "./system-tab";
 
-type AdminTab = "visao-geral" | "usuarios" | "funcionalidades" | "convites" | "auditoria";
+type AdminTab = "visao-geral" | "usuarios" | "convites" | "sistema";
+
+function resolveAdminTab(param: string | null): AdminTab {
+  if (!param) return "visao-geral";
+  const normalized = param.trim().toLowerCase();
+
+  if (["usuarios", "users", "acessos", "clientes", "membros"].includes(normalized)) {
+    return "usuarios";
+  }
+  if (["convites", "invites", "allowlist", "codigos", "codigo"].includes(normalized)) {
+    return "convites";
+  }
+  if (
+    [
+      "sistema",
+      "system",
+      "funcionalidades",
+      "flags",
+      "modulos",
+      "auditoria",
+      "logs",
+      "seguranca",
+    ].includes(normalized)
+  ) {
+    return "sistema";
+  }
+  return "visao-geral";
+}
 
 export function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const rawTab = searchParams.get("aba") || searchParams.get("tab") || "visao-geral";
-
-  const activeTab: AdminTab = [
-    "visao-geral",
-    "usuarios",
-    "funcionalidades",
-    "convites",
-    "auditoria",
-  ].includes(rawTab)
-    ? (rawTab as AdminTab)
-    : "visao-geral";
+  const rawParam = searchParams.get("aba") || searchParams.get("tab");
+  const activeTab = resolveAdminTab(rawParam);
 
   const handleTabChange = (val: string) => {
     const nextTab = val as AdminTab;
@@ -52,13 +69,6 @@ export function AdminPage() {
       content: <UsersTab />,
     },
     {
-      value: "funcionalidades",
-      label: "Funcionalidades & Flags",
-      shortLabel: "Módulos",
-      icon: <Layers className="size-4" aria-hidden="true" />,
-      content: <FeaturesTab />,
-    },
-    {
       value: "convites",
       label: "Convites & Allowlist",
       shortLabel: "Convites",
@@ -66,11 +76,11 @@ export function AdminPage() {
       content: <InvitesTab />,
     },
     {
-      value: "auditoria",
-      label: "Auditoria",
-      shortLabel: "Auditoria",
-      icon: <History className="size-4" aria-hidden="true" />,
-      content: <AuditTab />,
+      value: "sistema",
+      label: "Sistema & Auditoria",
+      shortLabel: "Sistema",
+      icon: <SlidersHorizontal className="size-4" aria-hidden="true" />,
+      content: <SystemTab />,
     },
   ];
 
@@ -83,7 +93,7 @@ export function AdminPage() {
             Painel Administrativo
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
-            Gestão de usuários, aprovação de contas, convites de acesso e feature flags da plataforma
+            Gestão de usuários, aprovação de contas, convites de acesso e governança da plataforma
           </p>
         </div>
       </header>
