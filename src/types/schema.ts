@@ -206,6 +206,7 @@ export type AdminMetrics = {
 
 
 export type UserCustomSettings = {
+  experiencePreset?: "dynamic" | "minimal" | "discreet" | "custom";
   density?: "comfortable" | "compact";
   surfaceStyle?: "glass" | "flat" | "elevated";
   motionLevel?: "fluid" | "eco" | "reduced";

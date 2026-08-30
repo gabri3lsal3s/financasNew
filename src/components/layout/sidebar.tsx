@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import { NavLink, useLocation } from "react-router";
+import { NavLink } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
-import { scrollToTop } from "@/services/scroll";
 import { useReminders, useUserAccess } from "@/state";
 
 
@@ -29,7 +28,6 @@ export interface SidebarProps {
  * persistência (`useSidebarState`).
  */
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
-  const location = useLocation();
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -119,8 +117,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
               const isReminders = item.path === "/lembretes";
               const showBadge = isReminders && totalCount > 0;
-              const isCurrent =
-                item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
 
               return (
                 <NavLink
@@ -129,14 +125,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                   end={item.path === "/"}
                   aria-label={expanded ? undefined : item.label}
                   title={expanded ? undefined : item.label}
-                  onClick={(e) => {
-                    if (isCurrent) {
-                      const scrolled = scrollToTop();
-                      if (scrolled) {
-                        e.preventDefault();
-                      }
-                    }
-                  }}
                   className={({ isActive }) =>
                     cn(
                       "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap relative",

@@ -97,7 +97,7 @@ export function PageShell() {
             {showPrivacy && <PrivacyToggle />}
           </div>
         </header>
-        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain min-h-0 w-full">
+        <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
           <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-24 md:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
             {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
             <div key={location.pathname} className="animate-route-in min-w-0 w-full">

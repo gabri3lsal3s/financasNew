@@ -6,19 +6,18 @@ import {
   getActiveUserId,
 } from "@/services/user-storage";
 import type { UserCustomSettings } from "@/types";
+import {
+  type ExperiencePreset,
+  type SensoryIntent,
+  applyExperiencePreset,
+  detectActivePreset,
+} from "@/domain/preferences";
 
 export type AccentTheme = "teal" | "emerald" | "gold" | "sapphire" | "violet" | "rose" | "mono";
 export type SurfaceStyle = "glass" | "flat" | "elevated";
 export type MotionLevel = "fluid" | "eco" | "reduced";
-
-export type SensoryIntent =
-  | "selection"
-  | "action"
-  | "toggle"
-  | "success"
-  | "warning"
-  | "destructive"
-  | "error";
+export type DensityLevel = "comfortable" | "compact";
+export type { ExperiencePreset, SensoryIntent };
 
 export interface DashboardWidgetsConfig {
   kpis: boolean;
@@ -37,9 +36,11 @@ export interface HeaderButtonsConfig {
 }
 
 export interface VisualCustomization {
+  experiencePreset: ExperiencePreset;
   accent: AccentTheme;
   surfaceStyle: SurfaceStyle;
   motionLevel: MotionLevel;
+  density: DensityLevel;
   soundEnabled: boolean;
   hapticEnabled: boolean;
   disabledSensoryIntents: SensoryIntent[];
@@ -49,9 +50,11 @@ export interface VisualCustomization {
 }
 
 const STORAGE_KEYS = {
+  experiencePreset: "experience_preset",
   accent: "accent_theme",
   surfaceStyle: "surface_style",
   motionLevel: "motion_level",
+  density: "density_level",
   soundEnabled: "sound_enabled",
   hapticEnabled: "haptic_enabled",
   disabledSensoryIntents: "disabled_sensory_intents",
@@ -77,10 +80,12 @@ export const DEFAULT_WIDGETS: DashboardWidgetsConfig = {
 };
 
 export const DEFAULT_CONFIG: VisualCustomization = {
+  experiencePreset: "dynamic",
   accent: "teal",
   surfaceStyle: "glass",
   motionLevel: "fluid",
-  soundEnabled: false,
+  density: "comfortable",
+  soundEnabled: true,
   hapticEnabled: true,
   disabledSensoryIntents: [],
   numberTickerEnabled: true,
@@ -115,6 +120,12 @@ function applyDomAttributes(config: VisualCustomization): void {
   } else {
     root.removeAttribute("data-motion");
   }
+
+  if (config.density === "compact") {
+    root.setAttribute("data-density", "compact");
+  } else {
+    root.removeAttribute("data-density");
+  }
 }
 
 function readStoredConfig(userId?: string | null): VisualCustomization {
@@ -135,7 +146,13 @@ function readStoredConfig(userId?: string | null): VisualCustomization {
     const motionLevel: MotionLevel =
       rawMotion && ["fluid", "eco", "reduced"].includes(rawMotion) ? rawMotion : "fluid";
 
-    const soundEnabled = getUserStorageItem(STORAGE_KEYS.soundEnabled, userId) === "true";
+    const rawDensity = getUserStorageItem(STORAGE_KEYS.density, userId) as DensityLevel | null;
+    const density: DensityLevel =
+      rawDensity && ["comfortable", "compact"].includes(rawDensity) ? rawDensity : "comfortable";
+
+    const soundRaw = getUserStorageItem(STORAGE_KEYS.soundEnabled, userId);
+    const soundEnabled = soundRaw !== null ? soundRaw === "true" : true;
+
     const hapticRaw = getUserStorageItem(STORAGE_KEYS.hapticEnabled, userId);
     const hapticEnabled = hapticRaw !== null ? hapticRaw !== "false" : true;
 
@@ -186,10 +203,25 @@ function readStoredConfig(userId?: string | null): VisualCustomization {
       }
     }
 
+    const rawPreset = getUserStorageItem(STORAGE_KEYS.experiencePreset, userId) as ExperiencePreset | null;
+    const experiencePreset: ExperiencePreset =
+      rawPreset && ["dynamic", "minimal", "discreet", "custom"].includes(rawPreset)
+        ? rawPreset
+        : detectActivePreset({
+            motionLevel,
+            density,
+            soundEnabled,
+            hapticEnabled,
+            numberTickerEnabled,
+            disabledSensoryIntents,
+          });
+
     return {
+      experiencePreset,
       accent,
       surfaceStyle,
       motionLevel,
+      density,
       soundEnabled,
       hapticEnabled,
       disabledSensoryIntents,
@@ -239,41 +271,71 @@ export function updateVisualCustomization(
 ): void {
   if (typeof window === "undefined") return;
 
-  const next: VisualCustomization = {
-    ...currentConfig,
-    ...partial,
-    dashboardWidgets: partial.dashboardWidgets
-      ? { ...currentConfig.dashboardWidgets, ...partial.dashboardWidgets }
-      : currentConfig.dashboardWidgets,
-    headerButtons: partial.headerButtons
-      ? { ...currentConfig.headerButtons, ...partial.headerButtons }
-      : currentConfig.headerButtons,
-  };
+  let next: VisualCustomization;
+
+  if (partial.experiencePreset && partial.experiencePreset !== "custom") {
+    const applied = applyExperiencePreset(partial.experiencePreset, {
+      ...currentConfig,
+      ...partial,
+    });
+    next = {
+      ...applied,
+      experiencePreset: partial.experiencePreset,
+      dashboardWidgets: partial.dashboardWidgets
+        ? { ...currentConfig.dashboardWidgets, ...partial.dashboardWidgets }
+        : currentConfig.dashboardWidgets,
+      headerButtons: partial.headerButtons
+        ? { ...currentConfig.headerButtons, ...partial.headerButtons }
+        : currentConfig.headerButtons,
+    };
+  } else {
+    next = {
+      ...currentConfig,
+      ...partial,
+      dashboardWidgets: partial.dashboardWidgets
+        ? { ...currentConfig.dashboardWidgets, ...partial.dashboardWidgets }
+        : currentConfig.dashboardWidgets,
+      headerButtons: partial.headerButtons
+        ? { ...currentConfig.headerButtons, ...partial.headerButtons }
+        : currentConfig.headerButtons,
+    };
+    next.experiencePreset = partial.experiencePreset ?? detectActivePreset(next);
+  }
 
   try {
-    if (partial.accent !== undefined) {
+    setUserStorageItem(STORAGE_KEYS.experiencePreset, next.experiencePreset, userId);
+    if (partial.accent !== undefined || next.accent !== currentConfig.accent) {
       setUserStorageItem(STORAGE_KEYS.accent, next.accent, userId);
     }
-    if (partial.surfaceStyle !== undefined) {
+    if (partial.surfaceStyle !== undefined || next.surfaceStyle !== currentConfig.surfaceStyle) {
       setUserStorageItem(STORAGE_KEYS.surfaceStyle, next.surfaceStyle, userId);
     }
-    if (partial.motionLevel !== undefined) {
+    if (next.motionLevel !== currentConfig.motionLevel || partial.motionLevel !== undefined) {
       setUserStorageItem(STORAGE_KEYS.motionLevel, next.motionLevel, userId);
     }
-    if (partial.soundEnabled !== undefined) {
+    if (next.density !== currentConfig.density || partial.density !== undefined) {
+      setUserStorageItem(STORAGE_KEYS.density, next.density, userId);
+    }
+    if (next.soundEnabled !== currentConfig.soundEnabled || partial.soundEnabled !== undefined) {
       setUserStorageItem(STORAGE_KEYS.soundEnabled, String(next.soundEnabled), userId);
     }
-    if (partial.hapticEnabled !== undefined) {
+    if (next.hapticEnabled !== currentConfig.hapticEnabled || partial.hapticEnabled !== undefined) {
       setUserStorageItem(STORAGE_KEYS.hapticEnabled, String(next.hapticEnabled), userId);
     }
-    if (partial.disabledSensoryIntents !== undefined) {
+    if (
+      next.disabledSensoryIntents !== currentConfig.disabledSensoryIntents ||
+      partial.disabledSensoryIntents !== undefined
+    ) {
       setUserStorageItem(
         STORAGE_KEYS.disabledSensoryIntents,
         JSON.stringify(next.disabledSensoryIntents),
         userId,
       );
     }
-    if (partial.numberTickerEnabled !== undefined) {
+    if (
+      next.numberTickerEnabled !== currentConfig.numberTickerEnabled ||
+      partial.numberTickerEnabled !== undefined
+    ) {
       setUserStorageItem(
         STORAGE_KEYS.numberTickerEnabled,
         String(next.numberTickerEnabled),
@@ -313,8 +375,10 @@ export function syncVisualWithCloud(
   if (!customSettings || typeof window === "undefined") return;
 
   const partial: Partial<VisualCustomization> = {};
+  if (customSettings.experiencePreset) partial.experiencePreset = customSettings.experiencePreset;
   if (customSettings.surfaceStyle) partial.surfaceStyle = customSettings.surfaceStyle;
   if (customSettings.motionLevel) partial.motionLevel = customSettings.motionLevel;
+  if (customSettings.density) partial.density = customSettings.density;
   if (customSettings.soundEnabled !== undefined) partial.soundEnabled = customSettings.soundEnabled;
   if (customSettings.hapticEnabled !== undefined) partial.hapticEnabled = customSettings.hapticEnabled;
   if (customSettings.numberTickerEnabled !== undefined) {
@@ -346,7 +410,7 @@ export function resetVisualCustomization(userId?: string | null): void {
   listeners.forEach((listener) => listener());
 }
 
-/** Hook reativo para leitura e alteração das preferências visuais do usuário */
+/** Hook reativo para leitura e alteração das preferências visuais e sensoriais do usuário */
 export function useVisualCustomization() {
   const config = useSyncExternalStore(
     subscribeVisualCustomization,
@@ -356,9 +420,12 @@ export function useVisualCustomization() {
 
   return {
     ...config,
+    setExperiencePreset: (preset: ExperiencePreset) =>
+      updateVisualCustomization({ experiencePreset: preset }),
     setAccent: (accent: AccentTheme) => updateVisualCustomization({ accent }),
     setSurfaceStyle: (surfaceStyle: SurfaceStyle) => updateVisualCustomization({ surfaceStyle }),
     setMotionLevel: (motionLevel: MotionLevel) => updateVisualCustomization({ motionLevel }),
+    setDensity: (density: DensityLevel) => updateVisualCustomization({ density }),
     setSoundEnabled: (soundEnabled: boolean) => updateVisualCustomization({ soundEnabled }),
     setHapticEnabled: (hapticEnabled: boolean) => updateVisualCustomization({ hapticEnabled }),
     toggleSensoryIntent: (intent: SensoryIntent, enabled: boolean) => {

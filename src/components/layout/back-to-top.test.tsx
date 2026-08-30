@@ -24,7 +24,7 @@ describe("BackToTop (Layout)", () => {
 
     expect(container?.className).toContain("opacity-100");
     expect(container?.className).toContain("pointer-events-auto");
-    expect(container?.className).toContain("z-floating-tools");
+    expect(container?.className).toContain("z-page-floating");
     expect(container?.className).toContain("bottom-20");
   });
 

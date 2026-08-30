@@ -38,6 +38,30 @@ export function consumePWAUpdate(): void {
   updateListeners.forEach((listener) => listener());
 }
 
+/**
+ * Força a busca por atualizações do Service Worker e recarrega a aplicação
+ * com os assets mais recentes do PWA.
+ */
+export async function forceAppUpdate(): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  if ("serviceWorker" in navigator) {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        await reg.update();
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+      }
+    } catch {
+      // Ignora falha de verificação no Service Worker
+    }
+  }
+
+  window.location.reload();
+}
+
 // ---------- Instalação (beforeinstallprompt) ----------
 
 /** Evento `beforeinstallprompt` (Chromium) — fora do lib.dom padrão. */

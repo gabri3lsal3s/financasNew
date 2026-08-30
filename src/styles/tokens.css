@@ -88,6 +88,7 @@ html[data-theme="light"] {
   /* Escala centralizada de Z-Index */
   --z-base: 10;
   --z-sticky: 20;
+  --z-page-floating: 25;
   --z-bottom-nav: 30;
   --z-sidebar: 40;
   --z-modal: 50;

@@ -6,7 +6,6 @@ import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import type { NavItem } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
-import { scrollToTop } from "@/services/scroll";
 import { useReminders, useUserAccess } from "@/state";
 import { MoreMenuSheet } from "./more-menu-sheet";
 
@@ -60,24 +59,11 @@ function getFabAction(
 }
 
 function SlotLink({ item, end = false }: { item: NavItem; end?: boolean }) {
-  const location = useLocation();
-  const isCurrent = end ? location.pathname === item.path : location.pathname.startsWith(item.path);
-
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (isCurrent) {
-      const scrolled = scrollToTop({ sensoryFeedback: true });
-      if (scrolled) {
-        e.preventDefault();
-      }
-    }
-  };
-
   return (
     <NavLink
       to={item.path}
       end={end}
       aria-label={item.label}
-      onClick={handleClick}
       className={({ isActive }) =>
         cn(
           // Área de toque mínima 44×44px e destaque semântico (DESIGN_SYSTEM §13).

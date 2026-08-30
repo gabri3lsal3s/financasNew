@@ -83,20 +83,6 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     expect(screen.getByRole("link", { name: "Novo investimento" })).toHaveAttribute("href", "/investments?novo=investimento");
   });
 
-  it("rola a página suavemente para o topo ao clicar na aba ativa", () => {
-    const originalScrollTo = window.scrollTo;
-    window.scrollTo = vi.fn();
-    Object.defineProperty(window, "scrollY", { value: 120, configurable: true });
-
-    renderNav("/transacoes");
-    const activeTab = screen.getByRole("link", { name: "Transações" });
-    fireEvent.click(activeTab);
-
-    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
-    window.scrollTo = originalScrollTo;
-    Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
-  });
-
   it("renderiza shortLabel conciso no texto visível dos links mobile", () => {
     renderNav("/");
     // "Transações" tem aria-label="Transações" mas texto visível "Extrato"

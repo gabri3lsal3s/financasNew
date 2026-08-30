@@ -127,7 +127,7 @@
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
-    │   ├── settings/              #   Configurações (preferências, densidade F8, perfil, assinatura)
+    │   ├── settings/              #   Configurações consolidadas em 3 pilares: Personalização (visual/experiência/interface/lembretes), Plano e Segurança (conta/2FA/backup)
     │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: Gestão de Usuários, Moderação, Feature Flags, Convites, Auditoria)
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout /subscription/checkout
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):
@@ -171,6 +171,7 @@
     │   ├── reminders/             #   agregação de lembretes (conta/dívida) e preferências
     │   ├── accessibility/         #   F15: contraste AA — hexToRgb/relativeLuminance/
     │   │                          #     contrastRatio/isAANormalText/isAALargeText
+    │   ├── preferences/           #   F11: Modos de Experiência (presets, detecção, metadados)
     │   ├── projection/            #   gasto disponível, ritmo, fim de mês, pendências
     │   ├── search/                #   busca global: normalização, scoring, bônus de recência
     │   ├── virtualization/        #   janela de renderização de listas (F5.5)

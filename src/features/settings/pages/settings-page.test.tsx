@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsPage } from "./settings-page";
 import { ThemeProvider } from "@/app/theme-provider";
 
@@ -55,6 +55,18 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useExportData: () => ({
+    refetch: () => Promise.resolve({ data: { data: { expenses: [], incomes: [], card_payments: [] } } }),
+  }),
+  useRestoreBackup: () => ({
+    mutateAsync: vi.fn(),
+  }),
+  useCategories: () => ({
+    data: [],
+  }),
+  useCreditCards: () => ({
+    data: [],
+  }),
   useUpdateReminderPreferences: () => ({
     mutate: mockUpdateReminderPreferences,
     isPending: false,
@@ -62,6 +74,15 @@ vi.mock("@/state", () => ({
   useUpdateCustomSettings: () => ({
     mutate: mockUpdateCustomSettings,
     isPending: false,
+  }),
+  useUserSubscription: () => ({
+    isTrial: true,
+    isPro: false,
+    isFullAccess: true,
+    trialDaysRemaining: 25,
+    trialEndsAt: "2026-09-24T00:00:00Z",
+    currentPeriodEnd: null,
+    plan: "trial",
   }),
   useUserAccess: () => ({
     profile: null,
@@ -81,7 +102,6 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-
 function renderSettings(initialEntries: string[] = ["/configuracoes"]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -99,6 +119,7 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
   beforeEach(() => {
     window.localStorage.clear();
     mockUpdateReminderPreferences.mockClear();
+    mockUpdateCustomSettings.mockClear();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -114,49 +135,49 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     });
   });
 
-  it("renderiza o cabeçalho e as sub-abas modulares", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renderiza o cabeçalho e os 3 pilares consolidados de navegação", () => {
     renderSettings();
 
     expect(screen.getByRole("heading", { level: 1, name: "Configurações" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Sensorial" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Widgets" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Lembretes" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Dados" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Personalização" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Plano" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Segurança" })).toBeInTheDocument();
   });
 
-  it("permite acessar a aba de Segurança e visualizar status de proteção", async () => {
+  it("permite alternar entre os Modos de Experiência na aba Personalização", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const securityTab = screen.getByRole("tab", { name: "Segurança" });
-    await user.click(securityTab);
+    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
+    expect(screen.getByText("Dinâmico")).toBeInTheDocument();
+    expect(screen.getByText("Foco")).toBeInTheDocument();
+    expect(screen.getByText("Discreto")).toBeInTheDocument();
 
-    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
-    expect(screen.getByText("Aplicativo Autenticador (TOTP)")).toBeInTheDocument();
-    expect(screen.getByText("Sessão & Nível de Acesso")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Gerenciar 2FA/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
+    const focoCardButton = screen.getByText("Foco").closest("button");
+    expect(focoCardButton).not.toBeNull();
+    await user.click(focoCardButton!);
+
+    expect(mockUpdateCustomSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        experiencePreset: "minimal",
+        motionLevel: "eco",
+        density: "compact",
+        soundEnabled: false,
+        hapticEnabled: true,
+        numberTickerEnabled: false,
+      }),
+    );
   });
 
-  it("permite alternar entre opções de tema visual e emite toast de confirmação", async () => {
+  it("permite configurar Lembretes integrados na aba Personalização", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const darkOption = screen.getByRole("button", { name: /^Escuro/i });
-    await user.click(darkOption);
-    expect(document.documentElement.dataset.theme).toBe("dark");
-  });
-
-  it("permite acessar a aba de Lembretes e interagir com as configurações", async () => {
-    const user = userEvent.setup();
-    renderSettings();
-
-    const remindersTab = screen.getByRole("tab", { name: "Lembretes" });
-    await user.click(remindersTab);
-
-    expect(screen.getByText("Lembretes & Notificações Automáticas")).toBeInTheDocument();
+    expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Faturas de Cartão")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Dívidas")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /Seletor de dias de antecedência para faturas/i })).toBeInTheDocument();
@@ -168,17 +189,15 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({ remindersEnabled: false });
   });
 
-  it("permite personalizar widgets do dashboard e respeita o limite mínimo de 3 widgets ativos", async () => {
+  it("permite configurar Atalhos do Header e Widgets da Visão Geral em Personalização", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const widgetsTab = screen.getByRole("tab", { name: "Widgets" });
-    await user.click(widgetsTab);
-
+    expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
+    expect(screen.getByText("Atalhos Rápidos do Cabeçalho")).toBeInTheDocument();
     expect(screen.getByText("Widgets Visíveis na Visão Geral")).toBeInTheDocument();
-    expect(screen.getByText("Banners Contextuais de Atenção & Ritmo")).toBeInTheDocument();
 
-    const bannerCheckbox = screen.getByRole("checkbox", { name: /Banners Contextuais de Atenção & Ritmo/i });
+    const bannerCheckbox = screen.getByRole("checkbox", { name: /Banners Contextuais de Atenção/i });
     expect(bannerCheckbox).toBeChecked();
 
     await user.click(bannerCheckbox);
@@ -187,14 +206,53 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     });
   });
 
+  it("permite acessar a aba unificada de Segurança e visualizar proteção e exportação", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const securityTab = screen.getByRole("tab", { name: "Segurança" });
+    await user.click(securityTab);
+
+    // Conteúdo de Segurança
+    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
+    expect(screen.getByText("Aplicativo Autenticador (TOTP)")).toBeInTheDocument();
+    expect(screen.getByText("Conta & Sessão")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gerenciar 2FA/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
+
+    // Conteúdo de Dados
+    expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
+  });
+
+  it("permite acessar a aba Plano e visualizar status de assinatura e comparativo", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const planTab = screen.getByRole("tab", { name: "Plano" });
+    await user.click(planTab);
+
+    expect(screen.getByText("Plano Atual")).toBeInTheDocument();
+    expect(screen.getByText("Comparativo de Planos")).toBeInTheDocument();
+    expect(screen.getByText("Teste Pro Ativo")).toBeInTheDocument();
+  });
+
+  it("permite alternar entre opções de tema visual e emite toast de confirmação", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const darkOption = screen.getByRole("button", { name: /^Escuro/i });
+    await user.click(darkOption);
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
   it("ativa a aba de Segurança quando acessado via ?tab=perfil", () => {
     renderSettings(["/configuracoes?tab=perfil"]);
     expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
   });
 
-  it("ativa a aba de Segurança quando acessado via ?subtab=perfil", () => {
-    renderSettings(["/configuracoes?subtab=perfil"]);
-    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
+  it("ativa a aba de Segurança quando acessado via ?subtab=dados", () => {
+    renderSettings(["/configuracoes?subtab=dados"]);
+    expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
   });
 
   it("ativa a aba de Segurança quando acessado via ?tab=seguranca", () => {
@@ -202,10 +260,18 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
   });
 
-  it("ativa a aba de Aparência quando acessado via ?tab=aparencia", () => {
+  it("ativa a aba de Personalização quando acessado via ?tab=aparencia", () => {
     renderSettings(["/configuracoes?tab=aparencia"]);
-    expect(screen.getByText("Teal Vital (Oficial)")).toBeInTheDocument();
+    expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
+  });
+
+  it("ativa a aba de Personalização quando acessado via ?tab=widgets", () => {
+    renderSettings(["/configuracoes?tab=widgets"]);
+    expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
+  });
+
+  it("ativa a aba de Personalização quando acessado via ?tab=lembretes", () => {
+    renderSettings(["/configuracoes?tab=lembretes"]);
+    expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
   });
 });
-
-

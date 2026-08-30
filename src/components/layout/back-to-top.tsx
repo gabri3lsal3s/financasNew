@@ -15,7 +15,7 @@ export interface BackToTopProps {
 
 /**
  * Botão flutuante para retornar suavemente ao topo do contêiner principal ou da página.
- * Utiliza a camada semântica z-floating-tools (abaixo dos modais e acima da BottomNav)
+ * Utiliza a camada semântica z-page-floating (abaixo dos modais e abaixo da BottomNav)
  * e o serviço canônico scrollToTop com suporte a acessibilidade e feedback sensorial.
  */
 export function BackToTop({
@@ -31,7 +31,7 @@ export function BackToTop({
   return (
     <div
       className={cn(
-        "fixed z-floating-tools transition-all duration-300",
+        "fixed z-page-floating transition-all duration-300",
         bottomNavOffset
           ? "bottom-20 md:bottom-8 right-4 md:right-8"
           : "bottom-6 md:bottom-8 right-4 md:right-8",

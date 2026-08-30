@@ -76,6 +76,7 @@
   /* Escala centralizada de Z-Index */
   --z-base: var(--z-base);
   --z-sticky: var(--z-sticky);
+  --z-page-floating: var(--z-page-floating);
   --z-bottom-nav: var(--z-bottom-nav);
   --z-sidebar: var(--z-sidebar);
   --z-modal: var(--z-modal);
@@ -231,6 +232,8 @@
     scroll-behavior: smooth;
     overflow-x: hidden;
     max-width: 100vw;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -242,6 +245,8 @@
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
     max-width: 100vw;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
   }
 
   /* Seleção com a cor da marca */
@@ -395,6 +400,9 @@
   }
   .z-sticky {
     z-index: var(--z-sticky);
+  }
+  .z-page-floating {
+    z-index: var(--z-page-floating);
   }
   .z-bottom-nav {
     z-index: var(--z-bottom-nav);

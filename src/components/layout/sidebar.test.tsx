@@ -125,20 +125,6 @@ describe("Sidebar colapsável (F7.2)", () => {
     vi.useRealTimers();
   });
 
-  it("ao clicar no link da rota já ativa, dispara scrollToTop", () => {
-    const main = document.createElement("main");
-    main.id = "main-content";
-    main.scrollTop = 250;
-    main.scrollTo = vi.fn();
-    document.body.appendChild(main);
-
-    renderSidebar(false);
-    const link = screen.getByRole("link", { name: "Início" });
-    fireEvent.click(link);
-
-    expect(main.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
-  });
-
   it("ao clicar na logo/nome do app na sidebar desktop abre o modal de perfil com atalhos e logout", async () => {
     const user = userEvent.setup();
     renderSidebar(false);
