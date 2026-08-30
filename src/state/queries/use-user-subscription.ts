@@ -1,38 +1,44 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getMySubscription } from "@/data/repositories/subscriptions";
 import { useUserAccess } from "./use-user-access";
 import type { SubscriptionStatus, SubscriptionTier, SubscriptionPlan } from "@/types";
+
+export const USER_SUBSCRIPTION_KEY = ["user_subscription"] as const;
 
 /**
  * Hook de estado central da assinatura do usuário.
  *
- * Deriva `SubscriptionStatus` a partir do perfil e feature flags do `useUserAccess`.
- * Enquanto o backend de pagamento não está integrado, usa uma simulação determinística
- * baseada em `profile.created_at` para o cálculo dos dias de trial.
- *
- * A UI consume este hook como única fonte de verdade sobre acesso — nunca
+ * Consulta o backend (`get_my_subscription`) via TanStack Query e sincroniza em tempo real.
+ * A UI consome este hook como única fonte de verdade sobre acesso — nunca
  * verificar `tier` ou `status` diretamente nas telas.
  */
 export function useUserSubscription(): SubscriptionStatus {
-  const { profile, isLoading } = useUserAccess();
+  const { profile } = useUserAccess();
+
+  const { data: subData } = useQuery({
+    queryKey: USER_SUBSCRIPTION_KEY,
+    queryFn: getMySubscription,
+    enabled: Boolean(profile?.id),
+    staleTime: 1000 * 60 * 5, // 5 minutos (Realtime cuida de invalidações ativas)
+  });
 
   return useMemo((): SubscriptionStatus => {
-    // Estado inicial (loading) — permissivo para evitar flash de paywall
-    if (isLoading || !profile) {
-      return buildStatus("trial", profile?.created_at ?? null);
+    // Se o dado real do backend já carregou, utiliza-o diretamente
+    if (subData) {
+      return subData;
     }
 
-    // TODO: quando o backend de pagamento estiver integrado,
-    // buscar o tier real de `profiles.subscription_tier` ou tabela dedicada.
-    // Por ora, simula o trial de 30 dias a partir do created_at.
-    return buildStatus("trial", profile.created_at);
-  }, [profile, isLoading]);
+    // Estado inicial (loading) — permissivo com base em created_at para evitar flash de paywall
+    return buildFallbackStatus("trial", profile?.created_at ?? null);
+  }, [subData, profile?.created_at]);
 }
 
 // ---------------------------------------------------------------------------
-// Helpers internos
+// Helpers internos de fallback
 // ---------------------------------------------------------------------------
 
-function buildStatus(tier: SubscriptionTier, createdAt: string | null): SubscriptionStatus {
+function buildFallbackStatus(tier: SubscriptionTier, createdAt: string | null): SubscriptionStatus {
   const trialEndsAt = computeTrialEnd(createdAt);
   const trialDaysRemaining = computeTrialDaysRemaining(trialEndsAt);
 

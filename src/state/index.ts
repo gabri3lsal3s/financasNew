@@ -161,4 +161,5 @@ export { useExportData, EXPORT_DATA_QUERY_KEY } from "./queries/use-export-data"
 export { useRestoreBackup } from "./mutations/use-restore-backup";
 
 export { useUserSubscription } from "./queries/use-user-subscription";
+export { usePermission, type PermissionResult } from "./queries/use-permission";
 export type { SubscriptionStatus } from "@/types";

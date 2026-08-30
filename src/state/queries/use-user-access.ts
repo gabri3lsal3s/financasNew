@@ -67,6 +67,31 @@ function subscribeUserAccessRealtime(userId: string, queryClient: QueryClient): 
         void queryClient.invalidateQueries({ queryKey: USER_FEATURES_KEY });
       },
     )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "user_subscriptions",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        void queryClient.invalidateQueries({ queryKey: ["user_subscription"] });
+      },
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "user_module_permissions",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        void queryClient.invalidateQueries({ queryKey: ["user_subscription"] });
+        void queryClient.invalidateQueries({ queryKey: USER_FEATURES_KEY });
+      },
+    )
     .subscribe();
 
   return () => {

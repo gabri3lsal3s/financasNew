@@ -1,5 +1,12 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.16** registra a **Conclusão da Fase 76.4 (Camada de Estado TanStack Query, Hooks de Domínio & Supabase Realtime)** (2026-08-29):
+> - **(1) Hook Reativo `useUserSubscription`**: Migração completa para `@tanstack/react-query` consumindo `getMySubscription()` com fallback gracioso sem flash de paywall;
+> - **(2) Supabase Realtime Reativo**: Inscrição nos canais Postgres Changes para `user_subscriptions` e `user_module_permissions` com invalidação atômica e automática;
+> - **(3) Hook Granular de Domínio `usePermission(moduleKey)`**: Avaliação unificada de Kill-Switch global, Role (SuperAdmin/Admin), Overrides de permissões modulares e status global da assinatura;
+> - **(4) Harmonização de Badges (`SubscriptionBadge` & `LogoProfileButton`)**: Suporte dedicado ao Plano Vitalício VIP (Crown icon), Pro, Trial regressivo e Modo Leitura com ocultação de banners de upgrade para VIPs;
+> - **(5) Suíte 100% Verde**: 266 arquivos de teste / 1.899 testes passando (100% verde), zero erros de typecheck e lint.
+
 > **v2.15** registra a **Conclusão da Fase 76.3 (Contratos TypeScript, Repositório de Assinaturas, Schemas Zod & Unificação de Checkout)** (2026-08-29):
 > - **(1) Repositório de Assinaturas (`src/data/repositories/subscriptions.ts`)**: Funções `getPlans()`, `getMySubscription()`, `getUserSubscription()`, `getUserModulePermissions()`, `adminSetUserSubscription()`, `adminSetUserModulePermission()`, `adminRemoveUserModulePermission()`, `adminCreateModularInvite()`;
 > - **(2) RPCs Tipadas (`src/data/rpc.ts` & `src/types/database.ts`)**: Wrappers de `get_my_subscription`, `admin_set_user_subscription`, `admin_set_user_module_permission`, `admin_remove_user_module_permission`, `admin_create_modular_invite`;
@@ -4024,6 +4031,35 @@ flowchart TD
 - [x] `validateInvite` retornando benefício e tier do convite.
 - [x] Duplicidade de checkout eliminada (DRY).
 - [x] Suíte de testes (265 arquivos / 1.895 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
+---
+
+#### 4. Fase 76.4: Camada de Estado TanStack Query, Hooks de Domínio & Supabase Realtime
+
+> **Status:** ✅ Concluída (2026-08-29) — **Gestão de Estado Reativa & Permissões Granulares**: Refatoração de `useUserSubscription` para gerenciamento via TanStack Query com invalidação em tempo real (Supabase Postgres Changes), criação do hook `usePermission(moduleKey)` para leitura/escrita condicional e harmonização de badges de plano no Header e Perfil.
+
+- **Entregas Realizadas:**
+  - **Hook `useUserSubscription` Reativo (`src/state/queries/use-user-subscription.ts`):**
+    - Consulta `getMySubscription()` via `useQuery` com `staleTime: 5 min`;
+    - Fallback resiliente baseado em `created_at` durante loading para evitar flash de paywall.
+  - **Supabase Realtime Reativo (`src/state/queries/use-user-access.ts`):**
+    - Inscrição em canais Postgres Changes nas tabelas `user_subscriptions` e `user_module_permissions`;
+    - Invalidação atômica das queries `["user_subscription"]` e `["user_features"]` em tempo real.
+  - **Hook Granular `usePermission` (`src/state/queries/use-permission.ts`):**
+    - Retorna `{ canRead, canWrite, isHidden, accessLevel, isReadOnlyMode }`;
+    - Hierarquia canônica: Kill-Switch $\rightarrow$ SuperAdmin/Admin $\rightarrow$ Overrides modulares $\rightarrow$ Tier de assinatura.
+  - **Harmonização de Badges (`SubscriptionBadge` & `LogoProfileButton`):**
+    - Suporte nativo ao Plano Vitalício VIP (ícone `Crown`);
+    - Ocultação inteligente do banner de upgrade no modal de perfil para assinantes Pro e Vitalício.
+  - **Testes Unitários:**
+    - `src/state/queries/use-permission.test.ts` cobrindo todos os cenários e combinações de permissões.
+
+**✅ DoD (Definition of Done da Fase 76.4):**
+- [x] `useUserSubscription` refatorado para TanStack Query.
+- [x] Supabase Realtime integrado com escuta em `user_subscriptions` e `user_module_permissions`.
+- [x] Hook `usePermission` criado, exportado e testado.
+- [x] Badges visuais harmonizados com suporte ao Plano Vitalício.
+- [x] Suíte de testes (266 arquivos / 1.899 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
 
 
 

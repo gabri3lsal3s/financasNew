@@ -160,8 +160,8 @@ export function LogoProfileButton({
             </div>
           </div>
 
-          {/* Banner de Upgrade para usuários que não têm o Plano Pro */}
-          {!subscription.isPro && (
+          {/* Banner de Upgrade para usuários que não têm o Plano Pro ou Vitalício */}
+          {!subscription.isPro && !subscription.isLifetime && (
             <div className="relative overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 via-surface to-accent/5 p-3.5 shadow-2xs">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
