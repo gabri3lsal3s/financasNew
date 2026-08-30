@@ -40,7 +40,9 @@ function buildStatus(tier: SubscriptionTier, createdAt: string | null): Subscrip
   const isReadOnly =
     tier === "read_only" || (tier === "trial" && trialDaysRemaining !== null && trialDaysRemaining <= 0);
   const isPro = tier === "pro_monthly" || tier === "pro_annual";
-  const isFullAccess = isTrial || isPro;
+  const isLifetime = tier === "lifetime";
+  const isFullAccess = isTrial || isPro || isLifetime;
+  const canWrite = isFullAccess;
 
   const plan: SubscriptionPlan | null =
     tier === "pro_monthly" ? "monthly" : tier === "pro_annual" ? "annual" : null;
@@ -55,7 +57,9 @@ function buildStatus(tier: SubscriptionTier, createdAt: string | null): Subscrip
     isFullAccess,
     isTrial,
     isPro,
+    isLifetime,
     isReadOnly,
+    canWrite,
   };
 }
 

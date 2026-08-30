@@ -12,6 +12,8 @@
  * Representação: valores monetários chegam do PostgREST como string (numeric).
  * O contrato de domínio é `number` — a conversão acontece na camada `data/`.
  */
+import type { SubscriptionTier, SubscriptionStatus, ModuleAccessLevel } from "./subscription";
+
 export const PAYMENT_METHODS = ["cash", "debit", "credit_card", "pix", "transfer", "other"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
@@ -112,12 +114,52 @@ export type AccessInvite = {
   id: string;
   code: string;
   created_by?: string | null;
+  target_tier?: SubscriptionTier;
+  custom_trial_days?: number | null;
+  module_grants?: Record<string, ModuleAccessLevel>;
   max_uses: number;
   used_count: number;
   target_email?: string | null;
   expires_at?: string | null;
   is_revoked: boolean;
+  notes?: string | null;
   created_at: string;
+};
+
+export type Plan = {
+  id: string;
+  name: string;
+  description?: string | null;
+  price_cents: number;
+  billing_interval?: "month" | "year" | null;
+  is_publicly_available: boolean;
+  created_at: string;
+};
+
+export type UserSubscription = {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  tier: SubscriptionTier;
+  status: SubscriptionStatus["tier"] extends "trial" ? "trialing" | "active" | "past_due" | "canceled" | "read_only_expired" : string;
+  starts_at: string;
+  trial_ends_at?: string | null;
+  current_period_end?: string | null;
+  cancel_at_period_end: boolean;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserModulePermission = {
+  id: string;
+  user_id: string;
+  module_key: string;
+  access_level: ModuleAccessLevel;
+  granted_by?: string | null;
+  expires_at?: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type SystemFeature = {

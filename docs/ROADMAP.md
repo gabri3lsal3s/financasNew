@@ -1,5 +1,15 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.14** registra a **Conclusão da Fase 76.1 (Infraestrutura de Banco de Dados, Schemas SaaS, Funções SQL & Backfill Seguro)** (2026-08-29):
+> - **(1) Migration SQL 0040 (`0040_saas_plans_and_modular_access.sql`)**: Modelagem relacional completa com enums `subscription_tier`, `subscription_status` e `access_level`;
+> - **(2) Tabela de Planos (`plans`)**: Seed oficial dos 4 planos (`trial`, `pro_monthly`, `pro_annual`, `lifetime`);
+> - **(3) Assinaturas & Permissões Modulares**: Tabelas `user_subscriptions` (1:1 com profiles) e `user_module_permissions` com RLS estrito;
+> - **(4) Expansão de Convites (`access_invites`)**: Suporte a presets de plano (`target_tier`), validade customizada (`custom_trial_days`), `module_grants jsonb` e notas;
+> - **(5) Backfill Automatizado**: Migração atômica de 100% dos usuários existentes para o plano Vitalício (`lifetime` / `active`);
+> - **(6) Funções Puras SQL & RPCs**: `get_user_module_access()`, `can_current_user_write()`, `can_current_user_write_module()`, `get_my_subscription()`, `admin_set_user_subscription()`, `admin_set_user_module_permission()`, `admin_create_modular_invite()`;
+> - **(7) Trigger `handle_new_user()` SaaS**: Auto-promoção do 1º usuário para `superadmin`/`lifetime`, consumo atômico de convites com presets modulares e onboarding público em 30 dias de Trial Pro;
+> - **(8) Suíte 100% Verde**: 263 arquivos de teste / 1.885 testes passando (100% verde), zero erros de typecheck e lint.
+
 > **v2.13** registra a **Conclusão da Auditoria de Segurança Completa, Relatório Executivo em PDF e Remediações (Migration 0039, Feature Flags Triggers & Cron Hardening)** (2026-08-29):
 > - **(1) Auditoria Completa das 5 Categorias de Segurança**: Varredura em 100% do código (Frontend React 19, Backend PostgreSQL/RLS, Edge Functions Deno, CI/CD e Histórico Git);
 > - **(2) Relatório Executivo em PDF Gerado (`docs/security-audit/relatorio-auditoria-seguranca.pdf`)**: Documento oficial com resumo executivo, gráficos de rosca e barras de alta resolução, tabela detalhada de achados e issues prontas para o GitHub;
@@ -3882,14 +3892,68 @@ flowchart TD
 
 ---
 
-**✅ DoD (Definition of Done da Fase 75):**
-- [x] Caption central do `DatePicker` permite abrir a grade de 12 meses com 1 clique.
-- [x] Grade de meses permite escolher qualquer mês em pt-BR e retornar diretamente aos dias.
-- [x] Grade de anos permite navegar por blocos de 12 anos e selecionar anos passados ou futuros instantaneamente.
-- [x] Zero controles nativos crus (`<select>` proibido) e zero emojis.
-- [x] Dimensões do popover mantidas em `w-[calc(100vw-1.5rem)] max-w-sm` com `max-h-[85dvh]`, sem *layout shift* e sem overflow horizontal no mobile.
-- [x] Testes unitários atualizados em `date-picker.test.tsx` com 100% de aprovação.
-- [x] Typecheck (`tsc -b`) e lint (`eslint .`) 100% verdes.
+---
+
+### 💳 FASE 76 — Arquitetura SaaS, Planos, Ciclo de Vida & Convites com Presets Modulares
+
+> **Status da Trilha:** Em execução — Transição do produto para o modelo SaaS Product-Led Growth (PLG): **Trial Pro de 30 dias** $\rightarrow$ **Modo Somente-Leitura perpétuo (sem exclusão de dados)** $\rightarrow$ **Upgrade para Pro (Mensal/Anual) ou Plano Vitalício (Lifetime)**, somado a um sistema de **Códigos de Convite com Presets Granulares de Módulos**.
+
+```mermaid
+flowchart TD
+    subgraph Bloco 1: Infraestrutura SQL & RLS [Fases 76.1 e 76.2]
+        SQL_SCHEMA[Migration 0040: plans, user_subscriptions, user_module_permissions] --> BACKFILL[Backfill: Usuários existentes viram 'lifetime']
+        SQL_SCHEMA --> RLS_HARD[RLS Hardening: INSERT/UPDATE/DELETE checam can_current_user_write_module]
+        SQL_SCHEMA --> TRG_NEW[handle_new_user com suporte a presets de convite e 30d trial]
+    end
+
+    subgraph Bloco 2: Tipagem, Estado & Hooks [Fases 76.3 e 76.4]
+        TS_TYPES[src/types/subscription.ts, schema.ts] --> REPO[src/data/repositories/subscriptions.ts]
+        REPO --> STATE[useUserSubscription & usePermission com Realtime]
+    end
+
+    subgraph Bloco 3: UX Somente-Leitura & Upsell [Fase 76.5]
+        STATE --> WRITE_GATE[WriteActionGate em botões de ação]
+        STATE --> UPGRADE_MODAL[UpgradeDialog: Pro Mensal vs Pro Anual]
+        STATE --> READ_BANNER[ReadOnlyBanner & TrialCountdownBadge]
+    end
+
+    subgraph Bloco 4: Onboarding & Painel Admin [Fase 76.6]
+        ADMIN_INV[CreateInviteDialog: Seletor de Tier + Matriz de Módulos] --> CODE_GEN[Código com preset JSON]
+        ADMIN_USERS[UserEditDialog: Alterar Plano & Overrides Modulares] --> USER_UPD[Atualização de Plano em 1-clique]
+    end
+
+    RLS_HARD & WRITE_GATE & ADMIN_INV --> DOD[Fase 76 100% Concluída & Suíte Verde]
+```
+
+---
+
+#### 1. Fase 76.1: Infraestrutura de Banco de Dados, Schemas SaaS & Backfill Seguro
+
+> **Status:** ✅ Concluída (2026-08-29) — **Fundação de Dados SaaS**: Modelagem relacional no PostgreSQL com as tabelas `plans`, `user_subscriptions`, `user_module_permissions`, expansão da tabela `access_invites` com presets modulares, migração (backfill) segura de 100% dos usuários existentes para o plano Vitalício (`lifetime`), funções SQL puras de resolução de acesso (`get_user_module_access`, `can_current_user_write`, `can_current_user_write_module`, `get_my_subscription`) e trigger atômica `handle_new_user` configurando planos e permissões no registro.
+
+- **Entregas Realizadas:**
+  - **Migration SQL (`supabase/migrations/20260101000040_saas_plans_and_modular_access.sql`):**
+    - Enums `subscription_tier ('trial', 'pro_monthly', 'pro_annual', 'lifetime', 'read_only')`, `subscription_status ('trialing', 'active', 'past_due', 'canceled', 'read_only_expired')` e `access_level ('none', 'read', 'write', 'admin')`;
+    - Tabela `plans` com seed dos 4 planos canônicos;
+    - Tabela `user_subscriptions` com isolamento 1-para-1 por usuário e índices de busca;
+    - Tabela `user_module_permissions` para overrides granulares por módulo;
+    - Expansão de `access_invites` (`target_tier`, `custom_trial_days`, `module_grants jsonb`, `notes`);
+    - Backfill atômico: 100% dos perfis existentes recebem `tier = 'lifetime'` e `status = 'active'`;
+    - Funções de segurança e resolução: `get_user_module_access()`, `can_current_user_write()`, `can_current_user_write_module()`, `get_my_subscription()`;
+    - RPCs administrativas: `admin_set_user_subscription()`, `admin_set_user_module_permission()`, `admin_remove_user_module_permission()`, `admin_create_modular_invite()`;
+    - Trigger `handle_new_user()` com suporte a auto-promoção do primeiro usuário para superadmin/vitalício, consumo de convites com presets modulares e onboarding padrão em 30 dias de Trial Pro;
+    - Políticas RLS completas para `plans`, `user_subscriptions` e `user_module_permissions`.
+  - **Contratos TypeScript (`src/types/`):**
+    - `src/types/subscription.ts`: Adição de `lifetime` em `SUBSCRIPTION_TIERS`, `ModuleAccessLevel`, `isLifetime`, `canWrite`, `moduleAccess`;
+    - `src/types/schema.ts`: Inclusão dos tipos `Plan`, `UserSubscription`, `UserModulePermission` e campos de preset em `AccessInvite`.
+
+**✅ DoD (Definition of Done da Fase 76.1):**
+- [x] Migration SQL `0040_saas_plans_and_modular_access.sql` criada e validada.
+- [x] Backfill automático atribuindo plano Vitalício para todos os usuários existentes.
+- [x] Funções SQL `get_user_module_access` e `get_my_subscription` com hierarquia de resolução de permissões.
+- [x] Contratos TypeScript estritos em `src/types/subscription.ts` e `src/types/schema.ts`.
+- [x] Suíte de testes (263 arquivos / 1.885 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
 
 
 

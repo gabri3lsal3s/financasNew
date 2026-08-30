@@ -4,4 +4,5 @@ export type {
   SubscriptionTier,
   SubscriptionPlan,
   SubscriptionStatus,
+  ModuleAccessLevel,
 } from "./subscription";
