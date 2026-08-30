@@ -26,6 +26,7 @@ const stateMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/state", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useCreditCards: () => ({
     data: [
       { id: "c1", name: "Nubank", due_day: 10, is_active: true },

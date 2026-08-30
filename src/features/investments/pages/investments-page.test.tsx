@@ -41,6 +41,7 @@ const row = (overrides: Partial<Record<string, unknown>> = {}) => ({
 });
 
 vi.mock("@/state", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   usePortfolioPosition: () => positionMock,
   useAllPortfolioTransactions: () => ({
     data: [] as { type: string; date: string; total: number }[],

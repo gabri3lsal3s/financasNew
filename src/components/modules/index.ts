@@ -92,3 +92,5 @@ export { SubscriptionBadge } from "./subscription/subscription-badge";
 export type { SubscriptionBadgeProps } from "./subscription/subscription-badge";
 export { UpgradeDialog } from "./subscription/upgrade-dialog";
 export type { UpgradeDialogProps } from "./subscription/upgrade-dialog";
+export { ReadOnlyBanner } from "./subscription/read-only-banner";
+export type { ReadOnlyBannerProps } from "./subscription/read-only-banner";

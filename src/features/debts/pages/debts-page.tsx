@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { ArrowDownLeft, ArrowUpRight, Calendar, Check, ChevronDown, ChevronUp, Coins, HandCoins, Landmark, Plus } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { DebtStatusBadge, HighlightRow } from "@/components/modules";
+import { DebtStatusBadge, HighlightRow, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { debtStatus, todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
@@ -11,7 +11,7 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useDebts, useDeleteDebt, useLoans, useUpdateDebt } from "@/state";
+import { useDebts, useDeleteDebt, useLoans, usePermission, useUpdateDebt } from "@/state";
 import { DebtFormDialog } from "@/features/debts/components/debt-form-dialog";
 import { SettleDialog } from "@/features/debts/components/settle-dialog";
 import { LoanCard } from "@/features/debts/components/loan-card";
@@ -159,11 +159,44 @@ export function DebtsPage() {
     }
   };
 
+  const permission = usePermission("debts");
+  const navigate = useNavigate();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
+
   // FAB contextual (F12): ?novo=divida abre o formulário de criação.
   const { open: formOpen, setOpen: setFormOpen } = useCreateDeepLink("divida");
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [settling, setSettling] = useState<Debt | null>(null);
   const [loanFormOpen, setLoanFormOpen] = useState(false);
+
+  const handleOpenDebtForm = (debt: Debt | null) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext(debt ? "Editar Dívida / Conta" : "Cadastrar Nova Dívida");
+      setUpgradeOpen(true);
+      return;
+    }
+    setEditingDebt(debt);
+    setFormOpen(true);
+  };
+
+  const handleOpenLoanForm = () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Cadastrar Contrato de Crédito");
+      setUpgradeOpen(true);
+      return;
+    }
+    setLoanFormOpen(true);
+  };
+
+  const handleSettle = (debt: Debt) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Quitar Dívida / Baixar Conta");
+      setUpgradeOpen(true);
+      return;
+    }
+    setSettling(debt);
+  };
 
   const debts = debtsQuery.data ?? [];
   const loans = loansQuery.data ?? [];
@@ -387,12 +420,9 @@ export function DebtsPage() {
                       <HighlightRow key={debt.id} highlightId={highlightId} id={debt.id}>
                         <DebtRow
                           debt={debt}
-                          onSettle={setSettling}
+                          onSettle={handleSettle}
                           onUnsettle={handleUnsettle}
-                          onEdit={(d) => {
-                            setEditingDebt(d);
-                            setFormOpen(true);
-                          }}
+                          onEdit={handleOpenDebtForm}
                         />
                       </HighlightRow>
                     ))}
@@ -419,7 +449,7 @@ export function DebtsPage() {
           title="Nenhum contrato cadastrado"
           description="Cadastre seus contratos de crédito (Price ou SAC) para simular amortizações e acompanhar o saldo devedor."
           action={
-            <Button size="sm" onClick={() => setLoanFormOpen(true)}>
+            <Button size="sm" onClick={handleOpenLoanForm}>
               <Plus aria-hidden="true" className="size-4" />
               Cadastrar contrato
             </Button>
@@ -453,7 +483,7 @@ export function DebtsPage() {
             size="sm"
             aria-label="Novo contrato"
             className="flex-1 sm:flex-initial"
-            onClick={() => setLoanFormOpen(true)}
+            onClick={handleOpenLoanForm}
           >
             <Coins aria-hidden="true" className="size-4" />
             Contrato
@@ -462,16 +492,22 @@ export function DebtsPage() {
             size="sm"
             aria-label="Nova dívida"
             className="flex-1 sm:flex-initial"
-            onClick={() => {
-              setEditingDebt(null);
-              setFormOpen(true);
-            }}
+            onClick={() => handleOpenDebtForm(null)}
           >
             <Plus aria-hidden="true" className="size-4" />
             Nova dívida
           </Button>
         </div>
       </header>
+
+      {permission.isReadOnlyMode && (
+        <ReadOnlyBanner
+          onActivatePro={() => {
+            setUpgradeContext(undefined);
+            setUpgradeOpen(true);
+          }}
+        />
+      )}
 
       {error ? (
         <ErrorState message={getErrorMessage(error)} />
@@ -522,6 +558,16 @@ export function DebtsPage() {
       />
 
       {settling ? <SettleDialog debt={settling} open={settling !== null} onOpenChange={(next) => !next && setSettling(null)} /> : null}
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        context={upgradeContext}
+        onProceedToCheckout={(p) => {
+          setUpgradeOpen(false);
+          navigate(`/assinatura?plano=${p}`);
+        }}
+      />
     </div>
   );
 }

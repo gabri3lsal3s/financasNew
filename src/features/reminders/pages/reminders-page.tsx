@@ -2,17 +2,17 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Bell, CheckCheck } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
-import { ReminderItem } from "@/components/modules";
-import { HighlightRow } from "@/components/modules/highlight-row";
+import { HighlightRow, ReadOnlyBanner, ReminderItem } from "@/components/modules";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { triggerHaptic } from "@/services/haptics";
 import {
+  useMarkAllRemindersAsRead,
+  usePermission,
   useReminders,
   useReminderStates,
   useSetReminderState,
-  useMarkAllRemindersAsRead,
 } from "@/state";
 
 type MainTab = "pending" | "read";
@@ -25,6 +25,7 @@ type SubFilter = "all" | "overdue" | "bills" | "debts";
  */
 export function RemindersPage() {
   const navigate = useNavigate();
+  const permission = usePermission("reminders");
   const today = todayISO();
   const { highlightId } = useHighlightTarget("q");
   const [mainTabOverride, setMainTabOverride] = useState<MainTab | null>(null);
@@ -323,6 +324,8 @@ export function RemindersPage() {
           </Button>
         )}
       </header>
+
+      {permission.isReadOnlyMode && <ReadOnlyBanner />}
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 

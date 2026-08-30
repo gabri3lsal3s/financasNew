@@ -1,5 +1,11 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.17** registra a **Conclusão da Fase 76.5 (UI/UX: Experiência do Modo Somente-Leitura & Upsell Suave)** (2026-08-29):
+> - **(1) Componente de Banner Informativo `ReadOnlyBanner`**: Design calmo e acessível comunicando que os dados e relatórios estão 100% seguros e preservados, com botão CTA direto para ativação do Plano Pro;
+> - **(2) Guards Suaves de Upsell (`UpgradeDialog`)**: Interceptação não-bloqueante de botões e gatilhos de criação/edição em todas as telas operacionais (`TransactionListPage`, `CardsPage`, `DebtsPage`, `BudgetsPage`, `InvestmentsPage`), abrindo o diálogo explicativo de upgrade em vez de lançar erros de RLS;
+> - **(3) Integração Universal nas Páginas Operacionais**: Renderização de `ReadOnlyBanner` e proteção de formulários/modais em Transações, Cartões, Dívidas, Orçamentos/Metas, Investimentos/Caixa e Lembretes;
+> - **(4) Suíte 100% Verde**: 267 arquivos de teste / 1.902 testes passando (100% verde), zero erros de typecheck e lint, e build de produção limpo.
+
 > **v2.16** registra a **Conclusão da Fase 76.4 (Camada de Estado TanStack Query, Hooks de Domínio & Supabase Realtime)** (2026-08-29):
 > - **(1) Hook Reativo `useUserSubscription`**: Migração completa para `@tanstack/react-query` consumindo `getMySubscription()` com fallback gracioso sem flash de paywall;
 > - **(2) Supabase Realtime Reativo**: Inscrição nos canais Postgres Changes para `user_subscriptions` e `user_module_permissions` com invalidação atômica e automática;
@@ -4060,6 +4066,44 @@ flowchart TD
 - [x] Hook `usePermission` criado, exportado e testado.
 - [x] Badges visuais harmonizados com suporte ao Plano Vitalício.
 - [x] Suíte de testes (266 arquivos / 1.899 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
+---
+
+#### 5. Fase 76.5: UI/UX: Experiência do Modo Somente-Leitura (Read-Only) & Upsell Suave
+
+> **Status:** ✅ Concluída (2026-08-29) — **UI/UX Não-Bloqueante & Preservação Total de Visualização**: Implementação do componente `ReadOnlyBanner` e interceptação suave de ações de escrita/modais em todas as telas operacionais (`TransactionListPage`, `CardsPage`, `DebtsPage`, `BudgetsPage`, `InvestmentsPage`, `RemindersPage`), abrindo o diálogo `UpgradeDialog` com contexto explicativo em vez de permitir que o usuário atinja barreiras de erro de RLS no banco de dados.
+
+- **Entregas Realizadas:**
+  - **Componente `ReadOnlyBanner` (`src/components/modules/subscription/read-only-banner.tsx`):**
+    - Design calmo e sem elementos agressivos, destacando que dados históricos e relatórios permanecem 100% seguros e consultáveis;
+    - Botão de ação (CTA) para ativação do Plano Pro com navegação para `/assinatura` ou abertura de modal contextual;
+    - Testes unitários dedicados em `read-only-banner.test.tsx`.
+  - **Interceptação Suave de Mutações (Action Guards):**
+    - `TransactionListPage`: Proteção dos botões "Nova transação" e "Importar extrato";
+    - `CardsPage`: Proteção de "Adicionar/Editar Cartão", "Registrar Pagamento", "Registrar Estorno" e "Importar Fatura";
+    - `DebtsPage`: Proteção de "Nova Dívida", "Novo Contrato", "Editar Dívida" e "Quitar Dívida";
+    - `BudgetsPage`: Proteção de "Definir Limite", "Definir Meta", "Nova Categoria", "Editar Categoria" e "Aplicar Realocação";
+    - `InvestmentsPage`: Proteção de "Nova Operação" (Wizard) e "Adicionar Caixa";
+    - `RemindersPage`: Exibição informativa de `ReadOnlyBanner`.
+  - **Governança & Design System (AGENTS.md):**
+    - Zero emojis em mensagens e toasts;
+    - Hierarquia rigorosa de ícones Lucide (`BookOpen`, `Sparkles`, etc.);
+    - Gateway sensorial unificado (`triggerSensory`).
+
+**✅ DoD (Definition of Done da Fase 76.5):**
+- [x] Componente `ReadOnlyBanner` criado, exportado e testado.
+- [x] Interceptação suave de mutações integrada em 100% das páginas operacionais com `UpgradeDialog`.
+- [x] Visualização e exportação preservadas integralmente no modo somente-leitura.
+- [x] Suíte de testes (267 arquivos / 1.902 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
+---
+
+#### 6. Fase 76.6: Painel Admin: Gestão de Planos, Concessão de Acesso Modular & Auditoria
+> **Status:** ⏳ Pendente
+
+#### 7. Fase 76.7: Catálogo de Planos Público (`/planos`), Ajuste de Landing Page & Onboarding
+> **Status:** ⏳ Pendente
+
 
 
 

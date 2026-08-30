@@ -8,9 +8,11 @@ let requestedMonths: string[] = [];
 vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
   useSearchParams: () => [params, vi.fn()],
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@/state", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useCategories: () => ({ data: [], isLoading: false, error: null }),
   useExpenses: (month: string) => {
     requestedMonths.push(month);

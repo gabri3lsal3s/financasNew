@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
 
@@ -10,8 +10,10 @@ import {
   InvoiceStatusBadge,
   KpiCard,
   MonthPicker,
+  ReadOnlyBanner,
   ReportDocumentLayout,
   TransactionRow,
+  UpgradeDialog,
 } from "@/components/modules";
 import {
   autoSelectBillMonth,
@@ -34,6 +36,7 @@ import {
   useCategories,
   useCreditCards,
   useDeleteCardPayment,
+  usePermission,
   useUpdateCard,
 } from "@/state";
 import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
@@ -226,10 +229,51 @@ export function CardsPage() {
     };
   }
 
+  const permission = usePermission("cards");
+  const navigate = useNavigate();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
+
+  const handleOpenForm = (card: CreditCard | null) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext(card ? "Editar Cartão de Crédito" : "Adicionar Cartão de Crédito");
+      setUpgradeOpen(true);
+      return;
+    }
+    openForm(card);
+  };
+
+  const handleOpenPayment = (mode: PaymentMode) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Registrar Pagamento / Estorno de Fatura");
+      setUpgradeOpen(true);
+      return;
+    }
+    setPaymentMode(mode);
+  };
+
+  const handleOpenImport = () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Importar Fatura de Cartão");
+      setUpgradeOpen(true);
+      return;
+    }
+    setImportOpen(true);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Título de acessibilidade */}
       <h1 className="sr-only">Cartões de Crédito</h1>
+
+      {permission.isReadOnlyMode && (
+        <ReadOnlyBanner
+          onActivatePro={() => {
+            setUpgradeContext(undefined);
+            setUpgradeOpen(true);
+          }}
+        />
+      )}
 
       {error ? (
         <div className="flex flex-col gap-3">
@@ -286,7 +330,7 @@ export function CardsPage() {
           description="Adicione seus cartões de crédito para acompanhar faturas, limites disponíveis, melhor data de compra e extrato."
           tone="primary"
           action={
-            <Button onClick={() => openForm(null)} className="gap-2">
+            <Button onClick={() => handleOpenForm(null)} className="gap-2">
               <Plus className="size-4" aria-hidden="true" />
               Adicionar primeiro cartão
             </Button>
@@ -308,8 +352,8 @@ export function CardsPage() {
               cards={cards}
               selectedCardId={selectedCard?.id ?? null}
               onSelectCard={selectCard}
-              onEditCard={openForm}
-              onNewCard={() => openForm(null)}
+              onEditCard={handleOpenForm}
+              onNewCard={() => handleOpenForm(null)}
               usedLimitMap={usedLimitMap}
               competenceMonth={effectiveMonth}
               status={invStatus}
@@ -362,13 +406,13 @@ export function CardsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button variant="outline" size="sm" onClick={() => setPaymentMode("refund")} className="gap-1.5 flex-1 sm:flex-none justify-center">
+                  <Button variant="outline" size="sm" onClick={() => handleOpenPayment("refund")} className="gap-1.5 flex-1 sm:flex-none justify-center">
                     <Undo2 className="size-3.5" aria-hidden="true" />
                     Estorno
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => setPaymentMode("payment")}
+                    onClick={() => handleOpenPayment("payment")}
                     disabled={(summary?.saldoCents ?? 0) <= 0}
                     className="gap-1.5 flex-1 sm:flex-none justify-center"
                   >
@@ -400,7 +444,7 @@ export function CardsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setImportOpen(true)}
+                  onClick={handleOpenImport}
                   disabled={!selectedCard}
                   className="gap-1.5 flex-1 sm:flex-none justify-center"
                 >
@@ -631,6 +675,16 @@ export function CardsPage() {
           />
         </ReportDocumentLayout>
       ) : null}
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        context={upgradeContext}
+        onProceedToCheckout={(p) => {
+          setUpgradeOpen(false);
+          navigate(`/assinatura?plano=${p}`);
+        }}
+      />
     </div>
   );
 }

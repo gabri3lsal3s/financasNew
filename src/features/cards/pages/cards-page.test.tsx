@@ -7,6 +7,7 @@ const searchParamsMock = vi.fn(() => [new URLSearchParams(), vi.fn()]);
 
 vi.mock("react-router", () => ({
   useSearchParams: () => searchParamsMock(),
+  useNavigate: () => vi.fn(),
 }));
 
 const paymentMock = vi.fn();
@@ -33,6 +34,7 @@ const stateMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/state", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useCategories: () => ({
     data: [],
     isLoading: false,

@@ -24,6 +24,7 @@ const baseCategories = [
 ];
 
 vi.mock("@/state", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useBudgets: () => ({
     data: [
       { category_id: "c1", month: "2026-08", limit: 1000 },

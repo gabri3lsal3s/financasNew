@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, FileSpreadsheet, Plus, Repeat, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,12 @@ import { MoneyText } from "@/components/ui/money-text";
 
 import { SkeletonList } from "@/components/ui/skeleton";
 import { VirtualList } from "@/components/ui/virtual-list";
-import { HighlightRow, KpiCard, MonthPicker, TransactionRow } from "@/components/modules";
+import { HighlightRow, KpiCard, MonthPicker, ReadOnlyBanner, TransactionRow, UpgradeDialog } from "@/components/modules";
 import { currentMonth, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useCategories, useExpenses, useIncomes, useRecurrences } from "@/state";
+import { useCategories, useExpenses, useIncomes, usePermission, useRecurrences } from "@/state";
 import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { partitionInvoiceExpenses } from "@/domain/cards";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
@@ -159,6 +159,28 @@ export function TransactionListPage() {
   };
 
   const { setOpen: setWizardOpen } = useCreateDeepLink("transacao");
+  const permission = usePermission("transactions");
+  const navigate = useNavigate();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
+
+  const handleNewTransaction = () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Criar Lançamentos e Despesas");
+      setUpgradeOpen(true);
+      return;
+    }
+    setWizardOpen(true);
+  };
+
+  const handleImportStatement = () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Importar Extrato Bancário");
+      setUpgradeOpen(true);
+      return;
+    }
+    setIsImportOpen(true);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -166,6 +188,15 @@ export function TransactionListPage() {
           lançamento fica abaixo dos KPIs (só desktop — no mobile o FAB da BottomNav
           assume) e o título permanece apenas para leitores de tela. */}
       <h1 className="sr-only">Transações</h1>
+
+      {permission.isReadOnlyMode && (
+        <ReadOnlyBanner
+          onActivatePro={() => {
+            setUpgradeContext(undefined);
+            setUpgradeOpen(true);
+          }}
+        />
+      )}
 
       <MonthPicker value={month} onValueChange={handleMonthChange} />
 
@@ -215,14 +246,14 @@ export function TransactionListPage() {
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-2">
-        <Button className="w-full sm:flex-1 gap-1.5" onClick={() => setWizardOpen(true)}>
+        <Button className="w-full sm:flex-1 gap-1.5" onClick={handleNewTransaction}>
           <Plus className="size-4" aria-hidden="true" />
           Nova transação
         </Button>
         <Button
           variant="outline"
           className="w-full sm:w-auto gap-1.5"
-          onClick={() => setIsImportOpen(true)}
+          onClick={handleImportStatement}
         >
           <FileSpreadsheet className="size-4" aria-hidden="true" />
           Importar extrato
@@ -463,6 +494,16 @@ export function TransactionListPage() {
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
         competenceMonth={month}
+      />
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        context={upgradeContext}
+        onProceedToCheckout={(p) => {
+          setUpgradeOpen(false);
+          navigate(`/assinatura?plano=${p}`);
+        }}
       />
     </div>
   );

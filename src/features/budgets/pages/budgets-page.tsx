@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { ArrowRight, Edit3, PiggyBank, Plus, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import { CategoryIcon, MonthPicker } from "@/components/modules";
+import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
 import { HighlightRow } from "@/components/modules/highlight-row";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
@@ -29,6 +29,7 @@ import {
   useExpenses,
   useIncomeGoals,
   useIncomes,
+  usePermission,
   useReallocateBudget,
 } from "@/state";
 import { LimitDialog } from "@/features/budgets/components/limit-dialog";
@@ -129,6 +130,58 @@ export function BudgetsPage() {
   const fromCategory = suggestion ? categories.find((c) => c.id === suggestion.fromCategoryId) : undefined;
   const toCategory = suggestion ? categories.find((c) => c.id === suggestion.toCategoryId) : undefined;
 
+  const permission = usePermission("budgets");
+  const navigate = useNavigate();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
+
+  const handleOpenLimit = (category: Category) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Definir Limite de Orçamento");
+      setUpgradeOpen(true);
+      return;
+    }
+    setLimitFor(category);
+  };
+
+  const handleOpenGoal = (category: Category) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Definir Meta de Renda");
+      setUpgradeOpen(true);
+      return;
+    }
+    setGoalFor(category);
+  };
+
+  const handleOpenCreateCategory = () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Cadastrar Nova Categoria");
+      setUpgradeOpen(true);
+      return;
+    }
+    setEditingCategory(null);
+    setCategoryFormOpen(true);
+  };
+
+  const handleEditCategory = (category: Category) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Editar Categoria");
+      setUpgradeOpen(true);
+      return;
+    }
+    setEditingCategory(category);
+    setCategoryFormOpen(true);
+  };
+
+  const handleOpenReallocate = () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Remanejar Orçamento");
+      setUpgradeOpen(true);
+      return;
+    }
+    setReallocateOpen(true);
+  };
+
   const applyReallocation = async () => {
     if (!suggestion) return;
     setReallocateError(null);
@@ -149,16 +202,6 @@ export function BudgetsPage() {
   for (const goal of goalsQuery.data ?? []) {
     if (goal.month === month) goalsByCategory.set(goal.category_id, numberToCents(goal.expected));
   }
-
-  const handleOpenCreateCategory = () => {
-    setEditingCategory(null);
-    setCategoryFormOpen(true);
-  };
-
-  const handleEditCategory = (category: Category) => {
-    setEditingCategory(category);
-    setCategoryFormOpen(true);
-  };
 
   const renderLimitsContent = () => (
     <div className="flex flex-col gap-6">
@@ -219,7 +262,7 @@ export function BudgetsPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setReallocateOpen(true)}
+            onClick={handleOpenReallocate}
             className="shrink-0 self-start sm:self-auto gap-1.5 border-primary/30 hover:bg-primary/10"
           >
             <span>Aplicar realocação</span>
@@ -265,13 +308,13 @@ export function BudgetsPage() {
                       aria-label={`Editar limite de ${row.category.name}`}
                       onClick={() => {
                         triggerHaptic("light");
-                        setLimitFor(row.category);
+                        handleOpenLimit(row.category);
                       }}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
                           triggerHaptic("light");
-                          setLimitFor(row.category);
+                          handleOpenLimit(row.category);
                         }
                       }}
                       className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
@@ -312,13 +355,13 @@ export function BudgetsPage() {
                     aria-label={`Editar limite de ${row.category.name}`}
                     onClick={() => {
                       triggerHaptic("light");
-                      setLimitFor(row.category);
+                      handleOpenLimit(row.category);
                     }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         triggerHaptic("light");
-                        setLimitFor(row.category);
+                        handleOpenLimit(row.category);
                       }
                     }}
                     className="cursor-pointer"
@@ -395,13 +438,13 @@ export function BudgetsPage() {
                       aria-label={`Editar meta de renda de ${category.name}`}
                       onClick={() => {
                         triggerHaptic("light");
-                        setGoalFor(category);
+                        handleOpenGoal(category);
                       }}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
                           triggerHaptic("light");
-                          setGoalFor(category);
+                          handleOpenGoal(category);
                         }
                       }}
                       className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
@@ -442,13 +485,13 @@ export function BudgetsPage() {
                     aria-label={`Editar meta de renda de ${category.name}`}
                     onClick={() => {
                       triggerHaptic("light");
-                      setGoalFor(category);
+                      handleOpenGoal(category);
                     }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         triggerHaptic("light");
-                        setGoalFor(category);
+                        handleOpenGoal(category);
                       }
                     }}
                     className="cursor-pointer"
@@ -516,6 +559,15 @@ export function BudgetsPage() {
           <span>Nova categoria</span>
         </Button>
       </header>
+
+      {permission.isReadOnlyMode && (
+        <ReadOnlyBanner
+          onActivatePro={() => {
+            setUpgradeContext(undefined);
+            setUpgradeOpen(true);
+          }}
+        />
+      )}
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
@@ -597,6 +649,16 @@ export function BudgetsPage() {
           </div>
         ) : null}
       </ConfirmDialog>
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        context={upgradeContext}
+        onProceedToCheckout={(p) => {
+          setUpgradeOpen(false);
+          navigate(`/assinatura?plano=${p}`);
+        }}
+      />
     </div>
   );
 }

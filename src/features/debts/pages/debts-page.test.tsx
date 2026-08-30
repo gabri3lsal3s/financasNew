@@ -5,6 +5,7 @@ import { DebtsPage } from "./debts-page";
 
 vi.mock("react-router", () => ({
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  useNavigate: () => vi.fn(),
 }));
 
 const createDebtMock = vi.fn();
@@ -15,6 +16,7 @@ const receiveDebtMock = vi.fn();
 const settleMock = vi.fn();
 
 vi.mock("@/state", () => ({
+  usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useDebts: () => ({
     data: [
       {

@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Briefcase, Coins, Plus, TrendingUp, Wallet } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
+import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useAutoPortfolioSnapshot } from "@/hooks/use-auto-portfolio-snapshot";
+import { usePermission } from "@/state";
 import { ResumoTab } from "./resumo-tab";
 import { ProventosTab } from "./proventos-tab";
 import { AporteTab } from "./aporte-tab";
@@ -29,6 +31,11 @@ export function InvestmentsPage() {
 
   // Materialização autônoma de snapshots patrimoniais (§F50)
   useAutoPortfolioSnapshot();
+
+  const permission = usePermission("investments");
+  const navigate = useNavigate();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
 
   const handleTabChange = (nextTab: string) => {
     const valid = nextTab as InvestmentsTab;
@@ -60,9 +67,23 @@ export function InvestmentsPage() {
   };
 
   const handleOpenWizard = (asset: PortfolioAsset | null = null, mode: WizardMode = "select") => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Adicionar Operação de Investimento");
+      setUpgradeOpen(true);
+      return;
+    }
     setWizardInitialAsset(asset);
     setWizardInitialMode(mode);
     setWizardOpen(true);
+  };
+
+  const handleOpenCash = () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Gerenciar Caixa de Investimentos");
+      setUpgradeOpen(true);
+      return;
+    }
+    setCashDialogOpen(true);
   };
 
   return (
@@ -83,7 +104,7 @@ export function InvestmentsPage() {
             size="sm"
             aria-label="Adicionar caixa"
             className="flex-1 sm:flex-initial"
-            onClick={() => setCashDialogOpen(true)}
+            onClick={handleOpenCash}
           >
             <Wallet aria-hidden="true" className="size-4" />
             <span className="hidden sm:inline">Adicionar Caixa</span>
@@ -101,6 +122,15 @@ export function InvestmentsPage() {
         </div>
       </header>
 
+      {permission.isReadOnlyMode && (
+        <ReadOnlyBanner
+          onActivatePro={() => {
+            setUpgradeContext(undefined);
+            setUpgradeOpen(true);
+          }}
+        />
+      )}
+
       <Tabs
         value={tab}
         onValueChange={handleTabChange}
@@ -113,7 +143,7 @@ export function InvestmentsPage() {
             content: (
               <ResumoTab
                 onOpenWizard={handleOpenWizard}
-                onOpenCash={() => setCashDialogOpen(true)}
+                onOpenCash={handleOpenCash}
                 onSelectTab={handleTabChange}
               />
             ),
@@ -145,6 +175,16 @@ export function InvestmentsPage() {
       <CashFormDialog
         open={cashDialogOpen}
         onOpenChange={setCashDialogOpen}
+      />
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        context={upgradeContext}
+        onProceedToCheckout={(p) => {
+          setUpgradeOpen(false);
+          navigate(`/assinatura?plano=${p}`);
+        }}
       />
     </div>
   );
