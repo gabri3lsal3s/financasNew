@@ -16,6 +16,7 @@ export type ErrorKind =
   | "foreign-key"
   | "network"
   | "validation"
+  | "permission"
   | "unknown";
 
 /** Erro classificado pelo gateway (resultado de classifyError). */
@@ -47,6 +48,7 @@ const MESSAGES: Record<ErrorKind, string> = {
   "foreign-key": "Não é possível excluir este registro pois existem lançamentos vinculados a ele. Você pode desativá-lo para manter o histórico.",
   network: "Sem conexão com o servidor. Verifique sua internet e tente novamente.",
   validation: "Dados inválidos. Revise as informações e tente novamente.",
+  permission: "Acesso negado. Você não possui permissão para realizar esta operação ou seu período de teste encerrou.",
   unknown: "Algo deu errado. Tente novamente em instantes.",
 };
 
@@ -98,6 +100,19 @@ export function classifyError(error: unknown): ClassifiedError {
   }
   if (code === "23514" || code.includes("check_violation") || /check constraint|check_violation/i.test(message)) {
     return { kind: "validation", message: MESSAGES.validation, raw: error };
+  }
+  if (
+    status === 403 ||
+    code === "42501" ||
+    code.includes("permission_denied") ||
+    /row-level security|insufficient privilege|permissão negada|acesso negado/i.test(message)
+  ) {
+    const isCustomPtBr = /acesso negado|permissão/i.test(message);
+    return {
+      kind: "permission",
+      message: isCustomPtBr ? message : MESSAGES.permission,
+      raw: error,
+    };
   }
 
   // Mensagens de negócio lançadas pelos RPCs (raise exception) já chegam em

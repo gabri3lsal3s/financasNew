@@ -1,14 +1,11 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v2.14** registra a **Conclusão da Fase 76.1 (Infraestrutura de Banco de Dados, Schemas SaaS, Funções SQL & Backfill Seguro)** (2026-08-29):
-> - **(1) Migration SQL 0040 (`0040_saas_plans_and_modular_access.sql`)**: Modelagem relacional completa com enums `subscription_tier`, `subscription_status` e `access_level`;
-> - **(2) Tabela de Planos (`plans`)**: Seed oficial dos 4 planos (`trial`, `pro_monthly`, `pro_annual`, `lifetime`);
-> - **(3) Assinaturas & Permissões Modulares**: Tabelas `user_subscriptions` (1:1 com profiles) e `user_module_permissions` com RLS estrito;
-> - **(4) Expansão de Convites (`access_invites`)**: Suporte a presets de plano (`target_tier`), validade customizada (`custom_trial_days`), `module_grants jsonb` e notas;
-> - **(5) Backfill Automatizado**: Migração atômica de 100% dos usuários existentes para o plano Vitalício (`lifetime` / `active`);
-> - **(6) Funções Puras SQL & RPCs**: `get_user_module_access()`, `can_current_user_write()`, `can_current_user_write_module()`, `get_my_subscription()`, `admin_set_user_subscription()`, `admin_set_user_module_permission()`, `admin_create_modular_invite()`;
-> - **(7) Trigger `handle_new_user()` SaaS**: Auto-promoção do 1º usuário para `superadmin`/`lifetime`, consumo atômico de convites com presets modulares e onboarding público em 30 dias de Trial Pro;
-> - **(8) Suíte 100% Verde**: 263 arquivos de teste / 1.885 testes passando (100% verde), zero erros de typecheck e lint.
+> **v2.14** registra a **Conclusão das Fases 76.1 e 76.2 (Infraestrutura SaaS, Schemas, Backfill Seguro, Hardening de RLS e Blindagem de RPCs Transacionais)** (2026-08-29):
+> - **(1) Migration SQL 0040 (`0040_saas_plans_and_modular_access.sql`)**: Modelagem relacional completa com enums `subscription_tier`, `subscription_status` e `access_level`, tabelas `plans`, `user_subscriptions`, `user_module_permissions`, backfill para vitalício e trigger `handle_new_user()`;
+> - **(2) Migration SQL 0041 (`0041_saas_rls_and_rpc_hardening.sql`)**: Decomposição cirúrgica das políticas RLS em `SELECT` (leitura irrestrita para contas ativas) e `INSERT/UPDATE/DELETE` (bloqueio atômico se `can_current_user_write_module` for falso);
+> - **(3) Blindagem de 6 RPCs Transacionais Críticas**: Validação estrita de permissão de escrita em `restore_backup`, `execute_portfolio_batch_aporte`, `import_statement_expenses`, `import_bank_transactions`, `refinance_credit_card_bill` e `create_expense_with_debt`;
+> - **(4) Gateway de Erros com Kind 'permission'**: Normalização e classificação amigável em pt-BR de violações de RLS 42501 e paywalls de escrita;
+> - **(5) Suíte 100% Verde**: 263 arquivos de teste / 1.888 testes passando (100% verde), zero erros de typecheck e lint.
 
 > **v2.13** registra a **Conclusão da Auditoria de Segurança Completa, Relatório Executivo em PDF e Remediações (Migration 0039, Feature Flags Triggers & Cron Hardening)** (2026-08-29):
 > - **(1) Auditoria Completa das 5 Categorias de Segurança**: Varredura em 100% do código (Frontend React 19, Backend PostgreSQL/RLS, Edge Functions Deno, CI/CD e Histórico Git);
@@ -3953,6 +3950,41 @@ flowchart TD
 - [x] Funções SQL `get_user_module_access` e `get_my_subscription` com hierarquia de resolução de permissões.
 - [x] Contratos TypeScript estritos em `src/types/subscription.ts` e `src/types/schema.ts`.
 - [x] Suíte de testes (263 arquivos / 1.885 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
+---
+
+#### 2. Fase 76.2: Hardening de RLS e Blindagem de Todas as RPCs de Escrita no PostgreSQL
+
+> **Status:** ✅ Concluída (2026-08-29) — **Blindagem de Permissões de Leitura vs. Escrita**: Decomposição cirúrgica de todas as políticas RLS de tabelas financeiras para permitir `SELECT` irrestrito a usuários ativos mas restringir estritamente `INSERT`, `UPDATE` e `DELETE` à função de segurança `can_current_user_write_module(modulo)`. Injeção de verificação nos cabeçalhos de todas as 6 RPCs transacionais críticas do sistema (`restore_backup`, `execute_portfolio_batch_aporte`, `import_statement_expenses`, `import_bank_transactions`, `refinance_credit_card_bill` e `create_expense_with_debt`), impedindo qualquer contorno de escrita pós-trial.
+
+- **Entregas Realizadas:**
+  - **Migration SQL (`supabase/migrations/20260101000041_saas_rls_and_rpc_hardening.sql`):**
+    - **Políticas RLS Granulares:**
+      - `incomes`, `expenses`, `cash_checkpoints` $\rightarrow$ leitura livre, escrita condicionada a `can_current_user_write_module('transactions')`;
+      - `credit_cards`, `card_payments`, `card_competence_overrides` $\rightarrow$ escrita condicionada a `can_current_user_write_module('cards')`;
+      - `debts`, `loans` $\rightarrow$ escrita condicionada a `can_current_user_write_module('debts')`;
+      - `budgets`, `income_goals` $\rightarrow$ escrita condicionada a `can_current_user_write_module('budgets')`;
+      - `portfolio_assets`, `portfolio_transactions`, `portfolio_contributions`, `portfolio_dividends`, `portfolio_snapshots`, `allocation_targets`, `group_targets`, `allocation_presets` $\rightarrow$ escrita condicionada a `can_current_user_write_module('investments')`;
+      - `recurrences`, `recurrence_skips`, `reminder_states` $\rightarrow$ escrita condicionada a `can_current_user_write_module('reminders')`;
+      - `insight_feedback` $\rightarrow$ escrita condicionada a `can_current_user_write_module('insights')`.
+    - **RPCs Blindadas:**
+      - `restore_backup`: bloqueio com exceção explícita se `!can_current_user_write()`;
+      - `execute_portfolio_batch_aporte`: verificação de `can_current_user_write_module('investments')`;
+      - `import_statement_expenses`: verificação de `can_current_user_write_module('cards')`;
+      - `import_bank_transactions`: verificação de `can_current_user_write_module('transactions')`;
+      - `refinance_credit_card_bill`: verificação de `can_current_user_write_module('cards')` e `can_current_user_write_module('debts')`;
+      - `create_expense_with_debt`: verificação de `can_current_user_write_module('transactions')` e `can_current_user_write_module('debts')`.
+  - **Gateway de Erros (`src/services/errors/`):**
+    - Adição de `ErrorKind: "permission"` e mapeamento amigável de violações RLS (código `42501`) e paywalls.
+  - **Testes Unitários:**
+    - Novos testes em `src/data/repositories/feature-flags-backend.test.ts` cobrindo cenários de erro do modo somente-leitura e permissões.
+
+**✅ DoD (Definition of Done da Fase 76.2):**
+- [x] Migration SQL `0041_saas_rls_and_rpc_hardening.sql` criada e validada.
+- [x] Decomposição de RLS para separação de Leitura e Escrita em 100% das tabelas financeiras.
+- [x] Blindagem das 6 RPCs críticas contra escrita indevida pós-trial.
+- [x] Gateway de erros com suporte a `permission` e mensagens em pt-BR.
+- [x] Suíte de testes (263 arquivos / 1.888 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
 
 
 
