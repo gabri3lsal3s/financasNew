@@ -61,4 +61,23 @@ describe("invites domain engine", () => {
     const validRes = validateInvite(targeted, "autorizado@gmail.com");
     expect(validRes.valid).toBe(true);
   });
+
+  it("deve extrair plano e benefício do convite", () => {
+    const lifetimeInvite: AccessInvite = {
+      ...baseInvite,
+      target_tier: "lifetime",
+    };
+    const res = validateInvite(lifetimeInvite);
+    expect(res.valid).toBe(true);
+    expect(res.target_tier).toBe("lifetime");
+    expect(res.benefitDescription).toBe("Convite VIP: Acesso Vitalício Total");
+
+    const extendedTrialInvite: AccessInvite = {
+      ...baseInvite,
+      target_tier: "trial",
+      custom_trial_days: 60,
+    };
+    const trialRes = validateInvite(extendedTrialInvite);
+    expect(trialRes.benefitDescription).toBe("Teste Pro estendido por 60 dias");
+  });
 });

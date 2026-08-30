@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import type { LucideIcon } from "lucide-react";
 import {
   Sparkles,
@@ -21,7 +22,6 @@ import {
   ConfirmDialog,
 } from "@/components/ui";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
-import { CheckoutSheet } from "@/components/modules/subscription/checkout-sheet";
 import { useUserSubscription } from "@/state";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -39,19 +39,15 @@ import type { SubscriptionPlan } from "@/types";
  * Regras: zero emojis, zero controles nativos, cards com trinca canônica (AGENTS.md).
  */
 export function SubscriptionTab() {
+  const navigate = useNavigate();
   const subscription = useUserSubscription();
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [checkoutPlan, setCheckoutPlan] = useState<SubscriptionPlan | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
 
   const handleProceedToCheckout = (plan: SubscriptionPlan) => {
     setUpgradeOpen(false);
-    setCheckoutPlan(plan);
-  };
-
-  const handleCheckoutSuccess = () => {
-    pushToast({ title: "Plano Pro ativado!", description: "Bem-vindo ao Plano Pro.", variant: "default" });
+    navigate(`/assinatura?plano=${plan}`);
   };
 
   const handleCancelConfirm = () => {
@@ -141,15 +137,6 @@ export function SubscriptionTab() {
         onOpenChange={setUpgradeOpen}
         onProceedToCheckout={handleProceedToCheckout}
       />
-
-      {checkoutPlan !== null && (
-        <CheckoutSheet
-          open={true}
-          onOpenChange={(o) => { if (!o) setCheckoutPlan(null); }}
-          plan={checkoutPlan}
-          onSuccess={handleCheckoutSuccess}
-        />
-      )}
 
       <ConfirmDialog
         open={cancelOpen}

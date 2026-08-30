@@ -892,6 +892,116 @@ export async function adminGetMetrics(): Promise<AdminMetricsResult> {
   return unwrapRpc(callRpc("admin_get_metrics", {}));
 }
 
+/**
+ * Consulta agregada de status da assinatura e permissões do usuário autenticado.
+ */
+export async function getMySubscription(): Promise<{
+  tier: string;
+  status: string;
+  plan_id: string;
+  starts_at: string;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  trial_days_remaining: number | null;
+  cancel_at_period_end: boolean;
+  is_full_access: boolean;
+  is_trial: boolean;
+  is_pro: boolean;
+  is_lifetime: boolean;
+  is_read_only: boolean;
+  can_write: boolean;
+  module_permissions: Record<string, string>;
+} | null> {
+  return unwrapRpc(callRpc("get_my_subscription", {}), true);
+}
+
+/**
+ * Superadmin ou Admin altera o plano/tier/status da assinatura de um usuário.
+ */
+export async function adminSetUserSubscription(params: {
+  userId: string;
+  planId: string;
+  tier: string;
+  status: string;
+  trialEndsAt?: string | null;
+  currentPeriodEnd?: string | null;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_set_user_subscription", {
+      p_user_id: params.userId,
+      p_plan_id: params.planId,
+      p_tier: params.tier,
+      p_status: params.status,
+      p_trial_ends_at: params.trialEndsAt ?? null,
+      p_current_period_end: params.currentPeriodEnd ?? null,
+    }),
+    true,
+  );
+}
+
+/**
+ * Superadmin ou Admin define override de permissão por módulo para um usuário.
+ */
+export async function adminSetUserModulePermission(params: {
+  userId: string;
+  moduleKey: string;
+  accessLevel: string;
+  expiresAt?: string | null;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_set_user_module_permission", {
+      p_user_id: params.userId,
+      p_module_key: params.moduleKey,
+      p_access_level: params.accessLevel,
+      p_expires_at: params.expiresAt ?? null,
+    }),
+    true,
+  );
+}
+
+/**
+ * Superadmin ou Admin remove override de permissão de módulo para um usuário.
+ */
+export async function adminRemoveUserModulePermission(params: {
+  userId: string;
+  moduleKey: string;
+}): Promise<void> {
+  await unwrapRpc(
+    callRpc("admin_remove_user_module_permission", {
+      p_user_id: params.userId,
+      p_module_key: params.moduleKey,
+    }),
+    true,
+  );
+}
+
+/**
+ * Criação de convite avançado com preset de plano e matriz de módulos.
+ */
+export async function adminCreateModularInvite(params: {
+  code: string;
+  targetTier?: string;
+  customTrialDays?: number | null;
+  moduleGrants?: Record<string, string>;
+  maxUses?: number;
+  expiresAt?: string | null;
+  targetEmail?: string | null;
+  notes?: string | null;
+}): Promise<string> {
+  return unwrapRpc(
+    callRpc("admin_create_modular_invite", {
+      p_code: params.code,
+      p_target_tier: params.targetTier ?? "trial",
+      p_custom_trial_days: params.customTrialDays ?? null,
+      p_module_grants: params.moduleGrants ?? {},
+      p_max_uses: params.maxUses ?? 1,
+      p_expires_at: params.expiresAt ?? null,
+      p_target_email: params.targetEmail ?? null,
+      p_notes: params.notes ?? null,
+    }),
+  );
+}
+
 
 
 

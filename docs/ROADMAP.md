@@ -1,5 +1,13 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.15** registra a **Conclusão da Fase 76.3 (Contratos TypeScript, Repositório de Assinaturas, Schemas Zod & Unificação de Checkout)** (2026-08-29):
+> - **(1) Repositório de Assinaturas (`src/data/repositories/subscriptions.ts`)**: Funções `getPlans()`, `getMySubscription()`, `getUserSubscription()`, `getUserModulePermissions()`, `adminSetUserSubscription()`, `adminSetUserModulePermission()`, `adminRemoveUserModulePermission()`, `adminCreateModularInvite()`;
+> - **(2) RPCs Tipadas (`src/data/rpc.ts` & `src/types/database.ts`)**: Wrappers de `get_my_subscription`, `admin_set_user_subscription`, `admin_set_user_module_permission`, `admin_remove_user_module_permission`, `admin_create_modular_invite`;
+> - **(3) Schemas Zod Administrativos (`src/domain/admin/schemas.ts`)**: Validações estritas de `createModularInviteSchema` e `adminSetSubscriptionSchema`;
+> - **(4) Validação Inteligente de Convites (`src/domain/admin/invites.ts`)**: `validateInvite()` enriquecido com extração do benefício (`benefitDescription`), tier e `module_grants`;
+> - **(5) Unificação de Checkout (DRY)**: Eliminação do componente redundante `CheckoutSheet` em favor do fluxo oficial seguro `/assinatura`;
+> - **(6) Suíte 100% Verde**: 265 arquivos de teste / 1.895 testes passando (100% verde), zero erros de typecheck e lint.
+
 > **v2.14** registra a **Conclusão das Fases 76.1 e 76.2 (Infraestrutura SaaS, Schemas, Backfill Seguro, Hardening de RLS e Blindagem de RPCs Transacionais)** (2026-08-29):
 > - **(1) Migration SQL 0040 (`0040_saas_plans_and_modular_access.sql`)**: Modelagem relacional completa com enums `subscription_tier`, `subscription_status` e `access_level`, tabelas `plans`, `user_subscriptions`, `user_module_permissions`, backfill para vitalício e trigger `handle_new_user()`;
 > - **(2) Migration SQL 0041 (`0041_saas_rls_and_rpc_hardening.sql`)**: Decomposição cirúrgica das políticas RLS em `SELECT` (leitura irrestrita para contas ativas) e `INSERT/UPDATE/DELETE` (bloqueio atômico se `can_current_user_write_module` for falso);
@@ -3985,6 +3993,37 @@ flowchart TD
 - [x] Blindagem das 6 RPCs críticas contra escrita indevida pós-trial.
 - [x] Gateway de erros com suporte a `permission` e mensagens em pt-BR.
 - [x] Suíte de testes (263 arquivos / 1.888 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
+---
+
+#### 3. Fase 76.3: Contratos TypeScript, Schemas Zod & Unificação da Camada Data
+
+> **Status:** ✅ Concluída (2026-08-29) — **Camada de Acesso a Dados & Contratos de Domínio**: Implementação do repositório `subscriptions.ts`, wrappers de RPCs tipadas no cliente, schemas Zod para validação estrita de convites e mutações administrativas de planos, enriquecimento do motor de validação de convites com extração de benefícios, e unificação do fluxo de upgrade eliminando componentes de modal duplicados (`CheckoutSheet`) em favor da experiência oficial de `/assinatura`.
+
+- **Entregas Realizadas:**
+  - **Repositório de Assinaturas (`src/data/repositories/subscriptions.ts`):**
+    - `getPlans()`: Busca do catálogo oficial de planos ordenados por preço;
+    - `getMySubscription()`: Consulta agregada do status de assinatura, prazo de trial e mapa de permissões;
+    - `getUserSubscription(userId)` e `getUserModulePermissions(userId)`: Consultas de auditoria para o painel admin;
+    - `adminSetUserSubscription()`, `adminSetUserModulePermission()`, `adminRemoveUserModulePermission()`, `adminCreateModularInvite()`: Mutações transacionais tipadas.
+  - **Schemas Zod (`src/domain/admin/schemas.ts`):**
+    - `createModularInviteSchema`: Validação de código, tier alvo, validade customizada, limite de usos e mapa de permissões de módulo;
+    - `adminSetSubscriptionSchema`: Validação de ID de usuário, plano e tier.
+  - **Enriquecimento do Domínio de Convites (`src/domain/admin/invites.ts`):**
+    - `getInviteBenefitDescription()`: Tradução amigável do benefício do convite (ex.: *"Convite VIP: Acesso Vitalício Total"* ou *"Teste Pro estendido por 60 dias"*);
+    - `validateInvite()`: Retorna o benefício, tier alvo e `module_grants` no resultado da validação.
+  - **Unificação de Checkout (DRY):**
+    - Descontinuação e remoção de `CheckoutSheet`;
+    - Redirecionamento da `SubscriptionTab` e diálogos de upgrade diretamente para `/assinatura?plano=...`.
+  - **Testes Automatizados:**
+    - `src/data/repositories/subscriptions.test.ts` e `src/domain/admin/schemas.test.ts` cobrindo 100% das novas funções.
+
+**✅ DoD (Definition of Done da Fase 76.3):**
+- [x] Repositório `subscriptions.ts` e testes unitários `subscriptions.test.ts` criados.
+- [x] Schemas Zod `createModularInviteSchema` e `adminSetSubscriptionSchema` validados com testes.
+- [x] `validateInvite` retornando benefício e tier do convite.
+- [x] Duplicidade de checkout eliminada (DRY).
+- [x] Suíte de testes (265 arquivos / 1.895 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
 
 
 

@@ -19,6 +19,7 @@ import type {
   IncomeGoal,
   InsightFeedback,
   Loan,
+  Plan,
   PortfolioAsset,
   PortfolioContribution,
   PortfolioDividend,
@@ -30,7 +31,9 @@ import type {
   RecurrenceSkip,
   SystemFeature,
   UserFeatureOverride,
+  UserModulePermission,
   UserPreferences,
+  UserSubscription,
 } from "./schema";
 
 /**
@@ -47,6 +50,9 @@ export interface Database {
   public: {
     Tables: {
       profiles: Table<Profile>;
+      plans: Table<Plan>;
+      user_subscriptions: Table<UserSubscription>;
+      user_module_permissions: Table<UserModulePermission>;
       user_preferences: Table<UserPreferences>;
       access_invites: Table<AccessInvite>;
       system_features: Table<SystemFeature>;
@@ -413,6 +419,66 @@ export interface Database {
           total_invites: number;
           used_invites: number;
         };
+      };
+      get_my_subscription: {
+        Args: Record<string, never>;
+        Returns: {
+          tier: string;
+          status: string;
+          plan_id: string;
+          starts_at: string;
+          trial_ends_at: string | null;
+          current_period_end: string | null;
+          trial_days_remaining: number | null;
+          cancel_at_period_end: boolean;
+          is_full_access: boolean;
+          is_trial: boolean;
+          is_pro: boolean;
+          is_lifetime: boolean;
+          is_read_only: boolean;
+          can_write: boolean;
+          module_permissions: Record<string, string>;
+        };
+      };
+      admin_set_user_subscription: {
+        Args: {
+          p_user_id: string;
+          p_plan_id: string;
+          p_tier: string;
+          p_status: string;
+          p_trial_ends_at?: string | null;
+          p_current_period_end?: string | null;
+        };
+        Returns: void;
+      };
+      admin_set_user_module_permission: {
+        Args: {
+          p_user_id: string;
+          p_module_key: string;
+          p_access_level: string;
+          p_expires_at?: string | null;
+        };
+        Returns: void;
+      };
+      admin_remove_user_module_permission: {
+        Args: {
+          p_user_id: string;
+          p_module_key: string;
+        };
+        Returns: void;
+      };
+      admin_create_modular_invite: {
+        Args: {
+          p_code: string;
+          p_target_tier?: string;
+          p_custom_trial_days?: number | null;
+          p_module_grants?: unknown;
+          p_max_uses?: number;
+          p_expires_at?: string | null;
+          p_target_email?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: string;
       };
     };
   };

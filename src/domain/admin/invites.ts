@@ -1,4 +1,4 @@
-import type { AccessInvite } from "@/types";
+import type { AccessInvite, ModuleAccessLevel, SubscriptionTier } from "@/types";
 
 /**
  * Gera um código de convite padronizado no formato PREFIX-XXXX-XXXX
@@ -19,6 +19,29 @@ export function generateInviteCode(prefix = "GF"): string {
 export interface InviteValidationResult {
   valid: boolean;
   reason?: string;
+  target_tier?: SubscriptionTier;
+  custom_trial_days?: number | null;
+  module_grants?: Record<string, ModuleAccessLevel>;
+  benefitDescription?: string;
+}
+
+/**
+ * Gera um texto amigável descrevendo o benefício embutido no convite.
+ */
+export function getInviteBenefitDescription(invite: AccessInvite): string {
+  if (invite.target_tier === "lifetime") {
+    return "Convite VIP: Acesso Vitalício Total";
+  }
+  if (invite.target_tier === "pro_annual") {
+    return "Convite VIP: Assinatura Pro Anual";
+  }
+  if (invite.target_tier === "pro_monthly") {
+    return "Convite VIP: Assinatura Pro Mensal";
+  }
+  if (invite.custom_trial_days && invite.custom_trial_days > 0) {
+    return `Teste Pro estendido por ${invite.custom_trial_days} dias`;
+  }
+  return "Teste Pro completo por 30 dias";
 }
 
 /**
@@ -57,5 +80,11 @@ export function validateInvite(
     }
   }
 
-  return { valid: true };
+  return {
+    valid: true,
+    target_tier: invite.target_tier,
+    custom_trial_days: invite.custom_trial_days,
+    module_grants: invite.module_grants,
+    benefitDescription: getInviteBenefitDescription(invite),
+  };
 }
