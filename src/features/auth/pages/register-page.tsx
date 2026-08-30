@@ -54,7 +54,7 @@ export function RegisterPage() {
       subtitle={
         planoParam
           ? "Crie sua conta para concluir a assinatura do Plano Pro."
-          : "Comece a organizar suas finanças em minutos."
+          : "Comece com 30 dias de acesso Pro gratuito sem cartão de crédito."
       }
     >
       <div className="flex flex-col gap-4">

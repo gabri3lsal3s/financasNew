@@ -109,6 +109,7 @@ export function AppRouter() {
         <Route path="/apresentacao" element={<LandingPage />} />
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/precos" element={<LandingPage />} />
+        <Route path="/planos" element={<LandingPage />} />
 
         {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
         <Route path="/entrar" element={<LoginPage />} />

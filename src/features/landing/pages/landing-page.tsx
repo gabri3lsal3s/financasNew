@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useLocation } from "react-router";
 import { LandingHeader } from "@/features/landing/components/landing-header";
 import { HeroEditorial } from "@/features/landing/components/hero-editorial";
 import { ProductNarratives } from "@/features/landing/components/product-narratives";
@@ -14,7 +16,24 @@ import { useScrollSpy } from "@/features/landing/hooks";
 
 export function LandingPage() {
   const { showBackToTop, resetKey, activeSection } = useScrollSpy();
+  const location = useLocation();
   const isDockVisible = showBackToTop && activeSection !== "precos";
+
+  useEffect(() => {
+    if (
+      location.pathname === "/precos" ||
+      location.pathname === "/planos" ||
+      location.hash === "#precos"
+    ) {
+      const el = document.getElementById("precos");
+      if (el) {
+        // Timeout para aguardar render inicial
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  }, [location.pathname, location.hash]);
 
   return (
     <ScrollRevealProvider resetKey={resetKey}>

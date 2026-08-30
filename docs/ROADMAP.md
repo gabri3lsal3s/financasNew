@@ -1,5 +1,11 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.19** registra a **Conclusão da Fase 76.7 (Catálogo de Planos Público `/planos`, Ajuste de Landing Page & Onboarding)** (2026-08-29):
+> - **(1) Rota Pública Oficial `/planos` e `/precos`**: Roteamento integrado com rolagem automática suave para a `PricingSection` detalhando os planos Free (Trial 30 dias com modo somente-leitura pós-período) e Pro (Mensal R$ 19,90 e Anual R$ 14,90/mês);
+> - **(2) Onboarding Transparente no `RegisterPage`**: Subtítulo adaptativo comunicando o período de teste Pro gratuito de 30 dias sem necessidade de cartão de crédito e integração com parâmetros de plano (`?plano=pro-anual` / `?plano=pro-mensal`) para checkout fluido;
+> - **(3) Conclusão Integral da Fase 76 (SaaS Migration)**: 100% dos 7 sub-blocos da transição SaaS implementados, auditados e validados com zero débito técnico;
+> - **(4) Suíte 100% Verde**: 269 arquivos de teste / 1.908 testes passando (100% verde), zero erros de typecheck e lint, e build de produção limpo.
+
 > **v2.18** registra a **Conclusão da Fase 76.6 (Painel Admin: Gestão de Planos, Concessão de Acesso Modular & Auditoria)** (2026-08-29):
 > - **(1) Gestão de Assinaturas e Tiers no `UserEditDialog`**: Visualização e alteração de planos (Free, Pro Mensal, Pro Anual, Vitalício VIP) e status de assinatura com mutação transacional `admin_set_user_subscription`;
 > - **(2) Matriz de Permissões Modulares Granulares**: Controle individual de acesso por módulo (`transactions`, `cards`, `debts`, `budgets`, `investments`, `reports`, `insights`, `reminders`) com níveis `Total (write)`, `Somente Leitura (read)` e `Bloqueado (none)`, permitindo criar ou ajustar acessos customizados (ex.: Vitalício Restrito);
@@ -4135,7 +4141,26 @@ flowchart TD
 ---
 
 #### 7. Fase 76.7: Catálogo de Planos Público (`/planos`), Ajuste de Landing Page & Onboarding
-> **Status:** ⏳ Pendente
+
+> **Status:** ✅ Concluída (2026-08-29) — **Páginas Públicas de Planos, Onboarding Claro & Conclusão da Transição SaaS**: Roteamento público oficial de `/planos` e `/precos` com rolagem suave automática para a tabela de preços e recursos (`PricingSection`), alinhamento do fluxo de cadastro (`RegisterPage`) para explicitar o período de 30 dias grátis de Pro sem cartão, e finalização do ciclo de monetização SaaS.
+
+- **Entregas Realizadas:**
+  - **Rotas Públicas Oficiais (`src/app/router.tsx` & `src/features/landing/pages/landing-page.tsx`):**
+    - Adição da rota pública `/planos` (juntamente com `/precos`, `/landing` e `/apresentacao`);
+    - Scroll suave automático (`scrollIntoView`) para a seção `#precos` quando acessado diretamente via `/planos`, `/precos` ou âncora;
+  - **Catálogo de Preços & Comparativo de Recursos (`PricingSection`):**
+    - Tabela clara comparando o período de Teste (30 dias sem cartão, modo somente-leitura após o período) e o Plano Pro (Mensal a R$ 19,90 e Anual a R$ 14,90/mês — 25% OFF);
+    - Links e botões de conversão com deep-links diretos para `/cadastro?plano=pro-anual` e `/cadastro?plano=pro-mensal`;
+  - **Onboarding no Cadastro (`RegisterPage`):**
+    - Subtítulo transparente comunicando os 30 dias de acesso Pro gratuito sem dados bancários;
+    - Redirecionamento automático pós-cadastro para o fluxo de checkout quando um plano específico foi escolhido na landing page.
+
+**✅ DoD (Definition of Done da Fase 76.7):**
+- [x] Rotas `/planos` e `/precos` acessíveis publicamente sem necessidade de login.
+- [x] Auto-scroll suave para a tabela de preços implementado.
+- [x] Subtítulo e fluxo de onboarding com trial de 30 dias alinhados no cadastro.
+- [x] Suíte de testes (269 arquivos / 1.908 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
 
 
 
