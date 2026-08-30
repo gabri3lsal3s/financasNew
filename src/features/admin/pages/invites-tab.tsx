@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Copy, KeyRound, Plus, Trash2 } from "lucide-react";
+import { Copy, Crown, KeyRound, Plus, Trash2 } from "lucide-react";
 import { Button, EmptyState, Skeleton } from "@/components/ui";
+import { getInviteBenefitDescription } from "@/domain/admin";
 import { useAdminInvites, useAdminRevokeInvite } from "@/state";
 import { CreateInviteDialog } from "../components";
 import { pushToast } from "@/services/toast";
@@ -41,7 +42,7 @@ export function InvitesTab() {
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-bold text-foreground truncate">Gestão de Convites &amp; Allowlist</span>
             <span className="text-xs text-muted-foreground leading-relaxed">
-              Cadastros com convite válido são ativados automaticamente na plataforma.
+              Cadastros com convite válido são ativados automaticamente na plataforma com planos pré-configurados.
             </span>
           </div>
         </div>
@@ -78,12 +79,19 @@ export function InvitesTab() {
               {invites.map((invite) => {
                 const isExpired = invite.expires_at ? new Date(invite.expires_at) < new Date() : false;
                 const isExhausted = invite.used_count >= invite.max_uses;
+                const benefit = getInviteBenefitDescription(invite);
+                const hasModuleGrants = invite.module_grants && Object.keys(invite.module_grants).length > 0;
 
                 return (
                   <div key={invite.id} className="p-4 flex flex-col gap-3 hover:bg-surface-hover/20 transition-colors">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-col min-w-0">
-                        <span className="font-mono text-sm font-bold text-foreground">{invite.code}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-bold text-foreground">{invite.code}</span>
+                          {invite.target_tier === "lifetime" && (
+                            <Crown className="size-3.5 text-portfolio" aria-hidden="true" />
+                          )}
+                        </div>
                         <span className="text-xs text-muted-foreground mt-0.5">
                           Usos: <strong className="text-foreground">{invite.used_count}</strong> de {invite.max_uses}
                         </span>
@@ -111,6 +119,20 @@ export function InvitesTab() {
                     </div>
 
                     <div className="flex flex-col gap-1 text-xs text-muted-foreground pt-1 border-t border-border/60">
+                      <div className="flex justify-between items-center">
+                        <span>Plano / Benefício:</span>
+                        <span className="text-foreground font-semibold text-[11px] text-right truncate max-w-[200px]">
+                          {benefit}
+                        </span>
+                      </div>
+                      {hasModuleGrants && (
+                        <div className="flex justify-between items-center">
+                          <span>Módulos Customizados:</span>
+                          <span className="text-primary font-medium text-[11px]">
+                            {Object.keys(invite.module_grants || {}).length} regras
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span>Restrição:</span>
                         <span className="text-foreground font-medium truncate max-w-[200px]">
@@ -125,6 +147,14 @@ export function InvitesTab() {
                             : "Permanente"}
                         </span>
                       </div>
+                      {invite.notes && (
+                        <div className="flex justify-between">
+                          <span>Notas:</span>
+                          <span className="text-muted-foreground italic truncate max-w-[200px]">
+                            {invite.notes}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 pt-1">
@@ -160,12 +190,13 @@ export function InvitesTab() {
 
             {/* Visualização em Tabela para Tablets e Desktop */}
             <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full min-w-[580px] text-left text-xs border-collapse">
+              <table className="w-full min-w-[620px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
                     <th className="py-3 px-4">Código</th>
+                    <th className="py-3 px-4">Plano / Benefício</th>
                     <th className="py-3 px-4">Usos</th>
-                    <th className="py-3 px-4">Restrição de E-mail</th>
+                    <th className="py-3 px-4">Restrição</th>
                     <th className="py-3 px-4">Validade</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4 text-right">Ações</th>
@@ -175,17 +206,38 @@ export function InvitesTab() {
                   {invites.map((invite) => {
                     const isExpired = invite.expires_at ? new Date(invite.expires_at) < new Date() : false;
                     const isExhausted = invite.used_count >= invite.max_uses;
+                    const benefit = getInviteBenefitDescription(invite);
+                    const hasModuleGrants = invite.module_grants && Object.keys(invite.module_grants).length > 0;
 
                     return (
                       <tr key={invite.id} className="hover:bg-surface-hover/30 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-foreground whitespace-nowrap">
-                          {invite.code}
+                          <div className="flex items-center gap-1.5">
+                            {invite.code}
+                            {invite.target_tier === "lifetime" && (
+                              <span title="Acesso Vitalício VIP">
+                                <Crown className="size-3 text-portfolio" aria-hidden="true" />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-foreground truncate max-w-[180px]">
+                              {benefit}
+                            </span>
+                            {hasModuleGrants && (
+                              <span className="text-[10px] text-primary">
+                                {Object.keys(invite.module_grants || {}).length} regras modulares
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 font-mono whitespace-nowrap">
                           {invite.used_count} / {invite.max_uses}
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">
-                          <span className="truncate max-w-[180px] block">
+                          <span className="truncate max-w-[140px] block">
                             {invite.target_email || "Qualquer e-mail"}
                           </span>
                         </td>

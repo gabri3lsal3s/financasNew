@@ -125,12 +125,18 @@ export {
   useAdminInvites,
   useAdminAuditLogs,
   useUserOverrides,
+  useAdminPlans,
+  useAdminUserSubscription,
+  useAdminUserModulePermissions,
   ADMIN_METRICS_KEY,
   ADMIN_USERS_KEY,
   ADMIN_FEATURES_KEY,
   ADMIN_INVITES_KEY,
   ADMIN_AUDIT_KEY,
   ADMIN_USER_OVERRIDES_KEY,
+  ADMIN_PLANS_KEY,
+  ADMIN_USER_SUBSCRIPTION_KEY,
+  ADMIN_USER_MODULE_PERMISSIONS_KEY,
 } from "./queries/use-admin";
 
 
@@ -142,6 +148,10 @@ export {
   useAdminToggleGlobalFeature,
   useAdminCreateInvite,
   useAdminRevokeInvite,
+  useAdminSetUserSubscription,
+  useAdminSetUserModulePermission,
+  useAdminRemoveUserModulePermission,
+  useAdminCreateModularInvite,
 } from "./mutations/use-admin-mutations";
 
 export {

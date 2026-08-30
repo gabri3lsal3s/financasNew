@@ -81,7 +81,15 @@ vi.mock("@/state", () => ({
   useAdminRemoveFeatureOverride: () => ({ mutate: vi.fn(), isPending: false }),
   useAdminToggleGlobalFeature: () => ({ mutate: vi.fn(), isPending: false }),
   useAdminCreateInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAdminCreateModularInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAdminRevokeInvite: () => ({ mutate: vi.fn(), isPending: false }),
+  useAdminPlans: () => ({ data: [], isLoading: false }),
+  useAdminUserSubscription: () => ({ data: null, isLoading: false }),
+  useAdminUserModulePermissions: () => ({ data: [], isLoading: false }),
+  useAdminSetUserSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAdminSetUserModulePermission: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAdminRemoveUserModulePermission: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUserOverrides: () => ({ data: [], isLoading: false }),
 }));
 
 describe("AdminPage Component", () => {

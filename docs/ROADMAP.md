@@ -1,5 +1,11 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.18** registra a **Conclusão da Fase 76.6 (Painel Admin: Gestão de Planos, Concessão de Acesso Modular & Auditoria)** (2026-08-29):
+> - **(1) Gestão de Assinaturas e Tiers no `UserEditDialog`**: Visualização e alteração de planos (Free, Pro Mensal, Pro Anual, Vitalício VIP) e status de assinatura com mutação transacional `admin_set_user_subscription`;
+> - **(2) Matriz de Permissões Modulares Granulares**: Controle individual de acesso por módulo (`transactions`, `cards`, `debts`, `budgets`, `investments`, `reports`, `insights`, `reminders`) com níveis `Total (write)`, `Somente Leitura (read)` e `Bloqueado (none)`, permitindo criar ou ajustar acessos customizados (ex.: Vitalício Restrito);
+> - **(3) Concessão Modular e Tiers em Convites (`CreateInviteDialog` & `InvitesTab`)**: Criação de códigos de convite com tier alvo pré-configurado, dias de trial estendidos, matriz de módulos customizados e notas administrativas, com exibição de benefícios e badges em cards e tabelas;
+> - **(4) Suíte 100% Verde**: 269 arquivos de teste / 1.908 testes passando (100% verde), zero erros de typecheck e lint, e build de produção limpo.
+
 > **v2.17** registra a **Conclusão da Fase 76.5 (UI/UX: Experiência do Modo Somente-Leitura & Upsell Suave)** (2026-08-29):
 > - **(1) Componente de Banner Informativo `ReadOnlyBanner`**: Design calmo e acessível comunicando que os dados e relatórios estão 100% seguros e preservados, com botão CTA direto para ativação do Plano Pro;
 > - **(2) Guards Suaves de Upsell (`UpgradeDialog`)**: Interceptação não-bloqueante de botões e gatilhos de criação/edição em todas as telas operacionais (`TransactionListPage`, `CardsPage`, `DebtsPage`, `BudgetsPage`, `InvestmentsPage`), abrindo o diálogo explicativo de upgrade em vez de lançar erros de RLS;
@@ -4099,10 +4105,38 @@ flowchart TD
 ---
 
 #### 6. Fase 76.6: Painel Admin: Gestão de Planos, Concessão de Acesso Modular & Auditoria
-> **Status:** ⏳ Pendente
+
+> **Status:** ✅ Concluída (2026-08-29) — **Gestão Administrativa de Assinaturas, Overrides Granulares & Convites Modulares**: Implementação da gestão de planos e assinaturas no modal de usuário (`UserEditDialog`), controle de permissões modulares (`user_module_permissions`) para concessão de planos customizados (ex.: Vitalício Restrito a Investimentos), e criação de convites inteligentes com pré-configuração de tier, trial estendido e regras modulares (`CreateInviteDialog` e `InvitesTab`).
+
+- **Entregas Realizadas:**
+  - **Gestão de Assinaturas no `UserEditDialog`:**
+    - Visualização do tier atual, status e datas de trial/renovação;
+    - Alteração de plano e status com sincronização atômica via `adminSetUserSubscription`;
+    - Suporte a promoção para Vitalício VIP, Pro Anual, Pro Mensal ou rebaixamento para Modo Leitura.
+  - **Matriz de Permissões Modulares Granulares (`UserEditDialog`):**
+    - Controle por módulo (`transactions`, `cards`, `debts`, `budgets`, `investments`, `reports`, `insights`, `reminders`);
+    - Opções: Acesso Total (`write`), Somente Leitura (`read`), Bloqueado (`none`) ou Restaurar Padrão do Plano;
+    - Mutação via `useAdminSetUserModulePermission` e `useAdminRemoveUserModulePermission`.
+  - **Geração de Convites Modulares (`CreateInviteDialog` & `InvitesTab`):**
+    - Seletor de tier concedido pelo convite (`trial`, `pro_monthly`, `pro_annual`, `lifetime`);
+    - Configuração de dias de teste customizados para trials especiais;
+    - Matriz de concessão modular customizada para gerar convites com acesso restrito a módulos específicos;
+    - Visualização de benefícios, regras modulares e anotações administrativas na tabela e cards da `InvitesTab`.
+  - **Testes Automatizados & Validação:**
+    - `src/features/admin/components/create-invite-dialog.test.tsx` e `src/features/admin/components/user-edit-dialog.test.tsx` cobrindo 100% dos novos fluxos administrativos.
+
+**✅ DoD (Definition of Done da Fase 76.6):**
+- [x] Gestão de assinaturas e tiers implementada no `UserEditDialog`.
+- [x] Matriz de permissões modulares operando com ações de salvar e restaurar padrão.
+- [x] Criação de convites com seleção de tier, dias de trial e concessão modular customizada.
+- [x] Exibição de benefícios e badges harmonizados na `InvitesTab`.
+- [x] Suíte de testes (269 arquivos / 1.908 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
+---
 
 #### 7. Fase 76.7: Catálogo de Planos Público (`/planos`), Ajuste de Landing Page & Onboarding
 > **Status:** ⏳ Pendente
+
 
 
 

@@ -8,6 +8,11 @@ import {
   listUserFeatureOverrides,
   type AdminListUsersParams,
 } from "@/data/repositories/admin";
+import {
+  getPlans,
+  getUserModulePermissions,
+  getUserSubscription,
+} from "@/data/repositories/subscriptions";
 
 export const ADMIN_METRICS_KEY = ["admin_metrics"] as const;
 export const ADMIN_USERS_KEY = ["admin_users"] as const;
@@ -15,6 +20,9 @@ export const ADMIN_FEATURES_KEY = ["admin_features"] as const;
 export const ADMIN_INVITES_KEY = ["admin_invites"] as const;
 export const ADMIN_AUDIT_KEY = ["admin_audit"] as const;
 export const ADMIN_USER_OVERRIDES_KEY = ["admin_user_overrides"] as const;
+export const ADMIN_PLANS_KEY = ["admin_plans"] as const;
+export const ADMIN_USER_SUBSCRIPTION_KEY = ["admin_user_subscription"] as const;
+export const ADMIN_USER_MODULE_PERMISSIONS_KEY = ["admin_user_module_permissions"] as const;
 
 export function useAdminMetrics() {
   return useQuery({
@@ -60,6 +68,32 @@ export function useUserOverrides(userId: string | null | undefined) {
   return useQuery({
     queryKey: [...ADMIN_USER_OVERRIDES_KEY, userId],
     queryFn: () => (userId ? listUserFeatureOverrides(userId) : Promise.resolve([])),
+    enabled: Boolean(userId),
+    staleTime: 1000 * 10,
+  });
+}
+
+export function useAdminPlans() {
+  return useQuery({
+    queryKey: ADMIN_PLANS_KEY,
+    queryFn: getPlans,
+    staleTime: 1000 * 60 * 5, // 5 min
+  });
+}
+
+export function useAdminUserSubscription(userId: string | null | undefined) {
+  return useQuery({
+    queryKey: [...ADMIN_USER_SUBSCRIPTION_KEY, userId],
+    queryFn: () => (userId ? getUserSubscription(userId) : Promise.resolve(null)),
+    enabled: Boolean(userId),
+    staleTime: 1000 * 10,
+  });
+}
+
+export function useAdminUserModulePermissions(userId: string | null | undefined) {
+  return useQuery({
+    queryKey: [...ADMIN_USER_MODULE_PERMISSIONS_KEY, userId],
+    queryFn: () => (userId ? getUserModulePermissions(userId) : Promise.resolve([])),
     enabled: Boolean(userId),
     staleTime: 1000 * 10,
   });

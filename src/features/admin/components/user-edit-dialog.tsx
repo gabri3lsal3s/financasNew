@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
-import { Check, RotateCcw, Shield, UserCheck, X } from "lucide-react";
+import { Check, Crown, RotateCcw, Shield, Sparkles, UserCheck, X } from "lucide-react";
 import { Button, Input, Modal, Select } from "@/components/ui";
 import {
   ROLE_LABELS,
@@ -12,21 +12,43 @@ import {
 import {
   useAdminFeatures,
   useAdminRemoveFeatureOverride,
+  useAdminRemoveUserModulePermission,
   useAdminSetFeatureOverride,
+  useAdminSetUserModulePermission,
   useAdminSetUserRole,
+  useAdminSetUserSubscription,
   useAdminUpdateUserStatus,
+  useAdminUserModulePermissions,
+  useAdminUserSubscription,
   useUserAccess,
   useUserOverrides,
 } from "@/state";
-import type { AdminUserRow, UserFeatureOverride, UserRole, UserStatus } from "@/types";
-
-
+import type {
+  AdminUserRow,
+  ModuleAccessLevel,
+  SubscriptionTier,
+  UserFeatureOverride,
+  UserModulePermission,
+  UserRole,
+  UserStatus,
+} from "@/types";
 
 export interface UserEditDialogProps {
   user: AdminUserRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const AVAILABLE_MODULES = [
+  { key: "transactions", label: "Transações & Extrato", desc: "Receitas, despesas e lançamentos" },
+  { key: "cards", label: "Cartões de Crédito", desc: "Faturas, limites e carteira" },
+  { key: "debts", label: "Dívidas & Empréstimos", desc: "Contas a pagar, receber e contratos" },
+  { key: "budgets", label: "Orçamentos & Metas", desc: "Limites de gastos e metas de renda" },
+  { key: "investments", label: "Investimentos & Carteira", desc: "Posição, proventos e rebalanceamento" },
+  { key: "reports", label: "Relatórios Executivos", desc: "DRE, balanço e informes fiscais" },
+  { key: "insights", label: "Inteligência & Insights", desc: "Diagnósticos e recomendações" },
+  { key: "reminders", label: "Central de Lembretes", desc: "Vencimentos e avisos de contas" },
+] as const;
 
 export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps) {
   const { role: currentUserRole } = useUserAccess();
@@ -37,9 +59,25 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const featuresQuery = useAdminFeatures();
   const overridesQuery = useUserOverrides(user?.id);
 
+  // Subscriptions & Modular Access
+  const subscriptionQuery = useAdminUserSubscription(user?.id);
+  const modulePermissionsQuery = useAdminUserModulePermissions(user?.id);
+  const setSubscriptionMutation = useAdminSetUserSubscription();
+  const setModulePermissionMutation = useAdminSetUserModulePermission();
+  const removeModulePermissionMutation = useAdminRemoveUserModulePermission();
+
   const [status, setStatus] = useState<UserStatus>((user?.status as UserStatus) || "active");
   const [role, setRole] = useState<UserRole>((user?.role as UserRole) || "user");
   const [reason, setReason] = useState(user?.suspended_reason || "");
+
+  // Local state for subscription editing overrides
+  const [overrideTier, setOverrideTier] = useState<SubscriptionTier | null>(null);
+  const [overridePlanId, setOverridePlanId] = useState<string | null>(null);
+  const [overrideSubStatus, setOverrideSubStatus] = useState<string | null>(null);
+
+  const effectiveTier = overrideTier ?? subscriptionQuery.data?.tier ?? "trial";
+  const effectivePlanId = overridePlanId ?? subscriptionQuery.data?.plan_id ?? "free";
+  const effectiveSubStatus = overrideSubStatus ?? subscriptionQuery.data?.status ?? "active";
 
   const overridesMap = useMemo(() => {
     const map = new Map<string, UserFeatureOverride>();
@@ -48,6 +86,14 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
     }
     return map;
   }, [overridesQuery.data]);
+
+  const modulePermissionsMap = useMemo(() => {
+    const map = new Map<string, UserModulePermission>();
+    for (const p of modulePermissionsQuery.data ?? []) {
+      map.set(p.module_key, p);
+    }
+    return map;
+  }, [modulePermissionsQuery.data]);
 
   if (!user) return null;
 
@@ -81,6 +127,34 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
     }
   };
 
+  const handleSaveSubscription = async () => {
+    try {
+      await setSubscriptionMutation.mutateAsync({
+        userId: user.id,
+        planId: effectivePlanId,
+        tier: effectiveTier,
+        status: effectiveSubStatus,
+      });
+    } catch {
+      // no-op
+    }
+  };
+
+  const handleSetModulePermission = async (moduleKey: string, accessLevel: ModuleAccessLevel) => {
+    await setModulePermissionMutation.mutateAsync({
+      userId: user.id,
+      moduleKey,
+      accessLevel,
+    });
+  };
+
+  const handleRemoveModulePermission = async (moduleKey: string) => {
+    await removeModulePermissionMutation.mutateAsync({
+      userId: user.id,
+      moduleKey,
+    });
+  };
+
   const handleToggleUserFeature = async (featureKey: string, enabled: boolean) => {
     await setOverrideMutation.mutateAsync({
       userId: user.id,
@@ -101,10 +175,10 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
       open={open}
       onOpenChange={onOpenChange}
       title="Gerenciar Usuário"
-      description={`Configurações de acesso, permissões e status da conta para ${user.name || user.email}.`}
+      description={`Configurações de plano SaaS, permissões modulares e status da conta para ${user.name || user.email}.`}
       size="lg"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 max-h-[80vh] overflow-y-auto pr-1">
         {/* Identificação Básica */}
         <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-1 text-xs">
           <div className="flex justify-between">
@@ -121,10 +195,206 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
           </div>
         </div>
 
+        {/* Gestão de Plano & Assinatura SaaS */}
+        <div className="flex flex-col gap-3 p-4 rounded-xl border border-border/80 bg-surface/80 shadow-2xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Crown className="size-4 text-portfolio" aria-hidden="true" />
+              <span className="text-xs font-bold text-foreground">
+                Plano SaaS &amp; Assinatura
+              </span>
+            </div>
+            {subscriptionQuery.data?.tier === "lifetime" ? (
+              <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold bg-portfolio/10 text-portfolio border border-portfolio/25">
+                <Sparkles className="size-3" aria-hidden="true" />
+                Vitalício VIP
+              </span>
+            ) : (
+              <span className="inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold bg-surface-hover text-muted-foreground border border-border">
+                Tier: {subscriptionQuery.data?.tier || "trial"}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="target-tier" className="text-xs font-semibold text-foreground">
+                Tier de Assinatura
+              </label>
+              <Select
+                value={effectiveTier}
+                onValueChange={(val) => {
+                  const newTier = val as SubscriptionTier;
+                  setOverrideTier(newTier);
+                  if (newTier === "lifetime") setOverridePlanId("lifetime_vip");
+                  else if (newTier === "pro_monthly") setOverridePlanId("pro_monthly");
+                  else if (newTier === "pro_annual") setOverridePlanId("pro_annual");
+                  else if (newTier === "trial" || newTier === "read_only") setOverridePlanId("free");
+                }}
+                options={[
+                  { value: "trial", label: "Trial Pro (Período de Teste)" },
+                  { value: "lifetime", label: "Plano Vitalício VIP" },
+                  { value: "pro_annual", label: "Pro Anual" },
+                  { value: "pro_monthly", label: "Pro Mensal" },
+                  { value: "read_only", label: "Somente Leitura (Expirado)" },
+                ]}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="target-sub-status" className="text-xs font-semibold text-foreground">
+                Status da Assinatura
+              </label>
+              <Select
+                value={effectiveSubStatus}
+                onValueChange={(val) => setOverrideSubStatus(val)}
+                options={[
+                  { value: "active", label: "Ativa (active)" },
+                  { value: "trialing", label: "Em Teste (trialing)" },
+                  { value: "past_due", label: "Inadimplente (past_due)" },
+                  { value: "canceled", label: "Cancelada (canceled)" },
+                  { value: "read_only_expired", label: "Modo Leitura (read_only_expired)" },
+                ]}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end pt-2 border-t border-border/60">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={handleSaveSubscription}
+              disabled={setSubscriptionMutation.isPending}
+              className="gap-1.5 text-xs h-8 px-3"
+            >
+              <Crown className="size-3.5" aria-hidden="true" />
+              {setSubscriptionMutation.isPending ? "Salvando…" : "Atualizar Plano / Tier"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Permissões Modulares Granulares */}
+        <div className="flex flex-col gap-2 pt-2 border-t border-border">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-foreground">
+              Permissões Modulares Granulares
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              Permite conceder ou restringir acesso por módulo (ex: Vitalício com apenas Investimentos ou Bloqueio de Cartões).
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-1">
+            {AVAILABLE_MODULES.map((mod) => {
+              const override = modulePermissionsMap.get(mod.key);
+              const hasOverride = Boolean(override);
+              const currentLevel = override?.access_level;
+
+              return (
+                <div
+                  key={mod.key}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border/80 bg-surface/80 text-xs shadow-2xs"
+                >
+                  <div className="flex flex-col gap-1 max-w-sm">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-foreground">{mod.label}</span>
+                      {hasOverride ? (
+                        <span
+                          className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                            currentLevel === "write" || currentLevel === "admin"
+                              ? "bg-positive/10 text-positive-strong border border-positive/25"
+                              : currentLevel === "read"
+                                ? "bg-warning/10 text-warning border border-warning/25"
+                                : "bg-critical/10 text-critical border border-critical/25"
+                          }`}
+                        >
+                          Override: {currentLevel === "write" || currentLevel === "admin" ? "Acesso Total" : currentLevel === "read" ? "Somente Leitura" : "Bloqueado"}
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold bg-surface-hover text-muted-foreground border border-border">
+                          Padrão do Plano
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
+                    <Button
+                      type="button"
+                      variant={currentLevel === "write" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleSetModulePermission(mod.key, "write")}
+                      disabled={setModulePermissionMutation.isPending}
+                      className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
+                        currentLevel === "write"
+                          ? "bg-positive text-white hover:bg-positive/90"
+                          : "text-positive-strong hover:bg-positive/10 border-positive/30"
+                      }`}
+                      title="Liberar escrita e leitura neste módulo"
+                    >
+                      <Check className="size-3.5" aria-hidden="true" />
+                      <span>Total</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant={currentLevel === "read" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleSetModulePermission(mod.key, "read")}
+                      disabled={setModulePermissionMutation.isPending}
+                      className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
+                        currentLevel === "read"
+                          ? "bg-warning text-white hover:bg-warning/90"
+                          : "text-warning hover:bg-warning/10 border-warning/30"
+                      }`}
+                      title="Restringir a somente leitura neste módulo"
+                    >
+                      <span>Leitura</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant={currentLevel === "none" ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={() => handleSetModulePermission(mod.key, "none")}
+                      disabled={setModulePermissionMutation.isPending}
+                      className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
+                        currentLevel === "none"
+                          ? "bg-critical text-white hover:bg-critical/90"
+                          : "text-critical hover:bg-critical/10 border-critical/30"
+                      }`}
+                      title="Bloquear completamente o módulo para este usuário"
+                    >
+                      <X className="size-3.5" aria-hidden="true" />
+                      <span>Bloquear</span>
+                    </Button>
+
+                    {hasOverride && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveModulePermission(mod.key)}
+                        disabled={removeModulePermissionMutation.isPending}
+                        className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                        title="Restaurar regra padrão do plano"
+                      >
+                        <RotateCcw className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Status da Conta */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-border">
           <label htmlFor="user-status" className="text-xs font-semibold text-foreground">
-            Status da Conta
+            Status da Conta na Plataforma
           </label>
           <Select
             value={status}
@@ -166,7 +436,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
           <div className="flex items-center gap-1.5">
             <Shield className="size-3.5 text-portfolio" aria-hidden="true" />
             <label htmlFor="user-role" className="text-xs font-semibold text-foreground">
-              Nível de Permissão (Role)
+              Nível de Permissão Administrativa (Role)
             </label>
           </div>
           <Select
@@ -186,14 +456,14 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
           ) : null}
         </div>
 
-        {/* Overrides de Funcionalidades */}
+        {/* Overrides de Kill-Switches e Features Globais */}
         <div className="flex flex-col gap-2 pt-2 border-t border-border">
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-semibold text-foreground">
-              Acesso a Funcionalidades Específicas
+              Kill-Switches &amp; Features do Sistema
             </span>
             <span className="text-[11px] text-muted-foreground">
-              Veja o status efetivo do usuário para cada módulo e configure liberações ou bloqueios personalizados.
+              Overrides individuais de Kill-Switches de sistema.
             </span>
           </div>
 
@@ -292,7 +562,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
             className="gap-1.5 w-full sm:w-auto justify-center"
           >
             <UserCheck className="size-4" aria-hidden="true" />
-            Salvar Alterações
+            Salvar Status &amp; Cargo
           </Button>
         </div>
 
