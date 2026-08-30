@@ -27,12 +27,8 @@ vi.mock("@/state", () => ({
     isAdmin: true,
     isSuperAdmin: true,
   }),
-  useAdminFeatures: () => ({ data: [], isLoading: false }),
-  useUserOverrides: () => ({ data: [], isLoading: false }),
   useAdminUpdateUserStatus: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAdminSetUserRole: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useAdminSetFeatureOverride: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useAdminRemoveFeatureOverride: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAdminPlans: () => ({ data: [], isLoading: false }),
   useAdminUserSubscription: () => ({
     data: {

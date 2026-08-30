@@ -7,13 +7,9 @@ import {
   STATUS_LABELS,
   canManageRole,
   canManageUserStatus,
-  getFeatureStatusInfo,
 } from "@/domain/admin";
 import {
-  useAdminFeatures,
-  useAdminRemoveFeatureOverride,
   useAdminRemoveUserModulePermission,
-  useAdminSetFeatureOverride,
   useAdminSetUserModulePermission,
   useAdminSetUserRole,
   useAdminSetUserSubscription,
@@ -21,13 +17,11 @@ import {
   useAdminUserModulePermissions,
   useAdminUserSubscription,
   useUserAccess,
-  useUserOverrides,
 } from "@/state";
 import type {
   AdminUserRow,
   ModuleAccessLevel,
   SubscriptionTier,
-  UserFeatureOverride,
   UserModulePermission,
   UserRole,
   UserStatus,
@@ -54,10 +48,6 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const { role: currentUserRole } = useUserAccess();
   const updateStatusMutation = useAdminUpdateUserStatus();
   const setRoleMutation = useAdminSetUserRole();
-  const setOverrideMutation = useAdminSetFeatureOverride();
-  const removeOverrideMutation = useAdminRemoveFeatureOverride();
-  const featuresQuery = useAdminFeatures();
-  const overridesQuery = useUserOverrides(user?.id);
 
   // Subscriptions & Modular Access
   const subscriptionQuery = useAdminUserSubscription(user?.id);
@@ -78,14 +68,6 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const effectiveTier = overrideTier ?? subscriptionQuery.data?.tier ?? "trial";
   const effectivePlanId = overridePlanId ?? subscriptionQuery.data?.plan_id ?? "free";
   const effectiveSubStatus = overrideSubStatus ?? subscriptionQuery.data?.status ?? "active";
-
-  const overridesMap = useMemo(() => {
-    const map = new Map<string, UserFeatureOverride>();
-    for (const ov of overridesQuery.data ?? []) {
-      map.set(ov.feature_key, ov);
-    }
-    return map;
-  }, [overridesQuery.data]);
 
   const modulePermissionsMap = useMemo(() => {
     const map = new Map<string, UserModulePermission>();
@@ -152,21 +134,6 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
     await removeModulePermissionMutation.mutateAsync({
       userId: user.id,
       moduleKey,
-    });
-  };
-
-  const handleToggleUserFeature = async (featureKey: string, enabled: boolean) => {
-    await setOverrideMutation.mutateAsync({
-      userId: user.id,
-      featureKey,
-      enabled,
-    });
-  };
-
-  const handleRemoveOverride = async (featureKey: string) => {
-    await removeOverrideMutation.mutateAsync({
-      userId: user.id,
-      featureKey,
     });
   };
 
@@ -454,100 +421,6 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
               Apenas um Superadministrador pode alterar cargos e privilégios.
             </span>
           ) : null}
-        </div>
-
-        {/* Overrides de Kill-Switches e Features Globais */}
-        <div className="flex flex-col gap-2 pt-2 border-t border-border">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-semibold text-foreground">
-              Kill-Switches &amp; Features do Sistema
-            </span>
-            <span className="text-[11px] text-muted-foreground">
-              Overrides individuais de Kill-Switches de sistema.
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-2 pt-1">
-            {(featuresQuery.data ?? []).map((feature) => {
-              const override = overridesMap.get(feature.key);
-              const statusInfo = getFeatureStatusInfo(feature, override);
-
-              return (
-                <div
-                  key={feature.key}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border/80 bg-surface/80 text-xs shadow-2xs"
-                >
-                  <div className="flex flex-col gap-1 max-w-sm">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-foreground">{feature.name}</span>
-                      <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                          statusInfo.badgeVariant === "positive"
-                            ? "bg-positive/10 text-positive-strong border border-positive/25 font-bold"
-                            : statusInfo.badgeVariant === "critical"
-                              ? "bg-critical/10 text-critical border border-critical/25 font-bold"
-                              : "bg-surface-hover text-muted-foreground border border-border"
-                        }`}
-                      >
-                        {statusInfo.label}
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-muted-foreground leading-relaxed">{feature.description}</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
-                    <Button
-                      type="button"
-                      variant={statusInfo.kind === "override_enabled" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleToggleUserFeature(feature.key, true)}
-                      disabled={setOverrideMutation.isPending || !feature.is_globally_enabled}
-                      className={`gap-1 text-xs h-7 px-2.5 flex-1 sm:flex-initial justify-center ${
-                        statusInfo.kind === "override_enabled"
-                          ? "bg-positive text-white hover:bg-positive/90"
-                          : "text-positive-strong hover:bg-positive/10 border-positive/30"
-                      }`}
-                      title="Forçar liberação para este usuário"
-                    >
-                      <Check className="size-3.5" aria-hidden="true" />
-                      <span>Liberar</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={statusInfo.kind === "override_disabled" ? "destructive" : "outline"}
-                      size="sm"
-                      onClick={() => handleToggleUserFeature(feature.key, false)}
-                      disabled={setOverrideMutation.isPending || !feature.is_globally_enabled}
-                      className={`gap-1 text-xs h-7 px-2.5 flex-1 sm:flex-initial justify-center ${
-                        statusInfo.kind === "override_disabled"
-                          ? "bg-critical text-white hover:bg-critical/90"
-                          : "text-critical hover:bg-critical/10 border-critical/30"
-                      }`}
-                      title="Forçar bloqueio para este usuário"
-                    >
-                      <X className="size-3.5" aria-hidden="true" />
-                      <span>Bloquear</span>
-                    </Button>
-
-                    {statusInfo.hasOverride && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveOverride(feature.key)}
-                        disabled={removeOverrideMutation.isPending}
-                        className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-                        title="Restaurar regra padrão global"
-                      >
-                        <RotateCcw className="size-3.5" aria-hidden="true" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
 
         {/* Rodapé */}
