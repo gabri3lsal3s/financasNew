@@ -535,14 +535,34 @@ create policy "allocation_targets_write_own" on public.allocation_targets
     and public.can_current_user_write_module('investments')
   );
 
-drop policy if exists "group_targets_all_own" on public.group_targets;
-create policy "group_targets_select_own" on public.group_targets
+drop policy if exists "class_targets_all_own" on public.class_targets;
+drop policy if exists "class_targets_select_own" on public.class_targets;
+drop policy if exists "class_targets_write_own" on public.class_targets;
+create policy "class_targets_select_own" on public.class_targets
   for select using (
     (select auth.uid()) = user_id
     and public.is_current_user_active()
     and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
   );
-create policy "group_targets_write_own" on public.group_targets
+create policy "class_targets_write_own" on public.class_targets
+  for all using (
+    (select auth.uid()) = user_id
+    and public.can_current_user_write_module('investments')
+  ) with check (
+    (select auth.uid()) = user_id
+    and public.can_current_user_write_module('investments')
+  );
+
+drop policy if exists "sector_targets_all_own" on public.sector_targets;
+drop policy if exists "sector_targets_select_own" on public.sector_targets;
+drop policy if exists "sector_targets_write_own" on public.sector_targets;
+create policy "sector_targets_select_own" on public.sector_targets
+  for select using (
+    (select auth.uid()) = user_id
+    and public.is_current_user_active()
+    and public.get_user_module_access(auth.uid(), 'investments') in ('read'::public.access_level, 'write'::public.access_level, 'admin'::public.access_level)
+  );
+create policy "sector_targets_write_own" on public.sector_targets
   for all using (
     (select auth.uid()) = user_id
     and public.can_current_user_write_module('investments')
