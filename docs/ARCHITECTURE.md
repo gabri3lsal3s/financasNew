@@ -295,6 +295,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 | ~~D11~~ — ~~Cloudflare R2~~ | ~~`services/storage` + endpoint de presigned URLs~~ — **REMOVIDO DO ESCOPO** (decisão do usuário, 2026-08-15) |
 | D13 — Hardening de Segurança & IDOR | 100% de validação de FKs em RPCs, RLS com `is_current_user_active()` e isolamento de Edge Functions (Migration 0036/0037) | Defesa em profundidade no Postgres e Deno |
 | D14 — Backend Feature Flag Triggers & Governança | Triggers no Postgres (`enforce_feature_flag_trigger`), RLS em RPCs residuais (`delete_card_payment`) e isolamento no schema `cron` (Migration 0039) | Kill-Switch com bloqueio atômico na API e agendador blindado |
+| D15 — SaaS Migration & Governança de Monetização | Modelagem de planos (`plans`, `user_subscriptions`, `user_module_permissions`), separação de RLS Leitura vs. Escrita (Modo Somente-Leitura), RPCs com `can_current_user_write_module()`, hook de domínio reativo `usePermission()` e convites modulares com trial de 30 dias (Migrations 0040 e 0041) | Monetização sustentável sem perda de dados e concessão modular no Admin |
 
 ---
 
@@ -305,3 +306,5 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - ~~Backend e banco de dados~~ — **RESOLVIDA**: **Supabase** (Postgres 17 + RLS + Auth + Migrations versionadas em `supabase/migrations/`).
 - ~~Notificações~~ — **RESOLVIDA**: in-app centralizado (`/lembretes`).
 - ~~Observabilidade/erros~~ — **RESOLVIDA**: **Sentry** (F6.3) — SDK `@sentry/react` com **dynamic import** env-gated por `VITE_SENTRY_DSN` (no-op sem DSN; Web Vitals LCP/INP/CLS via `browserTracingIntegration`; `reportError`/`setObservabilityUser` em `services/observability`).
+- ~~Monetização & Modelo SaaS~~ — **RESOLVIDA**: **Arquitetura SaaS Modular** (Fase 76) — Trial gratuito de 30 dias sem cartão, modo somente-leitura preservado pós-período sem paywall bloqueante, planos Pro Mensal (R$ 19,90) e Pro Anual (R$ 14,90/mês), e controle granular de permissões modulares no painel administrativo.
+
