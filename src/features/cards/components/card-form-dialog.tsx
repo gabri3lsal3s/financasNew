@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import { Alert, Button, Checkbox, ColorPicker, ConfirmDialog, Input, Modal, MoneyInput, NumberStepper } from "@/components/ui";
+import { Alert, Button, Checkbox, ColorPicker, ConfirmDialog, Input, Modal, MoneyInput, MoneyText, NumberStepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCard, useDeleteCard, useUpdateCard } from "@/state";
 import type { CreditCard, CreditCardForm } from "@/types";
@@ -138,88 +138,133 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="card-name" className="text-sm font-medium">
-            Nome
-          </label>
-          <Input
-            id="card-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Ex.: Nubank Ultravioleta"
-          />
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+          {/* Card Preview Coluna Esquerda */}
+          <div className="md:col-span-5 flex flex-col gap-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Pré-visualização
+            </span>
+            <div
+              className="relative w-full aspect-[1.586] rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col justify-between overflow-hidden transition-all duration-300 select-none"
+              style={{
+                backgroundColor: color || "#1e293b",
+                backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.25) 100%)",
+              }}
+            >
+              <div className="flex items-start justify-between">
+                <div className="size-8 rounded-md bg-amber-400/80 border border-amber-300/60 shadow-2xs" />
+                <span className="font-display font-bold text-xs uppercase tracking-wider opacity-90">
+                  {brand.trim() || "Cartão"}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <p className="font-display font-bold text-base sm:text-lg tracking-wide truncate">
+                  {name.trim() || "Nome do Cartão"}
+                </p>
+                <div className="flex items-center justify-between text-[11px] opacity-80 font-mono">
+                  <span>Fecha dia {closingDay}</span>
+                  <span>Vence dia {dueDay}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-white/20 text-xs">
+                <span className="opacity-80">Limite</span>
+                <span className="font-bold tabular-nums">
+                  {limitCents > 0 ? (
+                    <MoneyText cents={limitCents} className="text-white font-bold" />
+                  ) : (
+                    "R$ 0,00"
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="card-brand" className="text-sm font-medium">
-              Bandeira
-            </label>
-            <Input
-              id="card-brand"
-              value={brand}
-              onChange={(event) => setBrand(event.target.value)}
-              placeholder="Visa, Mastercard, Elo..."
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Cor</span>
-            <ColorPicker value={color} onValueChange={setColor} ariaLabel="Cor do cartão" />
+          {/* Formulário Coluna Direita */}
+          <div className="md:col-span-7 flex flex-col gap-3.5">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="card-name" className="text-sm font-medium">
+                Nome
+              </label>
+              <Input
+                id="card-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Ex.: Nubank Ultravioleta"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="card-brand" className="text-sm font-medium">
+                  Bandeira
+                </label>
+                <Input
+                  id="card-brand"
+                  value={brand}
+                  onChange={(event) => setBrand(event.target.value)}
+                  placeholder="Visa, Mastercard, Elo..."
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Cor</span>
+                <ColorPicker value={color} onValueChange={setColor} ariaLabel="Cor do cartão" />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="card-limit" className="text-sm font-medium">
+                Limite total
+              </label>
+              <MoneyInput
+                id="card-limit"
+                cents={limitCents}
+                onCentsChange={setLimitCents}
+                aria-label="Limite total do cartão"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Dia de fechamento</span>
+                <NumberStepper
+                  value={closingDay}
+                  onValueChange={setClosingDay}
+                  min={1}
+                  max={31}
+                  decreaseLabel="Diminuir dia de fechamento"
+                  increaseLabel="Aumentar dia de fechamento"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Dia de vencimento</span>
+                <NumberStepper
+                  value={dueDay}
+                  onValueChange={setDueDay}
+                  min={1}
+                  max={31}
+                  decreaseLabel="Diminuir dia de vencimento"
+                  increaseLabel="Aumentar dia de vencimento"
+                />
+              </div>
+            </div>
+
+            {card ? (
+              <div className="pt-1 flex flex-col gap-2">
+                <Checkbox
+                  checked={isActive}
+                  onCheckedChange={setIsActive}
+                  label="Cartão ativo para novas compras"
+                  id="card-active"
+                />
+                {!isActive && (
+                  <p className="text-xs text-muted-foreground">
+                    Cartão desativado: permanece no histórico de faturas e relatórios passados, mas fica oculto para novas despesas.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="card-limit" className="text-sm font-medium">
-            Limite total
-          </label>
-          <MoneyInput
-            id="card-limit"
-            cents={limitCents}
-            onCentsChange={setLimitCents}
-            aria-label="Limite total do cartão"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Dia de fechamento</span>
-            <NumberStepper
-              value={closingDay}
-              onValueChange={setClosingDay}
-              min={1}
-              max={31}
-              decreaseLabel="Diminuir dia de fechamento"
-              increaseLabel="Aumentar dia de fechamento"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Dia de vencimento</span>
-            <NumberStepper
-              value={dueDay}
-              onValueChange={setDueDay}
-              min={1}
-              max={31}
-              decreaseLabel="Diminuir dia de vencimento"
-              increaseLabel="Aumentar dia de vencimento"
-            />
-          </div>
-        </div>
-
-        {card ? (
-          <div className="pt-1 flex flex-col gap-2">
-            <Checkbox
-              checked={isActive}
-              onCheckedChange={setIsActive}
-              label="Cartão ativo para novas compras"
-              id="card-active"
-            />
-            {!isActive && (
-              <p className="text-xs text-muted-foreground">
-                Cartão desativado: permanece no histórico de faturas e relatórios passados, mas fica oculto para novas despesas.
-              </p>
-            )}
-          </div>
-        ) : null}
 
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-border mt-1">
           {card ? (
@@ -274,6 +319,7 @@ export function CardFormDialog({ card, open, onOpenChange, onDeleted }: CardForm
       onOpenChange={onOpenChange}
       title={card ? "Editar cartão" : "Novo cartão"}
       description={card ? "Altere as configurações ou desative o cartão." : "Preencha os dados do cartão de crédito."}
+      size="xl"
       showCalculator
     >
       {open ? (

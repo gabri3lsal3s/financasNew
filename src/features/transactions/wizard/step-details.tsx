@@ -91,13 +91,13 @@ export function StepDetails({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Data</span>
-        <DatePicker value={state.date} onValueChange={onDateChange} />
-      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Data</span>
+          <DatePicker value={state.date} onValueChange={onDateChange} />
+        </div>
 
-      {isExpense ? (
-        <>
+        {isExpense ? (
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Forma de pagamento</span>
             <Select
@@ -107,37 +107,37 @@ export function StepDetails({
               ariaLabel="Forma de pagamento"
             />
           </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Como recebeu</span>
+            <Select
+              value={state.receiveType}
+              onValueChange={(value) => onReceiveTypeChange(value as ReceiveType)}
+              options={RECEIVE_TYPE_OPTIONS}
+              ariaLabel="Tipo de recebimento"
+            />
+          </div>
+        )}
+      </div>
 
-          {state.paymentMethod === "credit_card" ? (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Cartão</span>
-              {cardsLoading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : cardsError ? (
-                <Alert variant="error">{getErrorMessage(cardsError)}</Alert>
-              ) : (
-                <Select
-                  value={state.cardId ?? ""}
-                  onValueChange={onCardChange}
-                  options={(cards ?? []).map((card) => ({ value: card.id, label: card.name }))}
-                  placeholder="Selecione o cartão"
-                  ariaLabel="Cartão de crédito"
-                />
-              )}
-            </div>
-          ) : null}
-        </>
-      ) : (
+      {isExpense && state.paymentMethod === "credit_card" ? (
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Como recebeu</span>
-          <Select
-            value={state.receiveType}
-            onValueChange={(value) => onReceiveTypeChange(value as ReceiveType)}
-            options={RECEIVE_TYPE_OPTIONS}
-            ariaLabel="Tipo de recebimento"
-          />
+          <span className="text-sm font-medium">Cartão</span>
+          {cardsLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : cardsError ? (
+            <Alert variant="error">{getErrorMessage(cardsError)}</Alert>
+          ) : (
+            <Select
+              value={state.cardId ?? ""}
+              onValueChange={onCardChange}
+              options={(cards ?? []).map((card) => ({ value: card.id, label: card.name }))}
+              placeholder="Selecione o cartão"
+              ariaLabel="Cartão de crédito"
+            />
+          )}
         </div>
-      )}
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Descrição (opcional)</span>

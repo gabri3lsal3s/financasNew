@@ -221,7 +221,7 @@ export function LaunchWizard({
         }
       }}
       title="Novo lançamento"
-      size="lg"
+      size="xl"
       showCalculator
     >
       <div className="flex flex-col gap-6 pt-2">

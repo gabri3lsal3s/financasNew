@@ -146,7 +146,7 @@ export function AssetDetailSheet({
         onOpenChange={onOpenChange}
         title={currentAsset.ticker}
         description={resolvedSector ? `${currentAsset.asset_class ?? "Ativo"} · ${resolvedSector}` : (currentAsset.asset_class ?? "Ativo em Carteira")}
-        size="xl"
+        size="2xl"
       >
         <div className="flex flex-col gap-5 pt-1">
           {/* Header de Metadados & Ações Rápidas */}

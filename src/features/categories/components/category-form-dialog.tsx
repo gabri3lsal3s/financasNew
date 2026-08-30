@@ -184,6 +184,7 @@ export function CategoryFormDialog({ category, defaultType, open, onOpenChange, 
         onOpenChange={onOpenChange}
         title={category ? "Editar categoria" : "Nova categoria"}
         description={category ? undefined : "A sugestão inteligente infere ícone, cor e limite por nome."}
+        size="lg"
       >
         {open ? (
           <CategoryFormContent

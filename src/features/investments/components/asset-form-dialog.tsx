@@ -850,6 +850,7 @@ export function AssetFormDialog({ open, onOpenChange, asset = null, initialAsset
             ? "Informe o valor disponível em caixa para oportunidades e novos aportes."
             : "Cadastre o ticker, classe e sua posição atual de custódia (quantidade e preço médio)."
       }
+      size="xl"
       showCalculator
     >
       {open ? (

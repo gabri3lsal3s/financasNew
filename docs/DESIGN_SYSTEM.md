@@ -358,6 +358,22 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 - **Sufixo Dinâmico:** Suporta indicação contextual (`%`, `% do CDI`, `% da Selic`, `% a.a.`, `% a.a. + IPCA`).
 - **Contrato:** `value?: number`, `onValueChange?: (val: number) => void`, `suffix?: string`.
 
+### 13.2 Modal & ResponsiveDialog (Diálogos Centrados & Bottom Sheets)
+- **Componentes:** `src/components/ui/modal.tsx` e `src/components/ui/responsive-dialog.tsx`.
+- **Mecânica Responsiva Dual-Mode:**
+  - **Mobile (< 768px):** Gaveta inferior (*Bottom Sheet*) com slide-up, alça ergonômica (`h-1 w-10 bg-border`) e fechamento por arrasto (*drag-to-close* com resistência elástica e velocity fling).
+  - **Tablet & Desktop (≥ 768px / `md:`):** Diálogo centralizado com backdrop blur suave (`bg-overlay backdrop-blur-sm`), bordas arredondadas `rounded-2xl` e dimensões proporcionais.
+- **Matriz Canônica de Larguras (`ModalSize`):**
+  - `sm` (`md:max-w-md` / 448px): Alertas de exclusão, confirmações breves e modal de perfil compacto.
+  - `md` (`md:max-w-lg` / 512px): Formulários simples (metas, limites, categorias enxutas).
+  - `lg` (`md:max-w-2xl` / 672px): Detalhes de transações, categorias ricas, operações rápidas de carteira.
+  - `xl` (`md:max-w-4xl` / 896px): Assistentes guiados (wizards), cadastros densos de ativos, cartões com preview virtual 3D e contratos de empréstimo.
+  - `2xl` (`md:max-w-5xl lg:max-w-6xl` / 1024px–1152px): Fichas de ativos, extratos, conciliação e importação de faturas/extratos bancários.
+  - `3xl` (`md:max-w-7xl` / 1280px): Relatórios executivos e auditorias completas.
+- **Diretriz de Anatomia Interna:**
+  - Formulários densos utilizam **grid responsivo de 2 colunas** (`grid grid-cols-1 sm:grid-cols-2 gap-3.5`) para campos emparelhados (Data + Forma de Pagamento, Quantidade + Preço, etc.), prevenindo rolagem excessiva no desktop.
+  - O rodapé utiliza `<ModalFooter />` com layout adaptativo (`flex-col-reverse sm:flex-row sm:justify-end`).
+
 ---
 
 ## 14. RECURSOS VISUAIS PREMIUM & MICRO-INTERAÇÕES

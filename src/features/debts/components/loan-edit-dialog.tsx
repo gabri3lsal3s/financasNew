@@ -116,7 +116,7 @@ export function LoanEditDialog({
       onOpenChange={onOpenChange}
       title="Editar Contrato de Empréstimo"
       description="Atualize o nome, categoria e observações deste contrato."
-      size="md"
+      size="lg"
     >
       {open && <LoanEditForm loan={loan} onClose={() => onOpenChange(false)} />}
     </Modal>

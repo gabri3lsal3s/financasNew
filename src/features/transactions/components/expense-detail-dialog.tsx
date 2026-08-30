@@ -248,110 +248,112 @@ function ExpenseEditForm({
         </label>
       ) : null}
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Descrição
-        <Input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Descrição da despesa"
-          aria-label="Descrição"
-        />
-      </label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground sm:col-span-2">
+          Descrição
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Descrição da despesa"
+            aria-label="Descrição"
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Valor
-        <MoneyInput
-          cents={valueCents}
-          onCentsChange={setValueCents}
-          aria-label="Valor da despesa"
-          disabled={valueDisabled}
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Valor
+          <MoneyInput
+            cents={valueCents}
+            onCentsChange={setValueCents}
+            aria-label="Valor da despesa"
+            disabled={valueDisabled}
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Data
-        <DatePicker
-          value={date}
-          onValueChange={handleDateChange}
-          ariaLabel="Data da despesa"
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Data
+          <DatePicker
+            value={date}
+            onValueChange={handleDateChange}
+            ariaLabel="Data da despesa"
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Categoria
-        <Select
-          value={categoryId}
-          onValueChange={setCategoryId}
-          options={categoryOptions}
-          placeholder="Selecione a categoria"
-          ariaLabel="Categoria da despesa"
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Categoria
+          <Select
+            value={categoryId}
+            onValueChange={setCategoryId}
+            options={categoryOptions}
+            placeholder="Selecione a categoria"
+            ariaLabel="Categoria da despesa"
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Forma de pagamento
-        <Select
-          value={paymentMethod}
-          onValueChange={(val) => setPaymentMethod(val as PaymentMethod)}
-          options={PAYMENT_OPTIONS}
-          ariaLabel="Forma de pagamento"
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Forma de pagamento
+          <Select
+            value={paymentMethod}
+            onValueChange={(val) => setPaymentMethod(val as PaymentMethod)}
+            options={PAYMENT_OPTIONS}
+            ariaLabel="Forma de pagamento"
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Natureza da despesa
-        <Select
-          value={chargeKind}
-          onValueChange={(val) => setChargeKind(val as ChargeKind)}
-          options={Object.entries(CHARGE_KIND_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-          ariaLabel="Natureza da despesa"
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Natureza da despesa
+          <Select
+            value={chargeKind}
+            onValueChange={(val) => setChargeKind(val as ChargeKind)}
+            options={Object.entries(CHARGE_KIND_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+            ariaLabel="Natureza da despesa"
+          />
+        </label>
 
-      {paymentMethod === "credit_card" && cards.length > 0 ? (
-        <>
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Cartão de crédito
-            <Select
-              value={cardId}
-              onValueChange={(val) => {
-                setCardId(val);
-                // Trocar de cartão re-baselineia a competência (seguindo o
-                // fechamento do novo cartão) e libera o recálculo automático.
-                setCompetenceTouched(false);
-                const selectedCard = cards.find((c) => c.id === val);
-                if (selectedCard && date) {
-                  setBillCompetence(resolveBillCompetence(new Date(`${date}T12:00:00`), selectedCard.closing_day));
-                }
-              }}
-              options={cardOptions}
-              placeholder="Selecione o cartão"
-              ariaLabel="Cartão de crédito"
-            />
-          </label>
-
-          {scope === "single" ? (
+        {paymentMethod === "credit_card" && cards.length > 0 ? (
+          <>
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              Fatura (Competência)
-              <Input
-                value={billCompetence}
-                onChange={(e) => {
-                  setCompetenceTouched(true);
-                  setBillCompetence(e.target.value);
+              Cartão de crédito
+              <Select
+                value={cardId}
+                onValueChange={(val) => {
+                  setCardId(val);
+                  // Trocar de cartão re-baselineia a competência (seguindo o
+                  // fechamento do novo cartão) e libera o recálculo automático.
+                  setCompetenceTouched(false);
+                  const selectedCard = cards.find((c) => c.id === val);
+                  if (selectedCard && date) {
+                    setBillCompetence(resolveBillCompetence(new Date(`${date}T12:00:00`), selectedCard.closing_day));
+                  }
                 }}
-                placeholder="AAAA-MM (ex: 2026-08)"
-                aria-label="Competência da fatura"
-                inputMode="numeric"
-                maxLength={7}
-                autoComplete="off"
+                options={cardOptions}
+                placeholder="Selecione o cartão"
+                ariaLabel="Cartão de crédito"
               />
-              <span className="text-[11px] text-muted-foreground">
-                Calculada pelo fechamento do cartão; edite para ajustar manualmente.
-              </span>
             </label>
-          ) : null}
-        </>
-      ) : null}
+
+            {scope === "single" ? (
+              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                Fatura (Competência)
+                <Input
+                  value={billCompetence}
+                  onChange={(e) => {
+                    setCompetenceTouched(true);
+                    setBillCompetence(e.target.value);
+                  }}
+                  placeholder="AAAA-MM (ex: 2026-08)"
+                  aria-label="Competência da fatura"
+                  inputMode="numeric"
+                  maxLength={7}
+                  autoComplete="off"
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  Calculada pelo fechamento do cartão; edite para ajustar manualmente.
+                </span>
+              </label>
+            ) : null}
+          </>
+        ) : null}
+      </div>
 
       <ReportWeightField
         valueCents={valueCents}
@@ -547,6 +549,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
           onOpenChange(next);
         }}
         title={isEditing ? "Editar despesa" : "Detalhes da despesa"}
+        size={isEditing ? "xl" : "lg"}
         showCalculator={isEditing}
       >
         {expense ? (

@@ -24,9 +24,9 @@ export function StepCategory({ categories, isLoading, isError, error, selectedId
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-2">
-        {Array.from({ length: 9 }).map((_, index) => (
-          <Skeleton key={index} className="h-20 w-full" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
+        {Array.from({ length: 10 }).map((_, index) => (
+          <Skeleton key={index} className="h-20 w-full rounded-xl" />
         ))}
       </div>
     );
@@ -43,7 +43,7 @@ export function StepCategory({ categories, isLoading, isError, error, selectedId
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
       {categories.map((category) => (
         <button
           key={category.id}
@@ -51,7 +51,7 @@ export function StepCategory({ categories, isLoading, isError, error, selectedId
           onClick={() => onSelect(category.id)}
           aria-pressed={selectedId === category.id}
           className={cn(
-            "flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none cursor-pointer",
             selectedId === category.id
               ? "border-primary bg-primary/10"
               : "border-border bg-surface hover:bg-surface-hover",
@@ -60,7 +60,7 @@ export function StepCategory({ categories, isLoading, isError, error, selectedId
           <span className="flex size-10 items-center justify-center">
             <CategoryIcon icon={category.icon} color={category.color} className="size-5" />
           </span>
-          <span className="text-center text-xs font-medium text-foreground">{category.name}</span>
+          <span className="text-center text-xs font-medium text-foreground truncate max-w-full">{category.name}</span>
         </button>
       ))}
     </div>

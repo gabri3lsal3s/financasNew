@@ -45,7 +45,7 @@ export function StatementImportDialog({
       onOpenChange={onOpenChange}
       title={`Importar Fatura — ${card?.name ?? "Cartão"} (${competenceMonth})`}
       description="Importe arquivos CSV, OFX ou cole o extrato para conciliação automática e lançamento em lote."
-      size="xl"
+      size="2xl"
     >
       {open && card ? (
         <StatementImportContent

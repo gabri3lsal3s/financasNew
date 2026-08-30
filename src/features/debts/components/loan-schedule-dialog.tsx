@@ -55,7 +55,7 @@ export function LoanScheduleDialog({
       onOpenChange={onOpenChange}
       title={`Cronograma: ${loan.name}`}
       description={`${LOAN_TYPE_LABELS[loan.loan_type]} · ${AMORTIZATION_SYSTEM_LABELS[loan.amortization_system]} (${loan.interest_rate_monthly}% a.m.)`}
-      size="xl"
+      size="2xl"
     >
       <div className="flex flex-col gap-4 pt-1">
         {/* Sumário do Cronograma */}

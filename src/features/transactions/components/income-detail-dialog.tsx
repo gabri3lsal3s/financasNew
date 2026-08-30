@@ -177,55 +177,57 @@ function IncomeEditForm({
         </label>
       ) : null}
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Descrição
-        <Input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Descrição da receita"
-          aria-label="Descrição"
-        />
-      </label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground sm:col-span-2">
+          Descrição
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Descrição da receita"
+            aria-label="Descrição"
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Valor
-        <MoneyInput
-          cents={valueCents}
-          onCentsChange={setValueCents}
-          aria-label="Valor da receita"
-          disabled={valueDisabled}
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Valor
+          <MoneyInput
+            cents={valueCents}
+            onCentsChange={setValueCents}
+            aria-label="Valor da receita"
+            disabled={valueDisabled}
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Data
-        <DatePicker
-          value={date}
-          onValueChange={setDate}
-          ariaLabel="Data da receita"
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Data
+          <DatePicker
+            value={date}
+            onValueChange={setDate}
+            ariaLabel="Data da receita"
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Categoria
-        <Select
-          value={categoryId}
-          onValueChange={setCategoryId}
-          options={categoryOptions}
-          placeholder="Selecione a categoria"
-          ariaLabel="Categoria da receita"
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Categoria
+          <Select
+            value={categoryId}
+            onValueChange={setCategoryId}
+            options={categoryOptions}
+            placeholder="Selecione a categoria"
+            ariaLabel="Categoria da receita"
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-        Forma de recebimento
-        <Select
-          value={receiveType}
-          onValueChange={(val) => setReceiveType(val as ReceiveType)}
-          options={RECEIVE_OPTIONS}
-          ariaLabel="Forma de recebimento"
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Forma de recebimento
+          <Select
+            value={receiveType}
+            onValueChange={(val) => setReceiveType(val as ReceiveType)}
+            options={RECEIVE_OPTIONS}
+            ariaLabel="Forma de recebimento"
+          />
+        </label>
+      </div>
 
       <ReportWeightField
         valueCents={valueCents}
@@ -406,6 +408,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
           onOpenChange(next);
         }}
         title={isEditing ? "Editar receita" : "Detalhes da receita"}
+        size={isEditing ? "xl" : "lg"}
         showCalculator={isEditing}
       >
         {income ? (

@@ -86,16 +86,18 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         ]}
       />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="debt-amount" className="text-sm font-medium">
-          Valor
-        </label>
-        <MoneyInput id="debt-amount" cents={cents} onCentsChange={setCents} aria-label="Valor da dívida" />
-      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="debt-amount" className="text-sm font-medium">
+            Valor
+          </label>
+          <MoneyInput id="debt-amount" cents={cents} onCentsChange={setCents} aria-label="Valor da dívida" />
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Vencimento</span>
-        <DatePicker value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Vencimento</span>
+          <DatePicker value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
+        </div>
       </div>
 
       {debt?.paid_at ? (
@@ -184,6 +186,7 @@ export function DebtFormDialog({ debt, open, onOpenChange, onDelete }: DebtFormD
       onOpenChange={onOpenChange}
       title={debt ? "Editar dívida" : "Nova dívida"}
       description="Conta a pagar ou a receber com status derivado (nunca armazenado)."
+      size="lg"
       showCalculator
     >
       {open ? (

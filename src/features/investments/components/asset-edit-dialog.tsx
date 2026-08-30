@@ -649,7 +649,7 @@ export function AssetEditDialog({
       onOpenChange={onOpenChange}
       title="Editar Ativo"
       description={`Atualize as informações cadastrais de ${asset.ticker}`}
-      size="lg"
+      size="xl"
       showCalculator
     >
       <AssetEditFormContent

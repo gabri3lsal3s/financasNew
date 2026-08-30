@@ -127,7 +127,7 @@ export function LogoProfileButton({
         open={open}
         onOpenChange={setOpen}
         title="Minha Conta"
-        size="sm"
+        size="md"
       >
         <div className="space-y-4 pt-1">
           {/* Card de Identidade do Usuário */}
@@ -185,12 +185,12 @@ export function LogoProfileButton({
             </div>
           )}
 
-          {/* Grupo de Atalhos Unificado (Single Card List) */}
+          {/* Grupo de Atalhos Unificado (Adaptive Grid no Desktop) */}
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
               Acesso Rápido
             </p>
-            <div className="rounded-xl border border-border/80 bg-surface divide-y divide-border/50 overflow-hidden shadow-2xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 rounded-xl border border-border/80 bg-surface p-1.5 shadow-2xs">
               <MenuLink
                 icon={Palette}
                 label="Aparência & Tema"
@@ -211,12 +211,14 @@ export function LogoProfileButton({
                 label="Dados & Backup"
                 onClick={() => goTo("/configuracoes?tab=dados")}
               />
-              <MenuLink
-                icon={Sparkles}
-                label="Gerenciar Assinatura"
-                badge={subscription.isPro ? "Pro" : undefined}
-                onClick={() => goTo("/configuracoes?tab=plano")}
-              />
+              <div className="sm:col-span-2">
+                <MenuLink
+                  icon={Sparkles}
+                  label="Gerenciar Assinatura"
+                  badge={subscription.isPro ? "Pro" : undefined}
+                  onClick={() => goTo("/configuracoes?tab=plano")}
+                />
+              </div>
             </div>
           </div>
 

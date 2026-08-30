@@ -73,7 +73,7 @@ export function ContributionsListDialog({
         onOpenChange={onOpenChange}
         title="Gerenciar Aportes do Mês"
         description="Visualize ou remova lançamentos de aporte financeiro que alimentam a Visão Geral e os Insights."
-        size="lg"
+        size="xl"
       >
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface/60 p-1.5 w-full">

@@ -78,6 +78,7 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
       onOpenChange={onOpenChange}
       title="Amortização antecipada com desconto"
       description={`Elimine parcelas do final de ${loan.name}`}
+      size="xl"
       showCalculator
     >
       <form

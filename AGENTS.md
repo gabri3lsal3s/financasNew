@@ -67,6 +67,17 @@ A IA **está proibida de recriar marcações JSX/HTML ou estilos duplicados** en
 15. **ANATOMIA CANÔNICA DE FORMULÁRIOS E DIÁLOGOS (regra obrigatória):** Rótulos de campos seguem estritamente a anatomia de `text-xs font-semibold text-foreground` com helper text `text-[11px] text-muted-foreground` e indicador discreto `(opcional)`. Todos os diálogos utilizam layout unificado de rodapé com Cancelar à esquerda e Confirmar à direita no desktop, e empilhamento seguro no mobile (`flex-col-reverse`).
 16. **PADRÃO CANÔNICO DE SUPERFÍCIE E ELEVAÇÃO (regra obrigatória):** Cards de dados em todas as páginas utilizam a trinca canônica `border-border/80 bg-surface shadow-xs`, sendo proibido introduzir opacidades de borda divergentes (`border-border/60`) sem justificativa de design system.
 17. **GOVERNANÇA SENSORIAL & ZERO DUPLOS DISPAROS (regra obrigatória):** Todo feedback tátil ou sonoro deve passar exclusivamente pelo **Gateway Central Sensorial** (`src/services/sensory.ts` / `triggerSensory`). É expressamente **proibido** chamar `triggerHaptic(...)` diretamente dentro de handlers `onClick` de botões (`<Button />`), evitando o defeito de duplos disparos simultâneos (*double-haptic*). É **proibido** emitir feedback tátil/sonoro durante a digitação em inputs (`MoneyInput`, `Input`, `Textarea`), em rolagem passiva ou no hover de desktop.
+18. **GOVERNANÇA DE MODAIS & DIÁLOGOS NO DESKTOP (regra obrigatória):** Todo modal/diálogo do sistema utiliza o primitivo `<Modal />` ou `<ResponsiveDialog />` respeitando estritamente a matriz de larguras e layout responsivo:
+    - **Centralização a partir de Tablet (`md:` / 768px):** a transformação em diálogo centralizado (`md:inset-x-auto md:top-1/2...`) ocorre a partir de `md:`, reservando a gaveta inferior (*Bottom Sheet* deslizante com arrasto) exclusivamente para telas de smartphones (`< 768px`).
+    - **Escala Canônica de Larguras (`size`):**
+      * `sm` (`md:max-w-md` = 448px): exclusivo para confirmações, alertas curtos e perfil compacto.
+      * `md` (`md:max-w-lg` = 512px): formulários simples (metas, limites, categorias enxutas).
+      * `lg` (`md:max-w-2xl` = 672px): detalhes de transações, categorias ricas, operações rápidas.
+      * `xl` (`md:max-w-4xl` = 896px): assistentes (wizards), cadastros densos de ativos, cartões com preview virtual e contratos de empréstimo.
+      * `2xl` (`md:max-w-5xl lg:max-w-6xl` = 1024px–1152px): fichas de ativos, extratos, conciliação e importação de faturas/extratos bancários.
+      * `3xl` (`md:max-w-7xl` = 1280px): relatórios executivos e auditorias completas.
+    - **Grids de Formulários no Desktop:** formulários compostos dentro de modais com $\ge 3$ campos devem distribuir os pares de inputs em grid responsivo (`grid grid-cols-1 sm:grid-cols-2 gap-3.5`), sendo proibido criar túneis verticais de coluna única estreita com rolagem desnecessária no desktop.
+    - **Zero Modais com `max-w-*` arbitrários em `className`:** a definição de largura máxima é feita exclusivamente pela prop tipada `size` do `Modal`/`ResponsiveDialog`, evitando conflitos de especificidade na cascata CSS.
 
 ## 5. RESILIÊNCIA E TRATAMENTO DE ERROS
 

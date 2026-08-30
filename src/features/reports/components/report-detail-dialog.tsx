@@ -68,7 +68,7 @@ export function ReportDetailDialog({
       onOpenChange={onOpenChange}
       title={title}
       description={subtitle}
-      size="lg"
+      size="xl"
     >
       <div className="flex flex-col gap-4 mt-4">
         {/* Resumo do agrupamento */}

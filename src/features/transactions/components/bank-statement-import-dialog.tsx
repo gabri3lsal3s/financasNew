@@ -50,7 +50,7 @@ export function BankStatementImportDialog({
       onOpenChange={onOpenChange}
       title={`Importar Extrato Bancário — ${competenceMonth}`}
       description="Importe extratos OFX, planilhas CSV ou cole lançamentos em texto livre para conciliação automática de despesas e receitas."
-      size="xl"
+      size="2xl"
     >
       {open ? (
         <BankStatementImportContent

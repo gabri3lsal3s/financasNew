@@ -49,21 +49,21 @@ describe("Modal", () => {
     expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
   });
 
-  it("F25: exibe a alça do bottom sheet no mobile (lg:hidden)", () => {
+  it("F25: exibe a alça do bottom sheet no mobile (md:hidden)", () => {
     render(
       <Modal open onOpenChange={vi.fn()} title="Nova despesa">
         <p>Formulário</p>
       </Modal>,
     );
     const dialog = screen.getByRole("dialog");
-    // Base mobile + override lg: o conteúdo é full-width inferior com slide-up.
+    // Base mobile + override md: o conteúdo é full-width inferior com slide-up.
     expect(dialog.className).toContain("bottom-0");
     expect(dialog.className).toContain("animate-sheet-in");
-    expect(dialog.className).toContain("lg:animate-none");
+    expect(dialog.className).toContain("md:animate-none");
     // Alça visível apenas no mobile.
     const handle = dialog.querySelector("[aria-hidden='true']");
     expect(handle).not.toBeNull();
-    expect(handle?.className).toContain("lg:hidden");
+    expect(handle?.className).toContain("md:hidden");
   });
 
   it("F25: arrastar para baixo além do threshold fecha o modal (drag-to-close)", () => {

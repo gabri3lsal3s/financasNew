@@ -88,7 +88,7 @@ export function UpgradeDialog({
       onOpenChange={onOpenChange}
       title={context ?? "Ativar Plano Pro"}
       description="Acesso completo e ilimitado ao Guia Financeiro."
-      size="lg"
+      size="xl"
     >
       {/* Alternador de periodicidade */}
       <div className="mt-4 flex items-center justify-center">
