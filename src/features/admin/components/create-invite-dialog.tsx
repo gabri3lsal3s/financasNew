@@ -225,72 +225,78 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
           )}
         </div>
 
-        {/* Limite de Usos */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="invite-max-uses" className="text-xs font-semibold text-foreground">
-            Limite Máximo de Usos
-          </label>
-          <Input
-            id="invite-max-uses"
-            type="number"
-            min={1}
-            max={1000}
-            value={maxUses}
-            onChange={(e) => setMaxUses(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            required
-          />
-          <span className="text-[11px] text-muted-foreground">
-            Número de contas que podem ser ativadas com este código (padrão: 1).
-          </span>
-        </div>
-
-        {/* E-mail Alvo Restrito */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex justify-between items-center">
-            <label htmlFor="invite-target-email" className="text-xs font-semibold text-foreground">
-              Restringir a E-mail Específico
+        {/* Parâmetros Adicionais em Grid Responsivo (Mobile: 1 coluna, Desktop: 2 colunas) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+          {/* Limite de Usos */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="invite-max-uses" className="text-xs font-semibold text-foreground">
+              Limite Máximo de Usos
             </label>
-            <span className="text-[10px] text-muted-foreground">Opcional</span>
+            <Input
+              id="invite-max-uses"
+              type="number"
+              min={1}
+              max={1000}
+              value={maxUses}
+              onChange={(e) => setMaxUses(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              required
+            />
+            <span className="text-[11px] text-muted-foreground">
+              Contas que podem resgatar este código (padrão: 1).
+            </span>
           </div>
-          <Input
-            id="invite-target-email"
-            type="email"
-            value={targetEmail}
-            onChange={(e) => setTargetEmail(e.target.value)}
-            placeholder="usuario@exemplo.com"
-          />
-        </div>
 
-        {/* Data de Expiração */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex justify-between items-center">
-            <label htmlFor="invite-expires" className="text-xs font-semibold text-foreground">
-              Data Limite de Validade do Convite
-            </label>
-            <span className="text-[10px] text-muted-foreground">Opcional</span>
+          {/* E-mail Alvo Restrito */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center">
+              <label htmlFor="invite-target-email" className="text-xs font-semibold text-foreground">
+                Restringir a E-mail
+              </label>
+              <span className="text-[10px] text-muted-foreground">Opcional</span>
+            </div>
+            <Input
+              id="invite-target-email"
+              type="email"
+              value={targetEmail}
+              onChange={(e) => setTargetEmail(e.target.value)}
+              placeholder="usuario@exemplo.com"
+            />
+            <span className="text-[11px] text-muted-foreground">
+              Deixe vazio para permitir qualquer e-mail.
+            </span>
           </div>
-          <DatePicker
-            value={expiresAt}
-            onValueChange={setExpiresAt}
-            placeholder="Sem data de expiração (Permanente)"
-          />
-        </div>
 
-        {/* Observações / Notas */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex justify-between items-center">
-            <label htmlFor="invite-notes" className="text-xs font-semibold text-foreground">
-              Observações Administrativas
-            </label>
-            <span className="text-[10px] text-muted-foreground">Opcional</span>
+          {/* Data de Expiração */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center">
+              <label htmlFor="invite-expires" className="text-xs font-semibold text-foreground">
+                Validade do Convite
+              </label>
+              <span className="text-[10px] text-muted-foreground">Opcional</span>
+            </div>
+            <DatePicker
+              value={expiresAt}
+              onValueChange={setExpiresAt}
+              placeholder="Sem expiração (Permanente)"
+            />
           </div>
-          <Input
-            id="invite-notes"
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ex: Convite para Beta Tester / Parceria VIP"
-          />
+
+          {/* Observações / Notas */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center">
+              <label htmlFor="invite-notes" className="text-xs font-semibold text-foreground">
+                Observações Administrativas
+              </label>
+              <span className="text-[10px] text-muted-foreground">Opcional</span>
+            </div>
+            <Input
+              id="invite-notes"
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ex: Beta Tester / Parceria VIP"
+            />
+          </div>
         </div>
 
         {/* Ações */}
