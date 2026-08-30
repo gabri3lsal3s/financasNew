@@ -82,11 +82,11 @@ vi.mock("@/state", () => ({
 }));
 
 
-function renderSettings() {
+function renderSettings(initialEntries: string[] = ["/configuracoes"]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
         <ThemeProvider>
           <SettingsPage />
         </ThemeProvider>
@@ -186,5 +186,26 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
       dashboardWidgets: { contextBanners: false },
     });
   });
+
+  it("ativa a aba de Segurança quando acessado via ?tab=perfil", () => {
+    renderSettings(["/configuracoes?tab=perfil"]);
+    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
+  });
+
+  it("ativa a aba de Segurança quando acessado via ?subtab=perfil", () => {
+    renderSettings(["/configuracoes?subtab=perfil"]);
+    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
+  });
+
+  it("ativa a aba de Segurança quando acessado via ?tab=seguranca", () => {
+    renderSettings(["/configuracoes?tab=seguranca"]);
+    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
+  });
+
+  it("ativa a aba de Aparência quando acessado via ?tab=aparencia", () => {
+    renderSettings(["/configuracoes?tab=aparencia"]);
+    expect(screen.getByText("Teal Vital (Oficial)")).toBeInTheDocument();
+  });
 });
+
 

@@ -38,6 +38,18 @@ vi.mock("@/state", () => ({
     hasFeature: () => true,
     isLoading: false,
   }),
+  useUserSubscription: () => ({
+    tier: "trial",
+    trialDaysRemaining: 30,
+    trialEndsAt: "2026-09-30T00:00:00Z",
+    currentPeriodEnd: null,
+    plan: null,
+    cancelAtPeriodEnd: false,
+    isFullAccess: true,
+    isTrial: true,
+    isPro: false,
+    isReadOnly: false,
+  }),
   useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }));
@@ -114,4 +126,12 @@ describe("PageShell (F7.2/F7.3)", () => {
     expect(screen.getByTestId("launch-wizard-overlay")).toBeInTheDocument();
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
   });
+
+  it("renderiza o botão Voltar ao Topo acessível no shell", () => {
+    renderShell();
+
+    const backToTopBtn = screen.getByRole("button", { name: "Voltar ao topo da página" });
+    expect(backToTopBtn).toBeInTheDocument();
+  });
 });
+

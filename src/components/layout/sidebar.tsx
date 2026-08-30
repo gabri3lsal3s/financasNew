@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { NavLink, useLocation } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BrandLogo } from "@/components/layout/brand-logo";
+import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
 import { scrollToTop } from "@/services/scroll";
 import { useReminders, useUserAccess } from "@/state";
@@ -88,8 +88,20 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       )}
 
     >
-      <div className="flex h-16 shrink-0 items-center border-b border-border px-6 overflow-hidden">
-        <BrandLogo showWordmark={expanded} markClassName="size-8 shrink-0" />
+      <div
+        className={cn(
+          "flex h-16 shrink-0 items-center border-b border-border overflow-hidden",
+          expanded ? "px-4" : "justify-center px-2",
+        )}
+      >
+        <LogoProfileButton
+          showWordmark={expanded}
+          markClassName="size-8 shrink-0"
+          className={cn(
+            "rounded-xl hover:bg-surface-hover/80 p-2 transition-colors text-left",
+            expanded ? "w-full justify-start gap-2.5" : "justify-center",
+          )}
+        />
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto p-2.5" aria-label="Navegação principal">

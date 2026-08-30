@@ -348,7 +348,7 @@ F31 (Micro-Interações Obsidian Glass)      ← Trilha A / UI & Micro-Interaç�
 F32 (Recorrências, Rendas Parceladas)      ← Trilha A / Transações (✅ Implementada 2026-08-17 — ver `ROADMAP.md` §3)
 ```
 
-**Pré-requisitos transversais:** suíte 1134 testes verde + typecheck/lint/build (CI `ci.yml`) · deploy F1.7 (edge function + cron) se P1 = (a) · sem migrations obrigatórias fora de P4 = (c).
+**Pré-requisitos transversais:** suíte de testes verde + typecheck/lint/build · deploy F1.7 (edge function + cron) se P1 = (a) · sem migrations obrigatórias fora de P4 = (c).
 
 **Referências:** `docs/ROADMAP.md` (F0–F13, F14–F26, F30–F32) · `docs/ARCHITECTURE.md` (camadas) · `docs/PROJECT_STRUCTURE.md` (onde criar) · `docs/DESIGN_SYSTEM.md` (visual) · `docs/RELEASE.md` (QA/corte).
 

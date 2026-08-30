@@ -1,7 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProventosTab } from "./proventos-tab";
+
+function renderTab(ui = <ProventosTab />) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 const dividendsMock = vi.fn();
 const assetsMock = vi.fn();
@@ -64,7 +69,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
 
   it("mostra o total do mês e a lista de proventos com ticker (reconciliação)", () => {
     dividendsMock.mockReturnValue(dividends);
-    render(<ProventosTab />);
+    renderTab();
 
     // 100 + 50,25 = 150,25 (07/05 é outro mês).
     expect(screen.getAllByText("R$ 150,25").length).toBeGreaterThan(0);
@@ -77,7 +82,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
   it("navega o mês pelo MonthPicker e atualiza o extrato", async () => {
     dividendsMock.mockReturnValue(dividends);
     const user = userEvent.setup();
-    render(<ProventosTab />);
+    renderTab();
 
     await user.click(screen.getByRole("button", { name: "Mês anterior" }));
     // Julho: apenas o dividendo de 40,00.
@@ -89,7 +94,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     assetsMock.mockReturnValue([
       { id: "a1", user_id: "u1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" as const, quantity: 100, average_price: 30 },
     ]);
-    render(<ProventosTab />);
+    renderTab();
     expect(screen.getByText("Sem proventos ainda")).toBeInTheDocument();
   });
 
@@ -107,7 +112,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
         accumulated_dividends: 1200,
       },
     ]);
-    render(<ProventosTab />);
+    renderTab();
 
     expect(screen.queryByText("Sem proventos ainda")).not.toBeInTheDocument();
     expect(screen.getByText("Histórico Anterior")).toBeInTheDocument();
@@ -130,7 +135,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
         estimated_monthly_dividend_per_share: 0.1,
       },
     ]);
-    render(<ProventosTab />);
+    renderTab();
 
     expect(screen.queryByText("Sem proventos ainda")).not.toBeInTheDocument();
     expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
@@ -140,7 +145,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
   it("clica em um mês do calendário e atualiza o extrato", async () => {
     dividendsMock.mockReturnValue(dividends);
     const user = userEvent.setup();
-    render(<ProventosTab />);
+    renderTab();
 
     // Alterna para a sub-aba Calendário
     await user.click(screen.getByRole("tab", { name: "Calendário" }));
@@ -155,7 +160,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
 
   it("exibe o indicador do Efeito Bola de Neve para ativos com proventos", () => {
     dividendsMock.mockReturnValue(dividends);
-    render(<ProventosTab />);
+    renderTab();
 
     expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
     expect(screen.getByText(/Progresso para que os proventos mensais comprem 1 nova cota inteira sozinhos/i)).toBeInTheDocument();

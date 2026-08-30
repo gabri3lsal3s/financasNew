@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { CalendarDays, Sparkles, Trash2, TrendingUp } from "lucide-react";
 import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, Tabs } from "@/components/ui";
 
@@ -40,12 +41,16 @@ export interface ProventosTabProps {
  * - Calendário Anual: visualização dos 12 meses com barras proporcionais de rendimento.
  */
 export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
+  const [searchParams] = useSearchParams();
   const dividendsQuery = usePortfolioDividends();
   const assetsQuery = usePortfolioAssets();
   const position = usePortfolioPosition();
   const deleteDividend = useDeletePortfolioDividend();
 
-  const [subTab, setSubTab] = useState<ProventosSubTab>("extrato");
+  const rawSubTab = (searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba"))?.toLowerCase();
+  const validSubTab = rawSubTab === "calendario" || rawSubTab === "extrato" ? rawSubTab : null;
+  const [selectedSubTab, setSelectedSubTab] = useState<ProventosSubTab>("extrato");
+  const subTab: ProventosSubTab = validSubTab ?? selectedSubTab;
   const [month, setMonth] = useState(() => currentMonth());
   const [dividendToDelete, setDividendToDelete] = useState<PortfolioDividend | null>(null);
 
@@ -602,7 +607,7 @@ export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
                       type="button"
                       onClick={() => {
                         setMonth(entry.month);
-                        setSubTab("extrato");
+                        setSelectedSubTab("extrato");
                       }}
                       aria-pressed={active}
                       className={`flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer ${
@@ -644,7 +649,7 @@ export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
     <>
       <Tabs
         value={subTab}
-        onValueChange={(value) => setSubTab(value as ProventosSubTab)}
+        onValueChange={(value) => setSelectedSubTab(value as ProventosSubTab)}
         variant="pills"
         items={[
           {

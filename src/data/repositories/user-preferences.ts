@@ -17,7 +17,13 @@ function mapPreferences(row: UserPreferences): UserPreferences {
 
 /** Preferências do usuário logado (ou null se ainda não criadas). */
 export async function getUserPreferences(): Promise<UserPreferences | null> {
-  const user_id = await currentUserId();
+  let user_id: string;
+  try {
+    user_id = await currentUserId();
+  } catch {
+    return null;
+  }
+
   const { data, error } = await resolveQuery<UserPreferences>(
     getSupabase().from("user_preferences").select("*").eq("user_id", user_id).maybeSingle(),
   );

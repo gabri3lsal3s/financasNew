@@ -43,7 +43,10 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const sectorTargetsQuery = useGroupTargets("sector");
   const executeBatch = useExecutePortfolioBatchAporte();
 
-  const [subTab, setSubTab] = useState<AporteSubTab>("calculadora");
+  const rawSubTab = (searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba"))?.toLowerCase();
+  const validSubTab = rawSubTab === "metas" || rawSubTab === "historico" || rawSubTab === "calculadora" ? rawSubTab : null;
+  const [selectedSubTab, setSelectedSubTab] = useState<AporteSubTab>("calculadora");
+  const subTab: AporteSubTab = validSubTab ?? selectedSubTab;
 
   const [userAporteCents, setUserAporteCents] = useState<number | null>(null);
   const paramValorCents = (() => {
@@ -164,7 +167,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
       <Tabs
         value={subTab}
         onValueChange={(v) => {
-          setSubTab(v as AporteSubTab);
+          setSelectedSubTab(v as AporteSubTab);
           triggerSensory("selection");
         }}
         variant="pills"
@@ -231,7 +234,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
               title="Nenhum ativo investido para simular aporte"
               description="Cadastre ativos e metas na aba 'Metas' para que a calculadora distribua seu aporte de forma ideal."
               action={
-                <Button variant="default" onClick={() => setSubTab("metas")}>
+                <Button variant="default" onClick={() => setSelectedSubTab("metas")}>
                   Configurar Metas
                 </Button>
               }

@@ -20,8 +20,14 @@ export function RegisterPage() {
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [pending, setPending] = useState(false);
 
-  // Sessão criada no signup (confirmação desativada) → já entra no app.
+  // Parâmetro de plano passado pela Landing Page (ex.: ?plano=pro-anual ou ?plano=pro-mensal)
+  const planoParam = searchParams.get("plano");
+
+  // Sessão criada no signup (confirmação desativada) → redireciona para checkout se há plano, ou para o app.
   if (!loading && session) {
+    if (planoParam) {
+      return <Navigate to={`/assinatura?plano=${planoParam}`} replace />;
+    }
     return <Navigate to="/" replace />;
   }
 
@@ -43,7 +49,14 @@ export function RegisterPage() {
   };
 
   return (
-    <AuthShell title="Criar conta" subtitle="Comece a organizar suas finanças em minutos.">
+    <AuthShell
+      title="Criar conta"
+      subtitle={
+        planoParam
+          ? "Crie sua conta para concluir a assinatura do Plano Pro."
+          : "Comece a organizar suas finanças em minutos."
+      }
+    >
       <div className="flex flex-col gap-4">
         {configError ? <Alert variant="error">{configError}</Alert> : null}
         {error ? <Alert variant="error">{error}</Alert> : null}

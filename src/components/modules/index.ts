@@ -88,5 +88,9 @@ export { DashboardAlertsCarousel } from "./dashboard-alerts-carousel";
 export type { DashboardAlertsCarouselProps, DashboardAlertItem } from "./dashboard-alerts-carousel";
 export * from "./portfolio";
 export * from "./reports";
-
-
+export { SubscriptionBadge } from "./subscription/subscription-badge";
+export type { SubscriptionBadgeProps } from "./subscription/subscription-badge";
+export { UpgradeDialog } from "./subscription/upgrade-dialog";
+export type { UpgradeDialogProps } from "./subscription/upgrade-dialog";
+export { CheckoutSheet } from "./subscription/checkout-sheet";
+export type { CheckoutSheetProps } from "./subscription/checkout-sheet";

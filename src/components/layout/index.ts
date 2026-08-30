@@ -20,6 +20,9 @@ export { MoreMenuSheet } from "./more-menu-sheet";
 export type { MoreMenuSheetProps } from "./more-menu-sheet";
 export { NotificationsButton } from "./notifications-button";
 export { LogoProfileButton } from "./logo-profile-button";
+export type { LogoProfileButtonProps } from "./logo-profile-button";
 export { ThemeToggle } from "./theme-toggle";
+export { BackToTop } from "./back-to-top";
+export type { BackToTopProps } from "./back-to-top";
 
 

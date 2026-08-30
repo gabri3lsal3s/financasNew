@@ -127,7 +127,7 @@ Execute o script de validação SQL (§6 deste guia) e compare as somas de recei
 1. Notifique os usuários e ative a tela de manutenção no app legado.
 2. Execute a migração final apontando para o banco de produção.
 3. Rode a bateria de Sanity Checks.
-4. Efetue o deploy do novo frontend (`FinançasNew`) na Vercel/Cloudflare.
+4. Efetue o deploy do novo frontend (`FinançasNew`) no Cloudflare Pages.
 
 ---
 
@@ -477,7 +477,7 @@ GROUP BY type, (paid_at IS NOT NULL);
 Se for identificada qualquer anomalia crítica durante a homologação:
 
 1. **Reversão Imediata do Frontend:**
-   - No painel da Vercel/Cloudflare, reverta o deploy para a versão estável anterior apontando para o banco antigo.
+   - No painel da Cloudflare (Workers & Pages), reverta o deploy para a versão estável anterior apontando para o banco antigo.
 2. **Isolamento do Banco Novo:**
    - Como o banco de dados legado foi mantido em modo leitura/backup durante a janela, nenhuma informação do sistema antigo foi perdida ou modificada.
 3. **Limpeza do Banco Novo para Nova Carga:**

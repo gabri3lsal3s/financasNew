@@ -268,7 +268,7 @@ def build_security_audit_pdf(output_path):
         "• <b>Frontend:</b> React 19, TypeScript estrito, Tailwind CSS v4, shadcn/ui (Radix UI), TanStack Query v5, React Router v8.<br/>"
         "• <b>Backend & Persistência:</b> Supabase (PostgreSQL 15+, Row Level Security - RLS ativo em 100% das 31 tabelas, RPCs PL/pgSQL transacionais, Triggers de integridade referencial).<br/>"
         "• <b>Mecanismo de Autenticação & RBAC:</b> Supabase Auth (JWT assinado `auth.uid()`), perfis com papéis (`user`, `admin`, `superadmin`) e estados de ciclo de vida (`pending_approval`, `active`, `suspended`, `banned`).<br/>"
-        "• <b>Serverless & Infra:</b> Supabase Edge Functions (Deno/TypeScript), agendamento `pg_cron` + `pg_net`, deploy Vercel e workflows GitHub Actions.<br/>"
+        "• <b>Serverless & Infra:</b> Supabase Edge Functions (Deno/TypeScript), agendamento `pg_cron` + `pg_net`, deploy Cloudflare Pages (Git Integration nativa).<br/>"
         "• <b>Mapeamento das 5 Categorias:</b><br/>"
         "&nbsp;&nbsp;1. <i>Banco sem Tranca:</i> Cobertura total de RLS nas 31 tabelas e garantia de filtro estrito por `((select auth.uid()) = user_id and public.is_current_user_active())`.<br/>"
         "&nbsp;&nbsp;2. <i>Permissão no Navegador:</i> Validação de gates administrativos em RPCs do banco vs. UI gates (`RequireAdmin`, `useUserAccess`).<br/>"

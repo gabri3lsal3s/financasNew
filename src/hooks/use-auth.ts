@@ -101,18 +101,30 @@ export function useAuth(): AuthState {
     if (!("supabase" in init)) return;
     let active = true;
 
-    void init.supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      const uid = data.session?.user?.id ?? null;
-      setActiveUserId(uid);
-      setState((prev) => ({
-        ...prev,
-        session: data.session,
-        user: data.session?.user ?? null,
-        loading: false,
-        configError: null,
-      }));
-    });
+    void init.supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) return;
+        const uid = data.session?.user?.id ?? null;
+        setActiveUserId(uid);
+        setState((prev) => ({
+          ...prev,
+          session: data.session,
+          user: data.session?.user ?? null,
+          loading: false,
+          configError: null,
+        }));
+      })
+      .catch((err) => {
+        if (!active) return;
+        setState((prev) => ({
+          ...prev,
+          session: null,
+          user: null,
+          loading: false,
+          configError: getErrorMessage(err),
+        }));
+      });
 
     const { data: subscription } = init.supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
@@ -126,7 +138,6 @@ export function useAuth(): AuthState {
         configError: null,
       }));
     });
-
 
     return () => {
       active = false;

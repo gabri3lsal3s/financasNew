@@ -21,6 +21,10 @@ export interface AllocationDonutProps {
   onSelectKey?: (key: string | null) => void;
   className?: string;
   listClassName?: string;
+  /** Disposição entre anel e legendas ('auto' | 'vertical' | 'horizontal' | 'side-by-side'). */
+  layout?: "auto" | "vertical" | "horizontal" | "side-by-side";
+  /** Tamanho visual do anel SVG: "sm" (160px), "md" (200px padrão) ou "lg" (240px amplo). */
+  donutSize?: "sm" | "md" | "lg";
   onSliceClick?: (slice: DonutSlice, index: number) => void;
 }
 
@@ -36,6 +40,8 @@ export function AllocationDonut({
   onSelectKey,
   className,
   listClassName,
+  layout,
+  donutSize,
   onSliceClick,
 }: AllocationDonutProps) {
   return (
@@ -52,6 +58,8 @@ export function AllocationDonut({
       onSelectKey={onSelectKey}
       className={className}
       listClassName={listClassName}
+      layout={layout}
+      donutSize={donutSize}
       onSliceClick={onSliceClick}
     />
   );

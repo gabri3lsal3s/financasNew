@@ -23,7 +23,7 @@ Aplicativo **web 100% Online First** de **gestão financeira pessoal** (receitas
 | `docs/DESIGN_SYSTEM.md` | Identidade visual e design tokens (`src/styles/tokens.css`) |
 | `docs/PWA_GUIDELINES.md` | Requisitos PWA (manifest, service worker, instalação) |
 | `docs/ROADMAP.md` | **Plano de execução canônico** — fases, ordem e Definition of Done |
-| `docs/DEPLOYMENT.md` | Guia de deploy (Vercel + Supabase), env vars e checklist de prontidão |
+| `docs/DEPLOYMENT.md` | Guia de deploy (Cloudflare Pages + Supabase), env vars e checklist de prontidão |
 
 **Antes de implementar qualquer funcionalidade, consulte a seção correspondente do `ESPECIFICACAO_TECNICA.md` e a estrutura do `docs/ARCHITECTURE.md`.**
 

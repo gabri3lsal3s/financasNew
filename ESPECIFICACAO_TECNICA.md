@@ -656,7 +656,7 @@ Erros via gateway único (`getErrorMessage`), §1.7.
 1. **Prova de fidelidade:** suíte completa espelhando **cada regra** desta especificação (regressão contra o comportamento do app anterior).
 2. Segurança: revisão final de RLS, rate limit, secrets/ambiente.
 3. Observabilidade: logging de erros (ex.: Sentry — **decisão de serviço a confirmar**), métricas básicas.
-4. Deploy: **hosting do frontend a definir** (sugestão: Vercel — a confirmar) + CI/CD de produção; env seguros (Supabase, proxy de cotações).
+4. Deploy: **Cloudflare Pages** (frontend SPA/PWA com Git integration nativa) + **Supabase** (Postgres + RLS + Auth); env vars protegidas.
 5. QA final multi-dispositivo + documento de release.
 
 **✅ DoD:** suíte de fidelidade 100% verde; revisão RLS auditada (nenhuma leitura cross-user); deploy de produção funcional com variáveis protegidas; checklist de QA aprovado em desktop + mobile (3 temas).
@@ -686,6 +686,6 @@ Erros via gateway único (`getErrorMessage`), §1.7.
 ## DECISÕES EM ABERTO (para resolver nas fases indicadas)
 
 1. ~~Cor primária e identidade da marca~~ — **RESOLVIDA**: identidade **"Vital · Verde + Terminal"** (esmeralda/teal/sky, Inter + Sora + IBM Plex Mono, 3 temas, densidade equilibrada) — ver `docs/DESIGN_SYSTEM.md` e `src/styles/`.
-2. **Hosting do frontend** — Fase 6 (sugestão: Vercel; a confirmar).
+2. ~~Hosting do frontend~~ — **RESOLVIDA**: **Cloudflare Pages** (Vite SPA + PWA, Git integration nativa, sem GitHub Actions).
 3. ~~Serviço de observabilidade/erros~~ — **RESOLVIDA**: **Sentry** (`@sentry/react`, env-gated por `VITE_SENTRY_DSN` com dynamic import; Web Vitals LCP/INP/CLS + correlação de usuário — ver `docs/ARCHITECTURE.md` §11 e F6.3 do ROADMAP).
 4. **Notificações** — in-app apenas ou push (edge function) — decisão da Fase 3 (a spec atual assume in-app; push é opcional).

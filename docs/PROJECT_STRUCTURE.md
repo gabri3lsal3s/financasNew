@@ -38,10 +38,11 @@
 ├── docs/                          # Documentação — UPPER_SNAKE_CASE.md (ver §7)
 │   ├── ARCHITECTURE.md            # Camadas, dependências, convenções
 │   ├── DATA_MIGRATION_GUIDE.md    # Guia de migração e batimento de dados legados
-│   ├── DEPLOYMENT.md              # Guia de deploy (Vercel + Supabase) e env vars
+│   ├── DEPLOYMENT.md              # Guia de deploy (Cloudflare Pages + Supabase) e env vars
 │   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
 │   ├── FASES_IMPLEMENTADAS.md     # Histórico de fases e soluções implementadas
 │   ├── PROJECT_STRUCTURE.md       # Este documento
+│   ├── PROJETO_SAAS.md            # Modelo de precificação SaaS, 30 dias de trial e restrições
 │   ├── PWA_GUIDELINES.md          # Requisitos PWA (manifest, SW, instalação)
 │   ├── RELEASE.md                 # Checklist de release e homologação
 │   ├── ROADMAP.md                 # Fases de execução e Definition of Done
@@ -89,6 +90,7 @@
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: stat-card (F56 — auto-fit 7+ dígitos),
     │   │   │                      #   kpi-card, portfolio/ (position-types, position-table-header, subcomponentes F57),
+    │   │   │                      #   subscription/ (subscription-badge, upgrade-dialog, checkout-sheet),
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, onboarding-card, pwa-update-toast,
@@ -107,10 +109,10 @@
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   more-menu-sheet (F56 — bottom sheet móvel),
     │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10), logo-profile-button,
-
     │       │                      #   privacy-toggle (F8), theme-toggle, calculator-button,
     │       │                      #   notifications-button (v1.62 — sininho com badge dinâmico no header),
-    │       │                      #   global-search (busca no header), loading-screen (F10/F23 — tela de carregamento oficial e dinâmica)
+    │       │                      #   global-search (busca no header), loading-screen (F10/F23 — tela de carregamento oficial e dinâmica),
+    │       │                      #   back-to-top (botão flutuante ergonômico acima da BottomNav móvel com scrollToTop canônico)
     │       └── index.ts           #   barrel (AGENTS.md §7 — importações externas via @/components/layout)
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
@@ -125,8 +127,9 @@
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
-    │   ├── settings/              #   Configurações (preferências, densidade F8, perfil)
+    │   ├── settings/              #   Configurações (preferências, densidade F8, perfil, assinatura)
     │   ├── admin/                 #   Painel Administrativo SaaS /admin (F43: Gestão de Usuários, Moderação, Feature Flags, Convites, Auditoria)
+    │   ├── subscription/          #   Fluxos de Assinatura & Checkout /subscription/checkout
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):
     │   │                          #     hub de 5 abas (Resumo / Proventos / Metas / Aporte / Relatórios & IR)
     │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, relatorios-tab, investments-page
@@ -136,9 +139,9 @@
     │   │                          #       transaction-form-dialog, transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
     │   │                          #       portfolio-mapping-step, portfolio-statement-dialog, portfolio-executive-report,
     │   │                          #       portfolio-tax-report, portfolio-darf-monitor com barrels components/index.ts e index.ts
-
+    │   │
     │   └── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
-    │                              #     com simulador FIRE interativo, showcase, pricing e FAQ
+    │                              #     com simulador FIRE interativo, showcase, pricing, FAQ, scroll-reveal, scroll-spy e back-to-top
     │
     ├── domain/                    # MOTORES DE CÁLCULO PUROS (sem React/Supabase)
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags e validação de convites
@@ -218,6 +221,7 @@
     │                              #   use-sidebar-state, use-sign-out (logout unificado),
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
+    │                              #   use-container-scroll (monitoramento cirúrgico de rolagem a 120fps sem re-render),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
     ├── services/                  # Apresentação + integrações
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)

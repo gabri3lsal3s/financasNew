@@ -109,12 +109,14 @@ export function useUserAccess(): UserAccessResult {
     queryKey: USER_ACCESS_KEY,
     queryFn: getMyProfile,
     staleTime: 1000 * 60 * 5, // 5 minutos
+    retry: 1,
   });
 
   const featuresQuery = useQuery({
     queryKey: USER_FEATURES_KEY,
     queryFn: getMyFeatures,
     staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 
   const profile = profileQuery.data ?? null;

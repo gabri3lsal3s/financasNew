@@ -20,7 +20,7 @@ Aplicativo web **100% Online First** de **gestão financeira pessoal** (receitas
 | [`docs/FASES_IMPLEMENTADAS.md`](docs/FASES_IMPLEMENTADAS.md) | Resumo de cada fase implementada (F0–F29): problema e solução |
 | [`docs/NEXT_PHASES.md`](docs/NEXT_PHASES.md) | Propostas de novas fases (Trilha A: UI/UX · Trilha B: Investimentos) |
 | [`docs/PWA_GUIDELINES.md`](docs/PWA_GUIDELINES.md) | Requisitos PWA (manifest, service worker, instalação) |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploy (Vercel + Supabase), env vars e checklist de prontidão |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploy (Cloudflare Pages + Supabase), env vars e checklist de prontidão |
 
 ---
 
@@ -107,4 +107,4 @@ A árvore completa e as regras de criação de arquivos estão em [`docs/PROJECT
 
 ## Deploy
 
-Frontend na **Vercel** + **Supabase** (Postgres + RLS + Auth). Guia completo, env vars e checklist de prontidão em [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+Frontend no **Cloudflare Pages** + **Supabase** (Postgres + RLS + Auth). Guia completo, env vars e checklist de prontidão em [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).

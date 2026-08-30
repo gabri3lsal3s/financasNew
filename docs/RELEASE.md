@@ -8,11 +8,10 @@
 
 ## 1. PRÉ-REQUISITOS DE AMBIENTE
 
-- [x] **Deploy de produção funcional** (confirmado 2026-08-15): frontend no Vercel + Supabase remoto; migrations aplicadas, RLS ativo e env vars na Vercel.
-- [ ] `VITE_SENTRY_DSN` definido na Vercel (opcional — sem ele o app funciona; com ele erros de produção + Web Vitals são reportados).
-- [ ] Secrets de CI/CD configurados no GitHub (`VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`; `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_ID` para a edge function de cotações) — para o CI/CD automatizado.
+- [x] **Deploy de produção funcional** (Cloudflare Pages + Supabase remoto): frontend no Cloudflare Pages; migrations aplicadas, RLS ativo e env vars configuradas no painel da Cloudflare.
+- [ ] `VITE_SENTRY_DSN` definido no Cloudflare Pages (opcional — sem ele o app funciona; com ele erros de produção + Web Vitals são reportados).
 - [ ] Edge function de cotações deployada + cron agendado (ver `DEPLOYMENT.md` §7.1) — status a confirmar.
-- [ ] `npm test` verde na branch `main` (gates do CI/CD `deploy.yml`).
+- [ ] Quality gate local verde (`npm run typecheck && npm run lint && npm test && npm run build`).
 
 ---
 
@@ -64,19 +63,19 @@
 ## 5. CORTE DE RELEASE
 
 1. **Congelar `main`:** sem merges fora do escopo da release (hotfixes críticos apenas).
-2. **Verde nos gates:** `npm run typecheck && npm run lint && npm test && npm run build` (CI `deploy.yml` faz isso automaticamente no push).
+2. **Verde nos gates locais:** `npm run typecheck && npm run lint && npm test && npm run build` (garantindo build sem erros antes do push).
 3. **Tag semântica:**
    ```bash
    git tag -a v1.x.0 -m "Release v1.x.0"
    git push origin v1.x.0
    ```
-4. **Deploy:** o push em `main` dispara `deploy.yml` — job `quality` (gates) → `deploy-vercel` (produção) → `deploy-supabase-functions` (edge `quotes`). Confira o status em GitHub Actions.
-5. **Edge function de cotações (1ª vez):** `supabase functions deploy quotes --project-ref <ref>` com o service role no secret da função; agendar cron (DEPLOYMENT §7.1).
+4. **Deploy:** o push em `main` dispara automaticamente o build & deploy nativo do Cloudflare Pages (Git Integration). Acompanhe o status e logs em **Cloudflare Dashboard → Workers & Pages → financasNew**.
+5. **Edge function de cotações (1ª vez ou quando alterada):** `npm run quotes:deploy` ou `supabase functions deploy quotes --project-ref <ref>` com o service role no secret da função; agendar cron (`npm run quotes:cron` / DEPLOYMENT §7.1).
 6. **Pós-deploy (DEPLOYMENT §3.3):** login/cadastro, onboarding, PWA instalável, Lighthouse.
 
 ## 6. ROLLBACK
 
-- **Frontend:** Vercel → Deployments → ⋯ → "Rollback to Previous" (ou `vercel rollback`).
+- **Frontend:** Cloudflare Dashboard → Workers & Pages → financasNew → Deployments → ⋯ → "Rollback to this deployment".
 - **Edge function:** redeploy da versão anterior do código da função.
 - **Banco:** migrations são versionadas e idempotentes (`on conflict do nothing`); dados de negócio nunca são destruídos por rollback de app — RPCs validam invariantes na escrita.
 - **Comunicação:** notificar usuários via toast de atualização (PWA já anuncia nova versão).

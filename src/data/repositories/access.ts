@@ -24,7 +24,7 @@ export async function getMyProfile(): Promise<Profile | null> {
       .from("profiles")
       .select("id, name, email, role, status, approved_at, approved_by, suspended_reason, created_at")
       .eq("id", user.id)
-      .single(),
+      .maybeSingle(),
   );
 
   if (error) {
@@ -39,7 +39,11 @@ export async function getMyProfile(): Promise<Profile | null> {
  * Retorna o mapa de funcionalidades ativas/resolvidas para o usuário.
  */
 export async function getMyFeatures(): Promise<Record<string, boolean>> {
-  return getMyFeaturesRpc();
+  try {
+    return await getMyFeaturesRpc();
+  } catch {
+    return {};
+  }
 }
 
 /**

@@ -38,6 +38,10 @@ export interface CategoryDonutProps {
   emptyText?: string;
   /** Número máximo de fatias desenhadas no anel SVG antes de agrupar em "Outros" (default: 7). */
   maxVisualSlices?: number;
+  /** Disposição entre o anel SVG e a lista de legendas. Default: "auto" (coluna no mobile, linha a partir de md). */
+  layout?: "auto" | "vertical" | "horizontal" | "side-by-side";
+  /** Tamanho visual do anel SVG: "sm" (160px), "md" (200px padrão) ou "lg" (240px amplo). */
+  donutSize?: "sm" | "md" | "lg";
   /** Callback global acionado ao clicar em uma fatia ou legenda. */
   onSliceClick?: (slice: DonutSlice, index: number) => void;
 }
@@ -131,6 +135,8 @@ export function CategoryDonut({
   listClassName,
   emptyText = "Sem despesas",
   maxVisualSlices = 7,
+  layout = "auto",
+  donutSize = "md",
   onSliceClick,
 }: CategoryDonutProps) {
   const [internalSelectedKey, setInternalSelectedKey] = useState<string | null>(null);
@@ -286,10 +292,27 @@ export function CategoryDonut({
     };
   });
 
+  const layoutClass =
+    layout === "vertical"
+      ? "flex-col items-center gap-4 sm:gap-6"
+      : layout === "horizontal"
+        ? "flex-row items-center gap-5 sm:gap-6"
+        : layout === "side-by-side"
+          ? "flex-col items-center gap-5 lg:flex-row lg:items-center lg:gap-6"
+          : "flex-col items-center gap-6 md:flex-row md:items-center lg:gap-8";
+
+  const svgSizeClass =
+    donutSize === "sm"
+      ? "size-36 sm:size-40 md:size-44"
+      : donutSize === "lg"
+        ? "size-44 sm:size-48 md:size-52 lg:size-56 xl:size-60"
+        : "size-40 sm:size-44 md:size-48 lg:size-52";
+
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-6 md:flex-row md:items-center lg:gap-8 w-full min-w-0",
+        "flex w-full min-w-0",
+        layoutClass,
         className,
       )}
       data-swipe-nav-ignore
@@ -298,7 +321,7 @@ export function CategoryDonut({
       <div className="relative shrink-0 flex items-center justify-center py-2 self-center">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="size-44 sm:size-48 md:size-52 lg:size-56 xl:size-60 -rotate-90 transition-transform duration-300"
+          className={cn(svgSizeClass, "-rotate-90 transition-transform duration-300")}
           aria-hidden="true"
         >
           {/* Arcos preenchidos com extremidades arredondadas flutuantes sem trilha cinza */}

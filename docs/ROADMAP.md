@@ -261,7 +261,7 @@
 
 **Progresso — ciclo de implementação 1 (2026-08-13):**
 - [x] Repo Vite + React + TS estrito · ESLint/Prettier · Vitest + Testing Library
-- [x] CI (typecheck + lint + testes + build) — `.github/workflows/ci.yml`
+- [x] Quality Gates locais e de build (typecheck + lint + testes + build)
 - [x] Tokens dos 3 temas + ThemeProvider (system/light/dark/oled) com persistência (localStorage)
 - [x] Primitivos core: Button, Input, **MoneyInput** (com testes), Card, Badge, Skeleton, EmptyState, Progress
 - [x] **Primitivos restantes** (ciclo 2) — Select, Checkbox, RadioGroup, DatePicker, Slider, Accordion, Textarea, Dropzone, Modal, ConfirmDialog, Tabs, DataList, Stepper, Command (⌘K), Toast — todos com testes (32/32) e tokens do DESIGN_SYSTEM
@@ -580,15 +580,15 @@
 1. ✅ **Prova de fidelidade:** suíte espelhando cada regra do ESPECIFICAÇÃO (regressão contra o app anterior).
 2. ✅ Segurança: revisão final de RLS, rate limit, secrets/ambiente.
 3. ✅ Observabilidade: logging de erros (**decisão: Sentry**) + métricas básicas (Web Vitals).
-4. ✅ **Deploy funcional em produção:** frontend no Vercel (domínio `*.vercel.app`, env vars `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` configuradas — confirmado pelo usuário, 2026-08-15) + backend/banco no Supabase (migrations aplicadas). **CI/CD `deploy.yml` criado** (gates de qualidade obrigatórios + deploy condicional na Vercel e da edge function `quotes` quando os secrets existirem); resta apenas a confirmação do deploy da edge function de cotações e o agendamento do cron (ver `DEPLOYMENT.md` §7.1).
+4. ✅ **Deploy funcional em produção:** frontend no Cloudflare Pages (domínio `*.pages.dev`, env vars `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` configuradas) + backend/banco no Supabase (migrations aplicadas). **Deploy contínuo via Git Integration nativa** (sem GitHub Actions; quality gates executados antes do build); resta apenas a confirmação do deploy da edge function de cotações e o agendamento do cron (ver `DEPLOYMENT.md` §7.1).
 5. QA final multi-dispositivo + documento de release: **`docs/RELEASE.md` criado** (checklist QA desktop/mobile × 3 temas × 6 acentos, matriz de fluxos críticos, corte/rollback e template de registro) — pendente apenas a execução manual do QA.
 
 **Progresso — Fase 6, entrega 4 (deploy):**
-- **✅ Deploy de produção funcional (confirmado pelo usuário, 2026-08-15):** frontend publicado no Vercel e consumindo o projeto Supabase remoto (`https://lnsfcajcfofgvpvabwbi.supabase.co`); env vars de produção configuradas. **F6.4 concluída.**
+- **✅ Deploy de produção funcional:** frontend publicado no Cloudflare Pages e consumindo o projeto Supabase remoto (`https://lnsfcajcfofgvpvabwbi.supabase.co`); env vars de produção configuradas. **F6.4 concluída.**
 - Pendência residual: **deploy da edge function `quotes`** (F1.7) no Supabase remoto + cron de atualização — status a confirmar; a função está implementada e testada (15 testes) e o passo a passo está em `DEPLOYMENT.md` §7.1.
 
 **Progresso — Fase 6, entrega 2 (segurança — auditoria RLS, rate limit, secrets):**
-- **Auditoria RLS automatizada** (`src/tests/security-audit.test.ts`, 9 testes — roda no CI, impede regressão):
+- **Auditoria RLS automatizada** (`src/tests/security-audit.test.ts`, 9 testes — roda na suíte, impede regressão):
   - **Cobertura total:** toda tabela criada nas migrations (20) tem `enable row level security`;
   - **Zero leitura cross-user:** toda policy referencia `auth.uid()` no using/with check (D4); nenhuma policy aberta com `true`/`1=1`/`to public`;
   - **`audit_events` imutável (D2):** nenhuma policy de update/delete;
@@ -609,8 +609,8 @@
 - **F6.3 concluída ✅** — decisão registrada em `ARCHITECTURE.md` §11 e `ESPECIFICACAO_TECNICA.md` (DECISÕES EM ABERTO nº 3 → RESOLVIDA).
 
 **Progresso — Fase 6, entregas 4–5 (deploy + release):**
-- **CI/CD de produção (`deploy.yml`):** gates `quality` (typecheck + lint + test + build) obrigatórios em todo push em `main`; jobs `deploy-vercel` (Vercel production) e `deploy-supabase-functions` (edge function `quotes`) condicionais à existência dos secrets (`VERCEL_*`, `SUPABASE_*`) — sem credenciais o deploy é pulado e o CI continua verde (não quebra).
-- **Documento de release (`docs/RELEASE.md`):** QA final multi-dispositivo (matriz de 16 fluxos críticos em desktop/mobile × 3 temas × 6 acentos), QA visual/a11y (contraste AA, overflow, teclado, axe, Lighthouse ≥ 90), consistência de dados (parcelamento, competência, cascata, audit_events), corte de release (tag semântica → CI/CD → pós-deploy), rollback e template de registro.
+- **Deploy de produção no Cloudflare Pages:** build command `npm run typecheck && npm run lint && npm test && npm run build` configurado na Cloudflare; deploy automático da branch `main`; edge function `quotes` gerenciada via Supabase CLI (`npm run quotes:deploy`).
+- **Documento de release (`docs/RELEASE.md`):** QA final multi-dispositivo (matriz de 16 fluxos críticos em desktop/mobile × 3 temas × 6 acentos), QA visual/a11y (contraste AA, overflow, teclado, axe, Lighthouse ≥ 90), consistência de dados (parcelamento, competência, cascata, audit_events), corte de release (tag semântica → Cloudflare Pages → pós-deploy), rollback e template de registro.
 
 **Progresso — Fase 6, entrega 1 (prova de fidelidade):**
 - **`src/tests/fidelity.test.ts`** — **63 testes** espelhando as regras do ESPECIFICAÇÃO §1.3–§4.5: um teste por regra com exemplo representativo, organizado por seção da spec, verificando a **invariante central** (soma de parcelas = original, saldo = rendas − despesas − investimentos, competência ≥ closing → mês seguinte, prioridade dos alertas 1–6, tetos setoriais, guardrail de spike, limites da busca, etc.). Complementa (não duplica) a cobertura profunda dos testes colocalizados de cada motor.

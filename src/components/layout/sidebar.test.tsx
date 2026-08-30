@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
@@ -21,14 +22,29 @@ vi.mock("@/state", () => ({
     hasFeature: () => true,
     isLoading: false,
   }),
+  useUserSubscription: () => ({
+    isPro: true,
+    isTrial: false,
+    isReadOnly: false,
+    trialDaysRemaining: null,
+    plan: "annual",
+    tier: "pro_annual",
+    trialEndsAt: null,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    isFullAccess: true,
+  }),
 }));
 
 
 function renderSidebar(isCollapsed = false, onToggle = () => {}) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={["/"]}>
-      <Sidebar isCollapsed={isCollapsed} onToggle={onToggle} />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={["/"]}>
+        <Sidebar isCollapsed={isCollapsed} onToggle={onToggle} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -122,4 +138,22 @@ describe("Sidebar colapsável (F7.2)", () => {
 
     expect(main.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
   });
+
+  it("ao clicar na logo/nome do app na sidebar desktop abre o modal de perfil com atalhos e logout", async () => {
+    const user = userEvent.setup();
+    renderSidebar(false);
+
+    const logoButton = screen.getByRole("button", { name: "Abrir perfil do usuário" });
+    expect(logoButton).toBeInTheDocument();
+    expect(screen.getByText("Guia Financeiro")).toBeInTheDocument();
+
+    await user.click(logoButton);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Acesso Rápido")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Segurança & Perfil/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Aparência & Tema/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
+  });
 });
+

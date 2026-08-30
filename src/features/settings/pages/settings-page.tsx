@@ -7,6 +7,7 @@ import {
   Sliders,
   Bell,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { Tabs } from "@/components/ui";
 import {
@@ -16,22 +17,55 @@ import {
   RemindersTab,
   BackupTab,
   SecurityTab,
+  SubscriptionTab,
 } from "../components/tabs";
 import { useUserAccess } from "@/state";
+
+/**
+ * Resolve o identificador canônico da aba de configurações a partir do parâmetro
+ * de rota (tab, subtab ou aliases comuns de deep-link).
+ */
+function resolveSettingsTab(param: string | null): string {
+  if (!param) return "personalizacao";
+  const p = param.toLowerCase().trim();
+  if (["personalizacao", "aparencia", "aparência", "tema", "visual", "customizacao"].includes(p)) {
+    return "personalizacao";
+  }
+  if (["sensorial", "sons", "som", "audio", "haptic"].includes(p)) {
+    return "sensorial";
+  }
+  if (["interface", "dashboard", "widgets"].includes(p)) {
+    return "interface";
+  }
+  if (["lembretes", "notificacoes", "notificações", "notificacao", "notificação"].includes(p)) {
+    return "lembretes";
+  }
+  if (["dados", "exportar", "backup", "importar"].includes(p)) {
+    return "dados";
+  }
+  if (["plano", "assinatura", "subscription", "upgrade"].includes(p)) {
+    return "plano";
+  }
+  if (["seguranca", "segurança", "perfil", "conta", "usuario", "usuário", "2fa", "mfa", "senha"].includes(p)) {
+    return "seguranca";
+  }
+  return "personalizacao";
+}
 
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasFeature } = useUserAccess();
+
   const tabParam = searchParams.get("tab");
+  const subTabParam = searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba");
 
   const activeTab = useMemo(() => {
-    if (tabParam === "sensorial" || tabParam === "sons" || tabParam === "som") return "sensorial";
-    if (tabParam === "interface" || tabParam === "dashboard" || tabParam === "widgets") return "interface";
-    if (tabParam === "lembretes" || tabParam === "notificacoes") return "lembretes";
-    if (tabParam === "dados" || tabParam === "exportar" || tabParam === "backup") return "dados";
-    if (tabParam === "seguranca" || tabParam === "2fa" || tabParam === "mfa" || tabParam === "conta") return "seguranca";
-    return "personalizacao";
-  }, [tabParam]);
+    // Se informada sub-aba explícita, tem precedência sobre o parâmetro geral
+    if (subTabParam) {
+      return resolveSettingsTab(subTabParam);
+    }
+    return resolveSettingsTab(tabParam);
+  }, [tabParam, subTabParam]);
 
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab }, { replace: true });
@@ -72,6 +106,12 @@ export function SettingsPage() {
         label: "Dados",
         icon: <Database className="size-4" />,
         content: <BackupTab />,
+      },
+      {
+        value: "plano",
+        label: "Plano",
+        icon: <Sparkles className="size-4" />,
+        content: <SubscriptionTab />,
       },
       {
         value: "seguranca",

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { BackToTop } from "@/components/layout/back-to-top";
 import { CalculatorButton } from "@/components/layout/calculator-button";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
@@ -11,6 +12,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Skeleton } from "@/components/ui";
 import { LaunchWizard } from "@/features/transactions";
+import { useContainerScroll } from "@/hooks";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
@@ -33,6 +35,11 @@ export function PageShell() {
   const location = useLocation();
   const { open: wizardOpen, setOpen: setWizardOpen } = useCreateDeepLink("transacao");
   const { totalCount } = useReminders();
+  const { isScrolled, showBackToTop } = useContainerScroll({
+    containerId: "main-content",
+    scrolledThreshold: 15,
+    backToTopThreshold: 400,
+  });
 
   // --- Slot logic (máx. 2 entre: calc, tema, privacidade, notificações) ---
   // Notificações deslocam: privacidade primeiro, depois tema. Calculadora nunca é deslocada.
@@ -63,9 +70,16 @@ export function PageShell() {
           isCollapsed ? "md:pl-20" : "md:pl-20 lg:pl-64",
         )}
       >
-        {/* Header fluido (F7.3/F56): fixo/sticky com backdrop-blur (DESIGN_SYSTEM §6).
-            Conteúdo centralizado nos limites da página (max-w-7xl). */}
-        <header className="sticky top-0 z-sticky flex h-16 shrink-0 items-center border-b border-border bg-surface/80 backdrop-blur app-region-drag">
+        {/* Header fluido com elevação dinâmica de rolagem (F7.3/F56 / DESIGN_SYSTEM §6 e §8).
+            Preserva a borda contínua conectada à Sidebar e eleva com sombra suave e blur. */}
+        <header
+          className={cn(
+            "sticky top-0 z-sticky flex h-16 shrink-0 items-center border-b border-border transition-[background-color,backdrop-filter,box-shadow] duration-200 app-region-drag",
+            isScrolled
+              ? "bg-surface/95 backdrop-blur-md shadow-xs"
+              : "bg-surface/80 backdrop-blur-sm shadow-none",
+          )}
+        >
           <div className="mx-auto flex w-full max-w-7xl items-center gap-1.5 px-4 sm:px-6 lg:px-8 app-region-no-drag">
             {visual.headerButtons.logo && (
               <div className="flex items-center md:hidden mr-1 shrink-0">
@@ -94,6 +108,9 @@ export function PageShell() {
           </div>
         </main>
       </div>
+
+      {/* Botão flutuante Voltar ao Topo global (ergonômico acima da BottomNav) */}
+      <BackToTop visible={showBackToTop} containerId="main-content" bottomNavOffset />
 
       <BottomNav />
     </div>

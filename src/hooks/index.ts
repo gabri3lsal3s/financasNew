@@ -15,3 +15,5 @@ export { useSignOut } from "./use-sign-out";
 export { useSwipeNavigation } from "./use-swipe-navigation";
 export { useVisualCustomization, getVisualCustomization } from "./use-visual-customization";
 export { useOnboardingDismissed } from "./use-onboarding-dismissed";
+export { useContainerScroll } from "./use-container-scroll";
+export type { UseContainerScrollOptions, UseContainerScrollResult } from "./use-container-scroll";
