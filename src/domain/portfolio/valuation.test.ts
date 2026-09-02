@@ -354,6 +354,55 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(summary.unrealizedPnl).toBe(800);
       expect(summary.unrealizedPct).toBe(8);
     });
+
+    it("zera o saldo e custo em custódia para títulos de renda fixa resgatados/zerados", () => {
+      const summary = calculatePositionSummary({
+        quantity: 0,
+        averagePrice: 0,
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+        ticker: "CDB-FACTA",
+        resolvedPrice: { price: 1400, source: "manual" },
+        fixedIncomeMetadata: {
+          rate_type: "cdi",
+          rate_value: 120,
+          base_date: "2026-01-01",
+          maturity_date: "2026-09-02",
+          initial_investment_date: "2026-01-01",
+          is_tax_exempt: false,
+          base_value: 0,
+        },
+      });
+
+      expect(summary.quantity).toBe(0);
+      expect(summary.averagePrice).toBe(0);
+      expect(summary.totalCost).toBe(0);
+      expect(summary.totalCostBRL).toBe(0);
+      expect(summary.valueBRL).toBe(0);
+      expect(summary.priceBRL).toBe(0);
+      expect(summary.unrealizedPnl).toBe(0);
+      expect(summary.unrealizedPct).toBeNull();
+    });
+
+    it("zera o saldo e custo para ações vendidas integralmente (quantity: 0), preservando proventos passados", () => {
+      const summary = calculatePositionSummary({
+        quantity: 0,
+        averagePrice: 0,
+        assetClass: "Ações",
+        currency: "BRL",
+        ticker: "PETR4",
+        resolvedPrice: { price: 38.5, source: "api" },
+        totalDividends: 150.5,
+      });
+
+      expect(summary.quantity).toBe(0);
+      expect(summary.totalCost).toBe(0);
+      expect(summary.totalCostBRL).toBe(0);
+      expect(summary.valueBRL).toBe(0);
+      expect(summary.unrealizedPnl).toBe(0);
+      expect(summary.totalDividends).toBe(150.5);
+      expect(summary.totalReturnPnl).toBe(150.5);
+    });
   });
 
   describe("isFixedIncomeClass & isTesouroAsset & getAssetPricingMode", () => {

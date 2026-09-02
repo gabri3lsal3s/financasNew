@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  Archive,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -17,6 +18,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyText } from "@/components/ui/money-text";
@@ -254,8 +256,18 @@ export function PositionTable({
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+  const [hideClosed, setHideClosed] = useState(true);
+  const [closedSectionOpen, setClosedSectionOpen] = useState(false);
 
   const effectiveRows = rows.filter((r) => !r.isCash);
+  const isRowClosed = (r: PositionRow) =>
+    r.quantity <= 0 &&
+    r.valueBRL <= 0 &&
+    (r.totalCostBRL ?? r.totalCost ?? r.averageCost ?? 0) <= 0;
+
+  const activeRows = effectiveRows.filter((r) => !isRowClosed(r));
+  const closedRows = effectiveRows.filter((r) => isRowClosed(r));
+  const displaySourceRows = hideClosed ? activeRows : effectiveRows;
 
   const isClassExpanded = (clsName: string) => {
     if (expandedClasses[clsName] !== undefined) return expandedClasses[clsName];
@@ -298,7 +310,7 @@ export function PositionTable({
   };
 
   const availableClasses = [
-    ...new Set(effectiveRows.map((r) => r.assetClass).filter((c): c is string => Boolean(c))),
+    ...new Set(displaySourceRows.map((r) => r.assetClass).filter((c): c is string => Boolean(c))),
   ];
 
   const handleSearchChange = (value: string) => {
@@ -321,7 +333,7 @@ export function PositionTable({
     });
   };
 
-  const filteredRows = effectiveRows.filter((row) => {
+  const filteredRows = displaySourceRows.filter((row) => {
     const rowClass = row.assetClass;
     const matchesSearch =
       search.trim() === "" ||
@@ -1203,7 +1215,7 @@ export function PositionTable({
             ) : null}
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 shrink-0">
             {availableClasses.length > 1 ? (
               <div className="flex flex-wrap items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0">
                 <button
@@ -1237,6 +1249,25 @@ export function PositionTable({
                   );
                 })}
               </div>
+            ) : null}
+
+            {closedRows.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setHideClosed(!hideClosed)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 border",
+                  !hideClosed
+                    ? "bg-surface border-primary/50 text-foreground font-semibold shadow-xs"
+                    : "bg-surface-hover/60 border-border/60 text-muted-foreground hover:text-foreground",
+                )}
+                title={hideClosed ? "Exibir posições zeradas/encerradas" : "Ocultar posições zeradas/encerradas"}
+              >
+                <span>{hideClosed ? "Ver encerradas" : "Ocultar encerradas"}</span>
+                <Badge variant="muted" size="xs">
+                  {closedRows.length}
+                </Badge>
+              </button>
             ) : null}
           </div>
         </div>
@@ -1482,6 +1513,55 @@ export function PositionTable({
               </div>
             ) : null}
           </div>
+        </div>
+      ) : null}
+
+      {/* Seção colapsável de Posições Encerradas / Histórico */}
+      {closedRows.length > 0 && hideClosed ? (
+        <div className="mt-2 rounded-xl border border-dashed border-border/80 bg-surface-hover/20 p-3.5 transition-all">
+          <button
+            type="button"
+            onClick={() => setClosedSectionOpen(!closedSectionOpen)}
+            className="flex w-full items-center justify-between gap-2 text-left cursor-pointer group"
+            aria-expanded={closedSectionOpen}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Archive className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" aria-hidden="true" />
+              <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors truncate">
+                Posições Encerradas ({closedRows.length} {closedRows.length === 1 ? "ativo liquidado" : "ativos liquidados"})
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground shrink-0">
+              <span>{closedSectionOpen ? "Recolher" : "Expandir histórico"}</span>
+              <ChevronDown className={cn("size-3.5 transition-transform duration-200", closedSectionOpen && "rotate-180")} aria-hidden="true" />
+            </div>
+          </button>
+
+          {closedSectionOpen ? (
+            <div className="mt-3 divide-y divide-border/60 pt-2 border-t border-border/60">
+              {closedRows.map((row) => (
+                <div
+                  key={row.assetId}
+                  onClick={() => handleOpen?.(row.assetId, row.ticker)}
+                  className="flex items-center justify-between py-2.5 px-1 hover:bg-surface-hover/40 rounded-lg cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+                    <Badge variant="muted" size="xs">Encerrada</Badge>
+                    {row.assetClass ? <span className="text-xs text-muted-foreground truncate">({row.assetClass})</span> : null}
+                  </div>
+                  <div className="flex items-center gap-3 text-right shrink-0">
+                    {row.dividends && row.dividends > 0 ? (
+                      <span className="text-xs text-positive-strong">
+                        Proventos: <MoneyText cents={numberToCents(row.dividends)} tone="positive" />
+                      </span>
+                    ) : null}
+                    <span className="text-xs text-muted-foreground">Saldo: R$ 0,00</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

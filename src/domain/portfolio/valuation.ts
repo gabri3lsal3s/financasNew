@@ -366,6 +366,34 @@ export function calculatePositionSummary(params: {
             ? quantity
             : averagePrice;
 
+    // Se a posição foi resgatada/zerada integralmente, o saldo e custo em custódia são 0:
+    if (initialCost <= 0 || (quantity === 0 && averagePrice === 0)) {
+      return {
+        quantity: 0,
+        averagePrice: 0,
+        totalCost: 0,
+        totalCostBRL: 0,
+        averagePriceBRL: 0,
+        priceQuote: 0,
+        priceBRL: 0,
+        valueBRL: 0,
+        netValueBRL: 0,
+        taxAmountBRL: 0,
+        taxRatePct: 0,
+        isMatured: Boolean(fixedIncomeMetadata?.maturity_date),
+        maturityDate: fixedIncomeMetadata?.maturity_date ?? null,
+        fixedIncomeResult: null,
+        source: resolvedPrice.source,
+        unrealizedPnl: 0,
+        unrealizedPct: null,
+        totalDividends,
+        totalReturnPnl: totalDividends,
+        totalReturnPct: null,
+        isCash: false,
+        pricingMode: "total_value",
+      };
+    }
+
     const totalCost = Math.round(initialCost * rate * 100) / 100;
     const totalCostBRL = totalCost;
     const averagePriceBRL = totalCost;
@@ -446,7 +474,30 @@ export function calculatePositionSummary(params: {
     };
   }
 
+  // Modo Preço Unitário (Ações, FIIs, BDRs, Cripto, etc.):
   const priceBRL = Math.round(resolvedPrice.price * rate * 100) / 100;
+
+  if (quantity <= 0) {
+    return {
+      quantity: 0,
+      averagePrice: 0,
+      totalCost: 0,
+      totalCostBRL: 0,
+      averagePriceBRL: 0,
+      priceQuote: resolvedPrice.price,
+      priceBRL,
+      valueBRL: 0,
+      source: resolvedPrice.source,
+      unrealizedPnl: 0,
+      unrealizedPct: null,
+      totalDividends,
+      totalReturnPnl: totalDividends,
+      totalReturnPct: null,
+      isCash: false,
+      pricingMode: "unit_price",
+    };
+  }
+
   const totalCost = Math.round(quantity * averagePrice * 100) / 100;
   const totalCostBRL = Math.round(totalCost * rate * 100) / 100;
   const averagePriceBRL = Math.round(averagePrice * rate * 100) / 100;

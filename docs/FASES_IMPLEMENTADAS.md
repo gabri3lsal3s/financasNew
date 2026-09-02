@@ -1192,6 +1192,35 @@
   - `src/tests/quotes-core.test.ts`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F75 — Correção Contábil de Resgate/Caixa, Posições Encerradas & Extrato Geral de Movimentações
+
+- **Problema:** 
+  1. Ao resgatar um ativo de Renda Fixa e creditar o saldo no Caixa, o valor do patrimônio total ficava duplicado porque o motor de valoração continuava projetando juros sobre o título zerado, e o Caixa inflava o custo de aquisição da carteira.
+  2. Ativos zerados ou liquidados permaneciam na tabela de custódia ativa, gerando poluição visual.
+  3. A aba de Histórico exibia apenas aportes simples (`portfolio_contributions`), omitindo compras avulsas, vendas, resgates de renda fixa, proventos recebidos e splits.
+- **Solução:**
+  1. **Motor de Valoração e Contabilidade (`valuation.ts`, `use-portfolio-position.ts`):**
+     - Garantia de que ativos com `quantity <= 0` ou custo zero tenham saldo em custódia (`valueBRL`) e custo (`totalCostBRL`) estritamente iguais a **R$ 0,00**, eliminando qualquer projeção em títulos liquidados e preservando proventos históricos;
+     - Exclusão do Caixa (`isCash`) do acumulador de custo de aquisição (`totalCostBRL`), somando 100% no Patrimônio Total (`totalBRL`) e na liquidez (`cashBRL`);
+  2. **Gestão de Posições Encerradas na Custódia (`PositionTable`):**
+     - Separação de posições ativas (`quantity > 0 && valueBRL > 0`) de posições encerradas (`quantity === 0 && valueBRL === 0`);
+     - Toggle rápido *"Ocultar encerradas"* (ativo por padrão) e seção colapsável no rodapé: *"Posições Encerradas (X ativos liquidados)"*;
+  3. **Extrato Geral de Movimentações da Carteira (`PortfolioActivityPanel`):**
+     - Unificação completa de `portfolio_transactions`, `portfolio_contributions` e `portfolio_dividends` em uma timeline padronizada;
+     - Cards de fluxo mensal: Total Aportado, Total Resgatado, Total Proventos e Fluxo Líquido do Mês;
+     - Filtros rápidos por tipo (`Todas`, `Aportes/Compras`, `Vendas/Resgates`, `Proventos`), busca por ticker e exclusão de lançamentos.
+- **Arquivos alterados:**
+  - `src/domain/portfolio/valuation.ts`
+  - `src/domain/portfolio/valuation.test.ts`
+  - `src/state/queries/use-portfolio-position.ts`
+  - `src/components/modules/position-table.tsx`
+  - `src/components/modules/position-table.test.tsx`
+  - `src/features/investments/components/portfolio-activity-panel.tsx` [NOVO]
+  - `src/features/investments/components/portfolio-activity-panel.test.tsx` [NOVO]
+  - `src/features/investments/components/index.ts`
+  - `src/features/investments/pages/aporte-tab.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

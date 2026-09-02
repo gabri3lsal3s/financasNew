@@ -274,9 +274,10 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     expect(onListTransactions).not.toHaveBeenCalled();
   });
 
-  it("renderiza badge Zerada para ativos com quantidade igual a 0", async () => {
+  it("oculta posições zeradas por padrão e exibe ao alternar o toggle ou expandir a seção", async () => {
     const user = userEvent.setup();
-    const zeroedRows: PositionRow[] = [
+    const mixedRows: PositionRow[] = [
+      rows[0]!,
       {
         ...rows[0]!,
         assetId: "zero1",
@@ -284,10 +285,21 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
         quantity: 0,
         valueBRL: 0,
         unrealizedPnl: 0,
+        totalCostBRL: 0,
+        totalCost: 0,
+        averageCost: 0,
       },
     ];
 
-    render(<PositionTable rows={zeroedRows} />);
+    render(<PositionTable rows={mixedRows} />);
+
+    // Por padrão, a seção colapsável de Posições Encerradas existe
+    expect(screen.getByText(/Posições Encerradas/i)).toBeInTheDocument();
+
+    // Ao clicar em "Ver encerradas", ela é exibida na tabela principal
+    const toggleBtn = screen.getByRole("button", { name: /Ver encerradas/i });
+    await user.click(toggleBtn);
+
     const acoesGroups = screen.getAllByRole("button", { name: /Classe Ações/i });
     await user.click(acoesGroups[0]!);
 

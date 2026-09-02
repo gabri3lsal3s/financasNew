@@ -20,7 +20,7 @@ import {
   useGroupTargets,
   usePortfolioPosition,
 } from "@/state";
-import { ContributionsPanel, PortfolioImportDialog } from "../components";
+import { PortfolioActivityPanel, PortfolioImportDialog } from "../components";
 import { TargetsTab } from "./targets-tab";
 
 type AporteSubTab = "calculadora" | "metas" | "historico";
@@ -174,7 +174,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
         items={[
           { value: "calculadora", label: "Calculadora" },
           { value: "metas", label: "Metas de Alocação" },
-          { value: "historico", label: "Histórico de Aportes" },
+          { value: "historico", label: "Extrato de Movimentações" },
         ]}
       />
 
@@ -182,7 +182,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
 
       {subTab === "historico" && (
         <div className="flex flex-col gap-5">
-          <ContributionsPanel />
+          <PortfolioActivityPanel />
           <section
             aria-label="Importar posição via planilha"
             className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border/80 bg-surface/70 px-4 py-3.5 shadow-xs transition-all hover:border-border"

@@ -3,6 +3,7 @@ export { AssetSplitDialog } from "./asset-split-dialog";
 export { CashFormDialog } from "./cash-form-dialog";
 export { ContributionsListDialog } from "./contributions-list-dialog";
 export { ContributionsPanel } from "./contributions-panel";
+export { PortfolioActivityPanel } from "./portfolio-activity-panel";
 export { DividendFormDialog } from "./dividend-form-dialog";
 export { ManualPriceDialog } from "./manual-price-dialog";
 export { PortfolioDarfMonitor } from "./portfolio-darf-monitor";
@@ -25,6 +26,7 @@ export type { CalibrateFixedIncomeDialogProps } from "./calibrate-fixed-income-d
 export type { CashFormDialogProps } from "./cash-form-dialog";
 export type { ContributionsListDialogProps } from "./contributions-list-dialog";
 export type { ContributionsPanelProps } from "./contributions-panel";
+export type { PortfolioActivityPanelProps } from "./portfolio-activity-panel";
 export type { DividendFormDialogProps } from "./dividend-form-dialog";
 export type { FixedIncomeFormFieldsProps, FixedIncomeFormFieldsValues } from "./fixed-income-form-fields";
 export type { ManualPriceDialogProps } from "./manual-price-dialog";

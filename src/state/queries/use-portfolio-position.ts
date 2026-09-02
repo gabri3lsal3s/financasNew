@@ -192,9 +192,10 @@ export function usePortfolioPosition(): PortfolioPosition {
     });
 
     totalBRL = round2(totalBRL + summary.valueBRL);
-    totalCostBRL = round2(totalCostBRL + summary.totalCostBRL);
     if (isCash) {
       cashBRL = round2(cashBRL + summary.valueBRL);
+    } else if (summary.quantity > 0) {
+      totalCostBRL = round2(totalCostBRL + summary.totalCostBRL);
     }
 
     rawRows.push({
@@ -203,7 +204,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       assetClass: asset.asset_class,
       sector: asset.sector ?? null,
       currency: asset.currency,
-      quantity: summary.pricingMode === "total_value" ? 1 : quantity,
+      quantity: summary.quantity,
       averageCost: summary.pricingMode === "total_value" ? summary.totalCost : averageCost,
       totalCost: summary.totalCost,
       totalCostBRL: summary.totalCostBRL,
