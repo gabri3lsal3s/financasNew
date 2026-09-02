@@ -109,6 +109,37 @@ describe("parseYahooChartResponse", () => {
     });
   });
 
+  it("desempacota payload retornado via proxy Jina (data.content em string JSON)", () => {
+    const payload = {
+      code: 200,
+      data: {
+        content: JSON.stringify({
+          chart: {
+            result: [{ meta: { symbol: "O", regularMarketPrice: 61.5, currency: "USD" } }],
+          },
+        }),
+      },
+    };
+    expect(parseYahooChartResponse("O", payload)).toEqual({
+      ticker: "O",
+      price: 61.5,
+      currency: "USD",
+    });
+  });
+
+  it("desempacota payload retornado em string JSON pura", () => {
+    const payloadStr = JSON.stringify({
+      chart: {
+        result: [{ meta: { regularMarketPrice: 25.95, currency: "USD" } }],
+      },
+    });
+    expect(parseYahooChartResponse("T", payloadStr)).toEqual({
+      ticker: "T",
+      price: 25.95,
+      currency: "USD",
+    });
+  });
+
   it("retorna null para payload inválido", () => {
     expect(parseYahooChartResponse("PETR4", null)).toBeNull();
     expect(parseYahooChartResponse("PETR4", {})).toBeNull();

@@ -183,8 +183,13 @@ export function usePortfolioPosition(): PortfolioPosition {
     const averageCost = Number(asset.average_price ?? 0);
 
     const normalizedTicker = asset.ticker.trim().toUpperCase();
+    const effectiveCurrency =
+      asset.currency === "BRL" && asset.asset_class === "Internacional" && /^[A-Za-z]{1,5}$/.test(normalizedTicker)
+        ? "USD"
+        : asset.currency;
+
     const priceRow = priceByTicker.get(normalizedTicker);
-    const defaultFallback = fallbackPriceFor(asset.currency);
+    const defaultFallback = fallbackPriceFor(effectiveCurrency);
     const effectiveFallback = averageCost > 0 ? averageCost : defaultFallback;
 
     const manualPriceCandidate =
@@ -213,7 +218,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       quantity,
       averagePrice: averageCost,
       assetClass: asset.asset_class,
-      currency: asset.currency,
+      currency: effectiveCurrency,
       resolvedPrice: resolved,
       usdRate,
       ticker: asset.ticker,
@@ -231,7 +236,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       totalCostBRL = round2(totalCostBRL + summary.totalCostBRL);
     }
 
-    const rate = asset.currency === "USD" ? usdRate : 1;
+    const rate = effectiveCurrency === "USD" ? usdRate : 1;
     const totalBought = boughtByAsset.get(asset.id) ?? 0;
     const totalSold = soldByAsset.get(asset.id) ?? 0;
 
@@ -312,7 +317,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       ticker: asset.ticker,
       assetClass: asset.asset_class,
       sector: asset.sector ?? null,
-      currency: asset.currency,
+      currency: effectiveCurrency,
       quantity: summary.quantity,
       averageCost: summary.pricingMode === "total_value" ? summary.totalCost : averageCost,
       totalCost: summary.totalCost,

@@ -1269,6 +1269,31 @@
   - `src/features/investments/wizard/investment-wizard.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F78 — Resiliência de Cotações Internacionais, Gateway Yahoo Finance e Correção de Moeda de Tickers Curtos (2026-09-02)
+
+- **Problema:**
+  1. O ativo Realty Income Corporation (ticker `O`), negociado na NYSE, não estava tendo sua cotação de mercado atualizada, permanecendo com a bolinha laranja (preço fallback) travado em R$ 62,28 e rentabilidade zerada ($0,0\%$);
+  2. Identificada a causa raiz na Edge Function do Supabase: uma versão legada usava regex de 2 a 5 letras (`/^[A-Za-z]{2,5}$/`), transformando indevidamente tickers de 1 única letra (`O`, `T`, `C`, `F`, `V`) em `O.SA`, gerando falha no Yahoo Finance;
+  3. No fallback do cliente, proxies CORS públicos legados (`allorigins`, `corsproxy.io`, `codetabs`) estavam sofrendo timeouts ou bloqueios;
+  4. Além disso, o ativo `O` do usuário havia sido cadastrado originalmente com moeda `BRL` em vez de `USD`, impedindo a conversão cambial PTAX no cálculo de patrimônio.
+- **Solução:**
+  1. **Gateway Proxy de Cotações com Suporte a Jina Reader (`quotes.ts`):**
+     - Adicionado gateway de alta velocidade via Jina Reader (`https://r.jina.ai/<yahooUrl>`) com cabeçalho `Accept: application/json` no cliente, contornando bloqueios de CORS e retornando o JSON de cotações em menos de 1 segundo;
+     - Atualizada a função pura `parseYahooChartResponse` em `src/domain/portfolio/quotes.ts` para desempacotar payloads de proxies externos (`data.content` e strings JSON).
+  2. **Recuperação de Cotações Faltantes (`syncQuotesForAssets`):**
+     - Se a Edge Function do Supabase falhar em retornar cotações para algum ticker da lista (`missingTickers`), o cliente não aborta: ele busca os ativos faltantes via fallback do navegador e persiste os preços obtidos em lote no banco (`setAssetPricesBatchFromApi`).
+  3. **Resolução de Moeda Efetiva (`use-portfolio-position.ts`):**
+     - Ativos da classe "Internacional" com tickers puros de bolsa americana (1 a 5 letras como `O`, `AAPL`) têm a moeda inferida/resolvida como `USD`, convertendo para BRL via taxa cambial PTAX (`USDBRL=X`).
+  4. **Correção de Dados no Banco de Dados:**
+     - Atualizado o ativo `O` na tabela `portfolio_assets` para `currency = 'USD'`;
+     - Inserida a cotação oficial do Yahoo Finance de US$ 61,50 no cache global `asset_prices`.
+- **Arquivos alterados:**
+  - `src/domain/portfolio/quotes.ts`
+  - `src/domain/portfolio/quotes.test.ts`
+  - `src/services/quotes.ts`
+  - `src/state/queries/use-portfolio-position.ts`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

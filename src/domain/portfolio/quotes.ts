@@ -90,19 +90,49 @@ export function parseAwesomeApiResponse(ticker: string, payload: unknown): Parse
  * Retorna null para payloads inválidos/incompletos ou preço não-positivo.
  */
 export function parseYahooChartResponse(ticker: string, payload: unknown): ParsedQuote | null {
-  if (!payload || typeof payload !== "object") return null;
-  const chart = (payload as Record<string, unknown>).chart;
+  if (!payload) return null;
+  let rawObj: unknown = payload;
+  if (typeof rawObj === "string") {
+    try {
+      rawObj = JSON.parse(rawObj);
+    } catch {
+      return null;
+    }
+  }
+  if (!rawObj || typeof rawObj !== "object") return null;
+
+  // Se veio encapsulado em proxy (ex.: Jina Reader data.content)
+  const dataObj = (rawObj as Record<string, unknown>).data;
+  if (dataObj && typeof dataObj === "object") {
+    const content = (dataObj as Record<string, unknown>).content;
+    if (typeof content === "string") {
+      try {
+        rawObj = JSON.parse(content);
+      } catch {
+        // segue com rawObj
+      }
+    }
+  } else if (typeof (rawObj as Record<string, unknown>).contents === "string") {
+    try {
+      rawObj = JSON.parse((rawObj as Record<string, unknown>).contents as string);
+    } catch {
+      // segue com rawObj
+    }
+  }
+
+  const chart = (rawObj as Record<string, unknown>).chart;
   if (!chart || typeof chart !== "object") return null;
   const result = (chart as Record<string, unknown>).result;
   if (!Array.isArray(result) || result.length === 0) return null;
   const meta = (result[0] as Record<string, unknown> | undefined)?.meta;
   if (!meta || typeof meta !== "object") return null;
   const rawPrice = (meta as Record<string, unknown>).regularMarketPrice;
-  if (typeof rawPrice !== "number" || !Number.isFinite(rawPrice) || rawPrice <= 0) return null;
+  const priceNum = typeof rawPrice === "number" ? rawPrice : Number(rawPrice);
+  if (!Number.isFinite(priceNum) || priceNum <= 0) return null;
   const rawCurrency = (meta as Record<string, unknown>).currency;
   return {
     ticker,
-    price: rawPrice,
+    price: priceNum,
     currency: rawCurrency === "USD" ? "USD" : "BRL",
   };
 }

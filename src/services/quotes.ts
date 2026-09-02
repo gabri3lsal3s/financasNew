@@ -171,19 +171,37 @@ async function fetchYahoo(ticker: string): Promise<ParsedQuote | null> {
   const targetYahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(apiTicker)}?interval=1d&range=1d`;
 
   // Em navegadores clientes, chamadas diretas ao Yahoo sofrem bloqueio Same-Origin (CORS).
-  // Os proxies CORS transparentes abaixo resolvem o bloqueio e retornam o JSON oficial.
-  const proxyEndpoints = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetYahooUrl)}`,
-    `https://corsproxy.io/?url=${encodeURIComponent(targetYahooUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetYahooUrl)}`,
-    targetYahooUrl,
+  // Gateways em cascata com fallback:
+  // 1. Jina Reader com Accept: application/json (CORS 100% aberto, estável e rápido)
+  // 2. Proxies CORS públicos com suporte a raw/get
+  // 3. Chamada direta ao Yahoo (se dev proxy ou ambiente sem bloqueio CORS)
+  const proxyEndpoints: Array<{ url: string; headers?: Record<string, string> }> = [
+    {
+      url: `https://r.jina.ai/${targetYahooUrl}`,
+      headers: { Accept: "application/json" },
+    },
+    {
+      url: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetYahooUrl)}`,
+    },
+    {
+      url: `https://api.allorigins.win/get?url=${encodeURIComponent(targetYahooUrl)}`,
+    },
+    {
+      url: `https://corsproxy.io/?url=${encodeURIComponent(targetYahooUrl)}`,
+    },
+    {
+      url: targetYahooUrl,
+    },
   ];
 
-  for (const url of proxyEndpoints) {
+  for (const item of proxyEndpoints) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      const response = await fetch(url, { signal: controller.signal });
+      const response = await fetch(item.url, {
+        headers: item.headers,
+        signal: controller.signal,
+      });
       clearTimeout(timer);
       if (!response.ok) continue;
       const payload: unknown = await response.json();
@@ -271,20 +289,21 @@ export async function syncQuotesForAssets(
 
   const tickerList = [...tickersToFetch];
 
-  // Tenta primeiro a Edge Function (servidor com acesso direto ao Yahoo)
+  // 1) Tenta primeiro a Edge Function (servidor com acesso direto ao Yahoo)
   const edgeQuotes = await fetchViaEdgeFunction(tickerList);
-  if (edgeQuotes.length > 0) {
-    const userAssetUpdatedCount = edgeQuotes.filter((q) => q.ticker !== "USDBRL=X").length;
-    return userAssetUpdatedCount > 0 ? userAssetUpdatedCount : edgeQuotes.length;
-  }
+  const returnedTickers = new Set(edgeQuotes.map((q) => q.ticker.toUpperCase()));
 
-  // Fallback client-side paralelo em cascata
-  const results = await Promise.allSettled(tickerList.map((t) => fetchOnlineQuote(t)));
+  // 2) Identifica tickers que a Edge Function NÃO conseguiu obter (ex.: tickers de 1 letra como O ou falhas transitórias)
+  const missingTickers = tickerList.filter((t) => !returnedTickers.has(t));
+  const successfulQuotes: ParsedQuote[] = [...edgeQuotes];
 
-  const successfulQuotes: ParsedQuote[] = [];
-  for (const res of results) {
-    if (res.status === "fulfilled" && res.value !== null && res.value.price > 0) {
-      successfulQuotes.push(res.value);
+  // 3) Se algum ticker faltou na Edge Function, busca pelo fallback em cascata do cliente
+  if (missingTickers.length > 0) {
+    const fallbackResults = await Promise.allSettled(missingTickers.map((t) => fetchOnlineQuote(t)));
+    for (const res of fallbackResults) {
+      if (res.status === "fulfilled" && res.value !== null && res.value.price > 0) {
+        successfulQuotes.push(res.value);
+      }
     }
   }
 
