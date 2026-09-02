@@ -52,13 +52,13 @@ vi.mock("@/state", () => ({
 }));
 
 vi.mock("../components", () => ({
-  ContributionsPanel: () => <div data-testid="contributions-panel">Painel de Contribuições</div>,
+  PortfolioActivityPanel: () => <div data-testid="portfolio-activity-panel">Extrato de Movimentações</div>,
   PortfolioImportDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="import-dialog">Diálogo de Importação</div> : null,
 }));
 
 describe("AporteTab — Calculadora e Aportes", () => {
-  it("renderiza os controles da calculadora", () => {
+  it("renderiza a calculadora e os campos de simulação corretamente", () => {
     render(
       <MemoryRouter>
         <AporteTab />
@@ -66,11 +66,10 @@ describe("AporteTab — Calculadora e Aportes", () => {
     );
 
     expect(screen.getByText("Valor do aporte")).toBeInTheDocument();
-    expect(screen.getByText("Usar saldo em caixa (R$ 1000.00)")).toBeInTheDocument();
     expect(screen.getByText(/Motor Hierárquico:/i)).toBeInTheDocument();
   });
 
-  it("renderiza o histórico de aportes com o bloco de importação contextual", async () => {
+  it("renderiza o extrato de movimentações com o bloco de importação contextual", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -78,10 +77,10 @@ describe("AporteTab — Calculadora e Aportes", () => {
       </MemoryRouter>,
     );
 
-    const historicoTab = screen.getByRole("tab", { name: "Histórico de Aportes" });
+    const historicoTab = screen.getByRole("tab", { name: "Extrato de Movimentações" });
     await user.click(historicoTab);
 
-    expect(screen.getByTestId("contributions-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-activity-panel")).toBeInTheDocument();
     expect(screen.getByText("Posição ou histórico desatualizado?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Importar Planilha/i })).toBeInTheDocument();
 

@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProventosTab } from "./proventos-tab";
 
-function renderTab(ui = <ProventosTab />) {
+function renderTab(ui = <ProventosTab defaultMonth="2026-08" />) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
 

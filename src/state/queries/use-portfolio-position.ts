@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import {
+  useAllPortfolioTransactions,
   usePortfolioAssets,
   usePortfolioContributions,
   usePortfolioDividends,
@@ -64,6 +65,12 @@ export interface PortfolioPositionRow {
   totalReturnPnl: number;
   /** Retorno Total % sobre o custo (null quando não há custo — caixa). */
   totalReturnPct: number | null;
+  /** Custo histórico total aplicado no ativo (mesmo para posições encerradas). */
+  historicalCostBRL?: number;
+  /** Total bruto histórico já resgatado/vendido do ativo. */
+  historicalRedeemedBRL?: number;
+  /** Rentabilidade final realizada % (para posições encerradas). */
+  finalReturnPct?: number | null;
   isCash: boolean;
   pricingMode: AssetPricingMode;
   notes?: string | null;
@@ -115,6 +122,7 @@ export function usePortfolioPosition(): PortfolioPosition {
   const contributionsQuery = usePortfolioContributions();
   const dividendsQuery = usePortfolioDividends();
   const snapshotsQuery = usePortfolioSnapshots();
+  const transactionsQuery = useAllPortfolioTransactions();
   const upsertSnapshot = useUpsertPortfolioSnapshot();
 
   const prices = pricesQuery.data ?? [];
@@ -122,6 +130,18 @@ export function usePortfolioPosition(): PortfolioPosition {
   const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
   const annualCdiRate = macroQuery.data?.annualCdiRate;
   const today = todayISO();
+
+  // Agrupa compras e vendas históricas por ativo
+  const boughtByAsset = new Map<string, number>();
+  const soldByAsset = new Map<string, number>();
+  for (const t of transactionsQuery.data ?? []) {
+    const amount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
+    if (t.type === "buy" || t.type === "subscription") {
+      boughtByAsset.set(t.asset_id, (boughtByAsset.get(t.asset_id) ?? 0) + amount);
+    } else if (t.type === "sell") {
+      soldByAsset.set(t.asset_id, (soldByAsset.get(t.asset_id) ?? 0) + amount);
+    }
+  }
 
   // Agrupa proventos periódicos por ativo (lançamentos em portfolio_dividends)
   const dividendsByAsset = new Map<string, number>();
@@ -198,6 +218,36 @@ export function usePortfolioPosition(): PortfolioPosition {
       totalCostBRL = round2(totalCostBRL + summary.totalCostBRL);
     }
 
+    const rate = asset.currency === "USD" ? usdRate : 1;
+    const totalBought = boughtByAsset.get(asset.id) ?? 0;
+    const totalSold = soldByAsset.get(asset.id) ?? 0;
+
+    const historicalCostBRL = round2(
+      totalBought > 0
+        ? totalBought * rate
+        : asset.fixed_income_metadata?.base_value !== undefined && asset.fixed_income_metadata?.base_value !== null && asset.fixed_income_metadata.base_value > 0
+          ? asset.fixed_income_metadata.base_value * rate
+          : summary.totalCostBRL > 0
+            ? summary.totalCostBRL
+            : Number(asset.average_price || 0) * rate,
+    );
+    const historicalRedeemedBRL = round2(totalSold * rate);
+
+    const isClosed = summary.quantity <= 0 && summary.valueBRL <= 0;
+    const effectiveRealizedPnl = isClosed
+      ? round2(historicalRedeemedBRL - historicalCostBRL)
+      : summary.unrealizedPnl;
+
+    const effectiveTotalReturnPnl = isClosed
+      ? round2(historicalRedeemedBRL - historicalCostBRL + summary.totalDividends)
+      : summary.totalReturnPnl;
+
+    const effectiveFinalReturnPct = isClosed && historicalCostBRL > 0
+      ? round2((effectiveTotalReturnPnl / historicalCostBRL) * 100)
+      : isClosed
+        ? null
+        : summary.totalReturnPct;
+
     rawRows.push({
       assetId: asset.id,
       ticker: asset.ticker,
@@ -215,10 +265,13 @@ export function usePortfolioPosition(): PortfolioPosition {
       usdRate,
       source: summary.source,
       valueBRL: summary.valueBRL,
-      unrealizedPnl: summary.unrealizedPnl,
+      unrealizedPnl: effectiveRealizedPnl,
       unrealizedPct: summary.unrealizedPct,
-      totalReturnPnl: summary.totalReturnPnl,
+      totalReturnPnl: effectiveTotalReturnPnl,
       totalReturnPct: summary.totalReturnPct,
+      historicalCostBRL,
+      historicalRedeemedBRL,
+      finalReturnPct: effectiveFinalReturnPct,
       isCash,
       pricingMode: summary.pricingMode,
       notes: asset.notes,

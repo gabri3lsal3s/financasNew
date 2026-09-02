@@ -1205,20 +1205,27 @@
   2. **Gestão de Posições Encerradas na Custódia (`PositionTable`):**
      - Separação de posições ativas (`quantity > 0 && valueBRL > 0`) de posições encerradas (`quantity === 0 && valueBRL === 0`);
      - Toggle rápido *"Ocultar encerradas"* (ativo por padrão) e seção colapsável no rodapé: *"Posições Encerradas (X ativos liquidados)"*;
+     - Exibição enriquecida da rentabilidade final realizada: Total Aplicado histórico, Total Resgatado, Proventos e Badge de Rentabilidade Final % (`finalReturnPct`), com layout adaptativo no desktop e mobile;
   3. **Extrato Geral de Movimentações da Carteira (`PortfolioActivityPanel`):**
      - Unificação completa de `portfolio_transactions`, `portfolio_contributions` e `portfolio_dividends` em uma timeline padronizada;
      - Cards de fluxo mensal: Total Aportado, Total Resgatado, Total Proventos e Fluxo Líquido do Mês;
-     - Filtros rápidos por tipo (`Todas`, `Aportes/Compras`, `Vendas/Resgates`, `Proventos`), busca por ticker e exclusão de lançamentos.
+     - Filtros rápidos por tipo (`Todas`, `Aportes/Compras`, `Vendas/Resgates`, `Proventos`), busca por ticker e exclusão de lançamentos;
+  4. **Ficha de Detalhes do Ativo (`AssetDetailSheet`):**
+     - Layout adaptativo para posições encerradas com Badge de Status, métricas de Total Aplicado vs. Resgatado e Rentabilidade Final Realizada.
 - **Arquivos alterados:**
   - `src/domain/portfolio/valuation.ts`
   - `src/domain/portfolio/valuation.test.ts`
   - `src/state/queries/use-portfolio-position.ts`
   - `src/components/modules/position-table.tsx`
   - `src/components/modules/position-table.test.tsx`
+  - `src/features/investments/components/asset-detail-sheet.tsx`
   - `src/features/investments/components/portfolio-activity-panel.tsx` [NOVO]
   - `src/features/investments/components/portfolio-activity-panel.test.tsx` [NOVO]
   - `src/features/investments/components/index.ts`
   - `src/features/investments/pages/aporte-tab.tsx`
+  - `src/features/investments/pages/aporte-tab.test.tsx`
+  - `src/features/investments/pages/proventos-tab.tsx`
+  - `src/features/investments/pages/proventos-tab.test.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
 ## Notas finais

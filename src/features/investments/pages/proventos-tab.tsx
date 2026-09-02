@@ -29,6 +29,7 @@ import type { WizardMode } from "../wizard/wizard-state";
 type ProventosSubTab = "extrato" | "calendario";
 
 export interface ProventosTabProps {
+  defaultMonth?: string;
   onOpenWizard?: (asset?: PortfolioAsset | null, mode?: WizardMode) => void;
 }
 
@@ -40,7 +41,7 @@ export interface ProventosTabProps {
  * - Extrato & Indicadores: barra de filtros, KPIs do mês/ano/histórico, extrato mensal e Bola de Neve.
  * - Calendário Anual: visualização dos 12 meses com barras proporcionais de rendimento.
  */
-export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
+export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) {
   const [searchParams] = useSearchParams();
   const dividendsQuery = usePortfolioDividends();
   const assetsQuery = usePortfolioAssets();
@@ -51,7 +52,7 @@ export function ProventosTab({ onOpenWizard }: ProventosTabProps) {
   const validSubTab = rawSubTab === "calendario" || rawSubTab === "extrato" ? rawSubTab : null;
   const [selectedSubTab, setSelectedSubTab] = useState<ProventosSubTab>("extrato");
   const subTab: ProventosSubTab = validSubTab ?? selectedSubTab;
-  const [month, setMonth] = useState(() => currentMonth());
+  const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [dividendToDelete, setDividendToDelete] = useState<PortfolioDividend | null>(null);
 
   const dividends = dividendsQuery.data ?? [];

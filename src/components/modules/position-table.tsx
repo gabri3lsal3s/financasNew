@@ -60,6 +60,12 @@ export interface PositionRow {
   totalReturnPnl?: number;
   /** Retorno Total % sobre o custo (null quando não há custo — caixa). */
   totalReturnPct?: number | null;
+  /** Custo histórico total aplicado no ativo (mesmo para posições encerradas). */
+  historicalCostBRL?: number;
+  /** Total bruto histórico já resgatado/vendido do ativo. */
+  historicalRedeemedBRL?: number;
+  /** Rentabilidade final realizada % (para posições encerradas). */
+  finalReturnPct?: number | null;
   isCash: boolean;
   pricingMode?: AssetPricingMode;
   fixedIncomeMetadata?: FixedIncomeMetadata | null;
@@ -1539,27 +1545,74 @@ export function PositionTable({
 
           {closedSectionOpen ? (
             <div className="mt-3 divide-y divide-border/60 pt-2 border-t border-border/60">
-              {closedRows.map((row) => (
-                <div
-                  key={row.assetId}
-                  onClick={() => handleOpen?.(row.assetId, row.ticker)}
-                  className="flex items-center justify-between py-2.5 px-1 hover:bg-surface-hover/40 rounded-lg cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
-                    <Badge variant="muted" size="xs">Encerrada</Badge>
-                    {row.assetClass ? <span className="text-xs text-muted-foreground truncate">({row.assetClass})</span> : null}
+              {closedRows.map((row) => {
+                const finalPnl = row.totalReturnPnl ?? row.unrealizedPnl ?? 0;
+                const hasPnl = finalPnl !== 0;
+                const pnlTone = finalPnl >= 0 ? "positive" : "negative";
+                const returnPct =
+                  row.finalReturnPct !== undefined && row.finalReturnPct !== null
+                    ? row.finalReturnPct
+                    : row.historicalCostBRL && row.historicalCostBRL > 0
+                      ? Math.round((finalPnl / row.historicalCostBRL) * 10000) / 100
+                      : null;
+
+                return (
+                  <div
+                    key={row.assetId}
+                    onClick={() => handleOpen?.(row.assetId, row.ticker)}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 px-2 hover:bg-surface-hover/50 rounded-xl cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+                      <Badge variant="muted" size="xs">Encerrada</Badge>
+                      {row.assetClass ? <span className="text-xs text-muted-foreground truncate">({row.assetClass})</span> : null}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 text-right">
+                      {row.historicalCostBRL && row.historicalCostBRL > 0 ? (
+                        <div className="flex flex-col items-start sm:items-end">
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Aplicado</span>
+                          <span className="text-xs font-medium text-foreground">
+                            <MoneyText cents={numberToCents(row.historicalCostBRL)} tone="default" />
+                          </span>
+                        </div>
+                      ) : null}
+
+                      {row.historicalRedeemedBRL && row.historicalRedeemedBRL > 0 ? (
+                        <div className="flex flex-col items-start sm:items-end">
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Resgatado</span>
+                          <span className="text-xs font-semibold text-foreground">
+                            <MoneyText cents={numberToCents(row.historicalRedeemedBRL)} tone="default" />
+                          </span>
+                        </div>
+                      ) : null}
+
+                      {row.dividends && row.dividends > 0 ? (
+                        <div className="flex flex-col items-start sm:items-end">
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Proventos</span>
+                          <span className="text-xs font-semibold text-positive-strong">
+                            <MoneyText cents={numberToCents(row.dividends)} tone="positive" />
+                          </span>
+                        </div>
+                      ) : null}
+
+                      <div className="flex flex-col items-start sm:items-end">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Resultado Final</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn("text-xs font-semibold", finalPnl >= 0 ? "text-positive-strong" : "text-critical-strong")}>
+                            <MoneyText cents={numberToCents(finalPnl)} sign="explicit" tone={hasPnl ? pnlTone : "default"} />
+                          </span>
+                          {returnPct !== null ? (
+                            <Badge variant={returnPct >= 0 ? "positive" : "critical"} size="xs">
+                              {formatSignedPct(returnPct)}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-right shrink-0">
-                    {row.dividends && row.dividends > 0 ? (
-                      <span className="text-xs text-positive-strong">
-                        Proventos: <MoneyText cents={numberToCents(row.dividends)} tone="positive" />
-                      </span>
-                    ) : null}
-                    <span className="text-xs text-muted-foreground">Saldo: R$ 0,00</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : null}
         </div>
