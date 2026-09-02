@@ -373,7 +373,15 @@ export function usePortfolioPosition(): PortfolioPosition {
 
   const currentMonthPoint =
     totalBRL > 0 || (assetsQuery.data && assetsQuery.data.length > 0)
-      ? { month: thisMonth, total_value: totalBRL, total_cost: totalCostBRL }
+      ? {
+          month: thisMonth,
+          total_value: totalBRL,
+          total_cost: totalCostBRL,
+          capital_gain_pnl: consolidatedReturn.capitalGainPnl,
+          capital_gain_pct: consolidatedReturn.capitalGainPct,
+          total_return_pnl: consolidatedReturn.totalReturnPnl,
+          total_return_pct: consolidatedReturn.totalReturnPct,
+        }
       : null;
 
   const monthlySeries = buildPortfolioMonthlySeries({
@@ -408,10 +416,10 @@ export function usePortfolioPosition(): PortfolioPosition {
       upsertSnapshot.mutate({
         month: thisMonth,
         total_value: totalBRL,
-        total_cost: totalCostBRL,
+        total_cost: totalCostBRL + cashBRL,
       });
     }
-  }, [assetsQuery.data, assetsQuery.isLoading, pricesQuery.isLoading, thisMonth, totalBRL, totalCostBRL, upsertSnapshot]);
+  }, [assetsQuery.data, assetsQuery.isLoading, pricesQuery.isLoading, thisMonth, totalBRL, totalCostBRL, cashBRL, upsertSnapshot]);
 
   return {
     rows,

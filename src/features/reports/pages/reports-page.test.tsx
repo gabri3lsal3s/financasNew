@@ -23,23 +23,23 @@ let mockHasFeature: (key: string) => boolean = () => true;
 
 
 vi.mock("@/state", () => ({
-  useExpenses: (month: string) => ({
-    data: month === "2026-08" ? expenses : [],
+  useExpenses: () => ({
+    data: expenses,
     isLoading: false,
     error: null,
   }),
-  useIncomes: (month: string) => ({
-    data: month === "2026-08" ? incomes : [],
+  useIncomes: () => ({
+    data: incomes,
     isLoading: false,
     error: null,
   }),
-  useExpensesByRange: (start: string) => ({
-    data: start === "2026-01-01" ? expenses : [],
+  useExpensesByRange: () => ({
+    data: expenses,
     isLoading: false,
     error: null,
   }),
-  useIncomesByRange: (start: string) => ({
-    data: start === "2026-01-01" ? incomes : [],
+  useIncomesByRange: () => ({
+    data: incomes,
     isLoading: false,
     error: null,
   }),

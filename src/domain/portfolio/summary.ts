@@ -24,16 +24,18 @@ export interface PortfolioConsolidatedReturn {
   capitalGainPnl: number;
   /** Variação da cotação % ((valor − custo) ÷ custo). */
   capitalGainPct: number | null;
-  /** Resultado total em BRL: (valor − custo) + proventos. */
+  /** Resultado realizado em BRL de posições encerradas (vendas/resgates). */
+  realizedPnl: number;
+  /** Resultado total em BRL: (valor − custo) + proventos + resultado realizado. */
   totalReturnPnl: number;
-  /** Retorno Total % da carteira: ((valor − custo) + proventos) ÷ custo. */
+  /** Retorno Total % da carteira: ((valor − custo) + proventos + resultado realizado) ÷ custo. */
   totalReturnPct: number | null;
 }
 
 /**
  * Rentabilidade consolidada da carteira (§F17): calcula o Retorno Total real
- * (valor de mercado − custo total + proventos) e o ganho de capital sobre o custo.
- * Ignora ativos de caixa/sem custo (onde totalCostBRL <= 0 ou isCash).
+ * (valor de mercado − custo total + proventos + lucro realizado) e o ganho de capital sobre o custo.
+ * Ignora ativos de caixa 1:1 na apuração de ganho de capital.
  */
 export function calculatePortfolioTotalReturn(
   rows: readonly {
@@ -41,14 +43,32 @@ export function calculatePortfolioTotalReturn(
     totalCostBRL: number;
     dividends?: number;
     isCash?: boolean;
+    quantity?: number;
+    unrealizedPnl?: number;
+    historicalCostBRL?: number;
+    historicalRedeemedBRL?: number;
   }[],
 ): PortfolioConsolidatedReturn {
   let totalValueBRL = 0;
   let totalCostBRL = 0;
   let totalDividendsBRL = 0;
+  let realizedPnl = 0;
 
   for (const row of rows) {
-    if (row.isCash || row.totalCostBRL <= 0) continue;
+    if (row.isCash) continue;
+
+    // Se é posição encerrada (quantity <= 0)
+    if (row.quantity !== undefined && row.quantity <= 0) {
+      totalDividendsBRL += Math.max(0, row.dividends ?? 0);
+      if (row.historicalCostBRL !== undefined && row.historicalRedeemedBRL !== undefined) {
+        realizedPnl += Math.round((row.historicalRedeemedBRL - row.historicalCostBRL) * 100) / 100;
+      } else if (row.unrealizedPnl !== undefined) {
+        realizedPnl += row.unrealizedPnl;
+      }
+      continue;
+    }
+
+    if (row.totalCostBRL <= 0) continue;
     totalValueBRL += row.valueBRL;
     totalCostBRL += row.totalCostBRL;
     totalDividendsBRL += Math.max(0, row.dividends ?? 0);
@@ -57,12 +77,13 @@ export function calculatePortfolioTotalReturn(
   totalValueBRL = Math.round(totalValueBRL * 100) / 100;
   totalCostBRL = Math.round(totalCostBRL * 100) / 100;
   totalDividendsBRL = Math.round(totalDividendsBRL * 100) / 100;
+  realizedPnl = Math.round(realizedPnl * 100) / 100;
 
   const capitalGainPnl = Math.round((totalValueBRL - totalCostBRL) * 100) / 100;
   const capitalGainPct =
     totalCostBRL > 0 ? Math.round((capitalGainPnl / totalCostBRL) * 10000) / 100 : null;
 
-  const totalReturnPnl = Math.round((capitalGainPnl + totalDividendsBRL) * 100) / 100;
+  const totalReturnPnl = Math.round((capitalGainPnl + totalDividendsBRL + realizedPnl) * 100) / 100;
   const totalReturnPct =
     totalCostBRL > 0 ? Math.round((totalReturnPnl / totalCostBRL) * 10000) / 100 : null;
 
@@ -72,6 +93,7 @@ export function calculatePortfolioTotalReturn(
     totalDividendsBRL,
     capitalGainPnl,
     capitalGainPct,
+    realizedPnl,
     totalReturnPnl,
     totalReturnPct,
   };
@@ -123,13 +145,23 @@ export interface PortfolioMonthlySeriesPoint {
   totalReturnPct: number | null;
 }
 
+export interface CurrentMonthSeriesPoint {
+  month: string;
+  total_value: number;
+  total_cost: number;
+  capital_gain_pnl?: number;
+  capital_gain_pct?: number | null;
+  total_return_pnl?: number;
+  total_return_pct?: number | null;
+}
+
 /**
  * Constrói os pontos da série mensal combinando os snapshots patrimoniais
  * com a evolução temporal de proventos recebidos (§F36 e §F37).
  */
 export function buildPortfolioMonthlySeries(params: {
   rawSnapshots: readonly { month: string; total_value: number; total_cost: number }[];
-  currentMonthPoint?: { month: string; total_value: number; total_cost: number } | null;
+  currentMonthPoint?: CurrentMonthSeriesPoint | null;
   dividends: readonly { date: string; amount: number }[];
   initialAccumulatedDividends?: number;
   limit?: number;
@@ -168,6 +200,7 @@ export function buildPortfolioMonthlySeries(params: {
   const points: PortfolioMonthlySeriesPoint[] = [];
 
   for (const [month, data] of sortedMonths) {
+    const isCurrent = month === currentMonthStr;
     const valueBRL = Math.round(data.total_value * 100) / 100;
     const costBRL = Math.round(data.total_cost * 100) / 100;
 
@@ -187,13 +220,29 @@ export function buildPortfolioMonthlySeries(params: {
     const accumulatedDividendsBRL =
       Math.round((initialAccumulatedDividends + periodDividendsUntilMonth) * 100) / 100;
 
-    const capitalGainPnl = Math.round((valueBRL - costBRL) * 100) / 100;
-    const capitalGainPct =
-      costBRL > 0 ? Math.round((capitalGainPnl / costBRL) * 10000) / 100 : null;
+    const capitalGainPnl =
+      isCurrent && currentMonthPoint?.capital_gain_pnl !== undefined
+        ? currentMonthPoint.capital_gain_pnl
+        : Math.round((valueBRL - costBRL) * 100) / 100;
 
-    const totalReturnPnl = Math.round((capitalGainPnl + accumulatedDividendsBRL) * 100) / 100;
+    const capitalGainPct =
+      isCurrent && currentMonthPoint?.capital_gain_pct !== undefined
+        ? currentMonthPoint.capital_gain_pct
+        : costBRL > 0
+          ? Math.round((capitalGainPnl / costBRL) * 10000) / 100
+          : null;
+
+    const totalReturnPnl =
+      isCurrent && currentMonthPoint?.total_return_pnl !== undefined
+        ? currentMonthPoint.total_return_pnl
+        : Math.round((capitalGainPnl + accumulatedDividendsBRL) * 100) / 100;
+
     const totalReturnPct =
-      costBRL > 0 ? Math.round((totalReturnPnl / costBRL) * 10000) / 100 : null;
+      isCurrent && currentMonthPoint?.total_return_pct !== undefined
+        ? currentMonthPoint.total_return_pct
+        : costBRL > 0
+          ? Math.round((totalReturnPnl / costBRL) * 10000) / 100
+          : null;
 
     points.push({
       month,

@@ -102,8 +102,19 @@ export function WealthTearSheetModal({
   accountHolder,
 }: WealthTearSheetModalProps) {
   const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
-  const unrealizedPnlBRL = totalBRL - totalCostBRL;
-  const unrealizedPnlPct = totalCostBRL > 0 ? (unrealizedPnlBRL / totalCostBRL) * 100 : 0;
+  const totalInvestedValueBRL = useMemo(
+    () => Math.round(investmentRows.reduce((acc, r) => acc + r.valueBRL, 0) * 100) / 100,
+    [investmentRows],
+  );
+  const effectiveCostBRL = useMemo(
+    () =>
+      totalCostBRL > 0
+        ? totalCostBRL
+        : Math.round(investmentRows.reduce((acc, r) => acc + (r.totalCostBRL ?? 0), 0) * 100) / 100,
+    [totalCostBRL, investmentRows],
+  );
+  const unrealizedPnlBRL = Math.round((totalInvestedValueBRL - effectiveCostBRL) * 100) / 100;
+  const unrealizedPnlPct = effectiveCostBRL > 0 ? (unrealizedPnlBRL / effectiveCostBRL) * 100 : 0;
 
   // Total de proventos de todos os tempos e Retorno Total real consolidado
   const totalDividendsAllTime = useMemo(() => {
@@ -118,8 +129,8 @@ export function WealthTearSheetModal({
     return totalDividendsBRL ?? 0;
   }, [totalDividendsBRL, rows]);
 
-  const totalReturnBRL = unrealizedPnlBRL + totalDividendsAllTime;
-  const totalReturnPct = totalCostBRL > 0 ? (totalReturnBRL / totalCostBRL) * 100 : 0;
+  const totalReturnBRL = Math.round((unrealizedPnlBRL + totalDividendsAllTime) * 100) / 100;
+  const totalReturnPct = effectiveCostBRL > 0 ? (totalReturnBRL / effectiveCostBRL) * 100 : 0;
 
   // Segmentos para barra empilhada de alocação
   const stackedSegments = allocationAnalysis.classGaps.map((cg) => ({

@@ -99,6 +99,30 @@ describe("calculatePortfolioTotalReturn — Retorno Total consolidado da carteir
     expect(res.totalReturnPct).toBe(20); // 600 / 3000 = 20%
   });
 
+  it("incorpora lucro realizado de posições encerradas no Retorno Total", () => {
+    const res = calculatePortfolioTotalReturn([
+      { valueBRL: 10000, totalCostBRL: 8000, dividends: 500, isCash: false },
+      // Posição encerrada (CDB resgatado com lucro realizado de R$ 106,04)
+      {
+        valueBRL: 0,
+        totalCostBRL: 0,
+        quantity: 0,
+        historicalCostBRL: 1236.27,
+        historicalRedeemedBRL: 1342.31,
+        dividends: 0,
+        isCash: false,
+      },
+    ]);
+
+    expect(res.totalValueBRL).toBe(10000);
+    expect(res.totalCostBRL).toBe(8000);
+    expect(res.capitalGainPnl).toBe(2000); // 10000 - 8000
+    expect(res.realizedPnl).toBe(106.04); // 1342.31 - 1236.27
+    expect(res.totalDividendsBRL).toBe(500);
+    expect(res.totalReturnPnl).toBe(2606.04); // 2000 + 500 + 106.04
+    expect(res.totalReturnPct).toBeCloseTo(32.58, 2); // 2606.04 / 8000 = 32.5755%
+  });
+
   it("retorna nulo nos percentuais quando não há ativos com custo", () => {
     const res = calculatePortfolioTotalReturn([
       { valueBRL: 1000, totalCostBRL: 1000, isCash: true },

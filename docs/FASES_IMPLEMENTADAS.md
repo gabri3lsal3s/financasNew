@@ -1294,6 +1294,36 @@
   - `src/state/queries/use-portfolio-position.ts`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F79 — Alinhamento Contábil de Rentabilidade, Neutralidade de Caixa nos Snapshots e Eliminação de Duplicidade nos Relatórios (2026-09-02)
+
+- **Problema:**
+  1. No mesmo mês (2026-09), a rentabilidade aparecia como `+15,0%` no card de Patrimônio Total e `+16,7%` no card de Evolução Histórica (Snapshots Mensais);
+  2. Identificada a causa: o card de evolução mensal subtraía o Patrimônio Total (que inclui o saldo em Caixa de R$ 1.619,26) pelo Custo Total (que exclui o Caixa), computando indevidamente o saldo em dinheiro da conta como lucro/ganho de capital;
+  3. No modal de dossiê de investimentos `WealthTearSheetModal`, a rentabilidade também usava a subtração direta `totalBRL - totalCostBRL`, inflando o retorno pelo saldo de liquidez;
+  4. No relatório consolidado de `reports-page.tsx`, `computeConsolidatedBalanceSheet` recebia `totalPatrimonyBRL` (com caixa) como `investmentsMarketValueBRL` e somava novamente `cashBalanceBRL`, duplicando o saldo em caixa no balanço patrimonial e no ativo total;
+  5. O Retorno Total consolidado da carteira (`calculatePortfolioTotalReturn`) ignorava lucros ou prejuízos realizados de posições encerradas/resgatadas, perdendo a memória do rendimento de títulos já liquidados.
+- **Solução:**
+  1. **Motor Puro de Rentabilidade e Lucro Realizado (`summary.ts`):**
+     - Atualizada a função pura `calculatePortfolioTotalReturn`: agora incorpora o `realizedPnl` de posições encerradas (`quantity <= 0`) e preserva proventos históricos recebidos, compondo o Retorno Total Acumulado Real da carteira;
+     - Atualizada a função `buildPortfolioMonthlySeries`: agora aceita métricas canônicas de rentabilidade no `currentMonthPoint` (`capital_gain_pnl`, `total_return_pnl`, `total_return_pct`), garantindo que a série histórica e o card de Patrimônio Total exibam números 100% idênticos e convergentes.
+  2. **Neutralidade de Caixa nos Snapshots (`use-portfolio-position.ts`):**
+     - O ponto atual da série mensal consome os dados canônicos calculados por `calculatePortfolioTotalReturn`, eliminando a distorção do caixa;
+     - A gravação em background de snapshots mensais registra o custo patrimonial considerando o caixa 1:1, garantindo neutralidade em consultas futuras.
+  3. **Correção de Duplicidade no Balanço dos Relatórios (`reports-page.tsx`, `wealth-tear-sheet-modal.tsx`):**
+     - Em `reports-page.tsx`, o Balanço Consolidado recebe `totalInvestmentsOnlyBRL` (apenas a custódia sem caixa), eliminando a soma duplicada do caixa no ativo total;
+     - No `WealthTearSheetModal`, o cálculo de ganho e retorno utiliza `totalInvestedValueBRL` e `effectiveCostBRL`, mantendo o retorno perfeitamente alinhado em +15,0% (ou valor consolidado real da carteira);
+     - No Caderno Excel (`workbookData`), o resumo agora consome diretamente `positionQuery.unrealizedPnlBRL` e `positionQuery.unrealizedPct`.
+  4. **Robustez dos Testes de Relatório:**
+     - Mock de despesas e receitas em `reports-page.test.tsx` atualizado para responder dinamicamente em qualquer mês do ano, evitando quebras na virada de competência.
+- **Arquivos alterados:**
+  - `src/domain/portfolio/summary.ts`
+  - `src/domain/portfolio/summary.test.ts`
+  - `src/state/queries/use-portfolio-position.ts`
+  - `src/features/reports/components/wealth-tear-sheet-modal.tsx`
+  - `src/features/reports/pages/reports-page.tsx`
+  - `src/features/reports/pages/reports-page.test.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

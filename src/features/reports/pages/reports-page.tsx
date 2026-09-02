@@ -445,8 +445,10 @@ export function ReportsPage() {
       })
       .reduce((acc, c) => acc + c.amount, 0);
 
+    const totalInvestmentsOnlyBRL = Math.max(0, totalPatrimonyBRL - cashBalanceBRL);
+
     return computeConsolidatedBalanceSheet({
-      investmentsMarketValueBRL: totalPatrimonyBRL,
+      investmentsMarketValueBRL: totalInvestmentsOnlyBRL,
       investmentsTotalCostBRL: totalInvestedCostBRL,
       cashBalanceBRL: cashBalanceBRL,
       debts: debts.map((d) => ({
@@ -510,14 +512,18 @@ export function ReportsPage() {
 
   // Estrutura Completa do Caderno Excel
   const workbookData: ExcelWorkbookData = useMemo(() => {
+    const totalInvestmentsOnlyBRL = Math.max(0, totalPatrimonyBRL - cashBalanceBRL);
+    const fallbackUnrealizedPnl = totalInvestmentsOnlyBRL - totalInvestedCostBRL;
+    const fallbackUnrealizedPct = totalInvestedCostBRL > 0 ? (fallbackUnrealizedPnl / totalInvestedCostBRL) * 100 : 0;
+
     return {
       appName: "Finanças & Investimentos",
       generatedAt: new Date().toLocaleDateString("pt-BR"),
       summary: {
         totalPatrimonyBRL,
         totalInvestedCostBRL,
-        unrealizedPnlBRL: totalPatrimonyBRL - totalInvestedCostBRL,
-        unrealizedPnlPct: totalInvestedCostBRL > 0 ? ((totalPatrimonyBRL - totalInvestedCostBRL) / totalInvestedCostBRL) * 100 : 0,
+        unrealizedPnlBRL: positionQuery.unrealizedPnlBRL ?? fallbackUnrealizedPnl,
+        unrealizedPnlPct: positionQuery.unrealizedPct ?? fallbackUnrealizedPct,
         cashBalanceBRL,
         yearDividendsBRL,
         freedomPct: freedomAnalysis.freedomPct,
@@ -573,6 +579,8 @@ export function ReportsPage() {
     totalInvestedCostBRL,
     cashBalanceBRL,
     yearDividendsBRL,
+    positionQuery.unrealizedPnlBRL,
+    positionQuery.unrealizedPct,
     freedomAnalysis.freedomPct,
     consolidatedBalance.dre,
     positionRows,
