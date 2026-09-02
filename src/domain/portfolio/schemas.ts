@@ -58,6 +58,11 @@ export const fixedIncomeMetadataSchema = z.object({
     .min(0, "O saldo base não pode ser negativo")
     .nullable()
     .optional(),
+  initial_investment_value: z
+    .number({ message: "Informe um valor aplicado inicial válido" })
+    .min(0, "O valor aplicado inicial não pode ser negativo")
+    .nullable()
+    .optional(),
   initial_investment_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de aplicação original inválida (use o formato AAAA-MM-DD)")

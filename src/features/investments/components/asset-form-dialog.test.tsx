@@ -17,6 +17,7 @@ vi.mock("@/state", () => ({
   useCreatePortfolioAsset: () => ({ mutateAsync: createAssetMock, isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: updateAssetMock, isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: deleteAssetMock, isPending: false }),
+  useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSetManualPrice: () => ({ mutateAsync: setManualPriceMock, isPending: false }),
   usePortfolioAssets: () => usePortfolioAssetsMock(),

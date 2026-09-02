@@ -495,7 +495,48 @@ export function useRecordOrder() {
       const rate = asset.currency === "USD" ? (usdRate ?? 5.25) : 1;
       const totalBRL = Math.round(total * rate * 100) / 100;
 
-      // 1. Grava no ledger de transações (na moeda nativa do ativo)
+      // 1. Se for Venda: antes de gravar a venda, verifica se o ativo tem compras anteriores no ledger.
+      // Se não tiver (ativo cadastrado direto pelo form sem compra explícita), grava a compra inicial com o custo de aquisição.
+      if (type === "sell") {
+        const isCash = isCashAssetClass(asset.asset_class);
+        const pricingMode = getAssetPricingMode(asset);
+        const isTotalValue = !isCash && pricingMode === "total_value";
+
+        const currentCost =
+          asset.quantity > 1 && asset.average_price > 0
+            ? Math.round(asset.quantity * asset.average_price * 100) / 100
+            : asset.average_price > 0
+              ? asset.average_price
+              : asset.quantity;
+
+        const baseValue =
+          isTotalValue && asset.fixed_income_metadata
+            ? asset.fixed_income_metadata.base_value !== undefined &&
+              asset.fixed_income_metadata.base_value !== null &&
+              asset.fixed_income_metadata.base_value > 0
+              ? asset.fixed_income_metadata.base_value
+              : currentCost
+            : currentCost;
+
+        // Se o ativo tinha custo > 0 no momento da venda, registramos a compra inicial correspondente no ledger
+        if (baseValue > 0) {
+          const initialDate =
+            asset.fixed_income_metadata?.initial_investment_date ||
+            asset.fixed_income_metadata?.base_date ||
+            date;
+
+          await createTx.mutateAsync({
+            asset_id: asset.id,
+            type: "buy",
+            date: initialDate,
+            quantity: isTotalValue ? 1 : asset.quantity,
+            price: isTotalValue ? baseValue : asset.average_price,
+            total: isTotalValue ? baseValue : Math.round(asset.quantity * asset.average_price * 100) / 100,
+          });
+        }
+      }
+
+      // 2. Grava a transação atual no ledger de transações (na moeda nativa do ativo)
       await createTx.mutateAsync({
         asset_id: asset.id,
         type,
@@ -505,7 +546,7 @@ export function useRecordOrder() {
         total,
       });
 
-      // 2. Se for Compra ou Subscrição: atualiza o Preço Médio ponderado e quantidade
+      // 3. Se for Compra ou Subscrição: atualiza o Preço Médio ponderado e quantidade
       if (type === "buy" || type === "subscription") {
         const isCash = isCashAssetClass(asset.asset_class);
         const pricingMode = getAssetPricingMode(asset);
@@ -533,8 +574,11 @@ export function useRecordOrder() {
             ? {
                 ...asset.fixed_income_metadata,
                 base_date: date,
+                base_value: newTotalApplied,
                 initial_investment_date:
                   asset.fixed_income_metadata.initial_investment_date ?? asset.fixed_income_metadata.base_date,
+                initial_investment_value:
+                  asset.fixed_income_metadata.initial_investment_value ?? newTotalApplied,
               }
             : null;
 
@@ -587,7 +631,7 @@ export function useRecordOrder() {
         }
       }
 
-      // 3. Se for Venda: reduz a quantidade mantendo o PM e opcionalmente credita Caixa em BRL
+      // 4. Se for Venda: reduz a quantidade mantendo o PM e opcionalmente credita Caixa em BRL
       if (type === "sell") {
         const isCash = isCashAssetClass(asset.asset_class);
         const pricingMode = getAssetPricingMode(asset);
@@ -652,14 +696,23 @@ export function useRecordOrder() {
             newTotalApplied = Math.round(Math.max(0, currentCost - orderAmount) * 100) / 100;
           }
 
+          const baseValue =
+            asset.fixed_income_metadata?.base_value !== undefined &&
+            asset.fixed_income_metadata?.base_value !== null &&
+            asset.fixed_income_metadata.base_value > 0
+              ? asset.fixed_income_metadata.base_value
+              : currentCost;
+
           const updatedFiMetadata =
-            asset.fixed_income_metadata && newTotalApplied > 0
+            asset.fixed_income_metadata
               ? {
                   ...asset.fixed_income_metadata,
-                  base_date: date,
+                  base_date: newTotalApplied > 0 ? date : asset.fixed_income_metadata.base_date,
                   base_value: newTotalApplied,
+                  initial_investment_value:
+                    asset.fixed_income_metadata.initial_investment_value ?? baseValue,
                 }
-              : asset.fixed_income_metadata;
+              : null;
 
           await updateAsset.mutateAsync({
             id: asset.id,

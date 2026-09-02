@@ -1206,6 +1206,7 @@
      - Separação de posições ativas (`quantity > 0 && valueBRL > 0`) de posições encerradas (`quantity === 0 && valueBRL === 0`);
      - Toggle rápido *"Ocultar encerradas"* (ativo por padrão) e seção colapsável no rodapé: *"Posições Encerradas (X ativos liquidados)"*;
      - Exibição enriquecida da rentabilidade final realizada: Total Aplicado histórico, Total Resgatado, Proventos e Badge de Rentabilidade Final % (`finalReturnPct`), com layout adaptativo no desktop e mobile;
+     - Garantia de integridade do ledger: registro automático da compra inicial retroativa ao vender ativos cadastrados diretamente, e preservação do custo original aplicado em `fixed_income_metadata.initial_investment_value` mesmo após o resgate total (impedindo que o custo apareça igual ao valor de resgate);
   3. **Extrato Geral de Movimentações da Carteira (`PortfolioActivityPanel`):**
      - Unificação completa de `portfolio_transactions`, `portfolio_contributions` e `portfolio_dividends` em uma timeline padronizada;
      - Cards de fluxo mensal: Total Aportado, Total Resgatado, Total Proventos e Fluxo Líquido do Mês;
@@ -1215,9 +1216,14 @@
 - **Arquivos alterados:**
   - `src/domain/portfolio/valuation.ts`
   - `src/domain/portfolio/valuation.test.ts`
+  - `src/domain/portfolio/schemas.ts`
+  - `src/types/schema.ts`
+  - `src/state/mutations/use-portfolio-mutations.ts`
   - `src/state/queries/use-portfolio-position.ts`
   - `src/components/modules/position-table.tsx`
   - `src/components/modules/position-table.test.tsx`
+  - `src/features/investments/components/asset-form-dialog.tsx`
+  - `src/features/investments/components/asset-form-dialog.test.tsx`
   - `src/features/investments/components/asset-detail-sheet.tsx`
   - `src/features/investments/components/portfolio-activity-panel.tsx` [NOVO]
   - `src/features/investments/components/portfolio-activity-panel.test.tsx` [NOVO]

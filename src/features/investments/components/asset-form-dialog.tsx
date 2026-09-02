@@ -20,6 +20,7 @@ import {
   useAssetPrices,
   useCreatePortfolioAsset,
   useCreatePortfolioContribution,
+  useCreatePortfolioTransaction,
   useDeletePortfolioAsset,
   usePortfolioAssets,
   useSetManualPrice,
@@ -70,6 +71,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const createAsset = useCreatePortfolioAsset();
   const updateAsset = useUpdatePortfolioAsset();
   const deleteAsset = useDeletePortfolioAsset();
+  const createTransaction = useCreatePortfolioTransaction();
   const createContribution = useCreatePortfolioContribution();
   const setManualPrice = useSetManualPrice();
   const allAssetsQuery = usePortfolioAssets();
@@ -315,6 +317,24 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
       } else {
         const created = await createAsset.mutateAsync(payload);
         savedAssetId = created.id;
+
+        // Se o ativo foi criado com posição inicial, registra a transação inicial de compra no ledger
+        if (payloadQuantity > 0 && payloadAvgPrice > 0) {
+          const initialTotal = isTotalValueMode
+            ? payloadAvgPrice
+            : Math.round(payloadQuantity * payloadAvgPrice * 100) / 100;
+          const initialDate =
+            fiMetadata?.initial_investment_date || fiMetadata?.base_date || todayISO();
+
+          await createTransaction.mutateAsync({
+            asset_id: created.id,
+            type: "buy",
+            date: initialDate,
+            quantity: payloadQuantity,
+            price: payloadAvgPrice,
+            total: initialTotal,
+          });
+        }
       }
 
       // Se estiver em modo total_value, grava também o preço atual / saldo no cache/manual

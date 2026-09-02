@@ -131,7 +131,7 @@ export function usePortfolioPosition(): PortfolioPosition {
   const annualCdiRate = macroQuery.data?.annualCdiRate;
   const today = todayISO();
 
-  // Agrupa compras e vendas históricas por ativo
+  // Agrupa compras e vendas históricas por ativo a partir do ledger
   const boughtByAsset = new Map<string, number>();
   const soldByAsset = new Map<string, number>();
   for (const t of transactionsQuery.data ?? []) {
@@ -140,6 +140,18 @@ export function usePortfolioPosition(): PortfolioPosition {
       boughtByAsset.set(t.asset_id, (boughtByAsset.get(t.asset_id) ?? 0) + amount);
     } else if (t.type === "sell") {
       soldByAsset.set(t.asset_id, (soldByAsset.get(t.asset_id) ?? 0) + amount);
+    }
+  }
+
+  // Agrega também aportes financeiros direcionados ao ativo (evitando duplicar se já estiver no ledger)
+  for (const c of contributionsQuery.data ?? []) {
+    if (c.asset_id && c.amount > 0) {
+      const alreadyInTx = (transactionsQuery.data ?? []).some(
+        (t) => t.asset_id === c.asset_id && (t.type === "buy" || t.type === "subscription") && t.date === c.date && Math.abs(t.total - c.amount) < 0.01,
+      );
+      if (!alreadyInTx) {
+        boughtByAsset.set(c.asset_id, (boughtByAsset.get(c.asset_id) ?? 0) + c.amount);
+      }
     }
   }
 
@@ -222,15 +234,27 @@ export function usePortfolioPosition(): PortfolioPosition {
     const totalBought = boughtByAsset.get(asset.id) ?? 0;
     const totalSold = soldByAsset.get(asset.id) ?? 0;
 
-    const historicalCostBRL = round2(
+    const fiOriginalCost =
+      asset.fixed_income_metadata?.initial_investment_value !== undefined &&
+      asset.fixed_income_metadata?.initial_investment_value !== null &&
+      asset.fixed_income_metadata.initial_investment_value > 0
+        ? asset.fixed_income_metadata.initial_investment_value
+        : asset.fixed_income_metadata?.base_value !== undefined &&
+            asset.fixed_income_metadata?.base_value !== null &&
+            asset.fixed_income_metadata.base_value > 0
+          ? asset.fixed_income_metadata.base_value
+          : undefined;
+
+    const effectiveAppliedNative =
       totalBought > 0
-        ? totalBought * rate
-        : asset.fixed_income_metadata?.base_value !== undefined && asset.fixed_income_metadata?.base_value !== null && asset.fixed_income_metadata.base_value > 0
-          ? asset.fixed_income_metadata.base_value * rate
+        ? totalBought
+        : fiOriginalCost !== undefined
+          ? fiOriginalCost
           : summary.totalCostBRL > 0
             ? summary.totalCostBRL
-            : Number(asset.average_price || 0) * rate,
-    );
+            : Number(asset.average_price || 0);
+
+    const historicalCostBRL = round2(effectiveAppliedNative * rate);
     const historicalRedeemedBRL = round2(totalSold * rate);
 
     const isClosed = summary.quantity <= 0 && summary.valueBRL <= 0;

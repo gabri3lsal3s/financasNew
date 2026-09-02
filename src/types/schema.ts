@@ -477,6 +477,8 @@ export type FixedIncomeMetadata = {
   base_date: string;
   /** Saldo consolidado do título na data base_date (Marco Zero D₀). Fallback: average_price. */
   base_value?: number | null;
+  /** Custo original aplicado na compra inicial / aporte do título. Preservado mesmo após liquidação. */
+  initial_investment_value?: number | null;
   initial_investment_date?: string | null;
   maturity_date?: string | null;
   is_tax_exempt?: boolean;
