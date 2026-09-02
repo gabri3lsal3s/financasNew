@@ -273,6 +273,12 @@
 | **F71** | Blindagem e Governança Visual de Controles & Ícones | Eliminação de emojis e controles nativos, hierarquia semântica de ícones e sensory gateway | Governança Visual |
 | **F72** | UI de Parâmetros de Renda Fixa & Blindagem de Empréstimos | Subcomponente `FixedIncomeFormFields`, recálculo de $D_0$, IRRF, badges de RF, `LoanScheduleDialog` e `LoanEditDialog` | Renda Fixa & Empréstimos |
 | **F73** | Blindagem e Governança da Busca Global por Módulos | `filterSearchEntries`, controle estrito por feature flags e zero vazamento na busca | Busca & Permissões |
+| **F74** | Auditoria e Refinamento de Posição Consolidada e Extrato | Alinhamento do extrato e posições na carteira | Carteira & Extrato |
+| **F75** | Blindagem Contábil e Validação de Invariantes de Lançamentos | Validação de invariantes contábeis de lançamentos e custos | Contabilidade & Invariantes |
+| **F76** | Motor de Descapitalização de Renda Fixa e Posições Encerradas | Dedução matemática do principal investido a partir de resgates | Renda Fixa & Resgates |
+| **F77** | Gestão e Edição Completa de Ativos Encerrados e Histórico de Custos | Edição de ativos encerrados, custo original de resgates e edição de lançamentos no extrato | Custódia & Histórico |
+| **F78** | Resiliência de Cotações Internacionais, Gateway Yahoo Finance e Tickers de 1 Letra | Jina Reader proxy, suporte a tickers curtos como Realty Income (O) e resolução de moeda USD | Cotações & Câmbio |
+| **F79** | Alinhamento Contábil de Rentabilidade, Neutralidade de Caixa e Relatórios | Eliminação do viés de caixa nos snapshots mensais e balanço consolidado, inclusão de lucros realizados | Rentabilidade & Relatórios |
 
 
 
