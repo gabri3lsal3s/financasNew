@@ -1234,6 +1234,41 @@
   - `src/features/investments/pages/proventos-tab.test.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F77 — Refinamento Contábil de Rentabilidade, Resgate de Renda Fixa e Edição de Posições Encerradas (2026-09-02)
+
+- **Problema:**
+  1. Em ativos de Renda Fixa resgatados (ex.: CDB-FACTA), o valor aplicado histórico e o valor resgatado apareciam com o mesmo montante bruto rentabilizado (R$ 1.342,31), gerando resultado contábil e rentabilidade zerados ($R\$ 0,00$ / $0,0\%$);
+  2. O fluxo de resgate (tanto no `QuickTransactionSheet` quanto no Wizard `StepOrder`) solicitava apenas o valor do resgate bruto, sem permitir visualizar ou confirmar o custo original de aquisição daquele lote/título;
+  3. Ativos já liquidados (`quantity: 0 && average_price: 0`) não permitiam ao usuário calibrar ou retificar o Custo Histórico Original investido pelo modal de edição (`AssetEditDialog`), pois os campos eram desabilitados ou zeravam;
+  4. O usuário não tinha como editar transações individuais gravadas no ledger de investimentos (apenas excluir).
+- **Solução:**
+  1. **Motor de Domínio Puro & Descapitalização Inteligente (`fixed-income.ts`, `use-portfolio-position.ts`):**
+     - Criada a função pura `estimateInitialInvestmentFromRedemption`: caso um título de Renda Fixa encerrado possua redundância contábil no histórico (`totalAplicado == totalResgatado`), o motor deduz matematicamente o principal inicial investido a partir da descapitalização dos juros pelo CDI/Selic/Pré e dias úteis entre a data da aplicação e o encerramento;
+     - Priorização estrita do custo original informado manualmente (`initial_investment_value` ou compras no ledger) para apuração de lucro realizado e percentual de retorno.
+  2. **Fluxo de Resgate de Renda Fixa com Custo Original Explícito (`QuickTransactionSheet`, `StepOrder`):**
+     - Inclusão do campo editável **"Custo Original da Aplicação"** logo abaixo de "Valor a Resgatar";
+     - Card de discriminação contábil em tempo real exibindo: Valor Bruto do Resgate, Custo Original Aplicado, Rendimento Bruto Realizado (R$ e %), IRRF retido estimado e Crédito Líquido no Caixa;
+     - Passagem de `appliedCostBasis` na mutação `useRecordOrder`, garantindo gravação precisa no ledger da compra inicial (custo real) e da venda (resgate bruto).
+  3. **Edição Dedicada de Ativos Encerrados (`AssetEditDialog`):**
+     - Detecção de posição liquidada (`isClosed`), preservando o status encerrado sem reabrir a custódia;
+     - Campo dedicado para retificação do **"Custo Histórico Original / Total Aplicado"**, atualizando `initial_investment_value` e recalculando imediatamente a rentabilidade final e o resultado realizado.
+  4. **Edição de Lançamentos do Ledger (`AssetDetailSheet`, `PortfolioActivityPanel`):**
+     - Inclusão do botão de **Editar** (ícone `Pencil`) em cada operação no histórico da ficha do ativo e no Extrato de Movimentações, abrindo `TransactionFormDialog` para correção de valor, quantidade, preço e data;
+     - Inclusão de botão rápido `+ Nova Operação` na ficha do ativo.
+- **Arquivos alterados:**
+  - `src/domain/portfolio/fixed-income.ts`
+  - `src/domain/portfolio/fixed-income.test.ts`
+  - `src/state/mutations/use-portfolio-mutations.ts`
+  - `src/state/queries/use-portfolio-position.ts`
+  - `src/features/investments/components/quick-transaction-sheet.tsx`
+  - `src/features/investments/components/asset-edit-dialog.tsx`
+  - `src/features/investments/components/asset-detail-sheet.tsx`
+  - `src/features/investments/components/portfolio-activity-panel.tsx`
+  - `src/features/investments/wizard/wizard-state.ts`
+  - `src/features/investments/wizard/step-order.tsx`
+  - `src/features/investments/wizard/investment-wizard.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

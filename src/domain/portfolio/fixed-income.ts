@@ -345,3 +345,55 @@ export function calculateFixedIncomeBalance(input: FixedIncomeBalanceInput): Fix
     hasExplicitTaxInfo,
   };
 }
+
+export interface EstimateInitialInvestmentInput {
+  redeemedAmount: number;
+  startDate: string;
+  redemptionDate: string;
+  rateType: FixedIncomeRateType;
+  rateValue: number;
+  annualCdiRate?: number;
+}
+
+/**
+ * Deduz matematicamente o custo original investido descapitalizando o valor de resgate
+ * pela taxa acumulada no período (dias úteis), caso os dados históricos não possuam
+ * o valor de compra explícito e estejam com totalAplicado == totalResgatado.
+ */
+export function estimateInitialInvestmentFromRedemption(input: EstimateInitialInvestmentInput): number {
+  const { redeemedAmount, startDate, redemptionDate, rateType, rateValue, annualCdiRate = DEFAULT_ANNUAL_CDI_RATE } = input;
+  if (redeemedAmount <= 0) return 0;
+  if (!startDate || !redemptionDate || startDate >= redemptionDate || rateValue <= 0) {
+    return redeemedAmount;
+  }
+
+  const businessDays = countBusinessDays(startDate.slice(0, 10), redemptionDate.slice(0, 10));
+  if (businessDays <= 0) return redeemedAmount;
+
+  let effectiveDailyRate = 0;
+  switch (rateType) {
+    case "cdi":
+    case "selic": {
+      const cdiDaily = annualRateToDaily(annualCdiRate);
+      effectiveDailyRate = cdiDaily * (rateValue / 100);
+      break;
+    }
+    case "pre": {
+      effectiveDailyRate = annualRateToDaily(rateValue);
+      break;
+    }
+    case "ipca": {
+      const totalAnnualRatePct = ((1 + DEFAULT_ANNUAL_IPCA_RATE / 100) * (1 + rateValue / 100) - 1) * 100;
+      effectiveDailyRate = annualRateToDaily(totalAnnualRatePct);
+      break;
+    }
+  }
+
+  if (effectiveDailyRate <= 0) return redeemedAmount;
+
+  const accumulationFactor = Math.pow(1 + effectiveDailyRate, businessDays);
+  if (accumulationFactor <= 1) return redeemedAmount;
+
+  const estimatedPrincipal = Math.round((redeemedAmount / accumulationFactor) * 100) / 100;
+  return estimatedPrincipal > 0 ? estimatedPrincipal : redeemedAmount;
+}

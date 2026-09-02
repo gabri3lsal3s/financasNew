@@ -13,6 +13,7 @@ import {
   buildPortfolioMonthlySeries,
   calculatePortfolioTotalReturn,
   calculatePositionSummary,
+  estimateInitialInvestmentFromRedemption,
   fallbackPriceFor,
   isCashAssetClass,
   resolvePrice,
@@ -234,30 +235,64 @@ export function usePortfolioPosition(): PortfolioPosition {
     const totalBought = boughtByAsset.get(asset.id) ?? 0;
     const totalSold = soldByAsset.get(asset.id) ?? 0;
 
-    const fiOriginalCost =
+    const explicitInitialInvestment =
       asset.fixed_income_metadata?.initial_investment_value !== undefined &&
       asset.fixed_income_metadata?.initial_investment_value !== null &&
       asset.fixed_income_metadata.initial_investment_value > 0
         ? asset.fixed_income_metadata.initial_investment_value
+        : undefined;
+
+    const fiOriginalCost =
+      explicitInitialInvestment !== undefined
+        ? explicitInitialInvestment
         : asset.fixed_income_metadata?.base_value !== undefined &&
             asset.fixed_income_metadata?.base_value !== null &&
             asset.fixed_income_metadata.base_value > 0
           ? asset.fixed_income_metadata.base_value
           : undefined;
 
-    const effectiveAppliedNative =
-      totalBought > 0
-        ? totalBought
-        : fiOriginalCost !== undefined
-          ? fiOriginalCost
-          : summary.totalCostBRL > 0
-            ? summary.totalCostBRL
-            : Number(asset.average_price || 0);
+    let effectiveAppliedNative =
+      explicitInitialInvestment !== undefined
+        ? explicitInitialInvestment
+        : totalBought > 0
+          ? totalBought
+          : fiOriginalCost !== undefined
+            ? fiOriginalCost
+            : summary.totalCostBRL > 0
+              ? summary.totalCostBRL
+              : Number(asset.average_price || 0);
+
+    const isClosed = summary.quantity <= 0 && summary.valueBRL <= 0;
+
+    // Se a posição estiver encerrada e totalAplicado for igual ao totalResgatado (redundância contábil),
+    // mas o ativo possuir taxa contratada de renda fixa cadastrada e prazo, estima o custo inicial descapitalizado:
+    if (
+      isClosed &&
+      totalSold > 0 &&
+      Math.abs(effectiveAppliedNative - totalSold) < 0.05 &&
+      explicitInitialInvestment === undefined &&
+      asset.fixed_income_metadata &&
+      asset.fixed_income_metadata.rate_value > 0
+    ) {
+      const fi = asset.fixed_income_metadata;
+      const startDate = fi.initial_investment_date || fi.base_date;
+      if (startDate && startDate < today) {
+        const estimated = estimateInitialInvestmentFromRedemption({
+          redeemedAmount: totalSold,
+          startDate,
+          redemptionDate: today,
+          rateType: fi.rate_type,
+          rateValue: fi.rate_value,
+          annualCdiRate,
+        });
+        if (estimated > 0 && estimated < totalSold) {
+          effectiveAppliedNative = estimated;
+        }
+      }
+    }
 
     const historicalCostBRL = round2(effectiveAppliedNative * rate);
     const historicalRedeemedBRL = round2(totalSold * rate);
-
-    const isClosed = summary.quantity <= 0 && summary.valueBRL <= 0;
     const effectiveRealizedPnl = isClosed
       ? round2(historicalRedeemedBRL - historicalCostBRL)
       : summary.unrealizedPnl;

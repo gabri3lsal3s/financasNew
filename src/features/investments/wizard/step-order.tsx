@@ -350,6 +350,26 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                     </button>
                   ))}
                 </div>
+
+                <div className="flex flex-col gap-1.5 pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="wizard-sell-rf-cost" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Custo Original da Aplicação ({state.currency})
+                    </label>
+                    <span className="text-[10px] text-muted-foreground">Base contábil</span>
+                  </div>
+                  <MoneyInput
+                    id="wizard-sell-rf-cost"
+                    cents={state.appliedCostCents}
+                    currency={state.currency}
+                    onCentsChange={(cents) => onChange({ appliedCostCents: cents })}
+                    placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
+                    aria-label="Custo original da aplicação do lote"
+                  />
+                  <span className="text-[10px] text-muted-foreground">
+                    Valor original investido neste lote (utilizado para apurar o lucro contábil e a rentabilidade final).
+                  </span>
+                </div>
               </div>
             ) : (
               <>
@@ -401,6 +421,15 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                 <span className="text-muted-foreground">Valor Bruto do Resgate:</span>
                 <span className="font-mono font-bold text-sm text-foreground">
                   <MoneyText cents={state.totalCents || state.priceCents} currency={state.currency} />
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Custo Original Aplicado:</span>
+                <span className="font-mono font-medium text-foreground">
+                  <MoneyText
+                    cents={state.appliedCostCents > 0 ? state.appliedCostCents : numberToCents(fiInfo?.appliedCost ?? 0)}
+                    currency={state.currency}
+                  />
                 </span>
               </div>
               {preview.cashCreditBRL !== undefined && state.syncCash && (

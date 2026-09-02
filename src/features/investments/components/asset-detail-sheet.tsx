@@ -3,6 +3,7 @@ import {
   ArrowDownLeft,
   Calendar,
   Edit2,
+  Pencil,
   Plus,
   Receipt,
   SlidersHorizontal,
@@ -33,6 +34,7 @@ import {
 import type { PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 import { AssetEditDialog } from "./asset-edit-dialog";
 import { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
+import { TransactionFormDialog } from "./transaction-form-dialog";
 
 export interface AssetDetailSheetProps {
   asset: PortfolioAsset | null;
@@ -58,6 +60,8 @@ export function AssetDetailSheet({
   const [calibrateOpen, setCalibrateOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<PortfolioTransaction | null>(null);
+  const [txToEdit, setTxToEdit] = useState<PortfolioTransaction | null>(null);
+  const [createTxOpen, setCreateTxOpen] = useState(false);
 
   if (!asset) return null;
 
@@ -424,9 +428,24 @@ export function AssetDetailSheet({
                 <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
                 <span>Histórico de Operações & Proventos</span>
               </div>
-              <span className="text-[11px] text-muted-foreground font-mono">
-                {(txs ?? []).length} operação(ões)
-              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => {
+                    setTxToEdit(null);
+                    setCreateTxOpen(true);
+                  }}
+                  className="h-6 px-2 text-[11px] text-primary hover:bg-primary/10 gap-1 cursor-pointer"
+                >
+                  <Plus className="size-3" aria-hidden="true" />
+                  <span>Nova Operação</span>
+                </Button>
+                <span className="text-[11px] text-muted-foreground font-mono">
+                  {(txs ?? []).length} operação(ões)
+                </span>
+              </div>
             </div>
 
             {txLoading ? (
@@ -459,10 +478,21 @@ export function AssetDetailSheet({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        <span className="font-mono font-semibold text-foreground">
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <span className="font-mono font-semibold text-foreground mr-1">
                           <MoneyText cents={numberToCents(tx.total)} currency={currentAsset.currency} />
                         </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setTxToEdit(tx)}
+                          className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                          title="Editar lançamento"
+                          aria-label="Editar lançamento"
+                        >
+                          <Pencil className="size-3.5" aria-hidden="true" />
+                        </Button>
                         <Button
                           type="button"
                           variant="ghost"
@@ -550,6 +580,19 @@ export function AssetDetailSheet({
             setTxToDelete(null);
           }
         }}
+      />
+
+      {/* Diálogo de Criação / Edição de Transação Individual */}
+      <TransactionFormDialog
+        open={txToEdit !== null || createTxOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTxToEdit(null);
+            setCreateTxOpen(false);
+          }
+        }}
+        asset={currentAsset}
+        transaction={txToEdit}
       />
     </>
   );

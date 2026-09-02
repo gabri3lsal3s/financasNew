@@ -72,12 +72,23 @@ export function QuickTransactionSheet({
   const [splitFactor, setSplitFactor] = useState(2);
   const [error, setError] = useState<string | null>(null);
 
+  // Custo original aplicado da posição/lote (especialmente para Renda Fixa)
+  const [customAppliedCostCents, setCustomAppliedCostCents] = useState<number | null>(null);
 
   // Ativo Alvo
   const targetAsset = useMemo(() => {
     if (asset) return asset;
     return allAssets.find((a) => a.id === selectedAssetId) ?? null;
   }, [asset, selectedAssetId, allAssets]);
+
+  const defaultAppliedCost =
+    targetAsset?.fixed_income_metadata?.initial_investment_value ??
+    targetAsset?.fixed_income_metadata?.base_value ??
+    targetAsset?.average_price ??
+    0;
+
+  const appliedCostCents =
+    customAppliedCostCents !== null ? customAppliedCostCents : numberToCents(defaultAppliedCost);
 
   const isCash = isCashAssetClass(targetAsset?.asset_class ?? null);
   const isTesouro = targetAsset ? isTesouroAsset(targetAsset.ticker, targetAsset.asset_class) : false;
@@ -128,13 +139,16 @@ export function QuickTransactionSheet({
 
     const currentCost = targetAsset.average_price > 0 ? targetAsset.average_price : 0;
     const withdrawGross = (totalCents || priceCents) / 100;
+    const appliedCostBasis = appliedCostCents > 0 ? appliedCostCents / 100 : currentCost;
 
     const baseValue =
       targetAsset.fixed_income_metadata.base_value !== undefined &&
       targetAsset.fixed_income_metadata.base_value !== null &&
       targetAsset.fixed_income_metadata.base_value > 0
         ? targetAsset.fixed_income_metadata.base_value
-        : currentCost;
+        : appliedCostBasis > 0
+          ? appliedCostBasis
+          : currentCost;
 
     const fiRes = calculateFixedIncomeBalance({
       baseValue,
@@ -145,7 +159,7 @@ export function QuickTransactionSheet({
       rateValue: targetAsset.fixed_income_metadata.rate_value,
       isTaxExempt: targetAsset.fixed_income_metadata.is_tax_exempt,
       manualTaxRatePct: targetAsset.fixed_income_metadata.manual_tax_rate_pct,
-      totalCost: currentCost,
+      totalCost: appliedCostBasis > 0 ? appliedCostBasis : currentCost,
       today: date,
     });
 
@@ -155,9 +169,17 @@ export function QuickTransactionSheet({
     const estimatedTax = isExempt ? 0 : Math.round(fiRes.taxAmount * proportion * 100) / 100;
     const netCredit = Math.max(0, Math.round((withdrawGross - estimatedTax) * 100) / 100);
 
+    const costBasisProportion = Math.round(appliedCostBasis * proportion * 100) / 100;
+    const realizedProfit = Math.round((withdrawGross - costBasisProportion) * 100) / 100;
+    const realizedProfitPct =
+      costBasisProportion > 0 ? Math.round((realizedProfit / costBasisProportion) * 10000) / 100 : 0;
+
     return {
       grossAmount: withdrawGross,
       grossBalance,
+      appliedCostBasis: costBasisProportion,
+      realizedProfit,
+      realizedProfitPct,
       netBalance: fiRes.netValue,
       taxRatePct: isExempt ? 0 : fiRes.taxRatePct,
       taxAmount: estimatedTax,
@@ -166,7 +188,7 @@ export function QuickTransactionSheet({
       taxCountdown: fiRes.taxCountdown,
       isMatured: fiRes.isMatured,
     };
-  }, [type, targetAsset, totalCents, priceCents, date]);
+  }, [type, targetAsset, totalCents, priceCents, appliedCostCents, date]);
 
   const fiSellResult = fixedIncomeSellTaxPreview;
 
@@ -260,6 +282,7 @@ export function QuickTransactionSheet({
         cashAsset,
         recordContribution,
         notes: resolvedNotes,
+        appliedCostBasis: isTotalValue && appliedCostCents > 0 ? appliedCostCents / 100 : undefined,
       });
 
       handleOpenChange(false);
@@ -329,7 +352,10 @@ export function QuickTransactionSheet({
             </span>
             <Select
               value={selectedAssetId}
-              onValueChange={setSelectedAssetId}
+              onValueChange={(val) => {
+                setSelectedAssetId(val);
+                setCustomAppliedCostCents(null);
+              }}
               options={assetOptions}
               placeholder="Escolha um ativo da carteira"
             />
@@ -473,43 +499,64 @@ export function QuickTransactionSheet({
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
               {isTotalValue ? (
-                <div className="flex flex-col gap-1.5 col-span-2">
-                  <label htmlFor="quick-rf-sell-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Valor a Resgatar ({targetAsset?.currency ?? "BRL"})
-                  </label>
-                  <MoneyInput
-                    id="quick-rf-sell-amount"
-                    cents={totalCents || priceCents}
-                    onCentsChange={(cents) => {
-                      setTotalCents(cents);
-                      setPriceCents(cents);
-                    }}
-                    placeholder="R$ 0,00"
-                    aria-label="Valor a resgatar em renda fixa"
-                  />
-                  {/* Atalhos rápidos de percentual do saldo total */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="text-[11px] text-muted-foreground">Resgatar:</span>
-                    {[
-                      { label: "25%", pct: 0.25 },
-                      { label: "50%", pct: 0.5 },
-                      { label: "75%", pct: 0.75 },
-                      { label: "100% (Total)", pct: 1 },
-                    ].map((s) => (
-                      <button
-                        key={s.label}
-                        type="button"
-                        onClick={() => {
-                          const balance = fixedIncomeSellTaxPreview?.grossBalance ?? targetAsset?.average_price ?? 0;
-                          const cents = Math.round(balance * s.pct * 100);
-                          setTotalCents(cents);
-                          setPriceCents(cents);
-                        }}
-                        className="rounded-md border border-border/70 bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
-                      >
-                        {s.label}
-                      </button>
-                    ))}
+                <div className="flex flex-col gap-3 col-span-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="quick-rf-sell-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Valor a Resgatar ({targetAsset?.currency ?? "BRL"})
+                    </label>
+                    <MoneyInput
+                      id="quick-rf-sell-amount"
+                      cents={totalCents || priceCents}
+                      onCentsChange={(cents) => {
+                        setTotalCents(cents);
+                        setPriceCents(cents);
+                      }}
+                      placeholder="R$ 0,00"
+                      aria-label="Valor a resgatar em renda fixa"
+                    />
+                    {/* Atalhos rápidos de percentual do saldo total */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[11px] text-muted-foreground">Resgatar:</span>
+                      {[
+                        { label: "25%", pct: 0.25 },
+                        { label: "50%", pct: 0.5 },
+                        { label: "75%", pct: 0.75 },
+                        { label: "100% (Total)", pct: 1 },
+                      ].map((s) => (
+                        <button
+                          key={s.label}
+                          type="button"
+                          onClick={() => {
+                            const balance = fixedIncomeSellTaxPreview?.grossBalance ?? targetAsset?.average_price ?? 0;
+                            const cents = Math.round(balance * s.pct * 100);
+                            setTotalCents(cents);
+                            setPriceCents(cents);
+                          }}
+                          className="rounded-md border border-border/70 bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="quick-rf-applied-cost" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Custo Original da Aplicação (R$)
+                      </label>
+                      <span className="text-[10px] text-muted-foreground">Base contábil</span>
+                    </div>
+                    <MoneyInput
+                      id="quick-rf-applied-cost"
+                      cents={appliedCostCents}
+                      onCentsChange={setCustomAppliedCostCents}
+                      placeholder="R$ 0,00"
+                      aria-label="Custo original da aplicação do lote"
+                    />
+                    <span className="text-[10px] text-muted-foreground">
+                      Valor original investido neste lote (utilizado para apurar o lucro realizado e rentabilidade final).
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -566,7 +613,7 @@ export function QuickTransactionSheet({
               </div>
             )}
 
-            {/* Painel de Discriminação Fiscal de Renda Fixa (Fase 63/72) */}
+            {/* Painel de Discriminação Fiscal e Rentabilidade de Renda Fixa (Fase 63/72) */}
             {fixedIncomeSellTaxPreview && (
               <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-3.5 text-xs">
                 <div className="flex items-center justify-between border-b border-border/40 pb-2">
@@ -586,6 +633,28 @@ export function QuickTransactionSheet({
                   <span className="text-muted-foreground">Valor Bruto do Resgate:</span>
                   <span className="font-mono font-medium text-foreground">
                     <MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.grossAmount)} />
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Custo Original Aplicado:</span>
+                  <span className="font-mono font-medium text-foreground">
+                    <MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.appliedCostBasis)} />
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Rendimento Bruto Realizado:</span>
+                  <span
+                    className={cn(
+                      "font-mono font-semibold",
+                      fixedIncomeSellTaxPreview.realizedProfit >= 0 ? "text-positive-strong" : "text-critical-strong",
+                    )}
+                  >
+                    {fixedIncomeSellTaxPreview.realizedProfit >= 0 ? "+" : ""}
+                    <MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.realizedProfit)} /> (
+                    {fixedIncomeSellTaxPreview.realizedProfitPct >= 0 ? "+" : ""}
+                    {fixedIncomeSellTaxPreview.realizedProfitPct.toFixed(2)}%)
                   </span>
                 </div>
 

@@ -474,6 +474,8 @@ export interface RecordOrderParams {
   recordContribution?: boolean;
   notes?: string | null;
   usdRate?: number;
+  /** Custo original aplicado na compra/lote resgatado (especialmente relevante para Renda Fixa). */
+  appliedCostBasis?: number;
 }
 
 /**
@@ -491,7 +493,7 @@ export function useRecordOrder() {
 
   return useMutation({
     mutationFn: async (params: RecordOrderParams) => {
-      const { asset, type, date, quantity, price, total, syncCash, cashAsset, recordContribution, notes, usdRate } = params;
+      const { asset, type, date, quantity, price, total, syncCash, cashAsset, recordContribution, notes, usdRate, appliedCostBasis } = params;
       const rate = asset.currency === "USD" ? (usdRate ?? 5.25) : 1;
       const totalBRL = Math.round(total * rate * 100) / 100;
 
@@ -510,13 +512,15 @@ export function useRecordOrder() {
               : asset.quantity;
 
         const baseValue =
-          isTotalValue && asset.fixed_income_metadata
-            ? asset.fixed_income_metadata.base_value !== undefined &&
-              asset.fixed_income_metadata.base_value !== null &&
-              asset.fixed_income_metadata.base_value > 0
-              ? asset.fixed_income_metadata.base_value
-              : currentCost
-            : currentCost;
+          appliedCostBasis !== undefined && appliedCostBasis > 0
+            ? appliedCostBasis
+            : isTotalValue && asset.fixed_income_metadata
+              ? asset.fixed_income_metadata.base_value !== undefined &&
+                asset.fixed_income_metadata.base_value !== null &&
+                asset.fixed_income_metadata.base_value > 0
+                ? asset.fixed_income_metadata.base_value
+                : currentCost
+              : currentCost;
 
         // Se o ativo tinha custo > 0 no momento da venda, registramos a compra inicial correspondente no ledger
         if (baseValue > 0) {
@@ -697,11 +701,13 @@ export function useRecordOrder() {
           }
 
           const baseValue =
-            asset.fixed_income_metadata?.base_value !== undefined &&
-            asset.fixed_income_metadata?.base_value !== null &&
-            asset.fixed_income_metadata.base_value > 0
-              ? asset.fixed_income_metadata.base_value
-              : currentCost;
+            appliedCostBasis !== undefined && appliedCostBasis > 0
+              ? appliedCostBasis
+              : asset.fixed_income_metadata?.base_value !== undefined &&
+                  asset.fixed_income_metadata?.base_value !== null &&
+                  asset.fixed_income_metadata.base_value > 0
+                ? asset.fixed_income_metadata.base_value
+                : currentCost;
 
           const updatedFiMetadata =
             asset.fixed_income_metadata

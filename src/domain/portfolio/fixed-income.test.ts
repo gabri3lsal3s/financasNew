@@ -3,6 +3,7 @@ import {
   annualRateToDaily,
   calculateFixedIncomeBalance,
   calculateTaxReductionCountdown,
+  estimateInitialInvestmentFromRedemption,
   getFixedIncomeTaxRatePct,
   getIofRatePct,
 } from "./fixed-income";
@@ -164,5 +165,32 @@ describe("fixed-income domain calculations", () => {
 
     expect(res.hasExplicitTaxInfo).toBe(false);
     expect(res.taxCountdown).toBeNull();
+  });
+
+  it("deduz matematicamente o custo inicial a partir do valor resgatado e taxa do período", () => {
+    // Título resgatado por R$ 1.342,31 após rendimento de CDI 100%
+    const estimated = estimateInitialInvestmentFromRedemption({
+      redeemedAmount: 1342.31,
+      startDate: "2025-01-01",
+      redemptionDate: "2026-01-01",
+      rateType: "cdi",
+      rateValue: 100,
+      annualCdiRate: 10.5,
+    });
+
+    expect(estimated).toBeLessThan(1342.31);
+    expect(estimated).toBeGreaterThan(1150);
+    expect(estimated).toBeCloseTo(1214.76, 0);
+
+    // Se datas iguais ou inválidas, retorna o próprio valor
+    expect(
+      estimateInitialInvestmentFromRedemption({
+        redeemedAmount: 1000,
+        startDate: "2026-01-01",
+        redemptionDate: "2026-01-01",
+        rateType: "cdi",
+        rateValue: 100,
+      }),
+    ).toBe(1000);
   });
 });

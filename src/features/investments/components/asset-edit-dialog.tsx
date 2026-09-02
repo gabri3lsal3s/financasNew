@@ -108,22 +108,28 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
   // Modo efetivo de valor total (Renda Fixa e Tesouro Direto)
   const isTotalValueMode = !isCash && isFixedIncome;
+  const isClosed = !isCash && (asset.quantity <= 0);
 
   // ─── Preços para modo total_value ─────────────────────────────────────────
   const priceQuote = (pricesQuery.data ?? []).find(
     (p) => p.ticker.toUpperCase() === (asset.ticker ?? ticker).trim().toUpperCase(),
   );
   const existingInitialPrice = asset
-    ? asset.average_price > 0
-      ? asset.average_price
-      : asset.quantity > 0
-        ? asset.quantity
-        : 0
+    ? asset.fixed_income_metadata?.initial_investment_value !== undefined &&
+      asset.fixed_income_metadata?.initial_investment_value !== null &&
+      asset.fixed_income_metadata.initial_investment_value > 0
+      ? asset.fixed_income_metadata.initial_investment_value
+      : asset.average_price > 0
+        ? asset.average_price
+        : asset.quantity > 0
+          ? asset.quantity
+          : 0
     : 0;
-  const existingCurrentPrice =
-    asset.fixed_income_metadata?.base_value !== undefined &&
-    asset.fixed_income_metadata?.base_value !== null &&
-    asset.fixed_income_metadata.base_value > 0
+  const existingCurrentPrice = isClosed
+    ? 0
+    : asset.fixed_income_metadata?.base_value !== undefined &&
+      asset.fixed_income_metadata?.base_value !== null &&
+      asset.fixed_income_metadata.base_value > 0
       ? asset.fixed_income_metadata.base_value
       : priceQuote?.manual_price ?? priceQuote?.price ?? existingInitialPrice;
 
@@ -187,6 +193,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
     if (isCash) {
       payloadQuantity = parsedQuantity;
       payloadAvgPrice = 1;
+    } else if (isClosed) {
+      payloadQuantity = 0;
+      payloadAvgPrice = 0;
     } else if (isTotalValueMode) {
       payloadQuantity = 1;
       payloadAvgPrice = initialPriceCents / 100;
@@ -203,7 +212,8 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         rate_type: fixedIncomeRateType,
         rate_value: fixedIncomeRateValue,
         base_date: fixedIncomeBaseDate || existingFi?.base_date || todayISO(),
-        base_value: isTotalValueMode && currentBalance > 0 ? currentBalance : (existingFi?.base_value ?? null),
+        base_value: isClosed ? 0 : isTotalValueMode && currentBalance > 0 ? currentBalance : (existingFi?.base_value ?? null),
+        initial_investment_value: initialPriceCents > 0 ? initialPriceCents / 100 : (existingFi?.initial_investment_value ?? null),
         initial_investment_date: fixedIncomeInitialInvestmentDate ? fixedIncomeInitialInvestmentDate.slice(0, 10) : (existingFi?.initial_investment_date ?? null),
         maturity_date: fixedIncomeMaturityDate ? fixedIncomeMaturityDate.slice(0, 10) : null,
         is_tax_exempt: fixedIncomeIsTaxExempt,
@@ -380,45 +390,62 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">
-              {isTesouro ? "Posição de Custódia (Tesouro Direto)" : "Posição de Custódia (Renda Fixa)"}
+              {isClosed
+                ? "Posição Encerrada (Histórico de Renda Fixa)"
+                : isTesouro
+                  ? "Posição de Custódia (Tesouro Direto)"
+                  : "Posição de Custódia (Renda Fixa)"}
             </span>
-            <Badge variant="muted" className="text-[11px]">Valor Completo</Badge>
+            <Badge variant={isClosed ? "muted" : "default"} className="text-[11px]">
+              {isClosed ? "Liquidada" : "Valor Completo"}
+            </Badge>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="edit-asset-initial-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Preço Inicial / Valor Aplicado ({currency})
+                {isClosed ? "Custo Histórico Original / Total Aplicado" : "Preço Inicial / Valor Aplicado"} ({currency})
               </label>
               <MoneyInput
                 id="edit-asset-initial-price"
                 cents={initialPriceCents}
                 onCentsChange={(cents) => {
                   setInitialPriceCents(cents);
-                  if (currentPriceCents === 0) {
+                  if (currentPriceCents === 0 && !isClosed) {
                     setCurrentPriceCents(cents);
                   }
                 }}
                 placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço inicial investido"
               />
+              {isClosed && (
+                <span className="text-[10px] text-muted-foreground">
+                  Valor originalmente investido (utilizado para calcular o resultado final realizado).
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="edit-asset-current-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Preço Atual / Saldo Final ({currency})
+                {isClosed ? "Custódia Atual (Posição Liquidada)" : "Preço Atual / Saldo Final"} ({currency})
               </label>
               <MoneyInput
                 id="edit-asset-current-price"
-                cents={currentPriceCents}
-                onCentsChange={setCurrentPriceCents}
+                cents={isClosed ? 0 : currentPriceCents}
+                onCentsChange={isClosed ? () => {} : setCurrentPriceCents}
+                disabled={isClosed}
                 placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço atual ou saldo"
               />
+              {isClosed && (
+                <span className="text-[10px] text-muted-foreground">
+                  Título 100% resgatado (saldo em custódia zerado).
+                </span>
+              )}
             </div>
           </div>
 
-          {initialPriceCents > 0 && currentPriceCents > 0 ? (
+          {!isClosed && initialPriceCents > 0 && currentPriceCents > 0 ? (
             <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40 text-muted-foreground">
               <span>Rendimento Estimado:</span>
               <span

@@ -3,6 +3,7 @@ import { Alert, Button, ConfirmDialog, Modal, Stepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
+import { numberToCents } from "@/domain/money";
 import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/dividends";
 import {
@@ -90,6 +91,10 @@ function InvestmentWizardContent({
   const [state, setState] = useState<InvestmentWizardState>(() => {
     if (initialAsset) {
       const mode: WizardMode = initialMode && initialMode !== "select" ? initialMode : "buy";
+      const initialCost = initialAsset.fixed_income_metadata?.initial_investment_value
+        ?? initialAsset.fixed_income_metadata?.base_value
+        ?? initialAsset.average_price
+        ?? 0;
       return {
         ...defaultWizardState,
         mode,
@@ -99,6 +104,7 @@ function InvestmentWizardContent({
         assetClass: initialAsset.asset_class ?? "Ações",
         currency: initialAsset.currency,
         isCash: isCashAssetClass(initialAsset.asset_class),
+        appliedCostCents: numberToCents(initialCost),
       };
     }
     if (initialMode === "new_asset") {
@@ -247,6 +253,7 @@ function InvestmentWizardContent({
           cashAsset,
           notes: state.notes,
           usdRate,
+          appliedCostBasis: isTotalValue && state.appliedCostCents > 0 ? state.appliedCostCents / 100 : undefined,
         });
       } else if (state.mode === "dividend") {
         if (!state.selectedAsset) throw new Error("Selecione um ativo");

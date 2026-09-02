@@ -5,6 +5,7 @@ import {
   Coins,
   History,
   Layers,
+  Pencil,
   Search,
   Trash2,
   X,
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { TransactionFormDialog } from "./transaction-form-dialog";
 import {
   useAllPortfolioTransactions,
   useDeletePortfolioContribution,
@@ -34,7 +36,7 @@ import {
   usePortfolioContributions,
   usePortfolioDividends,
 } from "@/state";
-import type { PortfolioContribution, PortfolioDividend, PortfolioTransaction } from "@/types";
+import type { PortfolioAsset, PortfolioContribution, PortfolioDividend, PortfolioTransaction } from "@/types";
 
 export type ActivityFilterType = "all" | "buy" | "sell" | "dividend";
 
@@ -69,6 +71,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const [filterType, setFilterType] = useState<ActivityFilterType>("all");
   const [search, setSearch] = useState("");
   const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
+  const [editingTx, setEditingTx] = useState<{ transaction: PortfolioTransaction; asset: PortfolioAsset } | null>(null);
 
   const transactionsQuery = useAllPortfolioTransactions();
   const contributionsQuery = usePortfolioContributions();
@@ -443,8 +446,8 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    <div className="flex flex-col items-end">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex flex-col items-end mr-1">
                       <span
                         className={cn(
                           "text-xs font-semibold",
@@ -456,6 +459,25 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                         <MoneyText cents={numberToCents(item.total)} sign={isSell ? "explicit" : "auto"} />
                       </span>
                     </div>
+
+                    {item.source === "transaction" && item.rawTransaction && assetMap.get(item.rawTransaction.asset_id) ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const asset = assetMap.get(item.rawTransaction!.asset_id);
+                          if (asset) {
+                            setEditingTx({ transaction: item.rawTransaction!, asset });
+                          }
+                        }}
+                        className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                        title="Editar movimentação"
+                        aria-label={`Editar movimentação de ${item.ticker}`}
+                      >
+                        <Pencil className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    ) : null}
 
                     <Button
                       type="button"
@@ -486,6 +508,15 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         confirmPending={deleteTransaction.isPending || deleteContribution.isPending || deleteDividend.isPending}
         onConfirm={handleDeleteItem}
       />
+
+      {editingTx && (
+        <TransactionFormDialog
+          open={editingTx !== null}
+          onOpenChange={(open) => !open && setEditingTx(null)}
+          asset={editingTx.asset}
+          transaction={editingTx.transaction}
+        />
+      )}
     </>
   );
 }
