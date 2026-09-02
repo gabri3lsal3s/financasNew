@@ -1165,6 +1165,33 @@
   - `docs/PROJECT_STRUCTURE.md`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F74 — Aprimoramento de Liquidação de Renda Fixa & Resiliência de Cotações Internacionais
+
+- **Problema:** 
+  1. Ao resgatar ou liquidar títulos de Renda Fixa no vencimento, o sistema limitava a operação ao custo de aquisição inicial (`average_price`), bloqueando o resgate pelo valor total rentabilizado acumulado.
+  2. Tickers internacionais de 1 letra (como `O` — Realty Income, `T` — AT&T) eram incorretamente convertidos para o sufixo `.SA` (B3) pela Edge Function de cotações, falhando a consulta no Yahoo Finance e caindo no fallback manual.
+- **Solução:**
+  1. **Motor de Resgate e Liquidação de Renda Fixa (`wizard-state.ts`, `step-order.tsx`, `quick-transaction-sheet.tsx`, `use-portfolio-mutations.ts`):**
+     - Cálculo em tempo real do saldo bruto e líquido com rendimento acumulado via `getFixedIncomeRedemptionInfo`;
+     - Liberação do teto de resgate para o saldo bruto total (`grossValue`);
+     - Atalhos percentuais (25%, 50%, 75%, 100%) calibrados com o saldo rentabilizado;
+     - Encerramento contábil da custódia (`quantity: 0`, `average_price: 0`) e crédito líquido no Caixa no resgate total;
+     - Exibição simultânea de Saldo Aplicado, Saldo Bruto e Saldo Líquido Estimado (pós-IRRF).
+  2. **Normalização e Suporte a Tickers de 1 Letra (`quotes-core.ts`, `import-parser.ts`):**
+     - Ajuste da expressão regular da Edge Function para `/^[A-Za-z]{1,5}$/`;
+     - Whitelist `KNOWN_SINGLE_LETTER_US_TICKERS` no parser de linguagem natural para capturar ativos como `O` e `T` sem colidir com artigos ou preposições em português.
+- **Arquivos alterados:**
+  - `src/features/investments/wizard/wizard-state.ts`
+  - `src/features/investments/wizard/wizard-state.test.ts`
+  - `src/features/investments/wizard/step-order.tsx`
+  - `src/features/investments/components/quick-transaction-sheet.tsx`
+  - `src/state/mutations/use-portfolio-mutations.ts`
+  - `supabase/functions/_shared/quotes-core.ts`
+  - `src/domain/portfolio/import-parser.ts`
+  - `src/domain/portfolio/import-parser.test.ts`
+  - `src/tests/quotes-core.test.ts`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

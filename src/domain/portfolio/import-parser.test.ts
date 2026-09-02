@@ -111,6 +111,21 @@ describe("domain/portfolio/import-parser — Fase 35 & 36", () => {
       expect(result?.total).toBe(1102.5);
     });
 
+    it("interpreta ativo internacional de 1 letra (O - Realty Income, T - AT&T) sem colidir com artigos", () => {
+      const resultO = parseNaturalInvestmentLine("10/07 compra de 10 cotas de O a 55.00", 2026);
+      expect(resultO).not.toBeNull();
+      expect(resultO?.ticker).toBe("O");
+      expect(resultO?.currency).toBe("USD");
+      expect(resultO?.quantity).toBe(10);
+      expect(resultO?.price).toBe(55.0);
+
+      const resultT = parseNaturalInvestmentLine("12/08 comprei 20 T a 18.25", 2026);
+      expect(resultT).not.toBeNull();
+      expect(resultT?.ticker).toBe("T");
+      expect(resultT?.currency).toBe("USD");
+      expect(resultT?.quantity).toBe(20);
+    });
+
     it("interpreta split / desdobramento", () => {
       const result = parseNaturalInvestmentLine("01/06 desdobramento 2 para 1 em MGLU3", 2026);
       expect(result).not.toBeNull();

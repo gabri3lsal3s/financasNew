@@ -31,7 +31,7 @@ export interface QuoteUpsertRow {
  * Normaliza o ticker armazenado para o formato da API Yahoo Finance:
  *   • B3 com número (PETR4, BOVA11, IVVB11) → sufixo `.SA`;
  *   • já com sufixo/`=`/`-` (PETR4.SA, USDBRL=X, BTC-BRL) → mantém;
- *   • internacional puro 2–5 letras (AAPL, MSFT) → mantém.
+ *   • internacional puro 1–5 letras (AAPL, MSFT, O, T) → mantém.
  * Retorna "" para entrada vazia (inválida para a API).
  */
 export function normalizeTickerForApi(raw: string): string {
@@ -39,7 +39,7 @@ export function normalizeTickerForApi(raw: string): string {
   if (!ticker) return "";
   if (ticker.endsWith(".SA")) return ticker;
   if (ticker.includes("=") || ticker.includes("-") || ticker.includes(".")) return ticker;
-  if (/^[A-Za-z]{2,5}$/.test(ticker)) return ticker;
+  if (/^[A-Za-z]{1,5}$/.test(ticker)) return ticker;
   return `${ticker}.SA`;
 }
 

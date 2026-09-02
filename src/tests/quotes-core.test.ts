@@ -30,7 +30,12 @@ describe("normalizeTickerForApi — ticker armazenado → formato Yahoo", () => 
     expect(normalizeTickerForApi("BTC-USD")).toBe("BTC-USD");
   });
 
-  it("internacional puro (2–5 letras) é mantido", () => {
+  it("internacional puro (1–5 letras) é mantido sem sufixo .SA", () => {
+    expect(normalizeTickerForApi("O")).toBe("O");
+    expect(normalizeTickerForApi("T")).toBe("T");
+    expect(normalizeTickerForApi("C")).toBe("C");
+    expect(normalizeTickerForApi("F")).toBe("F");
+    expect(normalizeTickerForApi("V")).toBe("V");
     expect(normalizeTickerForApi("AAPL")).toBe("AAPL");
     expect(normalizeTickerForApi("msft")).toBe("MSFT");
   });

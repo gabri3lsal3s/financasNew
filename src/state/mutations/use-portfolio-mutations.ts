@@ -611,33 +611,55 @@ export function useRecordOrder() {
                 ? asset.average_price
                 : asset.quantity;
           const orderAmount = total > 0 ? total : price;
-          const newTotalApplied = Math.round(Math.max(0, currentCost - orderAmount) * 100) / 100;
 
-          // Se Renda Fixa tributada, calcula retenção de IRRF para o crédito líquido no Caixa
-          if (asset.fixed_income_metadata && !asset.fixed_income_metadata.is_tax_exempt) {
+          let newTotalApplied: number;
+
+          if (asset.fixed_income_metadata) {
+            const baseValue =
+              asset.fixed_income_metadata.base_value !== undefined &&
+              asset.fixed_income_metadata.base_value !== null &&
+              asset.fixed_income_metadata.base_value > 0
+                ? asset.fixed_income_metadata.base_value
+                : currentCost;
+
             const fiRes = calculateFixedIncomeBalance({
-              baseValue: currentCost,
+              baseValue,
               baseDate: asset.fixed_income_metadata.base_date,
               initialInvestmentDate: asset.fixed_income_metadata.initial_investment_date,
               maturityDate: asset.fixed_income_metadata.maturity_date,
               rateType: asset.fixed_income_metadata.rate_type,
               rateValue: asset.fixed_income_metadata.rate_value,
-              isTaxExempt: false,
+              isTaxExempt: asset.fixed_income_metadata.is_tax_exempt,
+              manualTaxRatePct: asset.fixed_income_metadata.manual_tax_rate_pct,
+              totalCost: currentCost,
               today: date,
             });
-            if (fiRes.taxAmount > 0) {
-              const proportion = currentCost > 0 ? Math.min(1, orderAmount / currentCost) : 1;
-              const estimatedTax = Math.round(fiRes.taxAmount * proportion * 100) / 100;
-              netCreditBRL = Math.max(0, Math.round((totalBRL - estimatedTax) * 100) / 100);
-            }
+
+            const grossBalance = Math.max(fiRes.grossValue, currentCost);
+            const isFullRedemption = orderAmount >= grossBalance || orderAmount >= currentCost;
+
+            const proportion = grossBalance > 0 ? Math.min(1, orderAmount / grossBalance) : 1;
+            const estimatedTax = asset.fixed_income_metadata.is_tax_exempt
+              ? 0
+              : Math.round(fiRes.taxAmount * proportion * 100) / 100;
+
+            netCreditBRL = Math.max(0, Math.round((totalBRL - estimatedTax) * 100) / 100);
+
+            newTotalApplied = isFullRedemption
+              ? 0
+              : Math.max(0, Math.round(currentCost * (1 - proportion) * 100) / 100);
+          } else {
+            newTotalApplied = Math.round(Math.max(0, currentCost - orderAmount) * 100) / 100;
           }
 
-          const updatedFiMetadata = asset.fixed_income_metadata
-            ? {
-                ...asset.fixed_income_metadata,
-                base_date: newTotalApplied > 0 ? date : asset.fixed_income_metadata.base_date,
-              }
-            : null;
+          const updatedFiMetadata =
+            asset.fixed_income_metadata && newTotalApplied > 0
+              ? {
+                  ...asset.fixed_income_metadata,
+                  base_date: date,
+                  base_value: newTotalApplied,
+                }
+              : asset.fixed_income_metadata;
 
           await updateAsset.mutateAsync({
             id: asset.id,

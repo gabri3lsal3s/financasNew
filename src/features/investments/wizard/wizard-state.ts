@@ -6,6 +6,7 @@ import {
   isFixedIncomeClass,
   isTesouroAsset,
 } from "@/domain/portfolio/valuation";
+import { calculateFixedIncomeBalance } from "@/domain/portfolio/fixed-income";
 import { cleanTicker } from "@/domain/portfolio/tickers-catalog";
 import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
@@ -110,6 +111,72 @@ export const defaultWizardState: InvestmentWizardState = {
 export const parseNumber = parseDecimalNumber;
 
 /**
+ * Retorna as informações contábeis e fiscais para resgate de Renda Fixa / Valor Completo.
+ */
+export function getFixedIncomeRedemptionInfo(
+  asset: PortfolioAsset | null,
+  date: string = todayISO(),
+): {
+  appliedCost: number;
+  grossValue: number;
+  netValue: number;
+  taxAmount: number;
+  taxRatePct: number;
+  isMatured: boolean;
+} {
+  if (!asset) {
+    return { appliedCost: 0, grossValue: 0, netValue: 0, taxAmount: 0, taxRatePct: 0, isMatured: false };
+  }
+
+  const appliedCost =
+    asset.quantity > 1 && asset.average_price > 0
+      ? Math.round(asset.quantity * asset.average_price * 100) / 100
+      : asset.average_price > 0
+        ? asset.average_price
+        : asset.quantity;
+
+  if (!asset.fixed_income_metadata) {
+    return {
+      appliedCost,
+      grossValue: appliedCost,
+      netValue: appliedCost,
+      taxAmount: 0,
+      taxRatePct: 0,
+      isMatured: false,
+    };
+  }
+
+  const baseValue =
+    asset.fixed_income_metadata.base_value !== undefined &&
+    asset.fixed_income_metadata.base_value !== null &&
+    asset.fixed_income_metadata.base_value > 0
+      ? asset.fixed_income_metadata.base_value
+      : appliedCost;
+
+  const fiRes = calculateFixedIncomeBalance({
+    baseValue,
+    baseDate: asset.fixed_income_metadata.base_date,
+    initialInvestmentDate: asset.fixed_income_metadata.initial_investment_date,
+    maturityDate: asset.fixed_income_metadata.maturity_date,
+    rateType: asset.fixed_income_metadata.rate_type,
+    rateValue: asset.fixed_income_metadata.rate_value,
+    isTaxExempt: asset.fixed_income_metadata.is_tax_exempt,
+    manualTaxRatePct: asset.fixed_income_metadata.manual_tax_rate_pct,
+    totalCost: appliedCost,
+    today: date,
+  });
+
+  return {
+    appliedCost,
+    grossValue: Math.max(fiRes.grossValue, appliedCost),
+    netValue: fiRes.netValue,
+    taxAmount: fiRes.taxAmount,
+    taxRatePct: fiRes.taxRatePct,
+    isMatured: fiRes.isMatured,
+  };
+}
+
+/**
  * Retorna os passos dinâmicos do Wizard conforme o modo de operação.
  */
 export function getWizardSteps(mode: WizardMode): readonly { title: string; subtitle: string }[] {
@@ -196,9 +263,10 @@ export function canProceed(state: InvestmentWizardState): boolean {
     }
     if (state.step === 2) {
       if (isTotalValue) {
-        const balance = state.selectedAsset?.average_price ?? 0;
+        const { grossValue, appliedCost } = getFixedIncomeRedemptionInfo(state.selectedAsset, state.date);
         const sellAmount = total > 0 ? total : price;
-        return sellAmount > 0 && (balance === 0 || sellAmount <= balance);
+        const maxLimit = Math.max(grossValue, appliedCost);
+        return sellAmount > 0 && (maxLimit === 0 || sellAmount <= maxLimit * 1.005);
       }
       const maxQty = state.selectedAsset?.quantity ?? 0;
       return parsedQty > 0 && parsedQty <= maxQty && price > 0;
@@ -303,16 +371,39 @@ export function calculateInvestmentPreview(
     const amountNative = inputTotal > 0 ? inputTotal : inputPrice;
     const amountBRL = Math.round(amountNative * rate * 100) / 100;
     if (state.mode === "sell") {
+      const { grossValue, appliedCost, taxAmount } = getFixedIncomeRedemptionInfo(
+        state.selectedAsset,
+        state.date,
+      );
+      const isFullRedemption = amountNative >= grossValue || amountNative >= appliedCost;
+
+      let estimatedTax = 0;
+      if (taxAmount > 0) {
+        const proportion = grossValue > 0 ? Math.min(1, amountNative / grossValue) : 1;
+        estimatedTax = Math.round(taxAmount * proportion * 100) / 100;
+      }
+
+      const netCreditBRL = Math.max(0, Math.round((amountBRL - estimatedTax) * 100) / 100);
+      const proportion = grossValue > 0 ? Math.min(1, amountNative / grossValue) : 1;
+      const newAveragePrice = isFullRedemption
+        ? 0
+        : Math.max(0, Math.round(appliedCost * (1 - proportion) * 100) / 100);
+
+      const costBasis = isFullRedemption ? appliedCost : Math.round(appliedCost * proportion * 100) / 100;
+      const realizedProfit = Math.round((amountBRL - costBasis) * 100) / 100;
+
       return {
         currentQuantity: 1,
         currentAveragePrice: currentAvgPrice,
-        newQuantity: amountNative >= currentAvgPrice ? 0 : 1,
-        newAveragePrice: Math.max(0, currentAvgPrice - amountNative),
+        newQuantity: isFullRedemption ? 0 : 1,
+        newAveragePrice,
         totalOrderValueNative: amountNative,
         totalOrderValueBRL: amountBRL,
         cashDebitBRL: 0,
-        cashCreditBRL: state.syncCash ? amountBRL : 0,
+        cashCreditBRL: state.syncCash ? netCreditBRL : 0,
         contributionBRL: 0,
+        realizedPnl: realizedProfit,
+        realizedPnlPct: costBasis > 0 ? Math.round((realizedProfit / costBasis) * 10000) / 100 : 0,
       };
     }
     let cashDebitBRL = 0;

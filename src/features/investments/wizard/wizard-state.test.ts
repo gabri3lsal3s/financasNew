@@ -247,8 +247,51 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       expect(preview.newAveragePrice).toBe(3000.0);
       expect(preview.totalOrderValueBRL).toBe(2000.0);
 
-      // Bloqueia se valor do resgate for maior que o saldo aplicado
+      // Bloqueia se valor do resgate for maior que o limite máximo disponível sem metadados
       expect(canProceed({ ...state, totalCents: 600000 })).toBe(false);
+    });
+
+    it("permite e calcula resgate total e liquidação de Renda Fixa pelo valor rentabilizado acumulado", () => {
+      const rfAssetWithGrowth: PortfolioAsset = {
+        id: "rf-growth-1",
+        user_id: "u-1",
+        ticker: "CDB-FACTA",
+        asset_class: "Renda Fixa",
+        currency: "BRL",
+        quantity: 1,
+        average_price: 1236.27, // Custo inicial aplicado
+        fixed_income_metadata: {
+          rate_type: "pre",
+          rate_value: 15.0, // 15% a.a. pré
+          base_date: "2025-01-01",
+          initial_investment_date: "2025-01-01",
+          maturity_date: "2026-09-02",
+          is_tax_exempt: false,
+          base_value: 1236.27,
+        },
+      };
+
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "sell",
+        step: 2,
+        selectedAsset: rfAssetWithGrowth,
+        ticker: "CDB-FACTA",
+        assetClass: "Renda Fixa",
+        date: "2026-09-02",
+        syncCash: true,
+        totalCents: 140000, // R$ 1.400,00 (maior que o aplicado R$ 1.236,27 devido aos juros)
+      };
+
+      // canProceed deve permitir valor rentabilizado
+      expect(canProceed(state)).toBe(true);
+
+      const preview = calculateInvestmentPreview(state);
+      expect(preview.totalOrderValueBRL).toBe(1400.0);
+      expect(preview.newQuantity).toBe(0); // Liquidação total
+      expect(preview.newAveragePrice).toBe(0);
+      expect(preview.cashCreditBRL).toBeGreaterThan(1236.27);
+      expect(preview.realizedPnl).toBeGreaterThan(0);
     });
 
     it("calcula preview de compra de ativo em USD convertendo impacto em caixa e aporte para BRL", () => {

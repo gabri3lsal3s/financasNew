@@ -115,7 +115,7 @@ export function QuickTransactionSheet({
     });
   }, [targetAsset, isCash, isTotalValue, parsedQty, priceCents]);
 
-  // Prévia Tributária de Renda Fixa no Resgate (Fase 63/72)
+  // Prévia de Resgate de Renda Fixa & Tributação (Fase 63)
   const fixedIncomeSellTaxPreview = useMemo(() => {
     if (
       type !== "sell" ||
@@ -129,31 +129,46 @@ export function QuickTransactionSheet({
     const currentCost = targetAsset.average_price > 0 ? targetAsset.average_price : 0;
     const withdrawGross = (totalCents || priceCents) / 100;
 
+    const baseValue =
+      targetAsset.fixed_income_metadata.base_value !== undefined &&
+      targetAsset.fixed_income_metadata.base_value !== null &&
+      targetAsset.fixed_income_metadata.base_value > 0
+        ? targetAsset.fixed_income_metadata.base_value
+        : currentCost;
+
     const fiRes = calculateFixedIncomeBalance({
-      baseValue: currentCost,
+      baseValue,
       baseDate: targetAsset.fixed_income_metadata.base_date,
       initialInvestmentDate: targetAsset.fixed_income_metadata.initial_investment_date,
       maturityDate: targetAsset.fixed_income_metadata.maturity_date,
       rateType: targetAsset.fixed_income_metadata.rate_type,
       rateValue: targetAsset.fixed_income_metadata.rate_value,
       isTaxExempt: targetAsset.fixed_income_metadata.is_tax_exempt,
+      manualTaxRatePct: targetAsset.fixed_income_metadata.manual_tax_rate_pct,
+      totalCost: currentCost,
       today: date,
     });
 
     const isExempt = Boolean(targetAsset.fixed_income_metadata.is_tax_exempt);
-    const proportion = currentCost > 0 ? Math.min(1, withdrawGross / currentCost) : 1;
+    const grossBalance = Math.max(fiRes.grossValue, currentCost);
+    const proportion = grossBalance > 0 ? Math.min(1, withdrawGross / grossBalance) : 1;
     const estimatedTax = isExempt ? 0 : Math.round(fiRes.taxAmount * proportion * 100) / 100;
     const netCredit = Math.max(0, Math.round((withdrawGross - estimatedTax) * 100) / 100);
 
     return {
       grossAmount: withdrawGross,
+      grossBalance,
+      netBalance: fiRes.netValue,
       taxRatePct: isExempt ? 0 : fiRes.taxRatePct,
       taxAmount: estimatedTax,
       netCredit,
       isExempt,
       taxCountdown: fiRes.taxCountdown,
+      isMatured: fiRes.isMatured,
     };
   }, [type, targetAsset, totalCents, priceCents, date]);
+
+  const fiSellResult = fixedIncomeSellTaxPreview;
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
@@ -187,8 +202,9 @@ export function QuickTransactionSheet({
           setError("Informe o valor do resgate.");
           return;
         }
-        if (total > targetAsset.average_price) {
-          setError(`Valor excede o saldo aplicado atual (R$ ${targetAsset.average_price.toFixed(2)}).`);
+        const maxBalance = fiSellResult?.grossBalance ?? targetAsset.average_price;
+        if (maxBalance > 0 && total > maxBalance * 1.005) {
+          setError(`Valor excede o saldo bruto acumulado (R$ ${maxBalance.toFixed(2)}).`);
           return;
         }
       }
@@ -471,7 +487,7 @@ export function QuickTransactionSheet({
                     placeholder="R$ 0,00"
                     aria-label="Valor a resgatar em renda fixa"
                   />
-                  {/* Atalhos rápidos de percentual do saldo aplicado */}
+                  {/* Atalhos rápidos de percentual do saldo total */}
                   <div className="flex items-center gap-2 pt-1">
                     <span className="text-[11px] text-muted-foreground">Resgatar:</span>
                     {[
@@ -484,7 +500,7 @@ export function QuickTransactionSheet({
                         key={s.label}
                         type="button"
                         onClick={() => {
-                          const balance = targetAsset?.average_price ?? 0;
+                          const balance = fixedIncomeSellTaxPreview?.grossBalance ?? targetAsset?.average_price ?? 0;
                           const cents = Math.round(balance * s.pct * 100);
                           setTotalCents(cents);
                           setPriceCents(cents);

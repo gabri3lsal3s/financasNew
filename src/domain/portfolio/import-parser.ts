@@ -176,6 +176,20 @@ export function identifyTransactionType(text: string): PortfolioTransactionType 
   return "buy";
 }
 
+/** Tickers de 1 letra conhecidos do mercado americano (NYSE / Nasdaq). */
+export const KNOWN_SINGLE_LETTER_US_TICKERS = new Set([
+  "O", // Realty Income
+  "T", // AT&T
+  "C", // Citigroup
+  "F", // Ford Motor
+  "V", // Visa
+  "K", // Kellanova
+  "M", // Macy's
+  "W", // Wayfair
+  "X", // US Steel
+  "Z", // Zillow
+]);
+
 /**
  * Extrai e normaliza o Ticker a partir de strings da B3 e texto livre:
  * - Trata fracionário B3: PETR4F -> PETR4, VALE3F -> VALE3
@@ -206,18 +220,24 @@ export function extractTickerFromText(text: string): { ticker: string; textWitho
     return { ticker, textWithoutTicker: clean.replace(cryptoMatch[0], " ").trim() };
   }
 
-  // 4. Tickers Internacionais (2 a 5 letras isoladas em maiúsculo, ex.: AAPL, MSFT, NVDA, TSLA, IVV, QQQ)
-  const usMatch = /\b([A-Z]{2,5})\b/.exec(clean);
-  if (usMatch && usMatch[1]) {
-    const ignoredWords = new Set([
-      "POR", "COM", "SEM", "HOJE", "ONTEM", "DE", "EM", "NA", "NO", "A", "O",
-      "BRL", "USD", "R", "CADA", "VALOR", "LOTE", "TIPO", "DATA", "QTD", "TOTAL",
-      "PRECO", "PREÇO", "COMPRA", "VENDA", "SAIDA", "ENTRADA", "ATIVO", "PAPEL",
-      "FII", "FIIS", "ON", "PN", "NM", "ED", "ER", "CI", "DRN", "BDR", "BR"
-    ]);
-    const candidate = usMatch[1].toUpperCase();
-    if (!ignoredWords.has(candidate)) {
-      return { ticker: candidate, textWithoutTicker: clean.replace(usMatch[0], " ").trim() };
+  // 4. Tickers Internacionais (1 a 5 letras isoladas em maiúsculo, ex.: AAPL, MSFT, NVDA, TSLA, O, T)
+  const usMatches = clean.matchAll(/\b([A-Z]{1,5})\b/g);
+  const ignoredWords = new Set([
+    "POR", "COM", "SEM", "HOJE", "ONTEM", "DE", "EM", "NA", "NO", "A", "E",
+    "BRL", "USD", "R", "CADA", "VALOR", "LOTE", "TIPO", "DATA", "QTD", "TOTAL",
+    "PRECO", "PREÇO", "COMPRA", "VENDA", "SAIDA", "ENTRADA", "ATIVO", "PAPEL",
+    "FII", "FIIS", "ON", "PN", "NM", "ED", "ER", "CI", "DRN", "BDR", "BR",
+  ]);
+
+  for (const match of usMatches) {
+    const candidate = match[1]?.toUpperCase();
+    if (!candidate) continue;
+    if (candidate.length === 1) {
+      if (KNOWN_SINGLE_LETTER_US_TICKERS.has(candidate)) {
+        return { ticker: candidate, textWithoutTicker: clean.replace(match[0], " ").trim() };
+      }
+    } else if (!ignoredWords.has(candidate)) {
+      return { ticker: candidate, textWithoutTicker: clean.replace(match[0], " ").trim() };
     }
   }
 

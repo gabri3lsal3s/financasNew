@@ -9,6 +9,7 @@ import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAss
 import { cn } from "@/lib/utils";
 import {
   calculateInvestmentPreview,
+  getFixedIncomeRedemptionInfo,
   parseNumber,
   type InvestmentWizardState,
   type WizardMode,
@@ -38,6 +39,11 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
     state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
   );
   const isTotalValue = !isCash && (pricingMode === "total_value" || isFixedIncome);
+
+  const fiInfo = useMemo(() => {
+    if (!isTotalValue) return null;
+    return getFixedIncomeRedemptionInfo(state.selectedAsset, state.date);
+  }, [isTotalValue, state.selectedAsset, state.date]);
 
   const mode = state.mode;
 
@@ -73,8 +79,8 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
   return (
     <div className="flex flex-col gap-5">
       {/* Resumo do Ativo Selecionado */}
-      <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface/80 p-3.5">
-        <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/80 p-3.5">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-mono text-base font-bold text-foreground">{state.ticker}</span>
             <Badge variant="muted" className="text-[10px]">
@@ -85,20 +91,46 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                 Valor Completo
               </Badge>
             )}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {isTotalValue ? (
-              <>
-                Saldo Aplicado:{" "}
-                <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
-              </>
-            ) : (
-              <>
-                Posição Atual: {state.selectedAsset?.quantity ?? 0} cotas · PM:{" "}
-                <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
-              </>
+            {fiInfo?.isMatured && (
+              <Badge variant="critical" className="text-[10px]">
+                Vencido
+              </Badge>
             )}
-          </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {isTotalValue ? (
+            <>
+              <span>
+                Saldo Aplicado:{" "}
+                <strong className="font-mono font-medium text-foreground">
+                  <MoneyText cents={numberToCents(fiInfo?.appliedCost ?? state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
+                </strong>
+              </span>
+              {fiInfo && fiInfo.grossValue > fiInfo.appliedCost && (
+                <>
+                  <span>
+                    Saldo Bruto:{" "}
+                    <strong className="font-mono font-medium text-positive-strong">
+                      <MoneyText cents={numberToCents(fiInfo.grossValue)} currency={state.currency} />
+                    </strong>
+                  </span>
+                  <span>
+                    Líquido Estimado:{" "}
+                    <strong className="font-mono font-medium text-foreground">
+                      <MoneyText cents={numberToCents(fiInfo.netValue)} currency={state.currency} />
+                    </strong>
+                  </span>
+                </>
+              )}
+            </>
+          ) : (
+            <span>
+              Posição Atual: {state.selectedAsset?.quantity ?? 0} cotas · PM:{" "}
+              <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
+            </span>
+          )}
         </div>
       </div>
 
@@ -295,7 +327,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                   aria-label="Valor a resgatar em renda fixa"
                 />
 
-                {/* Atalhos rápidos de percentual do saldo aplicado */}
+                {/* Atalhos rápidos de percentual do saldo total */}
                 <div className="flex items-center gap-2 pt-1">
                   <span className="text-[11px] text-muted-foreground">Resgatar:</span>
                   {[
@@ -308,8 +340,8 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                       key={s.label}
                       type="button"
                       onClick={() => {
-                        const balance = state.selectedAsset?.average_price ?? 0;
-                        const cents = Math.round(balance * s.pct * 100);
+                        const targetBalance = fiInfo?.grossValue || state.selectedAsset?.average_price || 0;
+                        const cents = Math.round(targetBalance * s.pct * 100);
                         onChange({ totalCents: cents, priceCents: cents });
                       }}
                       className="rounded-md border border-border/70 bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
@@ -362,19 +394,39 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
             </div>
           </div>
 
-          {/* Prévia de Ganho/Perda de Capital */}
+          {/* Prévia de Resgate e Liquidação */}
           {isTotalValue && (state.totalCents > 0 || state.priceCents > 0) ? (
             <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-4">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Saldo restante após resgate:</span>
+                <span className="text-muted-foreground">Valor Bruto do Resgate:</span>
                 <span className="font-mono font-bold text-sm text-foreground">
-                  <MoneyText
-                    cents={Math.max(
-                      0,
-                      numberToCents((state.selectedAsset?.average_price ?? 0) - (state.totalCents || state.priceCents) / 100),
-                    )}
-                    currency={state.currency}
-                  />
+                  <MoneyText cents={state.totalCents || state.priceCents} currency={state.currency} />
+                </span>
+              </div>
+              {preview.cashCreditBRL !== undefined && state.syncCash && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Crédito Líquido no Caixa:</span>
+                  <span className="font-mono font-bold text-sm text-positive-strong">
+                    <MoneyText cents={numberToCents(preview.cashCreditBRL)} currency="BRL" />
+                  </span>
+                </div>
+              )}
+              {preview.realizedPnl !== undefined && preview.realizedPnl > 0 && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Rendimento Realizado:</span>
+                  <span className="font-mono font-bold text-xs text-positive-strong">
+                    +<MoneyText cents={numberToCents(preview.realizedPnl)} currency={state.currency} /> ({preview.realizedPnlPct?.toFixed(1)}%)
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-xs border-t border-border/60 pt-2">
+                <span className="text-muted-foreground">Saldo aplicado residual:</span>
+                <span className="font-mono font-bold text-xs text-foreground">
+                  {preview.newQuantity === 0 ? (
+                    <Badge variant="muted" className="text-[10px]">Posição Encerrada</Badge>
+                  ) : (
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
+                  )}
                 </span>
               </div>
             </div>
