@@ -10,6 +10,9 @@
 
 import {
   isCashAssetClass,
+  isFixedIncomeClass,
+  isPrivateFixedIncomeTicker,
+  isTesouroAsset,
   normalizeTesouroTicker,
   normalizeTickerForApi,
   normalizeTickerForBrapi,
@@ -250,6 +253,9 @@ export async function fetchOnlineQuote(ticker: string): Promise<ParsedQuote | nu
   const normalized = ticker.trim().toUpperCase();
   if (!normalized) return null;
 
+  // Instrumentos de renda fixa privada (CDB, LCI, LCA, etc.) não possuem cotação em bolsa
+  if (isPrivateFixedIncomeTicker(normalized)) return null;
+
   // 1. AwesomeAPI primeiro para Câmbio e Cripto (CORS aberto, altíssima velocidade)
   const awesome = await fetchAwesomeApi(normalized);
   if (awesome) return awesome;
@@ -276,6 +282,8 @@ export async function syncQuoteForTicker(
   assetClass?: string | null,
 ): Promise<ParsedQuote | null> {
   if (isCashAssetClass(assetClass ?? null)) return null;
+  if (isFixedIncomeClass(assetClass ?? null) && !isTesouroAsset(ticker, assetClass)) return null;
+  if (isPrivateFixedIncomeTicker(ticker)) return null;
 
   const quote = await fetchOnlineQuote(ticker);
   if (quote && quote.price > 0) {
@@ -296,7 +304,14 @@ export async function syncQuoteForTicker(
 export async function syncQuotesForAssets(
   assets: { ticker: string; asset_class?: string | null }[],
 ): Promise<number> {
-  const eligible = assets.filter((a) => !isCashAssetClass(a.asset_class ?? null));
+  const eligible = assets.filter((a) => {
+    if (isCashAssetClass(a.asset_class ?? null)) return false;
+    if (isFixedIncomeClass(a.asset_class ?? null) && !isTesouroAsset(a.ticker, a.asset_class)) {
+      return false;
+    }
+    if (isPrivateFixedIncomeTicker(a.ticker)) return false;
+    return true;
+  });
 
   // Garante que a cotação do dólar USDBRL=X seja sempre sincronizada
   const tickersToFetch = new Set(eligible.map((a) => a.ticker.trim().toUpperCase()));

@@ -69,6 +69,7 @@ describe("quotes service", () => {
     const updated = await syncQuotesForAssets([
       { ticker: "BOVA11", asset_class: "ETF" },
       { ticker: "RESERVA", asset_class: "caixa" },
+      { ticker: "CDB-FACTA", asset_class: "Renda Fixa" },
     ]);
 
     expect(updated).toBe(1);
@@ -76,6 +77,17 @@ describe("quotes service", () => {
     expect(mockSetAssetPricesBatch).toHaveBeenCalledWith([
       { ticker: "BOVA11", price: 120.0, currency: "BRL" },
     ]);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("syncQuoteForTicker ignora renda fixa privada sem fazer fetch", async () => {
+    const globalFetch = vi.fn();
+    vi.stubGlobal("fetch", globalFetch);
+
+    const quote = await syncQuoteForTicker("CDB-FACTA", "Renda Fixa");
+    expect(quote).toBeNull();
+    expect(globalFetch).not.toHaveBeenCalled();
 
     vi.unstubAllGlobals();
   });

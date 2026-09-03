@@ -16,15 +16,36 @@ export interface ParsedQuote {
 }
 
 /**
+ * Identifica se um ticker corresponde a um instrumento de renda fixa privada
+ * (CDB, LCI, LCA, CRI, CRA, RDB, LC, Debêntures) que não possui cotação pública em bolsa.
+ */
+export function isPrivateFixedIncomeTicker(raw: string): boolean {
+  const ticker = raw.trim().toUpperCase();
+  if (!ticker) return false;
+  return (
+    ticker.startsWith("CDB") ||
+    ticker.startsWith("LCI") ||
+    ticker.startsWith("LCA") ||
+    ticker.startsWith("CRI") ||
+    ticker.startsWith("CRA") ||
+    ticker.startsWith("RDB") ||
+    ticker.startsWith("LC-") ||
+    ticker.startsWith("LC_") ||
+    ticker.startsWith("DEB")
+  );
+}
+
+/**
  * Normaliza o ticker armazenado para o formato da API Yahoo Finance:
  *   • B3 com número (PETR4, BOVA11, IVVB11) → sufixo `.SA`;
  *   • já com sufixo/`=`/`-` (PETR4.SA, USDBRL=X, BTC-BRL) → mantém;
- *   • internacional puro 1–5 letras (AAPL, MSFT, O, T) → mantém.
- * Retorna "" para entrada vazia.
+ *   • internacional puro 1–5 letras (AAPL, MSFT, O, T) → mantém;
+ *   • Renda Fixa Privada (CDB, LCI, etc.) → retorna "" (sem cotação de bolsa).
+ * Retorna "" para entrada vazia ou não elegível.
  */
 export function normalizeTickerForApi(raw: string): string {
   const ticker = raw.trim().toUpperCase();
-  if (!ticker) return "";
+  if (!ticker || isPrivateFixedIncomeTicker(ticker)) return "";
   if (ticker.endsWith(".SA")) return ticker;
   if (ticker.includes("=") || ticker.includes("-") || ticker.includes(".")) return ticker;
   if (/^[A-Za-z]{1,5}$/.test(ticker)) return ticker;
@@ -33,9 +54,11 @@ export function normalizeTickerForApi(raw: string): string {
 
 /**
  * Normaliza o ticker para a API Brapi (remove sufixo `.SA` se presente).
+ * Retorna "" para Renda Fixa Privada ou ticker inválido.
  */
 export function normalizeTickerForBrapi(raw: string): string {
   const ticker = raw.trim().toUpperCase();
+  if (!ticker || isPrivateFixedIncomeTicker(ticker)) return "";
   if (ticker.endsWith(".SA")) return ticker.slice(0, -3);
   return ticker;
 }

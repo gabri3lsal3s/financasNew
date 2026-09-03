@@ -41,6 +41,9 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    modulePreload: false,
+  },
   resolve: {
     alias: {
       "@": path.resolve(process.cwd(), "src"),

@@ -4327,6 +4327,35 @@ flowchart TD
 - [x] Typecheck (`tsc -b`) e linter (`eslint .`) com zero erros.
 - [x] Build de produção limpo com PWA gerado com sucesso.
 
+---
+
+### 🛡️ FASE 85 — Saneamento de Warnings de Produção PWA & Blindagem de Cotações
+
+> **Status:** ✅ Concluída (2026-09-02) — **Higiene de Console & Resiliência em Produção**: Eliminação de todos os avisos e erros de console em produção reportados pelo navegador: correção do tipo de `theme_color` no manifest, inclusão da meta tag `<meta name="mobile-web-app-capable" content="yes">`, desativação de `modulePreload` indiscriminado contra mismatches de Service Worker, e blindagem de consultas de cotação online contra instrumentos de Renda Fixa Privada (CDB, LCI, LCA) e posições encerradas.
+>
+> **Objetivo:** Garantir console limpo, estrita conformidade com as diretivas do Chrome/PWA e prevenir requisições e falhas de rede desnecessárias para a Brapi e Yahoo Finance.
+
+#### 1. Entregas Realizadas
+- **Blindagem do Motor de Cotações:**
+  - `src/domain/portfolio/quotes.ts`: Criada a função pura `isPrivateFixedIncomeTicker` e atualizadas `normalizeTickerForApi` e `normalizeTickerForBrapi` para ignorar títulos privados (CDB, LCI, LCA, CRI, CRA, RDB, LC, Debêntures);
+  - `src/services/quotes.ts`: Atualizados `fetchOnlineQuote`, `syncQuoteForTicker` e `syncQuotesForAssets` para não consultar bolsa para renda fixa privada;
+  - `src/features/investments/pages/resumo-tab.tsx`: Auto-sync filtra ativos de renda fixa privada e ativos com quantidade zerada (`quantity <= 0`);
+  - Testes unitários atualizados e aprovados em `quotes.test.ts` (domínio e serviços).
+- **Adequação PWA e Manifest:**
+  - `public/pwa/manifest.webmanifest`: Corrigido `theme_color` de formato array para string `"#0C1923"` conforme W3C;
+  - `index.html`: Adicionada a meta tag `<meta name="mobile-web-app-capable" content="yes" />`.
+- **Eliminação de Mismatches de Service Worker:**
+  - `vite.config.ts`: Configurado `build.modulePreload: false`, eliminando os avisos de `cross-world service worker resource mismatch` e links de preload ociosos.
+
+**✅ DoD (Definition of Done da Fase 85):**
+- [x] `manifest.webmanifest` em conformidade estrita com a W3C (`theme_color` tipo string).
+- [x] Meta tag moderna `mobile-web-app-capable` presente no `index.html`.
+- [x] Conflitos de `modulepreload` com o Service Worker eliminados via `build.modulePreload: false`.
+- [x] Instrumentos de renda fixa privada (ex.: CDB-FACTA) blindados de requisições de bolsa (zero erros 401/404/CORS).
+- [x] Suíte completa de testes 100% verde (276 arquivos / 1.954 testes).
+- [x] Typecheck e lint limpos sem advertências.
+- [x] Build de produção limpo e testado.
+
 
 
 

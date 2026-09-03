@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isPrivateFixedIncomeTicker,
   normalizeTesouroTicker,
   normalizeTickerForApi,
   normalizeTickerForBrapi,
@@ -10,10 +11,36 @@ import {
   parseYahooChartResponse,
 } from "./quotes";
 
+describe("isPrivateFixedIncomeTicker", () => {
+  it("identifica corretamente títulos de renda fixa privada", () => {
+    expect(isPrivateFixedIncomeTicker("CDB-FACTA")).toBe(true);
+    expect(isPrivateFixedIncomeTicker("CDB INTER")).toBe(true);
+    expect(isPrivateFixedIncomeTicker("LCI CAIXA")).toBe(true);
+    expect(isPrivateFixedIncomeTicker("LCA BANCO DO BRASIL")).toBe(true);
+    expect(isPrivateFixedIncomeTicker("CRI KINEA")).toBe(true);
+    expect(isPrivateFixedIncomeTicker("CRA VALE")).toBe(true);
+    expect(isPrivateFixedIncomeTicker("RDB NUBANK")).toBe(true);
+    expect(isPrivateFixedIncomeTicker("DEB-VALE")).toBe(true);
+  });
+
+  it("retorna false para ações, FIIs e ativos de bolsa", () => {
+    expect(isPrivateFixedIncomeTicker("PETR4")).toBe(false);
+    expect(isPrivateFixedIncomeTicker("VALE3")).toBe(false);
+    expect(isPrivateFixedIncomeTicker("HGLG11")).toBe(false);
+    expect(isPrivateFixedIncomeTicker("AAPL")).toBe(false);
+    expect(isPrivateFixedIncomeTicker("O")).toBe(false);
+  });
+});
+
 describe("normalizeTickerForApi", () => {
   it("B3 com número ganha sufixo .SA", () => {
     expect(normalizeTickerForApi("PETR4")).toBe("PETR4.SA");
     expect(normalizeTickerForApi("BOVA11")).toBe("BOVA11.SA");
+  });
+
+  it("renda fixa privada retorna string vazia (sem cotação em bolsa)", () => {
+    expect(normalizeTickerForApi("CDB-FACTA")).toBe("");
+    expect(normalizeTickerForApi("LCI-ITAU")).toBe("");
   });
 
   it("já com sufixo ou câmbio é mantido", () => {
@@ -39,6 +66,10 @@ describe("normalizeTickerForBrapi", () => {
   it("remove .SA se presente", () => {
     expect(normalizeTickerForBrapi("PETR4.SA")).toBe("PETR4");
     expect(normalizeTickerForBrapi("VALE3.sa")).toBe("VALE3");
+  });
+
+  it("renda fixa privada retorna vazio para a Brapi", () => {
+    expect(normalizeTickerForBrapi("CDB-FACTA")).toBe("");
   });
 
   it("mantém ticker limpo", () => {

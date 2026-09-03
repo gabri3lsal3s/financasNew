@@ -277,6 +277,7 @@ export type {
   ResolvedPrice,
 } from "./valuation";
 export {
+  isPrivateFixedIncomeTicker,
   normalizeTesouroTicker,
   normalizeTickerForApi,
   normalizeTickerForBrapi,

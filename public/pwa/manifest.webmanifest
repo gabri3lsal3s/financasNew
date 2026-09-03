@@ -10,10 +10,7 @@
   "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "portrait",
   "background_color": "#FFFFFF",
-  "theme_color": [
-    { "color": "#F4F7F9", "media": "(prefers-color-scheme: light)" },
-    { "color": "#0C1923", "media": "(prefers-color-scheme: dark)" }
-  ],
+  "theme_color": "#0C1923",
   "categories": ["finance", "productivity"],
   "icons": [
     { "src": "/pwa/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

@@ -1383,6 +1383,35 @@
   - `src/features/reports/pages/reports-page.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F85 — Saneamento de Warnings de Produção PWA & Blindagem de Cotações
+
+- **Problema:**
+  1. O navegador reportava `property 'theme_color' ignored, type string expected` devido a formato array no `manifest.webmanifest`;
+  2. O Chrome emitia `is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">`;
+  3. Mismatches de preload com o Service Worker (`cross-world service worker resource mismatch` e preloads ociosos) causados por injeção indiscriminada de `modulepreload` pelo Vite;
+  4. Ativos de renda fixa privada (ex.: `CDB-FACTA`) e posições encerradas disparavam requisições desnecessárias para a Brapi e Yahoo Finance, gerando erros 401, 404 e bloqueios de CORS no console.
+- **Solução:**
+  1. **Blindagem do Motor de Cotações (`quotes.ts`):**
+     - Criada a função pura `isPrivateFixedIncomeTicker` para identificar títulos privados (CDB, LCI, LCA, CRI, CRA, RDB, LC, Debêntures);
+     - `normalizeTickerForApi`, `normalizeTickerForBrapi`, `fetchOnlineQuote` e `syncQuotesForAssets` agora ignoram instrumentos de renda fixa privada, evitando consultas inválidas à B3 ou Yahoo;
+     - `resumo-tab.tsx` atualizado para filtrar títulos privados e posições zeradas (`quantity <= 0`) do auto-sync inicial;
+  2. **Adequação PWA & Manifest (`manifest.webmanifest` e `index.html`):**
+     - `theme_color` corrigido para string simples `"#0C1923"` conforme a especificação W3C Web App Manifest;
+     - Adicionada a meta tag moderna `<meta name="mobile-web-app-capable" content="yes" />` em `index.html`;
+  3. **Otimização do Empacotamento (`vite.config.ts`):**
+     - Configurado `build.modulePreload: false` para eliminar a injeção indiscriminada de preloads estáticos de chunks assíncronos no HTML de entrada, extinguindo os conflitos com o Service Worker.
+- **Arquivos criados / alterados:**
+  - `public/pwa/manifest.webmanifest`
+  - `index.html`
+  - `vite.config.ts`
+  - `src/domain/portfolio/quotes.ts`
+  - `src/domain/portfolio/quotes.test.ts`
+  - `src/domain/portfolio/index.ts`
+  - `src/services/quotes.ts`
+  - `src/services/quotes.test.ts`
+  - `src/features/investments/pages/resumo-tab.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

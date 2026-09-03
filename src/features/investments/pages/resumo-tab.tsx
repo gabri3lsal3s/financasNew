@@ -13,7 +13,15 @@ import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonKpi } fro
 
 import { CategoryDonut, CashKpiCard, KpiCard, PositionTable, AllocationDriftCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
-import { calculateAllocationDrift, calculatePortfolioConcentration, inferSectorFromTicker, isCashAssetClass } from "@/domain/portfolio";
+import {
+  calculateAllocationDrift,
+  calculatePortfolioConcentration,
+  inferSectorFromTicker,
+  isCashAssetClass,
+  isFixedIncomeClass,
+  isPrivateFixedIncomeTicker,
+  isTesouroAsset,
+} from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -131,6 +139,9 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     if (autoSyncedRef.current || assetsQuery.isLoading || !assetsQuery.data) return;
     const assetsWithoutQuote = (assetsQuery.data ?? []).filter((a) => {
       if (isCashAssetClass(a.asset_class)) return false;
+      if (isFixedIncomeClass(a.asset_class) && !isTesouroAsset(a.ticker, a.asset_class)) return false;
+      if (isPrivateFixedIncomeTicker(a.ticker)) return false;
+      if (a.quantity <= 0) return false;
       const row = rows.find((r) => r.assetId === a.id);
       return !row || (row.source === "fallback" && row.priceBRL <= 0);
     });
