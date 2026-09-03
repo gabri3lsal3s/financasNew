@@ -76,8 +76,8 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText("Alocação por Classe")).toBeInTheDocument();
     expect(screen.getByText("Ações")).toBeInTheDocument();
     expect(screen.getByText("FIIs")).toBeInTheDocument();
-    expect(screen.getByText("40.0%")).toBeInTheDocument();
-    expect(screen.getByText("60.0%")).toBeInTheDocument();
+    expect(screen.getByText("40,0%")).toBeInTheDocument();
+    expect(screen.getByText("60,0%")).toBeInTheDocument();
   });
 
   it("renderiza ReportStackedBar com distribuição proporcional", () => {
@@ -94,8 +94,8 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText("Distribuição da Carteira")).toBeInTheDocument();
     expect(screen.getByText(/Renda Fixa/)).toBeInTheDocument();
     expect(screen.getByText(/Renda Variável/)).toBeInTheDocument();
-    expect(screen.getByText("30.0%")).toBeInTheDocument();
-    expect(screen.getByText("70.0%")).toBeInTheDocument();
+    expect(screen.getByText("30,0%")).toBeInTheDocument();
+    expect(screen.getByText("70,0%")).toBeInTheDocument();
   });
 
   it("renderiza ReportRiskGauge com zonas e diagnóstico", () => {
@@ -110,7 +110,7 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
 
     expect(screen.getByText("Termômetro de Concentração & Risco")).toBeInTheDocument();
     expect(screen.getByText(/PETR4/)).toBeInTheDocument();
-    expect(screen.getAllByText("18.5%").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("18,5%").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Concentração Moderada")).toBeInTheDocument();
   });
 
@@ -158,9 +158,9 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     );
 
     expect(screen.getByText("Ações")).toBeInTheDocument();
-    expect(screen.getByText("35.0%")).toBeInTheDocument();
-    expect(screen.getByText("40.0%")).toBeInTheDocument();
-    expect(screen.getByText("-5.0%")).toBeInTheDocument();
+    expect(screen.getByText("35,0%")).toBeInTheDocument();
+    expect(screen.getByText("40,0%")).toBeInTheDocument();
+    expect(screen.getByText("-5,0%")).toBeInTheDocument();
   });
 
   it("renderiza ReportClassTables com cabeçalho leve e linha de subtotal contábil no tfoot", () => {

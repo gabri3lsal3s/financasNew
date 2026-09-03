@@ -33,8 +33,10 @@ describe("sanitizeReportText", () => {
     expect(sanitizeReportText(undefined)).toBe("");
   });
 
-  it("mantém strings ASCII padrão inalteradas", () => {
+  it("mantém strings ASCII padrão inalteradas e corrige grafias comuns", () => {
     expect(sanitizeReportText("PETR4")).toBe("PETR4");
     expect(sanitizeReportText("HGLG11 - Fundo Imobiliário")).toBe("HGLG11 - Fundo Imobiliário");
+    expect(sanitizeReportText("Biticoin")).toBe("Bitcoin");
+    expect(sanitizeReportText("BITICOIN")).toBe("Bitcoin");
   });
 });

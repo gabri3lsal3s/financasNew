@@ -62,9 +62,9 @@ export function ReportAllocationDonuts({
   // Variante para o Dossiê Executivo A4 (Impressão/PDF em Largura Total sem fundo branco)
   if (variant === "print") {
     return (
-      <div className={cn("flex flex-col gap-3.5 w-full break-inside-avoid", className)}>
+      <div className={cn("flex flex-col gap-3 w-full", className)}>
         {/* 1. Donut de Classes em Largura Total */}
-        <div className="rounded-xl border border-border/80 bg-transparent p-3.5 print:border-border shadow-2xs break-inside-avoid w-full flex flex-col gap-2">
+        <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs break-inside-avoid w-full flex flex-col gap-2">
           <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5">
               <Layers className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
@@ -86,15 +86,15 @@ export function ReportAllocationDonuts({
                 className="text-[9.5px] font-bold whitespace-nowrap"
               />
             }
-            size={115}
+            size={110}
             strokeWidth={12}
             className="border-0 bg-transparent p-0 shadow-none gap-5 w-full flex-row"
-            legendClassName="grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-1.5 text-[10px]"
+            legendClassName="grid-cols-2 gap-x-6 gap-y-1 text-[10px]"
           />
         </div>
 
         {/* 2. Donut de Setores em Largura Total */}
-        <div className="rounded-xl border border-border/80 bg-transparent p-3.5 print:border-border shadow-2xs break-inside-avoid w-full flex flex-col gap-2">
+        <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs break-inside-avoid w-full flex flex-col gap-2">
           <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5">
               <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
@@ -111,10 +111,10 @@ export function ReportAllocationDonuts({
             segments={preparedSectorSegments}
             centerLabel="Setores"
             centerValue={<span className="text-[10px] font-bold text-foreground">{numSectors}</span>}
-            size={115}
+            size={110}
             strokeWidth={12}
             className="border-0 bg-transparent p-0 shadow-none gap-5 w-full flex-row"
-            legendClassName="grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-1.5 text-[10px]"
+            legendClassName="grid-cols-2 gap-x-6 gap-y-1 text-[10px]"
           />
         </div>
       </div>

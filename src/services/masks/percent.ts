@@ -30,5 +30,9 @@ export function formatSignedPct(value: number | null): string {
   if (value === null || !Number.isFinite(value)) {
     return "—";
   }
-  return `${value > 0 ? "+" : ""}${signedFormatter.format(value)}%`;
+  const formatted = signedFormatter.format(value);
+  if (formatted === "-0,0" || formatted === "0,0") {
+    return "0,0%";
+  }
+  return `${value > 0 ? "+" : ""}${formatted}%`;
 }

@@ -19,6 +19,8 @@ describe("formatSignedPct (percentual com sinal e sufixo)", () => {
     expect(formatSignedPct(12.345)).toBe("+12,3%");
     expect(formatSignedPct(-3)).toBe("-3,0%");
     expect(formatSignedPct(0)).toBe("0,0%");
+    expect(formatSignedPct(-0.001)).toBe("0,0%");
+    expect(formatSignedPct(-0.04)).toBe("0,0%");
   });
 
   it("retorna — para null ou inválidos", () => {

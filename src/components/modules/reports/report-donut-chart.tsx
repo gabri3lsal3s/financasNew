@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { formatPercent } from "@/services/masks/percent";
+import { sanitizeReportText } from "@/domain/reports";
 import { cn } from "@/lib/utils";
 
 export interface ReportDonutSegment {
@@ -175,8 +177,8 @@ export function ReportDonutChart({
                   style={{ backgroundColor: segment.color }}
                   aria-hidden="true"
                 />
-                <span className="truncate text-foreground font-medium print:text-slate-800 text-[11px] sm:text-xs">
-                  {segment.label}
+                <span className="truncate text-foreground font-medium print:text-slate-800 text-[11px] sm:text-xs print:truncate-none print:whitespace-normal">
+                  {sanitizeReportText(segment.label)}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
@@ -186,7 +188,7 @@ export function ReportDonutChart({
                   </span>
                 )}
                 <span className="num font-mono font-bold text-foreground text-[11px] sm:text-xs">
-                  {segment.pct.toFixed(1)}%
+                  {formatPercent(segment.pct)}%
                 </span>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { formatPercent } from "@/services/masks/percent";
 import { cn } from "@/lib/utils";
 
 export interface ReportStackedSegment {
@@ -57,7 +58,7 @@ export function ReportStackedBar({
               width: `${Math.max(segment.pct, 0.5)}%`,
               backgroundColor: segment.color,
             }}
-            title={`${segment.label}: ${segment.pct.toFixed(1)}%`}
+            title={`${segment.label}: ${formatPercent(segment.pct)}%`}
             className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full border-r border-white/80 last:border-r-0"
           />
         ))}
@@ -77,7 +78,7 @@ export function ReportStackedBar({
                 {segment.label}:
               </span>
               <strong className="num font-mono font-bold text-foreground">
-                {segment.pct.toFixed(1)}%
+                {formatPercent(segment.pct)}%
               </strong>
             </div>
           ))}

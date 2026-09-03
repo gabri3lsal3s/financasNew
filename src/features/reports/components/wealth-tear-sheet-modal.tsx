@@ -323,7 +323,17 @@ export function WealthTearSheetModal({
           <>
             Conforme a matriz de alocação definida pelo titular, a classe com maior
             distanciamento negativo da meta é{" "}
-            <strong>{topDeficit.assetClass.toUpperCase()}</strong> (déficit de{" "}
+            <strong>
+              {topDeficit.assetClass.toLowerCase().includes("fii")
+                ? "FIIs"
+                : topDeficit.assetClass.toLowerCase().includes("acao") || topDeficit.assetClass.toLowerCase().includes("acoes")
+                  ? "Ações"
+                  : topDeficit.assetClass.toLowerCase().includes("renda")
+                    ? "Renda Fixa"
+                    : topDeficit.assetClass.toLowerCase().includes("internacional")
+                      ? "Internacional"
+                      : topDeficit.assetClass}
+            </strong> (déficit de{" "}
             <MoneyText
               cents={numberToCents(topDeficit.gapBRL)}
               className="inline font-bold text-primary-strong"
@@ -351,7 +361,7 @@ export function WealthTearSheetModal({
         )}
         {intlPct > 0 ? (
           <>
-            O portfólio mantém <strong>{intlPct.toFixed(1)}%</strong> de exposição
+            O portfólio mantém <strong>{formatPercent(intlPct)}%</strong> de exposição
             internacional
           </>
         ) : (
@@ -360,7 +370,7 @@ export function WealthTearSheetModal({
         {topDominance.ticker && topDominance.ticker !== "N/A" ? (
           <>, e a posição de maior peso individual é{" "}
             <strong>{sanitizeReportText(topDominance.ticker)}</strong>,
-            respondendo por <strong>{topDominance.pct.toFixed(1)}%</strong> do
+            respondendo por <strong>{formatPercent(topDominance.pct)}%</strong> do
             patrimônio total.
           </>
         ) : (
@@ -598,7 +608,7 @@ export function WealthTearSheetModal({
       {donutData.classSegments.length > 0 && (
         <section
           aria-label="Detalhamento Gráfico de Alocação e Setores"
-          className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid"
+          className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-auto print:break-inside-auto"
         >
           <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5">

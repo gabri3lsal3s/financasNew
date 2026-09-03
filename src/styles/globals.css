@@ -527,7 +527,19 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 12mm 10mm 12mm;
+    margin: 10mm 12mm 12mm 12mm;
+    @bottom-right {
+      content: "Página " counter(page) " de " counter(pages);
+      font-family: var(--font-sans);
+      font-size: 7.5pt;
+      color: #64748b;
+    }
+    @bottom-left {
+      content: "Guia Financeiro · Dossiê Oficial";
+      font-family: var(--font-sans);
+      font-size: 7.5pt;
+      color: #64748b;
+    }
   }
 
   /* 1. Reset total de fundo e cores para impressão nítida em papel branco */

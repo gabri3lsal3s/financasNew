@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, PiggyBank } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks/percent";
 import { cn } from "@/lib/utils";
 
 export interface ReportWaterfallStep {
@@ -72,7 +73,7 @@ export function ReportWaterfallBar({
                     className="font-bold font-mono num"
                   />
                   <span className="num font-mono text-[11px] text-muted-foreground w-12 text-right">
-                    {step.pctOfTotal.toFixed(1)}%
+                    {formatPercent(step.pctOfTotal)}%
                   </span>
                 </div>
               </div>

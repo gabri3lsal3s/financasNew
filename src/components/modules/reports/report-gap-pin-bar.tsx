@@ -1,3 +1,4 @@
+import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import { cn } from "@/lib/utils";
 
 export interface ReportGapPinItem {
@@ -33,10 +34,10 @@ export function ReportGapPinBar({ items, className }: ReportGapPinBarProps) {
               <span className="font-medium text-foreground">{item.label}</span>
               <div className="flex items-center gap-3 text-xs">
                 <span className="text-muted-foreground">
-                  Atual: <strong className="font-bold text-foreground num font-mono">{item.actualPct.toFixed(1)}%</strong>
+                  Atual: <strong className="font-bold text-foreground num font-mono">{formatPercent(item.actualPct)}%</strong>
                 </span>
                 <span className="text-muted-foreground">
-                  Meta: <strong className="font-bold text-foreground num font-mono">{item.targetPct.toFixed(1)}%</strong>
+                  Meta: <strong className="font-bold text-foreground num font-mono">{formatPercent(item.targetPct)}%</strong>
                 </span>
                 <span
                   className={cn(
@@ -46,7 +47,7 @@ export function ReportGapPinBar({ items, className }: ReportGapPinBarProps) {
                     !isUnderAllocated && !isOverAllocated && "text-positive-strong bg-positive/10",
                   )}
                 >
-                  {item.gapPct > 0 ? `+${item.gapPct.toFixed(1)}%` : `${item.gapPct.toFixed(1)}%`}
+                  {formatSignedPct(item.gapPct)}
                 </span>
               </div>
             </div>
@@ -66,7 +67,7 @@ export function ReportGapPinBar({ items, className }: ReportGapPinBarProps) {
               <div
                 style={{ left: `${Math.min(Math.max(item.targetPct, 0), 100)}%` }}
                 className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1 h-3.5 bg-foreground border border-surface rounded-xs shadow-xs pointer-events-none"
-                title={`Meta planejada: ${item.targetPct.toFixed(1)}%`}
+                title={`Meta planejada: ${formatPercent(item.targetPct)}%`}
               />
             </div>
           </div>

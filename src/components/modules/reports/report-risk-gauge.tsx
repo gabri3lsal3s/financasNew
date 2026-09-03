@@ -1,4 +1,5 @@
 import { ShieldAlert, ShieldCheck } from "lucide-react";
+import { formatPercent } from "@/services/masks/percent";
 import { cn } from "@/lib/utils";
 
 export interface ReportRiskGaugeProps {
@@ -88,7 +89,7 @@ export function ReportRiskGauge({
           style={{ left: `${clampPosition}%` }}
         >
           <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-foreground text-background leading-none shadow-2xs">
-            {topItemPct.toFixed(1)}%
+            {formatPercent(topItemPct)}%
           </span>
           <span className="size-1 rotate-45 bg-foreground -mt-0.5" />
         </div>
@@ -105,7 +106,7 @@ export function ReportRiskGauge({
       {/* Diagnóstico Contextual Neutro / Estatístico */}
       <p className="text-[11px] text-muted-foreground leading-snug pt-0.5 print:text-slate-900">
         Maior ativo na carteira: <strong className="font-semibold text-foreground">{topItemName || "N/A"}</strong> representando{" "}
-        <strong className="num font-mono font-bold text-foreground">{topItemPct.toFixed(1)}%</strong> do patrimônio total.
+        <strong className="num font-mono font-bold text-foreground">{formatPercent(topItemPct)}%</strong> do patrimônio total.
         {isSafe && " Concentração individual dentro do parâmetro de referência (≤ 15%)."}
         {isWarning && " Posição individual acima do patamar de referência de 15% do patrimônio total."}
         {isCritical && " Posição individual acima de 25% do patrimônio total."}

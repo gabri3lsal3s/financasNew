@@ -100,32 +100,31 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
             aria-label={`Posições de ${group.className}`}
             className="flex flex-col gap-1.5 break-inside-auto print:break-inside-auto"
           >
-            {/* 1. Cabeçalho Leve com Barra Lateral Arredondada Discreta */}
-            <div
-              className="report-group-header flex items-center justify-between bg-muted/40 px-3 py-1.5 rounded-lg border border-border/80 text-xs font-bold text-foreground print:bg-slate-100 print:border-slate-300 break-inside-avoid print:break-inside-avoid break-after-avoid print:break-after-avoid"
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-1 h-3.5 rounded-full shrink-0"
-                  style={{ backgroundColor: classColor }}
-                  aria-hidden="true"
-                />
-                <span className="uppercase tracking-wider">
-                  {group.className} ({group.items.length}{" "}
-                  {group.items.length === 1 ? "ativo" : "ativos"})
-                </span>
-              </div>
-              <div className="flex items-center gap-2 font-mono num text-xs">
-                <span className="text-muted-foreground font-normal">
-                  {formatPercent(group.sharePct)}% da carteira
-                </span>
-              </div>
-            </div>
-
-            {/* 2. Tabela de Custódia com Totais Contábeis no tfoot */}
+            {/* Tabela de Custódia com Cabeçalho de Classe no thead e Totais Contábeis no tfoot */}
             <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
               <table className="w-full text-left text-xs border-collapse print:table-fixed">
                 <thead>
+                  {/* Linha de Identificação da Classe (Repete automaticamente em quebra de página A4) */}
+                  <tr className="border-b border-border/70 bg-muted/60 text-foreground font-bold text-[9.5px] uppercase tracking-wider print:bg-slate-100">
+                    <th colSpan={isRendaFixa ? 5 : 8} className="py-1.5 px-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-1 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: classColor }}
+                            aria-hidden="true"
+                          />
+                          <span className="font-bold tracking-wider text-foreground">
+                            {group.className} ({group.items.length}{" "}
+                            {group.items.length === 1 ? "ativo" : "ativos"})
+                          </span>
+                        </div>
+                        <span className="font-mono num font-normal text-muted-foreground text-[9.5px] normal-case">
+                          {formatPercent(group.sharePct)}% da carteira
+                        </span>
+                      </div>
+                    </th>
+                  </tr>
                   <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
                     {isRendaFixa ? (
                       <>

@@ -32,5 +32,6 @@ export function sanitizeReportText(text: string | null | undefined): string {
     .replace(UNICODE_DASHES_REGEX, "-")
     .replace(UNICODE_SPACES_REGEX, " ")
     .replace(INVISIBLE_CHARS_REGEX, "")
+    .replace(/\bBiticoin\b/gi, "Bitcoin")
     .trim();
 }
