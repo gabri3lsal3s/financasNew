@@ -33,12 +33,14 @@ import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
   useAllocationTargets,
   useDeletePortfolioAsset,
+  useGroupTargets,
   usePortfolioAssets,
   usePortfolioDividends,
   usePortfolioPosition,
   useSyncQuotes,
 } from "@/state";
 import {
+  AllocationBreakdownDialog,
   AssetDetailSheet,
   AssetEditDialog,
   CalibrateFixedIncomeDialog,
@@ -67,6 +69,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
 
   const assetsQuery = usePortfolioAssets();
   const dividendsQuery = usePortfolioDividends();
+  const classTargetsQuery = useGroupTargets("class");
+  const sectorTargetsQuery = useGroupTargets("sector");
   const deleteAsset = useDeletePortfolioAsset();
   const syncQuotes = useSyncQuotes();
   const autoSyncedRef = useRef(false);
@@ -116,6 +120,10 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [allocationMode, setAllocationMode] = useState<"class" | "sector" | "asset">("class");
+  const [breakdownGroup, setBreakdownGroup] = useState<{
+    type: "class" | "sector";
+    name: string;
+  } | null>(null);
   const [calibrateFor, setCalibrateFor] = useState<{ asset: PortfolioAsset; valueCents: number } | null>(null);
   const [priceFor, setPriceFor] = useState<{
     id: string;
@@ -232,6 +240,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
       label,
       valueCents,
       subtitle: `${rows.filter((r) => (r.assetClass?.trim() || (r.isCash ? "Caixa" : "Sem classe")) === label).length} ativo(s)`,
+      onClick: () => setBreakdownGroup({ type: "class", name: label }),
     }))
     .filter((s) => s.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents);
@@ -249,6 +258,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
       label,
       valueCents,
       subtitle: `${rows.filter((r) => (r.sector?.trim() || inferSectorFromTicker(r.ticker, r.assetClass)) === label).length} ativo(s)`,
+      onClick: () => setBreakdownGroup({ type: "sector", name: label }),
     }))
     .filter((s) => s.valueCents > 0)
     .sort((a, b) => b.valueCents - a.valueCents);
@@ -695,6 +705,27 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           const assetId = assetToDelete.id;
           void Promise.resolve(deleteAsset.mutateAsync(assetId)).finally(() => setAssetToDelete(null));
         }}
+      />
+
+      {/* Raio-X Analítico de Classe e Setor via Donut */}
+      <AllocationBreakdownDialog
+        open={breakdownGroup !== null}
+        onOpenChange={(open) => {
+          if (!open) setBreakdownGroup(null);
+        }}
+        type={breakdownGroup?.type ?? "class"}
+        groupName={breakdownGroup?.name ?? null}
+        rows={rows}
+        totalPortfolioBRL={position.totalBRL}
+        targetPercent={
+          breakdownGroup?.type === "class"
+            ? classTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null
+            : breakdownGroup?.name
+              ? sectorTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null
+              : null
+        }
+        onSelectAsset={(assetId) => openDetail(assetId)}
+        onNavigateToTargets={onSelectTab ? () => onSelectTab("targets") : undefined}
       />
     </div>
   );

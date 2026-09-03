@@ -13,6 +13,8 @@ export interface ReportAllocationDonutsProps {
   totalUniqueSectors?: number;
   variant?: "screen" | "print";
   className?: string;
+  onClassClick?: (className: string) => void;
+  onSectorClick?: (sectorName: string) => void;
 }
 
 /**
@@ -27,6 +29,8 @@ export function ReportAllocationDonuts({
   totalUniqueSectors,
   variant = "screen",
   className,
+  onClassClick,
+  onSectorClick,
 }: ReportAllocationDonutsProps) {
   // Apenas label, porcentagem e cor (sem valor monetário na legenda para não truncar nomes)
   const preparedClassSegments: ReportDonutSegment[] = useMemo(
@@ -156,6 +160,7 @@ export function ReportAllocationDonuts({
           strokeWidth={14}
           className="border-0 bg-transparent p-0 shadow-none gap-6 w-full flex-col sm:flex-row"
           legendClassName="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-xs"
+          onSegmentClick={onClassClick ? (seg) => onClassClick(seg.label) : undefined}
         />
       </div>
 
@@ -187,6 +192,7 @@ export function ReportAllocationDonuts({
           strokeWidth={14}
           className="border-0 bg-transparent p-0 shadow-none gap-6 w-full flex-col sm:flex-row"
           legendClassName="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-xs"
+          onSegmentClick={onSectorClick ? (seg) => onSectorClick(seg.label) : undefined}
         />
       </div>
     </div>

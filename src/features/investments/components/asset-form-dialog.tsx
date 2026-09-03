@@ -624,6 +624,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   Preço Inicial / Valor Aplicado ({currency})
                   <MoneyInput
                     cents={initialPriceCents}
+                    currency={currency}
                     onCentsChange={(cents) => {
                       setInitialPriceCents(cents);
                       if (currentPriceCents === 0 || currentPriceCents === initialPriceCents) {
@@ -638,6 +639,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   Preço Atual / Saldo Final ({currency})
                   <MoneyInput
                     cents={currentPriceCents}
+                    currency={currency}
                     onCentsChange={setCurrentPriceCents}
                     aria-label="Preço atual ou saldo"
                   />
@@ -699,6 +701,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   Preço Médio por Cota ({currency})
                   <MoneyInput
                     cents={averagePriceCents}
+                    currency={currency}
                     onCentsChange={setAveragePriceCents}
                     aria-label="Preço médio por cota"
                   />

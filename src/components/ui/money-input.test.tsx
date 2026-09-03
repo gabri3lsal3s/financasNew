@@ -49,4 +49,17 @@ describe("MoneyInput (padrão Nubank)", () => {
     unmount();
     expect(getCalculatorTarget()).toBeNull();
   });
+
+  it("suporta moeda USD com formatação em dólar e placeholder correto", () => {
+    render(<MoneyInput aria-label="Preço em Dólar" currency="USD" cents={6520} />);
+    const input = screen.getByLabelText("Preço em Dólar") as HTMLInputElement;
+    expect(input).toHaveValue("US$\u00a065,20");
+    expect(input).toHaveAttribute("placeholder", "US$ 0,00");
+  });
+
+  it("suporta moeda USD zerada exibindo US$ 0,00", () => {
+    render(<MoneyInput aria-label="Preço em Dólar Zerado" currency="USD" cents={0} />);
+    const input = screen.getByLabelText("Preço em Dólar Zerado") as HTMLInputElement;
+    expect(input).toHaveValue("US$\u00a00,00");
+  });
 });

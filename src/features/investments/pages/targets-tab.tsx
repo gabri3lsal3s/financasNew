@@ -25,12 +25,14 @@ import {
   useCreateAllocationPreset,
   useDeleteAllocationPreset,
   useGroupTargets,
+  usePortfolioAssets,
   usePortfolioPosition,
   useRemoveGroupTarget,
   useSaveAllocationTargets,
   useSaveGroupTarget,
   useUpdateAllocationPreset,
 } from "@/state";
+import { AllocationBreakdownDialog, AssetDetailSheet } from "../components";
 import { TargetAssetsCard, TargetClassesCard, TargetSectorsCard } from "../components/targets";
 
 /**
@@ -56,11 +58,22 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   const createPreset = useCreateAllocationPreset();
   const updatePreset = useUpdateAllocationPreset();
   const deletePreset = useDeleteAllocationPreset();
+  const assetsQuery = usePortfolioAssets();
 
   // Estados locais dos rascunhos de metas
   const [assetDraft, setAssetDraft] = useState<Record<string, number>>({});
   const [classDraft, setClassDraft] = useState<Record<string, number>>({});
   const [sectorDraft, setSectorDraft] = useState<Record<string, number>>({});
+
+  const [breakdownGroup, setBreakdownGroup] = useState<{
+    type: "class" | "sector";
+    name: string;
+    parentClass?: string;
+  } | null>(null);
+  const [assetDetailId, setAssetDetailId] = useState<string | null>(null);
+  const detailAsset = assetDetailId
+    ? (assetsQuery.data ?? []).find((a) => a.id === assetDetailId) ?? null
+    : null;
 
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>("official");
   const [savePresetOpen, setSavePresetOpen] = useState(false);
@@ -686,6 +699,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                   onSaveClass={(c) => void saveClass(c)}
                   onRemoveClass={(c) => void removeClass(c)}
                   onSaveAllClasses={() => void saveAllClasses()}
+                  onOpenClassDetail={(cls) => setBreakdownGroup({ type: "class", name: cls })}
                 />
               ),
             },
@@ -710,6 +724,9 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                   onSaveSector={(s) => void saveSector(s)}
                   onRemoveSector={(s) => void removeSector(s)}
                   onSaveAllSectorsForClass={() => void saveAllSectorsForClass()}
+                  onOpenSectorDetail={(sec, parentCls) =>
+                    setBreakdownGroup({ type: "sector", name: sec, parentClass: parentCls })
+                  }
                 />
               ),
             },
@@ -749,6 +766,38 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           ]}
         />
       )}
+
+      {/* Raio-X Analítico de Classe e Setor */}
+      <AllocationBreakdownDialog
+        open={breakdownGroup !== null}
+        onOpenChange={(open) => {
+          if (!open) setBreakdownGroup(null);
+        }}
+        type={breakdownGroup?.type ?? "class"}
+        groupName={breakdownGroup?.name ?? null}
+        parentClassName={breakdownGroup?.parentClass}
+        rows={position.rows}
+        totalPortfolioBRL={position.totalBRL}
+        targetPercent={
+          breakdownGroup?.type === "class"
+            ? classTargetOf(breakdownGroup.name)
+            : breakdownGroup?.name
+              ? sectorTargetOf(breakdownGroup.name)
+              : null
+        }
+        onSelectAsset={(assetId) => setAssetDetailId(assetId)}
+      />
+
+      {/* Ficha Completa do Ativo selecionado no Raio-X */}
+      {detailAsset ? (
+        <AssetDetailSheet
+          open={assetDetailId !== null}
+          onOpenChange={(open) => {
+            if (!open) setAssetDetailId(null);
+          }}
+          asset={detailAsset}
+        />
+      ) : null}
     </div>
   );
 }

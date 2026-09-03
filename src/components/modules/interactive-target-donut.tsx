@@ -8,6 +8,7 @@ export interface TargetDonutItem {
   key: string;
   label: string;
   targetPercent: number;
+  currentPercent?: number;
   countAssets?: number;
   color?: string;
 }
@@ -243,7 +244,13 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
                   {selectedItem.targetPercent.toFixed(1)}
                   <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
                 </span>
-                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">selecionado</span>
+                {selectedItem.currentPercent !== undefined ? (
+                  <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium mt-0.5">
+                    Atual: <strong className="text-foreground">{selectedItem.currentPercent.toFixed(1)}{unitLabel}</strong>
+                  </span>
+                ) : (
+                  <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">selecionado</span>
+                )}
               </>
             ) : (
               <>
@@ -319,6 +326,11 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
                   <span className="num font-mono text-[11px] font-bold text-foreground">
                     {item.targetPercent.toFixed(1)}{unitLabel}
                   </span>
+                  {item.currentPercent !== undefined ? (
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      ({item.currentPercent.toFixed(1)}{unitLabel})
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
@@ -340,9 +352,16 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
             <span className="text-xs font-semibold text-foreground truncate">
               Ajuste rápido: <span style={{ color: selectedColor }}>{selectedItem.label}</span>
             </span>
-            <span className="num font-mono font-bold text-xs text-foreground">
-              {selectedItem.targetPercent.toFixed(1)}{unitLabel}
-            </span>
+            <div className="flex items-center gap-1.5 font-mono text-xs">
+              <span className="num font-bold text-foreground">
+                Meta: {selectedItem.targetPercent.toFixed(1)}{unitLabel}
+              </span>
+              {selectedItem.currentPercent !== undefined ? (
+                <span className="text-[11px] text-muted-foreground">
+                  (atual: {selectedItem.currentPercent.toFixed(1)}{unitLabel})
+                </span>
+              ) : null}
+            </div>
           </div>
 
           <div className="flex items-center gap-1">

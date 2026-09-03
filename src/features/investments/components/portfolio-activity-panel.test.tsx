@@ -45,6 +45,9 @@ vi.mock("@/state", () => ({
     mutateAsync: mockDeleteDividend,
     isPending: false,
   }),
+  usePortfolioPosition: () => ({
+    rows: [],
+  }),
 }));
 
 describe("PortfolioActivityPanel", () => {

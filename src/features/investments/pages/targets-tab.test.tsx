@@ -72,6 +72,11 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue(undefined),
     isPending: false,
   }),
+  usePortfolioAssets: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", () => {

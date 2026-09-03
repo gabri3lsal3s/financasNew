@@ -380,6 +380,8 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Meta micro por ativo:** `target_percentage` (0–100) por `(user, asset_id)` no patrimônio total ($\sum \le 100\%$).
 - **Inferência setorial automática (`inferSectorFromTicker`):** mapeamento canônico de setores por classe (Ações B3 por setor financeiro/bancos, petróleo, utilidades; FIIs por tijolo/logística, papel/CRI; Tesouro Direto por indexador econômico Selic/CDI, IPCA+, Prefixado; Ativos Internacionais USD por tecnologia, saúde, REITs, ETFs globais neutros; Criptoativos).
 - **Ações contextuais:** normalização em 1-clique (100% ou teto da classe), equiponderação ($1/N$) e zeramento em todos os 3 níveis.
+- **Comparativo de Alocação Atual vs Meta:** nas abas de metas (Classes, Setores e Ativos), exibição direta do percentual atual de mercado frente à meta estabelecida (`Atual: X.X% · Meta: Y.Y%`), indicando visualmente o desvio (gap) e a prioridade de recebimento de aporte.
+- **Raio-X Analítico de Classes e Setores (`AllocationBreakdownDialog`):** acionado ao clicar nas fatias e legendas dos gráficos Donut (aba Resumo e Relatórios Executivos) e nos cards de metas, apresentando os KPIs consolidados do grupo (posição atual, meta/gap, rentabilidade não realizada, proventos totais acumulados) e a lista detalhada de ativos em custódia com acesso direto à ficha do ativo.
 - Edição em lote com feedback visual de soma (barra de total ≤ 100% validada no domínio e no banco via RPC).
 
 #### 3.11.2 Posição Atual (Posição Consolidada & Snapshots — F36)

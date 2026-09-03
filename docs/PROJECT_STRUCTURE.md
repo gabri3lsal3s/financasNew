@@ -141,7 +141,7 @@
     │   │                          #       fixed-income-form-fields (F72), calibrate-fixed-income-dialog (F72), asset-edit-dialog (F72), asset-detail-sheet,
     │   │                          #       transaction-form-dialog, transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
     │   │                          #       portfolio-mapping-step, portfolio-statement-dialog, portfolio-executive-report,
-    │   │                          #       portfolio-tax-report, portfolio-darf-monitor com barrels components/index.ts e index.ts
+    │   │                          #       portfolio-tax-report, portfolio-darf-monitor, allocation-breakdown-dialog com barrels components/index.ts e index.ts
     │   │
     │   └── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
     │                              #     com simulador FIRE interativo, showcase, pricing, FAQ, scroll-reveal, scroll-spy e back-to-top

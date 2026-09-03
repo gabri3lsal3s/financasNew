@@ -26,6 +26,9 @@ vi.mock("@/state", () => ({
     mutateAsync: mockRecordOrder,
     isPending: false,
   }),
+  usePortfolioPosition: () => ({
+    rows: [],
+  }),
 }));
 
 describe("QuickTransactionSheet (Fase 41)", () => {

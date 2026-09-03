@@ -21,6 +21,7 @@ export interface ReportDonutChartProps {
   strokeWidth?: number;
   className?: string;
   legendClassName?: string;
+  onSegmentClick?: (segment: ReportDonutSegment) => void;
 }
 
 /**
@@ -65,6 +66,7 @@ export function ReportDonutChart({
   strokeWidth = 14,
   className,
   legendClassName,
+  onSegmentClick,
 }: ReportDonutChartProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -133,10 +135,14 @@ export function ReportDonutChart({
                 strokeDasharray={segment.strokeDasharray}
                 strokeDashoffset={segment.strokeDashoffset}
                 strokeLinecap={segment.strokeLinecap}
+                onClick={onSegmentClick ? () => onSegmentClick(segment) : undefined}
+                className={cn(
+                  "transition-opacity",
+                  onSegmentClick && "cursor-pointer hover:opacity-80",
+                )}
               />
             ))}
         </svg>
-
 
         {/* Centro com rótulo/valor */}
         {(centerLabel || centerValue) && (
@@ -155,7 +161,6 @@ export function ReportDonutChart({
         )}
       </div>
 
-
       {/* Legenda com Cores e Percentuais */}
       <div className="flex-1 w-full flex flex-col gap-2">
         {title && (
@@ -170,7 +175,14 @@ export function ReportDonutChart({
           )}
         >
           {validSegments.map((segment) => (
-            <div key={segment.key} className="flex items-center justify-between gap-2.5 py-0.5 min-w-0">
+            <div
+              key={segment.key}
+              onClick={onSegmentClick ? () => onSegmentClick(segment) : undefined}
+              className={cn(
+                "flex items-center justify-between gap-2.5 py-0.5 min-w-0 transition-colors",
+                onSegmentClick && "cursor-pointer hover:bg-surface-hover/60 rounded px-1.5 -mx-1.5",
+              )}
+            >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span
                   className="size-2.5 rounded-full shrink-0 border border-black/10"

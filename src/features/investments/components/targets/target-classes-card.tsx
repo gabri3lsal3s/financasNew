@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Equal, RotateCcw, Scale, Trash2 } from "lucide-react";
-import { Button, NumberStepperInput } from "@/components/ui";
+import { Equal, Layers, RotateCcw, Scale, Trash2 } from "lucide-react";
+import { Badge, Button, NumberStepperInput } from "@/components/ui";
 import { InteractiveTargetDonut, type TargetDonutItem } from "@/components/modules";
 import { parseTargetInput } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ export interface TargetClassesCardProps {
   onSaveClass: (className: string) => void;
   onRemoveClass: (className: string) => void;
   onSaveAllClasses: () => void;
+  onOpenClassDetail?: (className: string) => void;
 }
 
 export function TargetClassesCard({
@@ -36,15 +37,22 @@ export function TargetClassesCard({
   onSaveClass,
   onRemoveClass,
   onSaveAllClasses,
+  onOpenClassDetail,
 }: TargetClassesCardProps) {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
 
   if (classes.length === 0) return null;
 
+  const totalBRL = positionRows.reduce((acc, r) => acc + r.valueBRL, 0);
+  const classValueBRL = (cls: string) =>
+    positionRows.filter((r) => r.assetClass === cls).reduce((acc, r) => acc + r.valueBRL, 0);
+  const classCurrentPct = (cls: string) => (totalBRL > 0 ? (classValueBRL(cls) / totalBRL) * 100 : 0);
+
   const donutItems: TargetDonutItem[] = classes.map((className) => ({
     key: className,
     label: className,
     targetPercent: classTargetOf(className),
+    currentPercent: classCurrentPct(className),
     countAssets: positionRows.filter((r) => r.assetClass === className).length,
   }));
 
@@ -123,6 +131,8 @@ export function TargetClassesCard({
       <div className="flex flex-col gap-2 min-w-0">
         {classes.map((className) => {
           const target = classTargetOf(className);
+          const currentPct = classCurrentPct(className);
+          const gap = target - currentPct;
           const savedTarget = storedClassTargets.get(className) ?? 0;
           const isSelected = selectedClass === className;
           return (
@@ -135,11 +145,49 @@ export function TargetClassesCard({
                   : "border-border/60 bg-surface-hover/30 hover:border-border/80",
               )}
             >
-              <div className="flex min-w-0 flex-1 flex-col cursor-pointer" onClick={() => setSelectedClass(isSelected ? null : className)}>
-                <p className="truncate text-sm font-medium text-foreground">{className}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {positionRows.filter((r) => r.assetClass === className).length} ativo(s)
-                </p>
+              <div
+                className="flex min-w-0 flex-1 flex-col gap-1 cursor-pointer"
+                onClick={() => setSelectedClass(isSelected ? null : className)}
+              >
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-semibold text-foreground">{className}</p>
+                  {onOpenClassDetail && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenClassDetail(className);
+                      }}
+                      className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded cursor-pointer"
+                      title={`Ver detalhes de ${className}`}
+                      aria-label={`Ver detalhes de ${className}`}
+                    >
+                      <Layers className="size-3.5 text-muted-foreground hover:text-foreground" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="font-mono text-muted-foreground">
+                    Atual: <strong className="text-foreground font-semibold">{currentPct.toFixed(1)}%</strong>
+                  </span>
+                  <span className="text-muted-foreground/60">·</span>
+                  <span className="font-mono text-muted-foreground">
+                    Meta: <strong className="text-foreground font-semibold">{target.toFixed(1)}%</strong>
+                  </span>
+                  {target > 0 && (
+                    <Badge
+                      variant={gap > 0 ? "positive" : "muted"}
+                      size="xs"
+                      className="font-mono text-[10px]"
+                    >
+                      {gap > 0 ? `+${gap.toFixed(1)}% (Aporte)` : `${gap.toFixed(1)}% (Acima)`}
+                    </Badge>
+                  )}
+                  <span className="text-muted-foreground/60">·</span>
+                  <span className="text-muted-foreground">
+                    {positionRows.filter((r) => r.assetClass === className).length} ativo(s)
+                  </span>
+                </div>
               </div>
               <div className="flex w-full items-center gap-2 sm:w-auto">
                 <div

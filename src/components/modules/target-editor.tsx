@@ -268,11 +268,11 @@ export function TargetEditor({
                 key={row.key}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 shadow-2xs hover:border-border/90 transition-colors"
               >
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-foreground">{row.label}</span>
                     {row.assetClass ? (
-                      <Badge variant="muted" className="text-[11px] font-medium py-0 px-1.5">
+                      <Badge variant="muted" size="xs">
                         {row.assetClass}
                       </Badge>
                     ) : null}
@@ -280,18 +280,38 @@ export function TargetEditor({
                     {/* Badge de Comparativo Visual Atual vs Alvo */}
                     {row.currentPct !== undefined ? (
                       delta.isUnderallocated ? (
-                        <Badge variant="positive" className="text-[11px] font-mono py-0 px-1.5">
+                        <Badge variant="positive" size="xs" className="font-mono">
                           {delta.formattedDelta} · Recebe aporte
                         </Badge>
                       ) : (
-                        <Badge variant="muted" className="text-[11px] font-mono py-0 px-1.5 text-muted-foreground">
+                        <Badge variant="muted" size="xs" className="font-mono text-muted-foreground">
                           {delta.formattedDelta} · Alocado
                         </Badge>
                       )
                     ) : null}
                   </div>
 
-                  {row.detail ? <p className="truncate text-xs text-muted-foreground">{row.detail}</p> : null}
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {row.currentPct !== undefined ? (
+                      <>
+                        <span className="font-mono text-muted-foreground">
+                          Atual: <strong className="text-foreground font-semibold">{row.currentPct.toFixed(1)}%</strong>
+                        </span>
+                        <span className="text-muted-foreground/60">·</span>
+                        <span className="font-mono text-muted-foreground">
+                          Meta: <strong className="text-foreground font-semibold">{(Number.isFinite(row.target) ? row.target : 0).toFixed(1)}%</strong>
+                        </span>
+                        {row.detail ? (
+                          <>
+                            <span className="text-muted-foreground/60">·</span>
+                            <span className="text-muted-foreground truncate">{row.detail}</span>
+                          </>
+                        ) : null}
+                      </>
+                    ) : row.detail ? (
+                      <p className="truncate text-xs text-muted-foreground">{row.detail}</p>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="flex w-full sm:w-52 shrink-0 items-center gap-2 min-w-0">

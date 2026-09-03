@@ -1,8 +1,10 @@
-import { Fragment, type Dispatch, type SetStateAction } from "react";
+import { Fragment, useState, type Dispatch, type SetStateAction } from "react";
 import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { ReportAllocationDonuts } from "@/components/modules/reports";
+import { AllocationBreakdownDialog, AssetDetailSheet } from "@/features/investments/components";
+import { useGroupTargets, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { numberToCents } from "@/domain/money";
 import type { AllocationAnalysisResult, ConcentrationRiskResult, AllocationDonutSegment } from "@/domain/reports";
 
@@ -37,6 +39,20 @@ export function InvestmentsTab({
   setExpandedTreeSectors,
   onOpenTearSheet,
 }: InvestmentsTabProps) {
+  const position = usePortfolioPosition();
+  const assetsQuery = usePortfolioAssets();
+  const classTargetsQuery = useGroupTargets("class");
+  const sectorTargetsQuery = useGroupTargets("sector");
+
+  const [breakdownGroup, setBreakdownGroup] = useState<{
+    type: "class" | "sector";
+    name: string;
+  } | null>(null);
+  const [assetDetailId, setAssetDetailId] = useState<string | null>(null);
+  const detailAsset = assetDetailId
+    ? (assetsQuery.data ?? []).find((a) => a.id === assetDetailId) ?? null
+    : null;
+
   return (
     <div className="flex flex-col gap-6">
       {/* Card Dossiê Executivo A4 */}
@@ -328,6 +344,39 @@ export function InvestmentsTab({
           totalBRL={totalPatrimonyBRL}
           totalUniqueSectors={totalUniqueSectors}
           variant="screen"
+          onClassClick={(className) => setBreakdownGroup({ type: "class", name: className })}
+          onSectorClick={(sectorName) => setBreakdownGroup({ type: "sector", name: sectorName })}
+        />
+      ) : null}
+
+      {/* Raio-X Analítico de Classe e Setor */}
+      <AllocationBreakdownDialog
+        open={breakdownGroup !== null}
+        onOpenChange={(open) => {
+          if (!open) setBreakdownGroup(null);
+        }}
+        type={breakdownGroup?.type ?? "class"}
+        groupName={breakdownGroup?.name ?? null}
+        rows={position.rows}
+        totalPortfolioBRL={position.totalBRL}
+        targetPercent={
+          breakdownGroup?.type === "class"
+            ? classTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null
+            : breakdownGroup?.name
+              ? sectorTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null
+              : null
+        }
+        onSelectAsset={(assetId) => setAssetDetailId(assetId)}
+      />
+
+      {/* Ficha Completa do Ativo selecionado no Raio-X */}
+      {detailAsset ? (
+        <AssetDetailSheet
+          open={assetDetailId !== null}
+          onOpenChange={(open) => {
+            if (!open) setAssetDetailId(null);
+          }}
+          asset={detailAsset}
         />
       ) : null}
     </div>

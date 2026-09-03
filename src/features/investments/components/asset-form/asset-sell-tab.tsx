@@ -71,6 +71,7 @@ export function AssetSellTab({
             Preço Unitário de Venda ({asset.currency})
             <MoneyInput
               cents={sellPriceCents}
+              currency={asset.currency}
               onCentsChange={setSellPriceCents}
               aria-label="Preço de venda"
             />

@@ -19,8 +19,9 @@ export { AssetEditDialog } from "./asset-edit-dialog";
 export { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
 export { FixedIncomeFormFields } from "./fixed-income-form-fields";
 export { QuickTransactionSheet } from "./quick-transaction-sheet";
+export { AllocationBreakdownDialog } from "./allocation-breakdown-dialog";
 
-export type { AssetFormDialogProps } from "./asset-form-dialog";
+export type { AllocationBreakdownDialogProps } from "./allocation-breakdown-dialog";
 export type { AssetSplitDialogProps } from "./asset-split-dialog";
 export type { CalibrateFixedIncomeDialogProps } from "./calibrate-fixed-income-dialog";
 export type { CashFormDialogProps } from "./cash-form-dialog";

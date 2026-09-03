@@ -409,13 +409,13 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
               <MoneyInput
                 id="edit-asset-initial-price"
                 cents={initialPriceCents}
+                currency={currency}
                 onCentsChange={(cents) => {
                   setInitialPriceCents(cents);
                   if (currentPriceCents === 0 && !isClosed) {
                     setCurrentPriceCents(cents);
                   }
                 }}
-                placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço inicial investido"
               />
               {isClosed && (
@@ -432,9 +432,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
               <MoneyInput
                 id="edit-asset-current-price"
                 cents={isClosed ? 0 : currentPriceCents}
+                currency={currency}
                 onCentsChange={isClosed ? () => {} : setCurrentPriceCents}
                 disabled={isClosed}
-                placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço atual ou saldo"
               />
               {isClosed && (
@@ -494,8 +494,8 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
               <MoneyInput
                 id="edit-asset-avgprice"
                 cents={averagePriceCents}
+                currency={currency}
                 onCentsChange={setAveragePriceCents}
-                placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Preço médio por cota"
               />
             </div>

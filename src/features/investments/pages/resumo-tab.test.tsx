@@ -89,6 +89,11 @@ vi.mock("@/state", () => ({
     mutate: mockSyncQuotes,
     isPending: false,
   }),
+  useGroupTargets: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   useCreatePortfolioAsset: () => ({
     mutateAsync: vi.fn(),
     isPending: false,

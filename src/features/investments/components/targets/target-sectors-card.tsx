@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Equal, RotateCcw, Scale, Trash2 } from "lucide-react";
-import { Button, NumberStepperInput } from "@/components/ui";
+import { Equal, PieChart, RotateCcw, Scale, Trash2 } from "lucide-react";
+import { Badge, Button, NumberStepperInput } from "@/components/ui";
 import { InteractiveTargetDonut, type TargetDonutItem } from "@/components/modules";
 import { inferSectorFromTicker, parseTargetInput } from "@/domain/portfolio";
 import { triggerSensory } from "@/services/sensory";
@@ -24,6 +24,7 @@ export interface TargetSectorsCardProps {
   onSaveSector: (sectorName: string) => void;
   onRemoveSector: (sectorName: string) => void;
   onSaveAllSectorsForClass: () => void;
+  onOpenSectorDetail?: (sectorName: string, parentClass: string) => void;
 }
 
 export function TargetSectorsCard({
@@ -43,15 +44,36 @@ export function TargetSectorsCard({
   onSaveSector,
   onRemoveSector,
   onSaveAllSectorsForClass,
+  onOpenSectorDetail,
 }: TargetSectorsCardProps) {
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
 
   if (classes.length === 0) return null;
 
+  const totalBRL = positionRows.reduce((acc, r) => acc + r.valueBRL, 0);
+  const classTotalBRL = positionRows
+    .filter((r) => r.assetClass === activeSectorClass)
+    .reduce((acc, r) => acc + r.valueBRL, 0);
+
+  const sectorValueBRL = (sec: string) =>
+    positionRows
+      .filter(
+        (r) =>
+          r.assetClass === activeSectorClass &&
+          (r.sector === sec || inferSectorFromTicker(r.ticker, activeSectorClass) === sec),
+      )
+      .reduce((acc, r) => acc + r.valueBRL, 0);
+
+  const sectorCurrentPctInClass = (sec: string) =>
+    classTotalBRL > 0 ? (sectorValueBRL(sec) / classTotalBRL) * 100 : 0;
+  const sectorCurrentPctInPortfolio = (sec: string) =>
+    totalBRL > 0 ? (sectorValueBRL(sec) / totalBRL) * 100 : 0;
+
   const donutItems: TargetDonutItem[] = availableSectors.map((sectorName) => ({
     key: sectorName,
     label: sectorName,
     targetPercent: sectorTargetOf(sectorName),
+    currentPercent: sectorCurrentPctInClass(sectorName),
     countAssets: positionRows.filter(
       (r) =>
         r.assetClass === activeSectorClass &&
@@ -161,6 +183,9 @@ export function TargetSectorsCard({
           <div className="flex flex-col gap-2 min-w-0">
             {availableSectors.map((sectorName) => {
               const target = sectorTargetOf(sectorName);
+              const currentPctInClass = sectorCurrentPctInClass(sectorName);
+              const currentPctInPortfolio = sectorCurrentPctInPortfolio(sectorName);
+              const gap = target - currentPctInClass;
               const savedTarget = storedSectorTargets.get(sectorName) ?? 0;
               const isSelected = selectedSector === sectorName;
               const membersCount = positionRows.filter(
@@ -179,11 +204,50 @@ export function TargetSectorsCard({
                       : "border-border/60 bg-surface-hover/30 hover:border-border/80",
                   )}
                 >
-                  <div className="flex min-w-0 flex-1 flex-col cursor-pointer" onClick={() => setSelectedSector(isSelected ? null : sectorName)}>
-                    <p className="truncate text-sm font-medium text-foreground">{sectorName}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {membersCount} ativo(s) na carteira
-                    </p>
+                  <div
+                    className="flex min-w-0 flex-1 flex-col gap-1 cursor-pointer"
+                    onClick={() => setSelectedSector(isSelected ? null : sectorName)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-foreground">{sectorName}</p>
+                      {onOpenSectorDetail && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenSectorDetail(sectorName, activeSectorClass);
+                          }}
+                          className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded cursor-pointer"
+                          title={`Ver detalhes de ${sectorName}`}
+                          aria-label={`Ver detalhes de ${sectorName}`}
+                        >
+                          <PieChart className="size-3.5 text-muted-foreground hover:text-foreground" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="font-mono text-muted-foreground">
+                        Atual: <strong className="text-foreground font-semibold">{currentPctInClass.toFixed(1)}%</strong> da classe
+                        <span className="text-muted-foreground/70 font-normal"> ({currentPctInPortfolio.toFixed(1)}% total)</span>
+                      </span>
+                      <span className="text-muted-foreground/60">·</span>
+                      <span className="font-mono text-muted-foreground">
+                        Meta: <strong className="text-foreground font-semibold">{target.toFixed(1)}%</strong>
+                      </span>
+                      {target > 0 && (
+                        <Badge
+                          variant={gap > 0 ? "positive" : "muted"}
+                          size="xs"
+                          className="font-mono text-[10px]"
+                        >
+                          {gap > 0 ? `+${gap.toFixed(1)}% (Aporte)` : `${gap.toFixed(1)}% (Acima)`}
+                        </Badge>
+                      )}
+                      <span className="text-muted-foreground/60">·</span>
+                      <span className="text-muted-foreground">
+                        {membersCount} ativo(s)
+                      </span>
+                    </div>
                   </div>
                   <div className="flex w-full items-center gap-2 sm:w-auto">
                     <div
