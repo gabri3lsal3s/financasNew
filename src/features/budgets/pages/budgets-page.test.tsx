@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BudgetsPage } from "./budgets-page";
 
 function renderBudgetsPage() {
@@ -88,6 +88,14 @@ vi.mock("@/state", () => ({
 }));
 
 describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   it("exibe o KPI de total de limites e as categorias com progresso", () => {
     renderBudgetsPage();
     expect(screen.getByText("Total Gasto")).toBeInTheDocument();

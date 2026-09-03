@@ -72,4 +72,17 @@ describe("Auditoria PWA (instalabilidade)", () => {
     expect(pwa).toContain("beforeinstallprompt");
     expect(pwa).toContain("appinstalled");
   });
+
+  it("Service Worker: configuração Workbox possui runtimeCaching para imagens estáticas", () => {
+    const viteConfig = readFileSync(resolve(root, "vite.config.ts"), "utf8");
+
+    expect(viteConfig).toContain("static-images");
+    expect(viteConfig).toContain("StaleWhileRevalidate");
+  });
+
+  it("Página de contingência offline.html existe em public/pwa/", () => {
+    expect(existsSync(resolve(root, "public/pwa/offline.html"))).toBe(true);
+    const offlineHtml = readFileSync(resolve(root, "public/pwa/offline.html"), "utf8");
+    expect(offlineHtml).toContain("Sem conexão");
+  });
 });

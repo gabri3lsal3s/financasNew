@@ -29,10 +29,17 @@ const FETCH_TIMEOUT_MS = 5_000;
 let bcbRateCache: { cdiAnnual?: number; selicAnnual?: number; timestamp: number } | null = null;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
+/** Limite de cache para teste ou reset */
+export function clearBcbCache(): void {
+  bcbRateCache = null;
+}
+
 /**
  * Busca taxas macroeconômicas oficiais do Banco Central (SGS).
  *   • Série 12: CDI Diário
  *   • Série 432: Selic Meta (% a.a.)
+ *
+ * Utiliza fallback em cascata com proxies abertos e timeout resiliente.
  */
 export async function fetchBcbIndicator(indicator: "CDI" | "SELIC"): Promise<number | null> {
   const now = Date.now();
@@ -42,27 +49,35 @@ export async function fetchBcbIndicator(indicator: "CDI" | "SELIC"): Promise<num
   }
 
   const serie = indicator === "CDI" ? 12 : 432;
-  const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/1?formato=json`;
+  const targetUrl = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/1?formato=json`;
+  const candidateUrls = [
+    targetUrl,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+    `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
+  ];
 
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-    if (!response.ok) return null;
-    const payload: unknown = await response.json();
-    const parsed = parseBcbSgsResponse(payload);
-    if (parsed && parsed.rateAnnual !== undefined) {
-      if (!bcbRateCache) bcbRateCache = { timestamp: now };
-      if (indicator === "CDI") bcbRateCache.cdiAnnual = parsed.rateAnnual;
-      if (indicator === "SELIC") bcbRateCache.selicAnnual = parsed.rateAnnual;
-      bcbRateCache.timestamp = now;
-      return parsed.rateAnnual;
+  for (const url of candidateUrls) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!response.ok) continue;
+      const payload: unknown = await response.json();
+      const parsed = parseBcbSgsResponse(payload);
+      if (parsed && parsed.rateAnnual !== undefined) {
+        if (!bcbRateCache) bcbRateCache = { timestamp: now };
+        if (indicator === "CDI") bcbRateCache.cdiAnnual = parsed.rateAnnual;
+        if (indicator === "SELIC") bcbRateCache.selicAnnual = parsed.rateAnnual;
+        bcbRateCache.timestamp = now;
+        return parsed.rateAnnual;
+      }
+    } catch {
+      // Tenta próximo endpoint na cascata
     }
-    return null;
-  } catch {
-    return null;
   }
+
+  return null;
 }
 
 /**

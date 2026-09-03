@@ -13,6 +13,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:run": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
     "icons": "node scripts/generate-icons.mjs",

@@ -12,6 +12,7 @@ import {
   calculateConcentrationRisk,
   calculateFreedomIndex,
   computeConsolidatedBalanceSheet,
+  filterPeriodRedemptions,
   validateCustomPeriod,
 } from "@/domain/reports";
 import { isCashAssetClass } from "@/domain/portfolio";
@@ -296,6 +297,34 @@ export function ReportsPage() {
     [monthBuysBRL, monthSellsBRL, monthDividendsAmountBRL, monthNetFlowBRL, currentMonthFormatted],
   );
 
+  const usdRate = useMemo(
+    () => positionRows.find((r) => r.currency === "USD")?.usdRate ?? 1,
+    [positionRows],
+  );
+
+  const periodRedemptions = useMemo(() => {
+    return filterPeriodRedemptions({
+      transactions,
+      assets,
+      mode,
+      month,
+      year,
+      startDate: customValid ? customStart : undefined,
+      endDate: customValid ? customEnd : undefined,
+      usdRate,
+    });
+  }, [
+    transactions,
+    assets,
+    mode,
+    month,
+    year,
+    customValid,
+    customStart,
+    customEnd,
+    usdRate,
+  ]);
+
   // Cálculos de Consultoria de Investimentos
   const allocationAnalysis = useMemo(() => {
     return calculateAllocationGaps(
@@ -529,24 +558,26 @@ export function ReportsPage() {
         freedomPct: freedomAnalysis.freedomPct,
         savingsRatePct: consolidatedBalance.dre.savingsRatePct,
       },
-      positions: positionRows.map((r) => {
-        const yoc = r.totalCostBRL > 0 ? (r.dividends / r.totalCostBRL) * 100 : 0;
-        return {
-          ticker: r.ticker,
-          name: r.ticker,
-          assetClass: r.assetClass ?? "outros",
-          sector: r.sector,
-          currency: r.currency ?? "BRL",
-          quantity: r.quantity,
-          averagePrice: r.averageCostBRL,
-          currentPrice: r.priceBRL,
-          totalValueBRL: r.valueBRL,
-          unrealizedPnlBRL: r.unrealizedPnl,
-          unrealizedPnlPct: r.unrealizedPct ?? 0,
-          yearDividendsBRL: r.dividends,
-          yocPct: yoc,
-        };
-      }),
+      positions: positionRows
+        .filter((r) => !r.isCash && r.quantity > 0)
+        .map((r) => {
+          const yoc = r.totalCostBRL > 0 ? (r.dividends / r.totalCostBRL) * 100 : 0;
+          return {
+            ticker: r.ticker,
+            name: r.ticker,
+            assetClass: r.assetClass ?? "outros",
+            sector: r.sector,
+            currency: r.currency ?? "BRL",
+            quantity: r.quantity,
+            averagePrice: r.averageCost,
+            currentPrice: r.priceQuote,
+            totalValueBRL: r.valueBRL,
+            unrealizedPnlBRL: r.unrealizedPnl,
+            unrealizedPnlPct: r.unrealizedPct ?? 0,
+            yearDividendsBRL: r.dividends,
+            yocPct: yoc,
+          };
+        }),
       dividends: dividends.map((d) => ({
         date: d.date,
         ticker: assets.find((a) => a.id === d.asset_id)?.ticker ?? "Ativo",
@@ -573,6 +604,18 @@ export function ReportsPage() {
         installmentsProgress: d.paid_at ? "Quitada" : "Pendente",
         dueDate: d.due_date,
       })),
+      redemptions: periodRedemptions.map((r) => ({
+        ticker: r.ticker,
+        name: r.name,
+        assetClass: r.assetClass,
+        sector: r.sector,
+        redemptionDate: r.redemptionDate,
+        quantity: r.quantity,
+        appliedCostBRL: r.appliedCostBRL,
+        redeemedValueBRL: r.redeemedValueBRL,
+        realizedPnlBRL: r.realizedPnlBRL,
+        finalReturnPct: r.finalReturnPct,
+      })),
     };
   }, [
     totalPatrimonyBRL,
@@ -588,6 +631,7 @@ export function ReportsPage() {
     assets,
     month,
     debts,
+    periodRedemptions,
   ]);
 
   const excelDescription = useMemo(() => {
@@ -839,8 +883,8 @@ export function ReportsPage() {
             sector: r.sector,
             currency: r.currency ?? "BRL",
             quantity: r.quantity,
-            averagePrice: r.averageCostBRL ?? r.averageCost,
-            currentPrice: r.priceBRL,
+            averagePrice: r.averageCost,
+            currentPrice: r.priceQuote,
             valueBRL: r.valueBRL,
             totalCostBRL: r.totalCostBRL,
             unrealizedPnlBRL: r.unrealizedPnl,
@@ -856,6 +900,11 @@ export function ReportsPage() {
         totalBRL={totalPatrimonyBRL}
         totalCostBRL={totalInvestedCostBRL}
         totalDividendsBRL={positionQuery.totalDividendsBRL}
+        totalReturnPnlBRL={positionQuery.totalReturnPnlBRL}
+        totalReturnPct={positionQuery.totalReturnPct}
+        unrealizedPnlBRL={positionQuery.unrealizedPnlBRL}
+        unrealizedPnlPct={positionQuery.unrealizedPct}
+        periodRedemptions={periodRedemptions}
         cashBRL={cashBalanceBRL}
         yearDividendsBRL={yearDividendsBRL}
         monthSummary={monthFlowSummary}

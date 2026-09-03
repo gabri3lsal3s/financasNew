@@ -1319,9 +1319,37 @@
   - `src/domain/portfolio/summary.ts`
   - `src/domain/portfolio/summary.test.ts`
   - `src/state/queries/use-portfolio-position.ts`
+## F80 — Alinhamento Contábil de Rentabilidade, Moeda Nativa (USD) e Tabela Dedicada de Resgates nos Relatórios
+
+- **Problema:**
+  1. Nos relatórios, ativos internacionais (ex.: Realty Income `O`, `SPHQ`, `VEA`) exibiam o Preço Médio e a Cotação com o símbolo `US$` sobre o valor já convertido em Reais (ex.: `US$ 317,20` em vez de `US$ 62,28`);
+  2. Ativos totalmente resgatados/encerrados com quantidade zerada (`CDB-FACTA`) apareciam dentro da tabela de custódia ativa de Renda Fixa, distorcendo o custo e subtotais da classe;
+  3. Divergência contábil no Retorno Total do Dossiê Executivo A4: o cabeçalho calculava apenas Ganho Não Realizado + Proventos (+15,0%), omitindo o lucro realizado de posições encerradas (+15,96% na tela de investimentos);
+  4. O Caderno Excel (.xlsx) não possuía segregação de posições encerradas e misturava moedas.
+- **Solução:**
+  1. **Motor de Domínio Puro de Resgates (`period-redemptions.ts`):**
+     - Criada a função pura `filterPeriodRedemptions` e testes unitários dedicados em `src/domain/reports/period-redemptions.test.ts`;
+     - Filtra transações de venda/resgate pela competência selecionada e concilia o custo original aplicado, valor resgatado, resultado realizado em R$ e rentabilidade ponderada final;
+  2. **Tabela Editorial de Resgates (`ReportRedemptionsTable.tsx`):**
+     - Novo componente A4 em `src/components/modules/reports/` com totalizadores contábeis, badges semânticos e conformidade estrita com o DESIGN_SYSTEM (zero emojis, `MoneyText`, `tabular-nums`);
+  3. **Moeda Nativa USD Pura (Sugestão 2):**
+     - `reports-page.tsx` agora passa `averagePrice: r.averageCost` e `currentPrice: r.priceQuote` (preços nativos em USD);
+     - `ReportClassTables` renderiza `MoneyText currency="USD"` para ativos internacionais e mantém a consolidação de carteira em Reais;
+  4. **Segregação Estrita da Custódia:**
+     - `WealthTearSheetModal` agora isola `activeInvestmentRows` (`quantity > 0`), removendo ativos zerados das tabelas e gráficos de alocação;
+  5. **Convergência Total das Métricas de Retorno (+15,96%):**
+     - `WealthTearSheetModal` recebe `totalReturnPnlBRL` e `totalReturnPct` diretamente de `usePortfolioPosition`, garantindo paridade de 100% com o hero card de investimentos;
+  6. **Caderno Excel (.xlsx) Expandido:**
+     - Adicionado suporte a `redemptions` em `ExcelWorkbookData` e geração da aba dedicada `"Resgates e Vendas"` em `excel-export.ts`.
+- **Arquivos criados / alterados:**
+  - `src/domain/reports/period-redemptions.ts` (novo)
+  - `src/domain/reports/period-redemptions.test.ts` (novo)
+  - `src/domain/reports/index.ts`
+  - `src/components/modules/reports/report-redemptions-table.tsx` (novo)
+  - `src/components/modules/reports/index.ts`
+  - `src/services/excel-export.ts`
   - `src/features/reports/components/wealth-tear-sheet-modal.tsx`
   - `src/features/reports/pages/reports-page.tsx`
-  - `src/features/reports/pages/reports-page.test.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
 ## Notas finais

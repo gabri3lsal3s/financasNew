@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InsightsPage } from "./insights-page";
 
 const setFeedbackMock = vi.fn();
@@ -68,6 +68,19 @@ vi.mock("@/state", () => ({
 }));
 
 describe("InsightsPage (motor de insights §3.7)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    fixture.incomeCents = 500_000;
+    fixture.monthlyExpenses = (month) => [
+      { id: `${month}-1`, description: "Streaming", category_id: "c2", value: 1990, report_weight: 1, date: `${month}-05`, installment_group_id: null },
+      { id: `${month}-2`, description: "Academia", category_id: "c2", value: 9900, report_weight: 1, date: `${month}-10`, installment_group_id: null },
+    ];
+  });
   it("renderiza a aba unificada 'Diagnósticos' como primeira", () => {
     render(<InsightsPage />);
     const tabs = screen.getAllByRole("tab");
@@ -175,13 +188,5 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     fixture.incomeCents = 5_000;
     render(<InsightsPage />);
     expect(screen.getByText(/Saldo negativo:/)).toBeInTheDocument();
-  });
-
-  afterEach(() => {
-    fixture.incomeCents = 500_000;
-    fixture.monthlyExpenses = (month) => [
-      { id: `${month}-1`, description: "Streaming", category_id: "c2", value: 1990, report_weight: 1, date: `${month}-05`, installment_group_id: null },
-      { id: `${month}-2`, description: "Academia", category_id: "c2", value: 9900, report_weight: 1, date: `${month}-10`, installment_group_id: null },
-    ];
   });
 });

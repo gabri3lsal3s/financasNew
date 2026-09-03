@@ -55,6 +55,19 @@ export interface ExcelDebtRow {
   dueDate?: string | null;
 }
 
+export interface ExcelRedemptionRow {
+  ticker: string;
+  name?: string | null;
+  assetClass: string;
+  sector?: string | null;
+  redemptionDate: string;
+  quantity: number;
+  appliedCostBRL: number;
+  redeemedValueBRL: number;
+  realizedPnlBRL: number;
+  finalReturnPct: number | null;
+}
+
 export interface ExcelWorkbookData {
   appName?: string;
   generatedAt?: string;
@@ -72,6 +85,7 @@ export interface ExcelWorkbookData {
   dividends: readonly ExcelDividendRow[];
   dreMonthly: readonly ExcelDREMonthRow[];
   debts: readonly ExcelDebtRow[];
+  redemptions?: readonly ExcelRedemptionRow[];
 }
 
 export function sanitizeSpreadsheetText(value: string | number | null | undefined): string {
@@ -373,7 +387,57 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
  </Worksheet>`;
 
 
-  return `${xmlHeader}${sheet1}${sheet2}${sheet3}${sheet4}${sheet5}\n</Workbook>`;
+  // 6. Aba: Resgates e Vendas (se houver no período)
+  let sheet6 = "";
+  if (data.redemptions && data.redemptions.length > 0) {
+    const redemptionRowsXml = data.redemptions
+      .map(
+        (r) => `
+   <Row>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">${escapeXml(r.ticker)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(r.name ?? r.ticker)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(r.assetClass)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(r.sector ?? "—")}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(r.redemptionDate)}</Data></Cell>
+    <Cell ss:StyleID="Quantity"><Data ss:Type="Number">${formatQuantityRaw(r.quantity)}</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(r.appliedCostBRL)}</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(r.redeemedValueBRL)}</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(r.realizedPnlBRL)}</Data></Cell>
+    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${r.finalReturnPct !== null ? (r.finalReturnPct / 100).toFixed(4) : "0.0000"}</Data></Cell>
+   </Row>`,
+      )
+      .join("");
+
+    sheet6 = `
+ <Worksheet ss:Name="Resgates e Vendas">
+  <Table ss:DefaultColumnWidth="110">
+   <Column ss:Width="80"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="90"/>
+   <Row ss:StyleID="Header">
+    <Cell><Data ss:Type="String">Ticker</Data></Cell>
+    <Cell><Data ss:Type="String">Nome / Descrição</Data></Cell>
+    <Cell><Data ss:Type="String">Classe</Data></Cell>
+    <Cell><Data ss:Type="String">Setor</Data></Cell>
+    <Cell><Data ss:Type="String">Data Resgate</Data></Cell>
+    <Cell><Data ss:Type="String">Quantidade</Data></Cell>
+    <Cell><Data ss:Type="String">Valor Aplicado (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Valor Resgatado (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Resultado (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Rentab. Final (%)</Data></Cell>
+   </Row>${redemptionRowsXml}
+  </Table>
+ </Worksheet>`;
+  }
+
+  return `${xmlHeader}${sheet1}${sheet2}${sheet3}${sheet4}${sheet5}${sheet6}\n</Workbook>`;
 }
 
 /**

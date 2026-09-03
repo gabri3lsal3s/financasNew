@@ -1,5 +1,15 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.21** registra a **Conclusão da Fase 81 (Automação Contínua de Renda Fixa & Indexador CDI do Banco Central)** (2026-09-02):
+> - **(1) Resiliência e Fallback em Cascata de Indicadores BCB (SGS)**: `fetchBcbIndicator` em `src/services/quotes.ts` enriquecido com cascata multi-endpoint (Direct API, AllOrigins e CorsProxy) com timeout resiliente de 5s, cache local e função utilitária `clearBcbCache()`;
+> - **(2) Testes Automatizados Dedicados de Domínio e Estado**: Criação de `use-macro-indicators.test.tsx` e ampliação de `quotes.test.ts` cobrindo conversão anualizada de CDI diário (Série 12), Selic Meta (Série 432), cache e fallback para a taxa de segurança (`10.5% a.a.`);
+> - **(3) Suíte 100% Verde**: 272 arquivos de teste / 1.938 testes passando (100% verde), zero erros de typecheck (`tsc -b`) e lint (`eslint .`), e build de produção limpo em 2.39s.
+
+> **v2.20** registra a **Conclusão da Fase 80 (Blindagem Temporal de Testes, Congelamento de Data & Saneamento do CI)** (2026-09-02):
+> - **(1) Congelamento Determinístico de Tempo em Testes de UI**: Adição de `vi.useFakeTimers({ shouldAdvanceTime: true })` e `vi.setSystemTime(new Date("2026-08-15T12:00:00Z"))` em `overview-page.test.tsx`, `insights-page.test.tsx` e `budgets-page.test.tsx`, eliminando a sensibilidade temporal à virada de mês (agosto para setembro) e garantindo paridade das fixtures mockadas com o mês inicial em qualquer dia do ano;
+> - **(2) Saneamento do Script Canônico no `package.json`**: Adição do comando `"test:run": "vitest run"`, alinhando os scripts de CI e execução de testes em lote;
+> - **(3) Suíte 100% Verde**: 271 arquivos de teste / 1.933 testes passando (100% verde), zero erros de typecheck (`tsc -b`) e lint (`eslint .`), e build de produção limpo em 1.57s.
+
 > **v2.19** registra a **Conclusão da Fase 76.7 (Catálogo de Planos Público `/planos`, Ajuste de Landing Page & Onboarding)** (2026-08-29):
 > - **(1) Rota Pública Oficial `/planos` e `/precos`**: Roteamento integrado com rolagem automática suave para a `PricingSection` detalhando os planos Free (Trial 30 dias com modo somente-leitura pós-período) e Pro (Mensal R$ 19,90 e Anual R$ 14,90/mês);
 > - **(2) Onboarding Transparente no `RegisterPage`**: Subtítulo adaptativo comunicando o período de teste Pro gratuito de 30 dias sem necessidade de cartão de crédito e integração com parâmetros de plano (`?plano=pro-anual` / `?plano=pro-mensal`) para checkout fluido;
@@ -279,6 +289,8 @@
 | **F77** | Gestão e Edição Completa de Ativos Encerrados e Histórico de Custos | Edição de ativos encerrados, custo original de resgates e edição de lançamentos no extrato | Custódia & Histórico |
 | **F78** | Resiliência de Cotações Internacionais, Gateway Yahoo Finance e Tickers de 1 Letra | Jina Reader proxy, suporte a tickers curtos como Realty Income (O) e resolução de moeda USD | Cotações & Câmbio |
 | **F79** | Alinhamento Contábil de Rentabilidade, Neutralidade de Caixa e Relatórios | Eliminação do viés de caixa nos snapshots mensais e balanço consolidado, inclusão de lucros realizados | Rentabilidade & Relatórios |
+| **F80** | Blindagem Temporal de Testes, Congelamento de Data & Saneamento do CI | Congelamento de tempo em testes de UI, compatibilidade de scripts e suíte 100% verde | Qualidade & CI |
+| **F81** | Automação Contínua de Renda Fixa & Indexador CDI do Banco Central | Indicadores BCB em cascata, cálculo de rendimento projetado e testes unitários de macro indicadores | Renda Fixa & Cotações |
 
 
 
@@ -4166,6 +4178,87 @@ flowchart TD
 - [x] Auto-scroll suave para a tabela de preços implementado.
 - [x] Subtítulo e fluxo de onboarding com trial de 30 dias alinhados no cadastro.
 - [x] Suíte de testes (269 arquivos / 1.908 testes), typecheck (`tsc -b`), linter e build de produção 100% verdes.
+
+---
+
+### 🛡️ FASE 80 — Blindagem Temporal de Testes, Congelamento de Data & Saneamento do CI
+
+> **Status:** ✅ Concluída (2026-09-02) — **Estabilização de Suíte & Congelamento de Relógio**: Eliminação da fragilidade de sensibilidade temporal na suíte de testes causada pela virada de mês (agosto para setembro), através da injeção determinística de `vi.useFakeTimers({ shouldAdvanceTime: true })` e `vi.setSystemTime(new Date("2026-08-15T12:00:00Z"))` em `overview-page.test.tsx`, `insights-page.test.tsx` e `budgets-page.test.tsx`. Adição do script canônico `"test:run": "vitest run"` no `package.json`.
+>
+> **Objetivo:** Garantir que 100% dos testes de integração das páginas financeiras permaneçam verdes e determinísticos em qualquer dia do ano, prevenindo falsos negativos de CI em viradas de mês e mantendo total compatibilidade de scripts de execução em lote.
+
+#### 1. Entregas Realizadas
+- **Congelamento Temporal Determinístico em Testes de UI:**
+  - `src/features/overview/pages/overview-page.test.tsx`: Fake timers congelando em `2026-08-15` no `beforeEach` e restauração com `vi.useRealTimers()` no `afterEach`, alinhando os KPIs operacionais de `OverviewPage` ao dataset mockado de agosto;
+  - `src/features/insights/pages/insights-page.test.tsx`: Fake timers congelando em `2026-08-15`, garantindo alinhamento perfeito do cálculo de `aggregateByWeekday` e comparativos de fim de semana na aba de Diagnósticos;
+  - `src/features/budgets/pages/budgets-page.test.tsx`: Fake timers congelando em `2026-08-15`, sincronizando a montagem inicial com os tetos e metas de renda cadastrados em agosto.
+- **Saneamento de Scripts no `package.json`:**
+  - Adicionado `"test:run": "vitest run"`, padronizando o comando para invocações de scripts de automação.
+
+**✅ DoD (Definition of Done da Fase 80):**
+- [x] Script `"test:run"` presente no `package.json`.
+- [x] Congelamento temporal configurado nos testes de UI com isolamento e teardown limpo.
+- [x] Suíte de testes 100% verde (271 arquivos / 1.933 testes).
+- [x] Typecheck estrito (`tsc -b`) e lint (`eslint .`) com zero erros ou advertências.
+- [x] Build de produção limpo em 1.57s.
+
+---
+
+### 📈 FASE 81 — Automação Contínua de Renda Fixa & Indexador CDI do Banco Central
+
+> **Status:** ✅ Concluída (2026-09-02) — **Resiliência Macro & Automação de Indexadores**: Fortalecimento da busca de taxas do Banco Central do Brasil (SGS Série 12 CDI Diário e Série 432 Selic Meta) com pipeline em cascata e proxies abertos com timeout, garantindo que o motor de projeção de saldo e rentabilidade de Renda Fixa (`fixed-income.ts`) e o hook reativo `useMacroIndicators` operem com atualização contínua e fallback seguro de 10.5% a.a.
+>
+> **Objetivo:** Automatizar a consulta e projeção de Renda Fixa privada e pública sem depender de calibração manual constante do usuário, com testes unitários cobrindo o ciclo completo do serviço e do hook TanStack Query.
+
+#### 1. Entregas Realizadas
+- **Pipeline em Cascata Resiliente no Serviço de Cotações (`src/services/quotes.ts`):**
+  - `fetchBcbIndicator` enriquecido com tentativas sequenciais através de endpoint direto da API do BCB, AllOrigins e CorsProxy com timeout estrito de 5 segundos;
+  - Função utilitária `clearBcbCache()` para testes e suporte a invalidação controlada de cache em memória (TTL 6 horas).
+- **Testes Unitários Dedicados de Cotações e Indicadores:**
+  - `src/services/quotes.test.ts`: Testes para consulta de CDI diário com conversão em % anual, busca de Selic Meta (% a.a.) e verificação de reutilização de cache;
+  - `src/state/queries/use-macro-indicators.test.tsx`: Testes unitários do hook TanStack Query cobrindo sucesso e fallback de segurança de 10.5% em caso de indisponibilidade externa.
+
+**✅ DoD (Definition of Done da Fase 81):**
+- [x] `fetchBcbIndicator` resiliente com fallback em cascata contra falhas de rede/CORS.
+- [x] Testes unitários do serviço de macro indicadores criados e verdes (`quotes.test.ts`).
+- [x] Testes unitários do hook `useMacroIndicators` criados e verdes (`use-macro-indicators.test.tsx`).
+- [x] Suíte de testes 100% verde (272 arquivos / 1.938 testes).
+- [x] Typecheck (`tsc -b`) e linter (`eslint .`) limpos sem advertências.
+- [x] Build de produção limpo em 2.39s.
+
+---
+
+### 📈 FASE 82 — Alinhamento Contábil de Rentabilidade, Moeda Nativa (USD) e Tabela Dedicada de Resgates nos Relatórios
+
+> **Status:** ✅ Concluída (2026-09-02) — **Precisão Editorial e Contábil 360°**: Padronização da exibição de ativos internacionais na moeda nativa de negociação (USD pura nas colunas unitárias com consolidação em R$ sob taxa PTAX), segregação estrita da custódia consolidada ativa (`quantity > 0`), criação de tabela editorial de resgates/vendas do período (`ReportRedemptionsTable`), unificação canônica do Retorno Total entre Investimentos e Relatórios (+15,96%) e expansão do Caderno Excel (.xlsx).
+>
+> **Objetivo:** Eliminar discrepâncias visuais e de cálculo entre a tela de Investimentos e a Central de Relatórios, garantindo que posições encerradas não poluam a custódia ativa e que ativos em moeda estrangeira reflitam seus valores reais de mercado.
+
+#### 1. Entregas Realizadas
+- **Motor de Domínio Puro de Resgates do Período (`src/domain/reports/period-redemptions.ts`):**
+  - Função pura `filterPeriodRedemptions`: filtra transações de venda/resgate pela competência (mês, ano ou customizado) e calcula custo aplicado original, valor resgatado, lucro realizado e rentabilidade final ponderada;
+  - Testes unitários com Vitest em `src/domain/reports/period-redemptions.test.ts`.
+- **Tabela Editorial de Resgates (`src/components/modules/reports/report-redemptions-table.tsx`):**
+  - Componente A4 dedicado com totalizadores contábeis, badges semânticos e conformidade estrita com o DESIGN_SYSTEM e AGENTS.md (zero emojis, `MoneyText`, `tabular-nums`).
+- **Moeda Nativa USD Pura (Sugestão 2):**
+  - `reports-page.tsx` passa `averagePrice: r.averageCost` e `currentPrice: r.priceQuote` na moeda nativa USD;
+  - `ReportClassTables` renderiza `MoneyText currency="USD"` para ativos internacionais e consolida os totais de carteira em Reais.
+- **Segregação Estrita da Custódia:**
+  - `WealthTearSheetModal` agora isola `activeInvestmentRows` (`quantity > 0`), expurgando ativos com saldo zero da custódia e dos subtotais por classe.
+- **Convergência Canônica de Rentabilidade (+15,96%):**
+  - `WealthTearSheetModal` recebe `totalReturnPnlBRL` e `totalReturnPct` calculados canonicamente por `usePortfolioPosition`, convergindo 100% com o Retorno Total do Card Hero de Investimentos.
+- **Caderno Excel (.xlsx) Multi-Abas:**
+  - `excel-export.ts` enriquecido com interface `ExcelRedemptionRow` e geração condicional da aba `"Resgates e Vendas"`.
+
+**✅ DoD (Definition of Done da Fase 82):**
+- [x] Ativos internacionais com cotação e preço médio em USD puro e total consolidado em R$.
+- [x] Ativos encerrados/zerados segregados da custódia ativa e exibidos em tabela dedicada de resgates do período.
+- [x] Retorno Total do Dossiê A4 convergente em 100% com o Card Hero de investimentos (+15,96%).
+- [x] Caderno Excel (.xlsx) atualizado com moeda nativa e aba de resgates.
+- [x] Testes de domínio, serviços e componentes 100% verdes (114 arquivos / 1.248 testes).
+- [x] Typecheck (`tsc -b`) e linter (`eslint .`) com zero erros.
+- [x] Build de produção do Vite limpo com PWA gerado com sucesso.
+
 
 
 

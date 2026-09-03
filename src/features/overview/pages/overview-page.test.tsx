@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OverviewPage } from "./overview-page";
 
 vi.mock("react-router", () => ({
@@ -143,8 +143,14 @@ vi.mock("@/state", () => ({
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
     navigateMock.mockReset();
     portfolioContributionsMock = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("exibe os KPIs fundamentais com peso de relatório e o Saldo Disponível em Conta", () => {

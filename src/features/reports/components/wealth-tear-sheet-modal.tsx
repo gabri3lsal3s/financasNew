@@ -3,16 +3,22 @@ import { Layers, PieChart, Landmark, Calendar } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
+  ReportFooter,
   ReportExecutiveSummary,
-  ReportClassTables,
   ReportStackedBar,
   ReportRiskGauge,
-  ReportFooter,
+  ReportClassTables,
+  ReportRedemptionsTable,
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { formatSignedPct, formatPercent } from "@/services/masks/percent";
-import { sanitizeReportText, type AllocationAnalysisResult, type ConcentrationRiskResult } from "@/domain/reports";
+import { formatPercent, formatSignedPct } from "@/services/masks/percent";
+import {
+  sanitizeReportText,
+  type AllocationAnalysisResult,
+  type ConcentrationRiskResult,
+  type PeriodRedemptionItem,
+} from "@/domain/reports";
 
 export interface WealthPositionRow {
   ticker: string;
@@ -50,6 +56,11 @@ export interface WealthTearSheetModalProps {
   totalBRL: number;
   totalCostBRL: number;
   totalDividendsBRL?: number;
+  totalReturnPnlBRL?: number;
+  totalReturnPct?: number | null;
+  unrealizedPnlBRL?: number;
+  unrealizedPnlPct?: number | null;
+  periodRedemptions?: readonly PeriodRedemptionItem[];
   cashBRL?: number;
   yearDividendsBRL?: number;
   monthSummary?: MonthFlowSummary;
@@ -94,6 +105,11 @@ export function WealthTearSheetModal({
   totalBRL,
   totalCostBRL,
   totalDividendsBRL,
+  totalReturnPnlBRL,
+  totalReturnPct: propTotalReturnPct,
+  unrealizedPnlBRL: propUnrealizedPnlBRL,
+  unrealizedPnlPct: propUnrealizedPnlPct,
+  periodRedemptions,
   monthSummary,
   allocationAnalysis,
   concentrationRisk,
@@ -101,20 +117,33 @@ export function WealthTearSheetModal({
   appName = "Guia Financeiro",
   accountHolder,
 }: WealthTearSheetModalProps) {
+  // Custódia Ativa: exclui ativos de caixa e posições totalmente encerradas (quantity <= 0)
+  const activeInvestmentRows = useMemo(
+    () => rows.filter((r) => !r.isCash && r.quantity > 0),
+    [rows],
+  );
   const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
+
   const totalInvestedValueBRL = useMemo(
-    () => Math.round(investmentRows.reduce((acc, r) => acc + r.valueBRL, 0) * 100) / 100,
-    [investmentRows],
+    () => Math.round(activeInvestmentRows.reduce((acc, r) => acc + r.valueBRL, 0) * 100) / 100,
+    [activeInvestmentRows],
   );
   const effectiveCostBRL = useMemo(
     () =>
       totalCostBRL > 0
         ? totalCostBRL
-        : Math.round(investmentRows.reduce((acc, r) => acc + (r.totalCostBRL ?? 0), 0) * 100) / 100,
-    [totalCostBRL, investmentRows],
+        : Math.round(activeInvestmentRows.reduce((acc, r) => acc + (r.totalCostBRL ?? 0), 0) * 100) / 100,
+    [totalCostBRL, activeInvestmentRows],
   );
-  const unrealizedPnlBRL = Math.round((totalInvestedValueBRL - effectiveCostBRL) * 100) / 100;
-  const unrealizedPnlPct = effectiveCostBRL > 0 ? (unrealizedPnlBRL / effectiveCostBRL) * 100 : 0;
+
+  const fallbackUnrealizedPnlBRL = Math.round((totalInvestedValueBRL - effectiveCostBRL) * 100) / 100;
+  const fallbackUnrealizedPnlPct = effectiveCostBRL > 0 ? (fallbackUnrealizedPnlBRL / effectiveCostBRL) * 100 : 0;
+
+  const unrealizedPnlBRL = propUnrealizedPnlBRL !== undefined ? propUnrealizedPnlBRL : fallbackUnrealizedPnlBRL;
+  const unrealizedPnlPct =
+    propUnrealizedPnlPct !== undefined && propUnrealizedPnlPct !== null
+      ? propUnrealizedPnlPct
+      : fallbackUnrealizedPnlPct;
 
   // Total de proventos de todos os tempos e Retorno Total real consolidado
   const totalDividendsAllTime = useMemo(() => {
@@ -129,8 +158,14 @@ export function WealthTearSheetModal({
     return totalDividendsBRL ?? 0;
   }, [totalDividendsBRL, rows]);
 
-  const totalReturnBRL = Math.round((unrealizedPnlBRL + totalDividendsAllTime) * 100) / 100;
-  const totalReturnPct = effectiveCostBRL > 0 ? (totalReturnBRL / effectiveCostBRL) * 100 : 0;
+  const fallbackTotalReturnBRL = Math.round((unrealizedPnlBRL + totalDividendsAllTime) * 100) / 100;
+  const fallbackTotalReturnPct = effectiveCostBRL > 0 ? (fallbackTotalReturnBRL / effectiveCostBRL) * 100 : 0;
+
+  const totalReturnBRL = totalReturnPnlBRL !== undefined ? totalReturnPnlBRL : fallbackTotalReturnBRL;
+  const totalReturnPct =
+    propTotalReturnPct !== undefined && propTotalReturnPct !== null
+      ? propTotalReturnPct
+      : fallbackTotalReturnPct;
 
   // Segmentos para barra empilhada de alocação
   const stackedSegments = allocationAnalysis.classGaps.map((cg) => ({
@@ -153,7 +188,7 @@ export function WealthTearSheetModal({
   // Agrupamento por classe de ativos para a tabela de custódia com subtotais e Retorno Total por classe
   const groupedRows = useMemo(() => {
     const groups = new Map<string, WealthPositionRow[]>();
-    for (const row of investmentRows) {
+    for (const row of activeInvestmentRows) {
       const cls = row.assetClass || "Outros";
       const list = groups.get(cls) ?? [];
       list.push(row);
@@ -211,7 +246,7 @@ export function WealthTearSheetModal({
           topAssetSharePct,
         };
       });
-  }, [investmentRows, totalBRL]);
+  }, [activeInvestmentRows, totalBRL]);
 
   // Narrativa analítica factual e dinâmica com Retorno Total e sem prescrição de compra
   const narrativeContent = useMemo(() => {
@@ -497,7 +532,7 @@ export function WealthTearSheetModal({
           <div className="flex items-center gap-1.5">
             <Layers className="size-3.5 text-primary-strong" aria-hidden="true" />
             <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
-              Custódia Consolidada de Ativos por Classe ({investmentRows.length} ativos)
+              Custódia Consolidada de Ativos por Classe ({activeInvestmentRows.length} ativos)
             </h3>
           </div>
           <span className="text-[10px] text-muted-foreground font-mono num">
@@ -536,6 +571,11 @@ export function WealthTearSheetModal({
             };
           })}
         />
+
+        {/* Tabela Dedicada de Posições Encerradas & Resgates Realizados no Período */}
+        {periodRedemptions && periodRedemptions.length > 0 ? (
+          <ReportRedemptionsTable items={periodRedemptions} periodLabel={periodLabel} />
+        ) : null}
       </section>
 
       {/* 7. Rodapé Institucional */}

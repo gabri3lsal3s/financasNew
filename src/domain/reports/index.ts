@@ -341,3 +341,11 @@ export {
 
 export { sanitizeReportText } from "./sanitize-text";
 
+export {
+  filterPeriodRedemptions,
+  type PeriodRedemptionItem,
+  type PeriodRedemptionTxInput,
+  type PeriodRedemptionAssetInput,
+  type FilterPeriodRedemptionsParams,
+} from "./period-redemptions";
+
