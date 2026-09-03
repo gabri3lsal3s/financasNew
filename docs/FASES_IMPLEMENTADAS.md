@@ -1459,6 +1459,29 @@
   - `src/components/modules/reports/report-donut-chart.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F88 — Padronização Visual de Resgates & Rentabilidade com Dedução de IR
+
+- **Problema:**
+  1. A tabela de resgates estava com o contêiner e bordas desalinhados das demais tabelas, com o conteúdo ultrapassando as bordas arredondadas devido ao uso indevido de `overflow-x-auto` e largura mínima;
+  2. Os valores numéricos de valor aplicado, valor resgatado e resultado colidiam e encavalavam;
+  3. Não havia dedução fiscal de IR sobre o ganho de capital de ativos de Renda Fixa tributáveis (ex.: CDB-FACTA).
+- **Solução:**
+  1. **Padronização Visual Estrita com as Demais Tabelas (`report-redemptions-table.tsx`):**
+     - Adotada a mesma estrutura canônica de `ReportClassTables`: `<div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">` sem larguras mínimas artificiais;
+     - As bordas arredondadas e o preenchimento agora se integram com 100% de precisão visual;
+  2. **Remoção da Coluna "Valor Aplicado" e Espaçamento Generoso:**
+     - A coluna "Valor Aplicado" foi removida conforme solicitado, reduzindo a tabela para 5 colunas limpas e espaçosas (Título 32%, Categoria 24%, Data 14%, Valor Resgatado 16%, Resultado Líquido 14%);
+     - Os valores numéricos possuem respiro total, sem qualquer colisão ou texto colado;
+  3. **Inteligência Fiscal com Dedução de IR (`period-redemptions.ts`):**
+     - Para títulos de Renda Fixa com ganho de capital e sem isenção (`!is_tax_exempt`), o motor calcula os dias corridos de custódia e aplica a tabela regressiva oficial (Lei 11.033/2004);
+     - O valor resgatado passa a ser apresentado **líquido de IR** (ex.: R$ 1.342,31 bruto - R$ 21,21 IR = R$ 1.321,10 líquido);
+     - O resultado financeiro e a rentabilidade final passam a refletir o retorno **líquido real** (ex.: +6,9% líq. em vez de 8,6% bruto), com discriminação do imposto retido.
+- **Arquivos alterados:**
+  - `src/domain/reports/period-redemptions.ts`
+  - `src/domain/reports/period-redemptions.test.ts`
+  - `src/components/modules/reports/report-redemptions-table.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

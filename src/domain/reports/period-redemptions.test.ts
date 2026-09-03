@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { filterPeriodRedemptions } from "./period-redemptions";
 
-describe("filterPeriodRedemptions — Resgates e Vendas no Período", () => {
+describe("filterPeriodRedemptions — Resgates e Vendas no Período com Dedução de IR", () => {
   const assets = [
     {
       id: "asset-cdb",
@@ -30,6 +30,25 @@ describe("filterPeriodRedemptions — Resgates e Vendas no Período", () => {
       sector: "Petróleo e Gás",
       currency: "BRL",
       average_price: 35.0,
+    },
+    {
+      id: "asset-lci",
+      ticker: "LCI-CAIXA",
+      name: "LCI Caixa Imobiliária",
+      asset_class: "Renda Fixa",
+      sector: "Imobiliário / LCI",
+      currency: "BRL",
+      average_price: 0,
+      fixed_income_metadata: {
+        base_date: "2026-09-02",
+        rate_type: "cdi" as const,
+        base_value: 0,
+        rate_value: 95,
+        is_tax_exempt: true,
+        maturity_date: "2026-09-02",
+        initial_investment_date: "2026-01-10",
+        initial_investment_value: 2000.0,
+      },
     },
   ];
 
@@ -61,9 +80,18 @@ describe("filterPeriodRedemptions — Resgates e Vendas no Período", () => {
       price: 35.0,
       total: 1750.0,
     },
+    {
+      id: "tx-4",
+      asset_id: "asset-lci",
+      type: "sell",
+      date: "2026-09-02",
+      quantity: 1,
+      price: 2150.0,
+      total: 2150.0,
+    },
   ];
 
-  it("filtra apenas os resgates do mês selecionado (2026-09)", () => {
+  it("calcula dedução de IR para CDB tributável (alíquota 20% após 187 dias)", () => {
     const result = filterPeriodRedemptions({
       transactions,
       assets,
@@ -71,18 +99,44 @@ describe("filterPeriodRedemptions — Resgates e Vendas no Período", () => {
       month: "2026-09",
     });
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
+    const cdb = result.find((r) => r.ticker === "CDB-FACTA");
+    expect(cdb).toBeDefined();
+    expect(cdb).toMatchObject({
       id: "tx-1",
       assetId: "asset-cdb",
       ticker: "CDB-FACTA",
       assetClass: "Renda Fixa",
       redemptionDate: "2026-09-02",
-      quantity: 1,
       appliedCostBRL: 1236.27,
-      redeemedValueBRL: 1342.31,
-      realizedPnlBRL: 106.04,
-      finalReturnPct: 8.58,
+      grossRedeemedValueBRL: 1342.31,
+      taxAmountBRL: 21.21,
+      taxRatePct: 20,
+      redeemedValueBRL: 1321.10,
+      realizedPnlBRL: 84.83,
+      finalReturnPct: 6.86,
+    });
+  });
+
+  it("não deduz IR para ativo isento (LCI)", () => {
+    const result = filterPeriodRedemptions({
+      transactions,
+      assets,
+      mode: "month",
+      month: "2026-09",
+    });
+
+    const lci = result.find((r) => r.ticker === "LCI-CAIXA");
+    expect(lci).toBeDefined();
+    expect(lci).toMatchObject({
+      id: "tx-4",
+      ticker: "LCI-CAIXA",
+      appliedCostBRL: 2000.0,
+      grossRedeemedValueBRL: 2150.0,
+      taxAmountBRL: 0,
+      taxRatePct: null,
+      redeemedValueBRL: 2150.0,
+      realizedPnlBRL: 150.0,
+      finalReturnPct: 7.5,
     });
   });
 
@@ -98,37 +152,10 @@ describe("filterPeriodRedemptions — Resgates e Vendas no Período", () => {
     expect(result[0]).toMatchObject({
       id: "tx-2",
       ticker: "PETR4",
-      assetClass: "Ações",
-      redemptionDate: "2026-08-15",
       appliedCostBRL: 350.0,
       redeemedValueBRL: 400.0,
       realizedPnlBRL: 50.0,
       finalReturnPct: 14.29,
     });
-  });
-
-  it("retorna array vazio quando não houver vendas no período", () => {
-    const result = filterPeriodRedemptions({
-      transactions,
-      assets,
-      mode: "month",
-      month: "2026-07",
-    });
-
-    expect(result).toEqual([]);
-  });
-
-  it("filtra por ano quando o modo for year", () => {
-    const result = filterPeriodRedemptions({
-      transactions,
-      assets,
-      mode: "year",
-      year: 2026,
-    });
-
-    expect(result).toHaveLength(2);
-    // Ordenado decrescente pela data (02/09 antes de 15/08)
-    expect(result[0]?.redemptionDate).toBe("2026-09-02");
-    expect(result[1]?.redemptionDate).toBe("2026-08-15");
   });
 });

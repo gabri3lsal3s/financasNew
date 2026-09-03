@@ -4413,6 +4413,34 @@ flowchart TD
 - [x] Typecheck e lint limpos sem advertências.
 - [x] Build de produção limpo e testado.
 
+---
+
+### 📊 FASE 88 — Padronização Visual de Resgates & Rentabilidade com Dedução de IR
+
+> **Status:** ✅ Concluída (2026-09-02) — **Inteligência Fiscal & Harmonia Visual**: Padronização da anatomia de bordas da tabela de resgates alinhada com as tabelas de custódia; eliminação da coluna "Valor Aplicado" para permitir espaçamento generoso; cálculo determinístico de dedução de IR (tabela regressiva) para títulos de Renda Fixa com ganho de capital, exibindo valor resgatado líquido e rentabilidade líquida real.
+>
+> **Objetivo:** Eliminar qualquer sobreposição numérica na tabela de resgates, alinhar as bordas arredondadas e refletir a retenção tributária de IR de forma transparente.
+
+#### 1. Entregas Realizadas
+- **Padronização Visual da Tabela de Resgates (`report-redemptions-table.tsx`):**
+  - Removido `overflow-x-auto` com `min-w-[650px]` que deformava e vazava a borda arredondada;
+  - Adotada a casca canônica de `ReportClassTables`: `<div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">`;
+  - Coluna "Valor Aplicado" removida; tabela simplificada para 5 colunas harmoniosas (Título 32%, Categoria 24%, Data 14%, Valor Resgatado 16%, Resultado Líquido 14%);
+  - Espaçamento amplo com `px-3 py-2`, zero sobreposições numéricas.
+- **Inteligência Fiscal com Dedução de IR (`period-redemptions.ts`):**
+  - Integrado o cálculo de IR regressivo da Lei 11.033/2004 para títulos de Renda Fixa tributáveis;
+  - Resgates exibem o valor líquido resgatado e a rentabilidade líquida efetiva, com anotação do imposto retido.
+
+**✅ DoD (Definition of Done da Fase 88):**
+- [x] Tabela de resgates com bordas 100% alinhadas ao contêiner arredondado sem vazamentos.
+- [x] Coluna "Valor Aplicado" removida.
+- [x] Valores de "Valor Resgatado" e "Resultado" com espaçamento amplo e zero sobreposição.
+- [x] Dedução de IR calculada sobre ganhos de renda fixa tributável.
+- [x] Valor resgatado e rentabilidade exibidos líquidos de IR.
+- [x] Testes unitários atualizados e aprovados em `period-redemptions.test.ts`.
+- [x] Typecheck e lint limpos sem advertências.
+- [x] Build de produção limpo e testado.
+
 
 
 

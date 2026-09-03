@@ -1,4 +1,9 @@
 import type { FixedIncomeMetadata } from "@/types";
+import {
+  countCalendarDays,
+  getFixedIncomeTaxRatePct,
+  isFixedIncomeClass,
+} from "@/domain/portfolio";
 
 const round2 = (v: number): number => Math.round(v * 100) / 100;
 
@@ -13,9 +18,12 @@ export interface PeriodRedemptionItem {
   redemptionDate: string;
   quantity: number;
   appliedCostBRL: number;
-  redeemedValueBRL: number;
-  realizedPnlBRL: number;
-  finalReturnPct: number | null;
+  grossRedeemedValueBRL: number;
+  taxAmountBRL: number;
+  taxRatePct: number | null;
+  redeemedValueBRL: number; // Líquido após dedução de IR (quando houver)
+  realizedPnlBRL: number; // Lucro líquido após dedução de IR (quando houver)
+  finalReturnPct: number | null; // Rentabilidade líquida final
 }
 
 export interface PeriodRedemptionTxInput {
@@ -52,7 +60,7 @@ export interface FilterPeriodRedemptionsParams {
 
 /**
  * Filtra as transações de venda/resgate ocorridas no período selecionado
- * e concilia o valor aplicado, valor resgatado e lucro realizado.
+ * e concilia o valor resgatado líquido e o lucro realizado deduzido de IR (quando houver).
  */
 export function filterPeriodRedemptions(
   params: FilterPeriodRedemptionsParams,
@@ -103,7 +111,7 @@ export function filterPeriodRedemptions(
     const rate = currency === "USD" && usdRate > 0 ? usdRate : 1;
 
     const redeemedNative = tx.total > 0 ? tx.total : tx.quantity * tx.price;
-    const redeemedValueBRL = round2(redeemedNative * rate);
+    const grossRedeemedValueBRL = round2(redeemedNative * rate);
 
     let appliedNative = 0;
     if (asset?.fixed_income_metadata?.initial_investment_value) {
@@ -115,7 +123,36 @@ export function filterPeriodRedemptions(
     }
 
     const appliedCostBRL = round2(appliedNative * rate);
-    const realizedPnlBRL = round2(redeemedValueBRL - appliedCostBRL);
+    const grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
+
+    // Inteligência Fiscal: cálculo e dedução de IR para Renda Fixa tributável
+    let taxAmountBRL = 0;
+    let taxRatePct: number | null = null;
+
+    const isFixedIncome =
+      isFixedIncomeClass(assetClass) || Boolean(asset?.fixed_income_metadata);
+
+    if (isFixedIncome && grossProfitBRL > 0) {
+      const isTaxExempt = Boolean(asset?.fixed_income_metadata?.is_tax_exempt);
+      if (!isTaxExempt) {
+        let daysPassed = 0;
+        if (asset?.fixed_income_metadata?.initial_investment_date && tx.date) {
+          daysPassed = countCalendarDays(
+            asset.fixed_income_metadata.initial_investment_date,
+            tx.date,
+          );
+        }
+        taxRatePct = getFixedIncomeTaxRatePct(
+          daysPassed,
+          false,
+          asset?.fixed_income_metadata?.manual_tax_rate_pct,
+        );
+        taxAmountBRL = round2(grossProfitBRL * (taxRatePct / 100));
+      }
+    }
+
+    const redeemedValueBRL = round2(grossRedeemedValueBRL - taxAmountBRL);
+    const realizedPnlBRL = round2(grossProfitBRL - taxAmountBRL);
     const finalReturnPct =
       appliedCostBRL > 0 ? round2((realizedPnlBRL / appliedCostBRL) * 100) : null;
 
@@ -130,6 +167,9 @@ export function filterPeriodRedemptions(
       redemptionDate: tx.date,
       quantity: tx.quantity,
       appliedCostBRL,
+      grossRedeemedValueBRL,
+      taxAmountBRL,
+      taxRatePct,
       redeemedValueBRL,
       realizedPnlBRL,
       finalReturnPct,
