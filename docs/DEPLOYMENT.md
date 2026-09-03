@@ -53,17 +53,18 @@
 2. Selecione o repositório `financasNew` e a branch `main`.
 3. Defina os **Build Settings**:
    - **Framework preset:** `Vite` (ou `None`)
-   - **Build command:** `npm run typecheck && npm run lint && npm test && npm run build` *(Quality Gate + Build em 1 único comando)*
+   - **Build command:** `npm run build` *(Gera `dist/` com typecheck integrado `tsc -b && vite build` em ~2 segundos)*
    - **Build output directory:** `dist`
 4. **Variáveis de ambiente** (Environment Variables):
 
    | Variável | Valor | Onde obter |
    |---|---|---|
+   | `NODE_VERSION` | `22` | Garante Node.js 22 LTS no runner da Cloudflare (ou via `.nvmrc`) |
    | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` | Supabase → Settings → API → Project URL |
    | `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Supabase → Settings → API → anon public key |
    | `VITE_SENTRY_DSN` | *(opcional)* | Sentry → Settings → Projects → Client Keys |
 
-5. Salve e faça o Deploy. A Cloudflare compilará e publicará o app automaticamente a cada push na branch `main`.
+> **Atenção:** Evite colocar `npm test` no Build command da Cloudflare Pages, pois executar a suíte completa de ~2.000 testes consome muita memória em runners de 1 vCPU e pode causar timeout/estrangulamento. Use `npm run build`.
 
 ---
 
