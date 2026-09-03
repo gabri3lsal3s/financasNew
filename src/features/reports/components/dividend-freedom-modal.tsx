@@ -9,6 +9,7 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { sanitizeReportText, type FreedomAnalysisResult } from "@/domain/reports";
+import { formatPercent } from "@/services/masks";
 import type { PortfolioDividend } from "@/types";
 
 export interface DividendFreedomModalProps {
@@ -86,18 +87,18 @@ export function DividendFreedomModal({
           },
           {
             label: "Cobertura de Gastos",
-            value: `${freedomAnalysis.freedomPct.toFixed(1)}%`,
+            value: `${formatPercent(freedomAnalysis.freedomPct)}%`,
             subtext: "Custo de Vida Pago",
           },
           {
             label: "Autonomia Patrimonial",
-            value: `${freedomAnalysis.runwayMonths.toFixed(1)} meses`,
+            value: `${freedomAnalysis.runwayMonths.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} meses`,
             subtext: "Runway de Reserva",
           },
         ]}
         narrative={
           <span>
-            No exercício corrente (<strong>{currentYear}</strong>), o fluxo acumulado de proventos totalizou <strong><MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="inline font-bold" /></strong>, perfazendo uma média mensal de <strong><MoneyText cents={numberToCents(freedomAnalysis.monthlyDividendsBRL)} tone="positive" className="inline font-bold" /></strong>. Este fluxo cobre <strong>{freedomAnalysis.freedomPct.toFixed(1)}%</strong> do custo de vida mensal (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui <strong>{freedomAnalysis.totalSnowballAssetsCount} ativo(s) auto-sustentável(is)</strong> operando no Efeito Bola de Neve.
+            No exercício corrente (<strong>{currentYear}</strong>), o fluxo acumulado de proventos totalizou <strong><MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="inline font-bold" /></strong>, perfazendo uma média mensal de <strong><MoneyText cents={numberToCents(freedomAnalysis.monthlyDividendsBRL)} tone="positive" className="inline font-bold" /></strong>. Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui <strong>{freedomAnalysis.totalSnowballAssetsCount} ativo(s) auto-sustentável(is)</strong> operando no Efeito Bola de Neve.
           </span>
         }
       />
@@ -181,7 +182,7 @@ export function DividendFreedomModal({
                       <MoneyText cents={numberToCents(sb.monthlyIncomeGeneratedBRL)} />
                     </td>
                     <td className="py-1.5 px-3 text-right num font-mono font-bold text-foreground">
-                      {sb.newSharesPerMonth.toFixed(2)} cota(s)
+                      {sb.newSharesPerMonth.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {sb.newSharesPerMonth === 1 ? "cota" : "cotas"}
                     </td>
                     <td className="py-1.5 px-3 text-center">
                       <span
@@ -192,7 +193,7 @@ export function DividendFreedomModal({
                         }`}
                       >
                         {sb.isSnowballReached
-                          ? "Bola de Neve Ativa!"
+                          ? "Bola de Neve Ativa"
                           : `${Math.ceil(sb.monthsToBuyOneShare)} mês(es) p/ 1 cota`}
                       </span>
                     </td>

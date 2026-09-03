@@ -35,9 +35,10 @@ function downloadBlob(filename: string, blob: Blob): void {
   URL.revokeObjectURL(url);
 }
 
-/** Baixa um CSV (mime com BOM já embutido no conteúdo). */
+/** Baixa um CSV (garante prefixo BOM UTF-8 para abertura sem falhas de acentuação no Excel). */
 export function downloadCsv(filename: string, csvContent: string): void {
-  downloadBlob(filename, new Blob([csvContent], { type: "text/csv;charset=utf-8" }));
+  const contentWithBom = csvContent.startsWith("\uFEFF") ? csvContent : `\uFEFF${csvContent}`;
+  downloadBlob(filename, new Blob([contentWithBom], { type: "text/csv;charset=utf-8" }));
 }
 
 /** Baixa um objeto JSON formatado. */

@@ -631,6 +631,19 @@ export function ReportsPage() {
         realizedPnlBRL: r.realizedPnlBRL,
         finalReturnPct: r.finalReturnPct,
       })),
+      classTargets: allocationAnalysis.classGaps.map((cg) => ({
+        assetClass: cg.assetClass,
+        currentBRL: cg.currentBRL,
+        currentPct: cg.currentPct,
+        targetPct: cg.targetPct,
+        gapBRL: cg.gapBRL,
+        status:
+          cg.gapBRL > 0
+            ? "Abaixo da Meta (Aporte Sugerido)"
+            : cg.currentPct > cg.targetPct && cg.targetPct > 0
+              ? "Acima da Meta"
+              : "Em Equilíbrio",
+      })),
     };
   }, [
     totalPatrimonyBRL,
@@ -647,6 +660,7 @@ export function ReportsPage() {
     month,
     debts,
     periodRedemptions,
+    allocationAnalysis.classGaps,
   ]);
 
   const excelDescription = useMemo(() => {

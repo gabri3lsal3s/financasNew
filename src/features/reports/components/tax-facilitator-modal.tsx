@@ -8,7 +8,7 @@ import {
 import { Alert, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { isCashAssetClass } from "@/domain/portfolio";
+import { isCashAssetClass, getBensDireitosClassification } from "@/domain/portfolio";
 import { sanitizeReportText } from "@/domain/reports";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
 
@@ -90,36 +90,35 @@ export function TaxFacilitatorModal({
   const formatMoneyBR = (cents: number): string =>
     (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const getTaxGroupCode = (assetClass?: string | null): { group: string; code: string; label: string } => {
-    const normalized = (assetClass ?? "").toLowerCase().trim();
-    switch (normalized) {
-      case "acao":
-      case "acoes":
-      case "ações":
-        return { group: "03", code: "01", label: "03-01 Ações" };
-      case "fii":
-      case "fiis":
-        return { group: "07", code: "03", label: "07-03 FIIs" };
-      case "cripto":
-      case "bitcoin":
-      case "crypto":
-        return { group: "08", code: "01", label: "08-01 Cripto" };
-      case "renda_fixa":
-      case "rendafixa":
-      case "cdb":
-      case "tesouro":
-      case "lci":
-      case "lca":
-        return { group: "04", code: "02", label: "04-02 Renda Fixa" };
-      case "internacional":
-      case "etf":
-      case "etfs":
-      case "bdr":
-      case "bdrs":
-        return { group: "07", code: "09", label: "07-09 Internacional" };
-      default:
-        return { group: "99", code: "99", label: "99-99 Outros" };
+  const buildTaxItemDetails = (asset: PortfolioAsset) => {
+    const safeTicker = sanitizeReportText(asset.ticker);
+    const classification = getBensDireitosClassification(asset.asset_class, asset.ticker);
+    const isUSD = asset.currency === "USD";
+    const totalCostBRL = asset.quantity * asset.average_price;
+    const qtyStr = asset.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+    const cotaWord = asset.quantity === 1 ? "cota" : "cotas";
+
+    let textToCopy: string;
+    if (isUSD) {
+      const unitPriceUSD = asset.average_price.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const totalCostUSD = (asset.quantity * asset.average_price).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const totalCostBRLFormatted = formatMoneyBR(numberToCents(totalCostBRL));
+      textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker} (${classification.itemName}), custodiadas no exterior em conta própria, custo médio unitário de US$ ${unitPriceUSD} (total em moeda estrangeira: US$ ${totalCostUSD}), equivalente a R$ ${totalCostBRLFormatted}.`;
+    } else {
+      const unitPriceBRL = formatMoneyBR(numberToCents(asset.average_price));
+      const totalCostBRLFormatted = formatMoneyBR(numberToCents(totalCostBRL));
+      textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker} (${classification.itemName}), custodiadas em conta própria da corretora, custo médio unitário de R$ ${unitPriceBRL}, totalizando R$ ${totalCostBRLFormatted}.`;
     }
+
+    return {
+      safeTicker,
+      group: classification.groupCode,
+      code: classification.itemCode,
+      label: `${classification.groupCode}-${classification.itemCode} ${classification.itemName}`,
+      itemName: classification.itemName,
+      totalCostBRL,
+      textToCopy,
+    };
   };
 
   return (
@@ -161,12 +160,7 @@ export function TaxFacilitatorModal({
 
         <div className="flex flex-col gap-2.5">
           {nonCashAssets.map((asset) => {
-            const safeTicker = sanitizeReportText(asset.ticker);
-            const totalCostBRL = asset.quantity * asset.average_price;
-            const taxInfo = getTaxGroupCode(asset.asset_class);
-            const qtyStr = asset.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
-            const cotaWord = asset.quantity === 1 ? "cota" : "cotas";
-            const textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker}, custo médio unitário de R$ ${formatMoneyBR(numberToCents(asset.average_price))}, totalizando R$ ${formatMoneyBR(numberToCents(totalCostBRL))}.`;
+            const item = buildTaxItemDetails(asset);
 
             return (
               <div
@@ -175,28 +169,28 @@ export function TaxFacilitatorModal({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground text-sm">{safeTicker}</span>
+                    <span className="font-bold text-foreground text-sm">{item.safeTicker}</span>
                     <span className="rounded-md bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground font-medium border border-border/40">
-                      {taxInfo.label}
+                      {item.label}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">Situação em 31/12/{calendarYear}:</span>
                     <MoneyText
-                      cents={numberToCents(totalCostBRL)}
+                      cents={numberToCents(item.totalCostBRL)}
                       className="font-bold font-mono num text-xs text-foreground"
                     />
                   </div>
                 </div>
                 <div className="flex items-start justify-between gap-3 pt-1">
                   <p className="text-xs text-muted-foreground leading-relaxed flex-1">
-                    {textToCopy}
+                    {item.textToCopy}
                   </p>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handleCopy(asset.id, textToCopy)}
+                    onClick={() => handleCopy(asset.id, item.textToCopy)}
                     className="gap-1.5 shrink-0 text-xs"
                   >
                     {copiedKey === asset.id ? (
@@ -244,33 +238,28 @@ export function TaxFacilitatorModal({
             </thead>
             <tbody className="divide-y divide-border/60">
               {nonCashAssets.map((asset) => {
-                const safeTicker = sanitizeReportText(asset.ticker);
-                const totalCostBRL = asset.quantity * asset.average_price;
-                const taxInfo = getTaxGroupCode(asset.asset_class);
-                const qtyStr = asset.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
-                const cotaWord = asset.quantity === 1 ? "cota" : "cotas";
-                const textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker}, custo unitário de R$ ${formatMoneyBR(numberToCents(asset.average_price))}, totalizando R$ ${formatMoneyBR(numberToCents(totalCostBRL))}.`;
+                const item = buildTaxItemDetails(asset);
 
                 return (
                   <tr key={`print-tax-${asset.id}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
                     <td className="py-1 px-2 text-[9px] font-mono text-muted-foreground">
                       <div className="flex flex-col">
                         <span className="font-bold text-foreground leading-tight">
-                          {taxInfo.group}-{taxInfo.code}
+                          {item.group}-{item.code}
                         </span>
                         <span className="text-[8px] text-muted-foreground leading-tight">
-                          {taxInfo.label.replace(`${taxInfo.group}-${taxInfo.code} `, "")}
+                          {item.itemName}
                         </span>
                       </div>
                     </td>
                     <td className="py-1 px-1.5 font-bold text-foreground text-[11px] truncate">
-                      {safeTicker}
+                      {item.safeTicker}
                     </td>
                     <td className="py-1 px-2 text-[9px] text-muted-foreground leading-tight">
-                      {textToCopy}
+                      {item.textToCopy}
                     </td>
                     <td className="py-1 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[11px]">
-                      <MoneyText cents={numberToCents(totalCostBRL)} />
+                      <MoneyText cents={numberToCents(item.totalCostBRL)} />
                     </td>
                   </tr>
                 );

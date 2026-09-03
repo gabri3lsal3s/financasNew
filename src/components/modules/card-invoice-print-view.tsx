@@ -121,15 +121,15 @@ export function CardInvoicePrintView({
           <p className="text-sm text-muted-foreground py-1">Nenhum gasto lançado nesta competência.</p>
         ) : (
           <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
-            <table className="w-full min-w-[540px] sm:min-w-full border-collapse text-xs">
+            <table className="w-full min-w-[540px] sm:min-w-full print:min-w-0 print:w-full print:table-fixed border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
-                  <th className="py-2 px-2.5">Data</th>
-                  <th className="py-2 px-2.5">Descrição</th>
-                  <th className="py-2 px-2.5">Categoria</th>
-                  <th className="py-2 px-2.5 text-right">Valor (R$)</th>
-                  <th className="py-2 px-2.5 text-right">Valor p/ Relatório</th>
-                  <th className="py-2 px-2.5 text-right">Parcelas</th>
+                  <th className="py-2 px-2.5 print:w-[15%]">Data</th>
+                  <th className="py-2 px-2.5 print:w-[33%]">Descrição</th>
+                  <th className="py-2 px-2.5 print:w-[18%]">Categoria</th>
+                  <th className="py-2 px-2.5 text-right print:w-[12%]">Valor (R$)</th>
+                  <th className="py-2 px-2.5 text-right print:w-[12%]">Valor p/ Relatório</th>
+                  <th className="py-2 px-2.5 text-right print:w-[10%]">Parcelas</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -137,8 +137,8 @@ export function CardInvoicePrintView({
                   <Fragment key={`${expense.date}-${expense.description}-${index}`}>
                     <tr className="break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
                       <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground">{formatDate(expense.date)}</td>
-                      <td className="py-1.5 px-2.5 font-bold text-foreground">{expense.description}</td>
-                      <td className="py-1.5 px-2.5 text-[11px] text-muted-foreground">{expense.categoryName}</td>
+                      <td className="py-1.5 px-2.5 font-bold text-foreground truncate">{expense.description}</td>
+                      <td className="py-1.5 px-2.5 text-[11px] text-muted-foreground truncate">{expense.categoryName}</td>
                       <td className="py-1.5 px-2.5 text-right tabular-nums font-mono">
                         <MoneyText cents={expense.valueCents} tone="negative" />
                       </td>
@@ -172,13 +172,13 @@ export function CardInvoicePrintView({
         <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2 break-inside-avoid">
           <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Pagamentos e estornos</h2>
           <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
-            <table className="w-full min-w-[440px] sm:min-w-full border-collapse text-xs">
+            <table className="w-full min-w-[440px] sm:min-w-full print:min-w-0 print:w-full print:table-fixed border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
-                  <th className="py-2 px-2.5">Data</th>
-                  <th className="py-2 px-2.5">Descrição</th>
-                  <th className="py-2 px-2.5 text-right">Valor (R$)</th>
-                  <th className="py-2 px-2.5 text-right">Tipo</th>
+                  <th className="py-2 px-2.5 print:w-[15%]">Data</th>
+                  <th className="py-2 px-2.5 print:w-[55%]">Descrição</th>
+                  <th className="py-2 px-2.5 text-right print:w-[15%]">Valor (R$)</th>
+                  <th className="py-2 px-2.5 text-right print:w-[15%]">Tipo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">

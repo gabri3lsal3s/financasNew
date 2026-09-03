@@ -9,6 +9,7 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { ConsolidatedBalanceSheetResult } from "@/domain/reports";
+import { formatPercent } from "@/services/masks";
 
 export interface ConsolidatedWealthModalProps {
   open: boolean;
@@ -105,13 +106,13 @@ export function ConsolidatedWealthModal({
           },
           {
             label: "Grau de Alavancagem",
-            value: `${balanceSheet.debtToAssetRatioPct.toFixed(1)}%`,
+            value: `${formatPercent(balanceSheet.debtToAssetRatioPct)}%`,
             subtext: "Dívida / Ativos",
           },
         ]}
         narrative={
           <span>
-            O patrimônio líquido consolidado totaliza <strong><MoneyText cents={numberToCents(balanceSheet.netWorthBRL)} tone="portfolio" className="inline font-bold" /></strong>, composto por <strong><MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="inline font-bold" /></strong> em ativos totais (investimentos em custódia, reserva de liquidez e direitos a receber) e <strong><MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="inline font-bold" /></strong> em passivos exigíveis, resultando em um grau de alavancagem de <strong>{balanceSheet.debtToAssetRatioPct.toFixed(1)}%</strong> dos ativos.
+            O patrimônio líquido consolidado totaliza <strong><MoneyText cents={numberToCents(balanceSheet.netWorthBRL)} tone="portfolio" className="inline font-bold" /></strong>, composto por <strong><MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="inline font-bold" /></strong> em ativos totais (investimentos em custódia, reserva de liquidez e direitos a receber) e <strong><MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="inline font-bold" /></strong> em passivos exigíveis, resultando em um grau de alavancagem de <strong>{formatPercent(balanceSheet.debtToAssetRatioPct)}%</strong> dos ativos.
           </span>
         }
       />
@@ -171,7 +172,7 @@ export function ConsolidatedWealthModal({
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Comprometimento de Patrimônio:</span>
               <span className="num font-mono font-bold text-foreground">
-                {balanceSheet.debtToAssetRatioPct.toFixed(1)}% dos ativos
+                {formatPercent(balanceSheet.debtToAssetRatioPct)} dos ativos
               </span>
             </div>
           </div>
@@ -196,7 +197,7 @@ export function ConsolidatedWealthModal({
             <MoneyText cents={numberToCents(balanceSheet.dre.totalExpensesBRL)} tone="negative" className="num font-mono font-bold" />
           </div>
           <div className="flex justify-between items-center p-2.5 bg-muted/20 border-b border-border font-semibold text-foreground">
-            <span>(=) Poupança Operacional Líquida (Margem: {balanceSheet.dre.savingsRatePct.toFixed(1)}%)</span>
+            <span>(=) Poupança Operacional Líquida (Margem: {formatPercent(balanceSheet.dre.savingsRatePct)})</span>
             <MoneyText
               cents={numberToCents(balanceSheet.dre.operationalSavingsBRL)}
               tone={balanceSheet.dre.operationalSavingsBRL >= 0 ? "positive" : "negative"}

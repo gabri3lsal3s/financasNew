@@ -68,6 +68,15 @@ export interface ExcelRedemptionRow {
   finalReturnPct: number | null;
 }
 
+export interface ExcelClassTargetRow {
+  assetClass: string;
+  currentBRL: number;
+  currentPct: number;
+  targetPct: number;
+  gapBRL: number;
+  status: string;
+}
+
 export interface ExcelWorkbookData {
   appName?: string;
   generatedAt?: string;
@@ -86,6 +95,7 @@ export interface ExcelWorkbookData {
   dreMonthly: readonly ExcelDREMonthRow[];
   debts: readonly ExcelDebtRow[];
   redemptions?: readonly ExcelRedemptionRow[];
+  classTargets?: readonly ExcelClassTargetRow[];
 }
 
 export function sanitizeSpreadsheetText(value: string | number | null | undefined): string {
@@ -433,11 +443,49 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell><Data ss:Type="String">Resultado (R$)</Data></Cell>
     <Cell><Data ss:Type="String">Rentab. Final (%)</Data></Cell>
    </Row>${redemptionRowsXml}
+   </Table>
+ </Worksheet>`;
+  }
+
+  // 7. Aba: Metas & Rebalanceamento (se fornecido)
+  let sheet7 = "";
+  if (data.classTargets && data.classTargets.length > 0) {
+    const targetRowsXml = data.classTargets
+      .map(
+        (t) => `
+   <Row>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">${escapeXml(t.assetClass)}</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(t.currentBRL)}</Data></Cell>
+    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(t.currentPct / 100).toFixed(4)}</Data></Cell>
+    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(t.targetPct / 100).toFixed(4)}</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(t.gapBRL)}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(t.status)}</Data></Cell>
+   </Row>`,
+      )
+      .join("");
+
+    sheet7 = `
+ <Worksheet ss:Name="Metas e Rebalanceamento">
+  <Table ss:DefaultColumnWidth="120">
+   <Column ss:Width="130"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="130"/>
+   <Row ss:StyleID="Header">
+    <Cell><Data ss:Type="String">Classe de Ativo</Data></Cell>
+    <Cell><Data ss:Type="String">Posição Atual (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">% Atual</Data></Cell>
+    <Cell><Data ss:Type="String">% Meta (Alvo)</Data></Cell>
+    <Cell><Data ss:Type="String">Desvio / Gap (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Status</Data></Cell>
+   </Row>${targetRowsXml}
   </Table>
  </Worksheet>`;
   }
 
-  return `${xmlHeader}${sheet1}${sheet2}${sheet3}${sheet4}${sheet5}${sheet6}\n</Workbook>`;
+  return `${xmlHeader}${sheet1}${sheet2}${sheet3}${sheet4}${sheet5}${sheet6}${sheet7}\n</Workbook>`;
 }
 
 /**

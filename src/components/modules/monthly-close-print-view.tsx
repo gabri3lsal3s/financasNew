@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Banknote, Landmark, PiggyBank, ReceiptText } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks";
 import { ReportHeader, ReportKpiGrid, ReportFooter } from "./reports";
 import type { OverviewTotals } from "@/domain/overview";
 import type { DetailedCloseCategory } from "@/domain/reports";
@@ -60,8 +61,6 @@ export function MonthlyClosePrintView({
   appName = "Finanças Pessoais",
   accountHolder,
 }: MonthlyClosePrintViewProps) {
-  const savingsLabel = totals.savingsRatePercent.toFixed(1).replace(".", ",");
-
   return (
     <div className="print-area flex flex-col gap-6 bg-surface text-foreground w-full max-w-full overflow-hidden print:overflow-visible">
       {/* 1. Cabeçalho Institucional */}
@@ -101,8 +100,8 @@ export function MonthlyClosePrintView({
           },
           {
             label: "Taxa de poupança",
-            value: `${savingsLabel}%`,
-            subtext: "Economia do Período",
+            value: `${formatPercent(totals.savingsRatePercent)}%`,
+            subtext: totals.balanceCents >= 0 ? "Margem positiva" : "Margem negativa",
             icon: PiggyBank,
             tone: "primary",
           },

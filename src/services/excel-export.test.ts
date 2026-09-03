@@ -134,4 +134,47 @@ describe("generateMultiSheetExcelXml", () => {
     expect(xml).toContain("&apos;@SUM");
     expect(xml).toContain("&apos;+cmd");
   });
+
+  it("deve incluir a aba Metas e Rebalanceamento quando classTargets for fornecido", () => {
+    const mockDataWithTargets: ExcelWorkbookData = {
+      summary: {
+        totalPatrimonyBRL: 50000,
+        totalInvestedCostBRL: 45000,
+        unrealizedPnlBRL: 5000,
+        unrealizedPnlPct: 11.11,
+        cashBalanceBRL: 5000,
+        yearDividendsBRL: 2000,
+        freedomPct: 30,
+        savingsRatePct: 20,
+      },
+      positions: [],
+      dividends: [],
+      dreMonthly: [],
+      debts: [],
+      classTargets: [
+        {
+          assetClass: "FIIs",
+          currentBRL: 20000,
+          currentPct: 40,
+          targetPct: 35,
+          gapBRL: -2500,
+          status: "Acima da Meta",
+        },
+        {
+          assetClass: "Ações",
+          currentBRL: 15000,
+          currentPct: 30,
+          targetPct: 40,
+          gapBRL: 5000,
+          status: "Abaixo da Meta (Aporte Sugerido)",
+        },
+      ],
+    };
+
+    const xml = generateMultiSheetExcelXml(mockDataWithTargets);
+    expect(xml).toContain('ss:Name="Metas e Rebalanceamento"');
+    expect(xml).toContain("Ações");
+    expect(xml).toContain("Abaixo da Meta (Aporte Sugerido)");
+    expect(xml).toContain("5000.00");
+  });
 });
