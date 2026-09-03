@@ -94,11 +94,20 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const allActivities = useMemo(() => {
     const list: ActivityItem[] = [];
 
+    // Mapeia notas de aportes vinculados por (asset_id, date)
+    const contributionNotesMap = new Map<string, string>();
+    for (const c of contributionsQuery.data ?? []) {
+      if (c.asset_id && c.notes) {
+        contributionNotesMap.set(`${c.asset_id}_${c.date}`, c.notes);
+      }
+    }
+
     // 1. Transações do Ledger (Compras, Vendas, Splits, etc.)
     for (const t of transactionsQuery.data ?? []) {
       const asset = assetMap.get(t.asset_id);
       const ticker = asset?.ticker ?? "Ativo";
       const totalAmount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
+      const linkedNote = contributionNotesMap.get(`${t.asset_id}_${t.date}`);
 
       list.push({
         id: `tx-${t.id}`,
@@ -110,7 +119,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         quantity: t.quantity,
         price: t.price,
         total: totalAmount,
-        notes: undefined,
+        notes: linkedNote,
         rawTransaction: t,
       });
     }
@@ -449,7 +458,15 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                           variant={isBuy ? "positive" : isSell ? "critical" : isDividend ? "portfolio" : "muted"}
                           size="xs"
                         >
-                          {isBuy ? "Compra" : isSell ? "Venda / Resgate" : isDividend ? "Provento" : "Split"}
+                          {item.notes?.toLowerCase().includes("aporte inicial")
+                            ? "Aporte Inicial"
+                            : isBuy
+                              ? "Compra"
+                              : isSell
+                                ? "Venda / Resgate"
+                                : isDividend
+                                  ? "Provento"
+                                  : "Split"}
                         </Badge>
                         <span className="text-[11px] text-muted-foreground">{formatDateBR(item.date)}</span>
                       </div>

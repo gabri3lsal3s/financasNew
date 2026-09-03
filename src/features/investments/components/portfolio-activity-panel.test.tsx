@@ -11,12 +11,14 @@ vi.mock("@/state", () => ({
     data: [
       { id: "tx-1", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-05", quantity: 10, price: 38.5, total: 385, notes: "Compra PETR4" },
       { id: "tx-2", user_id: "u-1", asset_id: "a-2", type: "sell", date: "2026-08-12", quantity: 1, price: 1400, total: 1400, notes: "Resgate CDB-FACTA" },
+      { id: "tx-3", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-02", quantity: 100, price: 30, total: 3000 },
     ],
     isLoading: false,
   }),
   usePortfolioContributions: () => ({
     data: [
       { id: "c-1", user_id: "u-1", asset_id: null, date: "2026-08-01", amount: 500, notes: "Injeção de capital" },
+      { id: "c-2", user_id: "u-1", asset_id: "a-1", date: "2026-08-02", amount: 3000, notes: "Aporte inicial · Compra de PETR4" },
     ],
     isLoading: false,
   }),
@@ -84,5 +86,12 @@ describe("PortfolioActivityPanel", () => {
     fireEvent.click(firstButton);
 
     expect(screen.getByText("Excluir movimentação?")).toBeInTheDocument();
+  });
+
+  it("exibe o badge 'Aporte Inicial' e notas explicativas para compras com aporte inicial vinculado", () => {
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    expect(screen.getByText("Aporte Inicial")).toBeInTheDocument();
+    expect(screen.getByText(/Aporte inicial · Compra de PETR4/i)).toBeInTheDocument();
   });
 });
