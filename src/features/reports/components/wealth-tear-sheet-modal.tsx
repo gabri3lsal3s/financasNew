@@ -475,17 +475,6 @@ export function WealthTearSheetModal({
           height={10}
         />
 
-        {/* Gráficos Donut de Distribuição por Classes e Setores (Impressão A4) */}
-        {donutData.classSegments.length > 0 && (
-          <ReportAllocationDonuts
-            classSegments={donutData.classSegments}
-            sectorSegments={donutData.sectorSegments}
-            totalBRL={totalBRL}
-            totalUniqueSectors={donutData.totalUniqueSectors}
-            variant="print"
-          />
-        )}
-
         <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -605,7 +594,35 @@ export function WealthTearSheetModal({
         ) : null}
       </section>
 
-      {/* 7. Rodapé Institucional */}
+      {/* 7. Detalhamento Gráfico da Alocação & Exposição Setorial (Donuts em Largura Total ao Final) */}
+      {donutData.classSegments.length > 0 && (
+        <section
+          aria-label="Detalhamento Gráfico de Alocação e Setores"
+          className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid"
+        >
+          <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
+            <div className="flex items-center gap-1.5">
+              <PieChart className="size-3.5 text-primary-strong" aria-hidden="true" />
+              <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
+                Detalhamento Gráfico da Alocação & Exposição Setorial
+              </h3>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono num">
+              Total Custodiado: <strong className="text-foreground"><MoneyText cents={numberToCents(totalBRL)} /></strong>
+            </span>
+          </div>
+
+          <ReportAllocationDonuts
+            classSegments={donutData.classSegments}
+            sectorSegments={donutData.sectorSegments}
+            totalBRL={totalBRL}
+            totalUniqueSectors={donutData.totalUniqueSectors}
+            variant="print"
+          />
+        </section>
+      )}
+
+      {/* 8. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021). Rentabilidade passada não representa garantia de retorno futuro."

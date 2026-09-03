@@ -42,18 +42,25 @@ describe("buildAllocationDonutSegments — Distribuição por Classes e Setores"
     });
   });
 
-  it("aplica agrupamento de cauda longa quando houver mais de 6 setores ou fatias < 3%", () => {
+  it("aplica agrupamento de cauda longa quando houver mais de 12 setores ou fatias < 1%", () => {
     const positions = [
-      { assetClass: "Ações", sector: "Financeiro", valueBRL: 4000 },
-      { assetClass: "Ações", sector: "Energia Elétrica", valueBRL: 2000 },
-      { assetClass: "FIIs", sector: "Logística", valueBRL: 1500 },
+      { assetClass: "Ações", sector: "Financeiro", valueBRL: 2500 },
+      { assetClass: "Ações", sector: "Energia Elétrica", valueBRL: 1500 },
+      { assetClass: "FIIs", sector: "Logística", valueBRL: 1200 },
       { assetClass: "Ações", sector: "Tecnologia", valueBRL: 1000 },
-      { assetClass: "Ações", sector: "Saneamento", valueBRL: 600 },
-      { assetClass: "Ações", sector: "Saúde", valueBRL: 400 },
-      // Setores pequenos (< 3% de 10.000 = 300):
-      { assetClass: "Ações", sector: "Varejo", valueBRL: 200 },
-      { assetClass: "Ações", sector: "Telecom", valueBRL: 150 },
-      { assetClass: "Ações", sector: "Agronegócio", valueBRL: 150 },
+      { assetClass: "Ações", sector: "Saneamento", valueBRL: 800 },
+      { assetClass: "Ações", sector: "Saúde", valueBRL: 600 },
+      { assetClass: "Ações", sector: "Varejo", valueBRL: 500 },
+      { assetClass: "Ações", sector: "Telecom", valueBRL: 400 },
+      { assetClass: "Ações", sector: "Agronegócio", valueBRL: 350 },
+      { assetClass: "Ações", sector: "Mineração", valueBRL: 300 },
+      { assetClass: "Ações", sector: "Construção", valueBRL: 250 },
+      { assetClass: "Ações", sector: "Educação", valueBRL: 200 },
+      // Setores excedentes ou menores (< 1% de 10.000 = 100):
+      { assetClass: "Ações", sector: "Química", valueBRL: 80 },
+      { assetClass: "Ações", sector: "Têxtil", valueBRL: 60 },
+      { assetClass: "Ações", sector: "Transporte", valueBRL: 60 },
+      { assetClass: "Ações", sector: "Outros Negócios", valueBRL: 200 },
     ];
 
     const result = buildAllocationDonutSegments({
@@ -63,7 +70,7 @@ describe("buildAllocationDonutSegments — Distribuição por Classes e Setores"
     });
 
     expect(result.totalBRL).toBe(10000);
-    expect(result.totalUniqueSectors).toBe(9);
+    expect(result.totalUniqueSectors).toBe(16);
 
     // Deve conter os maiores setores + "Outros Setores"
     const labels = result.sectorSegments.map((s) => s.label);
@@ -74,8 +81,8 @@ describe("buildAllocationDonutSegments — Distribuição por Classes e Setores"
 
     const others = result.sectorSegments.find((s) => s.label === "Outros Setores");
     expect(others).toBeDefined();
-    expect(others?.value).toBe(500); // 200 + 150 + 150
-    expect(others?.pct).toBe(5);
+    expect(others?.value).toBe(400); // 80 + 60 + 60 + 200
+    expect(others?.pct).toBe(4);
   });
 
   it("lida graciosamente com setores nulos ou vazios", () => {

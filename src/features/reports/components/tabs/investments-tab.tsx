@@ -89,17 +89,6 @@ export function InvestmentsTab({
         </div>
       </div>
 
-      {/* Gráficos Donut de Distribuição por Classes e Setores */}
-      {classSegments && classSegments.length > 0 ? (
-        <ReportAllocationDonuts
-          classSegments={classSegments}
-          sectorSegments={sectorSegments ?? []}
-          totalBRL={totalPatrimonyBRL}
-          totalUniqueSectors={totalUniqueSectors}
-          variant="screen"
-        />
-      ) : null}
-
       {/* Tabela em Árvore Hierárquica de Gaps (Classe -> Setor -> Ativos) */}
       <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -330,6 +319,17 @@ export function InvestmentsTab({
           </table>
         </div>
       </div>
+
+      {/* Detalhamento Gráfico da Alocação & Exposição Setorial (Donuts em Largura Total ao Final) */}
+      {classSegments && classSegments.length > 0 ? (
+        <ReportAllocationDonuts
+          classSegments={classSegments}
+          sectorSegments={sectorSegments ?? []}
+          totalBRL={totalPatrimonyBRL}
+          totalUniqueSectors={totalUniqueSectors}
+          variant="screen"
+        />
+      ) : null}
     </div>
   );
 }

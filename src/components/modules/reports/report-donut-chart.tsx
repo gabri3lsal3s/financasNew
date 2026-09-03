@@ -18,6 +18,7 @@ export interface ReportDonutChartProps {
   size?: number;
   strokeWidth?: number;
   className?: string;
+  legendClassName?: string;
 }
 
 /**
@@ -61,6 +62,7 @@ export function ReportDonutChart({
   size = 130,
   strokeWidth = 14,
   className,
+  legendClassName,
 }: ReportDonutChartProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -159,7 +161,12 @@ export function ReportDonutChart({
             {title}
           </h4>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+        <div
+          className={cn(
+            "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs",
+            legendClassName,
+          )}
+        >
           {validSegments.map((segment) => (
             <div key={segment.key} className="flex items-center justify-between gap-2 py-0.5">
               <div className="flex items-center gap-1.5 min-w-0">

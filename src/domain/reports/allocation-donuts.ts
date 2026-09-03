@@ -43,7 +43,7 @@ export const DONUT_CLASS_COLORS: Record<string, string> = {
 };
 
 export const DONUT_SECTOR_PALETTE: readonly string[] = [
-  "#1b6b62", // teal
+  "#1b6b62", // teal escuro
   "#dda726", // ouro
   "#0284c7", // azul
   "#2dd4bf", // menta
@@ -51,7 +51,10 @@ export const DONUT_SECTOR_PALETTE: readonly string[] = [
   "#f97316", // laranja
   "#38bdf8", // azul céu
   "#14b8a6", // teal claro
-  "#eab308", // amarelo sol
+  "#eab308", // amarelo
+  "#ec4899", // rosa
+  "#8b5cf6", // violeta
+  "#06b6d4", // ciano
   "#64748b", // slate neutro para outros
 ];
 
@@ -147,9 +150,9 @@ export function buildAllocationDonutSegments(
   rawSectorList.sort((a, b) => b.value - a.value);
   const totalUniqueSectors = rawSectorList.length;
 
-  // Se houver mais de 6 setores, agrupa a partir do 6º se a fatia for pequena (< 3%) ou se passar do limite de 6 fatias
-  const MAX_VISIBLE_SECTORS = 6;
-  const MIN_SECTOR_PCT = 3.0;
+  // Se houver mais de 12 setores, agrupa excedentes ou fatias microscópicas (< 1.0%) em "Outros Setores"
+  const MAX_VISIBLE_SECTORS = 12;
+  const MIN_SECTOR_PCT = 1.0;
 
   const topSectors: { label: string; value: number }[] = [];
   let otherSectorsValue = 0;
@@ -162,7 +165,7 @@ export function buildAllocationDonutSegments(
     if (i < MAX_VISIBLE_SECTORS && pct >= MIN_SECTOR_PCT) {
       topSectors.push(item);
     } else if (i === MAX_VISIBLE_SECTORS - 1 && rawSectorList.length === MAX_VISIBLE_SECTORS) {
-      // Se tiver exatamente 6 setores, não cria "Outros" apenas por ter 6
+      // Se tiver exatamente 12 setores, não cria "Outros" apenas por ter 12
       topSectors.push(item);
     } else {
       otherSectorsValue += item.value;

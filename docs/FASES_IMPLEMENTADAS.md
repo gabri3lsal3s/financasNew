@@ -1412,6 +1412,35 @@
   - `src/features/investments/pages/resumo-tab.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F86 — Reorganização dos Donuts de Classes & Setores em Largura Total ao Final dos Relatórios
+
+- **Problema:**
+  1. A inserção dos dois donuts lado a lado dividindo a folha A4 em 2 colunas espremidas na Seção 4 gerou colisão e sobreposição de textos na legenda de valores e percentuais;
+  2. O excesso de altura vertical na Página 1 empurrou o *Termômetro de Risco* para fora, e devido à quebra de página mandatória da Custódia, o termômetro ficou isolado sozinho no topo da Página 2, deixando 90% da página vazia;
+  3. O limite rígido de 6 setores agrupou 46,9% da carteira (R$ 50.130,00) em uma única fatia de "Outros Setores", ocultando a real diversificação setorial.
+- **Solução:**
+  1. **Restauração Editorial da Página 1 e 2 no Dossiê A4 (`wealth-tear-sheet-modal.tsx`):**
+     - Removidos os donuts da Seção 4 (Diagnóstico de Metas);
+     - O *Termômetro de Risco* retornou para a base da Página 1, preenchendo-a com equilíbrio e sem cortes;
+     - A seção de *Custódia de Ativos* inicia imediatamente no topo da Página 2 de forma limpa e contínua;
+  2. **Seção de Donuts em Largura Total (`w-full`) ao Final:**
+     - Inserida a seção `"Detalhamento Gráfico da Alocação & Exposição Setorial"` após todas as tabelas de custódia e resgates;
+     - Cada gráfico donut (Classes e Setores) ocupa 100% da largura útil (`w-full`), empilhados verticalmente;
+     - Donut posicionado à esquerda com centro informativo e legenda ampla à direita em grade organizada de 2 a 3 colunas (`grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-1.5`), eliminando qualquer sobreposição de texto;
+  3. **Expansão de Fatias Setoriais (`allocation-donuts.ts`):**
+     - Ampliado o limite de exibição para até 12 setores individuais (ou fatias $\ge 1,0\%$), reduzindo o agrupamento em "Outros" para resíduos microscópicos reais;
+     - Adicionada a prop `legendClassName` em `ReportDonutChart` para controle responsivo da grade de legendas;
+  4. **Tela Web (`investments-tab.tsx`):**
+     - Donuts posicionados em largura total ao final da aba, logo após a tabela em árvore hierárquica.
+- **Arquivos alterados:**
+  - `src/domain/reports/allocation-donuts.ts`
+  - `src/domain/reports/allocation-donuts.test.ts`
+  - `src/components/modules/reports/report-donut-chart.tsx`
+  - `src/components/modules/reports/report-allocation-donuts.tsx`
+  - `src/features/reports/components/wealth-tear-sheet-modal.tsx`
+  - `src/features/reports/components/tabs/investments-tab.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

@@ -4356,6 +4356,38 @@ flowchart TD
 - [x] Typecheck e lint limpos sem advertências.
 - [x] Build de produção limpo e testado.
 
+---
+
+### 📑 FASE 86 — Reorganização dos Donuts em Largura Total ao Final dos Relatórios
+
+> **Status:** ✅ Concluída (2026-09-02) — **Restauração Editorial A4 & Expansão de Fatias**: Reposicionamento dos gráficos Donut de Classes e Setores para a seção final de encerramento do relatório (após a Custódia e Resgates), adoção de layout em largura total (`w-full`), grade de legendas em 2 a 3 colunas e ampliação para até 12 setores individuais.
+>
+> **Objetivo:** Restaurar a harmonia da diagramação A4 eliminando quebras espúrias de página, prevenir colisões de números/porcentagens e reduzir a fatia de agrupamento de setores de 46,9% para $< 5\%$.
+
+#### 1. Entregas Realizadas
+- **Restauração Editorial da Página 1 e 2 no Dossiê A4 (`wealth-tear-sheet-modal.tsx`):**
+  - Donuts retirados do bloco intermediário de metas, permitindo que o Termômetro de Risco retorne para a Página 1;
+  - A Custódia Consolidada inicia imediatamente no topo da Página 2 de forma contínua e sem espaço em branco.
+- **Gráficos Donut em Largura Total (`w-full`):**
+  - Nova seção nobre `"Detalhamento Gráfico da Alocação & Exposição Setorial"` inserida ao final de todas as tabelas;
+  - `ReportAllocationDonuts`: cada donut ocupa toda a largura horizontal, com gráfico à esquerda e grade ampla de legenda à direita (`gap-x-5 gap-y-1.5` sem colisão);
+  - `ReportDonutChart`: adicionada prop `legendClassName` para suporte a grades responsivas personalizadas.
+- **Expansão de Fatias Setoriais (`allocation-donuts.ts`):**
+  - `MAX_VISIBLE_SECTORS` ampliado para 12 e `MIN_SECTOR_PCT` reduzido para 1,0%, exibindo detalhamento fiel de todos os setores relevantes da carteira;
+  - Paleta de cores de setores expandida para 13 tonalidades do DESIGN_SYSTEM.
+- **Tela Web (`investments-tab.tsx`):**
+  - Donuts posicionados em largura total ao final da aba após a tabela em árvore hierárquica.
+
+**✅ DoD (Definition of Done da Fase 86):**
+- [x] Donuts removidos da Seção 4 e reposicionados ao final após todas as tabelas.
+- [x] Cada gráfico donut renderizado em largura total (`w-full`) com grade de legendas ampla.
+- [x] Colisão de valores e porcentagens 100% eliminada.
+- [x] Página 1 restaurada com Termômetro de Risco e Página 2 sem vácuo.
+- [x] Limite de setores expandido para 12 fatias individuais.
+- [x] Testes de relatórios 100% verdes (12 arquivos / 63 testes).
+- [x] Typecheck e lint limpos sem advertências.
+- [x] Build de produção limpo e testado.
+
 
 
 
