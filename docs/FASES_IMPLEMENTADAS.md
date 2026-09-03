@@ -1494,8 +1494,8 @@
      - O cálculo de preview de preço médio e valor investido na ordem (`calculateInvestmentPreview`) prioriza estritamente `parsedQty * orderPrice`;
   2. **Recomendações Conectadas ao Caixa (`step-select.tsx` & `investment-wizard.tsx`):**
      - Adicionada a prop `cashAvailableBRL` ao componente `StepSelect`;
-     - **Com saldo em Caixa ($> 0$):** o card calcula quantas cotas cabem no caixa e exibe com destaque: `"Cabe no caixa: X cota(s) (~R$ Y) · Déficit total: R$ Z (W%)"`. Ao clicar, avança com essas X cotas preenchidas e com a opção *"Debitar valor do Caixa"* já marcada;
-     - **Sem saldo em Caixa (ou R$ 0,00):** o card exibe `"Déficit para meta: R$ Z (W%)"`. Ao clicar, a quantidade no formulário vem **em branco / vazia** (`""`), permitindo que o investidor defina livremente a quantidade desejada sem imposições;
+     - **Com saldo em Caixa ($> 0$):** o card calcula quantas cotas cabem no caixa e exibe com destaque: `"Cabe no caixa: X cota(s) (~R$ Y) · Meta: W%"`. Se o caixa for insuficiente para 1 cota: `"Saldo em caixa insuficiente para 1 cota · Meta: W%"`. Ao clicar, avança com essas X cotas preenchidas (ou vazio) e com a opção *"Debitar valor do Caixa"* configurada;
+     - **Sem saldo em Caixa (ou R$ 0,00):** o card exibe `"Meta: W%"` (sem valor financeiro de déficit). Ao clicar, a quantidade no formulário vem **em branco / vazia** (`""`), permitindo que o investidor defina livremente a quantidade desejada sem imposições;
      - Para Renda Fixa (`isTotalValue`): sugere no máximo o valor em caixa ou deixa o valor zerado caso não haja saldo em conta.
 - **Arquivos alterados:**
   - `src/features/investments/wizard/investment-wizard.tsx`

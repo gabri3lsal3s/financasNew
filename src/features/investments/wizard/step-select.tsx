@@ -317,23 +317,11 @@ export function StepSelect({
                                 </>
                               )}
                             </span>
-                            {" · Déficit total: "}
-                            <MoneyText
-                              cents={numberToCents(item.gapBRL)}
-                              tone="default"
-                              className="font-medium text-foreground inline"
-                            />
-                            {` (${item.targetPercentage}%)`}
+                            {` · Meta: ${item.targetPercentage}%`}
                           </span>
                         ) : (
                           <span>
-                            {"Déficit para meta: "}
-                            <MoneyText
-                              cents={numberToCents(item.gapBRL)}
-                              tone="default"
-                              className="font-semibold text-foreground inline"
-                            />
-                            {` (${item.targetPercentage}%)`}
+                            {`Meta: ${item.targetPercentage}%`}
                           </span>
                         )}
                       </div>
@@ -401,15 +389,7 @@ export function StepSelect({
                     <span className="truncate text-xs text-muted-foreground">{res.name}</span>
                     {suggestion ? (
                       <span className="text-[11px] text-muted-foreground pt-0.5">
-                        {"Faltam "}
-                        <MoneyText
-                          cents={numberToCents(suggestion.gapBRL)}
-                          tone="default"
-                          className="font-semibold text-foreground inline"
-                        />
-                        {" para a meta ("}
-                        {suggestion.targetPercentage}
-                        {"%)"}
+                        {`Meta: ${suggestion.targetPercentage}%`}
                       </span>
                     ) : null}
                   </div>

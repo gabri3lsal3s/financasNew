@@ -126,7 +126,7 @@ describe("InvestmentWizard (Fase 41)", () => {
 
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
     expect(screen.getByText("Recomendados para aporte")).toBeInTheDocument();
-    expect(screen.getByText(/Déficit para meta/i)).toBeInTheDocument();
+    expect(screen.getByText(/Meta: 80%/i)).toBeInTheDocument();
 
     const suggestionCard = screen.getByText("PETR4").closest("button");
     expect(suggestionCard).toBeTruthy();
