@@ -1441,6 +1441,24 @@
   - `src/features/reports/components/tabs/investments-tab.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F87 — Responsividade da Tabela de Resgates & Saneamento Visual dos Donuts
+
+- **Problema:**
+  1. A tabela de Posições Encerradas e Resgates (`ReportRedemptionsTable`) colidia os valores monetários (`R$ 1.236,27R$ 1.342,31+R$ 106,04`) em telas menores e no modal devido à ausência de `overflow-x-auto`, falta de `table-fixed` e larguras indefinidas nas colunas no modo tela;
+  2. Os cards de gráficos donut apresentavam um fundo branco opaco espúrio em temas escuros/contrastes (`print:bg-white` e `bg-surface/90`), e a presença de valores monetários na legenda esmagava o nome das classes e setores, truncando-os para iniciais (ex.: `R...`, `A...`, `F...`).
+- **Solução:**
+  1. **Responsividade Estrita de Resgates (`report-redemptions-table.tsx`):**
+     - Adicionado `overflow-x-auto` no container com `min-w-[650px] print:min-w-0 table-fixed`;
+     - Adicionado `<colgroup>` explícito com proporções exatas (24%, 18%, 11%, 13%, 13%, 11%, 10% somando 100%), garantindo que os valores monetários em `tabular-nums` tenham espaçamento perfeito sem sobreposição;
+  2. **Saneamento Visual dos Donuts (`report-allocation-donuts.tsx` e `report-donut-chart.tsx`):**
+     - Removido o fundo branco/opaco forçado de todos os cards de donuts, unificando em `bg-transparent border border-border/80`;
+     - Removido `formattedValue` das legendas de classes e setores conforme solicitado, exibindo com prioridade máxima o ponto colorido, o nome completo da classe/setor e a respectiva porcentagem (`pct%`), eliminando o truncamento precoce.
+- **Arquivos alterados:**
+  - `src/components/modules/reports/report-redemptions-table.tsx`
+  - `src/components/modules/reports/report-allocation-donuts.tsx`
+  - `src/components/modules/reports/report-donut-chart.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

@@ -103,7 +103,7 @@ export function ReportDonutChart({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-border/80 bg-muted/10 p-3.5 break-inside-avoid print:bg-white print:border-border",
+        "flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-border/80 bg-transparent p-3.5 break-inside-avoid print:border-border",
         className,
       )}
     >
@@ -168,14 +168,14 @@ export function ReportDonutChart({
           )}
         >
           {validSegments.map((segment) => (
-            <div key={segment.key} className="flex items-center justify-between gap-2 py-0.5">
-              <div className="flex items-center gap-1.5 min-w-0">
+            <div key={segment.key} className="flex items-center justify-between gap-2.5 py-0.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span
                   className="size-2.5 rounded-full shrink-0 border border-black/10"
                   style={{ backgroundColor: segment.color }}
                   aria-hidden="true"
                 />
-                <span className="truncate text-muted-foreground font-medium print:text-slate-700">
+                <span className="truncate text-foreground font-medium print:text-slate-800 text-[11px] sm:text-xs">
                   {segment.label}
                 </span>
               </div>
@@ -185,7 +185,7 @@ export function ReportDonutChart({
                     {segment.formattedValue}
                   </span>
                 )}
-                <span className="num font-mono font-bold text-foreground">
+                <span className="num font-mono font-bold text-foreground text-[11px] sm:text-xs">
                   {segment.pct.toFixed(1)}%
                 </span>
               </div>

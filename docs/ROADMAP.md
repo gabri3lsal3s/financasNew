@@ -4388,6 +4388,31 @@ flowchart TD
 - [x] Typecheck e lint limpos sem advertências.
 - [x] Build de produção limpo e testado.
 
+---
+
+### 🔍 FASE 87 — Responsividade da Tabela de Resgates & Saneamento Visual dos Donuts
+
+> **Status:** ✅ Concluída (2026-09-02) — **Ajustes de UI & Responsividade**: Correção de sobreposição de números e textos na tabela de posições encerradas/resgates (`ReportRedemptionsTable`) com scroll horizontal e largura fixa proporcional; remoção de fundos brancos artificiais nos cards de donuts e limpeza das legendas para exibir apenas classe/setor e porcentagem sem truncamento.
+>
+> **Objetivo:** Eliminar colisões de caracteres numéricos na tabela de resgates e proporcionar visual limpo e legível nos donuts sem caixas brancas desnecessárias.
+
+#### 1. Entregas Realizadas
+- **Responsividade na Tabela de Resgates (`report-redemptions-table.tsx`):**
+  - Adicionado `overflow-x-auto` no container com `min-w-[650px] print:min-w-0 table-fixed`;
+  - Definido `<colgroup>` explícito com proporções somando 100% para prevenir invasão de colunas adjacentes;
+  - Garantido espaçamento lateral e formatação `tabular-nums` com alinhamento à direita.
+- **Saneamento Visual dos Donuts (`report-allocation-donuts.tsx` e `report-donut-chart.tsx`):**
+  - Removido o fundo branco/opaco forçado de todos os cards de donuts, unificando em `bg-transparent border border-border/80`;
+  - Removido `formattedValue` da legenda dos donuts, exibindo apenas o ponto colorido, o nome completo da classe/setor e a porcentagem com destaque.
+
+**✅ DoD (Definition of Done da Fase 87):**
+- [x] Tabela de resgates com `overflow-x-auto` e zero sobreposição de textos em qualquer tamanho de tela.
+- [x] Fundo branco desnecessário dos cards de donuts 100% removido.
+- [x] Nomes de setores e classes 100% legíveis sem truncamento indevido.
+- [x] Testes de relatórios 100% verdes.
+- [x] Typecheck e lint limpos sem advertências.
+- [x] Build de produção limpo e testado.
+
 
 
 

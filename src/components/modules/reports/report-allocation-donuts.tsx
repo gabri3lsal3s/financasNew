@@ -17,8 +17,8 @@ export interface ReportAllocationDonutsProps {
 
 /**
  * Seção de Gráficos Donut de Classes e Setores em Largura Total (w-full).
- * Cada donut ocupa toda a largura horizontal, acomodando o gráfico à esquerda
- * e uma grade ampla de legenda à direita (2 a 3 colunas) sem sobreposição de textos.
+ * Exibe exclusivamente o setor/classe e a respectiva porcentagem na legenda,
+ * garantindo legibilidade total e eliminando fundos brancos desnecessários.
  */
 export function ReportAllocationDonuts({
   classSegments,
@@ -28,6 +28,7 @@ export function ReportAllocationDonuts({
   variant = "screen",
   className,
 }: ReportAllocationDonutsProps) {
+  // Apenas label, porcentagem e cor (sem valor monetário na legenda para não truncar nomes)
   const preparedClassSegments: ReportDonutSegment[] = useMemo(
     () =>
       classSegments.map((s) => ({
@@ -36,7 +37,6 @@ export function ReportAllocationDonuts({
         value: s.value,
         pct: s.pct,
         color: s.color,
-        formattedValue: <MoneyText cents={numberToCents(s.value)} />,
       })),
     [classSegments],
   );
@@ -49,7 +49,6 @@ export function ReportAllocationDonuts({
         value: s.value,
         pct: s.pct,
         color: s.color,
-        formattedValue: <MoneyText cents={numberToCents(s.value)} />,
       })),
     [sectorSegments],
   );
@@ -60,12 +59,12 @@ export function ReportAllocationDonuts({
 
   const numSectors = totalUniqueSectors ?? sectorSegments.length;
 
-  // Variante para o Dossiê Executivo A4 (Impressão/PDF em Largura Total)
+  // Variante para o Dossiê Executivo A4 (Impressão/PDF em Largura Total sem fundo branco)
   if (variant === "print") {
     return (
       <div className={cn("flex flex-col gap-3.5 w-full break-inside-avoid", className)}>
         {/* 1. Donut de Classes em Largura Total */}
-        <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 print:bg-white print:border-border shadow-2xs break-inside-avoid w-full flex flex-col gap-2">
+        <div className="rounded-xl border border-border/80 bg-transparent p-3.5 print:border-border shadow-2xs break-inside-avoid w-full flex flex-col gap-2">
           <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5">
               <Layers className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
@@ -95,7 +94,7 @@ export function ReportAllocationDonuts({
         </div>
 
         {/* 2. Donut de Setores em Largura Total */}
-        <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 print:bg-white print:border-border shadow-2xs break-inside-avoid w-full flex flex-col gap-2">
+        <div className="rounded-xl border border-border/80 bg-transparent p-3.5 print:border-border shadow-2xs break-inside-avoid w-full flex flex-col gap-2">
           <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5">
               <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
@@ -122,11 +121,11 @@ export function ReportAllocationDonuts({
     );
   }
 
-  // Variante Web Padrão (Tela / Navegador em Largura Total)
+  // Variante Web Padrão (Tela / Navegador em Largura Total sem fundo artificial)
   return (
     <div className={cn("flex flex-col gap-4 w-full", className)}>
       {/* 1. Donut de Classes em Largura Total */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs w-full">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-transparent p-4 sm:p-5 shadow-xs w-full">
         <div className="flex items-center justify-between border-b border-border/70 pb-2.5">
           <div className="flex items-center gap-2">
             <Layers className="size-4 text-portfolio shrink-0" aria-hidden="true" />
@@ -161,7 +160,7 @@ export function ReportAllocationDonuts({
       </div>
 
       {/* 2. Donut de Setores em Largura Total */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface/90 p-5 shadow-xs w-full">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-transparent p-4 sm:p-5 shadow-xs w-full">
         <div className="flex items-center justify-between border-b border-border/70 pb-2.5">
           <div className="flex items-center gap-2">
             <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />

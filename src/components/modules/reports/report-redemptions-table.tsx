@@ -19,7 +19,7 @@ function formatISODatePtBR(isoDate: string): string {
 
 /**
  * Tabela de Posições Encerradas e Resgates Realizados para Relatórios A4/PDF (§F42/F44).
- * Exibe histórico de desinvestimento e liquidações ocorridas no período selecionado.
+ * Totalmente responsiva com larguras proporcionais, colunas fixas e scroll suave horizontal.
  */
 export function ReportRedemptionsTable({
   items,
@@ -54,18 +54,27 @@ export function ReportRedemptionsTable({
         ) : null}
       </div>
 
-      {/* Tabela de Resgates com Totais Contábeis */}
-      <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
-        <table className="w-full text-left text-xs border-collapse print:table-fixed">
+      {/* Tabela de Resgates com Totais Contábeis Responsiva */}
+      <div className="rounded-lg border border-border/80 overflow-x-auto shadow-2xs">
+        <table className="w-full min-w-[650px] print:min-w-0 text-left text-xs border-collapse table-fixed">
+          <colgroup>
+            <col className="w-[24%]" />
+            <col className="w-[18%]" />
+            <col className="w-[11%]" />
+            <col className="w-[13%]" />
+            <col className="w-[13%]" />
+            <col className="w-[11%]" />
+            <col className="w-[10%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
-              <th className="py-1.5 px-2.5 print:w-[28%]">Título / Ativo</th>
-              <th className="py-1.5 px-2 print:w-[18%]">Classe / Categoria</th>
-              <th className="py-1.5 px-1.5 text-center print:w-[12%]">Data Resgate</th>
-              <th className="py-1.5 px-2 text-right print:w-[14%]">Valor Aplicado</th>
-              <th className="py-1.5 px-2 text-right print:w-[14%]">Valor Resgatado</th>
-              <th className="py-1.5 px-2 text-right print:w-[14%]">Resultado (R$)</th>
-              <th className="py-1.5 px-2 text-right print:w-[10%]">Rentab. Final</th>
+              <th className="py-1.5 px-2.5">Título / Ativo</th>
+              <th className="py-1.5 px-2">Classe / Categoria</th>
+              <th className="py-1.5 px-1.5 text-center">Data Resgate</th>
+              <th className="py-1.5 px-2 text-right">Valor Aplicado</th>
+              <th className="py-1.5 px-2 text-right">Valor Resgatado</th>
+              <th className="py-1.5 px-2 text-right">Resultado (R$)</th>
+              <th className="py-1.5 px-2 text-right">Rentab. Final</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
@@ -79,7 +88,7 @@ export function ReportRedemptionsTable({
                   <td className="py-1.5 px-2.5 font-semibold text-foreground whitespace-normal break-words leading-tight text-[11px]">
                     {sanitizeReportText(item.ticker)}
                     {item.name && item.name !== item.ticker ? (
-                      <span className="block text-[9.5px] text-muted-foreground font-normal">
+                      <span className="block text-[9.5px] text-muted-foreground font-normal truncate">
                         {sanitizeReportText(item.name)}
                       </span>
                     ) : null}
@@ -87,7 +96,7 @@ export function ReportRedemptionsTable({
                   <td className="py-1.5 px-2 text-muted-foreground whitespace-normal break-words leading-tight text-[10px]">
                     {sanitizeReportText(item.assetClass)}
                     {item.sector ? (
-                      <span className="block text-[9px] text-muted-foreground/70">
+                      <span className="block text-[9px] text-muted-foreground/70 truncate">
                         {sanitizeReportText(item.sector)}
                       </span>
                     ) : null}
@@ -95,13 +104,13 @@ export function ReportRedemptionsTable({
                   <td className="py-1.5 px-1.5 text-center num font-mono text-muted-foreground text-[10px] whitespace-nowrap">
                     {formatISODatePtBR(item.redemptionDate)}
                   </td>
-                  <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground text-[10.5px] whitespace-nowrap">
+                  <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground text-[10.5px] whitespace-nowrap tabular-nums">
                     <MoneyText cents={numberToCents(item.appliedCostBRL)} tone="default" />
                   </td>
-                  <td className="py-1.5 px-2 text-right num font-mono font-bold text-foreground text-[10.5px] whitespace-nowrap">
+                  <td className="py-1.5 px-2 text-right num font-mono font-bold text-foreground text-[10.5px] whitespace-nowrap tabular-nums">
                     <MoneyText cents={numberToCents(item.redeemedValueBRL)} tone="default" />
                   </td>
-                  <td className="py-1.5 px-2 text-right num font-mono font-bold text-[10.5px] whitespace-nowrap">
+                  <td className="py-1.5 px-2 text-right num font-mono font-bold text-[10.5px] whitespace-nowrap tabular-nums">
                     <MoneyText
                       cents={numberToCents(item.realizedPnlBRL)}
                       tone={isPositive ? "positive" : "negative"}
@@ -110,7 +119,7 @@ export function ReportRedemptionsTable({
                   </td>
                   <td
                     className={cn(
-                      "py-1.5 px-2 text-right num font-mono font-bold text-[10.5px] whitespace-nowrap",
+                      "py-1.5 px-2 text-right num font-mono font-bold text-[10.5px] whitespace-nowrap tabular-nums",
                       item.finalReturnPct !== null && item.finalReturnPct >= 0
                         ? "text-positive-strong"
                         : "text-negative-strong",
@@ -127,13 +136,13 @@ export function ReportRedemptionsTable({
               <td colSpan={3} className="py-2 px-2.5 text-foreground uppercase tracking-wider text-[10px]">
                 Total Resgates do Período ({items.length})
               </td>
-              <td className="py-2 px-2 text-right num font-mono text-muted-foreground whitespace-nowrap">
+              <td className="py-2 px-2 text-right num font-mono text-muted-foreground whitespace-nowrap tabular-nums">
                 <MoneyText cents={numberToCents(totalAppliedBRL)} tone="default" />
               </td>
-              <td className="py-2 px-2 text-right num font-mono text-foreground font-bold whitespace-nowrap">
+              <td className="py-2 px-2 text-right num font-mono text-foreground font-bold whitespace-nowrap tabular-nums">
                 <MoneyText cents={numberToCents(totalRedeemedBRL)} tone="default" />
               </td>
-              <td className="py-2 px-2 text-right num font-mono font-bold whitespace-nowrap">
+              <td className="py-2 px-2 text-right num font-mono font-bold whitespace-nowrap tabular-nums">
                 <MoneyText
                   cents={numberToCents(totalRealizedPnlBRL)}
                   tone={totalRealizedPnlBRL >= 0 ? "positive" : "negative"}
@@ -142,7 +151,7 @@ export function ReportRedemptionsTable({
               </td>
               <td
                 className={cn(
-                  "py-2 px-2 text-right num font-mono font-bold whitespace-nowrap",
+                  "py-2 px-2 text-right num font-mono font-bold whitespace-nowrap tabular-nums",
                   totalReturnPct !== null && totalReturnPct >= 0
                     ? "text-positive-strong"
                     : "text-negative-strong",
