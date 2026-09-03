@@ -104,7 +104,10 @@
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
     │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section (F24),
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
-    │   │   │                      #   cash-kpi-card (card do saldo em Caixa com ações de Editar/Excluir embutidas)…
+    │   │   │                      #   cash-kpi-card (card do saldo em Caixa com ações de Editar/Excluir embutidas),
+    │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,
+    │   │   │                      #     report-donut-chart, report-stacked-bar, report-risk-gauge, report-class-tables,
+    │   │   │                      #     report-redemptions-table F80, report-allocation-donuts F84)…
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   more-menu-sheet (F56 — bottom sheet móvel),
@@ -163,8 +166,10 @@
     │   │                          #     por contagem) + modos de exclusão em grupo
     │   ├── budgets/               #   regras por categoria (CATEGORY_RULES), status/limites
     │   ├── overview/              #   computeOverview (KPIs), percentChange, buildDailyFlow
-    │   ├── reports/               #   peso de relatório (base × weight) + detailed-close.ts
-    │   │                          #     (F22 evolução — fechamento mensal em categoria → dia → gasto)
+    │   ├── reports/               #   peso de relatório (base × weight), detailed-close.ts (fechamento),
+    │   │                          #     allocation-gaps.ts, concentration-risk.ts, consolidated-balance.ts,
+    │   │                          #     freedom-index.ts, period-redemptions.ts (F80: resgates da competência),
+    │   │                          #     allocation-donuts.ts (F84: distribuição donut classes e setores)
     │   ├── insights/              #   alertas, assinaturas, recorrências, confiança
     │   ├── savings/               #   F27: desafios de economia (média mensal típica, corte
     │   │                          #     discricionário 10/20/30% — typicalMonthlySpendCents)
@@ -219,6 +224,7 @@
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
     │                              #   use-highlight-target, use-pwa-install,
+    │                              #   use-network-status (F83 — detecção pub/sub via useSyncExternalStore),
     │                              #   use-sidebar-state, use-sign-out (logout unificado),
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
@@ -230,6 +236,8 @@
     │   │                          #     formatPercent)
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
+    │   ├── network-status.ts      #   F83: pub/sub de conectividade online/offline com snapshot síncrono
+    │   ├── excel-export.ts        #   F44/F80: gerador XML do Caderno Excel multi-abas (Resumo, Custódia, Proventos, DRE, Dívidas, Resgates)
     │   ├── user-storage.ts        #   Isolamento de localStorage por userId (financas_${userId}_*) + sanitizeLegacyStorage
     │   ├── auth-cleanup.ts        #   resetAppState() — cancelamento de queries, purge de cache, reset de stores e DOM
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
