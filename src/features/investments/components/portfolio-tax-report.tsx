@@ -223,6 +223,33 @@ export function PortfolioTaxReport({
                         </div>
                       )}
                     </div>
+
+                    {/* Rendimentos do Exterior */}
+                    {dividendsReport.foreignDividends.items.length > 0 && (
+                      <div className="flex flex-col gap-2 rounded-xl border border-border p-3.5 bg-surface">
+                        <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                          <div className="flex items-center gap-2">
+                            <FileText className="size-4 text-primary" aria-hidden="true" />
+                            <h4 className="text-xs font-semibold text-foreground">
+                              Rendimentos do Exterior (Carnê-Leão / Exterior)
+                            </h4>
+                          </div>
+                          <MoneyText cents={dividendsReport.foreignDividends.totalCents} tone="positive" className="text-xs font-bold" />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Proventos recebidos em moeda estrangeira (USD), convertidos em BRL pela cotação de referência.
+                        </p>
+
+                        <div className="flex flex-col divide-y divide-border/60">
+                          {dividendsReport.foreignDividends.items.map((it) => (
+                            <div key={it.assetId} className="flex items-center justify-between py-1.5 text-xs">
+                              <span className="font-mono font-medium text-foreground">{it.ticker}</span>
+                              <MoneyText cents={it.amountCents} tone="positive" className="font-semibold" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ),
               },
@@ -305,6 +332,23 @@ export function PortfolioTaxReport({
                 </div>
               )}
             </div>
+
+            {dividendsReport.foreignDividends.items.length > 0 && (
+              <div className="rounded-lg border border-border p-2.5 flex flex-col gap-1.5 bg-white">
+                <div className="flex items-center justify-between border-b border-border/40 pb-1">
+                  <span className="text-[11px] font-bold">Rendimentos do Exterior (Carnê-Leão)</span>
+                  <MoneyText cents={dividendsReport.foreignDividends.totalCents} tone="positive" className="text-xs font-bold" />
+                </div>
+                <div className="flex flex-col divide-y divide-border/40">
+                  {dividendsReport.foreignDividends.items.map((it) => (
+                    <div key={it.assetId} className="flex items-center justify-between py-1 text-[11px]">
+                      <span className="font-mono">{it.ticker}</span>
+                      <MoneyText cents={it.amountCents} tone="positive" className="font-medium" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         </div>
 

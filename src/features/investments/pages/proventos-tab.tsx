@@ -200,7 +200,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         ? (isUSD ? (row.priceQuote || row.priceBRL) : row.priceBRL)
         : asset.average_price;
       const assetExtract = extract.filter((d) => d.asset_id === asset.id || d.ticker === asset.ticker);
-      const monthDividends = assetExtract.reduce((acc, d) => acc + getDividendAmountBRL(d), 0);
+      const monthDividends = assetExtract.reduce((acc, d) => acc + (isUSD ? d.amount : getDividendAmountBRL(d)), 0);
 
       return {
         assetId: asset.id,

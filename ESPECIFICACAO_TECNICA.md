@@ -98,6 +98,11 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
   4. **Preço manual** — o usuário pode informar/sobrescrever o preço (coluna `manual_price`); o override **prevalece** sobre cache/fallback e é marcado na UI como "preço informado manualmente".
 - **Guardrail de spike:** variação > 50% em 1 dia mantém o último preço válido (proteção contra dado corrompido).
 - **Degradação graciosa:** em indisponibilidade prolongada, a carteira e o rebalanceamento continuam funcionando com aviso visível de imprecisão.
+- **Governança de Ativos Internacionais e Proventos (USD):**
+  - **Moeda Nativa:** ativos com `currency: "USD"` mantêm preço unitário, preço médio, custo total e proventos (acumulados e periódicos) registrados na moeda nativa (USD). A interface exibe máscaras monetárias e símbolos em dólar (`$`).
+  - **Yield on Cost (YoC):** calculado estritamente na moeda nativa ($\text{proventos USD} / \text{custo total USD}$), evitando distorções cambiais.
+  - **Consolidação Patrimonial (BRL):** na carteira consolidada, série mensal de snapshots e relatórios, o valor de mercado e os proventos são convertidos para BRL pela taxa cambial vigente (`usdRate`), assegurando que $\text{totalReturnPnl} = \text{unrealizedPnl} + (\text{totalDividendsNative} \times \text{usdRate})$.
+  - **Tributação (IRPF):** proventos internacionais são segregados como "Rendimentos Recebidos do Exterior (Carnê-Leão / Exterior)", não sendo misturados com a Ficha 09 de rendimentos isentos locais.
 
 ### 1.7 Gateway de erros e contratos de estado
 

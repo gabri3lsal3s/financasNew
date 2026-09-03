@@ -618,8 +618,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
               <MoneyInput
                 id="edit-accumulated-dividends"
                 cents={accumulatedDividendsCents}
+                currency={currency}
                 onCentsChange={setAccumulatedDividendsCents}
-                placeholder="R$ 0,00"
+                placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Total de proventos acumulados anteriores ao cadastro"
               />
             </div>
@@ -634,8 +635,9 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
               <MoneyInput
                 id="edit-estimated-div-per-share"
                 cents={estimatedDividendPerShareCents}
+                currency={currency}
                 onCentsChange={setEstimatedDividendPerShareCents}
-                placeholder="R$ 0,00"
+                placeholder={currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                 aria-label="Dividendo mensal estimado por cota para calculo da Bola de Neve"
               />
             </div>

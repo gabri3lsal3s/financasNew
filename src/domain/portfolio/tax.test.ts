@@ -92,7 +92,7 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
       expect(report.totalDividendsCents).toBe(20000);
     });
 
-    it("converte proventos de ativos em USD para reais com a taxa informada", () => {
+    it("converte proventos de ativos em USD para reais com a taxa informada e classifica em foreignDividends", () => {
       const assets: PortfolioAsset[] = [
         { id: "a2", user_id: "u1", ticker: "AAPL", asset_class: "Internacional", currency: "USD", quantity: 10, average_price: 150 },
       ];
@@ -103,7 +103,8 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
 
       const report = classifyAnnualDividendsReport(dividends, assets, 2026, 5.0);
       // $20 * 5.0 = R$ 100,00 = 10000 cents
-      expect(report.exemptDividends.totalCents).toBe(10000);
+      expect(report.foreignDividends.totalCents).toBe(10000);
+      expect(report.exemptDividends.totalCents).toBe(0);
       expect(report.totalDividendsCents).toBe(10000);
     });
   });

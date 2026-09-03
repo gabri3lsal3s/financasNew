@@ -256,6 +256,24 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(summary.unrealizedPct).toBe(8.5);
       expect(summary.isCash).toBe(false);
 
+      // Valoração de ativo internacional em USD com proventos
+      const summaryUSD = calculatePositionSummary({
+        quantity: 11.93375,
+        averagePrice: 65.2,
+        assetClass: "Internacional",
+        currency: "USD",
+        ticker: "VEA",
+        resolvedPrice: { price: 73.4, source: "api" },
+        usdRate: 5.1065,
+        totalDividends: 10.81,
+      });
+
+      expect(summaryUSD.totalCost).toBe(778.08);
+      expect(summaryUSD.totalCostBRL).toBe(3973.27);
+      expect(summaryUSD.totalDividends).toBe(10.81);
+      expect(summaryUSD.totalDividendsBRL).toBe(55.2);
+      expect(summaryUSD.totalReturnPnl).toBe(Math.round((summaryUSD.unrealizedPnl + summaryUSD.totalDividendsBRL) * 100) / 100);
+
       // Caso com quantidade acumulada pós-ordem:
       const summaryAccumulated = calculatePositionSummary({
         quantity: 2,

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Flame, PiggyBank, Sparkles } from "lucide-react";
 import {
   ReportDocumentLayout,
@@ -10,7 +11,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { sanitizeReportText, type FreedomAnalysisResult } from "@/domain/reports";
 import { formatPercent } from "@/services/masks";
-import type { PortfolioDividend } from "@/types";
+import type { PortfolioAsset, PortfolioDividend } from "@/types";
 
 export interface DividendFreedomModalProps {
   open: boolean;
@@ -18,6 +19,8 @@ export interface DividendFreedomModalProps {
   freedomAnalysis: FreedomAnalysisResult;
   dividends: readonly PortfolioDividend[];
   yearDividendsBRL: number;
+  assets?: readonly PortfolioAsset[];
+  usdRate?: number;
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
@@ -35,18 +38,25 @@ export function DividendFreedomModal({
   freedomAnalysis,
   dividends,
   yearDividendsBRL,
+  assets,
+  usdRate = 5.25,
   periodLabel = "Exercício Anual",
   appName = "Guia Financeiro",
   accountHolder,
 }: DividendFreedomModalProps) {
   const currentYear = new Date().getFullYear();
+  const assetMap = useMemo(() => new Map((assets ?? []).map((a) => [a.id, a])), [assets]);
 
   // Matriz de 12 meses de proventos do ano corrente para o Sparkline SVG
   const sparklinePoints = Array.from({ length: 12 }, (_, idx) => {
     const monthStr = `${currentYear}-${String(idx + 1).padStart(2, "0")}`;
     const sumBRL = dividends
       .filter((d) => d.date.startsWith(monthStr))
-      .reduce((acc, d) => acc + d.amount, 0);
+      .reduce((acc, d) => {
+        const asset = d.asset_id ? assetMap.get(d.asset_id) : undefined;
+        const rate = asset?.currency === "USD" ? usdRate : 1;
+        return acc + d.amount * rate;
+      }, 0);
 
     return {
       month: monthStr,

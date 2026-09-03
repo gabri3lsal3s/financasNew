@@ -94,14 +94,25 @@ export function AssetDetailSheet({
     : totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
 
   // Proventos consolidados (acumulados históricos + lançamentos periódicos)
-  const totalDividends = positionRow ? positionRow.dividends : (currentAsset.accumulated_dividends ?? 0);
-  const accumulatedDividends = currentAsset.accumulated_dividends ?? 0;
-  const periodicDividends = Math.max(0, totalDividends - accumulatedDividends);
-  const yieldOnCostPct = calculateYieldOnCostTotal(accumulatedDividends, periodicDividends, totalCost);
+  const isUSD = currentAsset.currency === "USD";
+  const usdRate = positionRow?.usdRate || 5.25;
+  const totalDividendsNative = positionRow?.dividendsNative ?? (currentAsset.accumulated_dividends ?? 0);
+  const totalDividendsBRL = positionRow ? positionRow.dividends : totalDividendsNative * (isUSD ? usdRate : 1);
+  const accumulatedDividendsNative = currentAsset.accumulated_dividends ?? 0;
+  const periodicDividendsNative = Math.max(0, totalDividendsNative - accumulatedDividendsNative);
+
+  // Custo na moeda nativa do ativo (para cálculo de YoC homogêneo na mesma moeda)
+  const totalCostNative = positionRow
+    ? positionRow.totalCost
+    : isTotalValue
+      ? averageCost > 0 ? averageCost : quantity
+      : quantity * averageCost;
+
+  const yieldOnCostPct = calculateYieldOnCostTotal(accumulatedDividendsNative, periodicDividendsNative, totalCostNative);
 
   const totalReturnPnl = positionRow
     ? positionRow.totalReturnPnl
-    : (isCash ? 0 : unrealizedPnl + totalDividends);
+    : (isCash ? 0 : unrealizedPnl + totalDividendsBRL);
   const totalReturnPct = positionRow
     ? (positionRow.totalReturnPct ?? 0)
     : totalCost > 0 ? (totalReturnPnl / totalCost) * 100 : 0;
@@ -109,7 +120,7 @@ export function AssetDetailSheet({
   const isClosed = !isCash && quantity <= 0 && currentValue <= 0;
   const appliedCost = positionRow?.historicalCostBRL ?? totalCost;
   const redeemedAmount = positionRow?.historicalRedeemedBRL ?? 0;
-  const finalPnl = positionRow?.totalReturnPnl ?? (redeemedAmount - appliedCost + totalDividends);
+  const finalPnl = positionRow?.totalReturnPnl ?? (redeemedAmount - appliedCost + totalDividendsBRL);
   const finalReturnPct = positionRow?.finalReturnPct ?? (appliedCost > 0 ? (finalPnl / appliedCost) * 100 : null);
 
   const formatRateLabel = (metadata: NonNullable<PortfolioAsset["fixed_income_metadata"]>) => {
@@ -244,7 +255,7 @@ export function AssetDetailSheet({
                   <span>Calibrar</span>
                 </Button>
               )}
-              {(!isTotalValue || totalDividends > 0 || (currentAsset.accumulated_dividends ?? 0) > 0) && (
+              {(!isTotalValue || totalDividendsNative > 0 || (currentAsset.accumulated_dividends ?? 0) > 0) && (
                 <Button
                   type="button"
                   size="sm"
@@ -299,7 +310,7 @@ export function AssetDetailSheet({
                   <MoneyText cents={numberToCents(redeemedAmount)} />
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono truncate">
-                  {totalDividends > 0 ? `+ R$ ${totalDividends.toFixed(2)} proventos` : "Crédito em caixa"}
+                  {totalDividendsNative > 0 ? (isUSD ? `+ $ ${totalDividendsNative.toFixed(2)} proventos` : `+ R$ ${totalDividendsNative.toFixed(2)} proventos`) : "Crédito em caixa"}
                 </span>
               </div>
 
@@ -367,7 +378,7 @@ export function AssetDetailSheet({
                     {(totalReturnPct ?? 0) >= 0 ? "+" : ""}
                     {(totalReturnPct ?? 0).toFixed(2)}%
                   </span>
-                  {totalDividends > 0 && !isTotalValue ? (
+                  {totalDividendsNative > 0 && !isTotalValue ? (
                     <span className="text-muted-foreground text-[9px] truncate" title={`Cotação: ${(unrealizedPnlPct ?? 0) >= 0 ? "+" : ""}${(unrealizedPnlPct ?? 0).toFixed(2)}% | Proventos: +${(yieldOnCostPct ?? 0).toFixed(2)}%`}>
                       (Cotação {(unrealizedPnlPct ?? 0) >= 0 ? "+" : ""}${(unrealizedPnlPct ?? 0).toFixed(1)}%)
                     </span>
@@ -375,7 +386,7 @@ export function AssetDetailSheet({
                 </div>
               </div>
 
-              {isTotalValue && totalDividends === 0 ? (
+              {isTotalValue && totalDividendsNative === 0 ? (
                 <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
                   <span className="text-[11px] font-medium text-muted-foreground truncate">Vencimento</span>
                   <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
@@ -399,21 +410,31 @@ export function AssetDetailSheet({
                   <span className="font-mono text-sm sm:text-base font-bold text-positive-strong truncate">
                     {yieldOnCostPct.toFixed(2)}%
                   </span>
-                  {accumulatedDividends > 0 ? (
+                  {accumulatedDividendsNative > 0 ? (
                     <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
                       <span className="text-[10px] text-muted-foreground font-mono truncate">
-                        Extrato: <MoneyText cents={numberToCents(periodicDividends)} />
+                        Extrato: <MoneyText cents={numberToCents(periodicDividendsNative)} currency={currentAsset.currency} />
                       </span>
                       <span className="text-[10px] text-muted-foreground font-mono truncate">
-                        Acumulados: <MoneyText cents={numberToCents(accumulatedDividends)} />
+                        Acumulados: <MoneyText cents={numberToCents(accumulatedDividendsNative)} currency={currentAsset.currency} />
                       </span>
                       <span className="text-[10px] text-muted-foreground font-mono font-semibold truncate">
-                        Total: <MoneyText cents={numberToCents(totalDividends)} />
+                        Total: <MoneyText cents={numberToCents(totalDividendsNative)} currency={currentAsset.currency} />
+                        {isUSD && totalDividendsNative > 0 ? (
+                          <span className="font-normal text-muted-foreground ml-1">
+                            (≈ <MoneyText cents={numberToCents(totalDividendsBRL)} currency="BRL" />)
+                          </span>
+                        ) : null}
                       </span>
                     </div>
                   ) : (
                     <span className="text-[10px] text-muted-foreground font-mono truncate">
-                      Proventos: <MoneyText cents={numberToCents(totalDividends)} />
+                      Proventos: <MoneyText cents={numberToCents(totalDividendsNative)} currency={currentAsset.currency} />
+                      {isUSD && totalDividendsNative > 0 ? (
+                        <span className="font-normal text-muted-foreground ml-1">
+                          (≈ <MoneyText cents={numberToCents(totalDividendsBRL)} currency="BRL" />)
+                        </span>
+                      ) : null}
                     </span>
                   )}
                 </div>

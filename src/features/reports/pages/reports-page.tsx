@@ -248,14 +248,28 @@ export function ReportsPage() {
   const cashBalanceBRL = positionQuery.cashBRL ?? 0;
   const totalInvestedCostBRL = positionQuery.totalCostBRL ?? 0;
 
+  const usdRate = useMemo(
+    () => positionRows.find((r) => r.currency === "USD")?.usdRate ?? 5.25,
+    [positionRows],
+  );
+
+  const assetCurrencyMap = useMemo(
+    () => new Map(assets.map((a) => [a.id, a.currency])),
+    [assets],
+  );
+
   const currentYearNum = new Date().getFullYear();
   const yearDividendsBRL = useMemo(() => {
     const tableDivs = dividends
       .filter((d) => d.date.startsWith(String(currentYearNum)))
-      .reduce((acc, d) => acc + d.amount, 0);
+      .reduce((acc, d) => {
+        const curr = d.asset_id ? assetCurrencyMap.get(d.asset_id) : "BRL";
+        const rate = curr === "USD" ? usdRate : 1;
+        return acc + d.amount * rate;
+      }, 0);
     if (tableDivs > 0) return tableDivs;
     return positionQuery.totalDividendsBRL;
-  }, [dividends, currentYearNum, positionQuery.totalDividendsBRL]);
+  }, [dividends, currentYearNum, positionQuery.totalDividendsBRL, assetCurrencyMap, usdRate]);
 
   const currentMonthStr = currentMonth();
   const currentMonthFormatted = monthLabel(currentMonthStr);
@@ -271,19 +285,34 @@ export function ReportsPage() {
     () =>
       monthTransactions
         .filter((t) => t.type === "buy")
-        .reduce((acc, t) => acc + (t.total ?? t.quantity * t.price), 0),
-    [monthTransactions],
+        .reduce((acc, t) => {
+          const curr = assetCurrencyMap.get(t.asset_id);
+          const rate = curr === "USD" ? usdRate : 1;
+          const totalVal = t.total ?? (t.quantity * t.price);
+          return acc + totalVal * rate;
+        }, 0),
+    [monthTransactions, assetCurrencyMap, usdRate],
   );
   const monthSellsBRL = useMemo(
     () =>
       monthTransactions
         .filter((t) => t.type === "sell")
-        .reduce((acc, t) => acc + (t.total ?? t.quantity * t.price), 0),
-    [monthTransactions],
+        .reduce((acc, t) => {
+          const curr = assetCurrencyMap.get(t.asset_id);
+          const rate = curr === "USD" ? usdRate : 1;
+          const totalVal = t.total ?? (t.quantity * t.price);
+          return acc + totalVal * rate;
+        }, 0),
+    [monthTransactions, assetCurrencyMap, usdRate],
   );
   const monthDividendsAmountBRL = useMemo(
-    () => monthDividendsList.reduce((acc, d) => acc + d.amount, 0),
-    [monthDividendsList],
+    () =>
+      monthDividendsList.reduce((acc, d) => {
+        const curr = d.asset_id ? assetCurrencyMap.get(d.asset_id) : "BRL";
+        const rate = curr === "USD" ? usdRate : 1;
+        return acc + d.amount * rate;
+      }, 0),
+    [monthDividendsList, assetCurrencyMap, usdRate],
   );
   const monthNetFlowBRL = monthBuysBRL - monthSellsBRL + monthDividendsAmountBRL;
 
@@ -296,11 +325,6 @@ export function ReportsPage() {
       monthLabel: currentMonthFormatted,
     }),
     [monthBuysBRL, monthSellsBRL, monthDividendsAmountBRL, monthNetFlowBRL, currentMonthFormatted],
-  );
-
-  const usdRate = useMemo(
-    () => positionRows.find((r) => r.currency === "USD")?.usdRate ?? 1,
-    [positionRows],
   );
 
   const periodRedemptions = useMemo(() => {
@@ -382,14 +406,19 @@ export function ReportsPage() {
       monthlyDivs,
       monthlyExp,
       cashBalanceBRL,
-      assets.map((a) => ({
-        ticker: a.ticker,
-        currentPriceBRL: a.quantity > 0 && a.average_price > 0 ? a.average_price : 10,
-        monthlyDividendPerShareBRL: a.estimated_monthly_dividend_per_share ?? 0,
-        quantity: a.quantity,
-      })),
+      assets.map((a) => {
+        const isUSD = a.currency === "USD";
+        const rate = isUSD ? usdRate : 1;
+        const avgPrice = a.quantity > 0 && a.average_price > 0 ? a.average_price : 10;
+        return {
+          ticker: a.ticker,
+          currentPriceBRL: avgPrice * rate,
+          monthlyDividendPerShareBRL: (a.estimated_monthly_dividend_per_share ?? 0) * rate,
+          quantity: a.quantity,
+        };
+      }),
     );
-  }, [yearDividendsBRL, monthlyExpenses.data, cashBalanceBRL, assets]);
+  }, [yearDividendsBRL, monthlyExpenses.data, cashBalanceBRL, assets, usdRate]);
 
   const periodLabel = useMemo(() => {
     if (mode === "month") {
@@ -593,13 +622,18 @@ export function ReportsPage() {
             yocPct: yoc,
           };
         }),
-      dividends: dividends.map((d) => ({
-        date: d.date,
-        ticker: assets.find((a) => a.id === d.asset_id)?.ticker ?? "Ativo",
-        assetClass: assets.find((a) => a.id === d.asset_id)?.asset_class ?? "outros",
-        amountBRL: d.amount,
-        notes: d.notes,
-      })),
+      dividends: dividends.map((d) => {
+        const asset = assets.find((a) => a.id === d.asset_id);
+        const isUSD = asset?.currency === "USD";
+        const rate = isUSD ? usdRate : 1;
+        return {
+          date: d.date,
+          ticker: asset?.ticker ?? "Ativo",
+          assetClass: asset?.asset_class ?? "outros",
+          amountBRL: d.amount * rate,
+          notes: d.notes,
+        };
+      }),
       dreMonthly: [
         {
           month,
@@ -661,6 +695,7 @@ export function ReportsPage() {
     debts,
     periodRedemptions,
     allocationAnalysis.classGaps,
+    usdRate,
   ]);
 
   const excelDescription = useMemo(() => {
@@ -951,6 +986,8 @@ export function ReportsPage() {
         freedomAnalysis={freedomAnalysis}
         dividends={dividends}
         yearDividendsBRL={yearDividendsBRL}
+        assets={assets}
+        usdRate={usdRate}
       />
 
       <ConsolidatedWealthModal

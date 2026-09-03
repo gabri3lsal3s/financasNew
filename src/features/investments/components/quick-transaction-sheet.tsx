@@ -27,7 +27,7 @@ import {
 } from "@/domain/portfolio/valuation";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
-import { usePortfolioAssets, useRecordOrder } from "@/state";
+import { usePortfolioAssets, usePortfolioPosition, useRecordOrder } from "@/state";
 import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
 
 export interface QuickTransactionSheetProps {
@@ -51,6 +51,8 @@ export function QuickTransactionSheet({
 }: QuickTransactionSheetProps) {
   const assetsQuery = usePortfolioAssets();
   const recordOrder = useRecordOrder();
+  const position = usePortfolioPosition();
+  const usdRate = position.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25;
 
   const allAssets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
   const cashAsset = useMemo(
@@ -282,6 +284,7 @@ export function QuickTransactionSheet({
         cashAsset,
         recordContribution,
         notes: resolvedNotes,
+        usdRate,
         appliedCostBasis: isTotalValue && appliedCostCents > 0 ? appliedCostCents / 100 : undefined,
       });
 
@@ -427,13 +430,14 @@ export function QuickTransactionSheet({
 
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="quick-buy-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Preço Unitário
+                      Preço Unitário ({targetAsset?.currency ?? "BRL"})
                     </label>
                     <MoneyInput
                       id="quick-buy-price"
                       cents={priceCents}
+                      currency={targetAsset?.currency ?? "BRL"}
                       onCentsChange={setPriceCents}
-                      placeholder="R$ 0,00"
+                      placeholder={targetAsset?.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                     />
                   </div>
                 </>
@@ -474,7 +478,7 @@ export function QuickTransactionSheet({
               <div className="flex items-center justify-between rounded-xl bg-surface-hover/60 p-3 text-xs">
                 <span className="text-muted-foreground">Novo Preço Médio Resultante:</span>
                 <span className="font-mono font-bold text-primary text-sm">
-                  <MoneyText cents={numberToCents(buyPreview.newAveragePrice)} />
+                  <MoneyText cents={numberToCents(buyPreview.newAveragePrice)} currency={targetAsset?.currency ?? "BRL"} />
                 </span>
               </div>
             )}
@@ -578,13 +582,14 @@ export function QuickTransactionSheet({
 
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="quick-sell-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Preço de Venda
+                      Preço de Venda ({targetAsset?.currency ?? "BRL"})
                     </label>
                     <MoneyInput
                       id="quick-sell-price"
                       cents={priceCents}
+                      currency={targetAsset?.currency ?? "BRL"}
                       onCentsChange={setPriceCents}
-                      placeholder="R$ 0,00"
+                      placeholder={targetAsset?.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                     />
                   </div>
                 </>
@@ -691,7 +696,7 @@ export function QuickTransactionSheet({
                   <span className="text-muted-foreground">Resultado Realizado:</span>
                   <span className={`font-mono font-bold text-sm ${sellPreview.realizedPnl >= 0 ? "text-positive-strong" : "text-negative-strong"}`}>
                     {sellPreview.realizedPnl >= 0 ? "+" : ""}
-                    <MoneyText cents={numberToCents(sellPreview.realizedPnl)} /> ({sellPreview.realizedPnlPct >= 0 ? "+" : ""}{sellPreview.realizedPnlPct.toFixed(1)}%)
+                    <MoneyText cents={numberToCents(sellPreview.realizedPnl)} currency={targetAsset?.currency ?? "BRL"} /> ({sellPreview.realizedPnlPct >= 0 ? "+" : ""}{sellPreview.realizedPnlPct.toFixed(1)}%)
                   </span>
                 </div>
 
@@ -716,13 +721,14 @@ export function QuickTransactionSheet({
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5 col-span-2">
               <label htmlFor="quick-div-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Valor Total Recebido (Liquido)
+                Valor Total Recebido (Líquido) ({targetAsset?.currency ?? "BRL"})
               </label>
               <MoneyInput
                 id="quick-div-amount"
                 cents={totalCents}
+                currency={targetAsset?.currency ?? "BRL"}
                 onCentsChange={setTotalCents}
-                placeholder="R$ 0,00"
+                placeholder={targetAsset?.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
               />
             </div>
 

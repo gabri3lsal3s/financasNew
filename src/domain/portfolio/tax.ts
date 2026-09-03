@@ -165,6 +165,11 @@ export interface AnnualDividendsTaxReport {
     items: DividendTaxItem[];
     totalCents: number;
   };
+  /** Rendimentos Recebidos do Exterior (Carnê-Leão / Lei 14.754/2023). */
+  foreignDividends: {
+    items: DividendTaxItem[];
+    totalCents: number;
+  };
   totalDividendsCents: number;
 }
 
@@ -183,6 +188,7 @@ export function classifyAnnualDividendsReport(
 
   const exemptItemsMap = new Map<string, { ticker: string; cents: number }>();
   const jcpItemsMap = new Map<string, { ticker: string; cents: number }>();
+  const foreignItemsMap = new Map<string, { ticker: string; cents: number }>();
 
   for (const div of yearDividends) {
     const asset = div.asset_id ? assetMap.get(div.asset_id) : null;
@@ -193,7 +199,11 @@ export function classifyAnnualDividendsReport(
     const noteUpper = (div.notes ?? "").toUpperCase();
     const isJCP = noteUpper.includes("JCP") || noteUpper.includes("JUROS SOBRE CAPITAL");
 
-    if (isJCP) {
+    if (isUSD) {
+      const cur = foreignItemsMap.get(div.asset_id ?? ticker) ?? { ticker, cents: 0 };
+      cur.cents += amountCents;
+      foreignItemsMap.set(div.asset_id ?? ticker, cur);
+    } else if (isJCP) {
       const cur = jcpItemsMap.get(div.asset_id ?? ticker) ?? { ticker, cents: 0 };
       cur.cents += amountCents;
       jcpItemsMap.set(div.asset_id ?? ticker, cur);
@@ -218,8 +228,16 @@ export function classifyAnnualDividendsReport(
     amountCents: data.cents,
   }));
 
+  const foreignItems: DividendTaxItem[] = Array.from(foreignItemsMap.entries()).map(([assetId, data]) => ({
+    assetId,
+    ticker: data.ticker,
+    type: "dividend",
+    amountCents: data.cents,
+  }));
+
   const exemptTotalCents = exemptItems.reduce((acc, i) => acc + i.amountCents, 0);
   const jcpTotalCents = jcpItems.reduce((acc, i) => acc + i.amountCents, 0);
+  const foreignTotalCents = foreignItems.reduce((acc, i) => acc + i.amountCents, 0);
 
   return {
     year,
@@ -231,7 +249,11 @@ export function classifyAnnualDividendsReport(
       items: jcpItems.sort((a, b) => b.amountCents - a.amountCents),
       totalCents: jcpTotalCents,
     },
-    totalDividendsCents: exemptTotalCents + jcpTotalCents,
+    foreignDividends: {
+      items: foreignItems.sort((a, b) => b.amountCents - a.amountCents),
+      totalCents: foreignTotalCents,
+    },
+    totalDividendsCents: exemptTotalCents + jcpTotalCents + foreignTotalCents,
   };
 }
 

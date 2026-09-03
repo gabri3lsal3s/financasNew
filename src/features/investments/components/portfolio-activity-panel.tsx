@@ -35,6 +35,7 @@ import {
   usePortfolioAssets,
   usePortfolioContributions,
   usePortfolioDividends,
+  usePortfolioPosition,
 } from "@/state";
 import type { PortfolioAsset, PortfolioContribution, PortfolioDividend, PortfolioTransaction } from "@/types";
 
@@ -77,6 +78,8 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const contributionsQuery = usePortfolioContributions();
   const dividendsQuery = usePortfolioDividends();
   const assetsQuery = usePortfolioAssets();
+  const positionQuery = usePortfolioPosition();
+  const usdRate = positionQuery.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25;
 
   const deleteTransaction = useDeletePortfolioTransaction();
   const deleteContribution = useDeletePortfolioContribution();
@@ -183,12 +186,21 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
     let totalDividends = 0;
 
     for (const item of monthActivities) {
+      const asset = item.rawTransaction
+        ? assetMap.get(item.rawTransaction.asset_id)
+        : item.rawDividend?.asset_id
+          ? assetMap.get(item.rawDividend.asset_id)
+          : null;
+      const isUSD = asset?.currency === "USD";
+      const rate = isUSD ? usdRate : 1;
+      const totalBRL = item.total * rate;
+
       if (item.type === "buy" || item.type === "contribution") {
-        totalBought += item.total;
+        totalBought += totalBRL;
       } else if (item.type === "sell") {
-        totalSold += item.total;
+        totalSold += totalBRL;
       } else if (item.type === "dividend") {
-        totalDividends += item.total;
+        totalDividends += totalBRL;
       }
     }
 
@@ -200,7 +212,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       dividendsCents: numberToCents(totalDividends),
       netFlowCents: numberToCents(netFlow),
     };
-  }, [monthActivities]);
+  }, [monthActivities, assetMap, usdRate]);
 
   // Filtros de Tipo e Busca
   const filteredActivities = useMemo(() => {
@@ -394,6 +406,12 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
               const isSell = item.type === "sell";
               const isDividend = item.type === "dividend";
               const isSplit = item.type === "split";
+              const itemAsset = item.rawTransaction
+                ? assetMap.get(item.rawTransaction.asset_id)
+                : item.rawDividend?.asset_id
+                  ? assetMap.get(item.rawDividend.asset_id)
+                  : null;
+              const itemCurrency = itemAsset?.currency ?? "BRL";
 
               return (
                 <div
@@ -438,7 +456,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground truncate">
                         {item.quantity && item.quantity > 0 && item.price && item.price > 0 ? (
                           <span>
-                            {item.quantity} un @ <MoneyText cents={numberToCents(item.price)} tone="default" />
+                            {item.quantity} un @ <MoneyText cents={numberToCents(item.price)} currency={itemCurrency} tone="default" />
                           </span>
                         ) : null}
                         {item.notes ? <span>• {item.notes}</span> : null}
@@ -456,7 +474,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                           isDividend && "text-positive-strong",
                         )}
                       >
-                        <MoneyText cents={numberToCents(item.total)} sign={isSell ? "explicit" : "auto"} />
+                        <MoneyText cents={numberToCents(item.total)} currency={itemCurrency} sign={isSell ? "explicit" : "auto"} />
                       </span>
                     </div>
 

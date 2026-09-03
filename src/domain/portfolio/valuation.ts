@@ -57,7 +57,10 @@ export interface ConsolidatedPositionSummary {
   source: PriceSource;
   unrealizedPnl: number;
   unrealizedPct: number | null;
+  /** Total de proventos na moeda nativa do ativo (USD ou BRL). */
   totalDividends: number;
+  /** Total de proventos convertidos para BRL. */
+  totalDividendsBRL: number;
   totalReturnPnl: number;
   totalReturnPct: number | null;
   isCash: boolean;
@@ -332,6 +335,8 @@ export function calculatePositionSummary(params: {
     });
 
   const rate = currency === "USD" ? usdRate : 1;
+  const safeDividendsNative = Math.max(0, Math.round(totalDividends * 100) / 100);
+  const totalDividendsBRL = Math.round(safeDividendsNative * rate * 100) / 100;
 
   if (effectivePricingMode === "cash") {
     const valueBRL = Math.round(quantity * 100) / 100;
@@ -348,6 +353,7 @@ export function calculatePositionSummary(params: {
       unrealizedPnl: 0,
       unrealizedPct: null,
       totalDividends: 0,
+      totalDividendsBRL: 0,
       totalReturnPnl: 0,
       totalReturnPct: null,
       isCash: true,
@@ -386,8 +392,9 @@ export function calculatePositionSummary(params: {
         source: resolvedPrice.source,
         unrealizedPnl: 0,
         unrealizedPct: null,
-        totalDividends,
-        totalReturnPnl: totalDividends,
+        totalDividends: safeDividendsNative,
+        totalDividendsBRL,
+        totalReturnPnl: totalDividendsBRL,
         totalReturnPct: null,
         isCash: false,
         pricingMode: "total_value",
@@ -421,7 +428,7 @@ export function calculatePositionSummary(params: {
         today,
       });
 
-      const pnl = positionPnl(fiResult.grossValue, totalCostBRL, totalDividends);
+      const pnl = positionPnl(fiResult.grossValue, totalCostBRL, totalDividendsBRL);
 
       return {
         quantity: 1,
@@ -441,7 +448,8 @@ export function calculatePositionSummary(params: {
         source: "api",
         unrealizedPnl: pnl.unrealizedPnl,
         unrealizedPct: pnl.unrealizedPct,
-        totalDividends: pnl.totalDividends,
+        totalDividends: safeDividendsNative,
+        totalDividendsBRL,
         totalReturnPnl: pnl.totalReturnPnl,
         totalReturnPct: pnl.totalReturnPct,
         isCash: false,
@@ -452,7 +460,7 @@ export function calculatePositionSummary(params: {
     const currentPrice = resolvedPrice.price > 0 ? resolvedPrice.price : initialCost;
     const priceBRL = Math.round(currentPrice * rate * 100) / 100;
     const valueBRL = priceBRL;
-    const pnl = positionPnl(valueBRL, totalCostBRL, totalDividends);
+    const pnl = positionPnl(valueBRL, totalCostBRL, totalDividendsBRL);
 
     return {
       quantity: 1,
@@ -466,7 +474,8 @@ export function calculatePositionSummary(params: {
       source: resolvedPrice.source,
       unrealizedPnl: pnl.unrealizedPnl,
       unrealizedPct: pnl.unrealizedPct,
-      totalDividends: pnl.totalDividends,
+      totalDividends: safeDividendsNative,
+      totalDividendsBRL,
       totalReturnPnl: pnl.totalReturnPnl,
       totalReturnPct: pnl.totalReturnPct,
       isCash: false,
@@ -490,8 +499,9 @@ export function calculatePositionSummary(params: {
       source: resolvedPrice.source,
       unrealizedPnl: 0,
       unrealizedPct: null,
-      totalDividends,
-      totalReturnPnl: totalDividends,
+      totalDividends: safeDividendsNative,
+      totalDividendsBRL,
+      totalReturnPnl: totalDividendsBRL,
       totalReturnPct: null,
       isCash: false,
       pricingMode: "unit_price",
@@ -502,7 +512,7 @@ export function calculatePositionSummary(params: {
   const totalCostBRL = Math.round(totalCost * rate * 100) / 100;
   const averagePriceBRL = Math.round(averagePrice * rate * 100) / 100;
   const valueBRL = Math.round(quantity * priceBRL * 100) / 100;
-  const pnl = positionPnl(valueBRL, totalCostBRL, totalDividends);
+  const pnl = positionPnl(valueBRL, totalCostBRL, totalDividendsBRL);
 
   return {
     quantity,
@@ -516,7 +526,8 @@ export function calculatePositionSummary(params: {
     source: resolvedPrice.source,
     unrealizedPnl: pnl.unrealizedPnl,
     unrealizedPct: pnl.unrealizedPct,
-    totalDividends: pnl.totalDividends,
+    totalDividends: safeDividendsNative,
+    totalDividendsBRL,
     totalReturnPnl: pnl.totalReturnPnl,
     totalReturnPct: pnl.totalReturnPct,
     isCash: false,

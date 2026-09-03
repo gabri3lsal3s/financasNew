@@ -46,6 +46,8 @@ export interface PortfolioPositionRow {
   averageCostBRL: number;
   /** Total de proventos recebidos em BRL (dividendos + jcp + rendimentos + acumulados históricos). */
   dividends: number;
+  /** Total de proventos recebidos na moeda nativa do ativo (USD ou BRL). */
+  dividendsNative?: number;
   /** Preço unitário na moeda nativa do ativo (USD ou BRL). */
   priceQuote: number;
   /** Preço unitário em BRL (caixa = 1). */
@@ -303,7 +305,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       : summary.unrealizedPnl;
 
     const effectiveTotalReturnPnl = isClosed
-      ? round2(historicalRedeemedBRL - historicalCostBRL + summary.totalDividends)
+      ? round2(historicalRedeemedBRL - historicalCostBRL + summary.totalDividendsBRL)
       : summary.totalReturnPnl;
 
     const effectiveFinalReturnPct = isClosed && historicalCostBRL > 0
@@ -323,7 +325,8 @@ export function usePortfolioPosition(): PortfolioPosition {
       totalCost: summary.totalCost,
       totalCostBRL: summary.totalCostBRL,
       averageCostBRL: summary.averagePriceBRL,
-      dividends: summary.totalDividends,
+      dividends: summary.totalDividendsBRL,
+      dividendsNative: summary.totalDividends,
       priceQuote: summary.priceQuote,
       priceBRL: summary.priceBRL,
       usdRate,
@@ -367,7 +370,11 @@ export function usePortfolioPosition(): PortfolioPosition {
 
   // Snapshots mensais reais com proventos integrados (F36 & F37)
   const initialAccumulatedDividends = (assetsQuery.data ?? []).reduce(
-    (acc, a) => acc + (a.accumulated_dividends ?? 0),
+    (acc, a) => {
+      const isUSD = a.currency === "USD";
+      const aRate = isUSD ? usdRate : 1;
+      return acc + (a.accumulated_dividends ?? 0) * aRate;
+    },
     0,
   );
 
@@ -391,10 +398,15 @@ export function usePortfolioPosition(): PortfolioPosition {
       total_cost: Number(s.total_cost),
     })),
     currentMonthPoint,
-    dividends: (dividendsQuery.data ?? []).map((d) => ({
-      date: d.date,
-      amount: Number(d.amount),
-    })),
+    dividends: (dividendsQuery.data ?? []).map((d) => {
+      const asset = d.asset_id ? (assetsQuery.data ?? []).find((a) => a.id === d.asset_id) : null;
+      const isUSD = asset?.currency === "USD";
+      const dRate = isUSD ? usdRate : 1;
+      return {
+        date: d.date,
+        amount: Number(d.amount) * dRate,
+      };
+    }),
     initialAccumulatedDividends,
     limit: 6,
   });
