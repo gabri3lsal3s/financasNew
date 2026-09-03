@@ -5,6 +5,7 @@ import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, MoneyInput
 
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
 import {
+  buildInitialPositionOperations,
   calculateWeightedAveragePrice,
   DEFAULT_SECTORS_BY_CLASS,
   inferSectorFromTicker,
@@ -23,6 +24,7 @@ import {
   useCreatePortfolioTransaction,
   useDeletePortfolioAsset,
   usePortfolioAssets,
+  usePortfolioPosition,
   useSetManualPrice,
   useUpdatePortfolioAsset,
 } from "@/state";
@@ -76,6 +78,8 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
   const setManualPrice = useSetManualPrice();
   const allAssetsQuery = usePortfolioAssets();
   const pricesQuery = useAssetPrices();
+  const position = usePortfolioPosition();
+  const usdRate = position.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25;
 
   const isEdit = asset !== null;
   const hasExistingQuantity = isEdit && (asset?.quantity ?? 0) > 0;
@@ -311,29 +315,40 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
         notes: finalNotes,
       };
 
-      let savedAssetId = asset?.id;
       if (isEdit && asset) {
         await updateAsset.mutateAsync({ id: asset.id, patch: payload });
       } else {
         const created = await createAsset.mutateAsync(payload);
-        savedAssetId = created.id;
 
-        // Se o ativo foi criado com posição inicial, registra a transação inicial de compra no ledger
-        if (payloadQuantity > 0 && payloadAvgPrice > 0) {
-          const initialTotal = isTotalValueMode
-            ? payloadAvgPrice
-            : Math.round(payloadQuantity * payloadAvgPrice * 100) / 100;
-          const initialDate =
-            fiMetadata?.initial_investment_date || fiMetadata?.base_date || todayISO();
+        // Se o ativo foi criado com posição inicial, registra a transação inicial de compra no ledger e o aporte
+        const ops = buildInitialPositionOperations({
+          assetId: created.id,
+          ticker: normalizedTicker,
+          assetClass: effectiveClass,
+          currency,
+          quantity: payloadQuantity,
+          averagePrice: payloadAvgPrice,
+          initialDate: fiMetadata?.initial_investment_date || fiMetadata?.base_date || todayISO(),
+          usdRate,
+          isTotalValue: isTotalValueMode,
+          isCash,
+          notes: finalNotes,
+        });
 
-          await createTransaction.mutateAsync({
+        if (ops.transaction) {
+          await createTransaction.mutateAsync(ops.transaction);
+        }
+
+        // Se o usuário tiver uma contribuição pendente do simulador de lotes, grava ela; senão grava o aporte inicial padrão
+        if (pendingLotContribution && pendingLotContribution.amount > 0) {
+          await createContribution.mutateAsync({
             asset_id: created.id,
-            type: "buy",
-            date: initialDate,
-            quantity: payloadQuantity,
-            price: payloadAvgPrice,
-            total: initialTotal,
+            date: pendingLotContribution.date,
+            amount: pendingLotContribution.amount,
+            notes: `Aporte · Compra de ${normalizedTicker}`,
           });
+        } else if (ops.contribution) {
+          await createContribution.mutateAsync(ops.contribution);
         }
       }
 
@@ -348,14 +363,6 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
         }
       }
 
-      if (pendingLotContribution && pendingLotContribution.amount > 0) {
-        await createContribution.mutateAsync({
-          asset_id: savedAssetId ?? null,
-          date: pendingLotContribution.date,
-          amount: pendingLotContribution.amount,
-          notes: `Aporte · Compra de ${normalizedTicker}`,
-        });
-      }
       triggerSensory("success");
       onClose();
     } catch (err) {

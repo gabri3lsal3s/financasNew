@@ -24,6 +24,14 @@ vi.mock("@/state", () => ({
     data: [],
     isLoading: false,
   }),
+  useCreatePortfolioTransaction: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "tx1" }),
+    isPending: false,
+  }),
+  useCreatePortfolioContribution: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "cb1" }),
+    isPending: false,
+  }),
 }));
 
 describe("CashFormDialog", () => {

@@ -6,9 +6,12 @@ import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAss
 import { numberToCents } from "@/domain/money";
 import { inferSectorFromTicker, type AporteSuggestionItem } from "@/domain/portfolio/tickers-catalog";
 import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/dividends";
+import { buildInitialPositionOperations } from "@/domain/portfolio/operations";
 import {
   useAllocationTargets,
   useCreatePortfolioAsset,
+  useCreatePortfolioContribution,
+  useCreatePortfolioTransaction,
   useGroupTargets,
   usePortfolioAssets,
   usePortfolioPosition,
@@ -62,6 +65,8 @@ function InvestmentWizardContent({
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
   const createAsset = useCreatePortfolioAsset();
+  const createTransaction = useCreatePortfolioTransaction();
+  const createContribution = useCreatePortfolioContribution();
   const recordOrder = useRecordOrder();
   const saveTargets = useSaveAllocationTargets();
   const setManualPrice = useSetManualPrice();
@@ -347,6 +352,31 @@ function InvestmentWizardContent({
           notes: finalNotes,
         });
 
+        // Registra a transação inicial de compra no ledger e o aporte correspondente
+        const ops = buildInitialPositionOperations({
+          assetId: newAsset.id,
+          ticker: state.ticker,
+          assetClass: state.assetClass,
+          currency: state.currency,
+          quantity: finalQuantity,
+          averagePrice: finalAveragePrice,
+          initialDate:
+            fixedIncomeMetadata?.initial_investment_date ||
+            fixedIncomeMetadata?.base_date ||
+            state.date,
+          usdRate: position.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25,
+          isTotalValue,
+          isCash,
+          notes: finalNotes,
+        });
+
+        if (ops.transaction) {
+          await createTransaction.mutateAsync(ops.transaction);
+        }
+        if (ops.contribution) {
+          await createContribution.mutateAsync(ops.contribution);
+        }
+
         // Se for modo total_value e tiver preço atual / saldo definido, salva override manual
         if (isTotalValue && total > 0) {
           await setManualPrice.mutateAsync({
@@ -438,7 +468,12 @@ function InvestmentWizardContent({
     }));
   };
 
-  const isPending = createAsset.isPending || recordOrder.isPending || saveTargets.isPending;
+  const isPending =
+    createAsset.isPending ||
+    createTransaction.isPending ||
+    createContribution.isPending ||
+    recordOrder.isPending ||
+    saveTargets.isPending;
 
   const getModalTitle = () => {
     if (state.mode === "sell") return `Vender · ${state.ticker || "Investimento"}`;

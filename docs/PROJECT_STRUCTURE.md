@@ -193,6 +193,7 @@
     │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
     │   │                          #     type-sniffer, hashing ordinal, scoring 0-100)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
+    │                              #   operations.ts (vendas, splits, adição com posição inicial e reconciliação do ledger),
     │                              #   summary.ts (F17: rentabilidade, alocação),
     │                              #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
     │                              #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls)

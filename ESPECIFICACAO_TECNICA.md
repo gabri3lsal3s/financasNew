@@ -409,6 +409,16 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 - **Ativos de Caixa e Renda Fixa Parametrizada:**
   - **Caixa / Reserva:** Opera em modo Saldo Direto 1:1 (quantidade = valor, PM = 1,00, rentabilidade nula).
   - **Renda Fixa e Tesouro Direto (Modo Valor Total):** O `average_price` armazena estritamente o Custo de Aplicação Original ($C_0$). Metadados em `fixed_income_metadata` (`rate_type`, `rate_value`, `base_date`, `base_value`, `initial_investment_date`, `maturity_date`, `is_tax_exempt`) controlam a capitalização diária a partir do Marco Zero ($D_0$). O Saldo do extrato bancário recalibra `base_value` e `base_date` sem sobrescrever `average_price`, preservando o histórico de lucro acumulado e Yield on Cost.
+- **Sincronização Bidirecional do Ledger e Registro Automático de Aportes/Transações:**
+  - **Adição Inicial com Posição (`buildInitialPositionOperations`):** Todo ativo adicionado com saldo ou cotas (seja via Wizard, `AssetFormDialog` ou `CashFormDialog`) gera automaticamente a transação inicial de compra no ledger (`portfolio_transactions`, tipo `buy`) e o aporte financeiro correspondente em `portfolio_contributions`.
+  - **Conversão Cambial para Aportes:** Se o ativo for em dólar (`currency: "USD"`), a transação é registrada na moeda nativa e o aporte em `portfolio_contributions` é convertido para BRL pela taxa de câmbio USD/BRL (`total * usdRate`), mantendo a integridade dos fluxos de caixa e relatórios consolidados.
+  - **Salvaguarda de Data Mínima (`clampAppDate`):** Para respeitar a constraint `date >= '2026-01-01'` do Supabase sem perder o lançamento, qualquer data de aquisição anterior a 2026 é ajustada para `2026-01-01`.
+  - **Reconciliação Automática na Exclusão/Alteração (`reconcileAssetCustody` / `calculateReconciledAssetPosition`):**
+    - A exclusão ou edição de compras recalcula as cotas remanescentes e faz o Preço Médio (PM) retornar ao patamar anterior através do recálculo puro das transações remanescentes (`computeLedger`).
+    - A exclusão de vendas restaura a quantidade vendida de volta à custódia, preservando rigorosamente o Preço Médio atual.
+    - Exclusão em Caixa e Renda Fixa (`total_value`) regride o saldo aplicado e atualiza o `base_value` dos metadados.
+    - **Salvaguarda contra Perda de Dados Legados (Delta Seguro):** Caso um ativo possua cotas pré-existentes sem transações registradas no ledger, a exclusão de uma compra subsequente debita apenas a quantidade comprada e preserva o Preço Médio original do ativo, impedindo zeramento acidental ou descalibração.
+    - Exclusão de aportes em `portfolio_contributions` remove em cascata a transação vinculada e recalibra a custódia do ativo pai.
 #### 3.11.3 Algoritmo de Aporte Hierárquico (`simulateCombinedAporte`) & Sugestões do Wizard
 
 1. **Defasagem macro por classe:** classe com maior déficit relativo recebe prioridade de orçamentação.

@@ -22,6 +22,7 @@ vi.mock("@/state", () => ({
   useSetManualPrice: () => ({ mutateAsync: setManualPriceMock, isPending: false }),
   usePortfolioAssets: () => usePortfolioAssetsMock(),
   useAssetPrices: () => ({ data: [], isLoading: false }),
+  usePortfolioPosition: () => ({ rows: [] }),
 }));
 
 const existingAsset = {

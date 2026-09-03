@@ -91,6 +91,7 @@ export {
   useDeletePortfolioTransaction,
   useRecordOrder,
   useExecutePortfolioBatchAporte,
+  reconcileAssetCustody,
   PORTFOLIO_QUERY_KEYS,
 } from "./queries/use-portfolio";
 export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";

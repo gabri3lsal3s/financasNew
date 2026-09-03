@@ -58,6 +58,14 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue(true),
     isPending: false,
   }),
+  useCreatePortfolioTransaction: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "tx1" }),
+    isPending: false,
+  }),
+  useCreatePortfolioContribution: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "cb1" }),
+    isPending: false,
+  }),
 }));
 
 describe("InvestmentWizard (Fase 41)", () => {

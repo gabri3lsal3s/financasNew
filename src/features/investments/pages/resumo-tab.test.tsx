@@ -106,6 +106,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useCreatePortfolioTransaction: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useCreatePortfolioTransactionsBatch: () => ({
     mutateAsync: vi.fn(),
     isPending: false,

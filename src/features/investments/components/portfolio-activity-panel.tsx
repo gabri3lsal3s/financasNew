@@ -151,8 +151,9 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           item.source === "transaction" &&
           item.type === "buy" &&
           item.date === c.date &&
-          (item.ticker === ticker || ticker === "Aporte Financeiro") &&
-          Math.abs(item.total - c.amount) < 0.01,
+          (c.asset_id
+            ? item.rawTransaction?.asset_id === c.asset_id
+            : item.ticker === ticker || ticker === "Aporte Financeiro"),
       );
 
       if (!alreadyCovered) {
@@ -237,7 +238,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
     if (!itemToDelete) return;
     try {
       if (itemToDelete.source === "transaction" && itemToDelete.rawTransaction) {
-        await deleteTransaction.mutateAsync(itemToDelete.rawTransaction.id);
+        await deleteTransaction.mutateAsync(itemToDelete.rawTransaction);
       } else if (itemToDelete.source === "contribution" && itemToDelete.rawContribution) {
         await deleteContribution.mutateAsync(itemToDelete.rawContribution);
       } else if (itemToDelete.source === "dividend" && itemToDelete.rawDividend) {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trash2, Wallet } from "lucide-react";
 import { Alert, Button, ConfirmDialog, Input, Modal, MoneyInput } from "@/components/ui";
+import { todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 import { isCashAssetClass } from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
@@ -8,6 +9,8 @@ import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
   useCreatePortfolioAsset,
+  useCreatePortfolioContribution,
+  useCreatePortfolioTransaction,
   useDeletePortfolioAsset,
   usePortfolioAssets,
   useUpdatePortfolioAsset,
@@ -30,6 +33,8 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
   const createAsset = useCreatePortfolioAsset();
   const updateAsset = useUpdatePortfolioAsset();
   const deleteAsset = useDeletePortfolioAsset();
+  const createTx = useCreatePortfolioTransaction();
+  const createContrib = useCreatePortfolioContribution();
   const allAssetsQuery = usePortfolioAssets();
 
   // Localiza caixa existente caso o usuário tenha aberto sem passar o asset
@@ -48,7 +53,12 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const pending = createAsset.isPending || updateAsset.isPending || deleteAsset.isPending;
+  const pending =
+    createAsset.isPending ||
+    updateAsset.isPending ||
+    deleteAsset.isPending ||
+    createTx.isPending ||
+    createContrib.isPending;
 
   const submit = async () => {
     setError(null);
@@ -64,10 +74,53 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
       };
 
       if (isEdit && existingCash) {
+        const delta = Math.round((quantity - existingCash.quantity) * 100) / 100;
         await updateAsset.mutateAsync({ id: existingCash.id, patch: payload });
+        if (delta > 0) {
+          await createTx.mutateAsync({
+            asset_id: existingCash.id,
+            type: "buy",
+            date: todayISO(),
+            quantity: delta,
+            price: 1,
+            total: delta,
+          });
+          await createContrib.mutateAsync({
+            asset_id: existingCash.id,
+            date: todayISO(),
+            amount: delta,
+            notes: "Aporte em Caixa · Depósito adicional",
+          });
+        } else if (delta < 0) {
+          const absDelta = Math.abs(delta);
+          await createTx.mutateAsync({
+            asset_id: existingCash.id,
+            type: "sell",
+            date: todayISO(),
+            quantity: absDelta,
+            price: 1,
+            total: absDelta,
+          });
+        }
         pushToast({ variant: "success", title: "Saldo em caixa atualizado" });
       } else {
-        await createAsset.mutateAsync(payload);
+        const created = await createAsset.mutateAsync(payload);
+        if (quantity > 0) {
+          await createTx.mutateAsync({
+            asset_id: created.id,
+            type: "buy",
+            date: todayISO(),
+            quantity,
+            price: 1,
+            total: quantity,
+          });
+          await createContrib.mutateAsync({
+            asset_id: created.id,
+            date: todayISO(),
+            amount: quantity,
+            notes: "Aporte inicial · Saldo em Caixa",
+          });
+        }
         pushToast({ variant: "success", title: "Saldo em caixa cadastrado" });
       }
 

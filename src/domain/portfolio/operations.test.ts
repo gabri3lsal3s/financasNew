@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   sellAssetPosition,
   splitAssetPosition,
+  buildInitialPositionOperations,
+  calculateReconciledAssetPosition,
 } from "./operations";
 
 describe("domain/portfolio/operations — Vendas e Desinvestimentos", () => {
@@ -156,5 +158,222 @@ describe("domain/portfolio/operations — Splits (Desdobramento e Grupamento)", 
     expect(split.newAveragePrice).toBe(20);
     expect(split.totalCostBefore).toBe(2000);
     expect(split.totalCostAfter).toBe(2000);
+  });
+});
+
+describe("domain/portfolio/operations — Adição Inicial e Reconciliação do Ledger", () => {
+  describe("buildInitialPositionOperations", () => {
+    it("gera transação e aporte em BRL para ativo nacional de renda variável", () => {
+      const ops = buildInitialPositionOperations({
+        assetId: "a1",
+        ticker: "PETR4",
+        assetClass: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        averagePrice: 30,
+        initialDate: "2026-03-10",
+      });
+
+      expect(ops.transaction).not.toBeNull();
+      expect(ops.transaction?.type).toBe("buy");
+      expect(ops.transaction?.quantity).toBe(100);
+      expect(ops.transaction?.price).toBe(30);
+      expect(ops.transaction?.total).toBe(3000);
+      expect(ops.transaction?.date).toBe("2026-03-10");
+
+      expect(ops.contribution).not.toBeNull();
+      expect(ops.contribution?.amount).toBe(3000);
+      expect(ops.contribution?.date).toBe("2026-03-10");
+      expect(ops.contribution?.notes).toContain("PETR4");
+    });
+
+    it("converte aporte para BRL com usdRate para ativo internacional em dólar", () => {
+      const ops = buildInitialPositionOperations({
+        assetId: "a2",
+        ticker: "VEA",
+        assetClass: "Internacional",
+        currency: "USD",
+        quantity: 10,
+        averagePrice: 50,
+        usdRate: 5.5,
+        initialDate: "2026-04-15",
+      });
+
+      // Transação na moeda nativa (USD)
+      expect(ops.transaction?.total).toBe(500); // 10 * $50
+      expect(ops.transaction?.price).toBe(50);
+
+      // Aporte convertido para BRL
+      expect(ops.contribution?.amount).toBe(2750); // $500 * 5.50
+      expect(ops.contribution?.notes).toContain("$500.00");
+    });
+
+    it("gera transação e aporte unitário para Caixa", () => {
+      const ops = buildInitialPositionOperations({
+        assetId: "c1",
+        ticker: "CAIXA",
+        assetClass: "Caixa",
+        currency: "BRL",
+        quantity: 5000,
+        averagePrice: 1,
+        isCash: true,
+      });
+
+      expect(ops.transaction?.quantity).toBe(5000);
+      expect(ops.transaction?.price).toBe(1);
+      expect(ops.transaction?.total).toBe(5000);
+      expect(ops.contribution?.amount).toBe(5000);
+    });
+
+    it("clampAppDate limita datas anteriores a 2026-01-01", () => {
+      const ops = buildInitialPositionOperations({
+        assetId: "a3",
+        ticker: "VALE3",
+        assetClass: "Ações",
+        currency: "BRL",
+        quantity: 10,
+        averagePrice: 60,
+        initialDate: "2024-05-10", // Data antiga
+      });
+
+      expect(ops.transaction?.date).toBe("2026-01-01");
+      expect(ops.contribution?.date).toBe("2026-01-01");
+    });
+  });
+
+  describe("calculateReconciledAssetPosition", () => {
+    it("exclusão de compra recalcula o Preço Médio e cotas para o patamar anterior a partir das transações restantes", () => {
+      // Cenário: ativo tinha compra inicial de 10 a 20 e segunda compra de 10 a 40.
+      // A segunda compra (10 a 40) está sendo excluída.
+      const result = calculateReconciledAssetPosition({
+        currentQuantity: 20,
+        currentAveragePrice: 30,
+        assetClass: "Ações",
+        removedTransaction: {
+          type: "buy",
+          quantity: 10,
+          price: 40,
+          total: 400,
+        },
+        remainingTransactions: [
+          { type: "buy", quantity: 10, price: 20, total: 200, date: "2026-02-01" },
+        ],
+      });
+
+      expect(result.newQuantity).toBe(10);
+      expect(result.newAveragePrice).toBe(20); // Volta perfeitamente ao PM da primeira compra
+      expect(result.newTotalCost).toBe(200);
+    });
+
+    it("exclusão da única transação zera a posição e o preço médio do ativo", () => {
+      const result = calculateReconciledAssetPosition({
+        currentQuantity: 50,
+        currentAveragePrice: 30,
+        assetClass: "Ações",
+        removedTransaction: {
+          type: "buy",
+          quantity: 50,
+          price: 30,
+          total: 1500,
+        },
+        remainingTransactions: [],
+      });
+
+      expect(result.newQuantity).toBe(0);
+      expect(result.newAveragePrice).toBe(0);
+      expect(result.newTotalCost).toBe(0);
+    });
+
+    it("salvaguarda de dados legados: preserva PM original caso restem cotas sem transações no ledger", () => {
+      // Ativo tinha 100 cotas a R$ 25 de cadastro legado. Comprou 10 a R$ 35 (total 110 cotas a R$ 25,91).
+      // Ao excluir a compra de 10 cotas, sobram 100 cotas. Como não há transações remanescentes no ledger,
+      // preserva o PM original de R$ 25,00.
+      const result = calculateReconciledAssetPosition({
+        currentQuantity: 110,
+        currentAveragePrice: 25.91,
+        assetClass: "Ações",
+        removedTransaction: {
+          type: "buy",
+          quantity: 10,
+          price: 35,
+          total: 350,
+        },
+        remainingTransactions: [],
+      });
+
+      expect(result.newQuantity).toBe(100);
+      expect(result.newAveragePrice).toBe(25.91);
+      expect(result.newTotalCost).toBe(2591);
+    });
+
+    it("exclusão de venda restaura a quantidade vendida mantendo o PM inalterado", () => {
+      const result = calculateReconciledAssetPosition({
+        currentQuantity: 15,
+        currentAveragePrice: 28,
+        assetClass: "Ações",
+        removedTransaction: {
+          type: "sell",
+          quantity: 5,
+          price: 32,
+          total: 160,
+        },
+        remainingTransactions: [
+          { type: "buy", quantity: 20, price: 28, total: 560, date: "2026-01-10" },
+        ],
+      });
+
+      expect(result.newQuantity).toBe(20); // 15 + 5
+      expect(result.newAveragePrice).toBe(28); // PM mantido
+      expect(result.newTotalCost).toBe(560);
+    });
+
+    it("exclusão de compra em Caixa reduz o saldo na quantia exata", () => {
+      const result = calculateReconciledAssetPosition({
+        currentQuantity: 5000,
+        currentAveragePrice: 1,
+        isCash: true,
+        removedTransaction: {
+          type: "buy",
+          quantity: 2000,
+          price: 1,
+          total: 2000,
+        },
+        remainingTransactions: [
+          { type: "buy", quantity: 3000, price: 1, total: 3000, date: "2026-01-05" },
+        ],
+      });
+
+      expect(result.newQuantity).toBe(3000);
+      expect(result.newAveragePrice).toBe(1);
+    });
+
+    it("exclusão de aporte em Renda Fixa regride o saldo aplicado e o base_value", () => {
+      const result = calculateReconciledAssetPosition({
+        currentQuantity: 1,
+        currentAveragePrice: 15000,
+        isTotalValue: true,
+        assetClass: "Renda Fixa",
+        fixedIncomeMetadata: {
+          rate_type: "cdi",
+          rate_value: 120,
+          base_date: "2026-02-01",
+          base_value: 15000,
+          initial_investment_value: 10000,
+        },
+        removedTransaction: {
+          type: "buy",
+          quantity: 1,
+          price: 5000,
+          total: 5000,
+        },
+        remainingTransactions: [
+          { type: "buy", quantity: 1, price: 10000, total: 10000, date: "2026-01-01" },
+        ],
+      });
+
+      expect(result.newQuantity).toBe(1);
+      expect(result.newAveragePrice).toBe(10000);
+      expect(result.updatedFixedIncomeMetadata?.base_value).toBe(10000);
+    });
   });
 });

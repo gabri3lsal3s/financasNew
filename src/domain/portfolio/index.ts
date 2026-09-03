@@ -378,12 +378,20 @@ export {
   FII_CAPITAL_GAIN_TAX_RATE,
   sellAssetPosition,
   splitAssetPosition,
+  buildInitialPositionOperations,
+  calculateReconciledAssetPosition,
+  clampAppDate,
+  APP_MIN_DATE,
 } from "./operations";
 export type {
   SellAssetInput,
   SellAssetResult,
   SplitAssetInput,
   SplitAssetResult,
+  BuildInitialPositionInput,
+  InitialPositionOperationsResult,
+  ReconcileAssetInput,
+  ReconciledAssetPositionResult,
 } from "./operations";
 export {
   calculateBazinTargetPrice,

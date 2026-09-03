@@ -170,3 +170,314 @@ export function splitAssetPosition(input: SplitAssetInput): SplitAssetResult {
     factor,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Sincronização e Reconciliação do Ledger com Custódia de Ativos (§F38 / F73)
+// ---------------------------------------------------------------------------
+
+import { todayISO } from "@/domain/debts";
+import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
+import { computeLedger, type LedgerTransaction } from "./index";
+
+export const APP_MIN_DATE = "2026-01-01";
+
+/**
+ * Garante que nenhuma data seja anterior ao marco zero do banco de dados (2026-01-01).
+ */
+export function clampAppDate(dateStr?: string | null): string {
+  if (!dateStr || typeof dateStr !== "string") return todayISO();
+  const cleaned = dateStr.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return todayISO();
+  return cleaned < APP_MIN_DATE ? APP_MIN_DATE : cleaned;
+}
+
+export interface BuildInitialPositionInput {
+  assetId: string;
+  ticker: string;
+  assetClass?: string | null;
+  currency?: AssetCurrency;
+  quantity: number;
+  averagePrice: number;
+  initialDate?: string | null;
+  usdRate?: number;
+  isTotalValue?: boolean;
+  isCash?: boolean;
+  notes?: string | null;
+}
+
+export interface InitialPositionOperationsResult {
+  transaction: {
+    asset_id: string;
+    type: "buy";
+    date: string;
+    quantity: number;
+    price: number;
+    total: number;
+  } | null;
+  contribution: {
+    asset_id: string;
+    date: string;
+    amount: number;
+    notes: string;
+  } | null;
+}
+
+/**
+ * Cria os payloads consistentes de transação (portfolio_transactions) e aporte (portfolio_contributions)
+ * para a adição inicial de um ativo ou saldo em caixa.
+ */
+export function buildInitialPositionOperations(
+  input: BuildInitialPositionInput,
+): InitialPositionOperationsResult {
+  const quantity = Math.max(0, input.quantity);
+  const averagePrice = Math.max(0, input.averagePrice);
+  if (quantity <= 0 && averagePrice <= 0) {
+    return { transaction: null, contribution: null };
+  }
+
+  const date = clampAppDate(input.initialDate);
+  const currency: AssetCurrency = input.currency === "USD" ? "USD" : "BRL";
+  const rate = currency === "USD" ? Math.max(0.01, input.usdRate ?? 5.25) : 1;
+
+  if (input.isCash) {
+    const total = quantity;
+    if (total <= 0) return { transaction: null, contribution: null };
+    return {
+      transaction: {
+        asset_id: input.assetId,
+        type: "buy",
+        date,
+        quantity: total,
+        price: 1,
+        total,
+      },
+      contribution: {
+        asset_id: input.assetId,
+        date,
+        amount: total,
+        notes: "Aporte inicial · Saldo em Caixa",
+      },
+    };
+  }
+
+  if (input.isTotalValue) {
+    const total = averagePrice > 0 ? averagePrice : quantity;
+    if (total <= 0) return { transaction: null, contribution: null };
+    const amountBRL = Math.round(total * rate * 100) / 100;
+    return {
+      transaction: {
+        asset_id: input.assetId,
+        type: "buy",
+        date,
+        quantity: 1,
+        price: total,
+        total,
+      },
+      contribution: {
+        asset_id: input.assetId,
+        date,
+        amount: amountBRL,
+        notes: `Aporte inicial · Aplicação em ${input.ticker}`,
+      },
+    };
+  }
+
+  const total = Math.round(quantity * averagePrice * 100) / 100;
+  if (total <= 0) return { transaction: null, contribution: null };
+  const amountBRL = Math.round(total * rate * 100) / 100;
+  const notes =
+    currency === "USD"
+      ? `Aporte inicial · Compra de ${input.ticker} ($${total.toFixed(2)})`
+      : `Aporte inicial · Compra de ${input.ticker}`;
+
+  return {
+    transaction: {
+      asset_id: input.assetId,
+      type: "buy",
+      date,
+      quantity,
+      price: averagePrice,
+      total,
+    },
+    contribution: {
+      asset_id: input.assetId,
+      date,
+      amount: amountBRL,
+      notes,
+    },
+  };
+}
+
+export interface ReconcileAssetInput {
+  currentQuantity: number;
+  currentAveragePrice: number;
+  assetClass?: string | null;
+  currency?: AssetCurrency;
+  isCash?: boolean;
+  isTotalValue?: boolean;
+  fixedIncomeMetadata?: FixedIncomeMetadata | null;
+  removedTransaction: {
+    type: string;
+    quantity: number;
+    price: number;
+    total: number;
+  };
+  remainingTransactions: readonly Pick<LedgerTransaction, "type" | "quantity" | "price" | "total" | "date">[];
+}
+
+export interface ReconciledAssetPositionResult {
+  newQuantity: number;
+  newAveragePrice: number;
+  newTotalCost: number;
+  updatedFixedIncomeMetadata: FixedIncomeMetadata | null;
+}
+
+/**
+ * Recalcula a custódia do ativo (quantidade, preço médio e metadados) após a exclusão de uma movimentação,
+ * aplicando estorno cronológico seguro e preservando dados legados.
+ */
+export function calculateReconciledAssetPosition(
+  input: ReconcileAssetInput,
+): ReconciledAssetPositionResult {
+  const { currentQuantity, currentAveragePrice, isCash, isTotalValue, removedTransaction, remainingTransactions } = input;
+
+  // 1. Caso Caixa
+  if (isCash) {
+    if (removedTransaction.type === "buy") {
+      const newQuantity = Math.max(0, currentQuantity - (removedTransaction.total > 0 ? removedTransaction.total : removedTransaction.quantity));
+      return {
+        newQuantity,
+        newAveragePrice: 1,
+        newTotalCost: newQuantity,
+        updatedFixedIncomeMetadata: null,
+      };
+    }
+    if (removedTransaction.type === "sell") {
+      const newQuantity = currentQuantity + (removedTransaction.total > 0 ? removedTransaction.total : removedTransaction.quantity);
+      return {
+        newQuantity,
+        newAveragePrice: 1,
+        newTotalCost: newQuantity,
+        updatedFixedIncomeMetadata: null,
+      };
+    }
+  }
+
+  // 2. Caso Renda Fixa (modo total_value)
+  if (isTotalValue) {
+    const totalAppliedRemaining = remainingTransactions.reduce((acc, t) => {
+      if (t.type === "buy" || t.type === "subscription") return acc + t.total;
+      if (t.type === "sell") return Math.max(0, acc - t.total);
+      return acc;
+    }, 0);
+
+    // Se restaram transações registradas no ledger, utiliza a soma delas
+    let finalCost = totalAppliedRemaining;
+    if (remainingTransactions.length === 0) {
+      if (removedTransaction.type === "buy") {
+        finalCost = Math.max(0, currentAveragePrice - removedTransaction.total);
+      } else if (removedTransaction.type === "sell") {
+        finalCost = currentAveragePrice + removedTransaction.total;
+      }
+    }
+
+    finalCost = Math.round(finalCost * 100) / 100;
+    const finalQuantity = finalCost > 0 ? 1 : 0;
+
+    let updatedFi: FixedIncomeMetadata | null = null;
+    if (input.fixedIncomeMetadata) {
+      updatedFi = {
+        ...input.fixedIncomeMetadata,
+        base_value: finalCost > 0 ? finalCost : null,
+        initial_investment_value:
+          input.fixedIncomeMetadata.initial_investment_value !== null &&
+          input.fixedIncomeMetadata.initial_investment_value !== undefined
+            ? Math.min(input.fixedIncomeMetadata.initial_investment_value, finalCost)
+            : finalCost,
+      };
+    }
+
+    return {
+      newQuantity: finalQuantity,
+      newAveragePrice: finalCost,
+      newTotalCost: finalCost,
+      updatedFixedIncomeMetadata: updatedFi,
+    };
+  }
+
+  // 3. Caso Renda Variável / Ações / FIIs / Internacional
+  if (removedTransaction.type === "sell") {
+    // Excluir venda -> restaura as cotas vendidas sem alterar o PM atual
+    const newQuantity = currentQuantity + removedTransaction.quantity;
+    const newTotalCost = Math.round(newQuantity * currentAveragePrice * 100) / 100;
+    return {
+      newQuantity,
+      newAveragePrice: currentAveragePrice,
+      newTotalCost,
+      updatedFixedIncomeMetadata: null,
+    };
+  }
+
+  const normalizedRemaining: LedgerTransaction[] = remainingTransactions.map((t, i) => ({
+    id: (t as { id?: string }).id ?? `tx-${i}`,
+    date: t.date,
+    type: t.type,
+    quantity: t.quantity,
+    price: t.price,
+    total: t.total,
+  }));
+
+  if (removedTransaction.type === "buy" || removedTransaction.type === "subscription") {
+    // Se ainda restam transações no ledger, reprocessa o ledger completo
+    if (normalizedRemaining.length > 0) {
+      const ledger = computeLedger(normalizedRemaining);
+      return {
+        newQuantity: ledger.quantity,
+        newAveragePrice: Math.round(ledger.averageCost * 10000) / 10000,
+        newTotalCost: ledger.totalCost,
+        updatedFixedIncomeMetadata: null,
+      };
+    }
+
+    // Se não restam transações no ledger:
+    // Se a quantidade for debitada até <= 0 -> zera tudo
+    const remQuantity = Math.max(0, currentQuantity - removedTransaction.quantity);
+    if (remQuantity <= 0) {
+      return {
+        newQuantity: 0,
+        newAveragePrice: 0,
+        newTotalCost: 0,
+        updatedFixedIncomeMetadata: null,
+      };
+    }
+
+    // Se o ativo ainda tinha cotas anteriores não registradas no ledger (salvaguarda de dados legados),
+    // preserva o PM original do cadastro
+    const newTotalCost = Math.round(remQuantity * currentAveragePrice * 100) / 100;
+    return {
+      newQuantity: remQuantity,
+      newAveragePrice: currentAveragePrice,
+      newTotalCost,
+      updatedFixedIncomeMetadata: null,
+    };
+  }
+
+  // Se foi split ou provento excluído
+  if (normalizedRemaining.length > 0) {
+    const ledger = computeLedger(normalizedRemaining);
+    return {
+      newQuantity: ledger.quantity,
+      newAveragePrice: Math.round(ledger.averageCost * 10000) / 10000,
+      newTotalCost: ledger.totalCost,
+      updatedFixedIncomeMetadata: null,
+    };
+  }
+
+  return {
+    newQuantity: currentQuantity,
+    newAveragePrice: currentAveragePrice,
+    newTotalCost: Math.round(currentQuantity * currentAveragePrice * 100) / 100,
+    updatedFixedIncomeMetadata: input.fixedIncomeMetadata ?? null,
+  };
+}
+
