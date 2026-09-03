@@ -356,5 +356,24 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       expect(preview.totalOrderValueBRL).toBe(260.0);
       expect(preview.cashCreditBRL).toBe(260.0);
     });
+
+    it("calcula preview de compra por cotas priorizando parsedQty * price mesmo se totalCents contiver valor residual", () => {
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "buy",
+        selectedAsset: mockAsset, // quantity: 100, average_price: 10.0
+        quantityStr: "2",
+        priceCents: 10000, // R$ 100,00 por cota
+        totalCents: 204452, // R$ 2.044,52 (valor residual herdado da sugestão de aporte)
+      };
+
+      // Deve calcular exatamente 2 * 100 = 200 BRL, ignorando os 2044.52 de totalCents
+      const preview = calculateInvestmentPreview(state);
+      expect(preview.totalOrderValueNative).toBe(200.0);
+      expect(preview.totalOrderValueBRL).toBe(200.0);
+      expect(preview.newQuantity).toBe(102);
+      // Novo PM: (100 * 30 + 2 * 100) / 102 = 3200 / 102 ≈ 31.37
+      expect(preview.newAveragePrice).toBeCloseTo(31.37, 2);
+    });
   });
 });

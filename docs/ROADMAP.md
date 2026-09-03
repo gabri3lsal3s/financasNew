@@ -1,5 +1,10 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.23** registra o **Aprimoramento do Investment Wizard: Soberania da Quantidade Digitada & Recomendações Conectadas ao Caixa (Opção B)** (2026-09-03):
+> - **(1) Soberania da Quantidade Digitada**: Para ativos cotizados (renda variável), o total da ordem é estritamente $\text{Quantidade} \times \text{Preço Unitário}$, eliminando travamento de valores residuais recomendados no preview e na submissão;
+> - **(2) Recomendações Inteligentes Conectadas ao Caixa**: Cards de recomendação agora calculam quantas cotas cabem no saldo em caixa disponível (`"Cabe no caixa: X cota(s)"`). Sem caixa disponível, a quantidade no formulário inicia em branco/vazia (`""`), permitindo definição livre pelo investidor;
+> - **(3) Suíte 100% Verde**: 276 arquivos de teste / 1.960 testes passando (100% verde), zero erros de typecheck (`tsc -b`) e lint (`eslint .`), e build de produção limpo.
+
 > **v2.22** registra a **Conclusão da Fase 83 (Otimização PWA Stale-While-Revalidate & Monitoramento de Conectividade)** (2026-09-02):
 > - **(1) RuntimeCaching Stale-While-Revalidate para Imagens e Fontes**: Adição de estratégia de cache para imagens estáticas (PNG, JPG, SVG, WEBP, ICO) com limite de 60 entradas e expiração de 30 dias no Workbox (`vite.config.ts`), preservando a regra de ouro de nunca cachear dados de negócio (Online First);
 > - **(2) Monitoramento Reativo de Conectividade**: Criação do serviço `src/services/network-status.ts` e hook `src/hooks/use-network-status.ts` com `useSyncExternalStore` para reatividade suave a eventos online/offline;

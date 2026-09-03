@@ -485,8 +485,8 @@ export function calculateInvestmentPreview(
     };
   }
 
-  const orderPrice = inputPrice > 0 ? inputPrice : parsedQty > 0 ? inputTotal / parsedQty : 0;
-  const orderTotalNative = inputTotal > 0 ? inputTotal : parsedQty * orderPrice;
+  const orderPrice = inputPrice > 0 ? inputPrice : parsedQty > 0 && inputTotal > 0 ? inputTotal / parsedQty : 0;
+  const orderTotalNative = parsedQty * orderPrice;
   const orderTotalBRL = Math.round(orderTotalNative * rate * 100) / 100;
 
   const lot = calculateWeightedAveragePrice(currentQty, currentAvgPrice, parsedQty, orderPrice);

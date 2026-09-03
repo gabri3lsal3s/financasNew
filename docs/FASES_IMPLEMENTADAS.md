@@ -1482,6 +1482,31 @@
   - `src/components/modules/reports/report-redemptions-table.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## Evolução — Investment Wizard: Fim da Imposição de Valor Recomendado & Recomendações Conectadas ao Caixa (Opção B)
+
+- **Problema:**
+  1. Quando o usuário selecionava um ativo recomendado para aporte no Wizard, o sistema guardava o valor total do déficit (`totalCents`) e forçava esse valor na ordem, mesmo se o investidor alterasse manualmente a quantidade de cotas para um valor menor;
+  2. As recomendações do Wizard consideravam apenas o déficit estrutural total acumulado da meta ("Faltam R$ 2.044,52 para a meta"), ignorando o saldo disponível em Caixa ou a capacidade de aporte atual da carteira.
+- **Solução (Opção B — Wizard Ágil e Sem Sobrecarga Visual):**
+  1. **Soberania Absoluta da Quantidade Digitada (`handleSubmit`, `step-order.tsx`, `wizard-state.ts`):**
+     - Em compras de renda variável (ativos cotizados), o valor financeiro da ordem é estritamente derivado de $\text{Quantidade} \times \text{Preço Unitário}$;
+     - Ao alterar a quantidade de cotas (`quantityStr`) ou o preço por cota (`priceCents`) no formulário, qualquer valor residual de `totalCents` herdado da sugestão é imediatamente zerado;
+     - O cálculo de preview de preço médio e valor investido na ordem (`calculateInvestmentPreview`) prioriza estritamente `parsedQty * orderPrice`;
+  2. **Recomendações Conectadas ao Caixa (`step-select.tsx` & `investment-wizard.tsx`):**
+     - Adicionada a prop `cashAvailableBRL` ao componente `StepSelect`;
+     - **Com saldo em Caixa ($> 0$):** o card calcula quantas cotas cabem no caixa e exibe com destaque: `"Cabe no caixa: X cota(s) (~R$ Y) · Déficit total: R$ Z (W%)"`. Ao clicar, avança com essas X cotas preenchidas e com a opção *"Debitar valor do Caixa"* já marcada;
+     - **Sem saldo em Caixa (ou R$ 0,00):** o card exibe `"Déficit para meta: R$ Z (W%)"`. Ao clicar, a quantidade no formulário vem **em branco / vazia** (`""`), permitindo que o investidor defina livremente a quantidade desejada sem imposições;
+     - Para Renda Fixa (`isTotalValue`): sugere no máximo o valor em caixa ou deixa o valor zerado caso não haja saldo em conta.
+- **Arquivos alterados:**
+  - `src/features/investments/wizard/investment-wizard.tsx`
+  - `src/features/investments/wizard/step-select.tsx`
+  - `src/features/investments/wizard/step-order.tsx`
+  - `src/features/investments/wizard/wizard-state.ts`
+  - `src/features/investments/wizard/wizard-state.test.ts`
+  - `src/features/investments/wizard/investment-wizard.test.tsx`
+  - `ESPECIFICACAO_TECNICA.md`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

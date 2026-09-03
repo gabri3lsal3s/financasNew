@@ -14,9 +14,13 @@ const mockAsset: PortfolioAsset = {
   notes: "Petrobras PN",
 };
 
+let mockTargets = [{ asset_id: "asset-1", target_percentage: 20 }];
+let mockAssetsList: PortfolioAsset[] = [mockAsset];
+const mockRecordOrder = vi.fn().mockResolvedValue({ success: true });
+
 vi.mock("@/state", () => ({
   usePortfolioAssets: () => ({
-    data: [mockAsset],
+    data: mockAssetsList,
     isLoading: false,
     error: null,
   }),
@@ -24,12 +28,12 @@ vi.mock("@/state", () => ({
     totalBRL: 5000,
     cashBRL: 1000,
     investedBRL: 4000,
-    rows: [{ assetId: "asset-1", ticker: "PETR4", valueBRL: 4000, pct: 80, assetClass: "Ações" }],
+    rows: [{ assetId: "asset-1", ticker: "PETR4", valueBRL: 1000, pct: 20, assetClass: "Ações", priceBRL: 50 }],
     isLoading: false,
     error: null,
   }),
   useAllocationTargets: () => ({
-    data: [{ asset_id: "asset-1", target_percentage: 20 }],
+    data: mockTargets,
     isLoading: false,
     error: null,
   }),
@@ -43,7 +47,7 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useRecordOrder: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+    mutateAsync: mockRecordOrder,
     isPending: false,
   }),
   useSaveAllocationTargets: () => ({
@@ -114,5 +118,88 @@ describe("InvestmentWizard (Fase 41)", () => {
       />,
     );
     expect(screen.getByText(/PETR4/i)).toBeInTheDocument();
+  });
+
+  it("deixa quantidade vazia ao selecionar ativo recomendado quando não há saldo em caixa", () => {
+    mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
+    mockAssetsList = [mockAsset]; // Sem ativo de CAIXA
+
+    render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
+    expect(screen.getByText("Recomendados para aporte")).toBeInTheDocument();
+    expect(screen.getByText(/Déficit para meta/i)).toBeInTheDocument();
+
+    const suggestionCard = screen.getByText("PETR4").closest("button");
+    expect(suggestionCard).toBeTruthy();
+    fireEvent.click(suggestionCard!);
+
+    // No passo 2, a quantidade deve vir vazia ("")
+    const qtyInput = screen.getByLabelText(/Quantidade de Cotas/i) as HTMLInputElement;
+    expect(qtyInput.value).toBe("");
+  });
+
+  it("sugere cotas limitadas ao caixa quando há saldo em caixa disponível", () => {
+    mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
+    const cashAsset: PortfolioAsset = {
+      id: "cash-1",
+      user_id: "user-1",
+      ticker: "CAIXA",
+      asset_class: "Caixa",
+      currency: "BRL",
+      quantity: 150, // R$ 150 em caixa
+      average_price: 1,
+    };
+    mockAssetsList = [mockAsset, cashAsset]; // PETR4 custa R$ 50 no mock, logo 150 / 50 = 3 cotas
+
+    render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
+    expect(screen.getByText("Recomendados para aporte")).toBeInTheDocument();
+    expect(screen.getByText(/Cabe no caixa: 3 cotas/i)).toBeInTheDocument();
+
+    const suggestionCard = screen.getByText("PETR4").closest("button");
+    expect(suggestionCard).toBeTruthy();
+    fireEvent.click(suggestionCard!);
+
+    // No passo 2, deve vir preenchido com 3 cotas
+    const qtyInput = screen.getByLabelText(/Quantidade de Cotas/i) as HTMLInputElement;
+    expect(qtyInput.value).toBe("3");
+  });
+
+  it("permite editar a quantidade após recomendação e submete total = parsedQty * price", async () => {
+    mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
+    const cashAsset: PortfolioAsset = {
+      id: "cash-1",
+      user_id: "user-1",
+      ticker: "CAIXA",
+      asset_class: "Caixa",
+      currency: "BRL",
+      quantity: 500, // R$ 500 em caixa
+      average_price: 1,
+    };
+    mockAssetsList = [mockAsset, cashAsset];
+
+    render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
+    const suggestionCard = screen.getByText("PETR4").closest("button");
+    fireEvent.click(suggestionCard!);
+
+    // Edita quantidade de 10 cotas para 1 cota
+    const qtyInput = screen.getByLabelText(/Quantidade de Cotas/i);
+    fireEvent.change(qtyInput, { target: { value: "1" } });
+
+    // Avança para Revisão (Passo 3)
+    const continueButton = screen.getByRole("button", { name: /^Continuar$/i });
+    fireEvent.click(continueButton);
+
+    // Na revisão, clica em Confirmar Operação
+    const submitButton = screen.getByRole("button", { name: /Confirmar Operação/i });
+    fireEvent.click(submitButton);
+
+    // mutateAsync deve receber total = 50 (1 cota * R$ 50), e NÃO 500 ou 3000
+    expect(mockRecordOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "buy",
+        quantity: 1,
+        price: 50,
+        total: 50,
+      }),
+    );
   });
 });

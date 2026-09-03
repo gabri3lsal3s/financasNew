@@ -4,7 +4,7 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { numberToCents } from "@/domain/money";
-import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
+import { inferSectorFromTicker, type AporteSuggestionItem } from "@/domain/portfolio/tickers-catalog";
 import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/dividends";
 import {
   useAllocationTargets,
@@ -202,8 +202,10 @@ function InvestmentWizardContent({
           ? total > 0
             ? total
             : price
-          : total > 0
-            ? total
+          : state.isCash
+            ? total > 0
+              ? total
+              : parsedQty
             : parsedQty * price;
 
         const usdRate = position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25;
@@ -373,6 +375,69 @@ function InvestmentWizardContent({
     }
   };
 
+  const handleSelectSuggestion = (item: AporteSuggestionItem) => {
+    triggerSensory("selection");
+    const asset = existingAssets.find((a) => a.id === item.assetId);
+    const row = position.rows.find((r) => r.assetId === item.assetId);
+    const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
+    const isTesouro = isTesouroAsset(item.ticker, item.assetClass);
+    const isFixedIncome = isFixedIncomeClass(item.assetClass) || isTesouro;
+    const pricingMode = getAssetPricingMode(
+      asset ?? { ticker: item.ticker, asset_class: item.assetClass, notes: null },
+    );
+    const isTotalValue = pricingMode === "total_value" || isFixedIncome;
+    const cashAvailableBRL = cashAsset?.quantity ?? 0;
+
+    if (isTotalValue) {
+      const suggestedAmount = cashAvailableBRL > 0 ? Math.min(cashAvailableBRL, item.gapBRL) : 0;
+      const totalCents = Math.round(suggestedAmount * 100);
+      setState((prev) => ({
+        ...prev,
+        mode: "buy",
+        step: 2,
+        searchQuery: item.ticker,
+        selectedAsset: asset ?? null,
+        ticker: item.ticker,
+        assetClass: item.assetClass,
+        sector: item.sector ?? asset?.sector ?? "",
+        currency: asset?.currency ?? "BRL",
+        isCash: false,
+        priceCents: totalCents,
+        quantityStr: "",
+        totalCents,
+        syncCash: suggestedAmount > 0,
+      }));
+      return;
+    }
+
+    let suggestedQty = 0;
+    if (cashAvailableBRL > 0 && priceBRL > 0) {
+      const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
+      const cashQty = Math.floor(cashAvailableBRL / priceBRL);
+      suggestedQty = Math.min(maxUsefulQty, cashQty);
+    }
+
+    const priceCents = Math.round(priceBRL * 100);
+    const totalCents = suggestedQty > 0 ? Math.round(suggestedQty * priceBRL * 100) : 0;
+
+    setState((prev) => ({
+      ...prev,
+      mode: "buy",
+      step: 2,
+      searchQuery: item.ticker,
+      selectedAsset: asset ?? null,
+      ticker: item.ticker,
+      assetClass: item.assetClass,
+      sector: item.sector ?? asset?.sector ?? "",
+      currency: asset?.currency ?? "BRL",
+      isCash: false,
+      priceCents,
+      quantityStr: suggestedQty > 0 ? String(suggestedQty) : "",
+      totalCents,
+      syncCash: suggestedQty > 0,
+    }));
+  };
+
   const isPending = createAsset.isPending || recordOrder.isPending || saveTargets.isPending;
 
   const getModalTitle = () => {
@@ -420,6 +485,7 @@ function InvestmentWizardContent({
               classTargets={classTargets}
               sectorTargets={sectorTargets}
               totalPortfolioBRL={position.totalBRL}
+              cashAvailableBRL={cashAsset?.quantity ?? 0}
               onSelectResult={(res) => {
                 triggerSensory("selection");
                 const isCash = isCashAssetClass(res.assetClass);
@@ -454,28 +520,7 @@ function InvestmentWizardContent({
                   }));
                 }
               }}
-              onSelectSuggestion={(item) => {
-                triggerSensory("selection");
-                const asset = existingAssets.find((a) => a.id === item.assetId);
-                const row = position.rows.find((r) => r.assetId === item.assetId);
-                const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
-                const suggestedQty = priceBRL > 0 ? Math.floor(item.gapBRL / priceBRL) : 0;
-                setState((prev) => ({
-                  ...prev,
-                  mode: "buy",
-                  step: 2,
-                  searchQuery: item.ticker,
-                  selectedAsset: asset ?? null,
-                  ticker: item.ticker,
-                  assetClass: item.assetClass,
-                  sector: item.sector ?? asset?.sector ?? "",
-                  currency: asset?.currency ?? "BRL",
-                  isCash: false,
-                  priceCents: Math.round(priceBRL * 100),
-                  quantityStr: suggestedQty > 0 ? String(suggestedQty) : "",
-                  totalCents: Math.round(item.gapBRL * 100),
-                }));
-              }}
+              onSelectSuggestion={handleSelectSuggestion}
             />
           )}
 
@@ -489,6 +534,7 @@ function InvestmentWizardContent({
               targets={targets}
               classTargets={classTargets}
               totalPortfolioBRL={position.totalBRL}
+              cashAvailableBRL={cashAsset?.quantity ?? 0}
               onSelectResult={(res) => {
                 triggerSensory("selection");
                 const isCash = isCashAssetClass(res.assetClass);
@@ -504,28 +550,7 @@ function InvestmentWizardContent({
                   isCash,
                 }));
               }}
-              onSelectSuggestion={(item) => {
-                triggerSensory("selection");
-                const asset = existingAssets.find((a) => a.id === item.assetId);
-                const row = position.rows.find((r) => r.assetId === item.assetId);
-                const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
-                const suggestedQty = priceBRL > 0 ? Math.floor(item.gapBRL / priceBRL) : 0;
-                setState((prev) => ({
-                  ...prev,
-                  mode: "buy",
-                  step: 2,
-                  searchQuery: item.ticker,
-                  selectedAsset: asset ?? null,
-                  ticker: item.ticker,
-                  assetClass: item.assetClass,
-                  sector: item.sector ?? asset?.sector ?? "",
-                  currency: asset?.currency ?? "BRL",
-                  isCash: false,
-                  priceCents: Math.round(priceBRL * 100),
-                  quantityStr: suggestedQty > 0 ? String(suggestedQty) : "",
-                  totalCents: Math.round(item.gapBRL * 100),
-                }));
-              }}
+              onSelectSuggestion={handleSelectSuggestion}
             />
           )}
 

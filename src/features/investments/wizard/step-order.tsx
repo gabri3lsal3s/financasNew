@@ -191,7 +191,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                     type="text"
                     inputMode="decimal"
                     value={state.quantityStr}
-                    onChange={(e) => onChange({ quantityStr: e.target.value })}
+                    onChange={(e) => onChange({ quantityStr: e.target.value, totalCents: 0 })}
                     placeholder="Ex: 10"
                     className="font-mono text-base"
                   />
@@ -205,7 +205,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                     id="wizard-order-price"
                     cents={state.priceCents}
                     currency={state.currency}
-                    onCentsChange={(priceCents) => onChange({ priceCents })}
+                    onCentsChange={(priceCents) => onChange({ priceCents, totalCents: 0 })}
                     placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
                   />
                 </div>

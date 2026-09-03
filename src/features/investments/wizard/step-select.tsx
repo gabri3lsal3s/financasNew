@@ -10,7 +10,12 @@ import {
   type AporteSuggestionItem,
   type TickerSearchResult,
 } from "@/domain/portfolio/tickers-catalog";
-import { inferCurrencyFromTicker } from "@/domain/portfolio/valuation";
+import {
+  getAssetPricingMode,
+  inferCurrencyFromTicker,
+  isFixedIncomeClass,
+  isTesouroAsset,
+} from "@/domain/portfolio/valuation";
 import type { AllocationTarget, PortfolioAsset } from "@/types";
 import type { InvestmentWizardState } from "./wizard-state";
 
@@ -24,11 +29,13 @@ export interface StepSelectProps {
     valueBRL: number;
     pct: number;
     assetClass?: string | null;
+    priceBRL?: number;
   }[];
   targets: readonly AllocationTarget[];
   classTargets?: readonly { name: string; target_percentage: number }[];
   sectorTargets?: readonly { className: string; sectorName: string; target_percentage: number }[];
   totalPortfolioBRL: number;
+  cashAvailableBRL?: number;
   onSelectResult: (result: TickerSearchResult) => void;
   onSelectSuggestion: (item: AporteSuggestionItem) => void;
 }
@@ -42,6 +49,7 @@ export function StepSelect({
   classTargets,
   sectorTargets,
   totalPortfolioBRL,
+  cashAvailableBRL = 0,
   onSelectResult,
   onSelectSuggestion,
 }: StepSelectProps) {
@@ -231,8 +239,45 @@ export function StepSelect({
             <div className="flex flex-col gap-1.5">
               {aporteSuggestions.map((item) => {
                 const asset = existingAssets.find((a) => a.id === item.assetId);
+                const row = assetRows.find((r) => r.assetId === item.assetId);
+                const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
+                const isTesouro = isTesouroAsset(item.ticker, item.assetClass);
+                const isFixedIncome = isFixedIncomeClass(item.assetClass) || isTesouro;
+                const pricingMode = getAssetPricingMode(asset ?? { ticker: item.ticker, asset_class: item.assetClass, notes: null });
+                const isTotalValue = pricingMode === "total_value" || isFixedIncome;
+
                 const name = asset?.notes ?? item.ticker;
                 const isSelected = currentCleanTicker === cleanTicker(item.ticker);
+
+                // Cálculo de cabimento no saldo em caixa
+                let cashInfo: { text: string; fits: boolean; costBRL?: number } | null = null;
+                if (cashAvailableBRL > 0) {
+                  if (isTotalValue) {
+                    const amountFit = Math.min(cashAvailableBRL, item.gapBRL);
+                    cashInfo = {
+                      text: `Cabe no caixa: `,
+                      costBRL: amountFit,
+                      fits: true,
+                    };
+                  } else if (priceBRL > 0) {
+                    const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
+                    const cashQty = Math.floor(cashAvailableBRL / priceBRL);
+                    const sharesFit = Math.min(maxUsefulQty, cashQty);
+                    if (sharesFit > 0) {
+                      cashInfo = {
+                        text: `Cabe no caixa: ${sharesFit} cota${sharesFit > 1 ? "s" : ""} (~`,
+                        costBRL: sharesFit * priceBRL,
+                        fits: true,
+                      };
+                    } else {
+                      cashInfo = {
+                        text: "Saldo em caixa insuficiente para 1 cota",
+                        fits: false,
+                      };
+                    }
+                  }
+                }
+
                 return (
                   <button
                     key={item.assetId}
@@ -256,17 +301,42 @@ export function StepSelect({
                         )}
                       </div>
                       <span className="truncate text-xs text-muted-foreground">{name}</span>
-                      <span className="text-[11px] text-muted-foreground pt-0.5">
-                        {"Faltam "}
-                        <MoneyText
-                          cents={numberToCents(item.gapBRL)}
-                          tone="default"
-                          className="font-semibold text-foreground inline"
-                        />
-                        {" para a meta ("}
-                        {item.targetPercentage}
-                        {"%)"}
-                      </span>
+                      <div className="flex flex-col gap-0.5 pt-0.5 text-[11px] text-muted-foreground">
+                        {cashInfo ? (
+                          <span>
+                            <span className={cashInfo.fits ? "font-semibold text-positive-strong" : "text-muted-foreground"}>
+                              {cashInfo.text}
+                              {cashInfo.costBRL !== undefined && (
+                                <>
+                                  <MoneyText
+                                    cents={numberToCents(cashInfo.costBRL)}
+                                    tone="positive"
+                                    className="font-semibold text-positive-strong inline"
+                                  />
+                                  {!isTotalValue ? ")" : ""}
+                                </>
+                              )}
+                            </span>
+                            {" · Déficit total: "}
+                            <MoneyText
+                              cents={numberToCents(item.gapBRL)}
+                              tone="default"
+                              className="font-medium text-foreground inline"
+                            />
+                            {` (${item.targetPercentage}%)`}
+                          </span>
+                        ) : (
+                          <span>
+                            {"Déficit para meta: "}
+                            <MoneyText
+                              cents={numberToCents(item.gapBRL)}
+                              tone="default"
+                              className="font-semibold text-foreground inline"
+                            />
+                            {` (${item.targetPercentage}%)`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-col items-end text-right shrink-0">
                       <span className="text-[10px] uppercase font-semibold text-primary">Aportar</span>

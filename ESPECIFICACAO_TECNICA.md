@@ -417,6 +417,10 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
 8. **Transbordamento:** sobras internas de setor retornam para a classe; sobras da classe retornam ao pool global para atender a próxima classe defasada.
 9. **Sobra:** resíduos não alocados por restrição de cota mínima retornam ao caixa/reserva.
 10. **Log de roteamento & Diagnóstico:** por ativo — valor alvo, atual, aporte sugerido, quantidade (fracionária ou inteira), preço; sobra final e diagnóstico de ativos não contemplados (indicando motivo e classe no limite).
+11. **Recomendações no Investment Wizard & Soberania da Quantidade:**
+    - **Com saldo em Caixa ($> 0$):** os cards calculam a quantidade de cotas que cabe no saldo disponível ($\min(\lfloor\text{gapBRL} / \text{preço}\rfloor, \lfloor\text{caixa} / \text{preço}\rfloor)$) e exibem `"Cabe no caixa: X cota(s) (~R$ Y) · Déficit total: R$ Z"`. Ao clicar, o formulário já inicia preenchido com essas cotas e a sincronização com o caixa ativada.
+    - **Sem saldo em Caixa (ou R$ 0,00):** os cards exibem `"Déficit para meta: R$ Z (W%)"` e, ao clicar, a quantidade no formulário vem **em branco** (`""`), permitindo digitação livre pelo usuário.
+    - **Soberania da Quantidade Digitada:** para ativos cotizados (renda variável), o total financeiro é estritamente $\text{Quantidade} \times \text{Preço Unitário}$. Alterações na quantidade ou preço limpam qualquer resquício de valor residual, impedindo a imposição forçada de valores recomendados.
 
 **Consistência:** soma dos aportes nunca excede o aporte informado; ativo sem meta não recebe aporte; aporte só para ativos **abaixo** da meta (gap > 0); motor hierárquico único e opinado.
 
