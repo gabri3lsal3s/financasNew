@@ -1,5 +1,11 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.22** registra a **Conclusão da Fase 83 (Otimização PWA Stale-While-Revalidate & Monitoramento de Conectividade)** (2026-09-02):
+> - **(1) RuntimeCaching Stale-While-Revalidate para Imagens e Fontes**: Adição de estratégia de cache para imagens estáticas (PNG, JPG, SVG, WEBP, ICO) com limite de 60 entradas e expiração de 30 dias no Workbox (`vite.config.ts`), preservando a regra de ouro de nunca cachear dados de negócio (Online First);
+> - **(2) Monitoramento Reativo de Conectividade**: Criação do serviço `src/services/network-status.ts` e hook `src/hooks/use-network-status.ts` com `useSyncExternalStore` para reatividade suave a eventos online/offline;
+> - **(3) Auditoria Automatizada Estendida**: Novos testes em `src/tests/pwa-audit.test.ts` auditando a presença do fallback de emergência `offline.html` e a configuração de runtimeCaching;
+> - **(4) Suíte 100% Verde**: 275 arquivos de teste / 1.947 testes passando (100% verde), zero erros de typecheck (`tsc -b`) e lint (`eslint .`), e build de produção limpo em 1.44s.
+
 > **v2.21** registra a **Conclusão da Fase 81 (Automação Contínua de Renda Fixa & Indexador CDI do Banco Central)** (2026-09-02):
 > - **(1) Resiliência e Fallback em Cascata de Indicadores BCB (SGS)**: `fetchBcbIndicator` em `src/services/quotes.ts` enriquecido com cascata multi-endpoint (Direct API, AllOrigins e CorsProxy) com timeout resiliente de 5s, cache local e função utilitária `clearBcbCache()`;
 > - **(2) Testes Automatizados Dedicados de Domínio e Estado**: Criação de `use-macro-indicators.test.tsx` e ampliação de `quotes.test.ts` cobrindo conversão anualizada de CDI diário (Série 12), Selic Meta (Série 432), cache e fallback para a taxa de segurança (`10.5% a.a.`);
@@ -291,6 +297,8 @@
 | **F79** | Alinhamento Contábil de Rentabilidade, Neutralidade de Caixa e Relatórios | Eliminação do viés de caixa nos snapshots mensais e balanço consolidado, inclusão de lucros realizados | Rentabilidade & Relatórios |
 | **F80** | Blindagem Temporal de Testes, Congelamento de Data & Saneamento do CI | Congelamento de tempo em testes de UI, compatibilidade de scripts e suíte 100% verde | Qualidade & CI |
 | **F81** | Automação Contínua de Renda Fixa & Indexador CDI do Banco Central | Indicadores BCB em cascata, cálculo de rendimento projetado e testes unitários de macro indicadores | Renda Fixa & Cotações |
+| **F82** | Alinhamento Contábil de Rentabilidade, Moeda Nativa (USD) e Tabela Dedicada de Resgates | Resgates do período, moeda nativa nos relatórios e convergência com Retorno Total | Relatórios & Contabilidade |
+| **F83** | Otimização PWA Stale-While-Revalidate & Monitoramento de Conectividade | Cache para imagens e fontes, hook reativo useNetworkStatus e auditoria automatizada | PWA & Infraestrutura |
 
 
 
@@ -4258,6 +4266,67 @@ flowchart TD
 - [x] Testes de domínio, serviços e componentes 100% verdes (114 arquivos / 1.248 testes).
 - [x] Typecheck (`tsc -b`) e linter (`eslint .`) com zero erros.
 - [x] Build de produção do Vite limpo com PWA gerado com sucesso.
+
+---
+
+### 📱 FASE 83 — Otimização PWA Stale-While-Revalidate & Monitoramento de Conectividade
+
+> **Status:** ✅ Concluída (2026-09-02) — **Resiliência do App Shell & Conectividade**: Implementação da estratégia Stale-While-Revalidate para imagens estáticas com expiração de 30 dias na configuração Workbox (`vite.config.ts`), garantindo carregamento instantâneo da casca visual sem ferir a regra de ouro Online First (zero cache de dados de negócio). Criação do serviço `src/services/network-status.ts` e hook reativo `src/hooks/use-network-status.ts` via `useSyncExternalStore` para detecção de transições offline/online.
+>
+> **Objetivo:** Otimizar a experiência offline e em redes intermitentes, assegurando que o App Shell e os ativos estáticos carreguem instantaneamente e que o app detecte oscilações de conexão de forma limpa e padronizada.
+
+#### 1. Entregas Realizadas
+- **RuntimeCaching Stale-While-Revalidate no Workbox (`vite.config.ts`):**
+  - Regra de runtimeCaching para imagens estáticas (`/\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i`) com limite de 60 entradas e expiração de 30 dias (`cacheName: "static-images"`).
+- **Serviço e Hook de Monitoramento de Rede:**
+  - `src/services/network-status.ts`: Serviço pub/sub module-level para escuta de eventos `online`/`offline` com snapshot síncrono e suporte a reset em testes;
+  - `src/hooks/use-network-status.ts`: Hook reativo sem `setState` em effect via `useSyncExternalStore`, exportado no barrel `src/hooks/index.ts`;
+  - Testes unitários com Vitest em `network-status.test.ts` e `use-network-status.test.ts`.
+- **Auditoria Automatizada PWA (`src/tests/pwa-audit.test.ts`):**
+  - Auditoria estática verificando presença do arquivo `public/pwa/offline.html` e validação da configuração Workbox de runtimeCaching.
+- **Documentação do PWA:**
+  - `docs/PWA_GUIDELINES.md` atualizado para **v1.4**.
+
+**✅ DoD (Definition of Done da Fase 83):**
+- [x] RuntimeCaching configurado para imagens estáticas via Stale-While-Revalidate no Workbox.
+- [x] Regra Online First estritamente preservada (nenhum endpoint de API/Supabase cacheado).
+- [x] Serviço e hook de rede `useNetworkStatus` implementados e testados.
+- [x] Auditoria automatizada do PWA estendida e 100% verde (`pwa-audit.test.ts`).
+- [x] Suíte de testes 100% verde (275 arquivos / 1.947 testes).
+- [x] Typecheck (`tsc -b`) e lint (`eslint .`) limpos sem advertências.
+- [x] Build de produção limpo em 1.44s com Service Worker gerado.
+
+---
+
+### 📊 FASE 84 — Gráficos Donut de Distribuição por Classes e Setores nos Relatórios
+
+> **Status:** ✅ Concluída (2026-09-02) — **Visualização Circular 360° & Blindagem de Cauda Longa**: Implementação de visualização gráfica vetorial pura SVG com dois gráficos Donut sincronizados (Composição por Classe e Diversificação por Setor Econômico) na aba web de Investimentos (`InvestmentsTab`) e no Dossiê Executivo A4 (`WealthTearSheetModal`).
+>
+> **Objetivo:** Oferecer leitura circular de alta legibilidade para a carteira patrimonial, com algoritmo de agregação Top 6 + Outros Setores contra fatias invisíveis e adaptação de layout para tela e impressão A4.
+
+#### 1. Entregas Realizadas
+- **Motor de Domínio Puro (`src/domain/reports/allocation-donuts.ts`):**
+  - Função pura `buildAllocationDonutSegments` com testes unitários em `allocation-donuts.test.ts`;
+  - Agrupamento de classes de ativos com cores semânticas oficiais do DESIGN_SYSTEM (`CLASS_COLORS`);
+  - Agrupamento setorial com regra canônica de blindagem Top 6 + Outros Setores (setores $< 3\%$ agrupados para evitar poluição visual);
+  - Inclusão transparente da Reserva de Liquidez (Caixa) para manter paridade patrimonial entre classes e setores.
+- **Componente Reutilizável (`src/components/modules/reports/report-allocation-donuts.tsx`):**
+  - Componente de composição baseado no primitivo vetorial SVG puro `ReportDonutChart` (300 DPI nativo);
+  - Duas variantes de renderização:
+    * `screen`: cards espaçosos (`size={140}`), elevação `bg-surface/90 shadow-xs` para a navegação web;
+    * `print`: formato compacto (`size={108}`) ajustado com precisão para manter a integridade da Página 1 do Dossiê A4.
+- **Integração nas Telas:**
+  - `InvestmentsTab`: posicionado entre os KPIs de patrimônio e a tabela em árvore de gaps de metas;
+  - `WealthTearSheetModal`: inserido na Seção 4 (Diagnóstico de Metas & Alocação).
+
+**✅ DoD (Definition of Done da Fase 84):**
+- [x] Motor puro de agregação de donuts implementado e testado (`allocation-donuts.test.ts`).
+- [x] Componente `ReportAllocationDonuts` criado com variantes `screen` e `print`.
+- [x] Integrado com sucesso na aba web `InvestmentsTab` e no modal `WealthTearSheetModal`.
+- [x] Testes de relatórios 100% verdes (`reports-page.test.tsx`, `financial-close-report-modal.test.tsx`).
+- [x] Typecheck (`tsc -b`) e linter (`eslint .`) com zero erros.
+- [x] Build de produção limpo com PWA gerado com sucesso.
+
 
 
 

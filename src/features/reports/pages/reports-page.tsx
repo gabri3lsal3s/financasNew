@@ -13,6 +13,7 @@ import {
   calculateFreedomIndex,
   computeConsolidatedBalanceSheet,
   filterPeriodRedemptions,
+  buildAllocationDonutSegments,
   validateCustomPeriod,
 } from "@/domain/reports";
 import { isCashAssetClass } from "@/domain/portfolio";
@@ -355,6 +356,20 @@ export function ReportsPage() {
       })),
     );
   }, [positionRows]);
+
+  const investmentDonutData = useMemo(() => {
+    return buildAllocationDonutSegments({
+      positions: positionRows
+        .filter((r) => !r.isCash && r.quantity > 0)
+        .map((r) => ({
+          assetClass: r.assetClass,
+          sector: r.sector,
+          valueBRL: r.valueBRL,
+        })),
+      cashBalanceBRL,
+      includeCash: cashBalanceBRL > 0,
+    });
+  }, [positionRows, cashBalanceBRL]);
 
   const freedomAnalysis = useMemo(() => {
     const monthlyDivs = yearDividendsBRL > 0 ? yearDividendsBRL / 12 : 0;
@@ -725,6 +740,9 @@ export function ReportsPage() {
                 totalPatrimonyBRL={totalPatrimonyBRL}
                 allocationAnalysis={allocationAnalysis}
                 concentrationRisk={concentrationRisk}
+                classSegments={investmentDonutData.classSegments}
+                sectorSegments={investmentDonutData.sectorSegments}
+                totalUniqueSectors={investmentDonutData.totalUniqueSectors}
                 expandedTreeClasses={expandedTreeClasses}
                 setExpandedTreeClasses={setExpandedTreeClasses}
                 expandedTreeSectors={expandedTreeSectors}

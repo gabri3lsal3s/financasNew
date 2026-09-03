@@ -1352,6 +1352,37 @@
   - `src/features/reports/pages/reports-page.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## F83 — Gráficos Donut de Distribuição por Classes e Setores nos Relatórios
+
+- **Problema:**
+  1. A leitura da alocação da carteira na Central de Relatórios apoiava-se unicamente em tabelas e barras empilhadas horizontais, sem uma visualização circular (Donut) de alto impacto para classes e setores;
+  2. Risco de fragmentação visual e quebra de layout ao renderizar dezenas de setores pequenos (cauda longa com fatias $< 3\%$);
+  3. Necessidade de preservar a integridade estrita da folha A4 no Dossiê de Impressão e oferecer uma experiência dinâmica e rica na tela web do sistema.
+- **Solução:**
+  1. **Motor de Domínio Puro (`allocation-donuts.ts`):**
+     - Criada a função pura `buildAllocationDonutSegments` com testes unitários em `src/domain/reports/allocation-donuts.test.ts`;
+     - Agrupa a carteira por classe com as cores oficiais do DESIGN_SYSTEM (`CLASS_COLORS`);
+     - Agrupa por setor com a regra canônica de blindagem **Top 6 + Outros Setores** (unificando setores excedentes ou com $< 3\%$ em `"Outros Setores"` para evitar fatias invisíveis);
+     - Incorpora o Caixa transparente como `"Reserva de Liquidez"`, garantindo que a base de 100% seja idêntica entre os dois gráficos;
+  2. **Componente Reutilizável (`ReportAllocationDonuts.tsx`):**
+     - Baseado no primitivo SVG puro `ReportDonutChart` (300 DPI vetorial nativo);
+     - Suporta duas variantes:
+       * `screen`: cards amplos (`size={140}`) com elevação e sombras suaves para a navegação web;
+       * `print`: formato compacto (`size={108}`) ajustado com precisão para não quebrar a Página 1 do Dossiê A4;
+  3. **Integração nas Telas (`InvestmentsTab` e `WealthTearSheetModal`):**
+     - Na aba web de Investimentos (`InvestmentsTab`), posicionado estrategicamente entre os KPIs e a tabela de gaps em árvore;
+     - No Dossiê A4 (`WealthTearSheetModal`), inserido na Seção de Diagnóstico de Alocação.
+- **Arquivos criados / alterados:**
+  - `src/domain/reports/allocation-donuts.ts` (novo)
+  - `src/domain/reports/allocation-donuts.test.ts` (novo)
+  - `src/domain/reports/index.ts`
+  - `src/components/modules/reports/report-allocation-donuts.tsx` (novo)
+  - `src/components/modules/reports/index.ts`
+  - `src/features/reports/components/tabs/investments-tab.tsx`
+  - `src/features/reports/components/wealth-tear-sheet-modal.tsx`
+  - `src/features/reports/pages/reports-page.tsx`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

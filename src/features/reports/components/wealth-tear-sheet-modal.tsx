@@ -9,11 +9,13 @@ import {
   ReportRiskGauge,
   ReportClassTables,
   ReportRedemptionsTable,
+  ReportAllocationDonuts,
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import {
+  buildAllocationDonutSegments,
   sanitizeReportText,
   type AllocationAnalysisResult,
   type ConcentrationRiskResult,
@@ -110,6 +112,7 @@ export function WealthTearSheetModal({
   unrealizedPnlBRL: propUnrealizedPnlBRL,
   unrealizedPnlPct: propUnrealizedPnlPct,
   periodRedemptions,
+  cashBRL,
   monthSummary,
   allocationAnalysis,
   concentrationRisk,
@@ -166,6 +169,19 @@ export function WealthTearSheetModal({
     propTotalReturnPct !== undefined && propTotalReturnPct !== null
       ? propTotalReturnPct
       : fallbackTotalReturnPct;
+
+  // Segmentos dos gráficos Donut de Classes e Setores
+  const donutData = useMemo(() => {
+    return buildAllocationDonutSegments({
+      positions: activeInvestmentRows.map((r) => ({
+        assetClass: r.assetClass,
+        sector: r.sector,
+        valueBRL: r.valueBRL,
+      })),
+      cashBalanceBRL: cashBRL ?? 0,
+      includeCash: (cashBRL ?? 0) > 0,
+    });
+  }, [activeInvestmentRows, cashBRL]);
 
   // Segmentos para barra empilhada de alocação
   const stackedSegments = allocationAnalysis.classGaps.map((cg) => ({
@@ -458,6 +474,17 @@ export function WealthTearSheetModal({
           segments={stackedSegments}
           height={10}
         />
+
+        {/* Gráficos Donut de Distribuição por Classes e Setores (Impressão A4) */}
+        {donutData.classSegments.length > 0 && (
+          <ReportAllocationDonuts
+            classSegments={donutData.classSegments}
+            sectorSegments={donutData.sectorSegments}
+            totalBRL={totalBRL}
+            totalUniqueSectors={donutData.totalUniqueSectors}
+            variant="print"
+          />
+        )}
 
         <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
           <table className="w-full text-left text-xs border-collapse">

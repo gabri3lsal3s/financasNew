@@ -349,3 +349,14 @@ export {
   type FilterPeriodRedemptionsParams,
 } from "./period-redemptions";
 
+export {
+  buildAllocationDonutSegments,
+  DONUT_CLASS_COLORS,
+  DONUT_SECTOR_PALETTE,
+  type RawAllocationPosition,
+  type AllocationDonutSegment,
+  type AllocationDonutsResult,
+  type BuildAllocationDonutsParams,
+} from "./allocation-donuts";
+
+

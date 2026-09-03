@@ -2,13 +2,17 @@ import { Fragment, type Dispatch, type SetStateAction } from "react";
 import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { ReportAllocationDonuts } from "@/components/modules/reports";
 import { numberToCents } from "@/domain/money";
-import type { AllocationAnalysisResult, ConcentrationRiskResult } from "@/domain/reports";
+import type { AllocationAnalysisResult, ConcentrationRiskResult, AllocationDonutSegment } from "@/domain/reports";
 
 export interface InvestmentsTabProps {
   totalPatrimonyBRL: number;
   allocationAnalysis: AllocationAnalysisResult;
   concentrationRisk: ConcentrationRiskResult;
+  classSegments?: readonly AllocationDonutSegment[];
+  sectorSegments?: readonly AllocationDonutSegment[];
+  totalUniqueSectors?: number;
   expandedTreeClasses: Set<string>;
   setExpandedTreeClasses: Dispatch<SetStateAction<Set<string>>>;
   expandedTreeSectors: Set<string>;
@@ -24,6 +28,9 @@ export function InvestmentsTab({
   totalPatrimonyBRL,
   allocationAnalysis,
   concentrationRisk,
+  classSegments,
+  sectorSegments,
+  totalUniqueSectors,
   expandedTreeClasses,
   setExpandedTreeClasses,
   expandedTreeSectors,
@@ -81,6 +88,17 @@ export function InvestmentsTab({
           </div>
         </div>
       </div>
+
+      {/* Gráficos Donut de Distribuição por Classes e Setores */}
+      {classSegments && classSegments.length > 0 ? (
+        <ReportAllocationDonuts
+          classSegments={classSegments}
+          sectorSegments={sectorSegments ?? []}
+          totalBRL={totalPatrimonyBRL}
+          totalUniqueSectors={totalUniqueSectors}
+          variant="screen"
+        />
+      ) : null}
 
       {/* Tabela em Árvore Hierárquica de Gaps (Classe -> Setor -> Ativos) */}
       <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-3">

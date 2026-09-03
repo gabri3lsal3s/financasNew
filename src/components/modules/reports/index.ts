@@ -11,3 +11,5 @@ export * from "./report-gap-pin-bar";
 export * from "./report-executive-summary";
 export * from "./report-class-tables";
 export * from "./report-redemptions-table";
+export * from "./report-allocation-donuts";
+
