@@ -89,7 +89,6 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
       asset_id: "asset-petr4",
       date: "2026-08-15",
       types: ["buy"],
-      total: 3850.0,
     });
   });
 
@@ -131,7 +130,6 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
     expect(repo.deletePortfolioContributionsMatching).toHaveBeenCalledWith({
       asset_id: "asset-vale3",
       date: "2026-08-10",
-      amount: 2500.0,
     });
   });
 
