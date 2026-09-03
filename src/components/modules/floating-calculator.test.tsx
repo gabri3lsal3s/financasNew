@@ -176,4 +176,61 @@ describe("FloatingCalculator (F9)", () => {
     expect(setter).toHaveBeenCalledWith(7500);
     expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
   });
+
+  it("abre carregando o valor atual do input ativo e permite somar sobre ele", async () => {
+    const inject = vi.fn();
+    const getCents = vi.fn(() => 15000); // R$ 150,00
+    registerCalculatorTarget({ inject, getCents, label: "Valor Original" });
+
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    // Badge exibe o campo conectado
+    expect(screen.getByText("Campo: Valor Original")).toBeInTheDocument();
+
+    // Display já deve ter aberto com R$ 150,00
+    expect(screen.getByText("R$ 150,00")).toBeInTheDocument();
+
+    // Soma + 50 =
+    await user.click(screen.getByRole("button", { name: "Somar" }));
+    await user.click(screen.getByRole("button", { name: "Dígito 5" }));
+    await user.click(screen.getByRole("button", { name: "Dígito 0" }));
+    await user.click(screen.getByRole("button", { name: "Igual" }));
+
+    // Resultado: R$ 200,00
+    expect(screen.getAllByText("R$ 200,00").length).toBeGreaterThan(0);
+
+    // Clica em Usar valor e verifica que injetou 20000 centavos
+    await user.click(screen.getByRole("button", { name: "Usar valor" }));
+    expect(inject).toHaveBeenCalledWith(20000);
+  });
+
+  it("divide em parcelas diretamente a partir do valor carregado do input", async () => {
+    const inject = vi.fn();
+    const getCents = vi.fn(() => 30000); // R$ 300,00
+    registerCalculatorTarget({ inject, getCents });
+
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    expect(screen.getByText("Conectado ao campo")).toBeInTheDocument();
+    expect(screen.getByText("R$ 300,00")).toBeInTheDocument();
+
+    // Divide em 3 parcelas
+    await user.click(screen.getByRole("button", { name: "Aumentar parcelas" }));
+    await user.click(screen.getByRole("button", { name: "Aumentar parcelas" }));
+    await user.click(screen.getByRole("button", { name: "Dividir" }));
+
+    expect(screen.getByText("3 × R$ 100,00 (resto na 1ª)")).toBeInTheDocument();
+    expect(screen.getByText("R$ 100,00")).toBeInTheDocument();
+  });
+
+  it("exibe badge de calculadora livre quando não há alvo conectado", async () => {
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    expect(screen.getByText("Calculadora livre")).toBeInTheDocument();
+  });
 });

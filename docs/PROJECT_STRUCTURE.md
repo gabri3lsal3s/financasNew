@@ -251,7 +251,7 @@
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
     │   ├── calculator-open.ts     #   Store compartilhado de abertura da calculadora
     │   │                          #     (header e modais abrem o mesmo painel — F9/pós-F25)
-    │   ├── calculator-bridge.ts   #   Injeção contextual do valor da calculadora (F9)
+    │   ├── calculator-bridge.ts   #   Ponte bidirecional da calculadora (leitura e injeção contextual de centavos)
     │   └── quotes.ts              #   Busca e sincronização online de cotações no cliente (Brapi/AwesomeAPI/Yahoo)
     │
     ├── lib/                       # Utils genéricos (sem regra financeira)

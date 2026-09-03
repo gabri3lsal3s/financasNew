@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { InputHTMLAttributes } from "react";
+import { Calculator } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrencyInput } from "@/hooks/use-currency-input";
 import { registerCalculatorTarget, unregisterCalculatorTarget } from "@/services/calculator-bridge";
+import type { CalculatorTargetObject } from "@/services/calculator-bridge";
+import { setCalculatorOpen } from "@/services/calculator-open";
 import type { AssetCurrency } from "@/types";
 
 /**
@@ -27,6 +30,8 @@ export interface MoneyInputProps
   currency?: AssetCurrency;
   /** Variante de tamanho. "lg" para o passo de valor do wizard (D10). */
   size?: "sm" | "md" | "lg";
+  /** Exibe um botão de ação com ícone da calculadora dentro do campo. */
+  showCalculatorAction?: boolean;
 }
 
 const sizeClasses: Record<NonNullable<MoneyInputProps["size"]>, string> = {
@@ -43,30 +48,46 @@ export function MoneyInput({
   className,
   disabled,
   placeholder,
+  showCalculatorAction = false,
   ...rest
 }: MoneyInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const currency = useCurrencyInput({ initialCents: cents, currency: currencyProp });
 
-  // Campo ativo da calculadora (F9): registrado no MOUNT — o FAB aparece assim
-  // que o modal abre, sem depender de foco — e removido apenas no unmount
-  // (modal fechado). O setter delega via ref (sempre o handler atual). O foco
-  // re-registra o MESMO alvo estável (campo em uso, quando há vários campos).
+  // Campo ativo da calculadora (F9): registrado no MOUNT — o FAB/painel identifica
+  // o campo ativo e seu valor em centavos imediatamente. O par inject/getCents
+  // delega via ref para manter os valores síncronos e atualizados.
   // NÃO desregistrar no blur: o painel da calculadora rouba o foco ao abrir e o
-  // alvo precisa continuar ativo para "Usar valor" injetar.
-  const calculatorTargetRef = useRef<((cents: number) => void) | null>(null);
-  useEffect(() => {
-    calculatorTargetRef.current = (cents: number) => {
-      currency.setCents(cents);
-      onCentsChange?.(cents);
+  // alvo precisa continuar ativo para ler o valor inicial e injetar o resultado.
+  const calculatorTargetRef = useRef<CalculatorTargetObject>({
+    inject: () => {},
+    getCents: () => 0,
+  });
+
+  useLayoutEffect(() => {
+    calculatorTargetRef.current = {
+      inject: (injectedCents: number) => {
+        currency.setCents(injectedCents);
+        onCentsChange?.(injectedCents);
+      },
+      getCents: () => currency.valueCents,
+      label: (rest["aria-label"] as string | undefined) ?? placeholder,
     };
   });
-  // Alvo com identidade estável: o cleanup do unmount consegue remover
-  // exatamente o registro deste campo (mesmo após re-registros de foco).
-  const calculatorTarget = useCallback(
-    (cents: number) => calculatorTargetRef.current?.(cents),
+
+  // Alvo com identidade estável: o cleanup do unmount remove exatamente
+  // o registro deste campo específico.
+  const calculatorTarget = useMemo<CalculatorTargetObject>(
+    () => ({
+      inject: (injectedCents: number) => calculatorTargetRef.current.inject(injectedCents),
+      getCents: () => calculatorTargetRef.current.getCents(),
+      get label() {
+        return calculatorTargetRef.current.label;
+      },
+    }),
     [],
   );
+
   useEffect(() => {
     registerCalculatorTarget(calculatorTarget);
     return () => unregisterCalculatorTarget(calculatorTarget);
@@ -91,7 +112,7 @@ export function MoneyInput({
     if (el) el.setSelectionRange(el.value.length, el.value.length);
   });
 
-  return (
+  const inputElement = (
     <input
       ref={inputRef}
       {...rest}
@@ -104,6 +125,7 @@ export function MoneyInput({
         "w-full rounded-md border border-input bg-surface font-mono tabular-nums text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         "privacy-mask", // máscara global (globals.css): blur apenas com data-privacy=masked
         sizeClasses[size],
+        showCalculatorAction && "pr-10",
         className,
       )}
       value={currency.display}
@@ -114,10 +136,34 @@ export function MoneyInput({
       }}
       onKeyDown={currency.handleKeyDown}
       onFocus={(event) => {
-        // Campo em uso recebe o valor (re-registra o alvo estável).
+        // Campo em uso recebe o foco e se torna o alvo ativo preferencial.
         registerCalculatorTarget(calculatorTarget);
         rest.onFocus?.(event);
       }}
     />
+  );
+
+  if (!showCalculatorAction) {
+    return inputElement;
+  }
+
+  return (
+    <div className="relative flex w-full items-center">
+      {inputElement}
+      <button
+        type="button"
+        tabIndex={-1}
+        title="Abrir calculadora"
+        aria-label="Abrir calculadora para este campo"
+        disabled={disabled}
+        onClick={() => {
+          registerCalculatorTarget(calculatorTarget);
+          setCalculatorOpen(true);
+        }}
+        className="absolute right-2.5 flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
+      >
+        <Calculator className="size-3.5" aria-hidden="true" />
+      </button>
+    </div>
   );
 }

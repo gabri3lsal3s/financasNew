@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Check, History } from "lucide-react";
-import { Button, Modal, NumberStepper } from "@/components/ui";
+import { Calculator as CalculatorIcon, Check, History, Link2 } from "lucide-react";
+import { Badge, Button, Modal, NumberStepper } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CalculatorKeypad } from "@/components/modules/calculator-keypad";
-import { injectCalculatedValue } from "@/services/calculator-bridge";
+import {
+  getActiveTargetCents,
+  getActiveTargetLabel,
+  hasActiveTarget,
+  injectCalculatedValue,
+  subscribeCalculatorTarget,
+} from "@/services/calculator-bridge";
 import { isCalculatorOpen, setCalculatorOpen, subscribeCalculatorOpen } from "@/services/calculator-open";
-import { triggerHaptic } from "@/services/haptics";
+import { pushToast } from "@/services/toast";
 import { formatCentsAsBRL } from "@/services/masks";
 import {
   INITIAL_STATE,
@@ -23,14 +29,39 @@ import type { CalculatorState, HistoryEntry } from "@/domain/calculator";
 /**
  * Calculadora (F9): modal acessível pelo header (CalculatorButton) e pelo
  * botão de calculadora nos cabeçalhos de todos os modais do app.
- * "Usar valor" injeta o resultado em centavos no MoneyInput focado/ativo.
+ * Ao abrir, carrega o valor atual do input ativo e, com "Usar valor",
+ * substitui o resultado no mesmo campo.
  */
 export function FloatingCalculator() {
   const open = useSyncExternalStore(subscribeCalculatorOpen, isCalculatorOpen);
+  const isConnected = useSyncExternalStore(subscribeCalculatorTarget, hasActiveTarget);
+  const connectedLabel = useSyncExternalStore(subscribeCalculatorTarget, getActiveTargetLabel);
+
   const [state, setState] = useState<CalculatorState>(INITIAL_STATE);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [installments, setInstallments] = useState(1);
   const [plan, setPlan] = useState<string | null>(null);
+
+  const [prevOpen, setPrevOpen] = useState(false);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      const targetCents = getActiveTargetCents();
+      setState(
+        targetCents !== null && targetCents > 0
+          ? {
+              display: centsToDecimal(targetCents),
+              accumulator: null,
+              operator: null,
+              justEvaluated: true,
+              entering: false,
+              error: false,
+            }
+          : INITIAL_STATE,
+      );
+      setPlan(null);
+    }
+  }
 
   const handleEquals = useCallback(() => {
     const previous = state;
@@ -57,13 +88,28 @@ export function FloatingCalculator() {
         : `${parts.length} × ${formatCentsAsBRL(parts[0] ?? 0)} (resto na 1ª)`,
     );
     setState((current) => ({ ...current, display: centsToDecimal(parts[0] ?? 0), justEvaluated: true }));
-    triggerHaptic("light");
   };
 
-  const handleInject = useCallback(() => {
-    const ok = injectCalculatedValue(decimalToCents(state.display));
-    triggerHaptic(ok ? "success" : "warning");
-    if (ok) setCalculatorOpen(false);
+  const handleInject = useCallback(async () => {
+    const cents = decimalToCents(state.display);
+    const ok = injectCalculatedValue(cents);
+    if (ok) {
+      setCalculatorOpen(false);
+      return;
+    }
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(formatCentsAsBRL(cents));
+        pushToast({
+          title: "Resultado copiado",
+          description: `${formatCentsAsBRL(cents)} copiado para a área de transferência.`,
+          variant: "default",
+        });
+      }
+    } catch {
+      // noop
+    }
   }, [state.display]);
 
   const displayCents = decimalToCents(state.display);
@@ -139,6 +185,21 @@ export function FloatingCalculator() {
       elevated
     >
         <div className="mt-4 flex flex-col gap-4">
+          {/* Status de conexão contextual */}
+          <div className="flex items-center justify-between">
+            {isConnected ? (
+              <Badge variant="muted" size="sm" className="gap-1.5 font-normal">
+                <Link2 className="size-3 text-muted-foreground" aria-hidden="true" />
+                <span>{connectedLabel ? `Campo: ${connectedLabel}` : "Conectado ao campo"}</span>
+              </Badge>
+            ) : (
+              <Badge variant="muted" size="sm" className="gap-1.5 font-normal">
+                <CalculatorIcon className="size-3 text-muted-foreground" aria-hidden="true" />
+                <span>Calculadora livre</span>
+              </Badge>
+            )}
+          </div>
+
           {/* Display */}
           <div className="flex flex-col gap-1 rounded-xl border border-border bg-muted p-4">
             <p className="num text-right text-3xl font-semibold text-foreground" aria-live="polite">

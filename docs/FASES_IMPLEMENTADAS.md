@@ -89,7 +89,7 @@
 ## F9 — Utilitários Nativos (Calculadora Flutuante & Scroll)
 
 - **Problema:** lançamentos lentos (cálculos manuais) e páginas longas sem atalho de retorno.
-- **Solução:** **calculadora flutuante arrastável** com motor puro (`domain/calculator`), divisão de parcelas em centavos e **"Usar valor"** injetando o resultado direto no campo ativo (`calculator-bridge`); **scroll-to-top inteligente** (posteriormente substituído pelo gesto da F26).
+- **Solução:** **calculadora flutuante arrastável** com motor puro (`domain/calculator`), divisão de parcelas em centavos, hidratação automática com o valor do input ativo na abertura e **"Usar valor"** injetando o resultado direto no campo ativo (`calculator-bridge`); indicador visual de campo conectado/livre e fallback de cópia; **scroll-to-top inteligente** (posteriormente substituído pelo gesto da F26).
 
 ## F10 — Identidade Visual Oficial "Guia Financeiro" & Reestilização de Temas
 

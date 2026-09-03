@@ -7,13 +7,25 @@
  * para o botão da calculadora.
  */
 
-type CalculatorTarget = (cents: number) => void;
+export interface CalculatorTargetObject {
+  inject: (cents: number) => void;
+  getCents: () => number;
+  label?: string;
+}
+
+export type CalculatorTargetCallback = (cents: number) => void;
+
+export type CalculatorTarget = CalculatorTargetObject | CalculatorTargetCallback;
 
 let activeTarget: CalculatorTarget | null = null;
 const listeners = new Set<() => void>();
 
 function notify(): void {
   for (const listener of listeners) listener();
+}
+
+function isTargetObject(target: CalculatorTarget): target is CalculatorTargetObject {
+  return typeof target === "object" && target !== null && "inject" in target;
 }
 
 /** Registra o campo ativo (chamado no focus do MoneyInput). */
@@ -35,6 +47,38 @@ export function getCalculatorTarget(): CalculatorTarget | null {
   return activeTarget;
 }
 
+/** Retorna se há um campo registrado atualmente como alvo ativo. */
+export function hasActiveTarget(): boolean {
+  return activeTarget !== null;
+}
+
+/**
+ * Lê o valor atual em centavos do campo ativo. Retorna `null` se nenhum
+ * campo estiver registrado ou se o campo for um callback legado sem getter.
+ */
+export function getActiveTargetCents(): number | null {
+  if (!activeTarget) return null;
+  if (isTargetObject(activeTarget)) {
+    return activeTarget.getCents();
+  }
+  return null;
+}
+
+/** Rótulo contextual do campo ativo, se fornecido. */
+export function getActiveTargetLabel(): string | undefined {
+  if (activeTarget && isTargetObject(activeTarget)) {
+    return activeTarget.label;
+  }
+  return undefined;
+}
+
+/** Assinatura para a UI reagir a mudanças de alvo registrado. */
+export function subscribeCalculatorTarget(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
 
 /**
  * Injeta o valor calculado (centavos) no campo ativo. Retorna `false` quando
@@ -42,6 +86,10 @@ export function getCalculatorTarget(): CalculatorTarget | null {
  */
 export function injectCalculatedValue(cents: number): boolean {
   if (!activeTarget) return false;
-  activeTarget(cents);
+  if (isTargetObject(activeTarget)) {
+    activeTarget.inject(cents);
+  } else {
+    activeTarget(cents);
+  }
   return true;
 }

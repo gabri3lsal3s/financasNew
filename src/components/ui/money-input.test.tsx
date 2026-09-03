@@ -1,9 +1,17 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MoneyInput } from "./money-input";
-import { getCalculatorTarget, unregisterCalculatorTarget } from "@/services/calculator-bridge";
+import {
+  getActiveTargetCents,
+  getCalculatorTarget,
+  injectCalculatedValue,
+  unregisterCalculatorTarget,
+} from "@/services/calculator-bridge";
+import { isCalculatorOpen, setCalculatorOpen } from "@/services/calculator-open";
 
 afterEach(() => {
+  setCalculatorOpen(false);
   const target = getCalculatorTarget();
   if (target) unregisterCalculatorTarget(target);
 });
@@ -48,6 +56,33 @@ describe("MoneyInput (padrão Nubank)", () => {
     // fazendo o FAB desaparecer.
     unmount();
     expect(getCalculatorTarget()).toBeNull();
+  });
+
+  it("expõe o valor em centavos para a calculadora e atualiza via injectCalculatedValue", () => {
+    render(<MoneyInput cents={25000} aria-label="Valor da Conta" />);
+    const input = screen.getByLabelText("Valor da Conta") as HTMLInputElement;
+    fireEvent.focus(input);
+
+    expect(getActiveTargetCents()).toBe(25000);
+
+    // Injeta um novo valor calculado pela calculadora
+    act(() => {
+      injectCalculatedValue(32000);
+    });
+    expect(input).toHaveValue("R$\u00a0320,00");
+    expect(getActiveTargetCents()).toBe(32000);
+  });
+
+  it("renderiza botão de ação da calculadora quando showCalculatorAction for true", async () => {
+    const user = userEvent.setup();
+    render(<MoneyInput cents={1000} aria-label="Valor com Botão" showCalculatorAction />);
+
+    const button = screen.getByRole("button", { name: "Abrir calculadora para este campo" });
+    expect(button).toBeInTheDocument();
+
+    await user.click(button);
+    expect(isCalculatorOpen()).toBe(true);
+    expect(getActiveTargetCents()).toBe(1000);
   });
 
   it("suporta moeda USD com formatação em dólar e placeholder correto", () => {
