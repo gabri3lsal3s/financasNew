@@ -237,14 +237,14 @@
     │   ├── errors/                #   Gateway de erros: index.ts (classifyError +
     │   │                          #   getErrorMessage pt-BR) + index.test.ts
     │   ├── network-status.ts      #   F83: pub/sub de conectividade online/offline com snapshot síncrono
-    │   ├── excel-export.ts        #   F44/F80: gerador XML do Caderno Excel multi-abas (Resumo, Custódia, Proventos, DRE, Dívidas, Resgates)
+    │   ├── excel-export.ts        #   F44/F80: gerador XML do Caderno Excel multi-abas (Resumo, Custódia, Proventos, DRE, Dívidas, Resgates, Metas/Rebalanceamento)
     │   ├── user-storage.ts        #   Isolamento de localStorage por userId (financas_${userId}_*) + sanitizeLegacyStorage
     │   ├── auth-cleanup.ts        #   resetAppState() — cancelamento de queries, purge de cache, reset de stores e DOM
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
     │   ├── toast.ts               #   F30: bus de toasts imperativos (pushToast/dismissToast
     │   │                          #     — pub/sub com Single Toast Mode, auto-dismiss garantido)
     │   ├── audio-fx.ts            #   Feedback sonoro sintetizado via Web Audio (F11)
-    │   ├── export-actions.ts      #   F22: downloadBlob/Csv/Json + shareText (Web Share
+    │   ├── export-actions.ts      #   F22: downloadBlob/Csv/Json (com BOM UTF-8 universal) + shareText (Web Share
     │   │                          #     API com fallback clipboard — DOM glue)
     │   ├── observability.ts       #   Sentry env-gated (F6.3): init/reportError/
     │   │                          #   setObservabilityUser — dynamic import, no-op sem DSN
