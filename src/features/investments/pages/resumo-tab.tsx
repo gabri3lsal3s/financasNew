@@ -795,13 +795,16 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           {/* Card 2: TIR / Fluxo do Bolso */}
           <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">2. TIR / Fluxo do Bolso (Taxa Ponderada)</span>
+              <span className="font-semibold text-foreground text-sm">2. TIR / Fluxo do Bolso (Taxa Ponderada no Tempo)</span>
               <Badge variant={irrTone === "positive" ? "positive" : irrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
                 {irrLabel}
               </Badge>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              Calcula a taxa efetiva anualizada com base no dinheiro que <strong>saiu da sua conta corrente</strong> para a corretora e no patrimônio que você possui hoje. É imune ao giro de carteira (reinvestimento de títulos que venceram não distorce o percentual).
+              Calcula a taxa efetiva anualizada (% a.a.) ponderando o valor e a data em que cada real <strong>saiu da sua conta corrente</strong> para a corretora frente ao patrimônio atual. É imune ao giro de carteira (reinvestir dividendos ou títulos vencidos não distorce a taxa).
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              <strong>Por que os marcos históricos importam:</strong> se você fez aportes pesados mais recentemente (ex.: fim de 2024), registrá-los em marcos separados impede que a taxa seja diluída como se todo o capital estivesse investido desde a data mais antiga.
             </p>
           </div>
 
@@ -815,6 +818,22 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
             <p className="text-muted-foreground leading-relaxed">
               Consolida todo o dinheiro real produzido pela sua estratégia em reais: soma o lucro realizado de títulos e ações que já foram encerrados no passado, a valorização das posições abertas de hoje e todos os proventos recebidos na história.
+            </p>
+          </div>
+
+          {/* Card 4: Comparabilidade com Benchmarks */}
+          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-foreground text-sm">4. Como Comparar com Benchmarks (CDI, Ibov e IPCA)</span>
+              <Badge variant="muted" size="sm" className="font-mono">
+                Comparação Justa
+              </Badge>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              <strong>Evite a armadilha do CDI acumulado simples:</strong> comparar o percentual simples de uma carteira com o "CDI acumulado desde 2024" distorce a análise quando você faz aportes sucessivos, pois os índices de mercado presumem que 100% do dinheiro esteve aplicado desde o dia 1.
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              A <strong>TIR anualizada (% a.a.)</strong> é a única taxa matematicamente justa para confrontar com o CDI anualizado (ex.: 10,5% a.a.) ou com a inflação acumulada anual, pois respeita a data em que cada aporte efetivamente entrou no mercado.
             </p>
           </div>
 
