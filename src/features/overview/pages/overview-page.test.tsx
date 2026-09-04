@@ -23,6 +23,39 @@ const monthData = (month: string) =>
       ]
     : [{ id: "e0", value: 2000, report_weight: 1, date: "2026-07-10", category_id: "c1" }];
 
+const defaultRealCashBalanceMock = {
+  cashBalance: {
+    currentBalanceCents: 450000,
+    latestCheckpoint: null,
+    checkpointBalanceCents: 0,
+    inflowSinceCheckpointCents: 500000,
+    outflowSinceCheckpointCents: 50000,
+    eventsSinceCheckpoint: [],
+  },
+  safeToSpend: {
+    realCashBalanceCents: 450000,
+    openInvoicesCents: 60000,
+    payablePendingCents: 50000,
+    receivablePendingCents: 100000,
+    essentialBudgetsRemainingCents: 0,
+    committedObligationsCents: 110000,
+    safeToSpendCents: 340000,
+    safeToSpendWithBudgetsCents: 340000,
+    safeToSpendWithReceivablesCents: 440000,
+  },
+  isLoading: false,
+  error: null,
+  refetch: vi.fn(),
+};
+
+let realCashBalanceMock = { ...defaultRealCashBalanceMock };
+let cardExpensesMock = [{ id: "ce1", card_id: "card1", bill_competence: "2026-08", value: 100, report_weight: 1 }];
+let cardsMock = [{ id: "card1", name: "Nubank", is_active: true, due_day: 10 }];
+let debtsMock = [
+  { id: "d1", name: "A receber", type: "receivable", amount: 1000, due_date: "2026-08-20", paid_at: null },
+  { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
+];
+
 vi.mock("@/state", () => ({
   useIncomes: (month: string) => ({
     data:
@@ -55,7 +88,7 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useCreditCards: () => ({
-    data: [{ id: "card1", name: "Nubank", is_active: true, due_day: 10 }],
+    data: cardsMock,
     isLoading: false,
     isError: false,
     error: null,
@@ -77,17 +110,14 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useDebts: () => ({
-    data: [
-      { id: "d1", name: "A receber", type: "receivable", amount: 1000, due_date: "2026-08-20", paid_at: null },
-      { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
-    ],
+    data: debtsMock,
     isLoading: false,
     isError: false,
     error: null,
     refetch: vi.fn(),
   }),
   useAllCardExpenses: () => ({
-    data: [{ id: "ce1", card_id: "card1", bill_competence: "2026-08", value: 100, report_weight: 1 }],
+    data: cardExpensesMock,
     isLoading: false,
     isError: false,
     error: null,
@@ -111,30 +141,7 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
-  useRealCashBalance: () => ({
-    cashBalance: {
-      currentBalanceCents: 450000,
-      latestCheckpoint: null,
-      checkpointBalanceCents: 0,
-      inflowSinceCheckpointCents: 500000,
-      outflowSinceCheckpointCents: 50000,
-      eventsSinceCheckpoint: [],
-    },
-    safeToSpend: {
-      realCashBalanceCents: 450000,
-      openInvoicesCents: 60000,
-      payablePendingCents: 50000,
-      receivablePendingCents: 100000,
-      essentialBudgetsRemainingCents: 0,
-      committedObligationsCents: 110000,
-      safeToSpendCents: 340000,
-      safeToSpendWithBudgetsCents: 340000,
-      safeToSpendWithReceivablesCents: 440000,
-    },
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
+  useRealCashBalance: () => realCashBalanceMock,
   useCreateCashCheckpoint: () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
     isPending: false,
@@ -147,6 +154,17 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
     navigateMock.mockReset();
     portfolioContributionsMock = [];
+    realCashBalanceMock = {
+      ...defaultRealCashBalanceMock,
+      cashBalance: { ...defaultRealCashBalanceMock.cashBalance },
+      safeToSpend: { ...defaultRealCashBalanceMock.safeToSpend },
+    };
+    cardExpensesMock = [{ id: "ce1", card_id: "card1", bill_competence: "2026-08", value: 100, report_weight: 1 }];
+    cardsMock = [{ id: "card1", name: "Nubank", is_active: true, due_day: 10 }];
+    debtsMock = [
+      { id: "d1", name: "A receber", type: "receivable", amount: 1000, due_date: "2026-08-20", paid_at: null },
+      { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
+    ];
   });
 
   afterEach(() => {
@@ -281,6 +299,47 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     for (const btn of otherButtons) {
       expect(btn).not.toBeDisabled();
     }
+  });
+
+  it("limita o banner de capacidade de aporte ao Saldo Livre Real da conta corrente", () => {
+    // Sobra contábil seria 5000 - 3100 - 1100 = 800 (R$ 800,00)
+    // Mas Saldo Livre Real é de apenas R$ 250,00
+    realCashBalanceMock.safeToSpend.safeToSpendCents = 25000;
+
+    render(<OverviewPage />);
+
+    // Deve exibir o banner de aporte com o valor limitado ao Saldo Livre Real (R$ 250,00)
+    expect(screen.getAllByText("Capacidade de Aporte Estimada").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 250,00").length).toBeGreaterThan(0);
+  });
+
+  it("não exibe o banner de capacidade de aporte quando o Saldo Livre Real for negativo ou zero", () => {
+    // Mesmo com sobra contábil, se Saldo Livre Real for negativo, o banner não pode ser exibido
+    realCashBalanceMock.safeToSpend.safeToSpendCents = -150000;
+
+    render(<OverviewPage />);
+
+    expect(screen.queryByText("Capacidade de Aporte Estimada")).not.toBeInTheDocument();
+  });
+
+  it("utiliza o valor bruto nominal das faturas de cartão no radar de descasamento mesmo com report_weight menor que 1", () => {
+    // Fatura de R$ 200 com report_weight 0.5 (bruto R$ 200, ponderado R$ 100)
+    // Pagamento de R$ 40 (cp1). Saldo bruto da fatura: R$ 160.
+    // Saldo em conta: R$ 50.
+    // Vencimento da fatura no dia 25 (10 dias à frente de 15/08 -> severity: warning -> "Radar de Descasamento de Fluxo")
+    cardsMock = [{ id: "card1", name: "Nubank", is_active: true, due_day: 25 }];
+    debtsMock = [];
+    realCashBalanceMock.cashBalance.currentBalanceCents = 5000; // R$ 50
+    cardExpensesMock = [
+      { id: "ce1", card_id: "card1", bill_competence: "2026-08", value: 200, report_weight: 0.5 },
+    ];
+
+    render(<OverviewPage />);
+
+    // Déficit bruto: 50 - 160 = -110 (R$ 110,00)
+    // Se fosse ponderado: 50 - (100 - 40) = -10 (R$ 10,00)
+    expect(screen.getByText("Radar de Descasamento de Fluxo")).toBeInTheDocument();
+    expect(screen.getByText("R$ 110,00")).toBeInTheDocument();
   });
 });
 
