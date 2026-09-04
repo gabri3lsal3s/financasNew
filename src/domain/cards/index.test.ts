@@ -14,14 +14,21 @@ import { APP_START_DATE } from "@/types";
 const TODAY = "2026-08-13";
 
 describe("invoiceBalance (§3.3.3)", () => {
-  it("nunca fica negativo (pagamento a maior)", () => {
+  it("nunca fica negativo (pagamento a maior ou estorno maior que o previsto)", () => {
     expect(invoiceBalance(100000, 120000)).toBe(0);
     expect(invoiceBalance(100000, 100000)).toBe(0);
+    expect(invoiceBalance(100000, 0, 120000)).toBe(0);
+    expect(invoiceBalance(100000, 60000, 50000)).toBe(0);
   });
 
   it("calcula saldo aberto quando pago < previsto", () => {
     expect(invoiceBalance(100000, 30000)).toBe(70000);
     expect(invoiceBalance(0, 0)).toBe(0);
+  });
+
+  it("abate estornos do saldo aberto da fatura", () => {
+    expect(invoiceBalance(100000, 30000, 20000)).toBe(50000);
+    expect(invoiceBalance(100000, 0, 40000)).toBe(60000);
   });
 });
 
@@ -69,7 +76,7 @@ describe("buildCompetenceSummaries (§3.3.3)", () => {
     expect(august?.pagoCents).toBe(0);
   });
 
-  it("soma pagamentos positivos e estornos (negativos) à parte", () => {
+  it("soma pagamentos positivos e estornos separadamente e abate ambos do saldo aberto", () => {
     const summaries = buildCompetenceSummaries(
       [{ bill_competence: "2026-08", value: 100, report_weight: 1 }],
       [
@@ -80,15 +87,36 @@ describe("buildCompetenceSummaries (§3.3.3)", () => {
     const august = summaries.find((s) => s.month === "2026-08");
     expect(august?.pagoCents).toBe(6000);
     expect(august?.estornoCents).toBe(1000);
-    expect(august?.saldoCents).toBe(4000); // 100 − 60, estorno não abate pago
+    expect(august?.saldoBrutoCents).toBe(3000); // 100 − 60 (pago) − 10 (estorno) = 30
+    expect(august?.saldoPonderadoCents).toBe(3000);
+    expect(august?.saldoCents).toBe(3000);
   });
 
-  it("saldo nunca negativo (pagamento a maior)", () => {
+  it("estorno integral quita a fatura deixando saldo zero", () => {
+    const summaries = buildCompetenceSummaries(
+      [{ bill_competence: "2026-08", value: 100, report_weight: 1 }],
+      [{ competence_month: "2026-08", amount: -100 }], // estorno de 100%
+    );
+    const august = summaries.find((s) => s.month === "2026-08");
+    expect(august?.pagoCents).toBe(0);
+    expect(august?.estornoCents).toBe(10000);
+    expect(august?.saldoBrutoCents).toBe(0);
+    expect(august?.saldoPonderadoCents).toBe(0);
+    expect(august?.saldoCents).toBe(0);
+  });
+
+  it("saldo nunca negativo (pagamento a maior ou estorno maior)", () => {
     const summaries = buildCompetenceSummaries(
       [{ bill_competence: "2026-08", value: 100, report_weight: 1 }],
       [{ competence_month: "2026-08", amount: 150 }],
     );
     expect(summaries[0]?.saldoCents).toBe(0);
+
+    const summariesOverRefund = buildCompetenceSummaries(
+      [{ bill_competence: "2026-08", value: 50, report_weight: 1 }],
+      [{ competence_month: "2026-08", amount: -80 }],
+    );
+    expect(summariesOverRefund[0]?.saldoCents).toBe(0);
   });
 
   it("despesas sem competência não entram em nenhuma fatura", () => {

@@ -138,7 +138,7 @@ describe("§3.3 — Cartões: fatura, pagamentos e estornos", () => {
     expect(invoiceBalance(100_000, 30_000)).toBe(70_000);
   });
 
-  it("estorno entra à parte no resumo da competência (com peso aplicado)", () => {
+  it("estorno entra à parte no resumo da competência e abate saldo aberto bruto e ponderado", () => {
     const summaries = buildCompetenceSummaries(
       [{ bill_competence: "2026-08", value: 100, report_weight: 0.5 }],
       [{ competence_month: "2026-08", amount: -40 }],
@@ -148,8 +148,8 @@ describe("§3.3 — Cartões: fatura, pagamentos e estornos", () => {
       previstoPonderadoCents: 5000,
       pagoCents: 0,
       estornoCents: 4000,
-      saldoBrutoCents: 10000,
-      saldoPonderadoCents: 5000,
+      saldoBrutoCents: 6000,
+      saldoPonderadoCents: 1000,
     });
   });
 

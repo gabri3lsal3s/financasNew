@@ -381,7 +381,18 @@ export function CardsPage() {
                   ) : undefined
                 }
               />
-              <KpiCard label="Pago" cents={summary?.pagoCents ?? 0} />
+              <KpiCard
+                label="Pago"
+                cents={summary?.pagoCents ?? 0}
+                hint={
+                  summary && summary.estornoCents > 0 ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] truncate">
+                      <span>Estornos:</span>
+                      <MoneyText cents={summary.estornoCents} tone="positive" className="text-[11px] tabular-nums" />
+                    </span>
+                  ) : undefined
+                }
+              />
               <KpiCard
                 label="Saldo aberto (Bruto)"
                 cents={summary?.saldoBrutoCents ?? 0}
@@ -634,6 +645,7 @@ export function CardsPage() {
           onOpenChange={(next) => {
             if (!next) setPaymentMode(null);
           }}
+          openBalanceCents={summary?.saldoBrutoCents ?? 0}
         />
       ) : null}
 

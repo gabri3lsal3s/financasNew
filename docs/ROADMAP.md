@@ -406,7 +406,7 @@
   - `domain/money/parse.ts` — `parseBRLToCents` (formatos pt-BR) + `centsToBRL`
   - `domain/competence/index.ts` — `clampDay`, `resolveBillCompetence` (dia ≥ closing → mês seguinte), overrides mensais, `dueDateOfCompetence` (D3)
   - `domain/debts/index.ts` — status derivado `paid/overdue/due_today/due_soon/pending` (nunca armazenado) + `todayISO`/`addDaysISO`
-  - `domain/cards/index.ts` — `invoiceBalance` (max(0, previsto−pago)) + `invoiceStatus` (closed/open/near_due/overdue)
+  - `domain/cards/index.ts` — `invoiceBalance` (max(0, previsto−pago−estorno)) + `invoiceStatus` (closed/open/near_due/overdue)
   - `domain/reports/index.ts` — `weightedCents`/`weightedSum` (peso 0–1 sobre base_amount)
 - [x] **Entrega 2 — módulos de domínio** (`components/modules`, todos com testes de interação): `CategoryIcon` (+ `category-icons.ts` com o map lucide, arquivo separado para react-refresh), `MonthPicker` (navegação mensal sem select nativo), `TransactionRow` (sinal/cor por tipo, click), `BudgetProgressBar` (percent + excedido), `DebtStatusBadge`, `InvoiceStatusBadge`, `InstallmentBadge` — barrel atualizado
 - [x] **Entregas 3–4 — CRUD de receitas/despesas + listagem por mês + wizard de 4 passos + exclusão 3 modos**:

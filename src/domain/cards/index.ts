@@ -13,9 +13,9 @@ import { addDaysISO, todayISO } from "@/domain/debts";
 import { clampDay } from "@/domain/competence";
 import { APP_START_DATE } from "@/types";
 
-/** Saldo aberto de uma fatura (previsto − pago, nunca negativo). */
-export function invoiceBalance(previstoCents: number, pagoCents: number): number {
-  return Math.max(0, previstoCents - pagoCents);
+/** Saldo aberto de uma fatura (previsto − pago − estorno, nunca negativo). */
+export function invoiceBalance(previstoCents: number, pagoCents: number, estornoCents = 0): number {
+  return Math.max(0, previstoCents - pagoCents - estornoCents);
 }
 
 export type InvoiceStatus = "closed" | "open" | "near_due" | "overdue";
@@ -84,11 +84,11 @@ export interface CompetenceSummary {
   pagoCents: number;
   /** Soma dos estornos (valores absolutos, centavos). */
   estornoCents: number;
-  /** Saldo aberto bruto = max(0, previstoBruto − pago) (centavos). */
+  /** Saldo aberto bruto = max(0, previstoBruto − pago − estorno) (centavos). */
   saldoBrutoCents: number;
-  /** Saldo aberto ponderado = max(0, previstoPonderado − pago) (centavos). */
+  /** Saldo aberto ponderado = max(0, previstoPonderado − pago − estorno) (centavos). */
   saldoPonderadoCents: number;
-  /** Saldo aberto = max(0, previsto − pago) (alias compatível, centavos). */
+  /** Saldo aberto = max(0, previsto − pago − estorno) (alias compatível, centavos). */
   saldoCents: number;
 }
 
@@ -130,9 +130,9 @@ export function buildCompetenceSummaries(
       previstoCents: previstoBruto,
       pagoCents: pago,
       estornoCents: estorno,
-      saldoBrutoCents: invoiceBalance(previstoBruto, pago),
-      saldoPonderadoCents: invoiceBalance(previstoPonderado, pago),
-      saldoCents: invoiceBalance(previstoBruto, pago),
+      saldoBrutoCents: invoiceBalance(previstoBruto, pago, estorno),
+      saldoPonderadoCents: invoiceBalance(previstoPonderado, pago, estorno),
+      saldoCents: invoiceBalance(previstoBruto, pago, estorno),
     });
   }
   return summaries.sort((a, b) => (a.month < b.month ? 1 : -1));

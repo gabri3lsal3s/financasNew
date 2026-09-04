@@ -66,6 +66,7 @@ export interface CalculateCashBalanceParams {
     value: number;
     description?: string | null;
     created_at?: string | null;
+    source_ref?: string | null;
   }[];
   expenses?: readonly {
     id?: string;
@@ -121,6 +122,9 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
   // 1. Receitas (Entradas de Caixa)
   for (const inc of incomes) {
     if (inc.date > referenceDate) continue;
+    // Rendas automáticas de estorno [REFUND] são contrapartidas contábeis;
+    // não devem duplicar no caixa se o estorno já estiver nos pagamentos do cartão.
+    if (inc.source_ref?.startsWith("[REFUND]")) continue;
     const amountCents = numberToCents(inc.value);
     if (amountCents <= 0) continue;
     events.push({

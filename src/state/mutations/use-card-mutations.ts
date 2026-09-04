@@ -78,6 +78,7 @@ export function useCreateRefund() {
       void queryClient.invalidateQueries({ queryKey: incomesKey });
       void queryClient.invalidateQueries({ queryKey: expensesKey });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
       pushToast({ title: "Estorno registrado", variant: "default" });
     },
   });

@@ -80,6 +80,23 @@ describe("Cash Ledger Domain — calculateRealCashBalance & resolveCashFlowEvent
     expect(res.inflowSinceCheckpointCents).toBe(225000);
   });
 
+  it("não duplica entrada de caixa quando renda automática [REFUND] e estorno de cartão coexistem", () => {
+    const res = calculateRealCashBalance({
+      incomes: [
+        { id: "inc-1", date: "2026-08-01", value: 2000 },
+        { id: "inc-refund", date: "2026-08-12", value: 250, source_ref: "[REFUND]refund-1" },
+      ],
+      cardPayments: [
+        { id: "refund-1", date: "2026-08-12", amount: -250, is_refund: true, note: "Estorno compra cancelada" },
+      ],
+      referenceDate: "2026-08-24",
+    });
+
+    // 2000 + 250 (apenas 1 vez, sem duplicidade da renda automática [REFUND]) = 2250
+    expect(res.currentBalanceCents).toBe(225000);
+    expect(res.inflowSinceCheckpointCents).toBe(225000);
+  });
+
   it("processa dívidas pagas e recebidas considerando paid_at", () => {
     const res = calculateRealCashBalance({
       incomes: [{ id: "inc-1", date: "2026-08-01", value: 3000 }],
