@@ -155,10 +155,10 @@ export function OverviewPage() {
   // Resumo de contas e faturas.
   const debts = debtsQuery.data ?? [];
   const receivablePending = debts
-    .filter((d) => d.type === "receivable" && d.paid_at === null && d.due_date >= rangeStart && d.due_date < rangeEnd)
+    .filter((d) => d.type === "receivable" && d.paid_at === null && d.due_date < rangeEnd)
     .reduce((acc, d) => acc + numberToCents(d.amount), 0);
   const payablePending = debts
-    .filter((d) => d.type === "payable" && d.paid_at === null && d.due_date >= rangeStart && d.due_date < rangeEnd)
+    .filter((d) => d.type === "payable" && d.paid_at === null && d.due_date < rangeEnd)
     .reduce((acc, d) => acc + numberToCents(d.amount), 0);
   const openInvoices = openInvoicesTotal(cardExpensesQuery.data ?? [], cardPaymentsQuery.data ?? [], today);
   const accountsBalance = accountsNet(receivablePending, payablePending, openInvoices);
@@ -261,8 +261,8 @@ export function OverviewPage() {
 
   const pace = isCurrentMonth
     ? spendingPace({
-        spentCents: expenseCents,
-        monthlyBudgetCents: Math.max(1, incomeCents),
+        spentCents: grossExpenseCents,
+        monthlyBudgetCents: Math.max(1, grossIncomeCents),
         dayOfMonth,
         daysInMonth,
       })
@@ -271,9 +271,9 @@ export function OverviewPage() {
   const daily = isCurrentMonth
     ? dailyBudget({
         phase: "current",
-        incomesCents: incomeCents,
+        incomesCents: grossIncomeCents,
         investmentsCents: investmentCents,
-        expensesCents: expenseCents,
+        expensesCents: grossExpenseCents,
         dayOfMonth,
         daysInMonth,
       })
@@ -282,9 +282,9 @@ export function OverviewPage() {
   const projection = isCurrentMonth
     ? endOfMonthProjection({
         phase: "current",
-        incomesCents: incomeCents,
+        incomesCents: grossIncomeCents,
         investmentsCents: investmentCents,
-        expensesCents: expenseCents,
+        expensesCents: grossExpenseCents,
         dayOfMonth,
         daysInMonth,
       })
@@ -299,6 +299,8 @@ export function OverviewPage() {
     incomeCents: totals.incomeCents,
     expenseCents: totals.expenseCents,
     openInvoicesCents: realCashData.safeToSpend.committedObligationsCents,
+    contributionsAlreadyMadeCents: totals.investmentCents,
+    safeToSpendCents: realCashData.safeToSpend.safeToSpendCents,
   });
 
   const cashGapResult = analyzeCashGap({
@@ -312,14 +314,17 @@ export function OverviewPage() {
         const cardPayments = (cardPaymentsQuery.data ?? []).filter(
           (p) => p.card_id === card.id && p.competence_month === month,
         );
+        // O valor da fatura do cartão é pago pelo montante BRUTO nominal integral
         const expTotal = cardExpenses.reduce(
-          (acc, e) => acc + Math.round(e.value * 100 * (e.report_weight ?? 1)),
+          (acc, e) => acc + Math.round(e.value * 100),
           0,
         );
         const payTotal = cardPayments.reduce((acc, p) => acc + Math.round(p.amount * 100), 0);
         const balance = Math.max(0, expTotal - payTotal);
         if (balance <= 0) return [];
-        const dueDate = invoiceDueDate(month, card.due_day);
+        const nominalDueDate = invoiceDueDate(month, card.due_day);
+        // Fatura vencida em aberto no mês tem exigibilidade imediata (today)
+        const dueDate = nominalDueDate < today ? today : nominalDueDate;
         return [
           {
             id: `invoice-${card.id}-${month}`,
@@ -331,11 +336,11 @@ export function OverviewPage() {
         ];
       }),
       ...(debtsQuery.data ?? [])
-        .filter((d) => d.type === "payable" && !d.paid_at && d.due_date && d.due_date >= today)
+        .filter((d) => d.type === "payable" && !d.paid_at && d.due_date && d.due_date < rangeEnd)
         .map((d) => ({
           id: `debt-${d.id}`,
           name: d.name,
-          dueDate: d.due_date,
+          dueDate: d.due_date < today ? today : d.due_date,
           amountCents: numberToCents(d.amount),
           kind: "debt" as const,
         })),
@@ -355,7 +360,7 @@ export function OverviewPage() {
           id: `income-${i.id}`,
           name: "Renda prevista",
           expectedDate: i.date,
-          amountCents: Math.round(i.value * 100 * (i.report_weight ?? 1)),
+          amountCents: Math.round(i.value * 100),
         })),
     ],
   });
