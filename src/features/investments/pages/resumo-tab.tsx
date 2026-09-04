@@ -818,30 +818,30 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </p>
           </div>
 
-          {/* Dica do Aporte Histórico */}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-2.5 min-w-0">
-              <Info className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-              <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-muted-foreground min-w-0">
-                <span className="font-semibold text-foreground">Dica sobre o Capital Investido Anterior ao App</span>
-                <p>
-                  Se você investia antes de começar a usar o aplicativo e deseja que a TIR reflita seu gasto real acumulado, registre o Marco Zero do seu bolso. Ele atuará como o ponto de partida do seu dinheiro sem inflar o preço médio das ações que você tem hoje.
-                </p>
+            {/* Dica do Aporte Histórico */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <Info className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-muted-foreground min-w-0">
+                  <span className="font-semibold text-foreground">Dica sobre o Capital Investido Anterior ao App</span>
+                  <p>
+                    Se você investia antes de começar a usar o aplicativo e deseja que a TIR reflita seu gasto real acumulado, registre os Marcos Históricos do seu bolso. Você pode cadastrar múltiplos aportes passados (início da carteira, aportes em massa e acumulados) para calibrar a taxa anualizada com máxima precisão.
+                  </p>
+                </div>
               </div>
+              <Button
+                type="button"
+                variant={position.hasMarcoZeroContribution ? "outline" : "default"}
+                size="sm"
+                onClick={() => {
+                  setExplainModalOpen(false);
+                  setInitialCostDialogOpen(true);
+                }}
+                className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
+              >
+                <span>{position.hasMarcoZeroContribution ? "Gerenciar Marcos Históricos" : "Cadastrar Marcos Históricos"}</span>
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant={position.hasMarcoZeroContribution ? "outline" : "default"}
-              size="sm"
-              onClick={() => {
-                setExplainModalOpen(false);
-                setInitialCostDialogOpen(true);
-              }}
-              className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
-            >
-              <span>{position.hasMarcoZeroContribution ? "Recalibrar Marco Zero" : "Definir Marco Zero"}</span>
-            </Button>
-          </div>
         </div>
       </Modal>
 

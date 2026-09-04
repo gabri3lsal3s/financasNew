@@ -98,6 +98,7 @@ export {
   useCreatePortfolioContribution,
   useDeletePortfolioContribution,
   useUpsertMarcoZero,
+  useCreateHistoricalContribution,
   useCreatePortfolioDividend,
   useDeletePortfolioDividend,
   useRecordOrder,

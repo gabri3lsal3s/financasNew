@@ -204,6 +204,8 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateHistoricalContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpsertMarcoZero: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAllPortfolioTransactions: () => ({
     data: portfolioTransactionsMock(),

@@ -7,6 +7,7 @@ import {
   createPortfolioTransaction,
   createPortfolioTransactionsBatch,
   deletePortfolioAsset,
+  createHistoricalContribution,
   deletePortfolioContribution,
   deletePortfolioContributionsMatching,
   deletePortfolioDividend,
@@ -397,6 +398,37 @@ export function useUpsertMarcoZero() {
     },
   });
 }
+
+/**
+ * Registra um novo Marco Histórico do Bolso na linha do tempo de aportes.
+ * Valida a operação e invalida as queries de aportes e snapshots para recálculo imediato da TIR.
+ */
+export function useCreateHistoricalContribution() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { date: string; amount: number; notes?: string }) =>
+      createHistoricalContribution(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      pushToast({
+        title: "Marco Histórico adicionado!",
+        description: "A Linha do Tempo e a TIR da carteira foram atualizadas.",
+        variant: "success",
+      });
+      triggerSensory("success");
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao adicionar marco histórico",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+      triggerSensory("destructive");
+    },
+  });
+}
+
 
 export type DeletePortfolioContributionInput =
   | string

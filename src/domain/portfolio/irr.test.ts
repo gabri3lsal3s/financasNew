@@ -225,4 +225,29 @@ describe("calculateNetInjectedCapital & calculateNetPocketGain", () => {
     const pocketGain = calculateNetPocketGain(currentPortfolio, netCapital);
     expect(pocketGain).toBe(2800); // 15.800 - 13.000 = +2.800 de ganho do bolso
   });
+
+  it("calcula taxa anualizada superior para múltiplos marcos de aporte com concentração no final", () => {
+    // Cenário: R$ 96.727,38 aportados ao todo, valor final R$ 107.817,25 em 04/09/2026
+    // Caso 1: Aporte único em 26/02/2024 (921 dias) -> taxa diluída ~4.4% a.a.
+    const flowsSingle: CashFlow[] = [
+      { date: "2024-02-26", amount: -96727.38 },
+      { date: "2026-09-04", amount: 107817.25 },
+    ];
+    const resSingle = calculateXIRR(flowsSingle);
+    expect(resSingle.annualizedRatePct).toBeCloseTo(4.4, 1);
+
+    // Caso 2: Múltiplos marcos (20k no início, 55k em dez/2024 e 21.7k em jun/2025)
+    // Como a maior parte do capital teve menos tempo de maturação, a TIR anualizada real é ~6.5% a.a.
+    const flowsMultiple: CashFlow[] = [
+      { date: "2024-02-26", amount: -20000 },
+      { date: "2024-12-15", amount: -55000 },
+      { date: "2025-06-20", amount: -21727.38 },
+      { date: "2026-09-04", amount: 107817.25 },
+    ];
+    const resMultiple = calculateXIRR(flowsMultiple);
+    expect(resMultiple.status).toBe("ok");
+    expect(resMultiple.annualizedRatePct).toBeGreaterThan(6.0);
+    expect(resMultiple.annualizedRatePct).toBeLessThan(7.5);
+  });
 });
+

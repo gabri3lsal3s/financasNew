@@ -83,6 +83,7 @@ export {
   useCreatePortfolioContribution,
   useDeletePortfolioContribution,
   useUpsertMarcoZero,
+  useCreateHistoricalContribution,
   usePortfolioDividends,
   useCreatePortfolioDividend,
   useDeletePortfolioDividend,

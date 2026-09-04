@@ -9,7 +9,8 @@ vi.mock("@/state", async (importOriginal) => {
   return {
     ...actual,
     usePortfolioContributions: vi.fn(),
-    useUpsertMarcoZero: vi.fn(),
+    useCreateHistoricalContribution: vi.fn(),
+    useDeletePortfolioContribution: vi.fn(),
   };
 });
 
@@ -21,9 +22,10 @@ vi.mock("@/services/sensory", () => ({
   triggerSensory: vi.fn(),
 }));
 
-describe("InitialPocketCostDialog", () => {
+describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () => {
   let queryClient: QueryClient;
-  const mockUpsertMutateAsync = vi.fn();
+  const mockCreateMutateAsync = vi.fn();
+  const mockDeleteMutateAsync = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -31,13 +33,18 @@ describe("InitialPocketCostDialog", () => {
       defaultOptions: { queries: { retry: false } },
     });
 
-    vi.mocked(stateModule.useUpsertMarcoZero).mockReturnValue({
-      mutateAsync: mockUpsertMutateAsync.mockResolvedValue({}),
+    vi.mocked(stateModule.useCreateHistoricalContribution).mockReturnValue({
+      mutateAsync: mockCreateMutateAsync.mockResolvedValue({}),
       isPending: false,
-    } as unknown as ReturnType<typeof stateModule.useUpsertMarcoZero>);
+    } as unknown as ReturnType<typeof stateModule.useCreateHistoricalContribution>);
+
+    vi.mocked(stateModule.useDeletePortfolioContribution).mockReturnValue({
+      mutateAsync: mockDeleteMutateAsync.mockResolvedValue({}),
+      isPending: false,
+    } as unknown as ReturnType<typeof stateModule.useDeletePortfolioContribution>);
   });
 
-  it("renderiza no modo de definição quando não há marco zero prévio", () => {
+  it("renderiza o diálogo com estado vazio quando não há marcos cadastrados", () => {
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [],
       isLoading: false,
@@ -49,53 +56,91 @@ describe("InitialPocketCostDialog", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByText("Definir Marco Zero do Bolso")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Salvar Marco Zero/i })).toBeInTheDocument();
+    expect(screen.getByText("Linha do Tempo de Aportes Históricos")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum marco cadastrado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Adicionar Marco/i })).toBeInTheDocument();
   });
 
-  it("carrega valor e data reais salvos e salva via RPC atômico sem duplicar registros", async () => {
+  it("exibe marcos existentes, calcula soma consolidada e permite excluir um marco", async () => {
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [
         {
-          id: "contribution-marco-zero-123",
+          id: "marco-1",
           asset_id: null,
-          date: "2023-10-17",
-          amount: 15418.78,
-          notes: "Marco Zero do Bolso · Custo Histórico Inicial",
+          date: "2024-02-26",
+          amount: 20000,
+          notes: "Marco Histórico · Início da Carteira",
           user_id: "user-1",
-          created_at: "2023-10-17T00:00:00Z",
+          created_at: "2024-02-26T00:00:00Z",
+        },
+        {
+          id: "marco-2",
+          asset_id: null,
+          date: "2024-12-15",
+          amount: 55000,
+          notes: "Marco Histórico · Aporte em massa",
+          user_id: "user-1",
+          created_at: "2024-12-15T00:00:00Z",
         },
       ],
       isLoading: false,
     } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
 
     const onOpenChange = vi.fn();
-    const onSuccess = vi.fn();
 
     render(
       <QueryClientProvider client={queryClient}>
         <InitialPocketCostDialog
           open={true}
           onOpenChange={onOpenChange}
-          defaultCostBRL={17176.03}
+          defaultCostBRL={75000}
+        />
+      </QueryClientProvider>,
+    );
+
+    // Deve exibir badge de 2 marcos históricos
+    expect(screen.getByText("2 marcos históricos")).toBeInTheDocument();
+    expect(screen.getAllByText("26/02/2024").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("15/12/2024")).toBeInTheDocument();
+
+    // Clica no botão de excluir o primeiro marco
+    const deleteButtons = screen.getAllByRole("button", { name: /Excluir marco/i });
+    expect(deleteButtons.length).toBe(2);
+
+    fireEvent.click(deleteButtons[0]!);
+
+    await waitFor(() => {
+      expect(mockDeleteMutateAsync).toHaveBeenCalledWith("marco-2"); // Ordenado por data desc
+    });
+  });
+
+  it("permite adicionar um novo marco histórico", async () => {
+    vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
+
+    const onSuccess = vi.fn();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <InitialPocketCostDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          defaultCostBRL={20000}
           onSuccess={onSuccess}
         />
       </QueryClientProvider>,
     );
 
-    // O título deve indicar recalibração e pré-carregar o valor salvo (não o defaultCostBRL)
-    expect(screen.getByText("Recalibrar Marco Zero do Bolso")).toBeInTheDocument();
-    const saveButton = screen.getByRole("button", { name: /Salvar Recalibração/i });
-    expect(saveButton).toBeInTheDocument();
-
-    fireEvent.click(saveButton);
+    const submitBtn = screen.getByRole("button", { name: /Adicionar Marco/i });
+    fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      // Deve usar o RPC atômico (upsertMarcoZero) com os valores salvos
-      expect(mockUpsertMutateAsync).toHaveBeenCalledWith(
+      expect(mockCreateMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          amount: 15418.78,
-          date: "2023-10-17",
+          amount: 20000,
+          date: "2024-02-26",
         }),
       );
       expect(onSuccess).toHaveBeenCalled();

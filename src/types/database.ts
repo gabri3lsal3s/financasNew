@@ -488,6 +488,14 @@ export interface Database {
         };
         Returns: PortfolioContribution;
       };
+      create_historical_contribution: {
+        Args: {
+          p_date: string;
+          p_amount: number;
+          p_notes?: string;
+        };
+        Returns: PortfolioContribution;
+      };
     };
   };
 }

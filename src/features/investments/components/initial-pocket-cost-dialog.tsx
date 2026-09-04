@@ -1,15 +1,18 @@
 import { useState, useMemo } from "react";
-import { Landmark, Sparkles } from "lucide-react";
-import { Button, Input, Modal, MoneyInput } from "@/components/ui";
+import { Calendar, History, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Badge, Button, EmptyState, Input, Modal, MoneyInput } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
+import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
   usePortfolioContributions,
-  useUpsertMarcoZero,
+  useCreateHistoricalContribution,
+  useDeletePortfolioContribution,
 } from "@/state";
+import type { PortfolioContribution } from "@/types";
 
 export interface InitialPocketCostDialogProps {
   open: boolean;
@@ -19,173 +22,11 @@ export interface InitialPocketCostDialogProps {
 }
 
 /**
- * Diálogo para Registro e Recalibração do "Marco Zero do Bolso" (Custo Histórico Inicial).
- * Usa o RPC atômico `upsert_marco_zero` para garantir no servidor que existe no máximo
- * 1 Marco Zero por usuário, eliminando duplicatas e distorções na TIR (XIRR).
+ * Diálogo da "Linha do Tempo de Aportes Históricos do Bolso".
+ * Permite ao investidor registrar múltiplos marcos de desembolso anteriores ao uso do app
+ * (ex.: início da carteira, grandes aportes, aportes semestrais consolidados),
+ * garantindo precisão temporal cirúrgica no cálculo da TIR (XIRR).
  */
-interface InitialPocketCostFormProps {
-  defaultCostBRL: number;
-  initialAmountBRL?: number;
-  initialDate?: string;
-  initialNotes?: string;
-  isRecalibration: boolean;
-  onCancel: () => void;
-  onSuccess?: () => void;
-}
-
-function InitialPocketCostForm({
-  defaultCostBRL,
-  initialAmountBRL,
-  initialDate,
-  initialNotes,
-  isRecalibration,
-  onCancel,
-  onSuccess,
-}: InitialPocketCostFormProps) {
-  const upsertMarcoZero = useUpsertMarcoZero();
-
-  const [costCents, setCostCents] = useState<number>(() => {
-    if (initialAmountBRL !== undefined && initialAmountBRL > 0) {
-      return numberToCents(initialAmountBRL);
-    }
-    return defaultCostBRL > 0 ? numberToCents(defaultCostBRL) : 0;
-  });
-
-  const [date, setDate] = useState<string>(() => initialDate || "2023-10-17");
-  const [notes, setNotes] = useState<string>(
-    () => initialNotes || "Marco Zero do Bolso · Custo Histórico Inicial",
-  );
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (costCents <= 0) {
-      setError("Informe um valor maior que zero para o custo histórico do bolso.");
-      return;
-    }
-
-    setError(null);
-    try {
-      // RPC atômico: remove TODOS os marcos zeros anteriores do usuário e insere o novo
-      // em uma única transação no servidor. Garante unicidade independente de duplicatas.
-      await upsertMarcoZero.mutateAsync({
-        date,
-        amount: costCents / 100,
-        notes: notes.trim() || "Marco Zero do Bolso · Custo Histórico Inicial",
-      });
-
-      triggerSensory("success");
-      pushToast({
-        title: isRecalibration ? "Marco Zero recalibrado!" : "Marco Zero do Bolso registrado!",
-        description:
-          "A TIR da carteira agora reflete com precisão o retorno sobre o seu capital histórico desembolsado.",
-      });
-
-      onSuccess?.();
-    } catch (err) {
-      setError(getErrorMessage(err));
-      triggerSensory("error");
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2 text-xs">
-      {error ? (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs font-medium">
-          {error}
-        </div>
-      ) : null}
-
-      {/* Card Didático */}
-      <div className="rounded-xl border border-portfolio/30 bg-portfolio/5 p-3 flex items-start gap-2.5">
-        <Sparkles className="size-4 text-portfolio shrink-0 mt-0.5" aria-hidden="true" />
-        <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">Como o Marco Zero calibra sua TIR?</span>
-          <p>
-            1. <strong>Capital do Bolso:</strong> É a soma do dinheiro real que você transferiu da conta para a corretora (não altera o preço médio das suas ações de hoje nem apurações de IR).
-          </p>
-          <p>
-            2. <strong>Data Base Histórica:</strong> A TIR pondera o retorno pelo tempo decorrido. Se você começou em 2023 ou antes, selecione a <strong>data em que iniciou seus investimentos</strong> para que a taxa anualizada (a.a.) calcule os anos reais da sua jornada, evitando taxas artificiais.
-          </p>
-        </div>
-      </div>
-
-      {/* Campo de Valor */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">
-          Capital Total que Saiu do Bolso (R$) <span className="text-destructive">*</span>
-        </label>
-        <MoneyInput
-          cents={costCents}
-          onCentsChange={setCostCents}
-          size="md"
-          placeholder="R$ 0,00"
-        />
-        <span className="text-[11px] text-muted-foreground">
-          Soma de todos os aportes líquidos que você transferiu da conta corrente para a corretora.
-        </span>
-      </div>
-
-      {/* Campo de Data */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">
-          Data em que Começou a Investir <span className="text-destructive">*</span>
-        </label>
-        <DatePicker
-          value={date}
-          onValueChange={(d) => {
-            if (d) setDate(d);
-          }}
-          placeholder="Selecione quando começou a investir (ex: 2023)"
-        />
-        <span className="text-[11px] text-muted-foreground">
-          Data do seu primeiro aporte ou início da jornada (datas de 2023, 2024 ou anteriores são aceitas).
-        </span>
-      </div>
-
-      {/* Campo de Observação */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">
-          Identificação / Descrição <span className="text-muted-foreground font-normal">(opcional)</span>
-        </label>
-        <Input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Ex: Marco Zero do Bolso · Custo Histórico Inicial"
-        />
-      </div>
-
-      {/* Rodapé Canônico */}
-      <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-border/60 mt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={upsertMarcoZero.isPending}
-          className="w-full sm:w-auto"
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          variant="default"
-          disabled={upsertMarcoZero.isPending || costCents <= 0}
-          className="w-full sm:w-auto gap-1.5"
-        >
-          <Landmark className="size-4" aria-hidden="true" />
-          <span>
-            {upsertMarcoZero.isPending
-              ? "Salvando..."
-              : isRecalibration
-                ? "Salvar Recalibração"
-                : "Salvar Marco Zero"}
-          </span>
-        </Button>
-      </div>
-    </form>
-  );
-}
-
 export function InitialPocketCostDialog({
   open,
   onOpenChange,
@@ -193,49 +34,293 @@ export function InitialPocketCostDialog({
   onSuccess,
 }: InitialPocketCostDialogProps) {
   const contributionsQuery = usePortfolioContributions();
+  const createHistorical = useCreateHistoricalContribution();
+  const deleteContribution = useDeletePortfolioContribution();
 
-  // Localiza o Marco Zero mais recente entre eventuais duplicatas residuais.
-  // Após o primeiro save via RPC upsert_marco_zero, nunca haverá mais de 1 registro.
-  const existingMarcoZero = useMemo(() => {
+  // Filtra todos os marcos históricos e marcos zeros pertencentes ao bolso
+  const historicalContributions = useMemo(() => {
     const list = contributionsQuery.data ?? [];
-    const marcos = list.filter((c) => {
-      const n = (c.notes ?? "").toLowerCase();
-      return (
-        n.includes("marco zero") ||
-        n.includes("custo inicial") ||
-        n.includes("histórico inicial")
-      );
-    });
-    return marcos.length > 0
-      ? marcos.reduce((latest, c) =>
-          (c.created_at ?? "") > (latest.created_at ?? "") ? c : latest,
-        )
-      : undefined;
+    return list
+      .filter((c) => {
+        if (c.asset_id !== null) return false;
+        const n = (c.notes ?? "").toLowerCase();
+        return (
+          n.includes("marco zero") ||
+          n.includes("marco histórico") ||
+          n.includes("custo inicial") ||
+          n.includes("histórico inicial") ||
+          n.includes("aporte histórico")
+        );
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [contributionsQuery.data]);
+
+  // Total acumulado de todos os marcos históricos em reais
+  const totalHistoricalBRL = useMemo(() => {
+    return historicalContributions.reduce((acc, c) => acc + Number(c.amount), 0);
+  }, [historicalContributions]);
+
+  // Formulário para adicionar um novo marco
+  const [newAmountCents, setNewAmountCents] = useState<number>(() => {
+    // Se não houver nenhum marco e houver um defaultCostBRL, sugere como ponto de partida
+    return historicalContributions.length === 0 && defaultCostBRL > 0
+      ? numberToCents(defaultCostBRL)
+      : 0;
+  });
+  const [newDate, setNewDate] = useState<string>("2024-02-26");
+  const [newNotes, setNewNotes] = useState<string>("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleAddMarco = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newAmountCents <= 0) {
+      setFormError("Informe um valor maior que zero para o marco histórico.");
+      return;
+    }
+    if (!newDate) {
+      setFormError("Selecione a data do aporte histórico.");
+      return;
+    }
+
+    setFormError(null);
+    try {
+      const defaultLabel =
+        historicalContributions.length === 0
+          ? "Marco Histórico · Início da Carteira"
+          : "Marco Histórico do Bolso";
+
+      await createHistorical.mutateAsync({
+        date: newDate,
+        amount: newAmountCents / 100,
+        notes: newNotes.trim() || defaultLabel,
+      });
+
+      // Limpa os campos do formulário para o próximo aporte
+      setNewAmountCents(0);
+      setNewNotes("");
+      triggerSensory("success");
+      onSuccess?.();
+    } catch (err) {
+      setFormError(getErrorMessage(err));
+      triggerSensory("error");
+    }
+  };
+
+  const handleDeleteMarco = async (contribution: PortfolioContribution) => {
+    setDeletingId(contribution.id);
+    try {
+      await deleteContribution.mutateAsync(contribution.id);
+      triggerSensory("destructive");
+      pushToast({
+        title: "Marco histórico removido",
+        description: "A linha do tempo da TIR foi recalculada.",
+        variant: "default",
+      });
+      onSuccess?.();
+    } catch (err) {
+      pushToast({
+        title: "Erro ao excluir marco",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatDatePT = (isoDate: string) => {
+    const parts = isoDate.split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return isoDate;
+  };
 
   return (
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title={existingMarcoZero ? "Recalibrar Marco Zero do Bolso" : "Definir Marco Zero do Bolso"}
-      description="Informe o valor total que saiu da sua conta bancária para os investimentos até o início do uso do app. Isso calibra sua TIR com seu gasto real."
-      size="md"
+      title="Linha do Tempo de Aportes Históricos"
+      description="Registre as saídas reais do seu bolso anteriores ao app. Você pode cadastrar múltiplos marcos (início, aportes em massa ou consolidados) para máxima precisão da TIR."
+      size="lg"
     >
-      {open ? (
-        <InitialPocketCostForm
-          key={`${existingMarcoZero?.id ?? "new"}-${existingMarcoZero?.amount ?? defaultCostBRL}`}
-          defaultCostBRL={defaultCostBRL}
-          initialAmountBRL={existingMarcoZero?.amount}
-          initialDate={existingMarcoZero?.date}
-          initialNotes={existingMarcoZero?.notes ?? undefined}
-          isRecalibration={Boolean(existingMarcoZero)}
-          onCancel={() => onOpenChange(false)}
-          onSuccess={() => {
-            onOpenChange(false);
-            onSuccess?.();
-          }}
-        />
-      ) : null}
+      <div className="flex flex-col gap-4 text-xs mt-1">
+        {/* Card Resumo Consolidado */}
+        <div className="rounded-xl border border-border/80 bg-surface/80 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-portfolio/10 text-portfolio">
+              <History className="size-5" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-muted-foreground text-[11px] font-medium">
+                Total do Bolso Registrado no Passado
+              </span>
+              <span className="text-base sm:text-lg font-bold font-mono text-foreground tracking-tight tabular-nums">
+                <MoneyText cents={numberToCents(totalHistoricalBRL)} />
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <Badge variant="portfolio" size="sm">
+              {historicalContributions.length === 1
+                ? "1 marco histórico"
+                : `${historicalContributions.length} marcos históricos`}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Card Didático */}
+        <div className="rounded-xl border border-portfolio/20 bg-portfolio/5 p-3 flex items-start gap-2.5">
+          <Sparkles className="size-4 text-portfolio shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground">Como múltiplos marcos refinam sua TIR?</span>
+            <p>
+              A TIR (XIRR) pondera cada real pelo tempo em que esteve investido. Se você começou com um valor menor e fez uma entrada pesada mais tarde (ex.: R$ 50 mil no fim de 2024), cadastrá-los em marcos separados com suas datas reais impede que a taxa anualizada seja diluída indevidamente.
+            </p>
+          </div>
+        </div>
+
+        {/* Formulário: Adicionar Novo Marco */}
+        <form
+          onSubmit={handleAddMarco}
+          className="rounded-xl border border-border/80 bg-surface/50 p-3.5 flex flex-col gap-3"
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-foreground text-xs">
+              Adicionar Novo Marco de Aporte
+            </span>
+            {formError ? <span className="text-destructive text-[11px]">{formError}</span> : null}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            {/* Campo Data */}
+            <div className="sm:col-span-4 flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-foreground">
+                Data do Aporte <span className="text-destructive">*</span>
+              </label>
+              <DatePicker
+                value={newDate}
+                onValueChange={(d) => {
+                  if (d) setNewDate(d);
+                }}
+                placeholder="Data do aporte"
+              />
+            </div>
+
+            {/* Campo Valor */}
+            <div className="sm:col-span-4 flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-foreground">
+                Valor Desembolsado <span className="text-destructive">*</span>
+              </label>
+              <MoneyInput
+                cents={newAmountCents}
+                onCentsChange={setNewAmountCents}
+                size="md"
+                placeholder="R$ 0,00"
+              />
+            </div>
+
+            {/* Campo Descrição */}
+            <div className="sm:col-span-4 flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-foreground">
+                Descrição <span className="text-muted-foreground font-normal">(opcional)</span>
+              </label>
+              <Input
+                value={newNotes}
+                onChange={(e) => setNewNotes(e.target.value)}
+                placeholder="Ex: Aporte em massa de 2024"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <Button
+              type="submit"
+              variant="default"
+              size="sm"
+              disabled={createHistorical.isPending || newAmountCents <= 0}
+              className="gap-1.5 w-full sm:w-auto"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              <span>{createHistorical.isPending ? "Adicionando..." : "Adicionar Marco"}</span>
+            </Button>
+          </div>
+        </form>
+
+        {/* Lista de Marcos Cadastrados */}
+        <div className="flex flex-col gap-2">
+          <span className="font-semibold text-foreground text-xs">
+            Marcos Registrados ({historicalContributions.length})
+          </span>
+
+          {historicalContributions.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border p-6 text-center">
+              <EmptyState
+                title="Nenhum marco cadastrado"
+                description="Cadastre o seu primeiro marco acima para que a TIR comece a calcular o retorno sobre o capital real do seu bolso."
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
+              {historicalContributions.map((marco) => (
+                <div
+                  key={marco.id}
+                  className="rounded-lg border border-border/70 bg-surface/70 px-3 py-2 flex items-center justify-between gap-2.5 transition-colors hover:bg-surface-hover/50"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Calendar className="size-3.5" aria-hidden="true" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-medium text-foreground text-xs">
+                          {formatDatePT(marco.date)}
+                        </span>
+                        <Badge variant="muted" size="xs">
+                          Histórico
+                        </Badge>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground truncate">
+                        {marco.notes || "Marco Histórico do Bolso"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono font-semibold text-xs text-foreground tabular-nums">
+                      <MoneyText cents={numberToCents(Number(marco.amount))} />
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteMarco(marco)}
+                      disabled={deletingId === marco.id}
+                      aria-label={`Excluir marco de ${formatDatePT(marco.date)}`}
+                      className="size-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Rodapé Canônico */}
+        <div className="flex items-center justify-end pt-3 border-t border-border/60">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
+          >
+            Concluir
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }

@@ -238,6 +238,33 @@ export async function upsertMarcoZero(params: {
   return mapContribution(data as unknown as PortfolioContribution);
 }
 
+/**
+ * Criação segura de Aporte Histórico do Bolso via RPC.
+ * Registra o aporte financeiro histórico com validação de invariantes e vinculação
+ * segura ao usuário autenticado (auth.uid()).
+ */
+export async function createHistoricalContribution(params: {
+  date: string;
+  amount: number;
+  notes?: string;
+}): Promise<PortfolioContribution> {
+  const { data, error } = await resolveQuery<PortfolioContribution>(
+    getSupabase().rpc("create_historical_contribution", {
+      p_date: params.date,
+      p_amount: params.amount,
+      p_notes: params.notes ?? "Marco Histórico do Bolso",
+    }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao criar aporte histórico.", null);
+  }
+  return mapContribution(data as unknown as PortfolioContribution);
+}
+
 
 // ---------------------------------------------------------------------------
 // Proventos Recebidos

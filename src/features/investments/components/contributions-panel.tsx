@@ -83,12 +83,12 @@ export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
             <Sparkles className="size-5 text-portfolio shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex flex-col gap-0.5 min-w-0">
               <span className="text-xs font-semibold text-foreground">
-                {hasMarcoZero ? "Marco Zero do Bolso Configurado" : "Definir Marco Zero do Bolso"}
+                {hasMarcoZero ? "Marcos Históricos do Bolso Configurados" : "Linha do Tempo de Aportes Históricos"}
               </span>
               <span className="text-[11px] text-muted-foreground leading-relaxed">
                 {hasMarcoZero
-                  ? "Seu ponto de partida histórico já está calibrado na TIR. Clique se desejar recalibrar ou lançar um ajuste inicial do bolso."
-                  : "Informe o custo histórico total que saiu da sua conta antes de usar o app para calibrar sua TIR com seu gasto real."}
+                  ? "Seus aportes anteriores ao app estão calibrados na TIR. Clique para visualizar a linha do tempo, adicionar novos marcos ou ajustar valores."
+                  : "Informe os aportes passados que saíram da sua conta antes de usar o app para calibrar sua TIR com precisão cirúrgica."}
               </span>
             </div>
           </div>
@@ -100,7 +100,7 @@ export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
             className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
           >
             <Sparkles className="size-3.5" aria-hidden="true" />
-            <span>{hasMarcoZero ? "Recalibrar Marco Zero" : "Configurar Marco Zero"}</span>
+            <span>{hasMarcoZero ? "Gerenciar Marcos Históricos" : "Configurar Marcos"}</span>
           </Button>
         </div>
 
