@@ -11,7 +11,9 @@ import { cn } from "@/lib/utils";
 export interface DatePickerProps {
   /** Data selecionada (ISO yyyy-MM-dd) ou vazia. */
   value: string;
-  onValueChange: (value: string) => void;
+  onValueChange?: (value: string) => void;
+  /** Alias retrocompatível para onValueChange */
+  onChange?: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   ariaLabel?: string;
@@ -112,6 +114,7 @@ function ThemedDayButton({ modifiers, className, ...props }: DayButtonProps) {
 export function DatePicker({
   value,
   onValueChange,
+  onChange,
   placeholder = "Selecione a data",
   disabled,
   ariaLabel,
@@ -121,6 +124,14 @@ export function DatePicker({
   const [viewMode, setViewMode] = useState<ViewMode>("days");
   const selected = toDate(value);
   const [displayedMonth, setDisplayedMonth] = useState<Date>(() => selected ?? new Date());
+
+  const emitChange = (val: string) => {
+    if (onValueChange) {
+      onValueChange(val);
+    } else if (onChange) {
+      onChange(val);
+    }
+  };
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -159,14 +170,14 @@ export function DatePicker({
 
   const handleSelectDay = (date: Date | undefined) => {
     if (date) {
-      onValueChange(toISO(date));
+      emitChange(toISO(date));
       triggerSensory("selection");
       setOpen(false);
     }
   };
 
   const handleShortcut = (dateIso: string) => {
-    onValueChange(dateIso);
+    emitChange(dateIso);
     triggerSensory("selection");
     setOpen(false);
   };
@@ -372,7 +383,7 @@ export function DatePicker({
               aria-label="Limpar data"
               onClick={(event) => {
                 event.stopPropagation();
-                onValueChange("");
+                emitChange("");
                 triggerSensory("selection");
               }}
               className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:text-foreground cursor-pointer"

@@ -85,6 +85,9 @@ export interface ExcelWorkbookData {
     totalInvestedCostBRL: number;
     unrealizedPnlBRL: number;
     unrealizedPnlPct: number;
+    totalReturnPct?: number | null;
+    portfolioIrrPct?: number | null;
+    allTimeEconomicPnlBRL?: number;
     cashBalanceBRL: number;
     yearDividendsBRL: number;
     freedomPct: number;
@@ -213,9 +216,19 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(data.summary.unrealizedPnlBRL)}</Data></Cell>
    </Row>
    <Row>
-    <Cell ss:StyleID="TextBold"><Data ss:Type="String">Rentabilidade da Carteira (%)</Data></Cell>
-    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(data.summary.unrealizedPnlPct / 100).toFixed(4)}</Data></Cell>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">Retorno Contábil da Custódia Viva (%)</Data></Cell>
+    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${((data.summary.totalReturnPct ?? data.summary.unrealizedPnlPct) / 100).toFixed(4)}</Data></Cell>
    </Row>
+   ${data.summary.portfolioIrrPct !== undefined && data.summary.portfolioIrrPct !== null ? `
+   <Row>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">TIR / Fluxo do Bolso (% a.a.)</Data></Cell>
+    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(data.summary.portfolioIrrPct / 100).toFixed(4)}</Data></Cell>
+   </Row>` : ""}
+   ${data.summary.allTimeEconomicPnlBRL !== undefined ? `
+   <Row>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">Resultado Econômico Histórico (P&amp;L em R$)</Data></Cell>
+    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(data.summary.allTimeEconomicPnlBRL)}</Data></Cell>
+   </Row>` : ""}
    <Row>
     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Saldo Disponível em Caixa</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(data.summary.cashBalanceBRL)}</Data></Cell>

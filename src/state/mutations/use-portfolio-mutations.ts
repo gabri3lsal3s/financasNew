@@ -16,7 +16,9 @@ import {
   listPortfolioTransactions,
   updatePortfolioAsset,
   updatePortfolioTransaction,
+  upsertMarcoZero,
 } from "@/data/repositories/portfolio";
+
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { calculateReconciledAssetPosition, sellAssetPosition } from "@/domain/portfolio/operations";
 import { calculateFixedIncomeBalance } from "@/domain/portfolio/fixed-income";
@@ -363,6 +365,31 @@ export function useCreatePortfolioContribution() {
     onError: (err) => {
       pushToast({
         title: "Erro ao registrar aporte",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+      triggerSensory("destructive");
+    },
+  });
+}
+
+/**
+ * Upsert atômico do Marco Zero do Bolso.
+ * Usa o RPC `upsert_marco_zero` para garantir unicidade no servidor:
+ * remove todos os marcos zeros anteriores do usuário e insere o novo em uma única transação.
+ */
+export function useUpsertMarcoZero() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { date: string; amount: number; notes?: string }) =>
+      upsertMarcoZero(params),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao salvar Marco Zero",
         description: getErrorMessage(err),
         variant: "destructive",
       });

@@ -99,7 +99,7 @@ describe("calculatePortfolioTotalReturn — Retorno Total consolidado da carteir
     expect(res.totalReturnPct).toBe(20); // 600 / 3000 = 20%
   });
 
-  it("incorpora lucro realizado de posições encerradas no Retorno Total", () => {
+  it("consolida a custódia aberta no totalReturnPct e acumula o histórico no allTimeEconomicPnl", () => {
     const res = calculatePortfolioTotalReturn([
       { valueBRL: 10000, totalCostBRL: 8000, dividends: 500, isCash: false },
       // Posição encerrada (CDB resgatado com lucro realizado de R$ 106,04)
@@ -109,7 +109,7 @@ describe("calculatePortfolioTotalReturn — Retorno Total consolidado da carteir
         quantity: 0,
         historicalCostBRL: 1236.27,
         historicalRedeemedBRL: 1342.31,
-        dividends: 0,
+        dividends: 50,
         isCash: false,
       },
     ]);
@@ -117,10 +117,15 @@ describe("calculatePortfolioTotalReturn — Retorno Total consolidado da carteir
     expect(res.totalValueBRL).toBe(10000);
     expect(res.totalCostBRL).toBe(8000);
     expect(res.capitalGainPnl).toBe(2000); // 10000 - 8000
+    expect(res.activeDividendsBRL).toBe(500);
+    expect(res.closedDividendsBRL).toBe(50);
+    expect(res.totalDividendsBRL).toBe(550);
     expect(res.realizedPnl).toBe(106.04); // 1342.31 - 1236.27
-    expect(res.totalDividendsBRL).toBe(500);
-    expect(res.totalReturnPnl).toBe(2606.04); // 2000 + 500 + 106.04
-    expect(res.totalReturnPct).toBeCloseTo(32.58, 2); // 2606.04 / 8000 = 32.5755%
+    // Retorno da Custódia Aberta: (2000 + 500) = 2500 -> 2500 / 8000 = 31.25%
+    expect(res.totalReturnPnl).toBe(2500);
+    expect(res.totalReturnPct).toBe(31.25);
+    // Resultado Econômico Total Histórico (P&L em R$): 2000 + 550 + 106.04 = 2656.04
+    expect(res.allTimeEconomicPnl).toBe(2656.04);
   });
 
   it("retorna nulo nos percentuais quando não há ativos com custo", () => {

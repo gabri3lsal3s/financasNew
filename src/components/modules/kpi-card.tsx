@@ -68,7 +68,7 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
     >
       <div>
         <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+          <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
           {icon ? <span className={cn("shrink-0", toneIcon[tone])}>{icon}</span> : null}
         </div>
         {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}

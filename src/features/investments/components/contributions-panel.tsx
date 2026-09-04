@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Coins, Trash2 } from "lucide-react";
+import { Coins, Sparkles, Trash2 } from "lucide-react";
 import {
   Badge,
   Button,
@@ -18,7 +18,9 @@ import {
   useDeletePortfolioContribution,
   usePortfolioAssets,
   usePortfolioContributions,
+  usePortfolioPosition,
 } from "@/state";
+import { InitialPocketCostDialog } from "./initial-pocket-cost-dialog";
 import type { PortfolioContribution } from "@/types";
 
 export interface ContributionsPanelProps {
@@ -33,14 +35,22 @@ export interface ContributionsPanelProps {
 export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [contributionToDelete, setContributionToDelete] = useState<PortfolioContribution | null>(null);
+  const [initialCostDialogOpen, setInitialCostDialogOpen] = useState(false);
 
   const contributionsQuery = usePortfolioContributions();
   const assetsQuery = usePortfolioAssets();
+  const position = usePortfolioPosition();
   const deleteContribution = useDeletePortfolioContribution();
 
   const contributions = contributionsQuery.data ?? [];
   const assets = assetsQuery.data ?? [];
   const tickerByAssetId = new Map(assets.map((a) => [a.id, a.ticker]));
+
+  const hasMarcoZero = position.hasMarcoZeroContribution || contributions.some((c) =>
+    (c.notes ?? "").toLowerCase().includes("marco zero") ||
+    (c.notes ?? "").toLowerCase().includes("custo inicial") ||
+    (c.notes ?? "").toLowerCase().includes("histórico inicial"),
+  );
 
   const filtered = contributions.filter((c) => c.date.startsWith(month));
   const monthTotalCents = filtered.reduce((acc, c) => acc + numberToCents(c.amount), 0);
@@ -67,6 +77,33 @@ export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
   return (
     <>
       <div className="flex flex-col gap-4">
+        {/* Banner do Marco Zero do Bolso — sempre acessível para definir ou calibrar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-portfolio/30 bg-portfolio/5 p-4 shadow-xs">
+          <div className="flex items-start gap-3 min-w-0">
+            <Sparkles className="size-5 text-portfolio shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-xs font-semibold text-foreground">
+                {hasMarcoZero ? "Marco Zero do Bolso Configurado" : "Definir Marco Zero do Bolso"}
+              </span>
+              <span className="text-[11px] text-muted-foreground leading-relaxed">
+                {hasMarcoZero
+                  ? "Seu ponto de partida histórico já está calibrado na TIR. Clique se desejar recalibrar ou lançar um ajuste inicial do bolso."
+                  : "Informe o custo histórico total que saiu da sua conta antes de usar o app para calibrar sua TIR com seu gasto real."}
+              </span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant={hasMarcoZero ? "outline" : "default"}
+            size="sm"
+            onClick={() => setInitialCostDialogOpen(true)}
+            className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
+          >
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            <span>{hasMarcoZero ? "Recalibrar Marco Zero" : "Configurar Marco Zero"}</span>
+          </Button>
+        </div>
+
         <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês dos aportes" />
 
         {/* Resumo do mês */}
@@ -147,6 +184,12 @@ export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
         variant="destructive"
         confirmPending={deleteContribution.isPending}
         onConfirm={handleDeleteContribution}
+      />
+
+      <InitialPocketCostDialog
+        open={initialCostDialogOpen}
+        onOpenChange={setInitialCostDialogOpen}
+        defaultCostBRL={position.totalCostBRL}
       />
     </>
   );

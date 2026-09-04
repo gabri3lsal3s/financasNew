@@ -210,6 +210,35 @@ export async function deletePortfolioContribution(id: string): Promise<void> {
   }
 }
 
+/**
+ * Upsert atômico do Marco Zero do Bolso via RPC.
+ * Garante a invariante de unicidade no servidor: remove todos os marcos zeros anteriores
+ * do usuário e insere o novo calibrado em uma única chamada transacional.
+ */
+export async function upsertMarcoZero(params: {
+  date: string;
+  amount: number;
+  notes?: string;
+}): Promise<PortfolioContribution> {
+  const { data, error } = await resolveQuery<PortfolioContribution>(
+    getSupabase().rpc("upsert_marco_zero", {
+      p_date: params.date,
+      p_amount: params.amount,
+      p_notes: params.notes ?? "Marco Zero do Bolso · Custo Histórico Inicial",
+    }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao salvar Marco Zero do Bolso.", null);
+  }
+  // O RPC retorna o objeto completo do registro criado
+  return mapContribution(data as unknown as PortfolioContribution);
+}
+
+
 // ---------------------------------------------------------------------------
 // Proventos Recebidos
 // ---------------------------------------------------------------------------

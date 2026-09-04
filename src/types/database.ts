@@ -480,7 +480,16 @@ export interface Database {
         };
         Returns: string;
       };
+      upsert_marco_zero: {
+        Args: {
+          p_date: string;
+          p_amount: number;
+          p_notes?: string;
+        };
+        Returns: PortfolioContribution;
+      };
     };
   };
 }
+
 

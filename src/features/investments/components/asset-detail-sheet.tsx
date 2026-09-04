@@ -19,6 +19,7 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { cn } from "@/lib/utils";
 
 import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { calculateYieldOnCostTotal } from "@/domain/portfolio/snowball";
@@ -122,6 +123,26 @@ export function AssetDetailSheet({
   const redeemedAmount = positionRow?.historicalRedeemedBRL ?? 0;
   const finalPnl = positionRow?.totalReturnPnl ?? (redeemedAmount - appliedCost + totalDividendsBRL);
   const finalReturnPct = positionRow?.finalReturnPct ?? (appliedCost > 0 ? (finalPnl / appliedCost) * 100 : null);
+
+  // Métrica da TIR / Fluxo do Bolso individual do ativo
+  const assetIrr = positionRow?.irrResult;
+  const isAssetIrrReady = Boolean(assetIrr?.isEligible && assetIrr.annualizedRatePct !== null);
+  const hasIrr = isAssetIrrReady || (assetIrr?.status === "insufficient_history" && assetIrr.periodRatePct !== null && Math.abs(assetIrr.periodRatePct) <= 200);
+  const irrRate = assetIrr?.annualizedRatePct ?? (assetIrr?.status === "insufficient_history" && (assetIrr.periodRatePct ?? 0) <= 200 ? assetIrr.periodRatePct : null);
+  const irrLabel =
+    isAssetIrrReady
+      ? `${(assetIrr?.annualizedRatePct ?? 0) >= 0 ? "+" : ""}${(assetIrr?.annualizedRatePct ?? 0).toFixed(1)}% a.a.`
+      : assetIrr?.status === "insufficient_history" && assetIrr.periodRatePct !== null && Math.abs(assetIrr.periodRatePct) <= 200
+        ? `${assetIrr.periodRatePct >= 0 ? "+" : ""}${assetIrr.periodRatePct.toFixed(1)}% no período`
+        : "Em formação";
+  const irrSub =
+    assetIrr?.status === "insufficient_capital_coverage"
+      ? "Aguardando compras"
+      : assetIrr?.status === "insufficient_history"
+        ? `Histórico de ${assetIrr.daysElapsed}d`
+        : isAssetIrrReady
+          ? `Ponderada (${assetIrr?.daysElapsed}d)`
+          : "Sem histórico suficiente";
 
   const formatRateLabel = (metadata: NonNullable<PortfolioAsset["fixed_income_metadata"]>) => {
     switch (metadata.rate_type) {
@@ -386,6 +407,26 @@ export function AssetDetailSheet({
                 </div>
               </div>
 
+              {/* Card 4: TIR / Fluxo do Ativo (XIRR) */}
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+                <span className="text-[11px] font-medium text-muted-foreground truncate" title="Taxa Interna de Retorno ponderada pelas datas de aportes, resgates e proventos">
+                  TIR do Ativo
+                </span>
+                <span
+                  className={cn(
+                    "font-mono text-sm sm:text-base font-bold truncate",
+                    hasIrr ? ((irrRate ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong") : "text-muted-foreground",
+                  )}
+                  title={`TIR Ponderada no Tempo: ${irrLabel} (${irrSub})`}
+                >
+                  {irrLabel}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono truncate" title={irrSub}>
+                  {irrSub}
+                </span>
+              </div>
+
+              {/* Card 5: Vencimento (Renda Fixa sem provento) ou Yield on Cost */}
               {isTotalValue && totalDividendsNative === 0 ? (
                 <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
                   <span className="text-[11px] font-medium text-muted-foreground truncate">Vencimento</span>

@@ -126,7 +126,8 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByText("Saldo em caixa")).toBeInTheDocument();
     expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();
     expect(screen.getAllByText("R$ 8.000,00").length).toBeGreaterThan(0);
-    expect(screen.getByText("Proventos deste Mês")).toBeInTheDocument();
+    expect(screen.getByText("TIR (Fluxo do Bolso)")).toBeInTheDocument();
+    expect(screen.getByText("Resultado Histórico")).toBeInTheDocument();
   });
 
   it("abre o InvestmentWizard ao clicar no botão Nova Operação do header", async () => {

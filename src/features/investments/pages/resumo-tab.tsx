@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
+  Info,
   LineChart,
   PieChart,
   Plus,
@@ -8,7 +9,7 @@ import {
   Shield,
   TrendingUp,
 } from "lucide-react";
-import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonKpi } from "@/components/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, Modal, SkeletonKpi } from "@/components/ui";
 
 
 import { CategoryDonut, CashKpiCard, KpiCard, PositionTable, AllocationDriftCard } from "@/components/modules";
@@ -35,7 +36,6 @@ import {
   useDeletePortfolioAsset,
   useGroupTargets,
   usePortfolioAssets,
-  usePortfolioDividends,
   usePortfolioPosition,
   useSyncQuotes,
 } from "@/state";
@@ -45,6 +45,7 @@ import {
   AssetEditDialog,
   CalibrateFixedIncomeDialog,
   CashFormDialog,
+  InitialPocketCostDialog,
   ManualPriceDialog,
 } from "../components";
 import { InvestmentWizard } from "../wizard";
@@ -68,7 +69,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const position = usePortfolioPosition();
 
   const assetsQuery = usePortfolioAssets();
-  const dividendsQuery = usePortfolioDividends();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
   const deleteAsset = useDeletePortfolioAsset();
@@ -118,6 +118,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
 
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
+  const [explainModalOpen, setExplainModalOpen] = useState(false);
+  const [initialCostDialogOpen, setInitialCostDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<PortfolioAsset | null>(null);
   const [allocationMode, setAllocationMode] = useState<"class" | "sector" | "asset">("class");
   const [breakdownGroup, setBreakdownGroup] = useState<{
@@ -221,12 +223,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
 
   const month = currentMonth();
 
-  // Proventos do mês a partir de portfolio_dividends
-  const dividendsThisMonth = (dividendsQuery.data ?? [])
-    .filter((d) => d.date.startsWith(month))
-    .reduce((acc, d) => acc + d.amount, 0);
-  const dividendsCents = numberToCents(dividendsThisMonth);
-
   // Agrupamento por classe de ativos
   const classMap = new Map<string, number>();
   for (const row of rows) {
@@ -282,12 +278,12 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         ? assetSlices
         : classSlices;
 
-  const series = position.monthlySeries;
-  const totalReturnPnlBRL = position.totalReturnPnlBRL;
+  const series = position.monthlySeries ?? [];
+  const totalReturnPnlBRL = position.totalReturnPnlBRL ?? position.unrealizedPnlBRL ?? 0;
   const totalReturnCents = numberToCents(totalReturnPnlBRL);
-  const totalReturnPct = position.totalReturnPct;
-  const unrealizedPnlBRL = position.unrealizedPnlBRL;
-  const capitalGainPct = position.unrealizedPct;
+  const totalReturnPct = position.totalReturnPct ?? position.unrealizedPct ?? null;
+  const unrealizedPnlBRL = position.unrealizedPnlBRL ?? 0;
+  const capitalGainPct = position.unrealizedPct ?? null;
 
   // Termômetro de Concentração
   const concentration = calculatePortfolioConcentration(
@@ -317,33 +313,48 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     items: driftItems,
   });
 
+  // ---------------------------------------------------------------------------
+  // Métricas da TIR / Fluxo do Bolso (XIRR)
+  // ---------------------------------------------------------------------------
+  const portfolioIrr = position.portfolioIrr;
+  const isIrrReady = Boolean(
+    portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null,
+  );
+  const irrRate = portfolioIrr?.annualizedRatePct ?? (portfolioIrr?.status === "insufficient_history" && (portfolioIrr.periodRatePct ?? 0) <= 200 ? portfolioIrr.periodRatePct : null);
+  const irrTone = isIrrReady ? ((irrRate ?? 0) >= 0 ? "positive" : "negative") : "default";
+
+  const irrLabel = isIrrReady
+    ? `${(portfolioIrr?.annualizedRatePct ?? 0) >= 0 ? "+" : ""}${(portfolioIrr?.annualizedRatePct ?? 0).toFixed(1)}% a.a.`
+    : portfolioIrr?.status === "insufficient_history" && portfolioIrr.periodRatePct !== null && Math.abs(portfolioIrr.periodRatePct) <= 200
+      ? `${portfolioIrr.periodRatePct >= 0 ? "+" : ""}${portfolioIrr.periodRatePct.toFixed(1)}% no período`
+      : "Em formação";
+
+  const irrHint =
+    portfolioIrr?.status === "insufficient_capital_coverage"
+      ? "Aguardando histórico de aportes"
+      : portfolioIrr?.status === "insufficient_history"
+        ? `Histórico de ${portfolioIrr.daysElapsed}d (mín. 30d)`
+        : isIrrReady
+          ? `Ponderada no tempo (${portfolioIrr?.daysElapsed}d)`
+          : "Requer histórico de aportes";
+
   return (
     <div className="flex flex-col gap-6">
       {position.error ? (
         <ErrorState message={getErrorMessage(position.error)} onRetry={position.refetch} />
       ) : null}
 
-
-      {/* Grid de KPIs da Carteira — 1 coluna fluida no mobile, 4 colunas no desktop */}
+      {/* Grid de KPIs da Carteira — 1 coluna no mobile, 2 em tablet, 4 no desktop */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {position.isLoading ? (
           <>
-            <SkeletonKpi className="sm:col-span-2 lg:col-span-2" />
+            <SkeletonKpi className="col-span-1" />
+            <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
           </>
         ) : (
           <>
-            <CashKpiCard
-              cashBRL={position.cashBRL}
-              cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
-              hasCashAsset={Boolean(cashAsset)}
-              onEdit={handleOpenCash}
-              onDelete={() => {
-                if (cashAsset) setAssetToDelete(cashAsset);
-              }}
-              className="sm:col-span-2 lg:col-span-2"
-            />
             <KpiCard
               label="Patrimônio Total"
               cents={numberToCents(position.totalBRL)}
@@ -357,7 +368,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                         ? "text-negative-strong"
                         : "text-foreground",
                   )}
-                  title={`Resultado acumulado (Retorno Total): ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
+                  title={`Retorno da Custódia Viva: ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos Ativos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
                 >
                   <MoneyText cents={totalReturnCents} tone="auto" className="text-[11px] tabular-nums" />
                   {totalReturnPct != null
@@ -365,17 +376,48 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                     : ""}
                 </span>
               }
+              onClick={() => setExplainModalOpen(true)}
+            />
+            <CashKpiCard
+              cashBRL={position.cashBRL}
+              cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
+              hasCashAsset={Boolean(cashAsset)}
+              onEdit={handleOpenCash}
+              onDelete={() => {
+                if (cashAsset) setAssetToDelete(cashAsset);
+              }}
+              className="col-span-1"
             />
             <KpiCard
               label={
-                <>
-                  <span className="hidden sm:inline">Proventos deste Mês</span>
-                  <span className="sm:hidden">Proventos do mês</span>
-                </>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate">TIR (Fluxo do Bolso)</span>
+                  <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                </div>
               }
-              cents={dividendsCents}
-              tone={dividendsCents > 0 ? "positive" : "default"}
-              hint="Dividendos / JCP"
+              value={irrLabel}
+              tone={irrTone}
+              hint={irrHint}
+              onClick={() => setExplainModalOpen(true)}
+            />
+            <KpiCard
+              label={
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate">Resultado Histórico</span>
+                  <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                </div>
+              }
+              cents={numberToCents(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL)}
+              tone={(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL) >= 0 ? "positive" : "negative"}
+              hint={
+                <span
+                  className="text-[11px] font-mono text-muted-foreground truncate"
+                  title={`P&L Histórico Total: ${formatCentsAsBRL(numberToCents(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL))} | Passado Realizado: ${formatCentsAsBRL(numberToCents(position.realizedPnlBRL ?? 0))} | Aberto: ${formatCentsAsBRL(numberToCents(totalReturnPnlBRL))} | Proventos Totais: ${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
+                >
+                  P&L Total ({(position.realizedPnlBRL ?? 0) >= 0 ? "+" : ""}{formatCentsAsBRL(numberToCents(position.realizedPnlBRL ?? 0))} pass.)
+                </span>
+              }
+              onClick={() => setExplainModalOpen(true)}
             />
           </>
         )}
@@ -726,6 +768,87 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         }
         onSelectAsset={(assetId) => openDetail(assetId)}
         onNavigateToTargets={onSelectTab ? () => onSelectTab("targets") : undefined}
+      />
+
+      {/* Modal Didático: Entenda os Modelos de Rentabilidade */}
+      <Modal
+        open={explainModalOpen}
+        onOpenChange={setExplainModalOpen}
+        title="Modelos de Rentabilidade da Carteira"
+        description="Entenda como cada método avalia seu patrimônio com transparência e sem armadilhas matemáticas."
+        size="lg"
+      >
+        <div className="flex flex-col gap-4 text-xs mt-2">
+          {/* Card 1: Custódia Viva */}
+          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-foreground text-sm">1. Retorno Contábil da Custódia Viva</span>
+              <Badge variant="muted" size="sm" className="font-mono">
+                {totalReturnPct !== null ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(2)}%` : "—"}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              Mede estritamente a valorização das ações, fundos imobiliários e títulos que estão sob sua posse <strong>hoje</strong> frente ao Preço Médio pago por eles, somando os proventos dessas posições ativas. É 100% isolado de ativos que já encerraram no passado.
+            </p>
+          </div>
+
+          {/* Card 2: TIR / Fluxo do Bolso */}
+          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-foreground text-sm">2. TIR / Fluxo do Bolso (Taxa Ponderada)</span>
+              <Badge variant={irrTone === "positive" ? "positive" : irrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
+                {irrLabel}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              Calcula a taxa efetiva anualizada com base no dinheiro que <strong>saiu da sua conta corrente</strong> para a corretora e no patrimônio que você possui hoje. É imune ao giro de carteira (reinvestimento de títulos que venceram não distorce o percentual).
+            </p>
+          </div>
+
+          {/* Card 3: P&L Histórico Acumulado */}
+          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-foreground text-sm">3. Resultado Econômico Histórico (P&L em R$)</span>
+              <span className="font-mono font-bold text-sm text-positive-strong">
+                <MoneyText cents={numberToCents(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL)} sign="explicit" />
+              </span>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              Consolida todo o dinheiro real produzido pela sua estratégia em reais: soma o lucro realizado de títulos e ações que já foram encerrados no passado, a valorização das posições abertas de hoje e todos os proventos recebidos na história.
+            </p>
+          </div>
+
+          {/* Dica do Aporte Histórico */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <Info className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-muted-foreground min-w-0">
+                <span className="font-semibold text-foreground">Dica sobre o Capital Investido Anterior ao App</span>
+                <p>
+                  Se você investia antes de começar a usar o aplicativo e deseja que a TIR reflita seu gasto real acumulado, registre o Marco Zero do seu bolso. Ele atuará como o ponto de partida do seu dinheiro sem inflar o preço médio das ações que você tem hoje.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant={position.hasMarcoZeroContribution ? "outline" : "default"}
+              size="sm"
+              onClick={() => {
+                setExplainModalOpen(false);
+                setInitialCostDialogOpen(true);
+              }}
+              className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
+            >
+              <span>{position.hasMarcoZeroContribution ? "Recalibrar Marco Zero" : "Definir Marco Zero"}</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <InitialPocketCostDialog
+        open={initialCostDialogOpen}
+        onOpenChange={setInitialCostDialogOpen}
+        defaultCostBRL={position.totalCostBRL}
       />
     </div>
   );

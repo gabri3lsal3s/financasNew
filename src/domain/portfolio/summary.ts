@@ -16,26 +16,42 @@
 export interface PortfolioConsolidatedReturn {
   /** Valor de mercado total em BRL dos ativos com custo (exclui caixa 1:1). */
   totalValueBRL: number;
-  /** Custo total em BRL dos ativos com custo. */
+  /** Custo total em BRL dos ativos com custo (exclui caixa 1:1). */
   totalCostBRL: number;
-  /** Proventos totais em BRL acumulados na carteira. */
+  /** Proventos totais em BRL acumulados na carteira (ativos vivos + encerrados). */
   totalDividendsBRL: number;
-  /** Ganho de capital não realizado em BRL (valor − custo). */
+  /** Proventos exclusivos de ativos vivos sob custódia em BRL. */
+  activeDividendsBRL: number;
+  /** Proventos de posições encerradas em BRL. */
+  closedDividendsBRL: number;
+  /** Ganho de capital não realizado em BRL (valor − custo) da custódia ativa. */
   capitalGainPnl: number;
-  /** Variação da cotação % ((valor − custo) ÷ custo). */
+  /** Variação da cotação % ((valor − custo) ÷ custo) da custódia ativa. */
   capitalGainPct: number | null;
-  /** Resultado realizado em BRL de posições encerradas (vendas/resgates). */
+  /** Resultado realizado em BRL de posições encerradas (vendas/resgates passados). */
   realizedPnl: number;
-  /** Resultado total em BRL: (valor − custo) + proventos + resultado realizado. */
+  /** Retorno total em BRL da custódia viva: (valor − custo) + proventos de ativos vivos. */
   totalReturnPnl: number;
-  /** Retorno Total % da carteira: ((valor − custo) + proventos + resultado realizado) ÷ custo. */
+  /**
+   * Retorno Total % da custódia ativa: ((valor − custo) + proventos ativos) ÷ custo ativo.
+   * Imune à distorção de turnover e a contaminações de títulos encerrados no passado.
+   */
   totalReturnPct: number | null;
+  /**
+   * Resultado Econômico Total Histórico (P&L Histórico Acumulado em R$):
+   * Ganho de capital aberto + proventos totais + lucro realizado no passado.
+   * Representa todo o dinheiro gerado pela estratégia na vida inteira do investidor.
+   */
+  allTimeEconomicPnl: number;
 }
 
 /**
  * Rentabilidade consolidada da carteira (§F17): calcula o Retorno Total real
- * (valor de mercado − custo total + proventos + lucro realizado) e o ganho de capital sobre o custo.
- * Ignora ativos de caixa 1:1 na apuração de ganho de capital.
+ * da custódia ativa e o Resultado Econômico Histórico acumulado em dinheiro.
+ *
+ * Invariante de integridade:
+ * - O percentual da carteira (`totalReturnPct`) reflete rigorosamente a custódia ativa atual;
+ * - O lucro de ativos passados encerrados (`realizedPnl`) é consolidado no P&L Histórico (`allTimeEconomicPnl`) em R$.
  */
 export function calculatePortfolioTotalReturn(
   rows: readonly {
@@ -51,7 +67,8 @@ export function calculatePortfolioTotalReturn(
 ): PortfolioConsolidatedReturn {
   let totalValueBRL = 0;
   let totalCostBRL = 0;
-  let totalDividendsBRL = 0;
+  let activeDividendsBRL = 0;
+  let closedDividendsBRL = 0;
   let realizedPnl = 0;
 
   for (const row of rows) {
@@ -59,7 +76,7 @@ export function calculatePortfolioTotalReturn(
 
     // Se é posição encerrada (quantity <= 0)
     if (row.quantity !== undefined && row.quantity <= 0) {
-      totalDividendsBRL += Math.max(0, row.dividends ?? 0);
+      closedDividendsBRL += Math.max(0, row.dividends ?? 0);
       if (row.historicalCostBRL !== undefined && row.historicalRedeemedBRL !== undefined) {
         realizedPnl += Math.round((row.historicalRedeemedBRL - row.historicalCostBRL) * 100) / 100;
       } else if (row.unrealizedPnl !== undefined) {
@@ -71,31 +88,40 @@ export function calculatePortfolioTotalReturn(
     if (row.totalCostBRL <= 0) continue;
     totalValueBRL += row.valueBRL;
     totalCostBRL += row.totalCostBRL;
-    totalDividendsBRL += Math.max(0, row.dividends ?? 0);
+    activeDividendsBRL += Math.max(0, row.dividends ?? 0);
   }
 
   totalValueBRL = Math.round(totalValueBRL * 100) / 100;
   totalCostBRL = Math.round(totalCostBRL * 100) / 100;
-  totalDividendsBRL = Math.round(totalDividendsBRL * 100) / 100;
+  activeDividendsBRL = Math.round(activeDividendsBRL * 100) / 100;
+  closedDividendsBRL = Math.round(closedDividendsBRL * 100) / 100;
+  const totalDividendsBRL = Math.round((activeDividendsBRL + closedDividendsBRL) * 100) / 100;
   realizedPnl = Math.round(realizedPnl * 100) / 100;
 
+  // Métricas estritas da Custódia Viva (sem contaminação de ativos passados)
   const capitalGainPnl = Math.round((totalValueBRL - totalCostBRL) * 100) / 100;
   const capitalGainPct =
     totalCostBRL > 0 ? Math.round((capitalGainPnl / totalCostBRL) * 10000) / 100 : null;
 
-  const totalReturnPnl = Math.round((capitalGainPnl + totalDividendsBRL + realizedPnl) * 100) / 100;
+  const totalReturnPnl = Math.round((capitalGainPnl + activeDividendsBRL) * 100) / 100;
   const totalReturnPct =
     totalCostBRL > 0 ? Math.round((totalReturnPnl / totalCostBRL) * 10000) / 100 : null;
+
+  // Resultado Econômico Total Histórico (P&L em R$)
+  const allTimeEconomicPnl = Math.round((capitalGainPnl + totalDividendsBRL + realizedPnl) * 100) / 100;
 
   return {
     totalValueBRL,
     totalCostBRL,
     totalDividendsBRL,
+    activeDividendsBRL,
+    closedDividendsBRL,
     capitalGainPnl,
     capitalGainPct,
     realizedPnl,
     totalReturnPnl,
     totalReturnPct,
+    allTimeEconomicPnl,
   };
 }
 

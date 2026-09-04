@@ -184,7 +184,8 @@ describe("ResumoTab", () => {
 
     // Outros KPIs
     expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();
-    expect(screen.getByText("Proventos deste Mês")).toBeInTheDocument();
+    expect(screen.getByText("TIR (Fluxo do Bolso)")).toBeInTheDocument();
+    expect(screen.getByText("Resultado Histórico")).toBeInTheDocument();
 
     // Card removido
     expect(screen.queryByText("Ativos em carteira")).not.toBeInTheDocument();

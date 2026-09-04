@@ -18,6 +18,8 @@ export interface PortfolioExecutiveReportProps {
   totalBRL: number;
   cashBRL: number;
   yearDividendsBRL: number;
+  portfolioIrr?: import("@/domain/portfolio").XIRRResult;
+  allTimeEconomicPnlBRL?: number;
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
@@ -34,6 +36,8 @@ export function PortfolioExecutiveReport({
   totalBRL,
   cashBRL,
   yearDividendsBRL,
+  portfolioIrr,
+  allTimeEconomicPnlBRL,
   periodLabel = "Posição Atual Consolidada",
   appName = "Guia Financeiro",
   accountHolder,
@@ -95,12 +99,12 @@ export function PortfolioExecutiveReport({
 
         {/* Síntese Executiva em Linha Única */}
         <ReportExecutiveSummary
-          title="SÍNTESE PATRIMONIAL"
+          title="SÍNTESE PATRIMONIAL & DESEMPENHO"
           items={[
             {
               label: "Patrimônio Total",
               value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
-              subtext: "Posição Consolidada",
+              subtext: `${investmentRows.length} ativos em custódia`,
             },
             {
               label: "Saldo em Caixa",
@@ -108,14 +112,22 @@ export function PortfolioExecutiveReport({
               subtext: "Reserva de Liquidez",
             },
             {
-              label: "Proventos no Ano",
-              value: <MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" />,
-              subtext: "Renda Passiva Acumulada",
+              label: "TIR (Fluxo do Bolso)",
+              value: portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+                : "Em formação",
+              subtext: portfolioIrr?.isEligible
+                ? `Ponderada (${portfolioIrr.daysElapsed}d)`
+                : "Requer histórico",
             },
             {
-              label: "Ativos em Custódia",
-              value: `${investmentRows.length} ativos`,
-              subtext: "Diversificação",
+              label: "Resultado Histórico",
+              value: (
+                <span className={(allTimeEconomicPnlBRL ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                  <MoneyText cents={numberToCents(allTimeEconomicPnlBRL ?? 0)} tone={(allTimeEconomicPnlBRL ?? 0) >= 0 ? "positive" : "negative"} />
+                </span>
+              ),
+              subtext: "P&L Econômico Total",
             },
           ]}
           narrative={

@@ -141,8 +141,8 @@
     │   │                          #       asset-form/ (asset-sell-tab F61), asset-form-dialog, cash-form-dialog, manual-price-dialog,
     │   │                          #       fixed-income-form-fields (F72), calibrate-fixed-income-dialog (F72), asset-edit-dialog (F72), asset-detail-sheet,
     │   │                          #       transaction-form-dialog, transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
-    │   │                          #       portfolio-mapping-step, portfolio-statement-dialog, portfolio-executive-report,
-    │   │                          #       portfolio-tax-report, portfolio-darf-monitor, allocation-breakdown-dialog com barrels components/index.ts e index.ts
+    │   │                          #       portfolio-tax-report, portfolio-darf-monitor, allocation-breakdown-dialog,
+    │   │                          #       initial-pocket-cost-dialog (calibração do Marco Zero) com barrels components/index.ts e index.ts
     │   │
     │   └── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
     │                              #     com simulador FIRE interativo, showcase, pricing, FAQ, scroll-reveal, scroll-spy e back-to-top
@@ -194,6 +194,7 @@
     │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
     │   │                          #     type-sniffer, hashing ordinal, scoring 0-100)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
+    │                              #   irr.ts (motor puro de TIR / Money-Weighted Return / XIRR com solver híbrido Newton-Raphson + Bisseção),
     │                              #   operations.ts (vendas, splits, adição com posição inicial e reconciliação do ledger),
     │                              #   summary.ts (F17: rentabilidade, alocação),
     │                              #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),

@@ -21,6 +21,7 @@ import {
   type ConcentrationRiskResult,
   type PeriodRedemptionItem,
 } from "@/domain/reports";
+import type { XIRRResult } from "@/domain/portfolio";
 
 export interface WealthPositionRow {
   ticker: string;
@@ -68,6 +69,8 @@ export interface WealthTearSheetModalProps {
   monthSummary?: MonthFlowSummary;
   allocationAnalysis: AllocationAnalysisResult;
   concentrationRisk: ConcentrationRiskResult;
+  portfolioIrr?: XIRRResult;
+  allTimeEconomicPnlBRL?: number;
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
@@ -116,6 +119,8 @@ export function WealthTearSheetModal({
   monthSummary,
   allocationAnalysis,
   concentrationRisk,
+  portfolioIrr,
+  allTimeEconomicPnlBRL,
   periodLabel = "Posição Atual Consolidada",
   appName = "Guia Financeiro",
   accountHolder,
@@ -406,33 +411,38 @@ export function WealthTearSheetModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Síntese Executiva com Retorno Total Real */}
+      {/* 2. Síntese Executiva com o Trio Estratégico de Rentabilidade */}
       <ReportExecutiveSummary
-        title="SÍNTESE DA CARTEIRA & POSIÇÃO CONSOLIDADA"
+        title="SÍNTESE DA CARTEIRA & DESEMPENHO CONSOLIDADO"
         items={[
           {
             label: "Patrimônio Total",
             value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
-            subtext: "Posição de Mercado",
+            subtext: `Retorno Vivo: ${totalReturnBRL >= 0 ? "+" : ""}${formatSignedPct(totalReturnPct)}`,
           },
           {
-            label: "Capital Investido",
-            value: <MoneyText cents={numberToCents(totalCostBRL)} tone="default" />,
-            subtext: "Custo de Aquisição",
+            label: "TIR (Fluxo do Bolso)",
+            value: portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+              ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+              : portfolioIrr?.status === "insufficient_history" && portfolioIrr.periodRatePct !== null && Math.abs(portfolioIrr.periodRatePct) <= 200
+                ? `${portfolioIrr.periodRatePct >= 0 ? "+" : ""}${portfolioIrr.periodRatePct.toFixed(1)}% período`
+                : "Em formação",
+            subtext: portfolioIrr?.isEligible
+              ? `Ponderada (${portfolioIrr.daysElapsed}d)`
+              : "Requer histórico",
           },
           {
-            label: "Retorno Total Real",
+            label: "Resultado Histórico",
             value: (
-              <span className={totalReturnBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+              <span className={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
                 <MoneyText
-                  cents={numberToCents(totalReturnBRL)}
-                  tone={totalReturnBRL >= 0 ? "positive" : "negative"}
+                  cents={numberToCents(allTimeEconomicPnlBRL ?? totalReturnBRL)}
+                  tone={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "positive" : "negative"}
                   className="inline"
-                />{" "}
-                <span className="text-[11px] font-normal">({formatSignedPct(totalReturnPct)})</span>
+                />
               </span>
             ),
-            subtext: "Cotação + Proventos",
+            subtext: "P&L Econômico Total",
           },
           {
             label: "Aderência às Metas",

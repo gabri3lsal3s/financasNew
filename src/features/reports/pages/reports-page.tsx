@@ -597,6 +597,9 @@ export function ReportsPage() {
         totalInvestedCostBRL,
         unrealizedPnlBRL: positionQuery.unrealizedPnlBRL ?? fallbackUnrealizedPnl,
         unrealizedPnlPct: positionQuery.unrealizedPct ?? fallbackUnrealizedPct,
+        totalReturnPct: positionQuery.totalReturnPct,
+        portfolioIrrPct: positionQuery.portfolioIrr?.annualizedRatePct ?? null,
+        allTimeEconomicPnlBRL: positionQuery.allTimeEconomicPnlBRL,
         cashBalanceBRL,
         yearDividendsBRL,
         freedomPct: freedomAnalysis.freedomPct,
@@ -686,6 +689,9 @@ export function ReportsPage() {
     yearDividendsBRL,
     positionQuery.unrealizedPnlBRL,
     positionQuery.unrealizedPct,
+    positionQuery.totalReturnPct,
+    positionQuery.portfolioIrr,
+    positionQuery.allTimeEconomicPnlBRL,
     freedomAnalysis.freedomPct,
     consolidatedBalance.dre,
     positionRows,
@@ -977,6 +983,8 @@ export function ReportsPage() {
         monthSummary={monthFlowSummary}
         allocationAnalysis={allocationAnalysis}
         concentrationRisk={concentrationRisk}
+        portfolioIrr={positionQuery.portfolioIrr}
+        allTimeEconomicPnlBRL={positionQuery.allTimeEconomicPnlBRL}
       />
 
       <DividendFreedomModal

@@ -18,10 +18,16 @@ import {
   isCashAssetClass,
   resolvePrice,
   usdRateFromPrices,
+  buildAssetCashFlows,
+  buildPortfolioCashFlows,
+  calculateNetInjectedCapital,
+  calculateNetPocketGain,
+  calculateXIRR,
   type AssetPricingMode,
   type FixedIncomeBalanceResult,
   type PortfolioMonthlySeriesPoint,
   type PriceSource,
+  type XIRRResult,
 } from "@/domain/portfolio";
 import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
@@ -84,6 +90,8 @@ export interface PortfolioPositionRow {
   netValueBRL?: number;
   taxAmountBRL?: number;
   taxRatePct?: number;
+  /** Taxa Interna de Retorno (TIR / Fluxo do Bolso) individual deste ativo. */
+  irrResult?: XIRRResult;
 }
 
 export interface PortfolioPosition {
@@ -104,6 +112,16 @@ export interface PortfolioPosition {
   unrealizedPnlBRL: number;
   /** Variação da cotação % consolidada da carteira (sem proventos). */
   unrealizedPct: number | null;
+  /** Resultado Econômico Histórico Acumulado em BRL (P&L Total: lucro aberto + proventos totais + lucro realizado passado). */
+  allTimeEconomicPnlBRL: number;
+  /** Lucro realizado acumulado em BRL de posições encerradas no passado. */
+  realizedPnlBRL: number;
+  /** Capital líquido total injetado do bolso em BRL (Aportes - Saques). */
+  netInjectedCapitalBRL: number;
+  /** Ganho líquido real do bolso em BRL (Patrimônio Atual - Capital Injetado). */
+  netPocketGainBRL: number;
+  /** Taxa Interna de Retorno (TIR / Fluxo do Bolso / XIRR) da carteira consolidada. */
+  portfolioIrr: XIRRResult;
   /**
    * Série mensal a partir de snapshots com proventos integrados (F36 & F37).
    */
@@ -112,6 +130,8 @@ export interface PortfolioPosition {
    * Aporte líquido do mês corrente em centavos (F19 & F36).
    */
   monthlyContributionCents: number;
+  /** Indica se há um Marco Zero do Bolso registrado para o usuário (para UI contextual). */
+  hasMarcoZeroContribution: boolean;
   isLoading: boolean;
   error: unknown;
   /** Reexecuta as consultas. */
@@ -314,6 +334,32 @@ export function usePortfolioPosition(): PortfolioPosition {
         ? null
         : summary.totalReturnPct;
 
+    // Fluxos do ativo para cálculo da TIR individual
+    const assetTxs = (transactionsQuery.data ?? []).filter((t) => t.asset_id === asset.id);
+    const assetDivs = (dividendsQuery.data ?? []).filter((d) => d.asset_id === asset.id);
+    const assetAccDiv = asset.accumulated_dividends ?? 0;
+    const allAssetDivs =
+      assetAccDiv > 0
+        ? [
+            ...assetDivs.map((d) => ({ date: d.date, amount: Number(d.amount) })),
+            { date: assetTxs[0]?.date ?? today, amount: assetAccDiv },
+          ]
+        : assetDivs.map((d) => ({ date: d.date, amount: Number(d.amount) }));
+
+    const assetFlows = buildAssetCashFlows({
+      transactions: assetTxs.map((t) => ({
+        date: t.date,
+        type: t.type,
+        total: t.total,
+        quantity: t.quantity,
+        price: t.price,
+      })),
+      dividends: allAssetDivs,
+      currentAssetValue: summary.valueBRL,
+      today,
+    });
+    const irrResult = calculateXIRR(assetFlows);
+
     rawRows.push({
       assetId: asset.id,
       ticker: asset.ticker,
@@ -349,6 +395,7 @@ export function usePortfolioPosition(): PortfolioPosition {
       netValueBRL: summary.netValueBRL,
       taxAmountBRL: summary.taxAmountBRL,
       taxRatePct: summary.taxRatePct,
+      irrResult,
     });
   }
 
@@ -358,6 +405,49 @@ export function usePortfolioPosition(): PortfolioPosition {
   }));
 
   const consolidatedReturn = calculatePortfolioTotalReturn(rawRows);
+
+  // ---------------------------------------------------------------------------
+  // Fluxo do Bolso & TIR da Carteira Consolidada (XIRR)
+  // ---------------------------------------------------------------------------
+  const cashAssetIds = new Set(
+    (assetsQuery.data ?? [])
+      .filter((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA")
+      .map((a) => a.id),
+  );
+
+  const cashWithdrawals: { date: string; amount: number }[] = [];
+  for (const t of transactionsQuery.data ?? []) {
+    if (t.type === "sell" && cashAssetIds.has(t.asset_id) && t.total > 0) {
+      cashWithdrawals.push({
+        date: t.date,
+        amount: t.total,
+      });
+    }
+  }
+
+  const portfolioCashFlows = buildPortfolioCashFlows({
+    contributions: (contributionsQuery.data ?? []).map((c) => ({
+      date: c.date,
+      amount: c.amount,
+    })),
+    cashWithdrawals,
+    currentPortfolioValueBRL: totalBRL,
+    today,
+  });
+
+  const hasMarcoZeroContribution = (contributionsQuery.data ?? []).some((c) =>
+    (c.notes ?? "").toLowerCase().includes("marco zero") ||
+    (c.notes ?? "").toLowerCase().includes("custo inicial") ||
+    (c.notes ?? "").toLowerCase().includes("histórico inicial"),
+  );
+
+  const portfolioIrr = calculateXIRR(portfolioCashFlows);
+
+  const netInjectedCapitalBRL = calculateNetInjectedCapital(
+    contributionsQuery.data ?? [],
+    cashWithdrawals,
+  );
+  const netPocketGainBRL = calculateNetPocketGain(totalBRL, netInjectedCapitalBRL);
 
   // Aporte líquido do mês corrente a partir de portfolio_contributions
   const thisMonth = currentMonth();
@@ -443,6 +533,12 @@ export function usePortfolioPosition(): PortfolioPosition {
     totalReturnPct: consolidatedReturn.totalReturnPct,
     unrealizedPnlBRL: consolidatedReturn.capitalGainPnl,
     unrealizedPct: consolidatedReturn.capitalGainPct,
+    allTimeEconomicPnlBRL: consolidatedReturn.allTimeEconomicPnl,
+    realizedPnlBRL: consolidatedReturn.realizedPnl,
+    netInjectedCapitalBRL,
+    netPocketGainBRL,
+    portfolioIrr,
+    hasMarcoZeroContribution,
     monthlySeries,
     monthlyContributionCents: Math.round(contributionBRL * 100),
     isLoading: assetsQuery.isLoading || pricesQuery.isLoading,

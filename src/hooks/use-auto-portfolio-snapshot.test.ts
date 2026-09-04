@@ -17,12 +17,24 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       totalReturnPct: 12.5,
       unrealizedPnlBRL: 5000,
       unrealizedPct: 12.5,
+      allTimeEconomicPnlBRL: 5000,
+      realizedPnlBRL: 0,
+      netInjectedCapitalBRL: 40000,
+      netPocketGainBRL: 5000,
+      portfolioIrr: {
+        annualizedRatePct: 12.5,
+        periodRatePct: 12.5,
+        daysElapsed: 100,
+        isEligible: true,
+        status: "ok",
+      },
+      hasMarcoZeroContribution: false,
       monthlySeries: [],
       monthlyContributionCents: 0,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    });
+    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
 
     vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
       data: [{ id: "s1", user_id: "u1", month: "2026-07", total_value: 40000, total_cost: 38000 }],
@@ -62,12 +74,24 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
       totalReturnPct: 12.5,
       unrealizedPnlBRL: 5000,
       unrealizedPct: 12.5,
+      allTimeEconomicPnlBRL: 5000,
+      realizedPnlBRL: 0,
+      netInjectedCapitalBRL: 40000,
+      netPocketGainBRL: 5000,
+      portfolioIrr: {
+        annualizedRatePct: 12.5,
+        periodRatePct: 12.5,
+        daysElapsed: 100,
+        isEligible: true,
+        status: "ok",
+      },
+      hasMarcoZeroContribution: false,
       monthlySeries: [],
       monthlyContributionCents: 0,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    });
+    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
 
     vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
       data: [{ id: "s1", user_id: "u1", month: currentMonthStr, total_value: 45000, total_cost: 40000 }],

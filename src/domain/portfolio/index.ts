@@ -431,3 +431,4 @@ export * from "./tickers-catalog";
 export * from "./thresholds";
 export * from "./business-days";
 export * from "./fixed-income";
+export * from "./irr";
