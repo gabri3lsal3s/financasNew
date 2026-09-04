@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  getActiveDecimalDisplay,
   getActiveTargetCents,
   getActiveTargetLabel,
   getCalculatorTarget,
   hasActiveTarget,
   injectCalculatedValue,
+  injectDecimalValue,
   registerCalculatorTarget,
   subscribeCalculatorTarget,
   unregisterCalculatorTarget,
@@ -72,6 +74,36 @@ describe("calculator-bridge (F9 — Decisão C)", () => {
     expect(hasActiveTarget()).toBe(false);
     expect(getActiveTargetCents()).toBeNull();
     expect(getActiveTargetLabel()).toBeUndefined();
+  });
+
+  it("suporta alvo decimal com getDecimalDisplay e injectDecimal", () => {
+    const injectDecimal = vi.fn();
+    const getDecimalDisplay = vi.fn(() => "270.5");
+    const decimalTarget = {
+      mode: "decimal" as const,
+      injectDecimal,
+      getDecimalDisplay,
+      label: "Quantidade de Cotas",
+    };
+
+    registerCalculatorTarget(decimalTarget);
+
+    expect(hasActiveTarget()).toBe(true);
+    expect(getActiveTargetCents()).toBeNull();
+    expect(getActiveDecimalDisplay()).toBe("270.5");
+    expect(getActiveTargetLabel()).toBe("Quantidade de Cotas");
+
+    // injectCalculatedValue deve retornar false para target decimal
+    expect(injectCalculatedValue(1000)).toBe(false);
+    expect(injectDecimal).not.toHaveBeenCalled();
+
+    // injectDecimalValue deve funcionar
+    expect(injectDecimalValue("350")).toBe(true);
+    expect(injectDecimal).toHaveBeenCalledWith("350");
+
+    unregisterCalculatorTarget(decimalTarget);
+    expect(hasActiveTarget()).toBe(false);
+    expect(getActiveDecimalDisplay()).toBeNull();
   });
 
   it("notifica ouvintes quando o alvo é registrado ou desregistrado", () => {

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { ArrowDownLeft, ArrowRight, ArrowUpRight, Calculator, GitFork, Info, Receipt } from "lucide-react";
-import { Badge, Checkbox, DatePicker, Input, MoneyInput } from "@/components/ui";
+import { Badge, Checkbox, DatePicker, Input, MoneyInput, NumericInput } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 
@@ -186,14 +186,13 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                   <label htmlFor="wizard-order-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Quantidade de Cotas
                   </label>
-                  <Input
+                  <NumericInput
                     id="wizard-order-qty"
-                    type="text"
-                    inputMode="decimal"
                     value={state.quantityStr}
-                    onChange={(e) => onChange({ quantityStr: e.target.value, totalCents: 0 })}
+                    onValueChange={(v) => onChange({ quantityStr: v, totalCents: 0 })}
                     placeholder="Ex: 10"
-                    className="font-mono text-base"
+                    aria-label="Quantidade de cotas"
+                    showCalculatorAction
                   />
                 </div>
 
@@ -377,14 +376,13 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                   <label htmlFor="wizard-sell-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Quantidade a Vender
                   </label>
-                  <Input
+                  <NumericInput
                     id="wizard-sell-qty"
-                    type="text"
-                    inputMode="decimal"
                     value={state.quantityStr}
-                    onChange={(e) => onChange({ quantityStr: e.target.value })}
+                    onValueChange={(v) => onChange({ quantityStr: v })}
                     placeholder={`Máx: ${state.selectedAsset?.quantity ?? 0}`}
-                    className="font-mono text-base"
+                    aria-label="Quantidade a vender"
+                    showCalculatorAction
                   />
                 </div>
 

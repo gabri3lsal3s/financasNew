@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Divide, Sparkles } from "lucide-react";
-import { Alert, Button, Input, Modal } from "@/components/ui";
+import { Alert, Button, NumericInput, Modal } from "@/components/ui";
 import { splitAssetPosition } from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -83,23 +83,23 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
           <div className="flex items-center gap-3">
             <label className="flex-1 flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               De (cada)
-              <Input
+              <NumericInput
                 value={ratioFromStr}
-                onChange={(e) => setRatioFromStr(e.target.value)}
+                onValueChange={setRatioFromStr}
                 placeholder="1"
-                inputMode="decimal"
                 aria-label="Cotas antes da proporção"
+                showCalculatorAction
               />
             </label>
             <span className="text-sm font-semibold text-muted-foreground pt-5">para</span>
             <label className="flex-1 flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               Virou (passa a ter)
-              <Input
+              <NumericInput
                 value={ratioToStr}
-                onChange={(e) => setRatioToStr(e.target.value)}
+                onValueChange={setRatioToStr}
                 placeholder="2"
-                inputMode="decimal"
                 aria-label="Cotas após a proporção"
+                showCalculatorAction
               />
             </label>
           </div>

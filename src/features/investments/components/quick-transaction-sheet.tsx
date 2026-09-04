@@ -8,6 +8,7 @@ import {
   Input,
   Modal,
   MoneyInput,
+  NumericInput,
   Select,
 } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
@@ -417,14 +418,13 @@ export function QuickTransactionSheet({
                     <label htmlFor="quick-buy-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Quantidade
                     </label>
-                    <Input
+                    <NumericInput
                       id="quick-buy-qty"
-                      type="text"
-                      inputMode="decimal"
                       value={quantityStr}
-                      onChange={(e) => setQuantityStr(e.target.value)}
+                      onValueChange={setQuantityStr}
                       placeholder="Ex: 10"
-                      className="font-mono"
+                      aria-label="Quantidade de cotas"
+                      showCalculatorAction
                     />
                   </div>
 
@@ -569,14 +569,13 @@ export function QuickTransactionSheet({
                     <label htmlFor="quick-sell-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Quantidade a Vender
                     </label>
-                    <Input
+                    <NumericInput
                       id="quick-sell-qty"
-                      type="text"
-                      inputMode="decimal"
                       value={quantityStr}
-                      onChange={(e) => setQuantityStr(e.target.value)}
+                      onValueChange={setQuantityStr}
                       placeholder={`Máx: ${targetAsset?.quantity ?? 0}`}
-                      className="font-mono"
+                      aria-label="Quantidade a vender"
+                      showCalculatorAction
                     />
                   </div>
 

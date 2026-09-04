@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Alert, Button, Checkbox, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
+import { Alert, Button, Checkbox, Input, Modal, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
@@ -266,13 +266,13 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
               <label className="text-xs font-medium text-muted-foreground">
                 Cotas na Data ({selectedAsset?.ticker ?? "Ativo"})
               </label>
-              <Input
+              <NumericInput
                 value={assetQuantity > 0 ? String(assetQuantity) : customQuantityStr}
-                onChange={(e) => handleCustomQtyChange(e.target.value)}
+                onValueChange={(v) => handleCustomQtyChange(v)}
                 disabled={assetQuantity > 0}
                 placeholder="100"
-                inputMode="numeric"
                 aria-label="Quantidade de cotas"
+                showCalculatorAction
               />
             </div>
             <div className="col-span-full flex items-center justify-between text-xs text-primary pt-1 border-t border-primary/20">

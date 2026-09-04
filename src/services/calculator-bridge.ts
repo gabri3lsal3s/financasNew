@@ -1,10 +1,11 @@
 /**
  * Injeção Contextual da Calculadora (F9 — Decisão C): "Usar Valor".
  *
- * Emissor leve: o `MoneyInput` se registra ao receber foco (o campo "ativo" do
- * formulário) e a calculadora despacha o valor em CENTAVOS com 1 toque. O
- * alvo permanece o último campo focado — funciona mesmo quando o foco foi
- * para o botão da calculadora.
+ * Ponte bidirecional entre inputs do app e a calculadora flutuante.
+ * Suporta dois modos:
+ *  - "money": MoneyInput (centavos inteiros). A calculadora exibe em R$/$.
+ *  - "decimal": campos numéricos livres (quantidade de cotas, taxa, saldo).
+ *    A calculadora exibe como número formatado e injeta state.display diretamente.
  */
 
 export interface CalculatorTargetObject {
@@ -13,9 +14,20 @@ export interface CalculatorTargetObject {
   label?: string;
 }
 
+export interface CalculatorDecimalTarget {
+  /** Discriminador de modo: campos de quantidade / decimal livre. */
+  mode: "decimal";
+  injectDecimal: (display: string) => void;
+  getDecimalDisplay: () => string;
+  label?: string;
+}
+
 export type CalculatorTargetCallback = (cents: number) => void;
 
-export type CalculatorTarget = CalculatorTargetObject | CalculatorTargetCallback;
+export type CalculatorTarget =
+  | CalculatorTargetObject
+  | CalculatorDecimalTarget
+  | CalculatorTargetCallback;
 
 let activeTarget: CalculatorTarget | null = null;
 const listeners = new Set<() => void>();
@@ -28,7 +40,15 @@ function isTargetObject(target: CalculatorTarget): target is CalculatorTargetObj
   return typeof target === "object" && target !== null && "inject" in target;
 }
 
-/** Registra o campo ativo (chamado no focus do MoneyInput). */
+function isDecimalTarget(target: CalculatorTarget): target is CalculatorDecimalTarget {
+  return (
+    typeof target === "object" &&
+    target !== null &&
+    (target as CalculatorDecimalTarget).mode === "decimal"
+  );
+}
+
+/** Registra o campo ativo (chamado no focus do MoneyInput/NumericInput). */
 export function registerCalculatorTarget(target: CalculatorTarget): void {
   activeTarget = target;
   notify();
@@ -52,23 +72,38 @@ export function hasActiveTarget(): boolean {
   return activeTarget !== null;
 }
 
+/** Modo do alvo ativo: "money" | "decimal" | null. */
+export function getActiveTargetMode(): "money" | "decimal" | null {
+  if (!activeTarget) return null;
+  if (isDecimalTarget(activeTarget)) return "decimal";
+  return "money";
+}
+
 /**
- * Lê o valor atual em centavos do campo ativo. Retorna `null` se nenhum
- * campo estiver registrado ou se o campo for um callback legado sem getter.
+ * Lê o valor atual em centavos do campo ativo (modo "money").
+ * Retorna `null` para alvos decimais ou quando não há alvo.
  */
 export function getActiveTargetCents(): number | null {
   if (!activeTarget) return null;
-  if (isTargetObject(activeTarget)) {
-    return activeTarget.getCents();
-  }
+  if (isTargetObject(activeTarget)) return activeTarget.getCents();
+  return null;
+}
+
+/**
+ * Lê o valor decimal do campo ativo (modo "decimal").
+ * Retorna `null` para alvos money ou quando não há alvo.
+ */
+export function getActiveDecimalDisplay(): string | null {
+  if (!activeTarget) return null;
+  if (isDecimalTarget(activeTarget)) return activeTarget.getDecimalDisplay();
   return null;
 }
 
 /** Rótulo contextual do campo ativo, se fornecido. */
 export function getActiveTargetLabel(): string | undefined {
-  if (activeTarget && isTargetObject(activeTarget)) {
-    return activeTarget.label;
-  }
+  if (!activeTarget) return undefined;
+  if (isTargetObject(activeTarget)) return activeTarget.label;
+  if (isDecimalTarget(activeTarget)) return activeTarget.label;
   return undefined;
 }
 
@@ -81,15 +116,27 @@ export function subscribeCalculatorTarget(listener: () => void): () => void {
 }
 
 /**
- * Injeta o valor calculado (centavos) no campo ativo. Retorna `false` quando
- * nenhum campo está registrado (ex.: sem MoneyInput focado na tela).
+ * Injeta o valor calculado (centavos) no campo money ativo. Retorna `false`
+ * quando nenhum campo está registrado ou o alvo é decimal.
  */
 export function injectCalculatedValue(cents: number): boolean {
   if (!activeTarget) return false;
+  if (isDecimalTarget(activeTarget)) return false;
   if (isTargetObject(activeTarget)) {
     activeTarget.inject(cents);
   } else {
     activeTarget(cents);
   }
+  return true;
+}
+
+/**
+ * Injeta o display decimal (string) no campo decimal ativo. Retorna `false`
+ * quando nenhum campo está registrado ou o alvo é money.
+ */
+export function injectDecimalValue(display: string): boolean {
+  if (!activeTarget) return false;
+  if (!isDecimalTarget(activeTarget)) return false;
+  activeTarget.injectDecimal(display);
   return true;
 }

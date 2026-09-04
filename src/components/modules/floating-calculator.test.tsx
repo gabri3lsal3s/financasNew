@@ -233,4 +233,38 @@ describe("FloatingCalculator (F9)", () => {
 
     expect(screen.getByText("Calculadora livre")).toBeInTheDocument();
   });
+
+  it("hidrata com valor decimal e injeta string diretamente sem centavos em alvo decimal", async () => {
+    const injectDecimal = vi.fn();
+    const getDecimalDisplay = vi.fn(() => "270");
+    registerCalculatorTarget({
+      mode: "decimal",
+      injectDecimal,
+      getDecimalDisplay,
+      label: "Quantidade de cotas",
+    });
+
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    // Badge com Hash e label correto
+    expect(screen.getByText("Campo: Quantidade de cotas")).toBeInTheDocument();
+
+    // Display exibe "270" sem símbolo de R$
+    expect(screen.getByText("270")).toBeInTheDocument();
+    expect(screen.getByText("Número decimal")).toBeInTheDocument();
+
+    // Multiplica por 2: 270 * 2 = 540
+    await user.click(screen.getByRole("button", { name: "Multiplicação" }));
+    await user.click(screen.getByRole("button", { name: "Dígito 2" }));
+    await user.click(screen.getByRole("button", { name: "Igual" }));
+
+    expect(screen.getByText("540")).toBeInTheDocument();
+
+    // Injeta de volta no campo
+    await user.click(screen.getByRole("button", { name: "Usar valor" }));
+    expect(injectDecimal).toHaveBeenCalledWith("540");
+    expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
+  });
 });

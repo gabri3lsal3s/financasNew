@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Calendar, Rocket, ShieldCheck, Sparkles } from "lucide-react";
-import { Badge, Input, MoneyInput, Progress } from "@/components/ui";
+import { Badge, MoneyInput, NumericInput, Progress } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { FireProjectionChart } from "./fire-projection-chart";
 import {
@@ -139,13 +139,12 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
           </label>
           <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Retorno real % a.a.
-            <Input
-              type="text"
-              inputMode="decimal"
+            <NumericInput
               value={returnPct}
-              onChange={(event) => setReturnPct(event.target.value)}
+              onValueChange={setReturnPct}
               aria-label="Retorno real anual em percentual"
-              className="h-8 text-sm"
+              size="sm"
+              showCalculatorAction
             />
           </label>
         </div>

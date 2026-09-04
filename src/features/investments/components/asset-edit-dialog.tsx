@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronUp } from "lucide-react";
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
-import { Alert, Badge, Button, Checkbox, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, Input, Modal, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { assetMetadataSchema } from "@/domain/portfolio/schemas";
 import { DEFAULT_SECTORS_BY_CLASS, inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
@@ -376,13 +376,13 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           </div>
           <label htmlFor="edit-asset-cash" className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Saldo Atual (R$)
-            <Input
+            <NumericInput
               id="edit-asset-cash"
               value={quantityStr}
-              onChange={(e) => setQuantityStr(e.target.value)}
+              onValueChange={setQuantityStr}
               placeholder="10000,00"
-              inputMode="decimal"
               aria-label="Saldo em caixa"
+              showCalculatorAction
             />
           </label>
         </div>
@@ -477,13 +477,13 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
               <label htmlFor="edit-asset-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Quantidade Atual (Cotas / Unidades)
               </label>
-              <Input
+              <NumericInput
                 id="edit-asset-qty"
                 value={quantityStr}
-                onChange={(e) => setQuantityStr(e.target.value)}
+                onValueChange={setQuantityStr}
                 placeholder="100"
-                inputMode="decimal"
                 aria-label="Quantidade de cotas"
+                showCalculatorAction
               />
             </div>
 

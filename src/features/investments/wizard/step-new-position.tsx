@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Checkbox, Input, MoneyInput, Select } from "@/components/ui";
+import { Badge, Checkbox, Input, MoneyInput, NumericInput, Select } from "@/components/ui";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { DEFAULT_SECTORS_BY_CLASS } from "@/domain/portfolio/tickers-catalog";
 import type { AssetCurrency } from "@/types";
@@ -179,14 +179,13 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
               <label htmlFor="wizard-new-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Quantidade Inicial de Cotas
               </label>
-              <Input
+              <NumericInput
                 id="wizard-new-qty"
-                type="text"
-                inputMode="decimal"
                 value={state.quantityStr}
-                onChange={(e) => onChange({ quantityStr: e.target.value })}
+                onValueChange={(v) => onChange({ quantityStr: v })}
                 placeholder="Ex: 100"
-                className="font-mono text-base"
+                aria-label="Quantidade inicial de cotas"
+                showCalculatorAction
               />
             </div>
 

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Calculator as CalculatorIcon, Check, History, Link2 } from "lucide-react";
+import { Calculator as CalculatorIcon, Check, Hash, History, Link2 } from "lucide-react";
 import { Badge, Button, Modal, NumberStepper } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CalculatorKeypad } from "@/components/modules/calculator-keypad";
 import {
+  getActiveDecimalDisplay,
   getActiveTargetCents,
   getActiveTargetLabel,
+  getActiveTargetMode,
   hasActiveTarget,
   injectCalculatedValue,
+  injectDecimalValue,
   subscribeCalculatorTarget,
 } from "@/services/calculator-bridge";
 import { isCalculatorOpen, setCalculatorOpen, subscribeCalculatorOpen } from "@/services/calculator-open";
@@ -29,36 +32,53 @@ import type { CalculatorState, HistoryEntry } from "@/domain/calculator";
 /**
  * Calculadora (F9): modal acessível pelo header (CalculatorButton) e pelo
  * botão de calculadora nos cabeçalhos de todos os modais do app.
- * Ao abrir, carrega o valor atual do input ativo e, com "Usar valor",
- * substitui o resultado no mesmo campo.
+ *
+ * Modos de operação:
+ *  - "money": carrega centavos do MoneyInput ativo, exibe como R$/$, injeta centavos.
+ *  - "decimal": carrega display string do NumericInput ativo, exibe como número,
+ *               injeta state.display diretamente (sem conversão de centavos).
  */
 export function FloatingCalculator() {
   const open = useSyncExternalStore(subscribeCalculatorOpen, isCalculatorOpen);
   const isConnected = useSyncExternalStore(subscribeCalculatorTarget, hasActiveTarget);
   const connectedLabel = useSyncExternalStore(subscribeCalculatorTarget, getActiveTargetLabel);
+  // Lê o modo do alvo ativo (reativo via subscribeCalculatorTarget).
+  const targetMode = useSyncExternalStore(subscribeCalculatorTarget, getActiveTargetMode);
 
   const [state, setState] = useState<CalculatorState>(INITIAL_STATE);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [installments, setInstallments] = useState(1);
   const [plan, setPlan] = useState<string | null>(null);
 
+  // Hidratação do display ao abrir: padrão "when props change" do React (sem useEffect).
   const [prevOpen, setPrevOpen] = useState(false);
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
-      const targetCents = getActiveTargetCents();
-      setState(
-        targetCents !== null && targetCents > 0
-          ? {
-              display: centsToDecimal(targetCents),
-              accumulator: null,
-              operator: null,
-              justEvaluated: true,
-              entering: false,
-              error: false,
-            }
-          : INITIAL_STATE,
-      );
+      if (targetMode === "decimal") {
+        // Modo decimal: usa o valor string do campo diretamente.
+        const display = getActiveDecimalDisplay();
+        setState(
+          display !== null && display !== "" && display !== "0"
+            ? { display, accumulator: null, operator: null, justEvaluated: true, entering: false, error: false }
+            : INITIAL_STATE,
+        );
+      } else {
+        // Modo money (padrão): converte centavos para decimal.
+        const targetCents = getActiveTargetCents();
+        setState(
+          targetCents !== null && targetCents > 0
+            ? {
+                display: centsToDecimal(targetCents),
+                accumulator: null,
+                operator: null,
+                justEvaluated: true,
+                entering: false,
+                error: false,
+              }
+            : INITIAL_STATE,
+        );
+      }
       setPlan(null);
     }
   }
@@ -91,6 +111,30 @@ export function FloatingCalculator() {
   };
 
   const handleInject = useCallback(async () => {
+    if (targetMode === "decimal") {
+      // Modo decimal: injeta o display string diretamente no campo.
+      const ok = injectDecimalValue(state.display);
+      if (ok) {
+        setCalculatorOpen(false);
+        return;
+      }
+      // Sem campo decimal ativo: copia o valor como texto.
+      try {
+        if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(state.display);
+          pushToast({
+            title: "Resultado copiado",
+            description: `${state.display} copiado para a área de transferência.`,
+            variant: "default",
+          });
+        }
+      } catch {
+        // noop
+      }
+      return;
+    }
+
+    // Modo money (padrão): converte para centavos e injeta.
     const cents = decimalToCents(state.display);
     const ok = injectCalculatedValue(cents);
     if (ok) {
@@ -110,7 +154,7 @@ export function FloatingCalculator() {
     } catch {
       // noop
     }
-  }, [state.display]);
+  }, [state.display, targetMode]);
 
   const displayCents = decimalToCents(state.display);
 
@@ -124,6 +168,13 @@ export function FloatingCalculator() {
     };
     window.addEventListener("keydown", onGlobalKeyDown);
     return () => window.removeEventListener("keydown", onGlobalKeyDown);
+  }, []);
+
+  // Evento customizado "calculator:open" disparado pelo botão do NumericInput
+  useEffect(() => {
+    const onOpen = () => setCalculatorOpen(true);
+    window.addEventListener("calculator:open", onOpen);
+    return () => window.removeEventListener("calculator:open", onOpen);
   }, []);
 
   // Suporte a teclado físico quando o modal da calculadora está aberto
@@ -176,12 +227,18 @@ export function FloatingCalculator() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, handleEquals, handleInject]);
 
+  const isDecimalMode = targetMode === "decimal";
+
   return (
     <Modal
       open={open}
       onOpenChange={setCalculatorOpen}
       title="Calculadora"
-      description="Use o resultado no campo em foco do formulário."
+      description={
+        isDecimalMode
+          ? "Use o resultado no campo numérico em foco."
+          : "Use o resultado no campo em foco do formulário."
+      }
       elevated
     >
         <div className="mt-4 flex flex-col gap-4">
@@ -189,7 +246,11 @@ export function FloatingCalculator() {
           <div className="flex items-center justify-between">
             {isConnected ? (
               <Badge variant="muted" size="sm" className="gap-1.5 font-normal">
-                <Link2 className="size-3 text-muted-foreground" aria-hidden="true" />
+                {isDecimalMode ? (
+                  <Hash className="size-3 text-muted-foreground" aria-hidden="true" />
+                ) : (
+                  <Link2 className="size-3 text-muted-foreground" aria-hidden="true" />
+                )}
                 <span>{connectedLabel ? `Campo: ${connectedLabel}` : "Conectado ao campo"}</span>
               </Badge>
             ) : (
@@ -203,11 +264,20 @@ export function FloatingCalculator() {
           {/* Display */}
           <div className="flex flex-col gap-1 rounded-xl border border-border bg-muted p-4">
             <p className="num text-right text-3xl font-semibold text-foreground" aria-live="polite">
-              {state.error ? "Erro" : <MoneyText cents={displayCents} variant="value" tone="default" className="text-right text-3xl" />}
+              {state.error
+                ? "Erro"
+                : isDecimalMode
+                  ? // Modo decimal: exibe o número sem símbolo de moeda
+                    <span className="tabular-nums tracking-tight">{state.display !== "0" ? state.display : "0"}</span>
+                  : <MoneyText cents={displayCents} variant="value" tone="default" className="text-right text-3xl" />
+              }
             </p>
             {state.operator && !state.error ? (
               <p className="text-right text-xs text-muted-foreground">{state.operator}</p>
             ) : null}
+            {isDecimalMode && (
+              <p className="text-right text-[11px] text-muted-foreground">Número decimal</p>
+            )}
           </div>
 
           <CalculatorKeypad
@@ -221,29 +291,31 @@ export function FloatingCalculator() {
             onBackspace={() => setState((current) => pressBackspace(current))}
           />
 
-          {/* Divisão de parcelas */}
-          <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-medium text-muted-foreground">Dividir em parcelas</p>
-              <NumberStepper
-                value={installments}
-                onValueChange={setInstallments}
-                min={1}
-                max={60}
-                decreaseLabel="Diminuir parcelas"
-                increaseLabel="Aumentar parcelas"
-                className="w-36"
-              />
+          {/* Divisão de parcelas — apenas no modo money */}
+          {!isDecimalMode && (
+            <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-medium text-muted-foreground">Dividir em parcelas</p>
+                <NumberStepper
+                  value={installments}
+                  onValueChange={setInstallments}
+                  min={1}
+                  max={60}
+                  decreaseLabel="Diminuir parcelas"
+                  increaseLabel="Aumentar parcelas"
+                  className="w-36"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  {plan ?? "Divisão exata em centavos (resto na primeira parcela)."}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={handleSplit}>
+                  Dividir
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                {plan ?? "Divisão exata em centavos (resto na primeira parcela)."}
-              </p>
-              <Button type="button" variant="outline" size="sm" onClick={handleSplit}>
-                Dividir
-              </Button>
-            </div>
-          </div>
+          )}
 
           {/* Histórico */}
           {history.length > 0 ? (

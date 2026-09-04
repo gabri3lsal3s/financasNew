@@ -82,6 +82,7 @@
     │
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button (+ button-variants), input,
+    │   │   │                      #   numeric-input (integração bidirecional c/ calculadora decimal livre),
     │   │   │                      #   card, badge, modal, responsive-dialog (F55 — drawer mobile + modal desktop),
     │   │   │                      #   tabs, skeleton, empty-state, virtual-list (F5.5), toast, toast-host (F30),
     │   │   │                      #   print-sheet, number-ticker, sparkline (F8), color-picker,

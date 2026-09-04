@@ -1,5 +1,5 @@
 import { ShieldAlert, ShieldCheck } from "lucide-react";
-import { Alert, Badge, Button, Checkbox, DatePicker, Input, MoneyInput } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, DatePicker, MoneyInput, NumericInput } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import type { PortfolioAsset } from "@/types";
 import type { sellAssetPosition } from "@/domain/portfolio";
@@ -58,12 +58,12 @@ export function AssetSellTab({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             {isTotalValueMode ? "Valor a Resgatar" : "Quantidade a Vender"}
-            <Input
+            <NumericInput
               value={sellQtyStr}
-              onChange={(e) => setSellQtyStr(e.target.value)}
+              onValueChange={setSellQtyStr}
               placeholder={isTotalValueMode ? "Ex: 1000,00" : "Ex: 50"}
-              inputMode="decimal"
               aria-label={isTotalValueMode ? "Valor a resgatar" : "Quantidade a vender"}
+              showCalculatorAction
             />
           </label>
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
-import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, MoneyInput, MoneyText, Select } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
 
 
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
@@ -608,12 +608,12 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               </div>
               <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
                 Saldo Atual (R$)
-                <Input
+                <NumericInput
                   value={quantityStr}
-                  onChange={(e) => setQuantityStr(e.target.value)}
+                  onValueChange={setQuantityStr}
                   placeholder="10000,00"
-                  inputMode="decimal"
                   aria-label="Saldo em caixa"
+                  showCalculatorAction
                 />
               </label>
             </div>
@@ -695,12 +695,12 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
                   Quantidade Atual (Cotas / Unidades)
-                  <Input
+                  <NumericInput
                     value={quantityStr}
-                    onChange={(e) => setQuantityStr(e.target.value)}
+                    onValueChange={setQuantityStr}
                     placeholder="100"
-                    inputMode="decimal"
                     aria-label="Quantidade de cotas"
+                    showCalculatorAction
                   />
                 </label>
 
@@ -725,12 +725,13 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                     <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
                       Novas Cotas Adquiridas
-                      <Input
+                      <NumericInput
                         value={newLotQtyStr}
-                        onChange={(e) => setNewLotQtyStr(e.target.value)}
+                        onValueChange={setNewLotQtyStr}
                         placeholder="Ex: 50"
-                        inputMode="decimal"
-                        className="h-8 text-xs"
+                        aria-label="Novas cotas adquiridas"
+                        size="sm"
+                        showCalculatorAction
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
