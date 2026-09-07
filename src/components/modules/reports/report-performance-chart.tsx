@@ -23,8 +23,6 @@ export interface ReportPerformanceChartProps {
   series: readonly ReportPerformancePoint[];
   className?: string;
   title?: string;
-  /** Rentabilidade oficial consolidada da carteira (TWR por cotas) se disponível. */
-  officialTwrRatePct?: number | null;
   annualCdiRate?: number;
   annualSelicRate?: number;
   annualIpcaRate?: number;
@@ -49,7 +47,6 @@ export function ReportPerformanceChart({
   series,
   className,
   title = "Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês",
-  officialTwrRatePct,
   annualCdiRate = DEFAULT_ANNUAL_CDI_RATE,
   annualSelicRate = DEFAULT_ANNUAL_CDI_RATE,
   annualIpcaRate = DEFAULT_ANNUAL_IPCA_RATE,
@@ -68,29 +65,29 @@ export function ReportPerformanceChart({
     return Math.max(2, Math.ceil(maxVal * 1.25)); // ao menos 2% e 25% de margem no topo
   }, [rates]);
 
-  // Rentabilidade acumulada das competências da série do gráfico
+  // Rentabilidade acumulada rigorosa das competências exibidas no gráfico
   const seriesAccumulatedRatePct = useMemo(() => {
     const factor = rates.reduce((acc, r) => acc * (1 + r / 100), 1);
     return Math.round((factor - 1) * 10000) / 100;
   }, [rates]);
 
-  // Prioriza a rentabilidade oficial TWR consolidada para comparação com benchmarks
-  const effectivePortfolioRatePct = useMemo(() => {
-    if (officialTwrRatePct !== undefined && officialTwrRatePct !== null) {
-      return officialTwrRatePct;
-    }
-    return seriesAccumulatedRatePct;
-  }, [officialTwrRatePct, seriesAccumulatedRatePct]);
+  // Rótulo da janela temporal avaliada (ex: "10/25 a 09/26")
+  const periodWindowLabel = useMemo(() => {
+    if (displaySeries.length === 0) return "";
+    const first = displaySeries[0]?.monthLabel ?? "";
+    const last = displaySeries[displaySeries.length - 1]?.monthLabel ?? "";
+    return `${first} a ${last}`;
+  }, [displaySeries]);
 
   // Resumo de Risco (Sharpe, Drawdown, Volatilidade, Win Rate)
   const riskSummary = useMemo(() => {
     return calculatePortfolioRiskSummary(displaySeries, annualCdiRate);
   }, [displaySeries, annualCdiRate]);
 
-  // Comparativos Oficiais de Benchmarks (CDI, Poupança, IPCA, IBOVESPA)
+  // Comparativos Oficiais de Benchmarks (CDI, Poupança, IPCA, IBOVESPA) para o período da série
   const benchmarkComparison = useMemo(() => {
     return calculateConsolidatedBenchmarks({
-      portfolioRatePct: effectivePortfolioRatePct,
+      portfolioRatePct: seriesAccumulatedRatePct,
       monthsCount: displaySeries.length,
       annualCdiRate,
       annualSelicRate,
@@ -98,7 +95,7 @@ export function ReportPerformanceChart({
       ibovPeriodRatePct: ibovPeriodReturnPct,
     });
   }, [
-    effectivePortfolioRatePct,
+    seriesAccumulatedRatePct,
     displaySeries.length,
     annualCdiRate,
     annualSelicRate,
@@ -131,7 +128,7 @@ export function ReportPerformanceChart({
           </h3>
         </div>
         <span className="text-[10px] text-muted-foreground font-mono num">
-          Últimas {displaySeries.length} competências
+          Últimas {displaySeries.length} competências ({periodWindowLabel})
         </span>
       </div>
 
@@ -229,12 +226,15 @@ export function ReportPerformanceChart({
           </svg>
         </div>
 
-        {/* 1. Painel Oficial de Benchmarks de Mercado (Comparativo Institucional) */}
+        {/* 1. Painel Oficial de Benchmarks de Mercado (Comparativo Institucional do Período) */}
         <div className="flex flex-col gap-1.5 pt-1">
           <div className="flex items-center justify-between border-b border-border/60 pb-1">
-            <div className="flex items-center gap-1 text-[9.5px] font-bold text-foreground uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 text-[9.5px] font-bold text-foreground uppercase tracking-wider">
               <Compass className="size-3 text-primary-strong" aria-hidden="true" />
-              <span>Benchmarks Oficiais de Comparação ({displaySeries.length} Meses)</span>
+              <span>Benchmarks de Comparação ({periodWindowLabel})</span>
+              <span className="text-positive-strong font-mono font-bold">
+                • Carteira: {formatSignedPct(seriesAccumulatedRatePct)}
+              </span>
             </div>
             <span className="text-[9px] text-muted-foreground font-mono">
               Ganho Real s/ Inflação:{" "}
@@ -300,7 +300,7 @@ export function ReportPerformanceChart({
           <div className="flex items-center justify-between border-b border-border/60 pb-1">
             <div className="flex items-center gap-1 text-[9.5px] font-bold text-foreground uppercase tracking-wider">
               <ShieldCheck className="size-3 text-primary-strong" aria-hidden="true" />
-              <span>Métricas de Risco & Consistência do Período</span>
+              <span>Métricas de Risco & Consistência ({periodWindowLabel})</span>
             </div>
             <span className="text-[9px] text-muted-foreground font-mono">
               Padrão CFA & ANBIMA
