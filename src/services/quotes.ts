@@ -44,14 +44,17 @@ export function clearBcbCache(): void {
  *
  * Utiliza fallback em cascata com proxies abertos e timeout resiliente.
  */
-export async function fetchBcbIndicator(indicator: "CDI" | "SELIC"): Promise<number | null> {
+export async function fetchBcbIndicator(indicator: "CDI" | "SELIC" | "IPCA"): Promise<number | null> {
   const now = Date.now();
   if (bcbRateCache && now - bcbRateCache.timestamp < CACHE_TTL_MS) {
     if (indicator === "CDI" && bcbRateCache.cdiAnnual !== undefined) return bcbRateCache.cdiAnnual;
     if (indicator === "SELIC" && bcbRateCache.selicAnnual !== undefined) return bcbRateCache.selicAnnual;
+    if (indicator === "IPCA" && (bcbRateCache as Record<string, unknown>).ipcaAnnual !== undefined) {
+      return (bcbRateCache as Record<string, unknown>).ipcaAnnual as number;
+    }
   }
 
-  const serie = indicator === "CDI" ? 12 : 432;
+  const serie = indicator === "CDI" ? 12 : indicator === "SELIC" ? 432 : 433;
   const targetUrl = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/1?formato=json`;
   const candidateUrls = [
     targetUrl,
@@ -72,6 +75,7 @@ export async function fetchBcbIndicator(indicator: "CDI" | "SELIC"): Promise<num
         if (!bcbRateCache) bcbRateCache = { timestamp: now };
         if (indicator === "CDI") bcbRateCache.cdiAnnual = parsed.rateAnnual;
         if (indicator === "SELIC") bcbRateCache.selicAnnual = parsed.rateAnnual;
+        if (indicator === "IPCA") (bcbRateCache as Record<string, unknown>).ipcaAnnual = parsed.rateAnnual;
         bcbRateCache.timestamp = now;
         return parsed.rateAnnual;
       }

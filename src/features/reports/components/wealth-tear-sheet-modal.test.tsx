@@ -224,6 +224,13 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     expect(screen.getAllByText("08/26").length).toBeGreaterThan(0);
     expect(screen.getAllByText("09/26").length).toBeGreaterThan(0);
 
+    // Deve exibir o painel de Benchmarks e Métricas Avançadas de Risco
+    expect(screen.getAllByText(/Benchmarks Oficiais de Comparação/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Métricas Avançadas de Risco & Consistência/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Índice Sharpe").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Max Drawdown").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Consistência").length).toBeGreaterThan(0);
+
     // Rerenderiza com apenas 1 competência (deve ocultar o gráfico para evitar gráfico quebrado)
     rerender(
       <WealthTearSheetModal

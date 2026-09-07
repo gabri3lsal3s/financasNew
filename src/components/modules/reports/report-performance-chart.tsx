@@ -1,9 +1,14 @@
 import { useMemo } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, ShieldCheck, TrendingUp, Gauge, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MoneyText } from "@/components/ui/money-text";
-import { numberToCents } from "@/domain/money";
-import { formatSignedPct } from "@/services/masks/percent";
+import { Badge } from "@/components/ui/badge";
+import { formatSignedPct, formatPercent } from "@/services/masks/percent";
+import {
+  calculatePortfolioRiskSummary,
+  calculateConsolidatedBenchmarks,
+  DEFAULT_ANNUAL_CDI_RATE,
+  DEFAULT_ANNUAL_IPCA_RATE,
+} from "@/domain/portfolio";
 
 export interface ReportPerformancePoint {
   month: string;
@@ -18,6 +23,10 @@ export interface ReportPerformanceChartProps {
   series: readonly ReportPerformancePoint[];
   className?: string;
   title?: string;
+  annualCdiRate?: number;
+  annualSelicRate?: number;
+  annualIpcaRate?: number;
+  ibovPeriodReturnPct?: number;
 }
 
 const SVG_WIDTH = 560;
@@ -27,15 +36,21 @@ const PAD_TOP = 20;
 const PAD_BOTTOM = 26;
 
 /**
- * Gráfico Institucional de Rentabilidade & Evolução Mensal (SVG puro).
+ * Gráfico Institucional de Rentabilidade & Análise de Risco (SVG puro).
  * Projetado especificamente para impressão A4 e visualização em alta fidelidade.
- * Exibe a taxa de rentabilidade de cada competência com barras bi-direcionais
- * (positivo/verde, negativo/vermelho) e uma tabela resumo mês a mês logo abaixo.
+ * Exibe:
+ * 1. Gráfico de barras de rentabilidade mês a mês com linha guia do CDI médio mensal;
+ * 2. Quadro comparativo oficial de Benchmarks (CDI, Poupança, IPCA/Inflação e IBOVESPA);
+ * 3. Painel de Métricas Avançadas de Risco & Eficiência (Índice Sharpe, Volatilidade, Max Drawdown e Consistência).
  */
 export function ReportPerformanceChart({
   series,
   className,
   title = "Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês",
+  annualCdiRate = DEFAULT_ANNUAL_CDI_RATE,
+  annualSelicRate = DEFAULT_ANNUAL_CDI_RATE,
+  annualIpcaRate = DEFAULT_ANNUAL_IPCA_RATE,
+  ibovPeriodReturnPct,
 }: ReportPerformanceChartProps) {
   // Considera no máximo as últimas 12 competências para manter clareza e legibilidade no A4
   const displaySeries = useMemo(() => {
@@ -50,6 +65,42 @@ export function ReportPerformanceChart({
     return Math.max(2, Math.ceil(maxVal * 1.2)); // ao menos 2% e 20% de margem
   }, [rates]);
 
+  // Rentabilidade acumulada no período avaliado
+  const portfolioAccumulatedRatePct = useMemo(() => {
+    const factor = rates.reduce((acc, r) => acc * (1 + r / 100), 1);
+    return Math.round((factor - 1) * 10000) / 100;
+  }, [rates]);
+
+  // Taxa média mensal do CDI para a linha guia do gráfico
+  const monthlyCdiRate = useMemo(() => {
+    const rate = Math.pow(1 + annualCdiRate / 100, 1 / 12) - 1;
+    return Math.round(rate * 10000) / 100;
+  }, [annualCdiRate]);
+
+  // Resumo de Risco (Sharpe, Drawdown, Volatilidade, Win Rate)
+  const riskSummary = useMemo(() => {
+    return calculatePortfolioRiskSummary(displaySeries, annualCdiRate);
+  }, [displaySeries, annualCdiRate]);
+
+  // Comparativos Oficiais de Benchmarks (CDI, Poupança, IPCA, IBOVESPA)
+  const benchmarkComparison = useMemo(() => {
+    return calculateConsolidatedBenchmarks({
+      portfolioRatePct: portfolioAccumulatedRatePct,
+      monthsCount: displaySeries.length,
+      annualCdiRate,
+      annualSelicRate,
+      annualIpcaRate,
+      ibovPeriodRatePct: ibovPeriodReturnPct,
+    });
+  }, [
+    portfolioAccumulatedRatePct,
+    displaySeries.length,
+    annualCdiRate,
+    annualSelicRate,
+    annualIpcaRate,
+    ibovPeriodReturnPct,
+  ]);
+
   // Salvaguarda: só renderiza se houver 2 ou mais competências
   if (!series || series.length < 2 || displaySeries.length < 2) {
     return null;
@@ -61,6 +112,9 @@ export function ReportPerformanceChart({
   const count = displaySeries.length;
   const stepX = (SVG_WIDTH - PAD_X * 2) / count;
   const barWidth = Math.min(26, Math.max(12, stepX * 0.5));
+
+  // Posição Y da linha guia do CDI mensal no gráfico
+  const cdiY = zeroY - Math.min(usableHeight / 2, (monthlyCdiRate / maxAbsRate) * (usableHeight / 2));
 
   return (
     <section
@@ -79,8 +133,8 @@ export function ReportPerformanceChart({
         </span>
       </div>
 
-      <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-2.5">
-        {/* Gráfico SVG de Barras de Rentabilidade */}
+      <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-3">
+        {/* Gráfico SVG de Barras de Rentabilidade com Linha Guia CDI */}
         <div className="relative w-full overflow-hidden">
           <svg
             viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
@@ -98,6 +152,29 @@ export function ReportPerformanceChart({
               strokeDasharray="2 2"
               className="text-border/80 stroke-[1]"
             />
+
+            {/* Linha Guia do CDI Médio Mensal */}
+            {monthlyCdiRate > 0 && (
+              <>
+                <line
+                  x1={PAD_X}
+                  y1={cdiY}
+                  x2={SVG_WIDTH - PAD_X}
+                  y2={cdiY}
+                  stroke="currentColor"
+                  strokeDasharray="3 3"
+                  className="text-portfolio/70 stroke-[1.2]"
+                />
+                <text
+                  x={SVG_WIDTH - PAD_X}
+                  y={cdiY - 3}
+                  textAnchor="end"
+                  className="text-[7.5px] font-mono fill-portfolio font-bold num"
+                >
+                  Ref. CDI ({formatPercent(monthlyCdiRate)}% a.m.)
+                </text>
+              </>
+            )}
 
             {/* Eixo Superior (+max) e Inferior (-max) */}
             <text
@@ -173,48 +250,162 @@ export function ReportPerformanceChart({
           </svg>
         </div>
 
-        {/* Tabela Resumo Compacta (Data Grid para Leitura Executiva e Impressão) */}
-        <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
-                <th className="py-1 px-2.5">Competência</th>
-                <th className="py-1 px-2.5 text-right">Patrimônio Bruto</th>
-                <th className="py-1 px-2 text-right">Rentabilidade do Mês</th>
-                <th className="py-1 px-2.5 text-right">Proventos do Mês</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60 font-mono text-[10.5px] num">
-              {displaySeries.map((point) => (
-                <tr key={point.month} className="even:bg-muted/20 print:even:bg-slate-50/50">
-                  <td className="py-1 px-2.5 font-sans font-semibold text-foreground text-[11px]">
-                    {point.monthLabel}
-                  </td>
-                  <td className="py-1 px-2.5 text-right font-bold text-foreground">
-                    <MoneyText cents={numberToCents(point.patrimonyBRL)} />
-                  </td>
-                  <td
+        {/* 1. Painel Oficial de Benchmarks de Mercado (Comparativo Institucional) */}
+        <div className="flex flex-col gap-1.5 pt-1">
+          <div className="flex items-center justify-between border-b border-border/60 pb-1">
+            <div className="flex items-center gap-1 text-[9.5px] font-bold text-foreground uppercase tracking-wider">
+              <Compass className="size-3 text-primary-strong" aria-hidden="true" />
+              <span>Benchmarks Oficiais de Comparação ({displaySeries.length} Meses)</span>
+            </div>
+            <span className="text-[9px] text-muted-foreground font-mono">
+              Ganho Real s/ Inflação:{" "}
+              <strong
+                className={cn(
+                  "font-bold",
+                  benchmarkComparison.realReturnPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                )}
+              >
+                {formatSignedPct(benchmarkComparison.realReturnPct)}
+              </strong>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {benchmarkComparison.items.map((bm) => (
+              <div
+                key={bm.key}
+                className="rounded-lg border border-border/70 bg-transparent p-2 flex flex-col justify-between gap-1 shadow-2xs"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-foreground">{bm.name}</span>
+                  {bm.pctOfBenchmark !== null ? (
+                    <Badge
+                      variant={bm.status === "outperforming" ? "default" : "outline"}
+                      size="xs"
+                      className={cn(
+                        "font-mono font-bold",
+                        bm.status === "outperforming"
+                          ? "bg-positive/15 text-positive-strong border-positive/30"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {formatPercent(bm.pctOfBenchmark)}%
+                    </Badge>
+                  ) : null}
+                </div>
+
+                <div className="flex items-baseline justify-between gap-1">
+                  <span className="text-[10.5px] font-mono text-muted-foreground num">
+                    {formatPercent(bm.benchmarkRatePct)}%
+                  </span>
+                  <span
                     className={cn(
-                      "py-1 px-2 text-right font-bold",
-                      (point.ratePct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong",
+                      "text-[10.5px] font-mono font-bold num",
+                      bm.alphaPct >= 0 ? "text-positive-strong" : "text-negative-strong",
                     )}
                   >
-                    {formatSignedPct(point.ratePct)}
-                  </td>
-                  <td className="py-1 px-2.5 text-right text-positive-strong font-medium">
-                    {point.dividendsBRL && point.dividendsBRL > 0 ? (
-                      <MoneyText cents={numberToCents(point.dividendsBRL)} tone="positive" />
-                    ) : (
-                      <span className="text-muted-foreground/60">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    {formatSignedPct(bm.alphaPct)}
+                  </span>
+                </div>
+
+                <p className="text-[8.5px] text-muted-foreground/80 truncate leading-tight">
+                  {bm.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Painel de Métricas Avançadas de Risco & Eficiência */}
+        <div className="flex flex-col gap-1.5 pt-1">
+          <div className="flex items-center justify-between border-b border-border/60 pb-1">
+            <div className="flex items-center gap-1 text-[9.5px] font-bold text-foreground uppercase tracking-wider">
+              <ShieldCheck className="size-3 text-primary-strong" aria-hidden="true" />
+              <span>Métricas Avançadas de Risco & Consistência da Carteira</span>
+            </div>
+            <span className="text-[9px] text-muted-foreground font-mono">
+              Padrão CFA & ANBIMA
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* Índice de Sharpe */}
+            <div className="rounded-lg border border-border/70 bg-transparent p-2 flex flex-col justify-between gap-1 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-foreground">Índice Sharpe</span>
+                <Gauge className="size-3 text-muted-foreground" aria-hidden="true" />
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-sm font-mono font-bold text-foreground num">
+                  {riskSummary.sharpeRatio !== null ? formatPercent(riskSummary.sharpeRatio) : "—"}
+                </span>
+                <span className="text-[8.5px] font-medium text-muted-foreground">
+                  {riskSummary.sharpeLabel}
+                </span>
+              </div>
+              <p className="text-[8.5px] text-muted-foreground/80 leading-tight">
+                Eficiência do retorno excedente sobre o CDI
+              </p>
+            </div>
+
+            {/* Max Drawdown */}
+            <div className="rounded-lg border border-border/70 bg-transparent p-2 flex flex-col justify-between gap-1 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-foreground">Max Drawdown</span>
+                <span className="text-[8.5px] font-mono text-muted-foreground">Pico-Fundo</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-sm font-mono font-bold text-negative-strong num">
+                  {formatSignedPct(riskSummary.maxDrawdown.maxDrawdownPct)}
+                </span>
+              </div>
+              <p className="text-[8.5px] text-muted-foreground/80 leading-tight">
+                Maior retração histórica suportada no período
+              </p>
+            </div>
+
+            {/* Volatilidade Anualizada */}
+            <div className="rounded-lg border border-border/70 bg-transparent p-2 flex flex-col justify-between gap-1 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-foreground">Volatilidade (σ)</span>
+                <span className="text-[8.5px] font-mono text-muted-foreground">Anualizada</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-sm font-mono font-bold text-foreground num">
+                  {formatPercent(riskSummary.volatility.annualizedStdDevPct)}% a.a.
+                </span>
+              </div>
+              <p className="text-[8.5px] text-muted-foreground/80 leading-tight">
+                Desvio padrão amostral ({formatPercent(riskSummary.volatility.monthlyStdDevPct)}% a.m.)
+              </p>
+            </div>
+
+            {/* Consistência / Win Rate */}
+            <div className="rounded-lg border border-border/70 bg-transparent p-2 flex flex-col justify-between gap-1 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-foreground">Consistência</span>
+                <TrendingUp className="size-3 text-muted-foreground" aria-hidden="true" />
+              </div>
+              <div className="flex items-baseline justify-between gap-1">
+                <span className="text-sm font-mono font-bold text-positive-strong num">
+                  {formatPercent(riskSummary.consistency.winRatePct)}%
+                </span>
+                <span className="text-[8.5px] font-mono text-muted-foreground">
+                  {riskSummary.consistency.positiveMonths}/{riskSummary.consistency.totalMonths} meses
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[8px] font-mono pt-0.5">
+                <span className="text-positive-strong font-bold">
+                  Max: {formatSignedPct(riskSummary.consistency.bestMonthPct)}
+                </span>
+                <span className="text-negative-strong font-bold">
+                  Min: {formatSignedPct(riskSummary.consistency.worstMonthPct)}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
   );
 }
-

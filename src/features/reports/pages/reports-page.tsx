@@ -35,6 +35,7 @@ import {
   usePortfolioContributions,
   usePortfolioDividends,
   usePortfolioPosition,
+  useMacroIndicators,
   useUserAccess,
   useUserPreferences,
 } from "@/state";
@@ -168,6 +169,7 @@ export function ReportsPage() {
 
   // Queries de Investimentos & Patrimônio
   const positionQuery = usePortfolioPosition();
+  const macroIndicatorsQuery = useMacroIndicators();
   const assetsQuery = usePortfolioAssets();
   const dividendsQuery = usePortfolioDividends();
   const transactionsQuery = useAllPortfolioTransactions();
@@ -990,6 +992,10 @@ export function ReportsPage() {
         monthlySeries={positionQuery.monthlySeries}
         allTimeEconomicPnlBRL={positionQuery.allTimeEconomicPnlBRL}
         realizedPnlBRL={positionQuery.realizedPnlBRL}
+        annualCdiRate={macroIndicatorsQuery.data?.annualCdiRate}
+        annualSelicRate={macroIndicatorsQuery.data?.annualSelicRate}
+        annualIpcaRate={macroIndicatorsQuery.data?.annualIpcaRate}
+        ibovPeriodReturnPct={macroIndicatorsQuery.data?.ibovPeriodReturnPct}
       />
 
       <DividendFreedomModal

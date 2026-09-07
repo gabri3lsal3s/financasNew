@@ -433,4 +433,6 @@ export * from "./business-days";
 export * from "./fixed-income";
 export * from "./irr";
 export * from "./twr";
+export * from "./risk-metrics";
+export * from "./benchmarks";
 export * from "./statement-parser";

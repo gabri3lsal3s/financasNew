@@ -75,6 +75,10 @@ export interface WealthTearSheetModalProps {
   monthlySeries?: readonly PortfolioMonthlySeriesPoint[];
   allTimeEconomicPnlBRL?: number;
   realizedPnlBRL?: number;
+  annualCdiRate?: number;
+  annualSelicRate?: number;
+  annualIpcaRate?: number;
+  ibovPeriodReturnPct?: number;
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
@@ -128,6 +132,10 @@ export function WealthTearSheetModal({
   monthlySeries,
   allTimeEconomicPnlBRL,
   realizedPnlBRL,
+  annualCdiRate,
+  annualSelicRate,
+  annualIpcaRate,
+  ibovPeriodReturnPct,
   periodLabel = "Posição Atual Consolidada",
   appName = "Guia Financeiro",
   accountHolder,
@@ -764,6 +772,10 @@ export function WealthTearSheetModal({
           series={performanceSeries}
           title="Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"
           className="print-break-inside-avoid"
+          annualCdiRate={annualCdiRate}
+          annualSelicRate={annualSelicRate}
+          annualIpcaRate={annualIpcaRate}
+          ibovPeriodReturnPct={ibovPeriodReturnPct}
         />
       )}
 
