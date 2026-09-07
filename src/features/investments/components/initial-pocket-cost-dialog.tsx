@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Calendar, History, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Badge, Button, EmptyState, Input, Modal, MoneyInput } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -37,20 +37,27 @@ export function InitialPocketCostDialog({
   const createHistorical = useCreateHistoricalContribution();
   const deleteContribution = useDeletePortfolioContribution();
 
-  // Filtra todos os marcos históricos e marcos zeros pertencentes ao bolso
+  // Sempre que o diálogo for aberto, revalida a lista mais recente do servidor
+  useEffect(() => {
+    if (open) {
+      void contributionsQuery.refetch?.();
+    }
+  }, [open, contributionsQuery]);
+
+  // Filtra todos os marcos históricos e aportes do bolso
   const historicalContributions = useMemo(() => {
     const list = contributionsQuery.data ?? [];
     return list
       .filter((c) => {
-        if (c.asset_id !== null) return false;
-        const n = (c.notes ?? "").toLowerCase();
-        return (
-          n.includes("marco zero") ||
-          n.includes("marco histórico") ||
-          n.includes("custo inicial") ||
-          n.includes("histórico inicial") ||
-          n.includes("aporte histórico")
-        );
+        // Se tiver asset_id preenchido (compra de ativo cotizado),
+        // só exibe se for marcado explicitamente como marco
+        if (c.asset_id) {
+          const n = (c.notes ?? "").toLowerCase();
+          return n.includes("marco") || n.includes("histórico");
+        }
+        // Qualquer aporte sem ativo vinculado (asset_id null, undefined ou "")
+        // representa um aporte financeiro do bolso e compõe a Linha do Tempo!
+        return true;
       })
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [contributionsQuery.data]);
@@ -96,6 +103,9 @@ export function InitialPocketCostDialog({
         notes: newNotes.trim() || defaultLabel,
       });
 
+      // Força recarregamento imediato
+      await contributionsQuery.refetch?.();
+
       // Limpa os campos do formulário para o próximo aporte
       setNewAmountCents(0);
       setNewNotes("");
@@ -111,6 +121,7 @@ export function InitialPocketCostDialog({
     setDeletingId(contribution.id);
     try {
       await deleteContribution.mutateAsync(contribution.id);
+      await contributionsQuery.refetch?.();
       triggerSensory("destructive");
       pushToast({
         title: "Marco histórico removido",

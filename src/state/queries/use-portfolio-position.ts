@@ -435,11 +435,16 @@ export function usePortfolioPosition(): PortfolioPosition {
     today,
   });
 
-  const hasMarcoZeroContribution = (contributionsQuery.data ?? []).some((c) =>
-    (c.notes ?? "").toLowerCase().includes("marco zero") ||
-    (c.notes ?? "").toLowerCase().includes("custo inicial") ||
-    (c.notes ?? "").toLowerCase().includes("histórico inicial"),
-  );
+  const hasMarcoZeroContribution = (contributionsQuery.data ?? []).some((c) => {
+    if (!c.asset_id) return true;
+    const n = (c.notes ?? "").toLowerCase();
+    return (
+      n.includes("marco") ||
+      n.includes("custo inicial") ||
+      n.includes("histórico inicial") ||
+      n.includes("aporte histórico")
+    );
+  });
 
   const portfolioIrr = calculateXIRR(portfolioCashFlows);
 

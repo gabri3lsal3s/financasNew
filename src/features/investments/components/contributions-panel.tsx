@@ -46,11 +46,18 @@ export function ContributionsPanel({ defaultMonth }: ContributionsPanelProps) {
   const assets = assetsQuery.data ?? [];
   const tickerByAssetId = new Map(assets.map((a) => [a.id, a.ticker]));
 
-  const hasMarcoZero = position.hasMarcoZeroContribution || contributions.some((c) =>
-    (c.notes ?? "").toLowerCase().includes("marco zero") ||
-    (c.notes ?? "").toLowerCase().includes("custo inicial") ||
-    (c.notes ?? "").toLowerCase().includes("histórico inicial"),
-  );
+  const hasMarcoZero =
+    position.hasMarcoZeroContribution ||
+    contributions.some((c) => {
+      if (!c.asset_id) return true;
+      const n = (c.notes ?? "").toLowerCase();
+      return (
+        n.includes("marco") ||
+        n.includes("custo inicial") ||
+        n.includes("histórico inicial") ||
+        n.includes("aporte histórico")
+      );
+    });
 
   const filtered = contributions.filter((c) => c.date.startsWith(month));
   const monthTotalCents = filtered.reduce((acc, c) => acc + numberToCents(c.amount), 0);

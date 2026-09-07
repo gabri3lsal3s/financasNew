@@ -48,6 +48,7 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [],
       isLoading: false,
+      refetch: vi.fn(),
     } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
 
     render(
@@ -84,6 +85,7 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
         },
       ],
       isLoading: false,
+      refetch: vi.fn(),
     } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
 
     const onOpenChange = vi.fn();
@@ -118,6 +120,7 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [],
       isLoading: false,
+      refetch: vi.fn(),
     } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
 
     const onSuccess = vi.fn();

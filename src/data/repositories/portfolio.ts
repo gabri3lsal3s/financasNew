@@ -248,21 +248,28 @@ export async function createHistoricalContribution(params: {
   amount: number;
   notes?: string;
 }): Promise<PortfolioContribution> {
+  const notes = params.notes?.trim() || "Marco Histórico do Bolso";
+
+  // 1. Tenta via RPC atômico (se a migration 0044 já estiver aplicada no banco)
   const { data, error } = await resolveQuery<PortfolioContribution>(
     getSupabase().rpc("create_historical_contribution", {
       p_date: params.date,
       p_amount: params.amount,
-      p_notes: params.notes ?? "Marco Histórico do Bolso",
+      p_notes: notes,
     }),
   );
-  if (error) {
-    const classified = classifyError(error);
-    throw new AppError(classified.kind, classified.message, error);
+
+  if (!error && data) {
+    return mapContribution(data as unknown as PortfolioContribution);
   }
-  if (!data) {
-    throw new AppError("unknown", "Resposta vazia ao criar aporte histórico.", null);
-  }
-  return mapContribution(data as unknown as PortfolioContribution);
+
+  // 2. Fallback resiliente: insere diretamente com asset_id = null via repositório
+  return createPortfolioContribution({
+    asset_id: null,
+    date: params.date,
+    amount: params.amount,
+    notes,
+  });
 }
 
 
