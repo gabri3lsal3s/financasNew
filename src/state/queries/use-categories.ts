@@ -6,10 +6,11 @@ import { STATIC_GC_TIME, STALE_TIMES } from "@/state/cache-policy";
 export const categoriesKey = ["categories"] as const;
 
 /** Categorias ativas — opcionalmente filtradas por tipo. */
-export function useCategories(type?: CategoryType) {
+export function useCategories(type?: CategoryType, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...categoriesKey, type ?? "all"],
     queryFn: () => listCategories(type),
+    enabled: options?.enabled ?? true,
     staleTime: STALE_TIMES.static,
     gcTime: STATIC_GC_TIME,
   });

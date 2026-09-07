@@ -13,6 +13,7 @@ export interface CreateInviteDialogProps {
 }
 
 const AVAILABLE_MODULES = [
+  { key: "overview", label: "Painel Início (Visão Geral)", desc: "Dashboard consolidado, KPIs e fluxo financeiro" },
   { key: "transactions", label: "Transações & Lançamentos", desc: "Receitas, despesas e extrato" },
   { key: "cards", label: "Cartões de Crédito", desc: "Faturas, limites e carteira 3D" },
   { key: "debts", label: "Dívidas & Empréstimos", desc: "Contas a pagar, receber e contratos" },

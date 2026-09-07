@@ -15,10 +15,11 @@ export function useIncomesByRange(start: string, end: string, options?: { enable
 }
 
 /** Rendas do mês (YYYY-MM), ordenadas por data desc. */
-export function useIncomes(month: string) {
+export function useIncomes(month: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...incomesKey, month],
     queryFn: () => listIncomesByMonth(month),
+    enabled: options?.enabled ?? true,
     staleTime: STALE_TIMES.transactional,
   });
 }

@@ -34,6 +34,7 @@ export interface UserEditDialogProps {
 }
 
 const AVAILABLE_MODULES = [
+  { key: "overview", label: "Painel Início (Visão Geral)", desc: "Dashboard consolidado, KPIs e fluxo financeiro" },
   { key: "transactions", label: "Transações & Extrato", desc: "Receitas, despesas e lançamentos" },
   { key: "cards", label: "Cartões de Crédito", desc: "Faturas, limites e carteira" },
   { key: "debts", label: "Dívidas & Empréstimos", desc: "Contas a pagar, receber e contratos" },

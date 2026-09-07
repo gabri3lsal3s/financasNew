@@ -4,10 +4,12 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "@/data/client";
 import { getMyFeatures, getMyProfile } from "@/data/repositories/access";
+import { getMySubscription } from "@/data/repositories/subscriptions";
 import type { Profile, SystemFeatureKey, UserRole, UserStatus } from "@/types";
 
 export const USER_ACCESS_KEY = ["user_access"] as const;
 export const USER_FEATURES_KEY = ["user_features"] as const;
+export const USER_SUBSCRIPTION_KEY = ["user_subscription"] as const;
 
 let activeChannel: RealtimeChannel | null = null;
 let activeUserId: string | null = null;
@@ -76,7 +78,7 @@ function subscribeUserAccessRealtime(userId: string, queryClient: QueryClient): 
         filter: `user_id=eq.${userId}`,
       },
       () => {
-        void queryClient.invalidateQueries({ queryKey: ["user_subscription"] });
+        void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
       },
     )
     .on(
@@ -88,7 +90,7 @@ function subscribeUserAccessRealtime(userId: string, queryClient: QueryClient): 
         filter: `user_id=eq.${userId}`,
       },
       () => {
-        void queryClient.invalidateQueries({ queryKey: ["user_subscription"] });
+        void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
         void queryClient.invalidateQueries({ queryKey: USER_FEATURES_KEY });
       },
     )
@@ -124,7 +126,7 @@ export interface UserAccessResult {
 }
 
 /**
- * Hook central de controle de acesso, status da conta e feature flags do usuário (§F43).
+ * Hook central de controle de acesso, status da conta, feature flags e permissões modulares (§F43).
  * Sincroniza em tempo real via canais Postgres Changes do Supabase com gerenciamento singleton.
  */
 export function useUserAccess(): UserAccessResult {
@@ -149,6 +151,16 @@ export function useUserAccess(): UserAccessResult {
   const status: UserStatus = profile?.status ?? "active"; // Fallback permissivo para sessões existentes até refetch
   const features: Record<string, boolean> = featuresQuery.data ?? {};
 
+  const subscriptionQuery = useQuery({
+    queryKey: USER_SUBSCRIPTION_KEY,
+    queryFn: getMySubscription,
+    enabled: Boolean(profile?.id),
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+
+  const subscription = subscriptionQuery.data ?? null;
+
   const isPendingApproval = status === "pending_approval";
   const isActive = status === "active";
   const isSuspended = status === "suspended";
@@ -158,6 +170,34 @@ export function useUserAccess(): UserAccessResult {
   const isAdmin = isSuperAdmin || role === "admin";
 
   const hasFeature = (featureKey: SystemFeatureKey | string): boolean => {
+    // 1. SuperAdmin e Admin têm acesso irrestrito a todas as funcionalidades
+    if (isAdmin) return true;
+
+    // 2. Kill-Switch global ou desativação explícita de feature flag
+    if (features[featureKey] === false) {
+      return false;
+    }
+
+    // 3. Verifica override modular específico na assinatura (user_module_permissions)
+    const moduleAccess = subscription?.moduleAccess;
+    if (moduleAccess && moduleAccess[featureKey] !== undefined) {
+      return moduleAccess[featureKey] !== "none";
+    }
+
+    // 4. Regra de proteção da Overview: se o usuário tiver bloqueio ('none')
+    // em todos os módulos financeiros primários (transações, cartões, dívidas e orçamentos),
+    // a visão geral financeira (overview) é automaticamente suprimida.
+    if (featureKey === "overview" && moduleAccess) {
+      const hasAnyCoreFinance =
+        moduleAccess.transactions !== "none" ||
+        moduleAccess.cards !== "none" ||
+        moduleAccess.debts !== "none" ||
+        moduleAccess.budgets !== "none";
+      if (!hasAnyCoreFinance) {
+        return false;
+      }
+    }
+
     if (features[featureKey] === undefined) {
       return true; // Fallback ativo se não listado
     }
@@ -173,11 +213,21 @@ export function useUserAccess(): UserAccessResult {
     };
   }, [profile?.id, queryClient]);
 
-  const isLoading = profileQuery.isLoading || featuresQuery.isLoading;
-  const error = (profileQuery.error as Error | null) ?? (featuresQuery.error as Error | null);
+  const isLoading =
+    profileQuery.isLoading ||
+    featuresQuery.isLoading ||
+    (Boolean(profile?.id) && subscriptionQuery.isLoading);
+  const error =
+    (profileQuery.error as Error | null) ??
+    (featuresQuery.error as Error | null) ??
+    (subscriptionQuery.error as Error | null);
 
   const refetch = async () => {
-    await Promise.all([profileQuery.refetch(), featuresQuery.refetch()]);
+    await Promise.all([
+      profileQuery.refetch(),
+      featuresQuery.refetch(),
+      subscriptionQuery.refetch(),
+    ]);
   };
 
   return {

@@ -5,10 +5,11 @@ import { STALE_TIMES } from "@/state/cache-policy";
 export const expensesKey = ["expenses"] as const;
 
 /** Despesas do mês (YYYY-MM), ordenadas por data desc. */
-export function useExpenses(month: string) {
+export function useExpenses(month: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...expensesKey, month],
     queryFn: () => listExpensesByMonth(month),
+    enabled: options?.enabled ?? true,
     staleTime: STALE_TIMES.transactional,
   });
 }

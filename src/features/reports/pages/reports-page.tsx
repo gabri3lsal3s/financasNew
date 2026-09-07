@@ -91,16 +91,18 @@ export function ReportsPage() {
     return list;
   }, [hasFinanceFeatures, hasInvestmentsFeature]);
 
+  const defaultTab = availableTabs[0] ?? (hasInvestmentsFeature ? "investimentos" : "financas");
+
   const [selectedTab, setSelectedTab] = useState<MainTab>(() => {
     const validValues = new Set(availableTabs);
     if (validValues.has(activeTabParam)) return activeTabParam;
-    return availableTabs[0] ?? "financas";
+    return defaultTab;
   });
 
   const validTabValues = useMemo(() => new Set(availableTabs), [availableTabs]);
   const mainTab: MainTab = validTabValues.has(selectedTab)
     ? selectedTab
-    : (availableTabs[0] ?? "financas");
+    : defaultTab;
 
   const handleTabChange = (val: string) => {
     const nextTab = val as MainTab;
@@ -146,22 +148,22 @@ export function ReportsPage() {
   const isYear = mode === "year";
   const isCustom = mode === "custom";
 
-  // Queries de Finanças
-  const monthlyExpenses = useExpenses(month);
-  const monthlyIncomes = useIncomes(month);
-  const prevExpenses = useExpenses(shiftMonth(month, -1));
-  const prevIncomes = useIncomes(shiftMonth(month, -1));
+  // Queries de Finanças — condicionadas a hasFinanceFeatures
+  const monthlyExpenses = useExpenses(month, { enabled: hasFinanceFeatures });
+  const monthlyIncomes = useIncomes(month, { enabled: hasFinanceFeatures });
+  const prevExpenses = useExpenses(shiftMonth(month, -1), { enabled: hasFinanceFeatures });
+  const prevIncomes = useIncomes(shiftMonth(month, -1), { enabled: hasFinanceFeatures });
 
-  const yearExpenses = useExpensesByRange(range.start, range.end, { enabled: isYear });
-  const yearIncomes = useIncomesByRange(range.start, range.end, { enabled: isYear });
+  const yearExpenses = useExpensesByRange(range.start, range.end, { enabled: isYear && hasFinanceFeatures });
+  const yearIncomes = useIncomesByRange(range.start, range.end, { enabled: isYear && hasFinanceFeatures });
   const prevYearRange = isYear ? yearRange(year - 1) : { start: "", end: "" };
-  const prevYearExpenses = useExpensesByRange(prevYearRange.start, prevYearRange.end, { enabled: isYear });
-  const prevYearIncomes = useIncomesByRange(prevYearRange.start, prevYearRange.end, { enabled: isYear });
+  const prevYearExpenses = useExpensesByRange(prevYearRange.start, prevYearRange.end, { enabled: isYear && hasFinanceFeatures });
+  const prevYearIncomes = useIncomesByRange(prevYearRange.start, prevYearRange.end, { enabled: isYear && hasFinanceFeatures });
 
-  const rangeExpenses = useExpensesByRange(range.start, range.end, { enabled: isCustom && customValid });
-  const rangeIncomes = useIncomesByRange(range.start, range.end, { enabled: isCustom && customValid });
-  const debtsQuery = useDebts();
-  const categoriesQuery = useCategories();
+  const rangeExpenses = useExpensesByRange(range.start, range.end, { enabled: isCustom && customValid && hasFinanceFeatures });
+  const rangeIncomes = useIncomesByRange(range.start, range.end, { enabled: isCustom && customValid && hasFinanceFeatures });
+  const debtsQuery = useDebts({ enabled: hasFinanceFeatures });
+  const categoriesQuery = useCategories(undefined, { enabled: hasFinanceFeatures });
   const contributionsQuery = usePortfolioContributions();
 
   // Queries de Investimentos & Patrimônio

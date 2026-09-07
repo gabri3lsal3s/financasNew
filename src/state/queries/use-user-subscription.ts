@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMySubscription } from "@/data/repositories/subscriptions";
-import { useUserAccess } from "./use-user-access";
+import { useUserAccess, USER_SUBSCRIPTION_KEY } from "./use-user-access";
 import type { SubscriptionStatus, SubscriptionTier, SubscriptionPlan } from "@/types";
 
-export const USER_SUBSCRIPTION_KEY = ["user_subscription"] as const;
+export { USER_SUBSCRIPTION_KEY };
 
 /**
  * Hook de estado central da assinatura do usuário.
