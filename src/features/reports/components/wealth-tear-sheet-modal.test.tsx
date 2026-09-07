@@ -126,4 +126,47 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
       screen.queryByText(/Somado ao resultado bruto realizado/i),
     ).not.toBeInTheDocument();
   });
+
+  it("renderiza TWR com destaque quando disponível e exibe o Quadro Executivo de Metodologias", () => {
+    render(
+      <WealthTearSheetModal
+        open={true}
+        onOpenChange={vi.fn()}
+        rows={[]}
+        totalBRL={107939.10}
+        totalCostBRL={98546.13}
+        totalReturnPct={16.7}
+        portfolioTwr={{
+          accumulatedRatePct: 27.1,
+          annualizedRatePct: 9.4,
+          monthsElapsed: 32,
+          currentSharePrice: 127.1,
+          status: "ok",
+          series: [],
+        }}
+        portfolioIrr={{
+          annualizedRatePct: 6.3,
+          periodRatePct: 15.0,
+          daysElapsed: 921,
+          isEligible: true,
+          status: "ok",
+        }}
+        allTimeEconomicPnlBRL={16511.84}
+        allocationAnalysis={mockAllocation}
+        concentrationRisk={mockConcentration}
+      />,
+    );
+
+    // Rentabilidade adaptativa: TWR como métrica principal (tela e folha de impressão)
+    expect(screen.getAllByText("Rentabilidade (TWR)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+9.4% a.a. (Padrão CVM)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Retorno contábil: +16,7%").length).toBeGreaterThan(0);
+
+    // Quadro Executivo de Metodologias
+    expect(screen.getAllByText("Metodologias & Métricas de Rentabilidade da Carteira").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/1\. TWR \(Cotas — Padrão CVM \/ ANBIMA\)/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2\. Retorno do Bolso \(TIR \/ XIRR\)/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/3\. Retorno Contábil da Custódia Aberta/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/4\. Resultado Histórico \(P&L Total em R\$\)/i).length).toBeGreaterThan(0);
+  });
 });

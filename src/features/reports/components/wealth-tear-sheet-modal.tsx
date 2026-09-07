@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Layers, PieChart, Landmark, Calendar } from "lucide-react";
+import { Layers, PieChart, Landmark, Calendar, TrendingUp, Percent, Scale } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
@@ -21,7 +21,7 @@ import {
   type ConcentrationRiskResult,
   type PeriodRedemptionItem,
 } from "@/domain/reports";
-import type { XIRRResult } from "@/domain/portfolio";
+import type { XIRRResult, TwrConsolidatedResult } from "@/domain/portfolio";
 
 export interface WealthPositionRow {
   ticker: string;
@@ -70,6 +70,7 @@ export interface WealthTearSheetModalProps {
   allocationAnalysis: AllocationAnalysisResult;
   concentrationRisk: ConcentrationRiskResult;
   portfolioIrr?: XIRRResult;
+  portfolioTwr?: TwrConsolidatedResult;
   allTimeEconomicPnlBRL?: number;
   realizedPnlBRL?: number;
   periodLabel?: string;
@@ -121,6 +122,7 @@ export function WealthTearSheetModal({
   allocationAnalysis,
   concentrationRisk,
   portfolioIrr,
+  portfolioTwr,
   allTimeEconomicPnlBRL,
   realizedPnlBRL,
   periodLabel = "Posição Atual Consolidada",
@@ -360,7 +362,7 @@ export function WealthTearSheetModal({
         ) : (
           <>.{" "}</>
         )}
-        {hasTargets && topDeficit && topDeficit.gapBRL > 0 ? (
+        {hasTargets && topDeficit && topDeficit.gapBRL > 0 && topDeficit.assetClass ? (
           <>
             Conforme a matriz de alocação definida pelo titular, a classe com maior
             distanciamento negativo da meta é{" "}
@@ -373,7 +375,7 @@ export function WealthTearSheetModal({
                     ? "Renda Fixa"
                     : topDeficit.assetClass.toLowerCase().includes("internacional")
                       ? "Internacional"
-                      : topDeficit.assetClass}
+                      : sanitizeReportText(topDeficit.assetClass)}
             </strong> (déficit de{" "}
             <MoneyText
               cents={numberToCents(topDeficit.gapBRL)}
@@ -392,14 +394,14 @@ export function WealthTearSheetModal({
             Todas as classes de ativos encontram-se atualmente equilibradas em relação às metas estipuladas.{" "}
           </>
         ) : null}
-        {allocationAnalysis.topDeficitSector && allocationAnalysis.topDeficitSector.gapBRL > 0 && (
+        {allocationAnalysis.topDeficitSector && allocationAnalysis.topDeficitSector.gapBRL > 0 && sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName) ? (
           <>
             Em nível setorial, o maior distanciamento localiza-se em{" "}
             <strong>
               {sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)}
             </strong>.{" "}
           </>
-        )}
+        ) : null}
         {intlPct > 0 ? (
           <>
             O portfólio mantém <strong>{formatPercent(intlPct)}%</strong> de exposição
@@ -408,7 +410,7 @@ export function WealthTearSheetModal({
         ) : (
           <>A totalidade dos ativos está alocada no mercado doméstico</>
         )}
-        {topDominance.ticker && topDominance.ticker !== "N/A" ? (
+        {topDominance.ticker && topDominance.ticker !== "N/A" && topDominance.pct > 0 ? (
           <>, e a posição de maior peso individual é{" "}
             <strong>{sanitizeReportText(topDominance.ticker)}</strong>,
             respondendo por <strong>{formatPercent(topDominance.pct)}%</strong> do
@@ -449,49 +451,174 @@ export function WealthTearSheetModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Síntese Executiva com o Trio Estratégico de Rentabilidade */}
-      <ReportExecutiveSummary
-        title="SÍNTESE DA CARTEIRA & DESEMPENHO CONSOLIDADO"
-        items={[
-          {
-            label: "Patrimônio Total",
-            value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
-            subtext: `Retorno Vivo: ${totalReturnBRL >= 0 ? "+" : ""}${formatSignedPct(totalReturnPct)}`,
-          },
-          {
-            label: "TIR (Fluxo do Bolso)",
-            value: portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-              ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
-              : portfolioIrr?.status === "insufficient_history" && portfolioIrr.periodRatePct !== null && Math.abs(portfolioIrr.periodRatePct) <= 200
-                ? `${portfolioIrr.periodRatePct >= 0 ? "+" : ""}${portfolioIrr.periodRatePct.toFixed(1)}% período`
-                : "Em formação",
-            subtext: portfolioIrr?.isEligible
-              ? `Ponderada (${portfolioIrr.daysElapsed}d)`
-              : "Requer histórico",
-          },
-          {
-            label: "Resultado Histórico",
-            value: (
-              <span className={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+      {/* 2. Síntese Executiva com Destaque Adaptativo ao TWR e Retorno Contábil */}
+      {(() => {
+        const isTwrActive = Boolean(
+          portfolioTwr &&
+            portfolioTwr.status === "ok" &&
+            portfolioTwr.accumulatedRatePct !== null &&
+            portfolioTwr.accumulatedRatePct !== undefined,
+        );
+        const isCustodyActive = !isTwrActive && totalReturnPct !== null && totalReturnPct !== undefined;
+
+        const rentabilidadeItem = isTwrActive
+          ? {
+              label: "Rentabilidade (TWR)",
+              value: (
+                <span className={(portfolioTwr?.accumulatedRatePct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                  {(portfolioTwr?.accumulatedRatePct ?? 0) >= 0 ? "+" : ""}{(portfolioTwr?.accumulatedRatePct ?? 0).toFixed(1)}%
+                </span>
+              ),
+              subtext: portfolioTwr?.annualizedRatePct !== null && portfolioTwr?.annualizedRatePct !== undefined
+                ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (Padrão CVM)`
+                : `Por cotas (${portfolioTwr?.monthsElapsed ?? 0}m)`,
+            }
+          : isCustodyActive
+            ? {
+                label: "Rentabilidade da Carteira",
+                value: (
+                  <span className={(totalReturnPct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                    {(totalReturnPct ?? 0) >= 0 ? "+" : ""}{(totalReturnPct ?? 0).toFixed(1)}%
+                  </span>
+                ),
+                subtext: "Custódia aberta sobre custo",
+              }
+            : {
+                label: "Rentabilidade da Carteira",
+                value: "Em formação",
+                subtext: "Requer histórico",
+              };
+
+        return (
+          <ReportExecutiveSummary
+            title="SÍNTESE DA CARTEIRA & DESEMPENHO CONSOLIDADO"
+            items={[
+              {
+                label: "Patrimônio Total",
+                value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
+                subtext: `Retorno contábil: ${formatSignedPct(totalReturnPct)}`,
+              },
+              rentabilidadeItem,
+              {
+                label: "Retorno do Bolso (TIR)",
+                value: portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                  ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+                  : portfolioIrr?.status === "insufficient_history" && portfolioIrr.periodRatePct !== null && Math.abs(portfolioIrr.periodRatePct) <= 200
+                    ? `${portfolioIrr.periodRatePct >= 0 ? "+" : ""}${portfolioIrr.periodRatePct.toFixed(1)}% período`
+                    : "Em formação",
+                subtext: portfolioIrr?.isEligible
+                  ? `Ponderada (${portfolioIrr.daysElapsed}d)`
+                  : "Requer histórico",
+              },
+              {
+                label: "Resultado Histórico",
+                value: (
+                  <span className={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                    <MoneyText
+                      cents={numberToCents(allTimeEconomicPnlBRL ?? totalReturnBRL)}
+                      tone={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "positive" : "negative"}
+                      className="inline"
+                    />
+                  </span>
+                ),
+                subtext: Math.abs(effectiveRealizedGainBRL) >= 0.01
+                  ? "P&L Total (Vivo + Encerrados)"
+                  : "P&L Econômico Total",
+              },
+            ]}
+            narrative={narrativeContent}
+          />
+        );
+      })()}
+
+      {/* Quadro Executivo de Metodologias de Rentabilidade */}
+      <section aria-label="Metodologias de Rentabilidade" className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/20 p-3.5 print:bg-white print:border-slate-200/90 shadow-2xs">
+        <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
+          <div className="flex items-center gap-1.5">
+            <Scale className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
+              Metodologias & Métricas de Rentabilidade da Carteira
+            </h3>
+          </div>
+          <span className="text-[10px] text-muted-foreground font-mono">
+            Transparência Metodológica (Padrão ANBIMA / CVM)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
+          {/* Card TWR */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
+                <TrendingUp className="size-3 text-primary-strong" aria-hidden="true" />
+                1. TWR (Cotas — Padrão CVM / ANBIMA)
+              </span>
+              <span className="font-mono font-bold text-[11px] text-positive-strong">
+                {portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
+                  ? `${portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}${portfolioTwr.accumulatedRatePct.toFixed(1)}%`
+                  : "Em formação"}
+              </span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+              <strong>Métrica Oficial da Carteira:</strong> Mede a performance real das suas decisões de investimento pelo método de cotas. Isola aportes e resgates para que movimentações de capital não distorçam a rentabilidade percentual. Base recomendada para comparação direta com CDI e Ibovespa.
+            </p>
+          </div>
+
+          {/* Card TIR */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
+                <Percent className="size-3 text-primary-strong" aria-hidden="true" />
+                2. Retorno do Bolso (TIR / XIRR)
+              </span>
+              <span className="font-mono font-bold text-[11px] text-positive-strong">
+                {portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                  ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+                  : "Em formação"}
+              </span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+              <strong>Retorno do Seu Fluxo Pessoal:</strong> Taxa anualizada (% a.a.) ponderada pelo dinheiro real que saiu do seu bolso para a corretora frente ao patrimônio atual. Pondera volume por tempo: períodos com maior capital investido exercem maior peso na taxa.
+            </p>
+          </div>
+
+          {/* Card Retorno Contábil */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="font-semibold text-foreground text-[11px]">
+                3. Retorno Contábil da Custódia Aberta
+              </span>
+              <span className="font-mono font-bold text-[11px] text-positive-strong">
+                {totalReturnPct !== null && totalReturnPct !== undefined
+                  ? formatSignedPct(totalReturnPct)
+                  : "0,0%"}
+              </span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+              <strong>Ganho Estático das Posições Ativas:</strong> Mede estritamente a valorização das ações, FIIs e títulos em custódia hoje frente ao Preço Médio pago, somando os proventos recebidos dessas posições ativas. Não considera ativos já vendidos/vencidos nem o tempo decorrido.
+            </p>
+          </div>
+
+          {/* Card P&L Total */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="font-semibold text-foreground text-[11px]">
+                4. Resultado Histórico (P&L Total em R$)
+              </span>
+              <span className="font-mono font-bold text-[11px] text-positive-strong">
                 <MoneyText
                   cents={numberToCents(allTimeEconomicPnlBRL ?? totalReturnBRL)}
                   tone={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "positive" : "negative"}
-                  className="inline"
+                  sign="explicit"
                 />
               </span>
-            ),
-            subtext: Math.abs(effectiveRealizedGainBRL) >= 0.01
-              ? "P&L Total (Vivo + Encerrados)"
-              : "P&L Econômico Total",
-          },
-          {
-            label: "Aderência às Metas",
-            value: `${allocationAnalysis.alignmentScore}%`,
-            subtext: "Índice de Equilíbrio",
-          },
-        ]}
-        narrative={narrativeContent}
-      />
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+              <strong>Riqueza Efetiva Produzida:</strong> Consolida em reais todo o ganho líquido acumulado pela carteira desde o primeiro investimento. Soma os lucros brutos realizados em operações encerradas no passado, o ganho de capital aberto de hoje e a totalidade dos proventos já recebidos.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* 3. Sumário de Movimentação do Mês Vigente */}
       {monthSummary && (
