@@ -202,6 +202,22 @@ export async function createPortfolioContribution(
   return mapContribution(data);
 }
 
+export async function createPortfolioContributionsBatch(
+  inputs: Omit<DbInsert<PortfolioContribution>, "user_id">[],
+): Promise<PortfolioContribution[]> {
+  if (inputs.length === 0) return [];
+  const user_id = await currentUserId();
+  const rows = inputs.map((input) => ({ ...input, user_id }));
+  const { data, error } = await resolveQuery<PortfolioContribution[]>(
+    getSupabase().from("portfolio_contributions").insert(rows).select(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapContribution);
+}
+
 export async function deletePortfolioContribution(id: string): Promise<void> {
   const { error } = await resolveQuery(getSupabase().from("portfolio_contributions").delete().eq("id", id));
   if (error) {

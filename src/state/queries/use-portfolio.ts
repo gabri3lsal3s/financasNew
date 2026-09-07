@@ -100,6 +100,7 @@ export {
   useUpsertMarcoZero,
   useCreateHistoricalContribution,
   useUpdatePortfolioContribution,
+  useBatchCreateHistoricalContributions,
   useCreatePortfolioDividend,
   useDeletePortfolioDividend,
   useRecordOrder,

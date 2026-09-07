@@ -3,6 +3,7 @@ import { executePortfolioBatchAporte, type ExecutePortfolioBatchAporteParams } f
 import {
   createPortfolioAsset,
   createPortfolioContribution,
+  createPortfolioContributionsBatch,
   createPortfolioDividend,
   createPortfolioTransaction,
   createPortfolioTransactionsBatch,
@@ -525,6 +526,35 @@ export function useUpdatePortfolioContribution() {
     onError: (err) => {
       pushToast({
         title: "Erro ao atualizar marco histórico",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+      triggerSensory("destructive");
+    },
+  });
+}
+
+/**
+ * Cria múltiplos marcos históricos em lote (ex.: gerados pelo Assistente de Extrato).
+ */
+export function useBatchCreateHistoricalContributions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (inputs: Omit<DbInsert<PortfolioContribution>, "user_id">[]) =>
+      createPortfolioContributionsBatch(inputs),
+    onSuccess: (created) => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      pushToast({
+        title: "Marcos Históricos importados!",
+        description: `${created.length} marco(s) gravado(s) com sucesso. A TIR foi recalculada.`,
+        variant: "success",
+      });
+      triggerSensory("success");
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao importar marcos históricos",
         description: getErrorMessage(err),
         variant: "destructive",
       });

@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { InitialPocketCostDialog } from "./initial-pocket-cost-dialog";
@@ -12,6 +13,8 @@ vi.mock("@/state", async (importOriginal) => {
     useCreateHistoricalContribution: vi.fn(),
     useUpdatePortfolioContribution: vi.fn(),
     useDeletePortfolioContribution: vi.fn(),
+    useBatchCreateHistoricalContributions: vi.fn(),
+    useUpsertMarcoZero: vi.fn(),
   };
 });
 
@@ -28,6 +31,8 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
   const mockCreateMutateAsync = vi.fn();
   const mockUpdateMutateAsync = vi.fn();
   const mockDeleteMutateAsync = vi.fn();
+  const mockBatchMutateAsync = vi.fn();
+  const mockUpsertMarcoZeroMutateAsync = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -49,9 +54,19 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
       mutateAsync: mockDeleteMutateAsync.mockResolvedValue({}),
       isPending: false,
     } as unknown as ReturnType<typeof stateModule.useDeletePortfolioContribution>);
+
+    vi.mocked(stateModule.useBatchCreateHistoricalContributions).mockReturnValue({
+      mutateAsync: mockBatchMutateAsync.mockResolvedValue([{ id: "new-1" }]),
+      isPending: false,
+    } as unknown as ReturnType<typeof stateModule.useBatchCreateHistoricalContributions>);
+
+    vi.mocked(stateModule.useUpsertMarcoZero).mockReturnValue({
+      mutateAsync: mockUpsertMarcoZeroMutateAsync.mockResolvedValue({}),
+      isPending: false,
+    } as unknown as ReturnType<typeof stateModule.useUpsertMarcoZero>);
   });
 
-  it("renderiza o diálogo com estado vazio quando não há marcos cadastrados", () => {
+  it("renderiza o diálogo com as 3 abas e estado inicial vazio", () => {
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [],
       isLoading: false,
@@ -65,11 +80,13 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
     );
 
     expect(screen.getByText("Linha do Tempo de Aportes Históricos")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Lançamento Individual/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Assistente de Extrato/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Modo Rápido/i })).toBeInTheDocument();
     expect(screen.getByText("Nenhum marco cadastrado")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Adicionar Marco/i })).toBeInTheDocument();
   });
 
-  it("exibe marcos existentes, calcula soma consolidada e permite excluir um marco", async () => {
+  it("exibe marcos existentes com separação de Aporte e Resgate", async () => {
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [
         {
@@ -77,71 +94,65 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
           asset_id: null,
           date: "2024-02-26",
           amount: 20000,
-          notes: "Marco Histórico · Início da Carteira",
+          notes: "Aporte Inicial",
           user_id: "user-1",
           created_at: "2024-02-26T00:00:00Z",
         },
         {
           id: "marco-2",
           asset_id: null,
-          date: "2024-12-15",
-          amount: 55000,
-          notes: "Marco Histórico · Aporte em massa",
+          date: "2024-10-15",
+          amount: 5000,
+          notes: "[Resgate] Retirada do Bolso",
           user_id: "user-1",
-          created_at: "2024-12-15T00:00:00Z",
+          created_at: "2024-10-15T00:00:00Z",
         },
       ],
       isLoading: false,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
 
-    const onOpenChange = vi.fn();
-
     render(
       <QueryClientProvider client={queryClient}>
-        <InitialPocketCostDialog
-          open={true}
-          onOpenChange={onOpenChange}
-          defaultCostBRL={75000}
-        />
+        <InitialPocketCostDialog open={true} onOpenChange={vi.fn()} />
       </QueryClientProvider>,
     );
 
-    // Deve exibir badge de 2 marcos históricos
-    expect(screen.getByText("2 marcos históricos")).toBeInTheDocument();
-    expect(screen.getAllByText("26/02/2024").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("15/12/2024")).toBeInTheDocument();
+    expect(screen.getByText("Total Aportado (+)")).toBeInTheDocument();
+    expect(screen.getByText("Total Resgatado (-)")).toBeInTheDocument();
+    expect(screen.getByText("Capital Líquido do Bolso")).toBeInTheDocument();
+    expect(screen.getByText("2 marcos")).toBeInTheDocument();
 
-    // Clica no botão de excluir o primeiro marco
+    // Deve exibir badges de Aporte e Resgate
+    expect(screen.getByText("Aporte")).toBeInTheDocument();
+    expect(screen.getByText("Resgate")).toBeInTheDocument();
+
+    // Excluir um marco
     const deleteButtons = screen.getAllByRole("button", { name: /Excluir marco/i });
     expect(deleteButtons.length).toBe(2);
-
     fireEvent.click(deleteButtons[0]!);
 
     await waitFor(() => {
-      expect(mockDeleteMutateAsync).toHaveBeenCalledWith("marco-2"); // Ordenado por data desc
+      expect(mockDeleteMutateAsync).toHaveBeenCalledWith("marco-2");
     });
   });
 
-  it("permite adicionar um novo marco histórico", async () => {
+  it("permite alternar para Resgate no lançamento individual", async () => {
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [],
       isLoading: false,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
 
-    const onSuccess = vi.fn();
-
     render(
       <QueryClientProvider client={queryClient}>
-        <InitialPocketCostDialog
-          open={true}
-          onOpenChange={vi.fn()}
-          defaultCostBRL={20000}
-          onSuccess={onSuccess}
-        />
+        <InitialPocketCostDialog open={true} onOpenChange={vi.fn()} defaultCostBRL={3000} />
       </QueryClientProvider>,
     );
+
+    // Clica no botão de Resgate (-)
+    const resgateBtn = screen.getByRole("button", { name: /Resgate \(-\)/i });
+    fireEvent.click(resgateBtn);
 
     const submitBtn = screen.getByRole("button", { name: /Adicionar Marco/i });
     fireEvent.click(submitBtn);
@@ -149,66 +160,63 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
     await waitFor(() => {
       expect(mockCreateMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          amount: 20000,
-          date: "2024-02-26",
+          amount: 3000,
+          notes: expect.stringContaining("[Resgate]"),
         }),
       );
-      expect(onSuccess).toHaveBeenCalled();
     });
   });
 
-  it("permite entrar em modo de edição e salvar alterações de um marco", async () => {
+  it("processa extrato e permite importação em lote na aba Assistente de Extrato", async () => {
+    const user = userEvent.setup();
+
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
-      data: [
-        {
-          id: "marco-1",
-          asset_id: null,
-          date: "2024-02-26",
-          amount: 20000,
-          notes: "Aporte 1",
-          user_id: "user-1",
-          created_at: "2024-02-26T00:00:00Z",
-        },
-      ],
+      data: [],
       isLoading: false,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
 
-    const onSuccess = vi.fn();
-
     render(
       <QueryClientProvider client={queryClient}>
-        <InitialPocketCostDialog
-          open={true}
-          onOpenChange={vi.fn()}
-          onSuccess={onSuccess}
-        />
+        <InitialPocketCostDialog open={true} onOpenChange={vi.fn()} />
       </QueryClientProvider>,
     );
 
-    // Clica no botão de editar
-    const editBtn = screen.getByRole("button", { name: /Editar marco de 26\/02\/2024/i });
-    fireEvent.click(editBtn);
+    // Alterna para aba Assistente de Extrato via userEvent
+    const tabExtrato = screen.getByRole("tab", { name: /Assistente de Extrato/i });
+    await user.click(tabExtrato);
 
-    // Deve ativar o modo edição
-    expect(screen.getByText("Editar Marco Histórico")).toBeInTheDocument();
-    expect(screen.getByText("Modo Edição")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Salvar Alterações/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Cancelar/i })).toBeInTheDocument();
+    expect(screen.getByText("Cálculo Automático de Aportes e Resgates")).toBeInTheDocument();
 
-    // Clica em salvar alterações
-    const saveBtn = screen.getByRole("button", { name: /Salvar Alterações/i });
-    fireEvent.click(saveBtn);
+    const textarea = screen.getByPlaceholderText(/Cole o extrato aqui/i);
+    const sample = `
+      Out. 2023 6.187,37 6.147,97
+      Nov. 2023 8.678,16 8.745,74
+      Dez. 2023 13.527,62 14.221,47
+    `;
+    fireEvent.change(textarea, { target: { value: sample } });
+
+    const processBtn = screen.getByRole("button", { name: /Processar Extrato/i });
+    await user.click(processBtn);
+
+    // Deve exibir preview
+    await waitFor(() => {
+      expect(screen.getByText("Pré-visualização dos Marcos Detectados")).toBeInTheDocument();
+      expect(screen.getByText("3 movimentações")).toBeInTheDocument();
+    });
+
+    // Clica em gravar marcos
+    const saveAllBtn = screen.getByRole("button", { name: /Gravar 3 Marcos/i });
+    await user.click(saveAllBtn);
 
     await waitFor(() => {
-      expect(mockUpdateMutateAsync).toHaveBeenCalledWith({
-        id: "marco-1",
-        input: expect.objectContaining({
-          date: "2024-02-26",
-          amount: 20000,
-        }),
-      });
-      expect(onSuccess).toHaveBeenCalled();
+      expect(mockBatchMutateAsync).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ date: "2023-10-31", amount: 6187.37 }),
+          expect.objectContaining({ date: "2023-11-30", amount: 2490.79 }),
+          expect.objectContaining({ date: "2023-12-31", amount: 4849.46 }),
+        ]),
+      );
     });
   });
 });

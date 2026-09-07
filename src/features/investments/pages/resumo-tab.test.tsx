@@ -110,6 +110,14 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useUpdatePortfolioContribution: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useBatchCreateHistoricalContributions: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useUpsertMarcoZero: () => ({
     mutateAsync: vi.fn(),
     isPending: false,

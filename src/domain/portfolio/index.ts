@@ -432,3 +432,4 @@ export * from "./thresholds";
 export * from "./business-days";
 export * from "./fixed-income";
 export * from "./irr";
+export * from "./statement-parser";

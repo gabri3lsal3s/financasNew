@@ -301,16 +301,32 @@ export function calculateXIRR(rawFlows: readonly CashFlow[]): XIRRResult {
   };
 }
 
+export interface ContributionFlowItem {
+  date: string;
+  amount: number;
+  notes?: string | null;
+}
+
+/**
+ * Verifica se um registro de contribuição representa um resgate histórico do bolso.
+ */
+export function isHistoricalWithdrawal(c: { amount: number; notes?: string | null }): boolean {
+  if (c.amount < 0) return true;
+  const n = (c.notes ?? "").toLowerCase();
+  return n.includes("[resgate]") || n.includes("[retirada]");
+}
+
 /**
  * Constrói os fluxos de caixa da Carteira Consolidada (Fluxo do Bolso Global).
  *
  * Mapeamento:
- * - Aportes externos (`portfolio_contributions`): saídas do bolso (-);
+ * - Aportes externos (`portfolio_contributions` normais): saídas do bolso (-);
+ * - Resgates históricos (`notes` contendo [Resgate]/[Retirada]): entradas no bolso (+);
  * - Saques de caixa registrados como retiradas externas: entradas no bolso (+);
  * - Saldo patrimonial consolidado hoje (liquidação virtual da carteira): entrada (+).
  */
 export function buildPortfolioCashFlows(params: {
-  contributions: readonly { date: string; amount: number }[];
+  contributions: readonly ContributionFlowItem[];
   currentPortfolioValueBRL: number;
   cashWithdrawals?: readonly { date: string; amount: number }[];
   today?: string;
@@ -324,9 +340,18 @@ export function buildPortfolioCashFlows(params: {
 
   const flows: CashFlow[] = [];
 
-  // 1. Aportes externos (dinheiro que sai do bolso para a carteira)
+  // 1. Aportes externos e Resgates históricos
   for (const c of contributions) {
-    if (c.amount > 0) {
+    if (Math.abs(c.amount) < 0.0001) continue;
+
+    if (isHistoricalWithdrawal(c)) {
+      // Dinheiro que volta ao bolso
+      flows.push({
+        date: c.date,
+        amount: Math.abs(c.amount),
+      });
+    } else {
+      // Dinheiro que sai do bolso para a carteira
       flows.push({
         date: c.date,
         amount: -Math.abs(c.amount),
@@ -334,7 +359,7 @@ export function buildPortfolioCashFlows(params: {
     }
   }
 
-  // 2. Retiradas / Saques externos (dinheiro que volta ao bolso)
+  // 2. Retiradas / Saques externos (dinheiro que volta ao bolso via transação de caixa)
   for (const w of cashWithdrawals) {
     if (w.amount > 0) {
       flows.push({
@@ -424,15 +449,27 @@ export function buildAssetCashFlows(params: {
 
 /**
  * Calcula o Capital Líquido Injetado do Bolso (Net Invested Capital).
- * Permite que o usuário compare o dinheiro total que saiu do seu bolso contra o patrimônio atual.
+ * Permite que o usuário compare o dinheiro total que saiu do seu bolso contra o patrimônio atual,
+ * deduzindo saques e resgates históricos.
  */
 export function calculateNetInjectedCapital(
-  contributions: readonly { amount: number }[],
+  contributions: readonly { amount: number; notes?: string | null }[],
   withdrawals: readonly { amount: number }[] = [],
 ): number {
-  const totalIn = contributions.reduce((acc, c) => acc + Math.max(0, c.amount), 0);
-  const totalOut = withdrawals.reduce((acc, w) => acc + Math.max(0, w.amount), 0);
-  return Math.round((totalIn - totalOut) * 100) / 100;
+  let totalIn = 0;
+  let totalHistoricOut = 0;
+
+  for (const c of contributions) {
+    if (Math.abs(c.amount) < 0.0001) continue;
+    if (isHistoricalWithdrawal(c)) {
+      totalHistoricOut += Math.abs(c.amount);
+    } else {
+      totalIn += Math.abs(c.amount);
+    }
+  }
+
+  const totalExternalOut = withdrawals.reduce((acc, w) => acc + Math.max(0, w.amount), 0);
+  return Math.round((totalIn - totalHistoricOut - totalExternalOut) * 100) / 100;
 }
 
 /**

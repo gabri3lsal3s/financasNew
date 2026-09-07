@@ -198,7 +198,8 @@
     │                              #   operations.ts (vendas, splits, adição com posição inicial e reconciliação do ledger),
     │                              #   summary.ts (F17: rentabilidade, alocação),
     │                              #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
-    │                              #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls)
+    │                              #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls),
+    │                              #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras e cálculo automático de deltas)
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)

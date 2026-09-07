@@ -85,6 +85,7 @@ export {
   useUpsertMarcoZero,
   useCreateHistoricalContribution,
   useUpdatePortfolioContribution,
+  useBatchCreateHistoricalContributions,
   usePortfolioDividends,
   useCreatePortfolioDividend,
   useDeletePortfolioDividend,

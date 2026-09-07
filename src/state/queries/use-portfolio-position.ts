@@ -429,6 +429,7 @@ export function usePortfolioPosition(): PortfolioPosition {
     contributions: (contributionsQuery.data ?? []).map((c) => ({
       date: c.date,
       amount: c.amount,
+      notes: c.notes,
     })),
     cashWithdrawals,
     currentPortfolioValueBRL: totalBRL,

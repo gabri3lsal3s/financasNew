@@ -186,6 +186,23 @@ describe("buildPortfolioCashFlows", () => {
       { date: "2026-06-01", amount: 6800 },
     ]);
   });
+
+  it("trata contribuições com [Resgate] como fluxo positivo de volta ao bolso", () => {
+    const flows = buildPortfolioCashFlows({
+      contributions: [
+        { date: "2024-01-10", amount: 10000, notes: "Marco Inicial" },
+        { date: "2024-06-15", amount: 3000, notes: "[Resgate] Retirada do Bolso" },
+      ],
+      currentPortfolioValueBRL: 8500,
+      today: "2024-12-01",
+    });
+
+    expect(flows).toEqual([
+      { date: "2024-01-10", amount: -10000 },
+      { date: "2024-06-15", amount: 3000 },
+      { date: "2024-12-01", amount: 8500 },
+    ]);
+  });
 });
 
 describe("buildAssetCashFlows", () => {
@@ -220,6 +237,14 @@ describe("calculateNetInjectedCapital & calculateNetPocketGain", () => {
 
     const netCapital = calculateNetInjectedCapital(contributions, withdrawals);
     expect(netCapital).toBe(13000); // 15.000 - 2.000
+
+    // Caso com resgate histórico embutido nas contribuições
+    const contributionsWithWithdrawal = [
+      { amount: 10000, notes: "Marco Inicial" },
+      { amount: 3000, notes: "[Resgate] Retirada do Bolso" },
+    ];
+    const netHistorical = calculateNetInjectedCapital(contributionsWithWithdrawal);
+    expect(netHistorical).toBe(7000); // 10.000 - 3.000 = 7.000 líquido
 
     const currentPortfolio = 15800;
     const pocketGain = calculateNetPocketGain(currentPortfolio, netCapital);
