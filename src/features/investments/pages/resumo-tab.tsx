@@ -434,10 +434,13 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                         ? "text-negative-strong"
                         : "text-foreground",
                   )}
-                  title={`Retorno da Custódia Aberta: ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos Ativos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
+                  title={`Retorno Contábil da Custódia Aberta: ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos Ativos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
                 >
-                  <span className="text-muted-foreground font-normal">Lucro aberto:</span>
+                  <span className="text-muted-foreground font-normal">Retorno contábil:</span>
                   <MoneyText cents={totalReturnCents} tone="auto" className="tabular-nums" />
+                  {totalReturnPct != null
+                    ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)`
+                    : ""}
                 </span>
               }
               onClick={() => setExplainModalOpen(true)}
