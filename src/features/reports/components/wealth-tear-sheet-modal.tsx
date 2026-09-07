@@ -772,6 +772,7 @@ export function WealthTearSheetModal({
           series={performanceSeries}
           title="Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"
           className="print-break-inside-avoid"
+          officialTwrRatePct={portfolioTwr?.status === "ok" ? portfolioTwr.accumulatedRatePct : undefined}
           annualCdiRate={annualCdiRate}
           annualSelicRate={annualSelicRate}
           annualIpcaRate={annualIpcaRate}

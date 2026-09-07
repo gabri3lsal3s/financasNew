@@ -23,6 +23,8 @@ export interface ReportPerformanceChartProps {
   series: readonly ReportPerformancePoint[];
   className?: string;
   title?: string;
+  /** Rentabilidade oficial consolidada da carteira (TWR por cotas) se disponível. */
+  officialTwrRatePct?: number | null;
   annualCdiRate?: number;
   annualSelicRate?: number;
   annualIpcaRate?: number;
@@ -30,16 +32,16 @@ export interface ReportPerformanceChartProps {
 }
 
 const SVG_WIDTH = 560;
-const SVG_HEIGHT = 150;
+const SVG_HEIGHT = 140;
 const PAD_X = 32;
 const PAD_TOP = 20;
-const PAD_BOTTOM = 26;
+const PAD_BOTTOM = 24;
 
 /**
  * Gráfico Institucional de Rentabilidade & Análise de Risco (SVG puro).
  * Projetado especificamente para impressão A4 e visualização em alta fidelidade.
  * Exibe:
- * 1. Gráfico de barras de rentabilidade mês a mês com linha guia do CDI médio mensal;
+ * 1. Gráfico de barras de rentabilidade mês a mês limpo e sem sobreposições;
  * 2. Quadro comparativo oficial de Benchmarks (CDI, Poupança, IPCA/Inflação e IBOVESPA);
  * 3. Painel de Métricas Avançadas de Risco & Eficiência (Índice Sharpe, Volatilidade, Max Drawdown e Consistência).
  */
@@ -47,6 +49,7 @@ export function ReportPerformanceChart({
   series,
   className,
   title = "Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês",
+  officialTwrRatePct,
   annualCdiRate = DEFAULT_ANNUAL_CDI_RATE,
   annualSelicRate = DEFAULT_ANNUAL_CDI_RATE,
   annualIpcaRate = DEFAULT_ANNUAL_IPCA_RATE,
@@ -62,20 +65,22 @@ export function ReportPerformanceChart({
   const maxAbsRate = useMemo(() => {
     if (rates.length === 0) return 1;
     const maxVal = Math.max(...rates.map((r) => Math.abs(r)), 1);
-    return Math.max(2, Math.ceil(maxVal * 1.2)); // ao menos 2% e 20% de margem
+    return Math.max(2, Math.ceil(maxVal * 1.25)); // ao menos 2% e 25% de margem no topo
   }, [rates]);
 
-  // Rentabilidade acumulada no período avaliado
-  const portfolioAccumulatedRatePct = useMemo(() => {
+  // Rentabilidade acumulada das competências da série do gráfico
+  const seriesAccumulatedRatePct = useMemo(() => {
     const factor = rates.reduce((acc, r) => acc * (1 + r / 100), 1);
     return Math.round((factor - 1) * 10000) / 100;
   }, [rates]);
 
-  // Taxa média mensal do CDI para a linha guia do gráfico
-  const monthlyCdiRate = useMemo(() => {
-    const rate = Math.pow(1 + annualCdiRate / 100, 1 / 12) - 1;
-    return Math.round(rate * 10000) / 100;
-  }, [annualCdiRate]);
+  // Prioriza a rentabilidade oficial TWR consolidada para comparação com benchmarks
+  const effectivePortfolioRatePct = useMemo(() => {
+    if (officialTwrRatePct !== undefined && officialTwrRatePct !== null) {
+      return officialTwrRatePct;
+    }
+    return seriesAccumulatedRatePct;
+  }, [officialTwrRatePct, seriesAccumulatedRatePct]);
 
   // Resumo de Risco (Sharpe, Drawdown, Volatilidade, Win Rate)
   const riskSummary = useMemo(() => {
@@ -85,7 +90,7 @@ export function ReportPerformanceChart({
   // Comparativos Oficiais de Benchmarks (CDI, Poupança, IPCA, IBOVESPA)
   const benchmarkComparison = useMemo(() => {
     return calculateConsolidatedBenchmarks({
-      portfolioRatePct: portfolioAccumulatedRatePct,
+      portfolioRatePct: effectivePortfolioRatePct,
       monthsCount: displaySeries.length,
       annualCdiRate,
       annualSelicRate,
@@ -93,7 +98,7 @@ export function ReportPerformanceChart({
       ibovPeriodRatePct: ibovPeriodReturnPct,
     });
   }, [
-    portfolioAccumulatedRatePct,
+    effectivePortfolioRatePct,
     displaySeries.length,
     annualCdiRate,
     annualSelicRate,
@@ -113,9 +118,6 @@ export function ReportPerformanceChart({
   const stepX = (SVG_WIDTH - PAD_X * 2) / count;
   const barWidth = Math.min(26, Math.max(12, stepX * 0.5));
 
-  // Posição Y da linha guia do CDI mensal no gráfico
-  const cdiY = zeroY - Math.min(usableHeight / 2, (monthlyCdiRate / maxAbsRate) * (usableHeight / 2));
-
   return (
     <section
       aria-label={title}
@@ -134,7 +136,7 @@ export function ReportPerformanceChart({
       </div>
 
       <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-3">
-        {/* Gráfico SVG de Barras de Rentabilidade com Linha Guia CDI */}
+        {/* Gráfico SVG de Barras de Rentabilidade Limpo (Sem Linhas Invasivas Cruzando) */}
         <div className="relative w-full overflow-hidden">
           <svg
             viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
@@ -142,7 +144,7 @@ export function ReportPerformanceChart({
             role="img"
             aria-label="Gráfico de barras da rentabilidade percentual mês a mês"
           >
-            {/* Linha Zero de Referência */}
+            {/* Linha Zero de Referência Pontilhada */}
             <line
               x1={PAD_X}
               y1={zeroY}
@@ -152,29 +154,6 @@ export function ReportPerformanceChart({
               strokeDasharray="2 2"
               className="text-border/80 stroke-[1]"
             />
-
-            {/* Linha Guia do CDI Médio Mensal */}
-            {monthlyCdiRate > 0 && (
-              <>
-                <line
-                  x1={PAD_X}
-                  y1={cdiY}
-                  x2={SVG_WIDTH - PAD_X}
-                  y2={cdiY}
-                  stroke="currentColor"
-                  strokeDasharray="3 3"
-                  className="text-portfolio/70 stroke-[1.2]"
-                />
-                <text
-                  x={SVG_WIDTH - PAD_X}
-                  y={cdiY - 3}
-                  textAnchor="end"
-                  className="text-[7.5px] font-mono fill-portfolio font-bold num"
-                >
-                  Ref. CDI ({formatPercent(monthlyCdiRate)}% a.m.)
-                </text>
-              </>
-            )}
 
             {/* Eixo Superior (+max) e Inferior (-max) */}
             <text
@@ -321,7 +300,7 @@ export function ReportPerformanceChart({
           <div className="flex items-center justify-between border-b border-border/60 pb-1">
             <div className="flex items-center gap-1 text-[9.5px] font-bold text-foreground uppercase tracking-wider">
               <ShieldCheck className="size-3 text-primary-strong" aria-hidden="true" />
-              <span>Métricas Avançadas de Risco & Consistência da Carteira</span>
+              <span>Métricas de Risco & Consistência do Período</span>
             </div>
             <span className="text-[9px] text-muted-foreground font-mono">
               Padrão CFA & ANBIMA

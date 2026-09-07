@@ -54,7 +54,8 @@ export async function fetchBcbIndicator(indicator: "CDI" | "SELIC" | "IPCA"): Pr
     }
   }
 
-  const serie = indicator === "CDI" ? 12 : indicator === "SELIC" ? 432 : 433;
+  // Série 12: CDI Diário | Série 432: Selic Meta (% a.a.) | Série 13522: IPCA acumulado 12 meses (% a.a.)
+  const serie = indicator === "CDI" ? 12 : indicator === "SELIC" ? 432 : 13522;
   const targetUrl = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/1?formato=json`;
   const candidateUrls = [
     targetUrl,
