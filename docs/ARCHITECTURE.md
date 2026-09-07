@@ -203,7 +203,7 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
 - **Escritas simples** (1 registro, sem cascata) podem usar CRUD direto, ainda assim com validação nas bordas.
 - **Optimistic updates** apenas para operações simples e de baixo risco; rollback automático em erro. Nunca para RPCs compostos.
 - **Geração de parcelas:** o cliente calcula via `domain/money` (TS, testável) e envia as linhas; o RPC **valida invariantes no servidor** (soma = valor original, parcelas 1–60, datas ≥ APP_START_DATE) e persiste — sem duplicar a lógica de divisão em SQL.
-- **Marco Zero do Bolso (`upsert_marco_zero`):** função RPC transacional no servidor que garante a invariante de no máximo 1 Marco Zero por usuário, removendo atomicamente registros anteriores e persistindo o aporte calibrado, impedindo duplicações de capital histórico que distorceriam a TIR (XIRR).
+- **Marco Zero e Linha do Tempo de Aportes Históricos do Bolso:** suporte a múltiplos marcos cronológicos com aportes (+) e resgates (-) na tabela `portfolio_contributions`. No domínio, retiradas do bolso (tag `[Resgate]`) são computadas pelo solver XIRR (`buildPortfolioCashFlows` e `calculateNetInjectedCapital`) como devolução antecipada de capital ao investidor, garantindo cálculo exato de Money-Weighted Return com suporte a importação em lote via Assistente de Extrato (`statement-parser.ts`) e o RPC `upsert_marco_zero` para modo rápido consolidado.
 
 
 ### 5.3 Estado de UI, autenticação e ciclo de vida de cache
