@@ -210,6 +210,23 @@ export async function deletePortfolioContribution(id: string): Promise<void> {
   }
 }
 
+export async function updatePortfolioContribution(
+  id: string,
+  input: DbUpdate<PortfolioContribution>,
+): Promise<PortfolioContribution> {
+  const { data, error } = await resolveQuery<PortfolioContribution>(
+    getSupabase().from("portfolio_contributions").update(input).eq("id", id).select().single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao editar aporte.", null);
+  }
+  return mapContribution(data);
+}
+
 /**
  * Upsert atômico do Marco Zero do Bolso via RPC.
  * Garante a invariante de unicidade no servidor: remove todos os marcos zeros anteriores

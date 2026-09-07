@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { Calendar, History, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { AlertCircle, Calendar, History, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { Badge, Button, EmptyState, Input, Modal, MoneyInput } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
@@ -10,6 +10,7 @@ import { pushToast } from "@/services/toast";
 import {
   usePortfolioContributions,
   useCreateHistoricalContribution,
+  useUpdatePortfolioContribution,
   useDeletePortfolioContribution,
 } from "@/state";
 import type { PortfolioContribution } from "@/types";
@@ -23,7 +24,7 @@ export interface InitialPocketCostDialogProps {
 
 /**
  * Diálogo da "Linha do Tempo de Aportes Históricos do Bolso".
- * Permite ao investidor registrar múltiplos marcos de desembolso anteriores ao uso do app
+ * Permite ao investidor registrar, editar e excluir marcos de desembolso anteriores ao uso do app
  * (ex.: início da carteira, grandes aportes, aportes semestrais consolidados),
  * garantindo precisão temporal cirúrgica no cálculo da TIR (XIRR).
  */
@@ -35,7 +36,10 @@ export function InitialPocketCostDialog({
 }: InitialPocketCostDialogProps) {
   const contributionsQuery = usePortfolioContributions();
   const createHistorical = useCreateHistoricalContribution();
+  const updateHistorical = useUpdatePortfolioContribution();
   const deleteContribution = useDeletePortfolioContribution();
+
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Sempre que o diálogo for aberto, revalida a lista mais recente do servidor
   useEffect(() => {
@@ -67,9 +71,11 @@ export function InitialPocketCostDialog({
     return historicalContributions.reduce((acc, c) => acc + Number(c.amount), 0);
   }, [historicalContributions]);
 
-  // Formulário para adicionar um novo marco
+  // Estado de edição de um marco
+  const [editingMarco, setEditingMarco] = useState<PortfolioContribution | null>(null);
+
+  // Formulário para adicionar ou editar marco
   const [newAmountCents, setNewAmountCents] = useState<number>(() => {
-    // Se não houver nenhum marco e houver um defaultCostBRL, sugere como ponto de partida
     return historicalContributions.length === 0 && defaultCostBRL > 0
       ? numberToCents(defaultCostBRL)
       : 0;
@@ -79,7 +85,26 @@ export function InitialPocketCostDialog({
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleAddMarco = async (e: React.FormEvent) => {
+  const handleStartEdit = (marco: PortfolioContribution) => {
+    setEditingMarco(marco);
+    setNewDate(marco.date);
+    setNewAmountCents(numberToCents(Number(marco.amount)));
+    setNewNotes(marco.notes ?? "");
+    setFormError(null);
+    triggerSensory("selection");
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMarco(null);
+    setNewAmountCents(0);
+    setNewDate("2024-02-26");
+    setNewNotes("");
+    setFormError(null);
+    triggerSensory("selection");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newAmountCents <= 0) {
       setFormError("Informe um valor maior que zero para o marco histórico.");
@@ -92,16 +117,30 @@ export function InitialPocketCostDialog({
 
     setFormError(null);
     try {
-      const defaultLabel =
-        historicalContributions.length === 0
-          ? "Marco Histórico · Início da Carteira"
-          : "Marco Histórico do Bolso";
+      if (editingMarco) {
+        // Atualiza marco existente
+        await updateHistorical.mutateAsync({
+          id: editingMarco.id,
+          input: {
+            date: newDate,
+            amount: newAmountCents / 100,
+            notes: newNotes.trim() || editingMarco.notes || "Marco Histórico do Bolso",
+          },
+        });
+        setEditingMarco(null);
+      } else {
+        // Cria novo marco histórico
+        const defaultLabel =
+          historicalContributions.length === 0
+            ? "Marco Histórico · Início da Carteira"
+            : "Marco Histórico do Bolso";
 
-      await createHistorical.mutateAsync({
-        date: newDate,
-        amount: newAmountCents / 100,
-        notes: newNotes.trim() || defaultLabel,
-      });
+        await createHistorical.mutateAsync({
+          date: newDate,
+          amount: newAmountCents / 100,
+          notes: newNotes.trim() || defaultLabel,
+        });
+      }
 
       // Força recarregamento imediato
       await contributionsQuery.refetch?.();
@@ -128,6 +167,9 @@ export function InitialPocketCostDialog({
         description: "A linha do tempo da TIR foi recalculada.",
         variant: "default",
       });
+      if (editingMarco?.id === contribution.id) {
+        handleCancelEdit();
+      }
       onSuccess?.();
     } catch (err) {
       pushToast({
@@ -147,6 +189,8 @@ export function InitialPocketCostDialog({
     }
     return isoDate;
   };
+
+  const isPending = createHistorical.isPending || updateHistorical.isPending;
 
   return (
     <Modal
@@ -181,6 +225,17 @@ export function InitialPocketCostDialog({
           </div>
         </div>
 
+        {/* Card de Alerta: Aporte do Mês vs Custo Acumulado */}
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-3 flex items-start gap-2.5">
+          <AlertCircle className="size-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex flex-col gap-0.5 text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground">Importante: Informe o Aporte do Mês (Delta), não o Saldo Acumulado</span>
+            <p>
+              Cada marco deve registrar <strong>apenas o dinheiro novo que saiu da sua conta naquele mês</strong>. Não cadastre o custo total acumulado da carteira mês a mês, caso contrário o sistema somará o mesmo patrimônio várias vezes (inflando os aportes e gerando uma TIR irreal).
+            </p>
+          </div>
+        </div>
+
         {/* Card Didático */}
         <div className="rounded-xl border border-portfolio/20 bg-portfolio/5 p-3 flex items-start gap-2.5">
           <Sparkles className="size-4 text-portfolio shrink-0 mt-0.5" aria-hidden="true" />
@@ -192,15 +247,27 @@ export function InitialPocketCostDialog({
           </div>
         </div>
 
-        {/* Formulário: Adicionar Novo Marco */}
+        {/* Formulário: Adicionar ou Editar Marco */}
         <form
-          onSubmit={handleAddMarco}
-          className="rounded-xl border border-border/80 bg-surface/50 p-3.5 flex flex-col gap-3"
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className={`rounded-xl border p-3.5 flex flex-col gap-3 transition-colors ${
+            editingMarco
+              ? "border-primary/50 bg-primary/5"
+              : "border-border/80 bg-surface/50"
+          }`}
         >
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-foreground text-xs">
-              Adicionar Novo Marco de Aporte
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-foreground text-xs">
+                {editingMarco ? "Editar Marco Histórico" : "Adicionar Novo Marco de Aporte"}
+              </span>
+              {editingMarco ? (
+                <Badge variant="default" size="xs">
+                  Modo Edição
+                </Badge>
+              ) : null}
+            </div>
             {formError ? <span className="text-destructive text-[11px]">{formError}</span> : null}
           </div>
 
@@ -245,16 +312,39 @@ export function InitialPocketCostDialog({
             </div>
           </div>
 
-          <div className="flex justify-end pt-1">
+          <div className="flex items-center justify-end gap-2 pt-1">
+            {editingMarco ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCancelEdit}
+                disabled={isPending}
+                className="gap-1"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+                <span>Cancelar</span>
+              </Button>
+            ) : null}
+
             <Button
               type="submit"
               variant="default"
               size="sm"
-              disabled={createHistorical.isPending || newAmountCents <= 0}
+              disabled={isPending || newAmountCents <= 0}
               className="gap-1.5 w-full sm:w-auto"
             >
-              <Plus className="size-4" aria-hidden="true" />
-              <span>{createHistorical.isPending ? "Adicionando..." : "Adicionar Marco"}</span>
+              {editingMarco ? (
+                <>
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                  <span>{isPending ? "Salvando..." : "Salvar Alterações"}</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="size-4" aria-hidden="true" />
+                  <span>{isPending ? "Adicionando..." : "Adicionar Marco"}</span>
+                </>
+              )}
             </Button>
           </div>
         </form>
@@ -277,7 +367,11 @@ export function InitialPocketCostDialog({
               {historicalContributions.map((marco) => (
                 <div
                   key={marco.id}
-                  className="rounded-lg border border-border/70 bg-surface/70 px-3 py-2 flex items-center justify-between gap-2.5 transition-colors hover:bg-surface-hover/50"
+                  className={`rounded-lg border px-3 py-2 flex items-center justify-between gap-2.5 transition-colors ${
+                    editingMarco?.id === marco.id
+                      ? "border-primary/60 bg-primary/10"
+                      : "border-border/70 bg-surface/70 hover:bg-surface-hover/50"
+                  }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -302,6 +396,16 @@ export function InitialPocketCostDialog({
                     <span className="font-mono font-semibold text-xs text-foreground tabular-nums">
                       <MoneyText cents={numberToCents(Number(marco.amount))} />
                     </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleStartEdit(marco)}
+                      aria-label={`Editar marco de ${formatDatePT(marco.date)}`}
+                      className="size-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                    >
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"

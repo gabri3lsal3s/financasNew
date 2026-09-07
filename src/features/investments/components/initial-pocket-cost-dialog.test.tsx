@@ -10,6 +10,7 @@ vi.mock("@/state", async (importOriginal) => {
     ...actual,
     usePortfolioContributions: vi.fn(),
     useCreateHistoricalContribution: vi.fn(),
+    useUpdatePortfolioContribution: vi.fn(),
     useDeletePortfolioContribution: vi.fn(),
   };
 });
@@ -25,6 +26,7 @@ vi.mock("@/services/sensory", () => ({
 describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () => {
   let queryClient: QueryClient;
   const mockCreateMutateAsync = vi.fn();
+  const mockUpdateMutateAsync = vi.fn();
   const mockDeleteMutateAsync = vi.fn();
 
   beforeEach(() => {
@@ -37,6 +39,11 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
       mutateAsync: mockCreateMutateAsync.mockResolvedValue({}),
       isPending: false,
     } as unknown as ReturnType<typeof stateModule.useCreateHistoricalContribution>);
+
+    vi.mocked(stateModule.useUpdatePortfolioContribution).mockReturnValue({
+      mutateAsync: mockUpdateMutateAsync.mockResolvedValue({}),
+      isPending: false,
+    } as unknown as ReturnType<typeof stateModule.useUpdatePortfolioContribution>);
 
     vi.mocked(stateModule.useDeletePortfolioContribution).mockReturnValue({
       mutateAsync: mockDeleteMutateAsync.mockResolvedValue({}),
@@ -146,6 +153,61 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
           date: "2024-02-26",
         }),
       );
+      expect(onSuccess).toHaveBeenCalled();
+    });
+  });
+
+  it("permite entrar em modo de edição e salvar alterações de um marco", async () => {
+    vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
+      data: [
+        {
+          id: "marco-1",
+          asset_id: null,
+          date: "2024-02-26",
+          amount: 20000,
+          notes: "Aporte 1",
+          user_id: "user-1",
+          created_at: "2024-02-26T00:00:00Z",
+        },
+      ],
+      isLoading: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
+
+    const onSuccess = vi.fn();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <InitialPocketCostDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          onSuccess={onSuccess}
+        />
+      </QueryClientProvider>,
+    );
+
+    // Clica no botão de editar
+    const editBtn = screen.getByRole("button", { name: /Editar marco de 26\/02\/2024/i });
+    fireEvent.click(editBtn);
+
+    // Deve ativar o modo edição
+    expect(screen.getByText("Editar Marco Histórico")).toBeInTheDocument();
+    expect(screen.getByText("Modo Edição")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Salvar Alterações/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Cancelar/i })).toBeInTheDocument();
+
+    // Clica em salvar alterações
+    const saveBtn = screen.getByRole("button", { name: /Salvar Alterações/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateMutateAsync).toHaveBeenCalledWith({
+        id: "marco-1",
+        input: expect.objectContaining({
+          date: "2024-02-26",
+          amount: 20000,
+        }),
+      });
       expect(onSuccess).toHaveBeenCalled();
     });
   });

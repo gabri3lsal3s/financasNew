@@ -16,6 +16,7 @@ import {
   deletePortfolioTransactionsMatching,
   listPortfolioTransactions,
   updatePortfolioAsset,
+  updatePortfolioContribution,
   updatePortfolioTransaction,
   upsertMarcoZero,
 } from "@/data/repositories/portfolio";
@@ -494,6 +495,36 @@ export function useDeletePortfolioContribution() {
     onError: (err) => {
       pushToast({
         title: "Erro ao excluir aporte",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+      triggerSensory("destructive");
+    },
+  });
+}
+
+/**
+ * Atualiza um aporte existente (data, valor ou notas).
+ * Invalida os caches de contribuições e snapshots para recalcular imediatamente a TIR e métricas.
+ */
+export function useUpdatePortfolioContribution() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: string; input: DbUpdate<PortfolioContribution> }) =>
+      updatePortfolioContribution(params.id, params.input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
+      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      pushToast({
+        title: "Marco Histórico atualizado!",
+        description: "O valor foi calibrado e a TIR recalculada com sucesso.",
+        variant: "success",
+      });
+      triggerSensory("success");
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Erro ao atualizar marco histórico",
         description: getErrorMessage(err),
         variant: "destructive",
       });
