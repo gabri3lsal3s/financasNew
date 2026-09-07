@@ -1532,7 +1532,12 @@
   4. **Histórico Completo na Aba Resumo (`ResumoTab`):**
      - Disponibilização de `allMonthlySeries` no hook `usePortfolioPosition`;
      - Botão de alternância entre "Últimos 6 meses" e "Ver histórico completo (N meses)" quando há mais de 6 meses de dados;
-     - Conformidade estrita com o Design System (`border-border/80 bg-surface shadow-xs`, badges `size="xs"` e zero emojis).
+     - Conformidade estrita com o Design System (`border-border/80 bg-surface shadow-xs`, badges `size="xs"` e zero emojis);
+  5. **Arquitetura de Rentabilidade Adaptativa & Relatório Executivo Integrado:**
+     - **Métrica Primária Unificada:** O card de rentabilidade adota comportamento adaptativo inteligente: exibe **TWR por Cotas (`[TWR · Cotas]`)** quando há histórico apurado de snapshots, e comuta automaticamente para a **Rentabilidade da Custódia Aberta (`[Custódia Aberta]`)** com ganho sobre custo para investidores iniciantes sem histórico prévio;
+     - **Eliminação de Conflito Visual:** Despoluição do card de Patrimônio Total, removendo o percentual redundante e destacando o valor em reais (`Lucro aberto: +R$ X,XX`), mantendo apenas uma taxa percentual primária na tela;
+     - **Relatório Executivo Integrado (`PortfolioExecutiveReport`):** Adicionado botão contextual "Relatório" no cabeçalho da Posição Consolidada e adaptada a síntese executiva do relatório em A4/PDF para exibir o TWR oficial e a TIR harmoniosamente;
+     - **Modal Didático Reformulado:** Explicação pedagógica em 5 pontos detalhando a diferença entre TWR (qualidade dos ativos/cotas), Custódia Aberta (retorno contábil das posições ativas), TIR (custo de oportunidade do bolso), Resultado em R$ (patrimônio real gerado) e como comparar com benchmarks (CDI/Ibovespa).
 - **Arquivos alterados/criados:**
   - `src/domain/portfolio/twr.ts` (novo)
   - `src/domain/portfolio/twr.test.ts` (novo)
@@ -1547,6 +1552,7 @@
   - `src/state/queries/use-portfolio.ts`
   - `src/state/index.ts`
   - `src/features/investments/components/initial-pocket-cost-dialog.tsx`
+  - `src/features/investments/components/portfolio-executive-report.tsx`
   - `src/features/investments/pages/resumo-tab.tsx`
   - `src/features/investments/pages/resumo-tab.test.tsx`
   - `src/features/investments/pages/investments-page.test.tsx`

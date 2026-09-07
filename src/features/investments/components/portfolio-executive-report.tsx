@@ -19,6 +19,9 @@ export interface PortfolioExecutiveReportProps {
   cashBRL: number;
   yearDividendsBRL: number;
   portfolioIrr?: import("@/domain/portfolio").XIRRResult;
+  portfolioTwr?: import("@/domain/portfolio").TwrResult;
+  totalReturnPct?: number | null;
+  totalReturnPnlBRL?: number;
   allTimeEconomicPnlBRL?: number;
   periodLabel?: string;
   appName?: string;
@@ -37,6 +40,9 @@ export function PortfolioExecutiveReport({
   cashBRL,
   yearDividendsBRL,
   portfolioIrr,
+  portfolioTwr,
+  totalReturnPct,
+  totalReturnPnlBRL,
   allTimeEconomicPnlBRL,
   periodLabel = "Posição Atual Consolidada",
   appName = "Guia Financeiro",
@@ -98,44 +104,78 @@ export function PortfolioExecutiveReport({
         />
 
         {/* Síntese Executiva em Linha Única */}
-        <ReportExecutiveSummary
-          title="SÍNTESE PATRIMONIAL & DESEMPENHO"
-          items={[
-            {
-              label: "Patrimônio Total",
-              value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
-              subtext: `${investmentRows.length} ativos em custódia`,
-            },
-            {
-              label: "Saldo em Caixa",
-              value: <MoneyText cents={numberToCents(cashBRL)} tone="default" />,
-              subtext: "Reserva de Liquidez",
-            },
-            {
-              label: "TIR (Fluxo do Bolso)",
-              value: portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-                ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
-                : "Em formação",
-              subtext: portfolioIrr?.isEligible
-                ? `Ponderada (${portfolioIrr.daysElapsed}d)`
-                : "Requer histórico",
-            },
-            {
-              label: "Resultado Histórico",
-              value: (
-                <span className={(allTimeEconomicPnlBRL ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-                  <MoneyText cents={numberToCents(allTimeEconomicPnlBRL ?? 0)} tone={(allTimeEconomicPnlBRL ?? 0) >= 0 ? "positive" : "negative"} />
+        {(() => {
+          const isTwrActive = Boolean(portfolioTwr && portfolioTwr.status === "ok" && portfolioTwr.accumulatedRatePct !== null);
+          const isCustodyActive = !isTwrActive && totalReturnPct !== null && totalReturnPct !== undefined;
+
+          const rentabilidadeItem = isTwrActive
+            ? {
+                label: "Rentabilidade (TWR)",
+                value: (
+                  <span className={portfolioTwr.accumulatedRatePct >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                    {portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}{portfolioTwr.accumulatedRatePct.toFixed(1)}%
+                  </span>
+                ),
+                subtext: portfolioTwr.annualizedRatePct !== null
+                  ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (Padrão CVM)`
+                  : `Por cotas (${portfolioTwr.monthsElapsed}m)`,
+              }
+            : isCustodyActive
+              ? {
+                  label: "Rentabilidade da Carteira",
+                  value: (
+                    <span className={totalReturnPct >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                      {totalReturnPct >= 0 ? "+" : ""}{totalReturnPct.toFixed(1)}%
+                    </span>
+                  ),
+                  subtext: "Custódia aberta sobre custo",
+                }
+              : {
+                  label: "Rentabilidade da Carteira",
+                  value: "Em formação",
+                  subtext: "Requer histórico",
+                };
+
+          return (
+            <ReportExecutiveSummary
+              title="SÍNTESE PATRIMONIAL & DESEMPENHO"
+              items={[
+                {
+                  label: "Patrimônio Total",
+                  value: <MoneyText cents={numberToCents(totalBRL)} tone="portfolio" />,
+                  subtext: `${investmentRows.length} ativos em custódia`,
+                },
+                rentabilidadeItem,
+                {
+                  label: "Retorno do Bolso (TIR)",
+                  value: portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                    ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+                    : "Em formação",
+                  subtext: portfolioIrr?.isEligible
+                    ? `Ponderada (${portfolioIrr.daysElapsed}d)`
+                    : "Requer histórico",
+                },
+                {
+                  label: "Resultado Histórico",
+                  value: (() => {
+                    const finalPnl = allTimeEconomicPnlBRL ?? totalReturnPnlBRL ?? 0;
+                    return (
+                      <span className={finalPnl >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                        <MoneyText cents={numberToCents(finalPnl)} tone={finalPnl >= 0 ? "positive" : "negative"} />
+                      </span>
+                    );
+                  })(),
+                  subtext: "P&L Econômico Total",
+                },
+              ]}
+              narrative={
+                <span>
+                  A carteira encerra o período com <strong><MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" /></strong> sob custódia, distribuídos em <strong>{investmentRows.length} ativos</strong> e <strong>{classGroups.length} classes de investimento</strong>. O saldo em reserva de liquidez é de <MoneyText cents={numberToCents(cashBRL)} className="inline font-bold" /> e os proventos acumulados no exercício somam <MoneyText cents={numberToCents(yearDividendsBRL)} className="inline font-bold text-positive-strong" />.
                 </span>
-              ),
-              subtext: "P&L Econômico Total",
-            },
-          ]}
-          narrative={
-            <span>
-              A carteira encerra o período com <strong><MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" /></strong> sob custódia, distribuídos em <strong>{investmentRows.length} ativos</strong> e <strong>{classGroups.length} classes de investimento</strong>. O saldo em reserva de liquidez é de <MoneyText cents={numberToCents(cashBRL)} className="inline font-bold" /> e os proventos acumulados no exercício somam <MoneyText cents={numberToCents(yearDividendsBRL)} className="inline font-bold text-positive-strong" />.
-            </span>
-          }
-        />
+              }
+            />
+          );
+        })()}
 
         {/* Tabelas Especializadas por Classe */}
         <section aria-label="Detalhamento das Posições" className="flex flex-col gap-3 pt-1">

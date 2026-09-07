@@ -401,6 +401,10 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
   - Variação mensal: $R_t = \frac{V_t}{V_{t-1} + C_t} - 1$, onde $V_t$ é o patrimônio bruto no fim do mês e $C_t$ o fluxo líquido de caixa.
   - Cota inicial: $C_0 = 100,00$; evolução da cota: $C_t = C_{t-1} \times (1 + R_t)$; retorno acumulado: $\text{TWR} = \left(\frac{C_t}{C_0} - 1\right) \times 100$.
   - Resiliência matemática: suporta períodos com liquidação total transitória ($\text{saldo} = 0$), protegendo divisões por zero e mantendo a cadeia multiplicativa quando novos aportes ocorrem.
+- **Arquitetura de Rentabilidade Adaptativa na UI & Relatórios:**
+  - O card primário de rentabilidade comuta inteligentemente entre o **TWR por Cotas** (badge `[TWR · Cotas]`, padrão CVM/ANBIMA quando há snapshots calculados) e a **Rentabilidade da Custódia Aberta** (badge `[Custódia Aberta]`, calculando o ganho de capital e proventos sobre o custo de aquisição para usuários iniciantes sem histórico retroativo).
+  - O card de Patrimônio Total foca no saldo sob custódia, destacando no subtexto o lucro aberto em reais (`Lucro aberto: +R$ X,XX`), eliminando porcentagens redundantes e concorrentes na visão principal.
+  - O Relatório Executivo em A4/PDF (`PortfolioExecutiveReport`) integra a rentabilidade adaptativa oficial e a TIR na síntese executiva.
 - **TIR / Taxa Interna de Retorno (XIRR / Money-Weighted Return):**
   - Motor com solver híbrido Newton-Raphson com fallback para Bisseção (`calculatePortfolioIrr`, `domain/portfolio/irr.ts`).
   - Fluxos de caixa compostos por múltiplos marcos históricos de aportes e resgates do bolso (`portfolio_contributions`), onde retiradas (tag `[Resgate]`) contam como devolução antecipada de capital ao investidor.

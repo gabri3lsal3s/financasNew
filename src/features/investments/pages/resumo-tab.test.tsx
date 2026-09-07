@@ -242,4 +242,20 @@ describe("ResumoTab", () => {
     expect(screen.getByText("2026-08")).toBeInTheDocument();
     expect(screen.getAllByText("Resultado Total").length).toBeGreaterThan(0);
   });
+
+  it("renderiza o card adaptativo de Rentabilidade da Carteira com fallback para Custódia Aberta", () => {
+    renderResumo();
+    expect(screen.getByText("Rentabilidade")).toBeInTheDocument();
+    expect(screen.getByText("Custódia Aberta")).toBeInTheDocument();
+  });
+
+  it("permite abrir o Relatório Executivo da Carteira ao clicar no botão Relatório", async () => {
+    const user = userEvent.setup();
+    renderResumo();
+
+    const reportBtn = screen.getByRole("button", { name: /Relatório Executivo/i });
+    await user.click(reportBtn);
+
+    expect(screen.getByText("Relatório Executivo da Carteira")).toBeInTheDocument();
+  });
 });

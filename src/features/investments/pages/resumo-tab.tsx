@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
+  FileText,
   Info,
   LineChart,
   PieChart,
@@ -47,6 +48,7 @@ import {
   CashFormDialog,
   InitialPocketCostDialog,
   ManualPriceDialog,
+  PortfolioExecutiveReport,
 } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
@@ -81,6 +83,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [wizardInitialAsset, setWizardInitialAsset] = useState<PortfolioAsset | null>(null);
   const [wizardInitialMode, setWizardInitialMode] = useState<WizardMode>("select");
   const [showAllSnapshots, setShowAllSnapshots] = useState(false);
+  const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
 
   const isWizardOpen = wizardOpen || wizardDeepOpen;
   const handleWizardOpenChange = (next: boolean) => {
@@ -342,22 +345,62 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           : "Requer histórico de aportes";
 
   // ---------------------------------------------------------------------------
-  // Métricas do TWR / Rentabilidade por Cotas (CVM / ANBIMA)
+  // Métrica Primária Adaptativa: Rentabilidade da Carteira (TWR com fallback para Custódia)
   // ---------------------------------------------------------------------------
   const portfolioTwr = position.portfolioTwr;
   const isTwrReady = Boolean(portfolioTwr && portfolioTwr.status === "ok");
   const twrRate = portfolioTwr?.accumulatedRatePct ?? null;
   const twrTone = isTwrReady ? ((twrRate ?? 0) >= 0 ? "positive" : "negative") : "default";
 
-  const twrLabel = isTwrReady && twrRate !== null
-    ? `${twrRate >= 0 ? "+" : ""}${twrRate.toFixed(1)}%`
+  const isTwrActive = isTwrReady && twrRate !== null;
+  const isCustodyActive = !isTwrActive && totalReturnPct !== null && totalReturnPct !== undefined;
+
+  const rentabilidadeLabel = isTwrActive ? (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span className="truncate">Rentabilidade</span>
+      <Badge variant="portfolio" size="xs" className="shrink-0 font-normal">
+        TWR · Cotas
+      </Badge>
+      <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+    </div>
+  ) : isCustodyActive ? (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span className="truncate">Rentabilidade</span>
+      <Badge variant="muted" size="xs" className="shrink-0 font-normal">
+        Custódia Aberta
+      </Badge>
+      <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+    </div>
+  ) : (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span className="truncate">Rentabilidade</span>
+      <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+    </div>
+  );
+
+  const twrLabel = isTwrActive
+    ? `${(twrRate ?? 0) >= 0 ? "+" : ""}${(twrRate ?? 0).toFixed(1)}%`
     : "Em formação";
 
-  const twrHint = isTwrReady
-    ? portfolioTwr?.annualizedRatePct !== null && portfolioTwr?.annualizedRatePct !== undefined
-      ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (${portfolioTwr.monthsElapsed}m)`
-      : `Por cotas (${portfolioTwr?.monthsElapsed ?? 0}m)`
-    : "Requer histórico mensal";
+  const rentabilidadeValue = isTwrActive
+    ? twrLabel
+    : isCustodyActive
+      ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%`
+      : "Em formação";
+
+  const rentabilidadeTone = isTwrActive
+    ? ((twrRate ?? 0) >= 0 ? "positive" : "negative")
+    : isCustodyActive
+      ? (totalReturnPnlBRL >= 0 ? "positive" : "negative")
+      : "default";
+
+  const rentabilidadeHint = isTwrActive
+    ? (portfolioTwr?.annualizedRatePct !== null && portfolioTwr?.annualizedRatePct !== undefined
+        ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (${portfolioTwr.monthsElapsed}m)`
+        : `Por cotas (${portfolioTwr?.monthsElapsed ?? 0}m)`)
+    : isCustodyActive
+      ? `${totalReturnPnlBRL >= 0 ? "+" : ""}${formatCentsAsBRL(totalReturnCents)} s/ custo`
+      : "Cadastre seus ativos";
 
   return (
     <div className="flex flex-col gap-6">
@@ -377,6 +420,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           </>
         ) : (
           <>
+            {/* 1. Patrimônio Total */}
             <KpiCard
               label="Patrimônio Total"
               cents={numberToCents(position.totalBRL)}
@@ -390,50 +434,25 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                         ? "text-negative-strong"
                         : "text-foreground",
                   )}
-                  title={`Retorno da Custódia Viva: ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos Ativos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
+                  title={`Retorno da Custódia Aberta: ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos Ativos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
                 >
-                  <MoneyText cents={totalReturnCents} tone="auto" className="text-[11px] tabular-nums" />
-                  {totalReturnPct != null
-                    ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)`
-                    : ""}
+                  <span className="text-muted-foreground font-normal">Lucro aberto:</span>
+                  <MoneyText cents={totalReturnCents} tone="auto" className="tabular-nums" />
                 </span>
               }
               onClick={() => setExplainModalOpen(true)}
             />
-            <CashKpiCard
-              cashBRL={position.cashBRL}
-              cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
-              hasCashAsset={Boolean(cashAsset)}
-              onEdit={handleOpenCash}
-              onDelete={() => {
-                if (cashAsset) setAssetToDelete(cashAsset);
-              }}
-              className="col-span-1"
-            />
+
+            {/* 2. Rentabilidade da Carteira (Adaptativa: TWR ou Custódia Aberta) */}
             <KpiCard
-              label={
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="truncate">TWR (Cotas)</span>
-                  <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-                </div>
-              }
-              value={twrLabel}
-              tone={twrTone}
-              hint={twrHint}
+              label={rentabilidadeLabel}
+              value={rentabilidadeValue}
+              tone={rentabilidadeTone}
+              hint={rentabilidadeHint}
               onClick={() => setExplainModalOpen(true)}
             />
-            <KpiCard
-              label={
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="truncate">TIR (Fluxo do Bolso)</span>
-                  <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-                </div>
-              }
-              value={irrLabel}
-              tone={irrTone}
-              hint={irrHint}
-              onClick={() => setExplainModalOpen(true)}
-            />
+
+            {/* 3. Resultado Histórico em R$ (P&L Total) */}
             <KpiCard
               label={
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -452,6 +471,32 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                 </span>
               }
               onClick={() => setExplainModalOpen(true)}
+            />
+
+            {/* 4. Retorno do Bolso (TIR / XIRR) */}
+            <KpiCard
+              label={
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate">TIR (Fluxo do Bolso)</span>
+                  <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                </div>
+              }
+              value={irrLabel}
+              tone={irrTone}
+              hint={irrHint}
+              onClick={() => setExplainModalOpen(true)}
+            />
+
+            {/* 5. Saldo em Caixa */}
+            <CashKpiCard
+              cashBRL={position.cashBRL}
+              cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
+              hasCashAsset={Boolean(cashAsset)}
+              onEdit={handleOpenCash}
+              onDelete={() => {
+                if (cashAsset) setAssetToDelete(cashAsset);
+              }}
+              className="col-span-1"
             />
           </>
         )}
@@ -578,6 +623,19 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               </div>
 
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setExecutiveReportOpen(true)}
+                  className="size-8 p-0 sm:w-auto sm:h-8 sm:px-3 text-xs gap-1.5 shrink-0"
+                  title="Visualizar e Imprimir Relatório Executivo da Carteira"
+                  aria-label="Relatório Executivo"
+                >
+                  <FileText aria-hidden="true" className="size-3.5" />
+                  <span className="hidden md:inline">Relatório</span>
+                </Button>
+
                 <Button
                   type="button"
                   variant="outline"
@@ -848,36 +906,36 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         size="lg"
       >
         <div className="flex flex-col gap-4 text-xs mt-2">
-          {/* Card 1: Custódia Viva */}
+          {/* Card 1: Rentabilidade por Cotas (TWR) */}
           <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">1. Retorno Contábil da Custódia Viva</span>
-              <Badge variant="muted" size="sm" className="font-mono">
-                {totalReturnPct !== null ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(2)}%` : "—"}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              Mede estritamente a valorização das ações, fundos imobiliários e títulos que estão sob sua posse <strong>hoje</strong> frente ao Preço Médio pago por eles, somando os proventos dessas posições ativas. É 100% isolado de ativos que já encerraram no passado.
-            </p>
-          </div>
-
-          {/* Card: Rentabilidade por Cotas (TWR) */}
-          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">2. Rentabilidade por Cotas (TWR — Padrão CVM/ANBIMA)</span>
+              <span className="font-semibold text-foreground text-sm">1. Rentabilidade da Carteira por Cotas (TWR — Padrão CVM/ANBIMA)</span>
               <Badge variant={twrTone === "positive" ? "positive" : twrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
                 {twrLabel}
               </Badge>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              Mede a performance real das suas decisões de investimento utilizando o método de cotização de fundos. <strong>Isola o efeito de aportes e resgates</strong> para que o tamanho e o momento das movimentações não distorçam a rentabilidade percentual. Quando um ativo vence ou você resgata capital, os lucros passados continuam protegidos na cota histórica.
+              Mede a performance real das suas decisões de investimento utilizando o método oficial de cotização de fundos. <strong>Isola o efeito de aportes e resgates</strong> para que o tamanho e o momento das movimentações não distorçam a rentabilidade percentual. Quando um ativo vence ou você resgata capital, os lucros passados continuam protegidos na cota histórica.
             </p>
           </div>
 
-          {/* Card 2: TIR / Fluxo do Bolso */}
+          {/* Card 2: Retorno Contábil da Custódia Aberta */}
           <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">2. TIR / Fluxo do Bolso (Taxa Ponderada no Tempo)</span>
+              <span className="font-semibold text-foreground text-sm">2. Retorno Contábil da Custódia Aberta</span>
+              <Badge variant="muted" size="sm" className="font-mono">
+                {totalReturnPct !== null ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(2)}%` : "—"}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              Mede estritamente a valorização das ações, fundos imobiliários e títulos que estão sob sua posse <strong>hoje</strong> frente ao Preço Médio pago por eles, somando os proventos dessas posições ativas. É a métrica direta para quem acabou de começar e ainda não possui histórico mensal consolidado.
+            </p>
+          </div>
+
+          {/* Card 3: TIR / Fluxo do Bolso */}
+          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-foreground text-sm">3. TIR / Fluxo do Bolso (Taxa Ponderada no Tempo)</span>
               <Badge variant={irrTone === "positive" ? "positive" : irrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
                 {irrLabel}
               </Badge>
@@ -890,10 +948,10 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </p>
           </div>
 
-          {/* Card 3: P&L Histórico Acumulado */}
+          {/* Card 4: P&L Histórico Acumulado */}
           <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">3. Resultado Econômico Histórico (P&L em R$)</span>
+              <span className="font-semibold text-foreground text-sm">4. Resultado Econômico Histórico (P&L em R$)</span>
               <span className="font-mono font-bold text-sm text-positive-strong">
                 <MoneyText cents={numberToCents(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL)} sign="explicit" />
               </span>
@@ -903,19 +961,16 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </p>
           </div>
 
-          {/* Card 4: Comparabilidade com Benchmarks */}
+          {/* Card 5: Comparabilidade com Benchmarks */}
           <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">4. Como Comparar com Benchmarks (CDI, Ibov e IPCA)</span>
+              <span className="font-semibold text-foreground text-sm">5. Como Comparar com Benchmarks (CDI, Ibov e IPCA)</span>
               <Badge variant="muted" size="sm" className="font-mono">
                 Comparação Justa
               </Badge>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              <strong>Evite a armadilha do CDI acumulado simples:</strong> comparar o percentual simples de uma carteira com o "CDI acumulado desde 2024" distorce a análise quando você faz aportes sucessivos, pois os índices de mercado presumem que 100% do dinheiro esteve aplicado desde o dia 1.
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              A <strong>TIR anualizada (% a.a.)</strong> é a única taxa matematicamente justa para confrontar com o CDI anualizado (ex.: 10,5% a.a.) ou com a inflação acumulada anual, pois respeita a data em que cada aporte efetivamente entrou no mercado.
+              O <strong>TWR (% a.a.)</strong> é o padrão correto para comparar a performance dos seus ativos diretamente com o CDI anualizado ou fundos de investimento. A <strong>TIR anualizada (% a.a.)</strong> complementa a análise mostrando o retorno efetivo do seu bolso, respeitando as datas em que você aportou mais ou menos capital.
             </p>
           </div>
 
@@ -950,6 +1005,21 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         open={initialCostDialogOpen}
         onOpenChange={setInitialCostDialogOpen}
         defaultCostBRL={position.totalCostBRL}
+      />
+
+      {/* Relatório Executivo da Carteira */}
+      <PortfolioExecutiveReport
+        open={executiveReportOpen}
+        onOpenChange={setExecutiveReportOpen}
+        rows={position.rows}
+        totalBRL={position.totalBRL}
+        cashBRL={position.cashBRL}
+        yearDividendsBRL={position.totalDividendsBRL}
+        portfolioIrr={position.portfolioIrr}
+        portfolioTwr={position.portfolioTwr}
+        totalReturnPct={position.totalReturnPct}
+        totalReturnPnlBRL={position.totalReturnPnlBRL}
+        allTimeEconomicPnlBRL={position.allTimeEconomicPnlBRL}
       />
     </div>
   );
