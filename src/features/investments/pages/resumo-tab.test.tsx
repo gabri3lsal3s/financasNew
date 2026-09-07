@@ -138,6 +138,21 @@ vi.mock("@/state", () => ({
     data: [],
     isLoading: false,
   }),
+  usePortfolioSnapshots: () => ({
+    data: [],
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+  useUpsertPortfolioSnapshot: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useBatchUpsertPortfolioSnapshots: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useAllocationTargets: () => ({
     data: [],
     isLoading: false,

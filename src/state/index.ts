@@ -79,6 +79,7 @@ export {
   useUpsertPortfolioAssetsBatch,
   usePortfolioSnapshots,
   useUpsertPortfolioSnapshot,
+  useBatchUpsertPortfolioSnapshots,
   usePortfolioContributions,
   useCreatePortfolioContribution,
   useDeletePortfolioContribution,

@@ -109,4 +109,8 @@ export {
   PORTFOLIO_QUERY_KEYS,
 } from "@/state/mutations/use-portfolio-mutations";
 
-export { useUpsertPortfolioSnapshot, useUpsertPortfolioAssetsBatch } from "@/state/mutations/use-portfolio-snapshots-mutations";
+export {
+  useUpsertPortfolioSnapshot,
+  useBatchUpsertPortfolioSnapshots,
+  useUpsertPortfolioAssetsBatch,
+} from "@/state/mutations/use-portfolio-snapshots-mutations";

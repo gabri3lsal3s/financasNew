@@ -170,6 +170,25 @@ export async function upsertPortfolioSnapshot(input: {
   return mapSnapshot(data);
 }
 
+export async function batchUpsertPortfolioSnapshots(
+  inputs: { month: string; total_value: number; total_cost: number }[],
+): Promise<PortfolioSnapshot[]> {
+  if (inputs.length === 0) return [];
+  const user_id = await currentUserId();
+  const rows = inputs.map((input) => ({ ...input, user_id }));
+  const { data, error } = await resolveQuery<PortfolioSnapshot[]>(
+    getSupabase()
+      .from("portfolio_snapshots")
+      .upsert(rows, { onConflict: "user_id,month" })
+      .select(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return (data ?? []).map(mapSnapshot);
+}
+
 // ---------------------------------------------------------------------------
 // Contribuições / Aportes Mensais (Desacopladas)
 // ---------------------------------------------------------------------------

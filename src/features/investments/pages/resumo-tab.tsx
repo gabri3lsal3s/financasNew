@@ -80,6 +80,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardInitialAsset, setWizardInitialAsset] = useState<PortfolioAsset | null>(null);
   const [wizardInitialMode, setWizardInitialMode] = useState<WizardMode>("select");
+  const [showAllSnapshots, setShowAllSnapshots] = useState(false);
 
   const isWizardOpen = wizardOpen || wizardDeepOpen;
   const handleWizardOpenChange = (next: boolean) => {
@@ -279,6 +280,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         : classSlices;
 
   const series = position.monthlySeries ?? [];
+  const allSeries = position.allMonthlySeries ?? series;
+  const displayedSeries = showAllSnapshots ? allSeries : series;
   const totalReturnPnlBRL = position.totalReturnPnlBRL ?? position.unrealizedPnlBRL ?? 0;
   const totalReturnCents = numberToCents(totalReturnPnlBRL);
   const totalReturnPct = position.totalReturnPct ?? position.unrealizedPct ?? null;
@@ -338,16 +341,35 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           ? `Ponderada no tempo (${portfolioIrr?.daysElapsed}d)`
           : "Requer histórico de aportes";
 
+  // ---------------------------------------------------------------------------
+  // Métricas do TWR / Rentabilidade por Cotas (CVM / ANBIMA)
+  // ---------------------------------------------------------------------------
+  const portfolioTwr = position.portfolioTwr;
+  const isTwrReady = Boolean(portfolioTwr && portfolioTwr.status === "ok");
+  const twrRate = portfolioTwr?.accumulatedRatePct ?? null;
+  const twrTone = isTwrReady ? ((twrRate ?? 0) >= 0 ? "positive" : "negative") : "default";
+
+  const twrLabel = isTwrReady && twrRate !== null
+    ? `${twrRate >= 0 ? "+" : ""}${twrRate.toFixed(1)}%`
+    : "Em formação";
+
+  const twrHint = isTwrReady
+    ? portfolioTwr?.annualizedRatePct !== null && portfolioTwr?.annualizedRatePct !== undefined
+      ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (${portfolioTwr.monthsElapsed}m)`
+      : `Por cotas (${portfolioTwr?.monthsElapsed ?? 0}m)`
+    : "Requer histórico mensal";
+
   return (
     <div className="flex flex-col gap-6">
       {position.error ? (
         <ErrorState message={getErrorMessage(position.error)} onRetry={position.refetch} />
       ) : null}
 
-      {/* Grid de KPIs da Carteira — 1 coluna no mobile, 2 em tablet, 4 no desktop */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+      {/* Grid de KPIs da Carteira — 1 col mobile, 2 em tablet, 5 no desktop amplo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
         {position.isLoading ? (
           <>
+            <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
@@ -387,6 +409,18 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                 if (cashAsset) setAssetToDelete(cashAsset);
               }}
               className="col-span-1"
+            />
+            <KpiCard
+              label={
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate">TWR (Cotas)</span>
+                  <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                </div>
+              }
+              value={twrLabel}
+              tone={twrTone}
+              hint={twrHint}
+              onClick={() => setExplainModalOpen(true)}
             />
             <KpiCard
               label={
@@ -584,16 +618,34 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
 
           {/* Seção de Evolução Patrimonial (Snapshots Mensais) */}
           <section aria-label="Evolução Patrimonial" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <LineChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
                 <h2 className="text-sm font-semibold text-foreground">Evolução Histórica (Snapshots Mensais)</h2>
               </div>
-              <span className="text-xs text-muted-foreground">Últimos 6 meses</span>
+              <div className="flex items-center gap-2">
+                {allSeries.length > 6 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllSnapshots((prev) => !prev)}
+                    className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {showAllSnapshots
+                      ? "Ver últimos 6 meses"
+                      : `Ver histórico completo (${allSeries.length} meses)`}
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    {series.length > 0 ? `${series.length} meses` : "Últimos 6 meses"}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3 pt-2">
-              {series.map((point) => {
+              {displayedSeries.map((point) => {
                 const isCurrent = point.month === month;
                 const effectiveGain = point.totalReturnPnl !== undefined ? point.totalReturnPnl : (point.valueBRL - point.costBRL);
                 const effectivePct = point.totalReturnPct !== undefined ? point.totalReturnPct : (point.costBRL > 0 ? ((point.valueBRL - point.costBRL) / point.costBRL) * 100 : 0);
@@ -606,12 +658,12 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                       "rounded-xl border p-4 flex flex-col gap-2.5 transition-colors shadow-2xs min-w-0",
                       isCurrent
                         ? "border-portfolio/40 bg-portfolio/5 ring-1 ring-portfolio/20"
-                        : "border-border/60 bg-surface-hover/30 hover:border-border/80",
+                        : "border-border/80 bg-surface/80 hover:border-border",
                     )}
                   >
                     <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <span className="text-xs font-semibold text-foreground">{point.month}</span>
-                      {isCurrent ? <Badge variant="portfolio" className="text-[10px] px-1.5 py-0 shrink-0">atual</Badge> : null}
+                      {isCurrent ? <Badge variant="portfolio" size="xs" className="shrink-0">atual</Badge> : null}
                     </div>
                     <div className="min-w-0">
                       <MoneyText
@@ -654,6 +706,23 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                         {effectivePct !== null ? `${effectivePct >= 0 ? "+" : ""}${effectivePct.toFixed(1)}%` : "—"}
                       </span>
                     </div>
+                    {point.twrAccumulatedPct !== undefined && point.twrAccumulatedPct !== null ? (
+                      <div className="flex items-center justify-between text-xs gap-2 min-w-0 border-t border-border/40 pt-1.5">
+                        <span className="text-muted-foreground shrink-0 font-medium" title="Rentabilidade por cotas (TWR)">
+                          TWR Acum.
+                        </span>
+                        <span
+                          className={cn(
+                            "font-mono font-semibold tabular-nums shrink-0",
+                            point.twrAccumulatedPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                          )}
+                          title={`Cota: R$ ${point.sharePrice?.toFixed(2) ?? "—"}${point.twrMonthPct != null ? ` | Mês: ${point.twrMonthPct >= 0 ? "+" : ""}${point.twrMonthPct.toFixed(2)}%` : ""}`}
+                        >
+                          {point.twrAccumulatedPct >= 0 ? "+" : ""}
+                          {point.twrAccumulatedPct.toFixed(1)}%
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -789,6 +858,19 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
             <p className="text-muted-foreground leading-relaxed">
               Mede estritamente a valorização das ações, fundos imobiliários e títulos que estão sob sua posse <strong>hoje</strong> frente ao Preço Médio pago por eles, somando os proventos dessas posições ativas. É 100% isolado de ativos que já encerraram no passado.
+            </p>
+          </div>
+
+          {/* Card: Rentabilidade por Cotas (TWR) */}
+          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-foreground text-sm">2. Rentabilidade por Cotas (TWR — Padrão CVM/ANBIMA)</span>
+              <Badge variant={twrTone === "positive" ? "positive" : twrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
+                {twrLabel}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              Mede a performance real das suas decisões de investimento utilizando o método de cotização de fundos. <strong>Isola o efeito de aportes e resgates</strong> para que o tamanho e o momento das movimentações não distorçam a rentabilidade percentual. Quando um ativo vence ou você resgata capital, os lucros passados continuam protegidos na cota histórica.
             </p>
           </div>
 

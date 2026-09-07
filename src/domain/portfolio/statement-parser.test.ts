@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseBRLNumber, parseBrokerStatement } from "./statement-parser";
+import {
+  cleanContributionNotes,
+  deduplicateStatementRows,
+  extractExplicitRateFromNotes,
+  parseBRLNumber,
+  parseBrokerStatement,
+} from "./statement-parser";
 
 describe("parseBRLNumber", () => {
   it("converte valores no formato brasileiro com vírgula", () => {
@@ -119,5 +125,102 @@ Set.	2026	16.802,03	18.192,40	0,77
     expect(res.rows[0]?.appliedValue).toBe(6187.37);
     expect(res.rows[1]?.date).toBe("2023-11-30");
     expect(res.rows[1]?.delta).toBe(2490.79);
+  });
+
+  it("processa perfeitamente o extrato do usuário de 32 meses com resgates e rentabilidade", () => {
+    const userStatement = `
+Mês	Ano	Valor aplicado	Saldo bruto	Rentabilidade (%)
+Fev.	2024	4.048,26	4.057,10	0,43
+Mar.	2024	6.721,18	6.783,04	1,11
+Abr.	2024	7.045,29	7.019,55	-0,80
+Mai.	2024	12.524,72	12.572,85	0,95
+Jun.	2024	16.727,60	16.882,40	1,14
+Jul.	2024	16.898,86	17.267,08	1,57
+Ago.	2024	23.523,56	24.155,39	1,77
+Set.	2024	23.523,56	24.010,73	-0,36
+Out.	2024	56.817,17	57.186,60	-0,46
+Nov.	2024	63.250,90	63.760,97	0,46
+Dez.	2024	62.933,45	63.203,70	-0,54
+Jan.	2025	76.101,51	76.681,42	1,00
+Fev.	2025	77.864,99	78.303,81	0,20
+Mar.	2025	78.050,46	79.617,04	2,21
+Abr.	2025	78.302,06	81.378,29	2,23
+Mai.	2025	78.302,06	82.242,56	1,29
+Jun.	2025	78.868,32	83.597,37	1,45
+Jul.	2025	79.395,00	82.899,42	-0,99
+Ago.	2025	89.225,94	93.648,48	1,03
+Set.	2025	89.723,46	95.665,05	1,97
+Out.	2025	94.062,49	101.061,69	1,24
+Nov.	2025	86.731,98	94.277,77	2,16
+Dez.	2025	86.731,98	94.432,61	0,16
+Jan.	2026	86.731,98	95.201,98	0,81
+Fev.	2026	86.731,98	94.838,21	-0,38
+Mar.	2026	86.731,98	97.045,95	2,33
+Abr.	2026	86.731,98	97.577,45	0,55
+Mai.	2026	86.731,98	98.405,17	0,85
+Jun.	2026	85.731,98	88.361,31	1,45
+Jul.	2026	95.768,49	99.704,64	1,21
+Ago.	2026	95.768,49	100.584,33	0,88
+Set.	2026	94.532,22	100.095,95	0,81
+    `;
+    const res = parseBrokerStatement(userStatement);
+    expect(res.rows).toHaveLength(32);
+    expect(res.actionableRows).toHaveLength(23);
+    expect(res.totalAportes).toBe(104416.45);
+    expect(res.totalResgates).toBe(9884.23);
+    expect(res.netCapital).toBe(94532.22);
+    expect(res.finalGrossBalance).toBe(100095.95);
+    // Verifica que as notas dos marcos gerados trazem a tag de rentabilidade
+    expect(res.actionableRows[0]?.suggestedNotes).toContain("[Rent: +0.43%]");
+  });
+
+  it("extractExplicitRateFromNotes extrai rentabilidades positivas e negativas", () => {
+    expect(extractExplicitRateFromNotes("Aporte Histórico (Nov/2025) [Rent: +2.16%]")).toBe(2.16);
+    expect(extractExplicitRateFromNotes("[Resgate] Retirada [Rent: -0.80%]")).toBe(-0.8);
+    expect(extractExplicitRateFromNotes("Sem tags")).toBeNull();
+    expect(extractExplicitRateFromNotes(null)).toBeNull();
+  });
+
+  it("cleanContributionNotes remove marcadores técnicos preservando o texto amigável", () => {
+    expect(cleanContributionNotes("[Resgate] Retirada do Bolso (Nov/2025) [Rent: +2.16%]")).toBe(
+      "Retirada do Bolso (Nov/2025)",
+    );
+    expect(cleanContributionNotes("Aporte Histórico (Mar/2024) [Rent: +1.11%]")).toBe(
+      "Aporte Histórico (Mar/2024)",
+    );
+  });
+
+  it("ignora linhas de rodapé e totalizadores sem gerar falhas", () => {
+    const textWithFooters = `
+      Mês Ano Valor Aplicado Saldo
+      Fev. 2024 4048.26 4057.10
+      Total Consolidado 4048.26 4057.10
+      Média de Rendimento: 1.5%
+      Fonte: Relatório Oficial da Corretora
+      Emitido em: 07/09/2026
+    `;
+    const res = parseBrokerStatement(textWithFooters);
+    expect(res.rows).toHaveLength(1);
+    expect(res.skippedCount).toBe(0);
+  });
+
+  it("deduplicateStatementRows separa linhas novas de meses já cadastrados", () => {
+    const existing = [
+      { date: "2024-02-29", amount: 4048.26, notes: "Marco Histórico · Início (Fev/2024)" },
+      { date: "2024-03-31", amount: 2672.92, notes: "Aporte Histórico (Mar/2024)" },
+    ];
+
+    const statement = `
+      Fev. 2024 4048.26 4057.10
+      Mar. 2024 6721.18 6783.04
+      Abr. 2024 7045.29 7019.55
+    `;
+
+    const parsed = parseBrokerStatement(statement);
+    const { newRows, skippedExistingRows } = deduplicateStatementRows(existing, parsed.actionableRows);
+
+    expect(skippedExistingRows).toHaveLength(2);
+    expect(newRows).toHaveLength(1);
+    expect(newRows[0]?.date).toBe("2024-04-30");
   });
 });

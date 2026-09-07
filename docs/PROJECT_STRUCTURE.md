@@ -195,11 +195,12 @@
     │   │                          #     type-sniffer, hashing ordinal, scoring 0-100)
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │                              #   irr.ts (motor puro de TIR / Money-Weighted Return / XIRR com solver híbrido Newton-Raphson + Bisseção),
+    │                              #   twr.ts (motor puro de TWR / Time-Weighted Return / cotização ANBIMA / CVM e encadeamento geométrico),
     │                              #   operations.ts (vendas, splits, adição com posição inicial e reconciliação do ledger),
     │                              #   summary.ts (F17: rentabilidade, alocação),
     │                              #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
     │                              #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls),
-    │                              #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras e cálculo automático de deltas)
+    │                              #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras, cálculo de deltas e deduplicação)
     │
     ├── data/                      # INTEGRAÇÃO REMOTA
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)

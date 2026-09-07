@@ -13,10 +13,18 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { Badge, Button, EmptyState, Input, Modal, MoneyInput, Tabs, Textarea } from "@/components/ui";
+import { Badge, Button, Checkbox, EmptyState, Input, Modal, MoneyInput, Tabs, Textarea } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyText } from "@/components/ui/money-text";
-import { isHistoricalWithdrawal, parseBrokerStatement, type StatementParseResult } from "@/domain/portfolio";
+import {
+  cleanContributionNotes,
+  deduplicateStatementRows,
+  extractExplicitRateFromNotes,
+  isHistoricalWithdrawal,
+  parseBRLNumber,
+  parseBrokerStatement,
+  type StatementParseResult,
+} from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -28,6 +36,9 @@ import {
   useDeletePortfolioContribution,
   useBatchCreateHistoricalContributions,
   useUpsertMarcoZero,
+  usePortfolioSnapshots,
+  useUpsertPortfolioSnapshot,
+  useBatchUpsertPortfolioSnapshots,
 } from "@/state";
 import type { PortfolioContribution } from "@/types";
 
@@ -45,11 +56,14 @@ export function InitialPocketCostDialog({
   onSuccess,
 }: InitialPocketCostDialogProps) {
   const contributionsQuery = usePortfolioContributions();
+  const snapshotsQuery = usePortfolioSnapshots();
   const createHistorical = useCreateHistoricalContribution();
   const updateHistorical = useUpdatePortfolioContribution();
   const deleteContribution = useDeletePortfolioContribution();
   const batchCreateHistorical = useBatchCreateHistoricalContributions();
   const upsertMarcoZero = useUpsertMarcoZero();
+  const upsertSnapshot = useUpsertPortfolioSnapshot();
+  const batchUpsertSnapshots = useBatchUpsertPortfolioSnapshots();
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -60,8 +74,9 @@ export function InitialPocketCostDialog({
   useEffect(() => {
     if (open) {
       void contributionsQuery.refetch?.();
+      void snapshotsQuery.refetch?.();
     }
-  }, [open, contributionsQuery]);
+  }, [open, contributionsQuery, snapshotsQuery]);
 
   // Filtra todos os marcos históricos e aportes do bolso
   const historicalContributions = useMemo(() => {
@@ -76,6 +91,16 @@ export function InitialPocketCostDialog({
       })
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [contributionsQuery.data]);
+
+  // Mapa de snapshots patrimoniais por mês (YYYY-MM) para exibição do Saldo Bruto em cada marco
+  const snapshotsList = snapshotsQuery.data;
+  const snapshotsByMonth = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof snapshotsList>[number]>();
+    for (const s of snapshotsList ?? []) {
+      map.set(s.month, s);
+    }
+    return map;
+  }, [snapshotsList]);
 
   // Métricas do bolso calculadas separando Aportes de Resgates
   const { totalAportesBRL, totalResgatesBRL, netPocketCapitalBRL } = useMemo(() => {
@@ -108,6 +133,8 @@ export function InitialPocketCostDialog({
       ? numberToCents(defaultCostBRL)
       : 0;
   });
+  const [newGrossBalanceCents, setNewGrossBalanceCents] = useState<number>(0);
+  const [newRatePctText, setNewRatePctText] = useState<string>("");
   const [newDate, setNewDate] = useState<string>("2024-02-26");
   const [newNotes, setNewNotes] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -120,10 +147,25 @@ export function InitialPocketCostDialog({
     setNewDate(marco.date);
     setNewAmountCents(numberToCents(Number(marco.amount)));
 
+    const monthStr = marco.date.slice(0, 7);
+    const existingSnap = (snapshotsQuery.data ?? []).find((s) => s.month === monthStr);
+    if (existingSnap) {
+      setNewGrossBalanceCents(numberToCents(existingSnap.total_value));
+    } else {
+      setNewGrossBalanceCents(0);
+    }
+
+    const existingRate = extractExplicitRateFromNotes(marco.notes);
+    setNewRatePctText(
+      existingRate !== null
+        ? existingRate > 0
+          ? `+${existingRate}`
+          : `${existingRate}`
+        : ""
+    );
+
     // Limpa tags de sistema das notas para exibição limpa
-    const cleanNotes = (marco.notes ?? "")
-      .replace(/^\[Resgate\]\s*/i, "")
-      .replace(/^\[Retirada\]\s*/i, "");
+    const cleanNotes = cleanContributionNotes(marco.notes);
     setNewNotes(cleanNotes);
     setFormError(null);
     triggerSensory("selection");
@@ -134,6 +176,8 @@ export function InitialPocketCostDialog({
     setEditingMarco(null);
     setEntryType("aporte");
     setNewAmountCents(0);
+    setNewGrossBalanceCents(0);
+    setNewRatePctText("");
     setNewDate("2024-02-26");
     setNewNotes("");
     setFormError(null);
@@ -161,7 +205,19 @@ export function InitialPocketCostDialog({
           ? "Marco Histórico · Início da Carteira"
           : "Aporte Histórico do Bolso";
 
-      const finalNotes = `${prefix}${newNotes.trim() || defaultLabel}`;
+      let rateTag = "";
+      if (newRatePctText.trim()) {
+        const parsedRate = parseBRLNumber(newRatePctText);
+        if (!isNaN(parsedRate)) {
+          rateTag = ` [Rent: ${parsedRate > 0 ? "+" : ""}${parsedRate.toFixed(2)}%]`;
+        }
+      } else if (editingMarco) {
+        const existingRate = extractExplicitRateFromNotes(editingMarco.notes);
+        if (existingRate !== null) {
+          rateTag = ` [Rent: ${existingRate > 0 ? "+" : ""}${existingRate}%]`;
+        }
+      }
+      const finalNotes = `${prefix}${newNotes.trim() || defaultLabel}${rateTag}`;
 
       if (editingMarco) {
         await updateHistorical.mutateAsync({
@@ -181,8 +237,22 @@ export function InitialPocketCostDialog({
         });
       }
 
+      // Se o usuário informou o saldo bruto do mês, atualiza/insere o snapshot patrimonial para TWR
+      if (newGrossBalanceCents > 0) {
+        const monthStr = newDate.slice(0, 7);
+        await upsertSnapshot.mutateAsync({
+          month: monthStr,
+          total_value: newGrossBalanceCents / 100,
+          total_cost: newAmountCents / 100,
+        });
+        await snapshotsQuery.refetch?.();
+      }
+
       await contributionsQuery.refetch?.();
+
       setNewAmountCents(0);
+      setNewGrossBalanceCents(0);
+      setNewRatePctText("");
       setNewNotes("");
       triggerSensory("success");
       onSuccess?.();
@@ -197,6 +267,7 @@ export function InitialPocketCostDialog({
     try {
       await deleteContribution.mutateAsync(contribution.id);
       await contributionsQuery.refetch?.();
+
       triggerSensory("destructive");
       pushToast({
         title: "Marco histórico removido",
@@ -267,8 +338,36 @@ export function InitialPocketCostDialog({
         }
       }
 
-      // 2. Insere os novos marcos calculados em lote
-      const payloads = parseResult.actionableRows.map((row) => ({
+      // 2. Determina as linhas a importar, aplicando deduplicação caso não seja substituição total
+      let rowsToImport = parseResult.actionableRows;
+      if (!replaceExisting && historicalContributions.length > 0) {
+        const { newRows, skippedExistingRows } = deduplicateStatementRows(
+          historicalContributions,
+          parseResult.actionableRows
+        );
+        rowsToImport = newRows;
+
+        if (newRows.length === 0) {
+          pushToast({
+            title: "Nenhum marco novo para importar",
+            description: `Todos os ${skippedExistingRows} meses do extrato já constam na linha do tempo.`,
+            variant: "warning",
+          });
+          setIsImporting(false);
+          return;
+        }
+
+        if (skippedExistingRows > 0) {
+          pushToast({
+            title: "Meses duplicados ignorados",
+            description: `${skippedExistingRows} movimentações já existentes foram mantidas intactas.`,
+            variant: "default",
+          });
+        }
+      }
+
+      // 3. Insere os novos marcos calculados em lote
+      const payloads = rowsToImport.map((row) => ({
         asset_id: null,
         date: row.date,
         amount: Math.abs(row.delta),
@@ -276,12 +375,32 @@ export function InitialPocketCostDialog({
       }));
 
       await batchCreateHistorical.mutateAsync(payloads);
+
+      // 4. Se o extrato possui saldo bruto ou valor aplicado, grava os snapshots mensais correspondentes
+      const snapshotPayloads = parseResult.rows
+        .filter((r) => r.grossBalance !== undefined || r.appliedValue > 0)
+        .map((r) => ({
+          month: r.date.slice(0, 7),
+          total_value: r.grossBalance ?? r.appliedValue,
+          total_cost: r.appliedValue,
+        }));
+
+      if (snapshotPayloads.length > 0) {
+        await batchUpsertSnapshots.mutateAsync(snapshotPayloads);
+        await snapshotsQuery.refetch?.();
+      }
+
       await contributionsQuery.refetch?.();
 
       setStatementText("");
       setParseResult(null);
       setActiveTab("manual");
       triggerSensory("success");
+      pushToast({
+        title: "Marcos importados com sucesso!",
+        description: `${payloads.length} novo(s) marco(s) adicionado(s) à carteira.`,
+        variant: "success",
+      });
       onSuccess?.();
     } catch (err) {
       pushToast({
@@ -501,6 +620,21 @@ export function InitialPocketCostDialog({
                   </div>
                 </div>
 
+                {/* Indicador de Snapshots e Saldo Bruto detectados (TWR) */}
+                {parseResult.rows.some((r) => r.grossBalance !== undefined) ? (
+                  <div className="rounded-lg border border-portfolio/20 bg-portfolio/5 p-2.5 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="size-3.5 text-portfolio shrink-0" aria-hidden="true" />
+                      <span className="text-foreground font-medium text-[11px]">
+                        Saldo Bruto detectado em {parseResult.rows.filter((r) => r.grossBalance !== undefined).length} meses — gerará automaticamente os snapshots para TWR e evolução histórica!
+                      </span>
+                    </div>
+                    <Badge variant="portfolio" size="xs">
+                      TWR Ativo
+                    </Badge>
+                  </div>
+                ) : null}
+
                 {/* Lista de Marcos Acionáveis */}
                 <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
                   {parseResult.actionableRows.map((row, idx) => (
@@ -508,21 +642,28 @@ export function InitialPocketCostDialog({
                       key={`${row.date}-${idx}`}
                       className="rounded-lg border border-border/60 bg-surface px-2.5 py-1.5 flex items-center justify-between gap-2"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-foreground font-medium">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-xs text-foreground font-medium shrink-0">
                           {formatDatePT(row.date)}
                         </span>
                         <Badge
                           variant={row.type === "resgate" ? "warning" : "muted"}
                           size="xs"
+                          className="shrink-0"
                         >
                           {row.type === "resgate" ? "Resgate" : "Aporte"}
                         </Badge>
                         <span className="text-[11px] text-muted-foreground truncate hidden sm:inline">
                           {row.label}
                         </span>
+                        {row.grossBalance !== undefined ? (
+                          <span className="text-[11px] font-mono text-muted-foreground truncate hidden md:inline-flex items-center gap-1">
+                            <span>· Saldo:</span>
+                            <MoneyText cents={numberToCents(row.grossBalance)} tone="default" />
+                          </span>
+                        ) : null}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span
                           className={`font-mono text-xs font-semibold tabular-nums ${
                             row.type === "resgate" ? "text-warning" : "text-positive"
@@ -538,15 +679,11 @@ export function InitialPocketCostDialog({
 
                 {/* Opção de Substituição e Confirmação */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pt-2 border-t border-border/60">
-                  <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={replaceExisting}
-                      onChange={(e) => setReplaceExisting(e.target.checked)}
-                      className="rounded border-border text-primary focus:ring-primary/20"
-                    />
-                    <span>Substituir marcos anteriores cadastrados (recomendado)</span>
-                  </label>
+                  <Checkbox
+                    checked={replaceExisting}
+                    onCheckedChange={setReplaceExisting}
+                    label="Substituir marcos anteriores cadastrados (recomendado)"
+                  />
 
                   <Button
                     type="button"
@@ -639,7 +776,7 @@ export function InitialPocketCostDialog({
                 {/* Campo Data */}
                 <div className="sm:col-span-4 flex flex-col gap-1">
                   <label className="text-[11px] font-semibold text-foreground">
-                    Data da Movimentação <span className="text-destructive">*</span>
+                    Data <span className="text-destructive">*</span>
                   </label>
                   <DatePicker
                     value={newDate}
@@ -664,8 +801,39 @@ export function InitialPocketCostDialog({
                   />
                 </div>
 
-                {/* Campo Descrição */}
+                {/* Campo Saldo Bruto (Opcional - para TWR) */}
                 <div className="sm:col-span-4 flex flex-col gap-1">
+                  <label
+                    className="text-[11px] font-semibold text-foreground"
+                    title="Se informado, salva o snapshot patrimonial do mês para calcular a rentabilidade TWR e a evolução histórica."
+                  >
+                    Saldo Bruto <span className="text-muted-foreground font-normal">(p/ TWR)</span>
+                  </label>
+                  <MoneyInput
+                    cents={newGrossBalanceCents}
+                    onCentsChange={setNewGrossBalanceCents}
+                    size="md"
+                    placeholder="Opcional"
+                  />
+                </div>
+
+                {/* Campo Rentabilidade do Mês (% a.m.) */}
+                <div className="sm:col-span-4 flex flex-col gap-1">
+                  <label
+                    className="text-[11px] font-semibold text-foreground"
+                    title="Rentabilidade mensal divulgada no extrato da corretora (ex: 1,24 ou -0,46)."
+                  >
+                    Rentabilidade % <span className="text-muted-foreground font-normal">(a.m., opcional)</span>
+                  </label>
+                  <Input
+                    value={newRatePctText}
+                    onChange={(e) => setNewRatePctText(e.target.value)}
+                    placeholder="Ex: 1,24 ou -0,46"
+                  />
+                </div>
+
+                {/* Campo Descrição */}
+                <div className="sm:col-span-8 flex flex-col gap-1">
                   <label className="text-[11px] font-semibold text-foreground">
                     Descrição <span className="text-muted-foreground font-normal">(opcional)</span>
                   </label>
@@ -674,8 +842,8 @@ export function InitialPocketCostDialog({
                     onChange={(e) => setNewNotes(e.target.value)}
                     placeholder={
                       entryType === "resgate"
-                        ? "Ex: Resgate parcial de 2024"
-                        : "Ex: Aporte inicial de 2024"
+                        ? "Ex: Resgate parcial"
+                        : "Ex: Aporte inicial"
                     }
                   />
                 </div>
@@ -721,9 +889,16 @@ export function InitialPocketCostDialog({
             {/* Lista de Marcos Cadastrados */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-foreground text-xs">
-                  Marcos Registrados ({historicalContributions.length})
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-foreground text-xs">
+                    Marcos Registrados ({historicalContributions.length})
+                  </span>
+                  {snapshotsQuery.data && snapshotsQuery.data.length > 0 && (
+                    <Badge variant="outline" size="xs" className="font-normal text-[11px] text-muted-foreground">
+                      {snapshotsQuery.data.length} snapshots (TWR)
+                    </Badge>
+                  )}
+                </div>
                 <span className="text-[11px] text-muted-foreground">
                   Líquido: <MoneyText cents={numberToCents(netPocketCapitalBRL)} />
                 </span>
@@ -740,6 +915,10 @@ export function InitialPocketCostDialog({
                 <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
                   {historicalContributions.map((marco) => {
                     const isWithdrawal = isHistoricalWithdrawal(marco);
+                    const monthKey = marco.date.slice(0, 7);
+                    const snap = snapshotsByMonth.get(monthKey);
+                    const explicitRate = extractExplicitRateFromNotes(marco.notes);
+                    const cleanNotes = cleanContributionNotes(marco.notes);
                     return (
                       <div
                         key={marco.id}
@@ -760,7 +939,7 @@ export function InitialPocketCostDialog({
                             <Calendar className="size-3.5" aria-hidden="true" />
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-mono font-medium text-foreground text-xs">
                                 {formatDatePT(marco.date)}
                               </span>
@@ -770,11 +949,23 @@ export function InitialPocketCostDialog({
                               >
                                 {isWithdrawal ? "Resgate" : "Aporte"}
                               </Badge>
+                              {snap && snap.total_value > 0 && (
+                                <span className="font-mono text-[11px] text-muted-foreground">
+                                  Saldo: <MoneyText cents={numberToCents(snap.total_value)} />
+                                </span>
+                              )}
+                              {explicitRate !== null && (
+                                <Badge
+                                  variant={explicitRate >= 0 ? "positive" : "negative"}
+                                  size="xs"
+                                  className="font-mono"
+                                >
+                                  {explicitRate >= 0 ? `+${explicitRate}%` : `${explicitRate}%`}
+                                </Badge>
+                              )}
                             </div>
                             <span className="text-[11px] text-muted-foreground truncate">
-                              {(marco.notes ?? "")
-                                .replace(/^\[Resgate\]\s*/i, "")
-                                .replace(/^\[Retirada\]\s*/i, "") || "Marco Histórico"}
+                              {cleanNotes || "Marco Histórico"}
                             </span>
                           </div>
                         </div>

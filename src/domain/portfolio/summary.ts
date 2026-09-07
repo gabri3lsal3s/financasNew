@@ -9,6 +9,10 @@
  * Motor puro — testável isoladamente; a UI só formata os valores.
  */
 
+import { isHistoricalWithdrawal } from "./irr";
+import { extractExplicitRateFromNotes } from "./statement-parser";
+import { calculateTwrSeries, type TwrMonthlyInputPoint } from "./twr";
+
 // ---------------------------------------------------------------------------
 // Rentabilidade da carteira (Retorno Total & Ganho de Capital)
 // ---------------------------------------------------------------------------
@@ -169,6 +173,12 @@ export interface PortfolioMonthlySeriesPoint {
   totalReturnPnl: number;
   /** Retorno Total % sobre o custo. */
   totalReturnPct: number | null;
+  /** Rentabilidade TWR isolada deste mês (% sem contaminação de aportes/resgates). */
+  twrMonthPct: number | null;
+  /** Rentabilidade TWR acumulada da carteira até este mês (% por cotas). */
+  twrAccumulatedPct: number | null;
+  /** Valor da cota teórica da carteira neste mês (base 100). */
+  sharePrice: number | null;
 }
 
 export interface CurrentMonthSeriesPoint {
@@ -183,12 +193,14 @@ export interface CurrentMonthSeriesPoint {
 
 /**
  * Constrói os pontos da série mensal combinando os snapshots patrimoniais
- * com a evolução temporal de proventos recebidos (§F36 e §F37).
+ * com a evolução temporal de proventos recebidos e o encadeamento TWR (§F36 e §F37).
  */
 export function buildPortfolioMonthlySeries(params: {
   rawSnapshots: readonly { month: string; total_value: number; total_cost: number }[];
   currentMonthPoint?: CurrentMonthSeriesPoint | null;
   dividends: readonly { date: string; amount: number }[];
+  contributions?: readonly { date: string; amount: number; notes?: string | null }[];
+  explicitReturns?: readonly { month: string; ratePct: number }[];
   initialAccumulatedDividends?: number;
   limit?: number;
 }): PortfolioMonthlySeriesPoint[] {
@@ -196,6 +208,8 @@ export function buildPortfolioMonthlySeries(params: {
     rawSnapshots,
     currentMonthPoint,
     dividends,
+    contributions,
+    explicitReturns,
     initialAccumulatedDividends = 0,
     limit = 6,
   } = params;
@@ -222,6 +236,38 @@ export function buildPortfolioMonthlySeries(params: {
   const sortedMonths = Array.from(allMonthsMap.entries()).sort((a, b) =>
     a[0].localeCompare(b[0]),
   );
+
+  // Calcula a série cronológica completa de TWR antes de aplicar o corte de limite
+  const twrInputs: TwrMonthlyInputPoint[] = sortedMonths.map(([month, data]) => {
+    let netExternalCashFlowBRL = 0;
+    let explicitRate: number | null = null;
+    if (contributions) {
+      for (const c of contributions) {
+        if (c.date.startsWith(month)) {
+          const isWithdrawal = isHistoricalWithdrawal(c);
+          netExternalCashFlowBRL += isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
+          const r = extractExplicitRateFromNotes(c.notes);
+          if (r !== null) {
+            explicitRate = r;
+          }
+        }
+      }
+    }
+    const explicit = explicitRate ?? explicitReturns?.find((r) => r.month === month)?.ratePct ?? null;
+    return {
+      month,
+      totalValueBRL: data.total_value,
+      totalCostBRL: data.total_cost,
+      netExternalCashFlowBRL: Math.round(netExternalCashFlowBRL * 100) / 100,
+      explicitRatePct: explicit,
+    };
+  });
+
+  const twrConsolidated = calculateTwrSeries(twrInputs);
+  const twrMap = new Map<string, (typeof twrConsolidated.series)[number]>();
+  for (const pt of twrConsolidated.series) {
+    twrMap.set(pt.month, pt);
+  }
 
   const points: PortfolioMonthlySeriesPoint[] = [];
 
@@ -270,6 +316,8 @@ export function buildPortfolioMonthlySeries(params: {
           ? Math.round((totalReturnPnl / costBRL) * 10000) / 100
           : null;
 
+    const twrPt = twrMap.get(month);
+
     points.push({
       month,
       valueBRL,
@@ -280,6 +328,9 @@ export function buildPortfolioMonthlySeries(params: {
       capitalGainPct,
       totalReturnPnl,
       totalReturnPct,
+      twrMonthPct: twrPt ? twrPt.monthRatePct : null,
+      twrAccumulatedPct: twrPt ? twrPt.accumulatedRatePct : null,
+      sharePrice: twrPt ? twrPt.sharePrice : null,
     });
   }
 

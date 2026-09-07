@@ -396,7 +396,21 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
   - `totalReturnPnl = (valueBRL - totalCostBRL) + totalDividends` (Resultado total)
   - `totalReturnPct = (totalReturnPnl / totalCostBRL) * 100` (Retorno Total % consolidado)
   - `yieldOnCostPct = (totalDividends / totalCostBRL) * 100` (Yield on Cost)
-- **Snapshots Patrimoniais e Série Mensal Integrada (`buildPortfolioMonthlySeries`):** histórico mensal gravado na tabela `portfolio_snapshots` (`month`, `total_value`, `total_cost`), enriquecido de forma puramente determinística no cliente com a evolução temporal de proventos acumulados até cada mês ($\text{Retorno Total}_M = \text{Ganho de Capital}_M + \text{Proventos}_M$), garantindo consistência histórica e resiliência a lançamentos retroativos.
+- **Rentabilidade Ponderada no Tempo (TWR / Padrão ANBIMA / CVM):**
+  - Motor puro (`calculateTwrSeries`, `domain/portfolio/twr.ts`) que apura o retorno real da carteira isolando o impacto de aportes e resgates externos através do sistema de cotização.
+  - Variação mensal: $R_t = \frac{V_t}{V_{t-1} + C_t} - 1$, onde $V_t$ é o patrimônio bruto no fim do mês e $C_t$ o fluxo líquido de caixa.
+  - Cota inicial: $C_0 = 100,00$; evolução da cota: $C_t = C_{t-1} \times (1 + R_t)$; retorno acumulado: $\text{TWR} = \left(\frac{C_t}{C_0} - 1\right) \times 100$.
+  - Resiliência matemática: suporta períodos com liquidação total transitória ($\text{saldo} = 0$), protegendo divisões por zero e mantendo a cadeia multiplicativa quando novos aportes ocorrem.
+- **TIR / Taxa Interna de Retorno (XIRR / Money-Weighted Return):**
+  - Motor com solver híbrido Newton-Raphson com fallback para Bisseção (`calculatePortfolioIrr`, `domain/portfolio/irr.ts`).
+  - Fluxos de caixa compostos por múltiplos marcos históricos de aportes e resgates do bolso (`portfolio_contributions`), onde retiradas (tag `[Resgate]`) contam como devolução antecipada de capital ao investidor.
+- **Snapshots Patrimoniais e Série Mensal Integrada (`buildPortfolioMonthlySeries`):**
+  - Histórico mensal gravado na tabela `portfolio_snapshots` (`month`, `total_value`, `total_cost`), enriquecido com proventos acumulados e cotas TWR.
+  - Visualização com suporte aos últimos 6 meses (padrão) e alternância sob demanda para o histórico completo (`allMonthlySeries`).
+- **Assistente de Importação de Extratos & Deduplicação (`statement-parser.ts`):**
+  - Parser inteligente que converte colunas de extrato (Mês, Ano, Valor Aplicado, Saldo Bruto, Rentabilidade %) em deltas mensais automáticos.
+  - Filtro tolerante a linhas de rodapé e sumário (totais, consolidados, metadados).
+  - Deduplicação inteligente (`deduplicateStatementRows`): na importação incremental, preserva meses já cadastrados e adiciona somente marcos inéditos.
 - **Aportes Mensais (`portfolio_contributions`):** registros independentes de aportes financeiros integrados aos fluxos de caixa da Overview e dos Insights (sempre em BRL).
 - **Proventos (`portfolio_dividends`):** lançamentos desacoplados para extrato mensal e calendário anual, integrados ao Retorno Total e YoC (convertidos para BRL no consolidado quando o ativo for USD).
 - **Preço Médio Ponderado em Novos Lotes (`calculateWeightedAveragePrice`):**

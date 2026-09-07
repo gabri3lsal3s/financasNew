@@ -23,10 +23,15 @@ import {
   calculateNetInjectedCapital,
   calculateNetPocketGain,
   calculateXIRR,
+  calculateTwrSeries,
+  extractExplicitRateFromNotes,
+  isHistoricalWithdrawal,
   type AssetPricingMode,
   type FixedIncomeBalanceResult,
   type PortfolioMonthlySeriesPoint,
   type PriceSource,
+  type TwrConsolidatedResult,
+  type TwrMonthlyInputPoint,
   type XIRRResult,
 } from "@/domain/portfolio";
 import { todayISO } from "@/domain/debts";
@@ -122,6 +127,8 @@ export interface PortfolioPosition {
   netPocketGainBRL: number;
   /** Taxa Interna de Retorno (TIR / Fluxo do Bolso / XIRR) da carteira consolidada. */
   portfolioIrr: XIRRResult;
+  /** Rentabilidade por Cotas (TWR / Time-Weighted Return - Padrão CVM/ANBIMA) da carteira consolidada. */
+  portfolioTwr: TwrConsolidatedResult;
   /**
    * Série mensal a partir de snapshots com proventos integrados (F36 & F37).
    */
@@ -487,24 +494,89 @@ export function usePortfolioPosition(): PortfolioPosition {
         }
       : null;
 
+  const allMonthsTwrMap = new Map<string, { total_value: number; total_cost: number }>();
+  for (const snap of snapshotsQuery.data ?? []) {
+    if (snap.month < thisMonth || !thisMonth) {
+      allMonthsTwrMap.set(snap.month, {
+        total_value: Number(snap.total_value),
+        total_cost: Number(snap.total_cost),
+      });
+    }
+  }
+
+  if (currentMonthPoint && (currentMonthPoint.total_value > 0 || currentMonthPoint.total_cost > 0)) {
+    allMonthsTwrMap.set(currentMonthPoint.month, {
+      total_value: Number(currentMonthPoint.total_value),
+      total_cost: Number(currentMonthPoint.total_cost),
+    });
+  }
+
+  const sortedAllMonths = Array.from(allMonthsTwrMap.entries()).sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+
+  const twrInputs: TwrMonthlyInputPoint[] = sortedAllMonths.map(([m, data]) => {
+    let flow = 0;
+    let explicitRate: number | null = null;
+    for (const c of contributionsQuery.data ?? []) {
+      if (c.date.startsWith(m)) {
+        const isWithdrawal = isHistoricalWithdrawal(c);
+        flow += isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
+        const r = extractExplicitRateFromNotes(c.notes);
+        if (r !== null) {
+          explicitRate = r;
+        }
+      }
+    }
+    return {
+      month: m,
+      totalValueBRL: data.total_value,
+      totalCostBRL: data.total_cost,
+      netExternalCashFlowBRL: Math.round(flow * 100) / 100,
+      explicitRatePct: explicitRate,
+    };
+  });
+
+  const portfolioTwr = calculateTwrSeries(twrInputs);
+
+  const rawDividendsForSeries = (dividendsQuery.data ?? []).map((d) => {
+    const asset = d.asset_id ? (assetsQuery.data ?? []).find((a) => a.id === d.asset_id) : null;
+    const isUSD = asset?.currency === "USD";
+    const dRate = isUSD ? usdRate : 1;
+    return {
+      date: d.date,
+      amount: Number(d.amount) * dRate,
+    };
+  });
+
+  const rawContributionsForSeries = (contributionsQuery.data ?? []).map((c) => ({
+    date: c.date,
+    amount: c.amount,
+    notes: c.notes,
+  }));
+
+  const rawSnapshotsForSeries = (snapshotsQuery.data ?? []).map((s) => ({
+    month: s.month,
+    total_value: Number(s.total_value),
+    total_cost: Number(s.total_cost),
+  }));
+
   const monthlySeries = buildPortfolioMonthlySeries({
-    rawSnapshots: (snapshotsQuery.data ?? []).map((s) => ({
-      month: s.month,
-      total_value: Number(s.total_value),
-      total_cost: Number(s.total_cost),
-    })),
+    rawSnapshots: rawSnapshotsForSeries,
     currentMonthPoint,
-    dividends: (dividendsQuery.data ?? []).map((d) => {
-      const asset = d.asset_id ? (assetsQuery.data ?? []).find((a) => a.id === d.asset_id) : null;
-      const isUSD = asset?.currency === "USD";
-      const dRate = isUSD ? usdRate : 1;
-      return {
-        date: d.date,
-        amount: Number(d.amount) * dRate,
-      };
-    }),
+    dividends: rawDividendsForSeries,
+    contributions: rawContributionsForSeries,
     initialAccumulatedDividends,
     limit: 6,
+  });
+
+  const allMonthlySeries = buildPortfolioMonthlySeries({
+    rawSnapshots: rawSnapshotsForSeries,
+    currentMonthPoint,
+    dividends: rawDividendsForSeries,
+    contributions: rawContributionsForSeries,
+    initialAccumulatedDividends,
+    limit: 0,
   });
 
   // Atualiza snapshot do mês corrente em background quando há dados carregados
@@ -544,8 +616,10 @@ export function usePortfolioPosition(): PortfolioPosition {
     netInjectedCapitalBRL,
     netPocketGainBRL,
     portfolioIrr,
+    portfolioTwr,
     hasMarcoZeroContribution,
     monthlySeries,
+    allMonthlySeries,
     monthlyContributionCents: Math.round(contributionBRL * 100),
     isLoading: assetsQuery.isLoading || pricesQuery.isLoading,
     error: assetsQuery.error ?? pricesQuery.error,

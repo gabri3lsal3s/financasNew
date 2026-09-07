@@ -1511,6 +1511,51 @@
   - `ESPECIFICACAO_TECNICA.md`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+## Evolução — Motor TWR (Cotização CVM/ANBIMA), Assistente de Extrato com Deduplicação e Histórico Completo
+
+- **Contexto & Necessidade:**
+  1. Investidores que resgatam e aportam ao longo do tempo necessitam de uma métrica de rentabilidade que isole o efeito do *market timing* de fluxos externos, padrão em fundos de investimento e normas ANBIMA / CVM (Time-Weighted Return - TWR);
+  2. Ao colar extratos mensais de bancos e corretoras (com colunas como Mês, Ano, Valor Aplicado, Saldo Bruto e Rentabilidade %), usuários enfrentavam duplicação de dados ao fazer importações incrementais (caso desmarcassem a substituição total) e falhas com linhas de resumo/rodapé ("Total", "Média");
+  3. A visualização de evolução histórica da carteira estava limitada aos últimos 6 meses, ocultando o histórico de quem possui meses/anos anteriores registrados.
+- **Implementações:**
+  1. **Motor Puro de TWR (`src/domain/portfolio/twr.ts`):**
+     - Criação do motor puro com cotização de carteira (`calculateTwrSeries`), inicializando a cota em 100,00 e encadeando a rentabilidade subperíodo a subperíodo com neutralização de fluxos;
+     - Resiliência matemática contra liquidação total transitória (`balance === 0`), evitando `NaN` ou divisão por zero e reiniciando a emissão de cotas com continuidade geométrica;
+     - Suporte à rentabilidade mensal divulgada no extrato da corretora (`[Rent: +X.XX%]`) para calibração de precisão;
+  2. **Assistente de Extrato e Deduplicação Inteligente (`src/domain/portfolio/statement-parser.ts`):**
+     - Tolerância a cabeçalhos e rodapés de extratos bancários, filtrando linhas agregadas sem corromper a contagem de meses ignorados;
+     - Função pura `deduplicateStatementRows` para identificar meses já existentes por competência (`YYYY-MM`) e importar estritamente os meses inéditos quando o usuário opta por não substituir o histórico anterior;
+  3. **Controle Manual no Cadastro de Marcos (`InitialPocketCostDialog`):**
+     - Campo controlado *Rentabilidade % (a.m., opcional)* com layout em grid responsivo de 12 colunas;
+     - Pré-preenchimento automático da taxa na edição de marcos existentes e gravação precisa;
+     - Feedback em toast com contagem de marcos adicionados e existentes preservados;
+  4. **Histórico Completo na Aba Resumo (`ResumoTab`):**
+     - Disponibilização de `allMonthlySeries` no hook `usePortfolioPosition`;
+     - Botão de alternância entre "Últimos 6 meses" e "Ver histórico completo (N meses)" quando há mais de 6 meses de dados;
+     - Conformidade estrita com o Design System (`border-border/80 bg-surface shadow-xs`, badges `size="xs"` e zero emojis).
+- **Arquivos alterados/criados:**
+  - `src/domain/portfolio/twr.ts` (novo)
+  - `src/domain/portfolio/twr.test.ts` (novo)
+  - `src/domain/portfolio/statement-parser.ts`
+  - `src/domain/portfolio/statement-parser.test.ts`
+  - `src/domain/portfolio/summary.ts`
+  - `src/domain/portfolio/summary.test.ts`
+  - `src/domain/portfolio/index.ts`
+  - `src/data/repositories/portfolio.ts`
+  - `src/state/mutations/use-portfolio-snapshots-mutations.ts`
+  - `src/state/queries/use-portfolio-position.ts`
+  - `src/state/queries/use-portfolio.ts`
+  - `src/state/index.ts`
+  - `src/features/investments/components/initial-pocket-cost-dialog.tsx`
+  - `src/features/investments/pages/resumo-tab.tsx`
+  - `src/features/investments/pages/resumo-tab.test.tsx`
+  - `src/features/investments/pages/investments-page.test.tsx`
+  - `src/tests/accessibility-audit.test.tsx`
+  - `docs/PROJECT_STRUCTURE.md`
+  - `docs/ARCHITECTURE.md`
+  - `ESPECIFICACAO_TECNICA.md`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

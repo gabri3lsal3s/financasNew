@@ -19,6 +19,8 @@ export interface ParsedMonthlyRow {
   appliedValue: number;
   /** Saldo bruto no mês, se disponível. */
   grossBalance?: number;
+  /** Rentabilidade percentual informada no mês, se disponível. */
+  ratePct?: number;
   /** Variação líquida calculada em relação ao mês anterior. */
   delta: number;
   /** Classificação do fluxo. */
@@ -175,11 +177,21 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Ignora cabeçalhos óbvios
+    // Ignora cabeçalhos e totalizadores/rodapés óbvios
     const lower = trimmed.toLowerCase();
     if (
-      (lower.includes("mês") || lower.includes("mes")) &&
-      (lower.includes("ano") || lower.includes("aplicado"))
+      ((lower.includes("mês") || lower.includes("mes")) &&
+        (lower.includes("ano") || lower.includes("aplicado") || lower.includes("saldo"))) ||
+      lower.startsWith("total") ||
+      lower.startsWith("subtotal") ||
+      lower.startsWith("média") ||
+      lower.startsWith("media") ||
+      lower.startsWith("consolidado") ||
+      lower.startsWith("fonte") ||
+      lower.startsWith("emitido") ||
+      lower.startsWith("página") ||
+      lower.startsWith("pagina") ||
+      lower.startsWith("extrato")
     ) {
       continue;
     }
@@ -213,6 +225,8 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
     const appliedValue = numbers[0]!;
     // O segundo número, se houver, é o "Saldo bruto"
     const grossBalance = numbers.length >= 2 ? numbers[1] : undefined;
+    // O terceiro número, se houver, é a rentabilidade do mês (%)
+    const ratePct = numbers.length >= 3 ? numbers[2] : undefined;
 
     const day = getLastDayOfMonth(my.year, my.month);
     const dateStr = `${my.year}-${String(my.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -231,6 +245,7 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
       month: my.month,
       appliedValue: Math.round(appliedValue * 100) / 100,
       grossBalance: grossBalance !== undefined ? Math.round(grossBalance * 100) / 100 : undefined,
+      ratePct: ratePct !== undefined ? Math.round(ratePct * 100) / 100 : undefined,
     });
   }
 
@@ -269,12 +284,18 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
       suggestedNotes = `Sem movimentação (${item.label})`;
     }
 
+    if (item.ratePct !== undefined) {
+      const formattedRate = item.ratePct > 0 ? `+${item.ratePct}` : `${item.ratePct}`;
+      suggestedNotes += ` [Rent: ${formattedRate}%]`;
+    }
+
     rows.push({
       rawLine: item.rawLine,
       date: item.date,
       label: item.label,
       appliedValue: item.appliedValue,
       grossBalance: item.grossBalance,
+      ratePct: item.ratePct,
       delta,
       type,
       suggestedNotes,
@@ -308,3 +329,61 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
     skippedCount,
   };
 }
+
+/**
+ * Extrai a rentabilidade percentual explícita gravada nas notas de um marco/contribuição.
+ * Suporta formatos: "[Rent: +2.16%]", "[Rent: -0.80%]", "[Taxa: 1.5%]"
+ */
+export function extractExplicitRateFromNotes(notes?: string | null): number | null {
+  if (!notes) return null;
+  const match = notes.match(/\[(?:rent|taxa|retorno):\s*([+-]?\d+(?:[.,]\d+)?)%?\]/i);
+  if (!match || !match[1]) return null;
+  const val = parseFloat(match[1].replace(",", "."));
+  return isNaN(val) ? null : val;
+}
+
+/**
+ * Remove marcadores de sistema ([Resgate], [Retirada], [Rent: ...]) para exibição limpa ao usuário.
+ */
+export function cleanContributionNotes(notes?: string | null): string {
+  if (!notes) return "";
+  return notes
+    .replace(/^\[(?:resgate|retirada)\]\s*/i, "")
+    .replace(/\[(?:rent|taxa|retorno):\s*[+-]?\d+(?:[.,]\d+)?%?\]/gi, "")
+    .trim();
+}
+
+export interface DeduplicateStatementRowsResult {
+  /** Linhas acionáveis que são realmente novas e devem ser criadas. */
+  newRows: ParsedMonthlyRow[];
+  /** Linhas acionáveis que já existiam e foram desconsideradas para evitar duplicata. */
+  skippedExistingRows: ParsedMonthlyRow[];
+}
+
+/**
+ * Deduplica as linhas acionáveis contra os marcos históricos já registrados pelo usuário no banco.
+ * Compara por mês (YYYY-MM) ou data exata (YYYY-MM-DD).
+ */
+export function deduplicateStatementRows(
+  existingContributions: readonly { date: string; amount: number; notes?: string | null }[],
+  incomingRows: readonly ParsedMonthlyRow[],
+): DeduplicateStatementRowsResult {
+  const existingMonths = new Set(existingContributions.map((c) => c.date.slice(0, 7)));
+  const existingExactDates = new Set(existingContributions.map((c) => c.date));
+
+  const newRows: ParsedMonthlyRow[] = [];
+  const skippedExistingRows: ParsedMonthlyRow[] = [];
+
+  for (const row of incomingRows) {
+    const monthStr = row.date.slice(0, 7);
+    if (existingExactDates.has(row.date) || existingMonths.has(monthStr)) {
+      skippedExistingRows.push(row);
+    } else {
+      newRows.push(row);
+    }
+  }
+
+  return { newRows, skippedExistingRows };
+}
+
+

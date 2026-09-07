@@ -80,6 +80,28 @@ describe("buildPortfolioMonthlySeries — Snapshots patrimoniais com proventos a
     expect(series[0]!.month).toBe("2026-02");
     expect(series[1]!.month).toBe("2026-03");
   });
+
+  it("calcula TWR e cotização ao longo dos pontos da série mensal", () => {
+    const rawSnapshots = [
+      { month: "2026-01", total_value: 10000, total_cost: 10000 },
+      { month: "2026-02", total_value: 11000, total_cost: 10000 },
+    ];
+    const series = buildPortfolioMonthlySeries({
+      rawSnapshots,
+      dividends: [],
+      limit: 6,
+    });
+
+    expect(series).toHaveLength(2);
+    expect(series[0]!.sharePrice).toBe(100);
+    expect(series[0]!.twrMonthPct).toBe(0);
+    expect(series[0]!.twrAccumulatedPct).toBe(0);
+
+    // Mês 2: valor subiu 10% sem aporte -> cota 110
+    expect(series[1]!.monthRatePct ?? series[1]!.twrMonthPct).toBe(10);
+    expect(series[1]!.twrAccumulatedPct).toBe(10);
+    expect(series[1]!.sharePrice).toBe(110);
+  });
 });
 
 describe("calculatePortfolioTotalReturn — Retorno Total consolidado da carteira (§F17)", () => {
