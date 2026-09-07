@@ -987,6 +987,7 @@ export function ReportsPage() {
         concentrationRisk={concentrationRisk}
         portfolioIrr={positionQuery.portfolioIrr}
         portfolioTwr={positionQuery.portfolioTwr}
+        monthlySeries={positionQuery.monthlySeries}
         allTimeEconomicPnlBRL={positionQuery.allTimeEconomicPnlBRL}
         realizedPnlBRL={positionQuery.realizedPnlBRL}
       />

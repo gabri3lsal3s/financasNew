@@ -162,11 +162,100 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     expect(screen.getAllByText("+9.4% a.a. (Padrão CVM)").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Retorno contábil: +16,7%").length).toBeGreaterThan(0);
 
-    // Quadro Executivo de Metodologias
+    // Quadro Executivo de Metodologias (no final do relatório)
     expect(screen.getAllByText("Metodologias & Métricas de Rentabilidade da Carteira").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/1\. TWR \(Cotas — Padrão CVM \/ ANBIMA\)/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/2\. Retorno do Bolso \(TIR \/ XIRR\)/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/3\. Retorno Contábil da Custódia Aberta/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/4\. Resultado Histórico \(P&L Total em R\$\)/i).length).toBeGreaterThan(0);
+  });
+
+  it("renderiza o gráfico comparativo de rentabilidade mês a mês quando há >= 2 competências e oculta quando < 2", () => {
+    const { rerender } = render(
+      <WealthTearSheetModal
+        open={true}
+        onOpenChange={vi.fn()}
+        rows={[]}
+        totalBRL={100000}
+        totalCostBRL={90000}
+        portfolioTwr={{
+          accumulatedRatePct: 10,
+          annualizedRatePct: null,
+          monthsElapsed: 3,
+          currentSharePrice: 110,
+          status: "ok",
+          series: [
+            {
+              month: "2026-07",
+              monthRatePct: 1.5,
+              accumulatedRatePct: 1.5,
+              sharePrice: 101.5,
+              totalShares: 100,
+              totalValueBRL: 95000,
+            },
+            {
+              month: "2026-08",
+              monthRatePct: -0.8,
+              accumulatedRatePct: 0.69,
+              sharePrice: 100.69,
+              totalShares: 100,
+              totalValueBRL: 97000,
+            },
+            {
+              month: "2026-09",
+              monthRatePct: 2.1,
+              accumulatedRatePct: 2.8,
+              sharePrice: 102.8,
+              totalShares: 100,
+              totalValueBRL: 100000,
+            },
+          ],
+        }}
+        allocationAnalysis={mockAllocation}
+        concentrationRisk={mockConcentration}
+      />,
+    );
+
+    // Deve exibir o título do gráfico comparativo histórico
+    expect(
+      screen.getAllByText("Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("07/26").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("08/26").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("09/26").length).toBeGreaterThan(0);
+
+    // Rerenderiza com apenas 1 competência (deve ocultar o gráfico para evitar gráfico quebrado)
+    rerender(
+      <WealthTearSheetModal
+        open={true}
+        onOpenChange={vi.fn()}
+        rows={[]}
+        totalBRL={100000}
+        totalCostBRL={90000}
+        portfolioTwr={{
+          accumulatedRatePct: 1.5,
+          annualizedRatePct: null,
+          monthsElapsed: 1,
+          currentSharePrice: 101.5,
+          status: "ok",
+          series: [
+            {
+              month: "2026-09",
+              monthRatePct: 1.5,
+              accumulatedRatePct: 1.5,
+              sharePrice: 101.5,
+              totalShares: 100,
+              totalValueBRL: 100000,
+            },
+          ],
+        }}
+        allocationAnalysis={mockAllocation}
+        concentrationRisk={mockConcentration}
+      />,
+    );
+
+    expect(
+      screen.queryByText("Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"),
+    ).not.toBeInTheDocument();
   });
 });

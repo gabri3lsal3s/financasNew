@@ -10,6 +10,7 @@ import {
   ReportClassTables,
   ReportRedemptionsTable,
   ReportAllocationDonuts,
+  ReportPerformanceChart,
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -21,7 +22,7 @@ import {
   type ConcentrationRiskResult,
   type PeriodRedemptionItem,
 } from "@/domain/reports";
-import type { XIRRResult, TwrConsolidatedResult } from "@/domain/portfolio";
+import type { XIRRResult, TwrConsolidatedResult, PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
 
 export interface WealthPositionRow {
   ticker: string;
@@ -71,6 +72,7 @@ export interface WealthTearSheetModalProps {
   concentrationRisk: ConcentrationRiskResult;
   portfolioIrr?: XIRRResult;
   portfolioTwr?: TwrConsolidatedResult;
+  monthlySeries?: readonly PortfolioMonthlySeriesPoint[];
   allTimeEconomicPnlBRL?: number;
   realizedPnlBRL?: number;
   periodLabel?: string;
@@ -123,6 +125,7 @@ export function WealthTearSheetModal({
   concentrationRisk,
   portfolioIrr,
   portfolioTwr,
+  monthlySeries,
   allTimeEconomicPnlBRL,
   realizedPnlBRL,
   periodLabel = "Posição Atual Consolidada",
@@ -186,6 +189,41 @@ export function WealthTearSheetModal({
     }
     return realizedPnlBRL ?? 0;
   }, [allTimeEconomicPnlBRL, totalReturnBRL, realizedPnlBRL]);
+
+  // Série histórica de performance e rentabilidade mês a mês para o gráfico comparativo
+  const performanceSeries = useMemo(() => {
+    // 1. Prioridade: série consolidada de TWR com meses e taxas isoladas
+    if (portfolioTwr && portfolioTwr.series && portfolioTwr.series.length >= 2) {
+      return portfolioTwr.series.map((item) => {
+        const [y, m] = item.month.split("-");
+        const monthLabel = y && m ? `${m}/${y.slice(2)}` : item.month;
+        return {
+          month: item.month,
+          monthLabel,
+          patrimonyBRL: item.totalValueBRL,
+          ratePct: item.monthRatePct,
+        };
+      });
+    }
+
+    // 2. Fallback: série mensal de snapshots patrimoniais
+    if (monthlySeries && monthlySeries.length >= 2) {
+      return monthlySeries.map((item) => {
+        const [y, m] = item.month.split("-");
+        const monthLabel = y && m ? `${m}/${y.slice(2)}` : item.month;
+        return {
+          month: item.month,
+          monthLabel,
+          patrimonyBRL: item.valueBRL,
+          ratePct: item.twrMonthPct ?? item.totalReturnPct ?? item.capitalGainPct ?? 0,
+          dividendsBRL: item.monthDividendsBRL,
+          costBRL: item.costBRL,
+        };
+      });
+    }
+
+    return [];
+  }, [portfolioTwr, monthlySeries]);
 
   // Segmentos dos gráficos Donut de Classes e Setores
   const donutData = useMemo(() => {
@@ -531,95 +569,6 @@ export function WealthTearSheetModal({
         );
       })()}
 
-      {/* Quadro Executivo de Metodologias de Rentabilidade */}
-      <section aria-label="Metodologias de Rentabilidade" className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/20 p-3.5 print:bg-white print:border-slate-200/90 shadow-2xs">
-        <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
-          <div className="flex items-center gap-1.5">
-            <Scale className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
-              Metodologias & Métricas de Rentabilidade da Carteira
-            </h3>
-          </div>
-          <span className="text-[10px] text-muted-foreground font-mono">
-            Transparência Metodológica (Padrão ANBIMA / CVM)
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
-          {/* Card TWR */}
-          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
-                <TrendingUp className="size-3 text-primary-strong" aria-hidden="true" />
-                1. TWR (Cotas — Padrão CVM / ANBIMA)
-              </span>
-              <span className="font-mono font-bold text-[11px] text-positive-strong">
-                {portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
-                  ? `${portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}${portfolioTwr.accumulatedRatePct.toFixed(1)}%`
-                  : "Em formação"}
-              </span>
-            </div>
-            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
-              <strong>Métrica Oficial da Carteira:</strong> Mede a performance real das suas decisões de investimento pelo método de cotas. Isola aportes e resgates para que movimentações de capital não distorçam a rentabilidade percentual. Base recomendada para comparação direta com CDI e Ibovespa.
-            </p>
-          </div>
-
-          {/* Card TIR */}
-          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
-                <Percent className="size-3 text-primary-strong" aria-hidden="true" />
-                2. Retorno do Bolso (TIR / XIRR)
-              </span>
-              <span className="font-mono font-bold text-[11px] text-positive-strong">
-                {portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-                  ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
-                  : "Em formação"}
-              </span>
-            </div>
-            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
-              <strong>Retorno do Seu Fluxo Pessoal:</strong> Taxa anualizada (% a.a.) ponderada pelo dinheiro real que saiu do seu bolso para a corretora frente ao patrimônio atual. Pondera volume por tempo: períodos com maior capital investido exercem maior peso na taxa.
-            </p>
-          </div>
-
-          {/* Card Retorno Contábil */}
-          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="font-semibold text-foreground text-[11px]">
-                3. Retorno Contábil da Custódia Aberta
-              </span>
-              <span className="font-mono font-bold text-[11px] text-positive-strong">
-                {totalReturnPct !== null && totalReturnPct !== undefined
-                  ? formatSignedPct(totalReturnPct)
-                  : "0,0%"}
-              </span>
-            </div>
-            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
-              <strong>Ganho Estático das Posições Ativas:</strong> Mede estritamente a valorização das ações, FIIs e títulos em custódia hoje frente ao Preço Médio pago, somando os proventos recebidos dessas posições ativas. Não considera ativos já vendidos/vencidos nem o tempo decorrido.
-            </p>
-          </div>
-
-          {/* Card P&L Total */}
-          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="font-semibold text-foreground text-[11px]">
-                4. Resultado Histórico (P&L Total em R$)
-              </span>
-              <span className="font-mono font-bold text-[11px] text-positive-strong">
-                <MoneyText
-                  cents={numberToCents(allTimeEconomicPnlBRL ?? totalReturnBRL)}
-                  tone={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "positive" : "negative"}
-                  sign="explicit"
-                />
-              </span>
-            </div>
-            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
-              <strong>Riqueza Efetiva Produzida:</strong> Consolida em reais todo o ganho líquido acumulado pela carteira desde o primeiro investimento. Soma os lucros brutos realizados em operações encerradas no passado, o ganho de capital aberto de hoje e a totalidade dos proventos já recebidos.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* 3. Sumário de Movimentação do Mês Vigente */}
       {monthSummary && (
         <div className="bg-muted/30 rounded-xl border border-border/80 px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs print:bg-white print:border-slate-200/90 shadow-2xs">
@@ -809,7 +758,108 @@ export function WealthTearSheetModal({
         </section>
       )}
 
-      {/* 8. Rodapé Institucional */}
+      {/* 8. Comparativo Histórico de Rentabilidade Mês a Mês (Renderizado apenas com >= 2 meses) */}
+      {performanceSeries.length >= 2 && (
+        <ReportPerformanceChart
+          series={performanceSeries}
+          title="Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"
+          className="print-break-inside-avoid"
+        />
+      )}
+
+      {/* 9. Tópico Final: Metodologias & Métricas de Rentabilidade da Carteira */}
+      <section
+        aria-label="Metodologias de Rentabilidade"
+        className="break-inside-avoid print:break-inside-avoid flex flex-col gap-2.5 rounded-xl border border-border/80 bg-muted/20 p-3.5 print:bg-white print:border-slate-200/90 shadow-2xs"
+      >
+        <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
+          <div className="flex items-center gap-1.5">
+            <Scale className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
+              Metodologias & Métricas de Rentabilidade da Carteira
+            </h3>
+          </div>
+          <span className="text-[10px] text-muted-foreground font-mono">
+            Transparência Metodológica (Padrão ANBIMA / CVM)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
+          {/* 1. TWR */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
+                <TrendingUp className="size-3 text-primary-strong" aria-hidden="true" />
+                1. TWR (Cotas — Padrão CVM / ANBIMA)
+              </span>
+              <span className="font-mono font-bold text-[11px] text-positive-strong">
+                {portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
+                  ? `${portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}${portfolioTwr.accumulatedRatePct.toFixed(1)}%`
+                  : "Em formação"}
+              </span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+              <strong>Métrica Oficial da Carteira:</strong> Mede a performance real das suas decisões de investimento pelo método de cotas. Isola aportes e resgates para que movimentações de capital não distorçam a rentabilidade percentual. Base recomendada para comparação direta com CDI e Ibovespa.
+            </p>
+          </div>
+
+          {/* 2. TIR */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
+                <Percent className="size-3 text-primary-strong" aria-hidden="true" />
+                2. Retorno do Bolso (TIR / XIRR)
+              </span>
+              <span className="font-mono font-bold text-[11px] text-positive-strong">
+                {portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                  ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+                  : "Em formação"}
+              </span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+              <strong>Retorno do Seu Fluxo Pessoal:</strong> Taxa anualizada (% a.a.) ponderada pelo dinheiro real que saiu do seu bolso para a corretora frente ao patrimônio atual. Pondera volume por tempo: períodos com maior capital investido exercem maior peso na taxa.
+            </p>
+          </div>
+
+          {/* 3. Retorno Contábil */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="font-semibold text-foreground text-[11px]">
+                3. Retorno Contábil da Custódia Aberta
+              </span>
+              <span className="font-mono font-bold text-[11px] text-positive-strong">
+                {totalReturnPct !== null && totalReturnPct !== undefined
+                  ? formatSignedPct(totalReturnPct)
+                  : "0,0%"}
+              </span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+              <strong>Ganho Estático das Posições Ativas:</strong> Mede estritamente a valorização das ações, FIIs e títulos em custódia hoje frente ao Preço Médio pago, somando os proventos recebidos dessas posições ativas. Não considera ativos já vendidos/vencidos nem o tempo decorrido.
+            </p>
+          </div>
+
+          {/* 4. Resultado Histórico */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="font-semibold text-foreground text-[11px]">
+                4. Resultado Histórico (P&L Total em R$)
+              </span>
+              <span className="font-mono font-bold text-[11px] text-positive-strong">
+                <MoneyText
+                  cents={numberToCents(allTimeEconomicPnlBRL ?? totalReturnBRL)}
+                  tone={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "positive" : "negative"}
+                  sign="explicit"
+                />
+              </span>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+              <strong>Riqueza Efetiva Produzida:</strong> Consolida em reais todo o ganho líquido acumulado pela carteira desde o primeiro investimento. Soma os lucros brutos realizados em operações encerradas no passado, o ganho de capital aberto de hoje e a totalidade dos proventos já recebidos.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 10. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021). Rentabilidade passada não representa garantia de retorno futuro."
