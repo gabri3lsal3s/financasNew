@@ -437,10 +437,11 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                   title={`Retorno Contábil da Custódia Aberta: ${(totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnlBRL ?? 0))}${totalReturnPct != null ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${(unrealizedPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(unrealizedPnlBRL ?? 0))}${capitalGainPct != null ? ` (${capitalGainPct >= 0 ? "+" : ""}${capitalGainPct.toFixed(1)}%)` : ""} | Proventos Ativos: +${formatCentsAsBRL(numberToCents(position.totalDividendsBRL ?? 0))}`}
                 >
                   <span className="text-muted-foreground font-normal">Retorno contábil:</span>
-                  <MoneyText cents={totalReturnCents} tone="auto" className="tabular-nums" />
-                  {totalReturnPct != null
-                    ? ` (${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%)`
-                    : ""}
+                  <span className="tabular-nums font-semibold">
+                    {totalReturnPct != null
+                      ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%`
+                      : "0,0%"}
+                  </span>
                 </span>
               }
               onClick={() => setExplainModalOpen(true)}
@@ -908,99 +909,101 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         description="Entenda como cada método avalia seu patrimônio com transparência e sem armadilhas matemáticas."
         size="lg"
       >
-        <div className="flex flex-col gap-4 text-xs mt-2">
-          {/* Card 1: Rentabilidade por Cotas (TWR) */}
+        <div className="flex flex-col gap-3.5 text-xs mt-2">
+          {/* Ponto 1: Card 1 do Dashboard — Patrimônio Total & Retorno Contábil */}
           <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">1. Rentabilidade da Carteira por Cotas (TWR — Padrão CVM/ANBIMA)</span>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-semibold text-foreground text-sm">1. Patrimônio Total & Retorno Contábil</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Badge variant={totalReturnPnlBRL >= 0 ? "positive" : "negative"} size="sm" className="font-mono">
+                  {totalReturnPct !== null ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%` : "—"}
+                </Badge>
+                <span className="font-mono text-xs font-semibold text-foreground">
+                  (<MoneyText cents={totalReturnCents} tone="auto" sign="explicit" />)
+                </span>
+              </div>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              <strong>O que avalia:</strong> O valor de mercado sob custódia hoje somado ao caixa. O <em>Retorno Contábil</em> reflete o ganho estático das posições abertas frente ao custo de aquisição mais proventos ativos. Não considera o tempo decorrido nem ativos já encerrados.
+            </p>
+          </div>
+
+          {/* Ponto 2: Card 2 do Dashboard — Rentabilidade da Carteira (TWR — Padrão CVM/ANBIMA) */}
+          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-semibold text-foreground text-sm">2. Rentabilidade da Carteira (TWR · Cotas)</span>
               <Badge variant={twrTone === "positive" ? "positive" : twrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
-                {twrLabel}
+                {twrLabel} {portfolioTwr?.annualizedRatePct !== null && portfolioTwr?.annualizedRatePct !== undefined ? `(${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a.)` : ""}
               </Badge>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              Mede a performance real das suas decisões de investimento utilizando o método oficial de cotização de fundos. <strong>Isola o efeito de aportes e resgates</strong> para que o tamanho e o momento das movimentações não distorçam a rentabilidade percentual. Quando um ativo vence ou você resgata capital, os lucros passados continuam protegidos na cota histórica.
+              <strong>Métrica Oficial da Carteira:</strong> Apura o retorno real das suas decisões de investimento utilizando o método oficial de cotização de fundos. <strong>Isola o timing de aportes e resgates</strong>, mostrando o mérito da alocação e protegendo os lucros de ativos passados já encerrados na cota histórica.
             </p>
           </div>
 
-          {/* Card 2: Retorno Contábil da Custódia Aberta */}
+          {/* Ponto 3: Card 3 do Dashboard — Resultado Histórico (P&L Total em R$) */}
           <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">2. Retorno Contábil da Custódia Aberta</span>
-              <Badge variant="muted" size="sm" className="font-mono">
-                {totalReturnPct !== null ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(2)}%` : "—"}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              Mede estritamente a valorização das ações, fundos imobiliários e títulos que estão sob sua posse <strong>hoje</strong> frente ao Preço Médio pago por eles, somando os proventos dessas posições ativas. É a métrica direta para quem acabou de começar e ainda não possui histórico mensal consolidado.
-            </p>
-          </div>
-
-          {/* Card 3: TIR / Fluxo do Bolso */}
-          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">3. TIR / Fluxo do Bolso (Taxa Ponderada no Tempo)</span>
-              <Badge variant={irrTone === "positive" ? "positive" : irrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
-                {irrLabel}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              Calcula a taxa efetiva anualizada (% a.a.) ponderando o valor e a data em que cada real <strong>saiu da sua conta corrente</strong> para a corretora frente ao patrimônio atual. É imune ao giro de carteira (reinvestir dividendos ou títulos vencidos não distorce a taxa).
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              <strong>Por que os marcos históricos importam:</strong> se você fez aportes pesados mais recentemente (ex.: fim de 2024), registrá-los em marcos separados impede que a taxa seja diluída como se todo o capital estivesse investido desde a data mais antiga.
-            </p>
-          </div>
-
-          {/* Card 4: P&L Histórico Acumulado */}
-          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">4. Resultado Econômico Histórico (P&L em R$)</span>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-semibold text-foreground text-sm">3. Resultado Histórico (P&L Total em R$)</span>
               <span className="font-mono font-bold text-sm text-positive-strong">
                 <MoneyText cents={numberToCents(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL)} sign="explicit" />
               </span>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              Consolida todo o dinheiro real produzido pela sua estratégia em reais: soma o lucro realizado de títulos e ações que já foram encerrados no passado, a valorização das posições abertas de hoje e todos os proventos recebidos na história.
+              <strong>Riqueza Gerada em Dinheiro:</strong> Consolida todo o lucro líquido gerado pela sua carteira desde o início. Soma o lucro realizado de ativos já vencidos/vendidos no passado, a valorização das posições abertas de hoje e todos os proventos recebidos na história.
             </p>
           </div>
 
-          {/* Card 5: Comparabilidade com Benchmarks */}
+          {/* Ponto 4: Card 4 do Dashboard — Retorno do Bolso (TIR / XIRR) */}
           <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground text-sm">5. Como Comparar com Benchmarks (CDI, Ibov e IPCA)</span>
-              <Badge variant="muted" size="sm" className="font-mono">
-                Comparação Justa
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-semibold text-foreground text-sm">4. Retorno do Bolso (TIR / XIRR)</span>
+              <Badge variant={irrTone === "positive" ? "positive" : irrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
+                {irrLabel}
               </Badge>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              O <strong>TWR (% a.a.)</strong> é o padrão correto para comparar a performance dos seus ativos diretamente com o CDI anualizado ou fundos de investimento. A <strong>TIR anualizada (% a.a.)</strong> complementa a análise mostrando o retorno efetivo do seu bolso, respeitando as datas em que você aportou mais ou menos capital.
+              <strong>Retorno do Seu Fluxo de Caixa:</strong> Taxa anualizada (% a.a.) do dinheiro real que saiu da sua conta bancária para a corretora frente ao patrimônio atual. Pondera o volume pelo tempo: fases em que você tinha mais capital aplicado exercem peso proporcionalmente maior na taxa.
             </p>
           </div>
 
-            {/* Dica do Aporte Histórico */}
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-2.5 min-w-0">
-                <Info className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-                <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-muted-foreground min-w-0">
-                  <span className="font-semibold text-foreground">Dica sobre o Capital Investido Anterior ao App</span>
-                  <p>
-                    Se você investia antes de começar a usar o aplicativo e deseja que a TIR reflita seu gasto real acumulado, registre os Marcos Históricos do seu bolso. Você pode cadastrar múltiplos aportes passados (início da carteira, aportes em massa e acumulados) para calibrar a taxa anualizada com máxima precisão.
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant={position.hasMarcoZeroContribution ? "outline" : "default"}
-                size="sm"
-                onClick={() => {
-                  setExplainModalOpen(false);
-                  setInitialCostDialogOpen(true);
-                }}
-                className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
-              >
-                <span>{position.hasMarcoZeroContribution ? "Gerenciar Marcos Históricos" : "Cadastrar Marcos Históricos"}</span>
-              </Button>
+          {/* Ponto 5: Card 5 do Dashboard & Comparabilidade com Benchmarks */}
+          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-semibold text-foreground text-sm">5. Saldo em Caixa & Comparação com Benchmarks</span>
+              <Badge variant="muted" size="sm" className="font-mono">
+                CDI · Ibov · IPCA
+              </Badge>
             </div>
+            <p className="text-muted-foreground leading-relaxed">
+              <strong>Como comparar corretamente:</strong> Para comparar sua carteira com CDI, Ibovespa ou fundos, use sempre o <strong>TWR (% a.a.)</strong>, pois os índices de mercado não sofrem o impacto do seu bolso. Já a <strong>TIR (% a.a.)</strong> mede a eficiência financeira dos seus aportes pessoais. O <em>Caixa</em> representa sua liquidez de oportunidade.
+            </p>
+          </div>
+
+          {/* Dica do Aporte Histórico */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <Info className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5 text-[11px] leading-relaxed text-muted-foreground min-w-0">
+                <span className="font-semibold text-foreground">Calibragem de Dados Anteriores ao App</span>
+                <p>
+                  Se você investia antes de começar no app, cadastre seus Marcos Históricos ou importe seu extrato no assistente para que a TIR e o TWR considerem os aportes e lucros passados com precisão matemática.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant={position.hasMarcoZeroContribution ? "outline" : "default"}
+              size="sm"
+              onClick={() => {
+                setExplainModalOpen(false);
+                setInitialCostDialogOpen(true);
+              }}
+              className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
+            >
+              <span>{position.hasMarcoZeroContribution ? "Gerenciar Marcos Históricos" : "Cadastrar Marcos Históricos"}</span>
+            </Button>
+          </div>
         </div>
       </Modal>
 
