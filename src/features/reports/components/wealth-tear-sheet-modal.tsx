@@ -770,9 +770,9 @@ export function WealthTearSheetModal({
       {/* 9. Tópico Final: Metodologias & Métricas de Rentabilidade da Carteira */}
       <section
         aria-label="Metodologias de Rentabilidade"
-        className="break-inside-avoid print:break-inside-avoid flex flex-col gap-2.5 rounded-xl border border-border/80 bg-muted/20 p-3.5 print:bg-white print:border-slate-200/90 shadow-2xs"
+        className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid w-full"
       >
-        <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
+        <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
           <div className="flex items-center gap-1.5">
             <Scale className="size-3.5 text-primary-strong" aria-hidden="true" />
             <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
@@ -784,12 +784,12 @@ export function WealthTearSheetModal({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs w-full">
           {/* 1. TWR */}
-          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
-            <div className="flex items-center justify-between gap-1.5">
+          <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-1.5 border-b border-border/60 pb-1">
               <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
-                <TrendingUp className="size-3 text-primary-strong" aria-hidden="true" />
+                <TrendingUp className="size-3.5 text-primary-strong" aria-hidden="true" />
                 1. TWR (Cotas — Padrão CVM / ANBIMA)
               </span>
               <span className="font-mono font-bold text-[11px] text-positive-strong">
@@ -804,10 +804,10 @@ export function WealthTearSheetModal({
           </div>
 
           {/* 2. TIR */}
-          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
-            <div className="flex items-center justify-between gap-1.5">
+          <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-1.5 border-b border-border/60 pb-1">
               <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
-                <Percent className="size-3 text-primary-strong" aria-hidden="true" />
+                <Percent className="size-3.5 text-primary-strong" aria-hidden="true" />
                 2. Retorno do Bolso (TIR / XIRR)
               </span>
               <span className="font-mono font-bold text-[11px] text-positive-strong">
@@ -822,8 +822,8 @@ export function WealthTearSheetModal({
           </div>
 
           {/* 3. Retorno Contábil */}
-          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
-            <div className="flex items-center justify-between gap-1.5">
+          <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-1.5 border-b border-border/60 pb-1">
               <span className="font-semibold text-foreground text-[11px]">
                 3. Retorno Contábil da Custódia Aberta
               </span>
@@ -839,8 +839,8 @@ export function WealthTearSheetModal({
           </div>
 
           {/* 4. Resultado Histórico */}
-          <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-surface/70 p-2.5 print:bg-slate-50/50">
-            <div className="flex items-center justify-between gap-1.5">
+          <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-1.5 border-b border-border/60 pb-1">
               <span className="font-semibold text-foreground text-[11px]">
                 4. Resultado Histórico (P&L Total em R$)
               </span>

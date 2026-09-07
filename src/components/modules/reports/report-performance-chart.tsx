@@ -65,12 +65,9 @@ export function ReportPerformanceChart({
   return (
     <section
       aria-label={title}
-      className={cn(
-        "break-inside-avoid flex flex-col gap-2.5 rounded-xl border border-border/80 bg-muted/20 p-3.5 print:bg-white print:border-slate-200/90 shadow-2xs",
-        className,
-      )}
+      className={cn("flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid w-full", className)}
     >
-      <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
+      <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
         <div className="flex items-center gap-1.5">
           <BarChart3 className="size-3.5 text-primary-strong" aria-hidden="true" />
           <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
@@ -82,139 +79,142 @@ export function ReportPerformanceChart({
         </span>
       </div>
 
-      {/* Gráfico SVG de Barras de Rentabilidade */}
-      <div className="relative w-full overflow-hidden">
-        <svg
-          viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-          className="w-full h-auto"
-          role="img"
-          aria-label="Gráfico de barras da rentabilidade percentual mês a mês"
-        >
-          {/* Linha Zero de Referência */}
-          <line
-            x1={PAD_X}
-            y1={zeroY}
-            x2={SVG_WIDTH - PAD_X}
-            y2={zeroY}
-            stroke="currentColor"
-            strokeDasharray="2 2"
-            className="text-border/80 stroke-[1]"
-          />
-
-          {/* Eixo Superior (+max) e Inferior (-max) */}
-          <text
-            x={PAD_X - 4}
-            y={PAD_TOP + 4}
-            textAnchor="end"
-            className="text-[8.5px] font-mono fill-muted-foreground num"
+      <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-2.5">
+        {/* Gráfico SVG de Barras de Rentabilidade */}
+        <div className="relative w-full overflow-hidden">
+          <svg
+            viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+            className="w-full h-auto"
+            role="img"
+            aria-label="Gráfico de barras da rentabilidade percentual mês a mês"
           >
-            +{maxAbsRate}%
-          </text>
-          <text
-            x={PAD_X - 4}
-            y={zeroY + 3}
-            textAnchor="end"
-            className="text-[8.5px] font-mono fill-muted-foreground/80 num"
-          >
-            0%
-          </text>
-          <text
-            x={PAD_X - 4}
-            y={SVG_HEIGHT - PAD_BOTTOM}
-            textAnchor="end"
-            className="text-[8.5px] font-mono fill-muted-foreground num"
-          >
-            -{maxAbsRate}%
-          </text>
+            {/* Linha Zero de Referência */}
+            <line
+              x1={PAD_X}
+              y1={zeroY}
+              x2={SVG_WIDTH - PAD_X}
+              y2={zeroY}
+              stroke="currentColor"
+              strokeDasharray="2 2"
+              className="text-border/80 stroke-[1]"
+            />
 
-          {/* Barras por Mês */}
-          {displaySeries.map((point, idx) => {
-            const centerX = PAD_X + idx * stepX + stepX / 2;
-            const rate = point.ratePct ?? 0;
-            const barHeight = Math.min(usableHeight / 2, (Math.abs(rate) / maxAbsRate) * (usableHeight / 2));
-            const isPositive = rate >= 0;
-            const barY = isPositive ? zeroY - barHeight : zeroY;
+            {/* Eixo Superior (+max) e Inferior (-max) */}
+            <text
+              x={PAD_X - 4}
+              y={PAD_TOP + 4}
+              textAnchor="end"
+              className="text-[8.5px] font-mono fill-muted-foreground num"
+            >
+              +{maxAbsRate}%
+            </text>
+            <text
+              x={PAD_X - 4}
+              y={zeroY + 3}
+              textAnchor="end"
+              className="text-[8.5px] font-mono fill-muted-foreground/80 num"
+            >
+              0%
+            </text>
+            <text
+              x={PAD_X - 4}
+              y={SVG_HEIGHT - PAD_BOTTOM}
+              textAnchor="end"
+              className="text-[8.5px] font-mono fill-muted-foreground num"
+            >
+              -{maxAbsRate}%
+            </text>
 
-            return (
-              <g key={point.month}>
-                <rect
-                  x={centerX - barWidth / 2}
-                  y={barY}
-                  width={barWidth}
-                  height={Math.max(2, barHeight)}
-                  rx={2}
-                  className={cn(
-                    isPositive ? "fill-positive-strong" : "fill-negative-strong",
-                    "transition-all",
-                  )}
-                />
-                {/* Rótulo de Taxa no Topo da Barra */}
-                <text
-                  x={centerX}
-                  y={isPositive ? barY - 4 : barY + barHeight + 8}
-                  textAnchor="middle"
-                  className={cn(
-                    "text-[8.5px] font-mono font-bold num",
-                    isPositive ? "fill-positive-strong" : "fill-negative-strong",
-                  )}
-                >
-                  {formatSignedPct(rate)}
-                </text>
-                {/* Rótulo do Mês no Eixo X */}
-                <text
-                  x={centerX}
-                  y={SVG_HEIGHT - 6}
-                  textAnchor="middle"
-                  className="text-[8.5px] font-mono fill-muted-foreground"
-                >
-                  {point.monthLabel}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
+            {/* Barras por Mês */}
+            {displaySeries.map((point, idx) => {
+              const centerX = PAD_X + idx * stepX + stepX / 2;
+              const rate = point.ratePct ?? 0;
+              const barHeight = Math.min(usableHeight / 2, (Math.abs(rate) / maxAbsRate) * (usableHeight / 2));
+              const isPositive = rate >= 0;
+              const barY = isPositive ? zeroY - barHeight : zeroY;
 
-      {/* Tabela Resumo Compacta (Data Grid para Leitura Executiva e Impressão) */}
-      <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
-        <table className="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
-              <th className="py-1 px-2.5">Competência</th>
-              <th className="py-1 px-2.5 text-right">Patrimônio Bruto</th>
-              <th className="py-1 px-2 text-right">Rentabilidade do Mês</th>
-              <th className="py-1 px-2.5 text-right">Proventos do Mês</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60 font-mono text-[10.5px] num">
-            {displaySeries.map((point) => (
-              <tr key={point.month} className="even:bg-muted/20 print:even:bg-slate-50/50">
-                <td className="py-1 px-2.5 font-sans font-semibold text-foreground text-[11px]">
-                  {point.monthLabel}
-                </td>
-                <td className="py-1 px-2.5 text-right font-bold text-foreground">
-                  <MoneyText cents={numberToCents(point.patrimonyBRL)} />
-                </td>
-                <td
-                  className={cn(
-                    "py-1 px-2 text-right font-bold",
-                    (point.ratePct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong",
-                  )}
-                >
-                  {formatSignedPct(point.ratePct)}
-                </td>
-                <td className="py-1 px-2.5 text-right text-positive-strong font-medium">
-                  {point.dividendsBRL && point.dividendsBRL > 0 ? (
-                    <MoneyText cents={numberToCents(point.dividendsBRL)} tone="positive" />
-                  ) : (
-                    <span className="text-muted-foreground/60">—</span>
-                  )}
-                </td>
+              return (
+                <g key={point.month}>
+                  <rect
+                    x={centerX - barWidth / 2}
+                    y={barY}
+                    width={barWidth}
+                    height={Math.max(2, barHeight)}
+                    rx={2}
+                    className={cn(
+                      isPositive ? "fill-positive-strong" : "fill-negative-strong",
+                      "transition-all",
+                    )}
+                  />
+                  {/* Rótulo de Taxa no Topo da Barra */}
+                  <text
+                    x={centerX}
+                    y={isPositive ? barY - 4 : barY + barHeight + 8}
+                    textAnchor="middle"
+                    className={cn(
+                      "text-[8.5px] font-mono font-bold num",
+                      isPositive ? "fill-positive-strong" : "fill-negative-strong",
+                    )}
+                  >
+                    {formatSignedPct(rate)}
+                  </text>
+                  {/* Rótulo do Mês no Eixo X */}
+                  <text
+                    x={centerX}
+                    y={SVG_HEIGHT - 6}
+                    textAnchor="middle"
+                    className="text-[8.5px] font-mono fill-muted-foreground"
+                  >
+                    {point.monthLabel}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Tabela Resumo Compacta (Data Grid para Leitura Executiva e Impressão) */}
+        <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
+                <th className="py-1 px-2.5">Competência</th>
+                <th className="py-1 px-2.5 text-right">Patrimônio Bruto</th>
+                <th className="py-1 px-2 text-right">Rentabilidade do Mês</th>
+                <th className="py-1 px-2.5 text-right">Proventos do Mês</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border/60 font-mono text-[10.5px] num">
+              {displaySeries.map((point) => (
+                <tr key={point.month} className="even:bg-muted/20 print:even:bg-slate-50/50">
+                  <td className="py-1 px-2.5 font-sans font-semibold text-foreground text-[11px]">
+                    {point.monthLabel}
+                  </td>
+                  <td className="py-1 px-2.5 text-right font-bold text-foreground">
+                    <MoneyText cents={numberToCents(point.patrimonyBRL)} />
+                  </td>
+                  <td
+                    className={cn(
+                      "py-1 px-2 text-right font-bold",
+                      (point.ratePct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong",
+                    )}
+                  >
+                    {formatSignedPct(point.ratePct)}
+                  </td>
+                  <td className="py-1 px-2.5 text-right text-positive-strong font-medium">
+                    {point.dividendsBRL && point.dividendsBRL > 0 ? (
+                      <MoneyText cents={numberToCents(point.dividendsBRL)} tone="positive" />
+                    ) : (
+                      <span className="text-muted-foreground/60">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
 }
+
