@@ -71,6 +71,7 @@ export interface WealthTearSheetModalProps {
   concentrationRisk: ConcentrationRiskResult;
   portfolioIrr?: XIRRResult;
   allTimeEconomicPnlBRL?: number;
+  realizedPnlBRL?: number;
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
@@ -121,6 +122,7 @@ export function WealthTearSheetModal({
   concentrationRisk,
   portfolioIrr,
   allTimeEconomicPnlBRL,
+  realizedPnlBRL,
   periodLabel = "Posição Atual Consolidada",
   appName = "Guia Financeiro",
   accountHolder,
@@ -174,6 +176,14 @@ export function WealthTearSheetModal({
     propTotalReturnPct !== undefined && propTotalReturnPct !== null
       ? propTotalReturnPct
       : fallbackTotalReturnPct;
+
+  // Resultado realizado de posições encerradas (ganho/perda de capital ou resgates passados)
+  const effectiveRealizedGainBRL = useMemo(() => {
+    if (allTimeEconomicPnlBRL !== undefined) {
+      return Math.round((allTimeEconomicPnlBRL - totalReturnBRL) * 100) / 100;
+    }
+    return realizedPnlBRL ?? 0;
+  }, [allTimeEconomicPnlBRL, totalReturnBRL, realizedPnlBRL]);
 
   // Segmentos dos gráficos Donut de Classes e Setores
   const donutData = useMemo(() => {
@@ -317,13 +327,39 @@ export function WealthTearSheetModal({
           className="inline font-bold text-positive-strong"
         />{" "}
         em proventos recebidos
-        {hasTargets && (
+        {Math.abs(effectiveRealizedGainBRL) >= 0.01 ? (
+          <>
+            . Somado ao resultado {effectiveRealizedGainBRL >= 0 ? "bruto realizado" : "realizado"} de posições encerradas (
+            <MoneyText
+              cents={numberToCents(effectiveRealizedGainBRL)}
+              tone={effectiveRealizedGainBRL >= 0 ? "positive" : "negative"}
+              sign="always"
+              className="inline font-bold"
+            />
+            ), o <strong>Resultado Econômico Histórico Consolidado totaliza{" "}
+            <MoneyText
+              cents={numberToCents(allTimeEconomicPnlBRL ?? (totalReturnBRL + effectiveRealizedGainBRL))}
+              tone={(allTimeEconomicPnlBRL ?? (totalReturnBRL + effectiveRealizedGainBRL)) >= 0 ? "positive" : "negative"}
+              className="inline font-bold"
+            />
+            </strong>
+            {hasTargets ? (
+              <>
+                , com índice de equilíbrio geral de{" "}
+                <strong>{allocationAnalysis.alignmentScore}%</strong>.{" "}
+              </>
+            ) : (
+              <>.{" "}</>
+            )}
+          </>
+        ) : hasTargets ? (
           <>
             , com índice de equilíbrio geral de{" "}
-            <strong>{allocationAnalysis.alignmentScore}%</strong>
+            <strong>{allocationAnalysis.alignmentScore}%</strong>.{" "}
           </>
+        ) : (
+          <>.{" "}</>
         )}
-        .{" "}
         {hasTargets && topDeficit && topDeficit.gapBRL > 0 ? (
           <>
             Conforme a matriz de alocação definida pelo titular, a classe com maior
@@ -391,6 +427,8 @@ export function WealthTearSheetModal({
     totalDividendsAllTime,
     totalReturnBRL,
     totalReturnPct,
+    effectiveRealizedGainBRL,
+    allTimeEconomicPnlBRL,
     allocationAnalysis,
     investmentRows,
     topDominance,
@@ -442,7 +480,9 @@ export function WealthTearSheetModal({
                 />
               </span>
             ),
-            subtext: "P&L Econômico Total",
+            subtext: Math.abs(effectiveRealizedGainBRL) >= 0.01
+              ? "P&L Total (Vivo + Encerrados)"
+              : "P&L Econômico Total",
           },
           {
             label: "Aderência às Metas",

@@ -1,5 +1,11 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.29** registra a **Reconciliação Contábil & Visual na Síntese Executiva do Dossiê de Investimentos (P&L Total vs. Custódia Viva & Posições Encerradas)** (2026-09-07):
+> - **(1) Reconciliação Matemática na Síntese Executiva (`WealthTearSheetModal`)**: Integração da ponte contábil no parágrafo analítico de abertura conectando o Retorno Vivo sob custódia (valorização de cota + proventos) ao Resultado Realizado de posições encerradas (resgates/lucro bruto de capital), totalizando com exatidão o P&L Econômico Histórico Consolidado (eliminando o descompasso visual entre R$ 16.511,84 no cabeçalho e R$ 16.405,80 na custódia);
+> - **(2) Subtexto Adaptativo no KPI de Resultado Histórico**: Exibição dinâmica de `"P&L Total (Vivo + Encerrados)"` quando existirem posições passadas realizadas, preservando `"P&L Econômico Total"` quando o investidor possuir apenas posições ativas;
+> - **(3) Integração de Estado na Central de Relatórios (`ReportsPage`)**: Repasse formal da prop `realizedPnlBRL={positionQuery.realizedPnlBRL}` da query canônica `usePortfolioPosition` para o modal de dossiê;
+> - **(4) Suíte 100% Verde & Governança**: Novos testes unitários dedicados em `wealth-tear-sheet-modal.test.tsx` cobrindo cenários com e sem posições encerradas, 283 arquivos de teste / 2.029 testes passando (100% verde), zero erros de typecheck (`tsc --noEmit`) e lint estrito (`eslint .`).
+
 > **v2.28** registra a **Unificação do Gateway de Acesso & Permissões Modulares na Inicialização (Blindagem de Módulos Restritos)** (2026-09-07):
 > - **(1) Unificação de Acesso (`useUserAccess` + `useUserSubscription`)**: Integração direta da query de assinatura e permissões modulares (`moduleAccess` de `user_module_permissions`) dentro de `useUserAccess()`. A função `hasFeature` agora respeita a hierarquia completa de restrições por usuário, bloqueando módulos com nível `'none'` e derivando a desativação da tela inicial (`overview`) caso o usuário não tenha módulos financeiros (`transactions`, `cards`, `debts`, `budgets`);
 > - **(2) Sincronização Estrita do Ciclo de Inicialização (`RequireAuth`)**: `isLoading` do `useUserAccess` agora aguarda o término de `subscriptionQuery`, impedindo que o app monte telas antes da resolução das regras reais e eliminando o vazamento de dados em modo permissivo inicial;

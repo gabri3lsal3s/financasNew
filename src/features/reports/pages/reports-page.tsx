@@ -987,6 +987,7 @@ export function ReportsPage() {
         concentrationRisk={concentrationRisk}
         portfolioIrr={positionQuery.portfolioIrr}
         allTimeEconomicPnlBRL={positionQuery.allTimeEconomicPnlBRL}
+        realizedPnlBRL={positionQuery.realizedPnlBRL}
       />
 
       <DividendFreedomModal
