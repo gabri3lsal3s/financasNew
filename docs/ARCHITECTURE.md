@@ -144,7 +144,8 @@ Aplicação **100% Online First** de gestão financeira pessoal + motor simplifi
     │   ├── cards/                 #   faturas, fechamento e refinanciamento sem double-counting
     │   ├── fire/                  #   F24: regra dos 4%, projeção e faixas de emergência
     │   └── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
-    │                              #   proventos/YoC (snowball), apuração fiscal/DARF/IRPF (tax)
+    │                              #   proventos/YoC (snowball), apuração fiscal/DARF/IRPF (tax),
+    │                              #   formatação de taxas de renda fixa (formatFixedIncomeRateLabel)
     │
     ├── data/                      # SERVIÇOS DE DADOS
     │   ├── client.ts              #   Cliente Supabase único (env centralizado)

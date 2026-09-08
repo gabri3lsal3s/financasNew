@@ -4,6 +4,7 @@ import {
   calculateFixedIncomeBalance,
   calculateTaxReductionCountdown,
   estimateInitialInvestmentFromRedemption,
+  formatFixedIncomeRateLabel,
   getFixedIncomeTaxRatePct,
   getIofRatePct,
 } from "./fixed-income";
@@ -192,5 +193,49 @@ describe("fixed-income domain calculations", () => {
         rateValue: 100,
       }),
     ).toBe(1000);
+  });
+});
+
+describe("formatFixedIncomeRateLabel", () => {
+  it("formata CDI com valor inteiro", () => {
+    expect(
+      formatFixedIncomeRateLabel({ rate_type: "cdi", rate_value: 110 }),
+    ).toBe("110% CDI");
+  });
+
+  it("formata CDI com valor decimal", () => {
+    expect(
+      formatFixedIncomeRateLabel({ rate_type: "cdi", rate_value: 97.5 }),
+    ).toBe("97,5% CDI");
+  });
+
+  it("formata Selic", () => {
+    expect(
+      formatFixedIncomeRateLabel({ rate_type: "selic", rate_value: 100 }),
+    ).toBe("100% Selic");
+  });
+
+  it("formata pré-fixado com valor inteiro", () => {
+    expect(
+      formatFixedIncomeRateLabel({ rate_type: "pre", rate_value: 12 }),
+    ).toBe("12% a.a.");
+  });
+
+  it("formata pré-fixado com valor decimal", () => {
+    expect(
+      formatFixedIncomeRateLabel({ rate_type: "pre", rate_value: 12.5 }),
+    ).toBe("12,5% a.a.");
+  });
+
+  it("formata IPCA+", () => {
+    expect(
+      formatFixedIncomeRateLabel({ rate_type: "ipca", rate_value: 5 }),
+    ).toBe("IPCA + 5% a.a.");
+  });
+
+  it("formata IPCA+ com valor decimal", () => {
+    expect(
+      formatFixedIncomeRateLabel({ rate_type: "ipca", rate_value: 6.75 }),
+    ).toBe("IPCA + 6,75% a.a.");
   });
 });

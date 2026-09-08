@@ -192,9 +192,26 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                             <td className="py-1.5 px-2.5 font-semibold text-foreground whitespace-normal break-words leading-tight text-[10.5px]">
                               {sanitizeReportText(item.ticker)}
                             </td>
-                            <td className="py-1.5 px-2 text-muted-foreground whitespace-normal break-words leading-tight text-[9.5px]">
-                              {sanitizeReportText(
-                                item.sector || item.indexType || "Renda Fixa",
+                            <td className="py-1.5 px-2 whitespace-normal break-words leading-tight text-[9.5px]">
+                              {item.indexType ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-semibold text-foreground">
+                                    {sanitizeReportText(item.indexType)}
+                                  </span>
+                                  {item.maturityDate && (
+                                    <span className="text-muted-foreground font-normal">
+                                      Venc.{" "}
+                                      {new Date(item.maturityDate + "T00:00:00").toLocaleDateString("pt-BR", {
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      })}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {sanitizeReportText(item.sector || "Renda Fixa")}
+                                </span>
                               )}
                             </td>
                             <td className="py-1.5 px-1.5 text-right num font-mono text-muted-foreground text-[10px]">

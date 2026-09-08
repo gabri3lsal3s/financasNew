@@ -397,3 +397,37 @@ export function estimateInitialInvestmentFromRedemption(input: EstimateInitialIn
   const estimatedPrincipal = Math.round((redeemedAmount / accumulationFactor) * 100) / 100;
   return estimatedPrincipal > 0 ? estimatedPrincipal : redeemedAmount;
 }
+
+/**
+ * Formata a taxa contratada de um título de renda fixa em string legível pt-BR.
+ *
+ * Exemplos de saída por indexador:
+ *   - cdi:   "110% CDI"
+ *   - selic:  "100% Selic"
+ *   - pre:   "12,50% a.a."
+ *   - ipca:  "IPCA + 5% a.a."
+ *
+ * Função pura — sem import de UI ou Supabase.
+ */
+export function formatFixedIncomeRateLabel(metadata: {
+  rate_type: FixedIncomeRateType;
+  rate_value: number;
+}): string {
+  const { rate_type, rate_value } = metadata;
+  const formatted = Number.isInteger(rate_value)
+    ? String(rate_value)
+    : rate_value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+
+  switch (rate_type) {
+    case "cdi":
+      return `${formatted}% CDI`;
+    case "selic":
+      return `${formatted}% Selic`;
+    case "pre":
+      return `${formatted}% a.a.`;
+    case "ipca":
+      return `IPCA + ${formatted}% a.a.`;
+    default:
+      return `${formatted}%`;
+  }
+}

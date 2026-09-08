@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { calculateYieldOnCostTotal } from "@/domain/portfolio/snowball";
+import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
 import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
 import {
@@ -144,20 +145,6 @@ export function AssetDetailSheet({
           ? `Ponderada (${assetIrr?.daysElapsed}d)`
           : "Sem histórico suficiente";
 
-  const formatRateLabel = (metadata: NonNullable<PortfolioAsset["fixed_income_metadata"]>) => {
-    switch (metadata.rate_type) {
-      case "cdi":
-        return `${metadata.rate_value}% CDI`;
-      case "selic":
-        return `${metadata.rate_value}% Selic`;
-      case "pre":
-        return `${metadata.rate_value}% a.a.`;
-      case "ipca":
-        return `IPCA + ${metadata.rate_value}% a.a.`;
-      default:
-        return `${metadata.rate_value}%`;
-    }
-  };
 
   const formatTxType = (type: PortfolioTransactionType) => {
     switch (type) {
@@ -206,7 +193,7 @@ export function AssetDetailSheet({
               ) : null}
               {!isClosed && currentAsset.fixed_income_metadata && currentAsset.fixed_income_metadata.rate_value > 0 ? (
                 <Badge variant="default" className="text-xs font-semibold">
-                  {formatRateLabel(currentAsset.fixed_income_metadata)} • Projetado
+                  {formatFixedIncomeRateLabel(currentAsset.fixed_income_metadata)} • Projetado
                 </Badge>
               ) : null}
               {!isClosed && positionRow?.isMatured ? (

@@ -9,6 +9,7 @@ import {
   ReportClassTables,
 } from "@/components/modules/reports";
 import { numberToCents } from "@/domain/money";
+import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
 import type { PositionRow } from "@/components/modules/position-table";
 
 export interface PortfolioExecutiveReportProps {
@@ -79,6 +80,10 @@ export function PortfolioExecutiveReport({
             totalCents: numberToCents(i.valueBRL),
             pnlPct: (i.totalReturnPct ?? i.unrealizedPct) ?? 0,
             currency: i.currency,
+            indexType: i.fixedIncomeMetadata
+              ? formatFixedIncomeRateLabel(i.fixedIncomeMetadata)
+              : null,
+            maturityDate: i.fixedIncomeMetadata?.maturity_date ?? i.maturityDate ?? null,
           })),
         };
       })
