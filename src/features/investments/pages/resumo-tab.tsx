@@ -946,12 +946,12 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
           </div>
 
-          {/* Ponto 5: Card 5 do Dashboard & Comparabilidade com Benchmarks */}
+          {/* Ponto 5: Comparação com Benchmarks & Disclaimers */}
           <div className="rounded-xl border border-border/80 bg-surface/40 p-3.5 flex flex-col justify-between gap-2.5">
             <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 flex-wrap">
               <span className="font-semibold text-foreground text-sm flex items-center gap-1.5 min-w-0">
                 <Landmark className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                <span className="truncate">5. Saldo em Caixa & Comparação com Benchmarks</span>
+                <span className="truncate">5. Comparação com Benchmarks e Referências de Mercado</span>
               </span>
               <Badge variant="muted" size="xs" className="font-mono font-bold shrink-0">
                 CDI · Ibov · IPCA
@@ -959,15 +959,15 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
-                Disponibilidade e Referências
+                Diretrizes de Comparabilidade e Disclaimers
               </span>
               <p className="text-muted-foreground leading-relaxed m-0 text-xs">
-                Para comparar sua carteira com CDI, Ibovespa ou fundos, use sempre o TWR (% a.a.), pois os índices de mercado não sofrem o impacto do seu bolso. Já a TIR (% a.a.) mede a eficiência financeira dos seus aportes pessoais. O Caixa representa sua liquidez de oportunidade.
+                Para comparar sua carteira com CDI, Ibovespa ou fundos de mercado, utilize sempre o TWR (% a.a.), pois os indexadores são calculados por rentabilidade de cotas e não sofrem o impacto do fluxo de aportes e retiradas. A TIR (% a.a.) apura o retorno financeiro ponderado do seu fluxo de caixa pessoal, não sendo diretamente comparável a benchmarks passivos. Rentabilidade passada não representa garantia de retorno futuro.
               </p>
             </div>
             <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
               <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
-                Recomendado para: Liquidez e comparação justa
+                Recomendado para: Comparação justa e alinhamento metodológico
               </Badge>
             </div>
           </div>
