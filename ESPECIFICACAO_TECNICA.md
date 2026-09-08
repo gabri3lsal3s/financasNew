@@ -403,14 +403,17 @@ Toda operação que altera **mais de um registro** em uma única ação do usuá
   - Resiliência matemática: suporta períodos com liquidação total transitória ($\text{saldo} = 0$), protegendo divisões por zero e mantendo a cadeia multiplicativa quando novos aportes ocorrem.
 - **Arquitetura de Rentabilidade Adaptativa na UI & Relatórios:**
   - O card primário de rentabilidade comuta inteligentemente entre o **TWR por Cotas** (badge `[TWR · Cotas]`, padrão CVM/ANBIMA quando há snapshots calculados) e a **Rentabilidade da Custódia Aberta** (badge `[Custódia Aberta]`, calculando o ganho de capital e proventos sobre o custo de aquisição para usuários iniciantes sem histórico retroativo).
-  - O card de Patrimônio Total foca no saldo sob custódia, destacando no subtexto o lucro aberto em reais (`Lucro aberto: +R$ X,XX`), eliminando porcentagens redundantes e concorrentes na visão principal.
+  - O card de Patrimônio Total foca no saldo sob custódia, destacando no subtexto o retorno contábil (`Retorno contábil: +X,X%`), eliminando porcentagens concorrentes na visão principal.
+  - **Grid de KPIs Executivos Simétricos (4 Colunas):** 1. Patrimônio Total, 2. Rentabilidade (TWR / Custódia), 3. Resultado Histórico (P&L Total R$) e 4. TIR (Fluxo do Bolso / XIRR) organizados em `lg:grid-cols-4 sm:grid-cols-2 grid-cols-1` sem cards órfãos em tablets.
+  - **Card Exclusivo de Caixa & Liquidez (`CashKpiCard`):** Banner horizontal dedicado posicionado abaixo dos KPIs, destacando a "pólvora seca" da carteira com saldo em BRL, percentual do patrimônio, atalho direto para ajustar caixa e ação contextual para simular aporte no rebalanceador.
   - O Relatório Executivo em A4/PDF (`PortfolioExecutiveReport`) integra a rentabilidade adaptativa oficial e a TIR na síntese executiva.
 - **TIR / Taxa Interna de Retorno (XIRR / Money-Weighted Return):**
   - Motor com solver híbrido Newton-Raphson com fallback para Bisseção (`calculatePortfolioIrr`, `domain/portfolio/irr.ts`).
   - Fluxos de caixa compostos por múltiplos marcos históricos de aportes e resgates do bolso (`portfolio_contributions`), onde retiradas (tag `[Resgate]`) contam como devolução antecipada de capital ao investidor.
-- **Snapshots Patrimoniais e Série Mensal Integrada (`buildPortfolioMonthlySeries`):**
+- **Snapshots Patrimoniais, Carrossel Horizontal e Tabela Analítica (`PortfolioSnapshotsCarousel` e `PortfolioSnapshotsDialog`):**
   - Histórico mensal gravado na tabela `portfolio_snapshots` (`month`, `total_value`, `total_cost`), enriquecido com proventos acumulados e cotas TWR.
-  - Visualização com suporte aos últimos 6 meses (padrão) e alternância sob demanda para o histórico completo (`allMonthlySeries`).
+  - **Carrossel Horizontal de Snapshots:** Fita deslizante na página com os meses recentes ordenados do mais recente ao mais antigo, checkpoints com patrimônio e mini-grid 2x2 interno (custo, proventos, retorno, TWR), além de navegação por setas no desktop/tablet.
+  - **Diálogo Modal da Tabela Analítica (`PortfolioSnapshotsDialog`):** Modal amplo (`size="2xl"`) acessível pelo cabeçalho ou card final do carrossel, com auditoria detalhada de 12 a 32+ meses, filtro rápido por ano, KPIs de resumo do período e suporte a impressão/PDF.
 - **Assistente de Importação de Extratos & Deduplicação (`statement-parser.ts`):**
   - Parser inteligente que converte colunas de extrato (Mês, Ano, Valor Aplicado, Saldo Bruto, Rentabilidade %) em deltas mensais automáticos.
   - Filtro tolerante a linhas de rodapé e sumário (totais, consolidados, metadados).

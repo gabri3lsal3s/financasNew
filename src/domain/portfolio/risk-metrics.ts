@@ -187,7 +187,6 @@ export function calculateSharpeRatio(input: {
     if (val >= 1.0) return "Excelente Eficiência";
     if (val >= 0.5) return "Boa Compensação";
     if (val >= 0) return "Neutro vs. CDI";
-    if (val >= -0.5) return "Neutro / Defensivo";
     return "Abaixo do CDI";
   };
 
@@ -201,11 +200,19 @@ export function calculatePortfolioRiskSummary(
   points: readonly { patrimonyBRL: number; ratePct: number | null }[],
   riskFreeRatePct = 10.5,
 ): PortfolioRiskSummary {
-  const patrimonies = points.map((p) => p.patrimonyBRL);
   const rates = points.map((p) => p.ratePct ?? 0);
   const monthsCount = points.length;
 
-  const maxDrawdown = calculateMaxDrawdown(patrimonies);
+  // Constrói a curva de cota acumulada (base 1.0) a partir dos retornos do período,
+  // isolando resgates e aportes de capital que distorceriam o Drawdown nominal em reais.
+  const unitCurve: number[] = [1.0];
+  let accumulatedUnit = 1.0;
+  for (const r of rates) {
+    accumulatedUnit *= 1 + r / 100;
+    unitCurve.push(accumulatedUnit);
+  }
+
+  const maxDrawdown = calculateMaxDrawdown(unitCurve);
   const volatility = calculateSampleVolatility(rates);
   const consistency = calculateConsistencyMetrics(rates);
 

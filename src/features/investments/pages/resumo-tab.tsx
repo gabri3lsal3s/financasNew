@@ -7,7 +7,6 @@ import {
   FileText,
   Info,
   Landmark,
-  LineChart,
   PieChart,
   Plus,
   RefreshCw,
@@ -53,6 +52,8 @@ import {
   InitialPocketCostDialog,
   ManualPriceDialog,
   PortfolioExecutiveReport,
+  PortfolioSnapshotsCarousel,
+  PortfolioSnapshotsDialog,
 } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
@@ -86,7 +87,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardInitialAsset, setWizardInitialAsset] = useState<PortfolioAsset | null>(null);
   const [wizardInitialMode, setWizardInitialMode] = useState<WizardMode>("select");
-  const [showAllSnapshots, setShowAllSnapshots] = useState(false);
+  const [snapshotsDialogOpen, setSnapshotsDialogOpen] = useState(false);
   const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
 
   const isWizardOpen = wizardOpen || wizardDeepOpen;
@@ -288,7 +289,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
 
   const series = position.monthlySeries ?? [];
   const allSeries = position.allMonthlySeries ?? series;
-  const displayedSeries = showAllSnapshots ? allSeries : series;
+  const carouselSeries =
+    allSeries.length > 12 ? allSeries.slice(-12) : allSeries.length > 0 ? allSeries : series;
   const totalReturnPnlBRL = position.totalReturnPnlBRL ?? position.unrealizedPnlBRL ?? 0;
   const totalReturnCents = numberToCents(totalReturnPnlBRL);
   const totalReturnPct = position.totalReturnPct ?? position.unrealizedPct ?? null;
@@ -412,11 +414,10 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         <ErrorState message={getErrorMessage(position.error)} onRetry={position.refetch} />
       ) : null}
 
-      {/* Grid de KPIs da Carteira — 1 col mobile, 2 em tablet, 5 no desktop amplo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
+      {/* Grid de KPIs da Carteira — 1 col mobile, 2 em tablet, 4 no desktop amplo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {position.isLoading ? (
           <>
-            <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
             <SkeletonKpi className="col-span-1" />
@@ -494,21 +495,23 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               hint={irrHint}
               onClick={() => setExplainModalOpen(true)}
             />
-
-            {/* 5. Saldo em Caixa */}
-            <CashKpiCard
-              cashBRL={position.cashBRL}
-              cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
-              hasCashAsset={Boolean(cashAsset)}
-              onEdit={handleOpenCash}
-              onDelete={() => {
-                if (cashAsset) setAssetToDelete(cashAsset);
-              }}
-              className="col-span-1"
-            />
           </>
         )}
       </div>
+
+      {/* Card Exclusivo de Caixa & Liquidez da Carteira */}
+      <CashKpiCard
+        variant="banner"
+        cashBRL={position.cashBRL}
+        cashPct={position.totalBRL > 0 ? (position.cashBRL / position.totalBRL) * 100 : 0}
+        hasCashAsset={Boolean(cashAsset)}
+        isLoading={position.isLoading}
+        onEdit={handleOpenCash}
+        onDelete={() => {
+          if (cashAsset) setAssetToDelete(cashAsset);
+        }}
+        onAporte={() => (onSelectTab ? onSelectTab("aporte") : navigate("/carteira?tab=aporte"))}
+      />
 
       {/* Alerta de Concentração Elevada */}
       {concentration.isConcentrated && (
@@ -682,118 +685,13 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             />
           </section>
 
-          {/* Seção de Evolução Patrimonial (Snapshots Mensais) */}
-          <section aria-label="Evolução Patrimonial" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-            <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <LineChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-foreground">Evolução Histórica (Snapshots Mensais)</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                {allSeries.length > 6 ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAllSnapshots((prev) => !prev)}
-                    className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {showAllSnapshots
-                      ? "Ver últimos 6 meses"
-                      : `Ver histórico completo (${allSeries.length} meses)`}
-                  </Button>
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    {series.length > 0 ? `${series.length} meses` : "Últimos 6 meses"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3 pt-2">
-              {displayedSeries.map((point) => {
-                const isCurrent = point.month === month;
-                const effectiveGain = point.totalReturnPnl !== undefined ? point.totalReturnPnl : (point.valueBRL - point.costBRL);
-                const effectivePct = point.totalReturnPct !== undefined ? point.totalReturnPct : (point.costBRL > 0 ? ((point.valueBRL - point.costBRL) / point.costBRL) * 100 : 0);
-                const hasDividends = Boolean(point.accumulatedDividendsBRL && point.accumulatedDividendsBRL > 0);
-
-                return (
-                  <div
-                    key={point.month}
-                    className={cn(
-                      "rounded-xl border p-4 flex flex-col gap-2.5 transition-colors shadow-2xs min-w-0",
-                      isCurrent
-                        ? "border-portfolio/40 bg-portfolio/5 ring-1 ring-portfolio/20"
-                        : "border-border/80 bg-surface/80 hover:border-border",
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-1.5 min-w-0">
-                      <span className="text-xs font-semibold text-foreground">{point.month}</span>
-                      {isCurrent ? <Badge variant="portfolio" size="xs" className="shrink-0">atual</Badge> : null}
-                    </div>
-                    <div className="min-w-0">
-                      <MoneyText
-                        cents={numberToCents(point.valueBRL)}
-                        tone="default"
-                        className="text-base sm:text-lg font-bold text-foreground tabular-nums whitespace-nowrap block"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40 gap-2 min-w-0">
-                      <span className="shrink-0 font-medium">Custo</span>
-                      <MoneyText
-                        cents={numberToCents(point.costBRL)}
-                        tone="default"
-                        className="text-muted-foreground tabular-nums font-medium whitespace-nowrap"
-                      />
-                    </div>
-                    {hasDividends ? (
-                      <div className="flex items-center justify-between text-xs text-muted-foreground gap-2 min-w-0">
-                        <span className="shrink-0 font-medium">Proventos acum.</span>
-                        <MoneyText
-                          cents={numberToCents(point.accumulatedDividendsBRL)}
-                          tone="positive"
-                          className="tabular-nums font-medium whitespace-nowrap"
-                        />
-                      </div>
-                    ) : null}
-                    <div className="flex items-center justify-between text-xs gap-2 min-w-0">
-                      <span className="text-muted-foreground shrink-0 font-medium">Resultado Total</span>
-                      <span
-                        className={cn(
-                          "num font-bold tabular-nums shrink-0",
-                          effectiveGain >= 0 ? "text-positive-strong" : "text-negative-strong",
-                        )}
-                        title={
-                          hasDividends && point.capitalGainPct !== null && point.capitalGainPct !== undefined
-                            ? `Retorno Total: ${effectivePct !== null && effectivePct >= 0 ? "+" : ""}${effectivePct?.toFixed(1)}% (Cotação: ${point.capitalGainPct >= 0 ? "+" : ""}${point.capitalGainPct.toFixed(1)}% + Proventos: R$ ${point.accumulatedDividendsBRL.toFixed(2)})`
-                            : undefined
-                        }
-                      >
-                        {effectivePct !== null ? `${effectivePct >= 0 ? "+" : ""}${effectivePct.toFixed(1)}%` : "—"}
-                      </span>
-                    </div>
-                    {point.twrAccumulatedPct !== undefined && point.twrAccumulatedPct !== null ? (
-                      <div className="flex items-center justify-between text-xs gap-2 min-w-0 border-t border-border/40 pt-1.5">
-                        <span className="text-muted-foreground shrink-0 font-medium" title="Rentabilidade por cotas (TWR)">
-                          TWR Acum.
-                        </span>
-                        <span
-                          className={cn(
-                            "font-mono font-semibold tabular-nums shrink-0",
-                            point.twrAccumulatedPct >= 0 ? "text-positive-strong" : "text-negative-strong",
-                          )}
-                          title={`Cota: R$ ${point.sharePrice?.toFixed(2) ?? "—"}${point.twrMonthPct != null ? ` | Mês: ${point.twrMonthPct >= 0 ? "+" : ""}${point.twrMonthPct.toFixed(2)}%` : ""}`}
-                        >
-                          {point.twrAccumulatedPct >= 0 ? "+" : ""}
-                          {point.twrAccumulatedPct.toFixed(1)}%
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          {/* Seção de Evolução Patrimonial (Carrossel Horizontal de Snapshots) */}
+          <PortfolioSnapshotsCarousel
+            series={carouselSeries}
+            totalMonthsCount={allSeries.length}
+            currentMonthStr={month}
+            onOpenAnalyticsDialog={() => setSnapshotsDialogOpen(true)}
+          />
         </>
       )}
 
@@ -1095,6 +993,14 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         totalReturnPct={position.totalReturnPct}
         totalReturnPnlBRL={position.totalReturnPnlBRL}
         allTimeEconomicPnlBRL={position.allTimeEconomicPnlBRL}
+      />
+
+      {/* Extrato Analítico Completo de Snapshots Mensais */}
+      <PortfolioSnapshotsDialog
+        open={snapshotsDialogOpen}
+        onOpenChange={setSnapshotsDialogOpen}
+        series={allSeries}
+        currentMonthStr={month}
       />
     </div>
   );

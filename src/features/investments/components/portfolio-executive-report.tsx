@@ -19,7 +19,7 @@ export interface PortfolioExecutiveReportProps {
   cashBRL: number;
   yearDividendsBRL: number;
   portfolioIrr?: import("@/domain/portfolio").XIRRResult;
-  portfolioTwr?: import("@/domain/portfolio").TwrResult;
+  portfolioTwr?: import("@/domain/portfolio").TwrConsolidatedResult;
   totalReturnPct?: number | null;
   totalReturnPnlBRL?: number;
   allTimeEconomicPnlBRL?: number;
@@ -108,7 +108,7 @@ export function PortfolioExecutiveReport({
           const isTwrActive = Boolean(portfolioTwr && portfolioTwr.status === "ok" && portfolioTwr.accumulatedRatePct !== null);
           const isCustodyActive = !isTwrActive && totalReturnPct !== null && totalReturnPct !== undefined;
 
-          const rentabilidadeItem = isTwrActive
+          const rentabilidadeItem = portfolioTwr && isTwrActive
             ? {
                 label: "Rentabilidade (TWR)",
                 value: (

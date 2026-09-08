@@ -98,7 +98,7 @@ describe("buildPortfolioMonthlySeries — Snapshots patrimoniais com proventos a
     expect(series[0]!.twrAccumulatedPct).toBe(0);
 
     // Mês 2: valor subiu 10% sem aporte -> cota 110
-    expect(series[1]!.monthRatePct ?? series[1]!.twrMonthPct).toBe(10);
+    expect(series[1]!.twrMonthPct).toBe(10);
     expect(series[1]!.twrAccumulatedPct).toBe(10);
     expect(series[1]!.sharePrice).toBe(110);
   });

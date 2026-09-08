@@ -94,6 +94,11 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                   ? "#2dd4bf"
                   : "#64748b");
 
+        const subtotalPriceVarPct =
+          group.totalCostCents && group.totalCostCents > 0
+            ? ((group.totalCents - group.totalCostCents) / group.totalCostCents) * 100
+            : null;
+
         return (
           <section
             key={group.className}
@@ -155,7 +160,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                         <th className="py-1.5 px-1.5 text-right print:w-[15%]">Preço Médio</th>
                         <th className="py-1.5 px-1.5 text-right print:w-[15%]">Cotação</th>
                         <th className="py-1.5 px-2 text-right print:w-[17%]">Total (R$)</th>
-                        <th className="py-1.5 px-1.5 text-right print:w-[8%]">Var. Cota</th>
+                        <th className="py-1.5 px-1.5 text-right print:w-[8%]">Var. (USD)</th>
                         <th className="py-1.5 px-2.5 text-right print:w-[9%]">Ret. Total</th>
                       </>
                     ) : (
@@ -312,8 +317,15 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                       <td className="py-1.5 px-2 text-right num font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
                         <MoneyText cents={group.totalCents} tone="default" />
                       </td>
-                      <td className="py-1.5 px-1.5 text-right num font-mono text-[10px] text-muted-foreground whitespace-nowrap">
-                        —
+                      <td
+                        className={cn(
+                          "py-1.5 px-1.5 text-right num font-mono text-[10px] whitespace-nowrap",
+                          subtotalPriceVarPct !== null && subtotalPriceVarPct >= 0
+                            ? "text-positive-strong"
+                            : "text-negative-strong",
+                        )}
+                      >
+                        {subtotalPriceVarPct !== null ? formatSignedPct(subtotalPriceVarPct) : "—"}
                       </td>
                       <td
                         className={cn(
@@ -337,8 +349,15 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                       <td className="py-1.5 px-2 text-right num font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
                         <MoneyText cents={group.totalCents} tone="default" />
                       </td>
-                      <td className="py-1.5 px-1.5 text-right num font-mono text-[10px] text-muted-foreground whitespace-nowrap">
-                        —
+                      <td
+                        className={cn(
+                          "py-1.5 px-1.5 text-right num font-mono text-[10px] whitespace-nowrap",
+                          subtotalPriceVarPct !== null && subtotalPriceVarPct >= 0
+                            ? "text-positive-strong"
+                            : "text-negative-strong",
+                        )}
+                      >
+                        {subtotalPriceVarPct !== null ? formatSignedPct(subtotalPriceVarPct) : "—"}
                       </td>
                       <td
                         className={cn(
@@ -352,6 +371,11 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                   )}
                 </tfoot>
               </table>
+              {isInternacional && (
+                <div className="px-2.5 py-1 text-[8.5px] text-muted-foreground/80 bg-muted/20 border-t border-border/50">
+                  * <strong>Var. (USD)</strong> refere-se à valorização da cota na moeda original. <strong>Ret. Total</strong> consolida oscilação em dólar, variação cambial BRL/USD e proventos creditados.
+                </div>
+              )}
             </div>
           </section>
         );

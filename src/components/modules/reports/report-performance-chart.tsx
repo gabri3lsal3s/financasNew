@@ -254,6 +254,7 @@ export function ReportPerformanceChart({
               >
                 {formatSignedPct(benchmarkComparison.realReturnPct)}
               </strong>
+              <span className="text-[8px] text-muted-foreground/70 ml-1">(Fisher)</span>
             </span>
           </div>
 
@@ -267,7 +268,7 @@ export function ReportPerformanceChart({
                   <span className="text-[10px] font-bold text-foreground">{bm.name}</span>
                   {bm.pctOfBenchmark !== null ? (
                     <Badge
-                      variant={bm.status === "outperforming" ? "default" : "outline"}
+                      variant={bm.status === "outperforming" ? "default" : "muted"}
                       size="xs"
                       className={cn(
                         "font-mono font-bold",
@@ -291,7 +292,7 @@ export function ReportPerformanceChart({
                       bm.alphaPct >= 0 ? "text-positive-strong" : "text-negative-strong",
                     )}
                   >
-                    {formatSignedPct(bm.alphaPct)}
+                    {bm.alphaPct >= 0 ? `+${bm.alphaPct.toFixed(1)}` : bm.alphaPct.toFixed(1)} p.p.
                   </span>
                 </div>
 
@@ -323,10 +324,24 @@ export function ReportPerformanceChart({
                 <Gauge className="size-3 text-muted-foreground" aria-hidden="true" />
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-sm font-mono font-bold text-foreground num">
+                <span
+                  className={cn(
+                    "text-sm font-mono font-bold num",
+                    riskSummary.sharpeRatio !== null && riskSummary.sharpeRatio < 0
+                      ? "text-negative-strong"
+                      : "text-foreground",
+                  )}
+                >
                   {riskSummary.sharpeRatio !== null ? formatPercent(riskSummary.sharpeRatio) : "—"}
                 </span>
-                <span className="text-[8.5px] font-medium text-muted-foreground">
+                <span
+                  className={cn(
+                    "text-[8.5px] font-medium",
+                    riskSummary.sharpeRatio !== null && riskSummary.sharpeRatio < 0
+                      ? "text-negative-strong font-semibold"
+                      : "text-muted-foreground",
+                  )}
+                >
                   {riskSummary.sharpeLabel}
                 </span>
               </div>
@@ -347,7 +362,7 @@ export function ReportPerformanceChart({
                 </span>
               </div>
               <p className="text-[8.5px] text-muted-foreground/80 leading-tight">
-                Maior retração histórica suportada no período
+                Maior retração histórica suportada no período (TWR)
               </p>
             </div>
 

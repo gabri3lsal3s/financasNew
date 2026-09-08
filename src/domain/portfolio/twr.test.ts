@@ -159,12 +159,13 @@ describe("TWR — Time-Weighted Return (Padrão CVM/ANBIMA)", () => {
     it("compara Modified Dietz nos 32 meses com fluxos corretos", () => {
       let prevCost = 0;
       const dietzPoints: TwrMonthlyInputPoint[] = realPortfolioData.map((pt) => {
-        const flow = Math.round((pt.totalCostBRL - prevCost) * 100) / 100;
-        prevCost = pt.totalCostBRL;
+        const cost = pt.totalCostBRL ?? 0;
+        const flow = Math.round((cost - prevCost) * 100) / 100;
+        prevCost = cost;
         return {
           month: pt.month,
           totalValueBRL: pt.totalValueBRL,
-          totalCostBRL: pt.totalCostBRL,
+          totalCostBRL: cost,
           netExternalCashFlowBRL: flow,
         };
       });

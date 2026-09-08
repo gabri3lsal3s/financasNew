@@ -205,20 +205,21 @@ function renderResumo(entry = "/investments") {
 }
 
 describe("ResumoTab", () => {
-  it("renderiza o card de Caixa em primeiro lugar com ações de editar e excluir, e não renderiza card de ativos em carteira", () => {
+  it("renderiza o card exclusivo de Caixa & Liquidez com ações de editar e excluir, e o grid de 4 KPIs de performance", () => {
     renderResumo();
 
-    // Card de caixa
-    expect(screen.getByText("Saldo em caixa")).toBeInTheDocument();
+    // Card exclusivo de caixa & liquidez
+    expect(screen.getByText(/Saldo em Caixa & Liquidez/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Editar saldo em caixa/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Excluir ativo de caixa/i })).toBeInTheDocument();
 
-    // Outros KPIs
+    // 4 KPIs de performance
     expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();
-    expect(screen.getByText("TIR (Fluxo do Bolso)")).toBeInTheDocument();
+    expect(screen.getByText("Rentabilidade")).toBeInTheDocument();
     expect(screen.getByText("Resultado Histórico")).toBeInTheDocument();
+    expect(screen.getByText("TIR (Fluxo do Bolso)")).toBeInTheDocument();
 
-    // Card removido
+    // Cards não renderizados
     expect(screen.queryByText("Ativos em carteira")).not.toBeInTheDocument();
     expect(screen.queryByText("Rentabilidade Global")).not.toBeInTheDocument();
   });
@@ -235,12 +236,20 @@ describe("ResumoTab", () => {
   });
 
 
-  it("renderiza a seção de Evolução Histórica (Snapshots Mensais) com os meses da série", () => {
+  it("renderiza a seção de Evolução Histórica no formato carrossel com meses formatados e abre o diálogo analítico", async () => {
+    const user = userEvent.setup();
     renderResumo();
-    expect(screen.getByText("Evolução Histórica (Snapshots Mensais)")).toBeInTheDocument();
-    expect(screen.getByText("2026-07")).toBeInTheDocument();
-    expect(screen.getByText("2026-08")).toBeInTheDocument();
-    expect(screen.getAllByText("Resultado Total").length).toBeGreaterThan(0);
+
+    expect(screen.getByText("Evolução Histórica")).toBeInTheDocument();
+    expect(screen.getByText("Jul/2026")).toBeInTheDocument();
+    expect(screen.getByText("Ago/2026")).toBeInTheDocument();
+    expect(screen.getAllByText("Retorno Total").length).toBeGreaterThan(0);
+
+    const tableBtn = screen.getByRole("button", { name: /Ver extrato analítico completo/i });
+    expect(tableBtn).toBeInTheDocument();
+    await user.click(tableBtn);
+
+    expect(screen.getByText("Extrato Analítico de Evolução Patrimonial")).toBeInTheDocument();
   });
 
   it("renderiza o card adaptativo de Rentabilidade da Carteira com fallback para Custódia Aberta", () => {

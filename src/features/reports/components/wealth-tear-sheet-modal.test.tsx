@@ -1,26 +1,75 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { WealthTearSheetModal } from "./wealth-tear-sheet-modal";
-import type { AllocationAnalysisResult, ConcentrationRiskResult } from "@/domain/portfolio";
+import type { AllocationAnalysisResult, ConcentrationRiskResult } from "@/domain/reports";
 
 const mockAllocation: AllocationAnalysisResult = {
+  totalBRL: 100000,
   alignmentScore: 99,
   classGaps: [
-    { assetClass: "FIIs", currentPct: 23.5, targetPct: 25.0, gapBRL: 1613.53, gapPct: -1.5, status: "below" },
-    { assetClass: "Ações", currentPct: 26.0, targetPct: 25.0, gapBRL: -1080.0, gapPct: 1.0, status: "above" },
+    {
+      assetClass: "FIIs",
+      currentBRL: 23500,
+      currentPct: 23.5,
+      targetPct: 25.0,
+      gapBRL: 1613.53,
+      gapPct: -1.5,
+      status: "deficit",
+      recommendedOrder: 1,
+    },
+    {
+      assetClass: "Ações",
+      currentBRL: 26000,
+      currentPct: 26.0,
+      targetPct: 25.0,
+      gapBRL: -1080.0,
+      gapPct: 1.0,
+      status: "surplus",
+      recommendedOrder: 2,
+    },
   ],
-  topDeficitClass: { assetClass: "FIIs", currentPct: 23.5, targetPct: 25.0, gapBRL: 1613.53, gapPct: -1.5, status: "below" },
-  topDeficitSector: { sectorName: "Estados Unidos", gapBRL: 500 },
+  sectorGaps: [],
+  assetGaps: [],
+  topDeficitClass: {
+    assetClass: "FIIs",
+    currentBRL: 23500,
+    currentPct: 23.5,
+    targetPct: 25.0,
+    gapBRL: 1613.53,
+    gapPct: -1.5,
+    status: "deficit",
+    recommendedOrder: 1,
+  },
+  topDeficitSector: {
+    className: "Internacional",
+    sectorName: "Estados Unidos",
+    currentBRL: 2000,
+    currentPct: 2.0,
+    targetPctInClass: 50,
+    effectiveTargetPct: 10,
+    targetIdealBRL: 2500,
+    gapBRL: 500,
+    gapPct: -1.0,
+    status: "deficit",
+    recommendedOrder: 1,
+  },
+  topDeficitAsset: null,
+  treeNodes: [],
 };
 
 const mockConcentration: ConcentrationRiskResult = {
-  singleAssetDominance: { ticker: "TESOURO-SELIC-31", pct: 8.8 },
-  top3ConcentrationPct: 20.0,
-  top5ConcentrationPct: 30.0,
-  hhi: 500,
-  isDiversified: true,
-  riskLevel: "low",
-  alerts: [],
+  totalBRL: 100000,
+  top5BRL: 30000,
+  top5Pct: 30.0,
+  top10BRL: 50000,
+  top10Pct: 50.0,
+  singleAssetDominance: { ticker: "TESOURO-SELIC-31", valueBRL: 8800, pct: 8.8 },
+  sectorExposure: [],
+  topSectorDominance: null,
+  top3SectorsPct: 20.0,
+  currencyExposure: { brlBRL: 80000, brlPct: 80, usdBRL: 20000, usdPct: 20 },
+  riskScore: 85,
+  riskAlerts: [],
 };
 
 describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executiva", () => {

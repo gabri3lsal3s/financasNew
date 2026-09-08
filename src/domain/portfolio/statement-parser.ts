@@ -169,6 +169,7 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
     month: number;
     appliedValue: number;
     grossBalance?: number;
+    ratePct?: number;
   }[] = [];
 
   let skippedCount = 0;

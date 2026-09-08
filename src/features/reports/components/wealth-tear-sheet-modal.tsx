@@ -14,6 +14,7 @@ import {
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { numberToCents } from "@/domain/money";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import {
@@ -353,7 +354,9 @@ export function WealthTearSheetModal({
         <strong>
           <MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" />
         </strong>{" "}
-        sob custódia frente a um custo de aquisição de{" "}
+        sob custódia (sendo{" "}
+        <MoneyText cents={numberToCents(totalInvestedValueBRL)} className="inline font-medium" /> em ativos e{" "}
+        <MoneyText cents={numberToCents(cashBRL ?? 0)} className="inline font-medium" /> em reserva de caixa) frente a um custo de aquisição de{" "}
         <strong>
           <MoneyText cents={numberToCents(totalCostBRL)} className="inline font-bold" />
         </strong>
@@ -375,14 +378,14 @@ export function WealthTearSheetModal({
           tone="positive"
           className="inline font-bold text-positive-strong"
         />{" "}
-        em proventos recebidos
+        em proventos recebidos*
         {Math.abs(effectiveRealizedGainBRL) >= 0.01 ? (
           <>
             . Somado ao resultado {effectiveRealizedGainBRL >= 0 ? "bruto realizado" : "realizado"} de posições encerradas (
             <MoneyText
               cents={numberToCents(effectiveRealizedGainBRL)}
               tone={effectiveRealizedGainBRL >= 0 ? "positive" : "negative"}
-              sign="always"
+              sign="explicit"
               className="inline font-bold"
             />
             ), o <strong>Resultado Econômico Histórico Consolidado totaliza{" "}
@@ -443,7 +446,7 @@ export function WealthTearSheetModal({
         ) : null}
         {Boolean(allocationAnalysis.topDeficitSector && allocationAnalysis.topDeficitSector.gapBRL > 0 && sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)) && (
           <>
-            Em nível setorial, o maior distanciamento localiza-se em{" "}
+            Em nível setorial/segmento, o maior distanciamento localiza-se em{" "}
             <strong>
               {sanitizeReportText(allocationAnalysis.topDeficitSector?.sectorName)}
             </strong>.{" "}
@@ -471,6 +474,8 @@ export function WealthTearSheetModal({
     );
   }, [
     totalBRL,
+    totalInvestedValueBRL,
+    cashBRL,
     totalCostBRL,
     unrealizedPnlBRL,
     unrealizedPnlPct,
@@ -634,38 +639,49 @@ export function WealthTearSheetModal({
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {allocationAnalysis.classGaps.map((cg) => (
-                <tr key={cg.assetClass} className="even:bg-muted/20 print:even:bg-slate-50/50">
-                  <td className="py-1.5 px-3 font-semibold text-foreground capitalize">
-                    {cg.assetClass}
-                  </td>
-                  <td className="py-1.5 px-2.5 text-right num font-mono font-bold text-foreground">
-                    <MoneyText cents={numberToCents(cg.currentBRL)} tone="default" />
-                  </td>
-                  <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground">
-                    {formatPercent(cg.currentPct)}%
-                  </td>
-                  <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground">
-                    {formatPercent(cg.targetPct)}%
-                  </td>
-                  <td className="py-1.5 px-2.5 text-right num font-mono">
-                    {cg.gapBRL > 0 ? (
-                      <MoneyText cents={numberToCents(cg.gapBRL)} className="font-bold text-primary-strong" />
-                    ) : (
-                      <span className="text-muted-foreground/60">—</span>
-                    )}
-                  </td>
-                  <td className="py-1.5 px-3 text-center">
-                    <Badge
-                      variant={cg.gapBRL > 0 ? "default" : "muted"}
-                      size="xs"
-                      className="font-bold font-sans"
-                    >
-                      {cg.gapBRL > 0 ? "Abaixo da Meta" : cg.currentPct > cg.targetPct && cg.targetPct > 0 ? "Acima da Meta" : "Equilibrado"}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
+              {allocationAnalysis.classGaps.map((cg) => {
+                const targetIdealBRL = totalBRL * (cg.targetPct / 100);
+                const deviationBRL = Math.round((cg.currentBRL - targetIdealBRL) * 100) / 100;
+                const isDeficit = deviationBRL < -1.0;
+                const isSurplus = deviationBRL > 1.0;
+
+                return (
+                  <tr key={cg.assetClass} className="even:bg-muted/20 print:even:bg-slate-50/50">
+                    <td className="py-1.5 px-3 font-semibold text-foreground capitalize">
+                      {cg.assetClass}
+                    </td>
+                    <td className="py-1.5 px-2.5 text-right num font-mono font-bold text-foreground">
+                      <MoneyText cents={numberToCents(cg.currentBRL)} tone="default" />
+                    </td>
+                    <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground">
+                      {formatPercent(cg.currentPct)}%
+                    </td>
+                    <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground">
+                      {formatPercent(cg.targetPct)}%
+                    </td>
+                    <td className="py-1.5 px-2.5 text-right num font-mono">
+                      <MoneyText
+                        cents={numberToCents(deviationBRL)}
+                        sign="explicit"
+                        tone={isDeficit ? "negative" : isSurplus ? "default" : "positive"}
+                        className={cn(
+                          "font-bold",
+                          isDeficit ? "text-primary-strong" : "text-muted-foreground",
+                        )}
+                      />
+                    </td>
+                    <td className="py-1.5 px-3 text-center">
+                      <Badge
+                        variant={isDeficit ? "default" : isSurplus ? "muted" : "positive"}
+                        size="xs"
+                        className="font-bold font-sans"
+                      >
+                        {isDeficit ? "Abaixo da Meta" : isSurplus ? "Acima da Meta" : "Equilibrado"}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -740,7 +756,7 @@ export function WealthTearSheetModal({
       {donutData.classSegments.length > 0 && (
         <section
           aria-label="Detalhamento Gráfico de Alocação e Setores"
-          className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-auto print:break-inside-auto"
+          className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid print:break-before-page break-before-page"
         >
           <div className="report-section-header flex items-center justify-between border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5">
@@ -948,7 +964,7 @@ export function WealthTearSheetModal({
       {/* 10. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021). Rentabilidade passada não representa garantia de retorno futuro."
+        disclaimer="Documento estritamente informativo gerado automaticamente com base nos dados e metas parametrizados pelo titular. Proventos reportados com base no valor líquido creditado em conta (isentos para dividendos e FIIs locais; líquidos de 15% retidos na fonte para JCP e 30% retidos pelo IRS para ativos nos EUA). Valores de retorno contábil sob custódia aberta não deduzem IR latente sobre ganhos não realizados. Não constitui análise, consultoria, recomendação de compra, venda ou alocação de valores mobiliários (Resoluções CVM nº 19 e 20/2021). Rentabilidade passada não representa garantia de retorno futuro."
       />
     </ReportDocumentLayout>
   );

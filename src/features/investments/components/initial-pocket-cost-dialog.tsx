@@ -208,7 +208,7 @@ export function InitialPocketCostDialog({
       let rateTag = "";
       if (newRatePctText.trim()) {
         const parsedRate = parseBRLNumber(newRatePctText);
-        if (!isNaN(parsedRate)) {
+        if (parsedRate !== null && !isNaN(parsedRate)) {
           rateTag = ` [Rent: ${parsedRate > 0 ? "+" : ""}${parsedRate.toFixed(2)}%]`;
         }
       } else if (editingMarco) {
@@ -350,17 +350,17 @@ export function InitialPocketCostDialog({
         if (newRows.length === 0) {
           pushToast({
             title: "Nenhum marco novo para importar",
-            description: `Todos os ${skippedExistingRows} meses do extrato já constam na linha do tempo.`,
+            description: `Todos os ${skippedExistingRows.length} meses do extrato já constam na linha do tempo.`,
             variant: "warning",
           });
           setIsImporting(false);
           return;
         }
 
-        if (skippedExistingRows > 0) {
+        if (skippedExistingRows.length > 0) {
           pushToast({
             title: "Meses duplicados ignorados",
-            description: `${skippedExistingRows} movimentações já existentes foram mantidas intactas.`,
+            description: `${skippedExistingRows.length} movimentações já existentes foram mantidas intactas.`,
             variant: "default",
           });
         }
@@ -894,7 +894,7 @@ export function InitialPocketCostDialog({
                     Marcos Registrados ({historicalContributions.length})
                   </span>
                   {snapshotsQuery.data && snapshotsQuery.data.length > 0 && (
-                    <Badge variant="outline" size="xs" className="font-normal text-[11px] text-muted-foreground">
+                    <Badge variant="muted" size="xs" className="font-normal text-[11px] text-muted-foreground">
                       {snapshotsQuery.data.length} snapshots (TWR)
                     </Badge>
                   )}

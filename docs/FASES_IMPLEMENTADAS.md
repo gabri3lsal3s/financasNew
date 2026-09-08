@@ -1562,6 +1562,31 @@
   - `ESPECIFICACAO_TECNICA.md`
   - `docs/FASES_IMPLEMENTADAS.md`
 
+### Reorganização dos KPIs de Investimentos, Card Exclusivo de Caixa & Carrossel de Snapshots (2026-09-07)
+
+- **Problema:** O grid de KPIs da carteira continha 5 cards (`lg:grid-cols-5`), misturando 4 métricas analíticas de retorno com o saldo de Caixa (que tem ações de CRUD embutidas), gerando assimetria visual e deixando o card órfão em tablets (`sm:grid-cols-2`). Além disso, a seção de snapshots mensais expandia uma grade vertical de até 32 cards repetitivos com 5 linhas de texto cada, gerando poluição e scroll excessivo.
+- **Solução:**
+  1. **Grid Simétrico de 4 KPIs:** Reorganizado para `lg:grid-cols-4 sm:grid-cols-2 grid-cols-1` contendo exclusivamente as métricas de performance (*Patrimônio Total*, *Rentabilidade*, *Resultado Histórico* e *TIR*).
+  2. **Card Exclusivo de Caixa & Liquidez (`CashKpiCard`):** Promovido para um banner horizontal destacado logo abaixo dos KPIs, com badge de *Pólvora Seca*, atalhos diretos para ajustar o saldo e simular aporte no rebalanceador.
+  3. **Carrossel Horizontal de Snapshots (`PortfolioSnapshotsCarousel`):** Fita deslizante na página com cards modernos ordenados do mais recente ao mais antigo, com checkpoints de patrimônio, mini-grid 2x2 interno e botões de navegação por setas no desktop/tablet.
+  4. **Diálogo da Tabela Analítica (`PortfolioSnapshotsDialog`):** Modal amplo (`size="2xl"`, padrão CVM/ANBIMA) para auditoria completa de 12 a 32+ meses, com filtro por ano, KPIs de resumo do período e suporte a impressão/PDF.
+  5. **Helper de Data:** Criação da função pura `formatMonthYear(monthStr)` em `src/lib/date.ts` para formatação determinística pt-BR ("Set/2026").
+- **Arquivos alterados/criados:**
+  - `src/components/modules/cash-kpi-card.tsx`
+  - `src/components/modules/cash-kpi-card.test.tsx`
+  - `src/features/investments/components/portfolio-snapshots-carousel.tsx` (novo)
+  - `src/features/investments/components/portfolio-snapshots-carousel.test.tsx` (novo)
+  - `src/features/investments/components/portfolio-snapshots-dialog.tsx` (novo)
+  - `src/features/investments/components/portfolio-snapshots-dialog.test.tsx` (novo)
+  - `src/features/investments/components/index.ts`
+  - `src/features/investments/pages/resumo-tab.tsx`
+  - `src/features/investments/pages/resumo-tab.test.tsx`
+  - `src/lib/date.ts`
+  - `src/lib/date.test.ts`
+  - `ESPECIFICACAO_TECNICA.md`
+  - `docs/PROJECT_STRUCTURE.md`
+  - `docs/FASES_IMPLEMENTADAS.md`
+
 ## Notas finais
 
 - **Arquitetura:** todo cálculo de negócio vive em `src/domain/` como função pura testada; UI em `components/`; dados em `src/data/` (só acessado por `src/state/`); telas em `features/` — ver `docs/ARCHITECTURE.md`.

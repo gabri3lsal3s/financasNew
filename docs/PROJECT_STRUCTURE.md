@@ -105,7 +105,7 @@
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
     │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section (F24),
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
-    │   │   │                      #   cash-kpi-card (card do saldo em Caixa com ações de Editar/Excluir embutidas),
+    │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
     │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,
     │   │   │                      #     report-donut-chart, report-stacked-bar, report-risk-gauge, report-class-tables,
     │   │   │                      #     report-redemptions-table F80, report-allocation-donuts F84)…
@@ -142,6 +142,7 @@
     │   │                          #       fixed-income-form-fields (F72), calibrate-fixed-income-dialog (F72), asset-edit-dialog (F72), asset-detail-sheet,
     │   │                          #       transaction-form-dialog, transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
     │   │                          #       portfolio-tax-report, portfolio-darf-monitor, allocation-breakdown-dialog,
+    │   │                          #       portfolio-snapshots-carousel, portfolio-snapshots-dialog,
     │   │                          #       initial-pocket-cost-dialog (calibração do Marco Zero) com barrels components/index.ts e index.ts
     │   │
     │   └── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)

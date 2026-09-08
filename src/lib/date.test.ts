@@ -3,6 +3,7 @@ import {
   currentMonth,
   currentYear,
   formatDateBR,
+  formatMonthYear,
   isValidMonth,
   isValidYear,
   monthLabel,
@@ -43,6 +44,12 @@ describe("lib/date (§4.1 — meses e anos em timezone local, sem toISOString)",
 
   it("monthLabel formata pt-BR curto", () => {
     expect(monthLabel("2026-08")).toMatch(/ago/i);
+  });
+
+  it("formatMonthYear formata competência como Mês/Ano determinístico", () => {
+    expect(formatMonthYear("2026-09")).toBe("Set/2026");
+    expect(formatMonthYear("2025-01")).toBe("Jan/2025");
+    expect(formatMonthYear("invalid")).toBe("invalid");
   });
 
   it("currentMonth retorna o mês corrente no fuso local", () => {

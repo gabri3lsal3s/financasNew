@@ -54,6 +54,29 @@ export function monthRange(month: string): MonthRange {
   return { start: `${month}-01`, end: `${shiftMonth(month, 1)}-01` };
 }
 
+const MONTH_NAMES_SHORT = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+] as const;
+
+/** Formata YYYY-MM para formato amigável pt-BR: "Set/2026". */
+export function formatMonthYear(monthStr: string): string {
+  if (!isValidMonth(monthStr)) return monthStr;
+  const [year, monthNum] = monthStr.split("-").map(Number);
+  const name = MONTH_NAMES_SHORT[(monthNum ?? 1) - 1] ?? "";
+  return `${name}/${year}`;
+}
+
 /** Rótulo curto pt-BR ("ago/2026" → "Ago 2026"). */
 export function monthLabel(month: string): string {
   const [year, monthNum] = month.split("-").map(Number);

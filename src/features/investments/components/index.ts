@@ -43,5 +43,11 @@ export type { AssetDetailSheetProps } from "./asset-detail-sheet";
 export type { AssetEditDialogProps } from "./asset-edit-dialog";
 export type { QuickTransactionSheetProps } from "./quick-transaction-sheet";
 
+export { PortfolioSnapshotsCarousel } from "./portfolio-snapshots-carousel";
+export { PortfolioSnapshotsDialog } from "./portfolio-snapshots-dialog";
+export type { PortfolioSnapshotsCarouselProps } from "./portfolio-snapshots-carousel";
+export type { PortfolioSnapshotsDialogProps } from "./portfolio-snapshots-dialog";
+
 export * from "./targets";
+
 

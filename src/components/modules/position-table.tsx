@@ -1221,14 +1221,14 @@ export function PositionTable({
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
             {availableClasses.length > 1 ? (
-              <div className="flex flex-wrap items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5 -mx-1 px-1">
                 <button
                   type="button"
                   onClick={() => handleClassChange(null)}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
+                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap",
                     selectedClass === null
                       ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                       : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
@@ -1244,7 +1244,7 @@ export function PositionTable({
                       type="button"
                       onClick={() => handleClassChange(isSelected ? null : cls)}
                       className={cn(
-                        "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
+                        "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap",
                         isSelected
                           ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                           : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
@@ -1262,7 +1262,7 @@ export function PositionTable({
                 type="button"
                 onClick={() => setHideClosed(!hideClosed)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 border",
+                  "inline-flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 border whitespace-nowrap self-start sm:self-auto",
                   !hideClosed
                     ? "bg-surface border-primary/50 text-foreground font-semibold shadow-xs"
                     : "bg-surface-hover/60 border-border/60 text-muted-foreground hover:text-foreground",
@@ -1301,40 +1301,58 @@ export function PositionTable({
             return (
               <li
                 key={group.className}
-                className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3 shadow-xs"
+                className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs"
               >
-                {/* Cabeçalho de Categoria Mobile */}
+                {/* Cabeçalho de Categoria Mobile em 2 Linhas Semânticas */}
                 <button
                   type="button"
                   onClick={() => toggleClassCollapse(group.className)}
                   aria-expanded={isExpanded}
                   aria-label={`Classe ${group.className}, ${group.count} ativos, total de ${group.totalValueBRL} reais`}
-                  className="flex w-full items-center justify-between gap-2 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg"
+                  className="flex w-full flex-col gap-2.5 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg transition-colors hover:bg-surface-hover/50 p-1 -m-1"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-md border", meta.badgeClass)}>
-                      <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-                    </span>
-                    <div className="flex items-baseline gap-1.5 min-w-0">
-                      <span className="truncate text-sm font-bold text-foreground">{group.className}</span>
-                      <span className="text-xs text-muted-foreground">({group.count})</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex flex-col items-end">
-                      <div className="flex items-center gap-1">
-                        <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="text-xs font-bold text-foreground" />
-                        <span className="text-[11px] text-muted-foreground">({group.totalPct.toFixed(1)}%)</span>
+                  {/* Linha 1: Identificação da Classe (Ícone + Nome Completo + Quantidade ... Chevron) */}
+                  <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg border", meta.badgeClass)}>
+                        <Icon className="size-4 shrink-0" aria-hidden="true" />
+                      </span>
+                      <div className="flex items-baseline gap-1.5 min-w-0">
+                        <span className="text-sm font-bold text-foreground tracking-tight">
+                          {group.className}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-medium">
+                          ({group.count} {group.count === 1 ? "ativo" : "ativos"})
+                        </span>
                       </div>
+                    </div>
+                    <span className="text-muted-foreground shrink-0 p-1">
+                      {isExpanded ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
+                    </span>
+                  </div>
+
+                  {/* Linha 2: Métricas Financeiras (Saldo à esquerda | % e Rentabilidade à direita) */}
+                  <div className="flex items-center justify-between gap-2 w-full pt-2 border-t border-border/40">
+                    <div className="flex items-baseline gap-1.5 min-w-0">
+                      <span className="text-[11px] text-muted-foreground">Saldo:</span>
+                      <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="text-xs font-bold text-foreground" />
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[11px] font-medium text-muted-foreground bg-surface-hover/80 px-1.5 py-0.5 rounded border border-border/40">
+                        {group.totalPct.toFixed(1)}%
+                      </span>
                       {groupRentab !== null ? (
-                        <span className={cn("text-[10px] font-bold", rentabTone)}>
+                        <span
+                          className={cn(
+                            "text-[11px] font-semibold px-1.5 py-0.5 rounded",
+                            rentabTone,
+                            groupRentab >= 0 ? "bg-positive/10" : "bg-negative/10",
+                          )}
+                        >
                           {formatSignedPct(groupRentab)}
                         </span>
                       ) : null}
                     </div>
-                    <span className="text-muted-foreground">
-                      {isExpanded ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
-                    </span>
                   </div>
                 </button>
 

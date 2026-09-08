@@ -103,11 +103,11 @@ export function ReportAllocationDonuts({
             <div className="flex items-center gap-1.5">
               <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
               <h4 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
-                Diversificação & Exposição por Setor Econômico ({numSectors} {numSectors === 1 ? "setor" : "setores"})
+                Diversificação por Segmento & Indexador ({numSectors} {numSectors === 1 ? "segmento" : "segmentos"})
               </h4>
             </div>
             <span className="text-[10px] text-muted-foreground font-mono num">
-              Representatividade Setorial
+              Representatividade por Atividade
             </span>
           </div>
 
@@ -171,11 +171,11 @@ export function ReportAllocationDonuts({
             <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
             <div className="flex flex-col min-w-0">
               <h3 className="text-xs sm:text-sm font-bold text-foreground uppercase tracking-wider">
-                Diversificação por Setor Econômico
+                Diversificação por Segmento & Indexador
               </h3>
               <span className="text-[11px] text-muted-foreground leading-tight">
-                Exposição setorial detalhada da carteira ({numSectors}{" "}
-                {numSectors === 1 ? "setor" : "setores"})
+                Exposição por atividade econômica e indexadores ({numSectors}{" "}
+                {numSectors === 1 ? "segmento" : "segmentos"})
               </span>
             </div>
           </div>

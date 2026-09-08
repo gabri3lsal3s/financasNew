@@ -1,5 +1,18 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.31** registra o **Saneamento Integral de 10 Incongruências Contábeis, Numéricas e Metodológicas no Dossiê Executivo de Investimentos** (2026-09-07):
+> - **(1) Reconciliação Centavo a Centavo da Síntese Executiva**: Abertura formal da composição patrimonial na narrativa de abertura discriminando ativos mobiliários (R$ 107.932,19) e reserva de caixa (R$ 6,91), fechando a equação contábil exata da valorização de cota ($107.932,19 - 98.546,13 = \text{R\$ } 9.386,06$);
+> - **(2) Diagnóstico Integral de Gaps de Alocação**: Preenchimento completo da coluna de desvios para todas as 5 classes com sinalização explícita de superávits (`+R$ 1.035,91` em Ações, `+R$ 113,88` em Renda Fixa, `+R$ 456,82` em Internacional, `+R$ 6,91` em Caixa) e déficits (`-R$ 1.613,53` em FIIs), eliminando células em branco (`—`);
+> - **(3) Max Drawdown sobre Cota Acumulada (TWR)**: Motor `risk-metrics.ts` corrigido para construir a curva composta de cotas teóricas ($\prod (1 + r_t)$), isolando resgates nominais em dinheiro e reportando o valor matematicamente real de **-3,6%** (em vez dos -6,7% distorcidos por retiradas);
+> - **(4) Harmonização de Spreads de Benchmarks & Unidades**: Apuração do spread linear do IPCA em pontos percentuais consistentes com a visualização ($9,4\% - 4,4\% = \mathbf{+5,0\text{ p.p.}}$), com indicação explícita do Ganho Real Geométrico de Fisher (+4,7%) no cabeçalho;
+> - **(5) Rigor Técnico no Índice Sharpe**: Eliminação do rótulo suavizado "Neutro/Defensivo" para Sharpe negativo, classificando qualquer Sharpe $< 0$ estritamente como **"Abaixo do CDI"** com sinalização semântica de alerta;
+> - **(6) Subtotais de Classes com Variação de Cota Real**: Cálculo e exibição da valorização média ponderada de cota por classe no `tfoot` da tabela de custódia, extinguindo o traço fixo (`—`);
+> - **(7) Transparência Cambial nos Ativos Internacionais**: Explicitação da coluna `Var. (USD)` para oscilação na moeda de origem e adição de nota metodológica de rodapé explicando o Retorno Total consolidado em reais (ativo + câmbio BRL/USD + proventos);
+> - **(8) Segregação Taxonômica de Segmentos e Indexadores**: Renomeação do donut e legenda para *"Diversificação por Segmento & Indexador"*, eliminando a confusão entre indexadores contratuais de dívida e setores industriais;
+> - **(9) Blindagem de Quebra de Página (Eliminação de Cabeçalho Órfão)**: Adição de `print:break-before-page break-before-page` na seção de gráficos para impedir que títulos fiquem isolados no rodapé da Página 4;
+> - **(10) Notas de Transparência Fiscal**: Inserção de nota de rodapé e disclaimer institucional informando a isenção de dividendos/FIIs, retenções na fonte (JCP 15%, IRS 30%) e a natureza bruta da custódia aberta sem IR latente deduzido;
+> - **(11) Suíte 100% Verde & Governança**: 283 arquivos de teste / 2.029 testes passando (100% verde), zero erros de typecheck (`tsc --noEmit`) e lint estrito (`eslint .`).
+
 > **v2.30** registra o **Refinamento Editorial, Badges Padronizados, Cabeçalhos de Custódia e Padronização Executiva dos Cards de Metodologia (Opção A)** (2026-09-07):
 > - **(1) Padronização Executiva dos Cards de Rentabilidade e Metodologias (Opção A)**: Reestruturação completa dos 4 cards analíticos no Dossiê Patrimonial (`WealthTearSheetModal`) e dos 5 cards no modal explicativo de investimentos (`ResumoTab`):
 >   - Cabeçalho padronizado com ícones semânticos neutros (`TrendingUp`, `Activity`, `Briefcase`, `CircleDollarSign`, `Landmark`) no padrão *icon-only* (`size-3.5 text-muted-foreground`), em estrita conformidade com a Regra 13 de governança;

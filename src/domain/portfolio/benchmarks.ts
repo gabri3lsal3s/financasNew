@@ -73,7 +73,11 @@ export function compareWithBenchmark(
   portfolioRatePct: number,
   benchmarkRatePct: number,
 ): BenchmarkComparisonItem {
-  const alphaPct = Math.round((portfolioRatePct - benchmarkRatePct) * 100) / 100;
+  // Arredonda para 1 casa decimal (precisão visual exibida no relatório),
+  // garantindo que a diferença linear (ex.: 9,4% - 4,4% = +5,0 p.p.) seja exata.
+  const dispPort = Math.round(portfolioRatePct * 10) / 10;
+  const dispBench = Math.round(benchmarkRatePct * 10) / 10;
+  const alphaPct = Math.round((dispPort - dispBench) * 10) / 10;
   
   let pctOfBenchmark: number | null = null;
   if (benchmarkRatePct > 0) {

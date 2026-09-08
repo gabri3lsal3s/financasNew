@@ -134,6 +134,10 @@ export interface PortfolioPosition {
    */
   monthlySeries: PortfolioMonthlySeriesPoint[];
   /**
+   * Série mensal completa histórica sem limite de meses (para auditoria e tabelas analíticas).
+   */
+  allMonthlySeries: PortfolioMonthlySeriesPoint[];
+  /**
    * Aporte líquido do mês corrente em centavos (F19 & F36).
    */
   monthlyContributionCents: number;
