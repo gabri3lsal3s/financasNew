@@ -36,36 +36,27 @@ type AporteSubTab = "calculadora" | "metas" | "historico";
  * - Histórico: lista de aportes registrados por mês (§F37)
  */
 export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
   const executeBatch = useExecutePortfolioBatchAporte();
 
-  const rawSubTab = (searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba"))?.toLowerCase();
-  const hasValorParam = Boolean(searchParams.get("valor"));
-  const validSubTab = hasValorParam
-    ? "calculadora"
-    : rawSubTab === "metas" || rawSubTab === "historico" || rawSubTab === "calculadora"
-      ? rawSubTab
-      : null;
-  const [selectedSubTab, setSelectedSubTab] = useState<AporteSubTab>("calculadora");
-  const subTab: AporteSubTab = validSubTab ?? selectedSubTab;
+  const [selectedSubTab, setSelectedSubTab] = useState<AporteSubTab>(() => {
+    const raw = (searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba"))?.toLowerCase();
+    return raw === "metas" || raw === "historico" ? raw : "calculadora";
+  });
+  const subTab: AporteSubTab = selectedSubTab;
 
-  const [userAporteCents, setUserAporteCents] = useState<number | null>(null);
-  const paramValorCents = (() => {
-    const raw = searchParams.get("valor");
-    if (!raw) return 0;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 0;
-  })();
+  // Valor do aporte: por padrão ZERO (R$ 0,00)
+  const [userAporteCents, setUserAporteCents] = useState<number>(0);
 
   const animatedRafRef = useRef<number | null>(null);
   const lastParamValorRef = useRef<string | null>(null);
 
   const animateToCents = useCallback((targetCents: number, fromCents?: number) => {
-    const baseFrom = fromCents !== undefined ? fromCents : (userAporteCents ?? 0);
+    const baseFrom = fromCents !== undefined ? fromCents : userAporteCents;
 
     if (typeof window === "undefined") {
       setUserAporteCents(targetCents);
@@ -76,7 +67,9 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    if (prefersReducedMotion || targetCents === baseFrom) {
+    const hasRaf = typeof window.requestAnimationFrame === "function";
+
+    if (prefersReducedMotion || !hasRaf || targetCents === baseFrom) {
       setUserAporteCents(targetCents);
       return;
     }
@@ -114,22 +107,43 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     };
   }, []);
 
+  // Ref para guardar o valor pendente de injeção via URL
+  const pendingInjectRef = useRef<number | null>(null);
+
+  // Passo 1 — Consome o parâmetro da URL e armazena em ref (sem setState no body do effect)
   useEffect(() => {
     const raw = searchParams.get("valor");
     if (raw && raw !== lastParamValorRef.current) {
       lastParamValorRef.current = raw;
       const parsed = Number(raw);
       if (Number.isFinite(parsed) && parsed > 0) {
-        const target = Math.round(parsed);
-        const raf = requestAnimationFrame(() => {
-          animateToCents(target, 0);
-        });
-        return () => cancelAnimationFrame(raf);
+        // Remove silenciosamente o parâmetro 'valor' da URL
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("valor");
+            return next;
+          },
+          { replace: true },
+        );
+        pendingInjectRef.current = Math.round(parsed);
       }
     }
+  }, [searchParams, setSearchParams]);
+
+  // Passo 2 — Dispara a animação após delay (600ms), aguardando a transição de rota fechar
+  // setState ocorre dentro do callback assíncrono do timer, não no body do effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (pendingInjectRef.current !== null) {
+        animateToCents(pendingInjectRef.current, 0);
+        pendingInjectRef.current = null;
+      }
+    }, 600);
+    return () => clearTimeout(timer);
   }, [searchParams, animateToCents]);
 
-  const aporteCents = userAporteCents ?? paramValorCents;
+  const aporteCents = userAporteCents;
   const setAporteCents = (val: number) => setUserAporteCents(val);
 
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);

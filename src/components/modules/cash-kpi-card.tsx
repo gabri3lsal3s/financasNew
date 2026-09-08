@@ -229,7 +229,7 @@ export function CashKpiCard({
                 className="flex-1 sm:flex-initial text-xs h-8 gap-1.5 cursor-pointer"
               >
                 <Coins className="size-3.5" aria-hidden="true" />
-                Aportar Caixa
+                Aportar
               </Button>
             ) : null}
           </>

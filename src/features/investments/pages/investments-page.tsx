@@ -43,7 +43,9 @@ export function InvestmentsPage() {
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set("tab", valid);
-        if (params) {
+        if (!params) {
+          next.delete("valor");
+        } else {
           Object.entries(params).forEach(([key, val]) => {
             next.set(key, String(val));
           });
