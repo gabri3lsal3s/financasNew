@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Layers, PieChart, Landmark, Calendar, TrendingUp, Percent, Scale } from "lucide-react";
+import { Layers, PieChart, Landmark, Calendar, TrendingUp, Scale, Activity, Briefcase, CircleDollarSign } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
@@ -13,6 +13,7 @@ import {
   ReportPerformanceChart,
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
+import { Badge } from "@/components/ui/badge";
 import { numberToCents } from "@/domain/money";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import {
@@ -440,14 +441,14 @@ export function WealthTearSheetModal({
             Todas as classes de ativos encontram-se atualmente equilibradas em relação às metas estipuladas.{" "}
           </>
         ) : null}
-        {allocationAnalysis.topDeficitSector && allocationAnalysis.topDeficitSector.gapBRL > 0 && sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName) ? (
+        {Boolean(allocationAnalysis.topDeficitSector && allocationAnalysis.topDeficitSector.gapBRL > 0 && sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)) && (
           <>
             Em nível setorial, o maior distanciamento localiza-se em{" "}
             <strong>
-              {sanitizeReportText(allocationAnalysis.topDeficitSector.sectorName)}
+              {sanitizeReportText(allocationAnalysis.topDeficitSector?.sectorName)}
             </strong>.{" "}
           </>
-        ) : null}
+        )}
         {intlPct > 0 ? (
           <>
             O portfólio mantém <strong>{formatPercent(intlPct)}%</strong> de exposição
@@ -457,7 +458,8 @@ export function WealthTearSheetModal({
           <>A totalidade dos ativos está alocada no mercado doméstico</>
         )}
         {topDominance.ticker && topDominance.ticker !== "N/A" && topDominance.pct > 0 ? (
-          <>, e a posição de maior peso individual é{" "}
+          <>
+            , e a posição de maior peso individual é{" "}
             <strong>{sanitizeReportText(topDominance.ticker)}</strong>,
             respondendo por <strong>{formatPercent(topDominance.pct)}%</strong> do
             patrimônio total.
@@ -654,17 +656,13 @@ export function WealthTearSheetModal({
                     )}
                   </td>
                   <td className="py-1.5 px-3 text-center">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                        cg.gapBRL > 0
-                          ? "bg-primary/10 text-primary-strong border border-primary/20"
-                          : cg.currentPct > cg.targetPct && cg.targetPct > 0
-                            ? "bg-muted/60 text-muted-foreground border border-border/80"
-                            : "bg-muted/60 text-muted-foreground border border-border/80"
-                      }`}
+                    <Badge
+                      variant={cg.gapBRL > 0 ? "default" : "muted"}
+                      size="xs"
+                      className="font-bold font-sans"
                     >
                       {cg.gapBRL > 0 ? "Abaixo da Meta" : cg.currentPct > cg.targetPct && cg.targetPct > 0 ? "Acima da Meta" : "Equilibrado"}
-                    </span>
+                    </Badge>
                   </td>
                 </tr>
               ))}
@@ -798,75 +796,151 @@ export function WealthTearSheetModal({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs w-full">
           {/* 1. TWR */}
-          <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-1.5 border-b border-border/60 pb-1">
-              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
-                <TrendingUp className="size-3.5 text-primary-strong" aria-hidden="true" />
-                1. TWR (Cotas — Padrão CVM / ANBIMA)
+          <div className="rounded-xl border border-border/80 bg-surface/40 print:bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
+              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5 min-w-0">
+                <TrendingUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">1. TWR (Cotas — Padrão CVM / ANBIMA)</span>
               </span>
-              <span className="font-mono font-bold text-[11px] text-positive-strong">
+              <Badge
+                variant={
+                  portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
+                    ? portfolioTwr.accumulatedRatePct >= 0
+                      ? "positive"
+                      : "negative"
+                    : "muted"
+                }
+                size="xs"
+                className="font-mono font-bold tracking-tight shrink-0"
+              >
                 {portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
                   ? `${portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}${portfolioTwr.accumulatedRatePct.toFixed(1)}%`
                   : "Em formação"}
-              </span>
+              </Badge>
             </div>
-            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
-              <strong>Métrica Oficial da Carteira:</strong> Mede a performance real das suas decisões de investimento pelo método de cotas. Isola aportes e resgates para que movimentações de capital não distorçam a rentabilidade percentual. Base recomendada para comparação direta com CDI e Ibovespa.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Métrica Oficial da Carteira
+              </span>
+              <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+                Apura a performance real das suas decisões de investimento pelo método de cotas. Isola aportes e resgates para que movimentações de capital não distorçam a rentabilidade percentual acumulada.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Comparação com CDI e Ibovespa
+              </Badge>
+            </div>
           </div>
 
           {/* 2. TIR */}
-          <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-1.5 border-b border-border/60 pb-1">
-              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1">
-                <Percent className="size-3.5 text-primary-strong" aria-hidden="true" />
-                2. Retorno do Bolso (TIR / XIRR)
+          <div className="rounded-xl border border-border/80 bg-surface/40 print:bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
+              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5 min-w-0">
+                <Activity className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">2. Retorno do Bolso (TIR / XIRR)</span>
               </span>
-              <span className="font-mono font-bold text-[11px] text-positive-strong">
+              <Badge
+                variant={
+                  portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                    ? portfolioIrr.annualizedRatePct >= 0
+                      ? "positive"
+                      : "negative"
+                    : "muted"
+                }
+                size="xs"
+                className="font-mono font-bold tracking-tight shrink-0"
+              >
                 {portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
                   ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
                   : "Em formação"}
-              </span>
+              </Badge>
             </div>
-            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
-              <strong>Retorno do Seu Fluxo Pessoal:</strong> Taxa anualizada (% a.a.) ponderada pelo dinheiro real que saiu do seu bolso para a corretora frente ao patrimônio atual. Pondera volume por tempo: períodos com maior capital investido exercem maior peso na taxa.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Retorno do Seu Fluxo Pessoal
+              </span>
+              <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+                Taxa anualizada (% a.a.) ponderada pelo dinheiro real que saiu do seu bolso para a corretora frente ao patrimônio atual. Pondera volume por tempo: períodos com maior capital investido exercem maior peso na taxa.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Eficiência do timing de aportes
+              </Badge>
+            </div>
           </div>
 
           {/* 3. Retorno Contábil */}
-          <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-1.5 border-b border-border/60 pb-1">
-              <span className="font-semibold text-foreground text-[11px]">
-                3. Retorno Contábil da Custódia Aberta
+          <div className="rounded-xl border border-border/80 bg-surface/40 print:bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
+              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5 min-w-0">
+                <Briefcase className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">3. Retorno Contábil da Custódia Aberta</span>
               </span>
-              <span className="font-mono font-bold text-[11px] text-positive-strong">
+              <Badge
+                variant={
+                  totalReturnPct !== null && totalReturnPct !== undefined
+                    ? totalReturnPct >= 0
+                      ? "positive"
+                      : "negative"
+                    : "muted"
+                }
+                size="xs"
+                className="font-mono font-bold tracking-tight shrink-0"
+              >
                 {totalReturnPct !== null && totalReturnPct !== undefined
                   ? formatSignedPct(totalReturnPct)
                   : "0,0%"}
-              </span>
+              </Badge>
             </div>
-            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
-              <strong>Ganho Estático das Posições Ativas:</strong> Mede estritamente a valorização das ações, FIIs e títulos em custódia hoje frente ao Preço Médio pago, somando os proventos recebidos dessas posições ativas. Não considera ativos já vendidos/vencidos nem o tempo decorrido.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Ganho Estático das Posições Ativas
+              </span>
+              <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+                Mede estritamente a valorização das ações, FIIs e títulos em custódia hoje frente ao Preço Médio pago, somando os proventos recebidos dessas posições ativas. Não considera ativos já vendidos/vencidos nem o tempo decorrido.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Posições em custódia ativa
+              </Badge>
+            </div>
           </div>
 
           {/* 4. Resultado Histórico */}
-          <div className="rounded-xl border border-border/80 bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-1.5 border-b border-border/60 pb-1">
-              <span className="font-semibold text-foreground text-[11px]">
-                4. Resultado Histórico (P&L Total em R$)
+          <div className="rounded-xl border border-border/80 bg-surface/40 print:bg-transparent p-3 print:border-border shadow-2xs w-full flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
+              <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5 min-w-0">
+                <CircleDollarSign className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">4. Resultado Histórico (P&L Total em R$)</span>
               </span>
-              <span className="font-mono font-bold text-[11px] text-positive-strong">
+              <Badge
+                variant={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "positive" : "negative"}
+                size="xs"
+                className="font-mono font-bold tracking-tight shrink-0"
+              >
                 <MoneyText
                   cents={numberToCents(allTimeEconomicPnlBRL ?? totalReturnBRL)}
                   tone={(allTimeEconomicPnlBRL ?? totalReturnBRL) >= 0 ? "positive" : "negative"}
                   sign="explicit"
                 />
-              </span>
+              </Badge>
             </div>
-            <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
-              <strong>Riqueza Efetiva Produzida:</strong> Consolida em reais todo o ganho líquido acumulado pela carteira desde o primeiro investimento. Soma os lucros brutos realizados em operações encerradas no passado, o ganho de capital aberto de hoje e a totalidade dos proventos já recebidos.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Riqueza Efetiva Produzida
+              </span>
+              <p className="text-[10.5px] leading-relaxed text-muted-foreground m-0">
+                Consolida em reais todo o ganho líquido acumulado pela carteira desde o primeiro investimento. Soma os lucros brutos realizados em operações encerradas no passado, o ganho de capital aberto de hoje e a totalidade dos proventos já recebidos.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Dimensão financeira total e caixa
+              </Badge>
+            </div>
           </div>
         </div>
       </section>

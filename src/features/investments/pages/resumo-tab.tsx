@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
+  Activity,
+  Briefcase,
+  CircleDollarSign,
   FileText,
   Info,
+  Landmark,
   LineChart,
   PieChart,
   Plus,
@@ -911,11 +915,14 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
       >
         <div className="flex flex-col gap-3.5 text-xs mt-2">
           {/* Ponto 1: Card 1 do Dashboard — Patrimônio Total & Retorno Contábil */}
-          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="font-semibold text-foreground text-sm">1. Patrimônio Total & Retorno Contábil</span>
+          <div className="rounded-xl border border-border/80 bg-surface/40 p-3.5 flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 flex-wrap">
+              <span className="font-semibold text-foreground text-sm flex items-center gap-1.5 min-w-0">
+                <Briefcase className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">1. Patrimônio Total & Retorno Contábil</span>
+              </span>
               <div className="flex items-center gap-1.5 shrink-0">
-                <Badge variant={totalReturnPnlBRL >= 0 ? "positive" : "negative"} size="sm" className="font-mono">
+                <Badge variant={totalReturnPnlBRL >= 0 ? "positive" : "negative"} size="xs" className="font-mono font-bold">
                   {totalReturnPct !== null ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%` : "—"}
                 </Badge>
                 <span className="font-mono text-xs font-semibold text-foreground">
@@ -923,61 +930,123 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                 </span>
               </div>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
-              <strong>O que avalia:</strong> O valor de mercado sob custódia hoje somado ao caixa. O <em>Retorno Contábil</em> reflete o ganho estático das posições abertas frente ao custo de aquisição mais proventos ativos. Não considera o tempo decorrido nem ativos já encerrados.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Ganho Estático das Posições Ativas
+              </span>
+              <p className="text-muted-foreground leading-relaxed m-0 text-xs">
+                O valor de mercado sob custódia hoje somado ao caixa. Reflete o ganho estático das posições abertas frente ao custo de aquisição mais proventos ativos. Não considera o tempo decorrido nem ativos já encerrados.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Posições em custódia ativa
+              </Badge>
+            </div>
           </div>
 
           {/* Ponto 2: Card 2 do Dashboard — Rentabilidade da Carteira (TWR — Padrão CVM/ANBIMA) */}
-          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="font-semibold text-foreground text-sm">2. Rentabilidade da Carteira (TWR · Cotas)</span>
-              <Badge variant={twrTone === "positive" ? "positive" : twrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
+          <div className="rounded-xl border border-border/80 bg-surface/40 p-3.5 flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 flex-wrap">
+              <span className="font-semibold text-foreground text-sm flex items-center gap-1.5 min-w-0">
+                <TrendingUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">2. Rentabilidade da Carteira (TWR · Cotas)</span>
+              </span>
+              <Badge variant={twrTone === "positive" ? "positive" : twrTone === "negative" ? "negative" : "muted"} size="xs" className="font-mono font-bold shrink-0">
                 {twrLabel} {portfolioTwr?.annualizedRatePct !== null && portfolioTwr?.annualizedRatePct !== undefined ? `(${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a.)` : ""}
               </Badge>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
-              <strong>Métrica Oficial da Carteira:</strong> Apura o retorno real das suas decisões de investimento utilizando o método oficial de cotização de fundos. <strong>Isola o timing de aportes e resgates</strong>, mostrando o mérito da alocação e protegendo os lucros de ativos passados já encerrados na cota histórica.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Métrica Oficial da Carteira
+              </span>
+              <p className="text-muted-foreground leading-relaxed m-0 text-xs">
+                Apura o retorno real das suas decisões de investimento utilizando o método oficial de cotização de fundos. Isola o timing de aportes e resgates, mostrando o mérito da alocação e protegendo os lucros de ativos passados já encerrados na cota histórica.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Comparação com CDI e Ibovespa
+              </Badge>
+            </div>
           </div>
 
           {/* Ponto 3: Card 3 do Dashboard — Resultado Histórico (P&L Total em R$) */}
-          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="font-semibold text-foreground text-sm">3. Resultado Histórico (P&L Total em R$)</span>
-              <span className="font-mono font-bold text-sm text-positive-strong">
-                <MoneyText cents={numberToCents(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL)} sign="explicit" />
+          <div className="rounded-xl border border-border/80 bg-surface/40 p-3.5 flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 flex-wrap">
+              <span className="font-semibold text-foreground text-sm flex items-center gap-1.5 min-w-0">
+                <CircleDollarSign className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">3. Resultado Histórico (P&L Total em R$)</span>
               </span>
+              <Badge variant={(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL) >= 0 ? "positive" : "negative"} size="xs" className="font-mono font-bold shrink-0">
+                <MoneyText cents={numberToCents(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL)} tone={(position.allTimeEconomicPnlBRL ?? totalReturnPnlBRL) >= 0 ? "positive" : "negative"} sign="explicit" />
+              </Badge>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
-              <strong>Riqueza Gerada em Dinheiro:</strong> Consolida todo o lucro líquido gerado pela sua carteira desde o início. Soma o lucro realizado de ativos já vencidos/vendidos no passado, a valorização das posições abertas de hoje e todos os proventos recebidos na história.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Riqueza Efetiva Produzida
+              </span>
+              <p className="text-muted-foreground leading-relaxed m-0 text-xs">
+                Consolida todo o lucro líquido gerado pela sua carteira desde o início. Soma o lucro realizado de ativos já vencidos/vendidos no passado, a valorização das posições abertas de hoje e todos os proventos recebidos na história.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Dimensão financeira total e caixa
+              </Badge>
+            </div>
           </div>
 
           {/* Ponto 4: Card 4 do Dashboard — Retorno do Bolso (TIR / XIRR) */}
-          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="font-semibold text-foreground text-sm">4. Retorno do Bolso (TIR / XIRR)</span>
-              <Badge variant={irrTone === "positive" ? "positive" : irrTone === "negative" ? "negative" : "muted"} size="sm" className="font-mono">
+          <div className="rounded-xl border border-border/80 bg-surface/40 p-3.5 flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 flex-wrap">
+              <span className="font-semibold text-foreground text-sm flex items-center gap-1.5 min-w-0">
+                <Activity className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">4. Retorno do Bolso (TIR / XIRR)</span>
+              </span>
+              <Badge variant={irrTone === "positive" ? "positive" : irrTone === "negative" ? "negative" : "muted"} size="xs" className="font-mono font-bold shrink-0">
                 {irrLabel}
               </Badge>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
-              <strong>Retorno do Seu Fluxo de Caixa:</strong> Taxa anualizada (% a.a.) do dinheiro real que saiu da sua conta bancária para a corretora frente ao patrimônio atual. Pondera o volume pelo tempo: fases em que você tinha mais capital aplicado exercem peso proporcionalmente maior na taxa.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Retorno do Seu Fluxo Pessoal
+              </span>
+              <p className="text-muted-foreground leading-relaxed m-0 text-xs">
+                Taxa anualizada (% a.a.) do dinheiro real que saiu da sua conta bancária para a corretora frente ao patrimônio atual. Pondera o volume pelo tempo: fases em que você tinha mais capital aplicado exercem peso proporcionalmente maior na taxa.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Eficiência do timing de aportes
+              </Badge>
+            </div>
           </div>
 
           {/* Ponto 5: Card 5 do Dashboard & Comparabilidade com Benchmarks */}
-          <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="font-semibold text-foreground text-sm">5. Saldo em Caixa & Comparação com Benchmarks</span>
-              <Badge variant="muted" size="sm" className="font-mono">
+          <div className="rounded-xl border border-border/80 bg-surface/40 p-3.5 flex flex-col justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 flex-wrap">
+              <span className="font-semibold text-foreground text-sm flex items-center gap-1.5 min-w-0">
+                <Landmark className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <span className="truncate">5. Saldo em Caixa & Comparação com Benchmarks</span>
+              </span>
+              <Badge variant="muted" size="xs" className="font-mono font-bold shrink-0">
                 CDI · Ibov · IPCA
               </Badge>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
-              <strong>Como comparar corretamente:</strong> Para comparar sua carteira com CDI, Ibovespa ou fundos, use sempre o <strong>TWR (% a.a.)</strong>, pois os índices de mercado não sofrem o impacto do seu bolso. Já a <strong>TIR (% a.a.)</strong> mede a eficiência financeira dos seus aportes pessoais. O <em>Caixa</em> representa sua liquidez de oportunidade.
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
+                Disponibilidade e Referências
+              </span>
+              <p className="text-muted-foreground leading-relaxed m-0 text-xs">
+                Para comparar sua carteira com CDI, Ibovespa ou fundos, use sempre o TWR (% a.a.), pois os índices de mercado não sofrem o impacto do seu bolso. Já a TIR (% a.a.) mede a eficiência financeira dos seus aportes pessoais. O Caixa representa sua liquidez de oportunidade.
+              </p>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">
+              <Badge variant="muted" size="xs" className="text-[9.5px] font-medium text-muted-foreground">
+                Recomendado para: Liquidez e comparação justa
+              </Badge>
+            </div>
           </div>
 
           {/* Dica do Aporte Histórico */}

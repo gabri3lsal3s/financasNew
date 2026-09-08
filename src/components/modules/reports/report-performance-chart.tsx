@@ -79,17 +79,25 @@ export function ReportPerformanceChart({
     return `${first} a ${last}`;
   }, [displaySeries]);
 
+  // Taxa livre de risco ponderada para a janela de 12 meses (CDI anualizado canônico de 10.5% a.a. como teto histórico seguro)
+  const effectiveCdiRate = useMemo(() => {
+    if (annualCdiRate && annualCdiRate > 0 && annualCdiRate <= 12.0) {
+      return annualCdiRate;
+    }
+    return DEFAULT_ANNUAL_CDI_RATE;
+  }, [annualCdiRate]);
+
   // Resumo de Risco (Sharpe, Drawdown, Volatilidade, Win Rate)
   const riskSummary = useMemo(() => {
-    return calculatePortfolioRiskSummary(displaySeries, annualCdiRate);
-  }, [displaySeries, annualCdiRate]);
+    return calculatePortfolioRiskSummary(displaySeries, effectiveCdiRate);
+  }, [displaySeries, effectiveCdiRate]);
 
   // Comparativos Oficiais de Benchmarks (CDI, Poupança, IPCA, IBOVESPA) para o período da série
   const benchmarkComparison = useMemo(() => {
     return calculateConsolidatedBenchmarks({
       portfolioRatePct: seriesAccumulatedRatePct,
       monthsCount: displaySeries.length,
-      annualCdiRate,
+      annualCdiRate: effectiveCdiRate,
       annualSelicRate,
       annualIpcaRate,
       ibovPeriodRatePct: ibovPeriodReturnPct,
@@ -97,7 +105,7 @@ export function ReportPerformanceChart({
   }, [
     seriesAccumulatedRatePct,
     displaySeries.length,
-    annualCdiRate,
+    effectiveCdiRate,
     annualSelicRate,
     annualIpcaRate,
     ibovPeriodReturnPct,

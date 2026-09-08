@@ -187,6 +187,7 @@ export function calculateSharpeRatio(input: {
     if (val >= 1.0) return "Excelente Eficiência";
     if (val >= 0.5) return "Boa Compensação";
     if (val >= 0) return "Neutro vs. CDI";
+    if (val >= -0.5) return "Neutro / Defensivo";
     return "Abaixo do CDI";
   };
 

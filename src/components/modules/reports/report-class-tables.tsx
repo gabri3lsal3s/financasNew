@@ -119,9 +119,22 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                             {group.items.length === 1 ? "ativo" : "ativos"})
                           </span>
                         </div>
-                        <span className="font-mono num font-normal text-muted-foreground text-[9.5px] normal-case">
-                          {formatPercent(group.sharePct)}% da carteira
-                        </span>
+                        <div className="flex items-center gap-2 font-mono num text-[9.5px]">
+                          <span className="font-bold text-foreground">
+                            <MoneyText cents={group.totalCents} tone="default" />
+                          </span>
+                          <span className="text-muted-foreground font-normal">
+                            ({formatPercent(group.sharePct)}% da carteira)
+                          </span>
+                          <span
+                            className={cn(
+                              "font-bold font-mono ml-1",
+                              group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                            )}
+                          >
+                            {formatSignedPct(group.pnlPct)}
+                          </span>
+                        </div>
                       </div>
                     </th>
                   </tr>

@@ -1,5 +1,16 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.30** registra o **Refinamento Editorial, Badges Padronizados, Cabeçalhos de Custódia e Padronização Executiva dos Cards de Metodologia (Opção A)** (2026-09-07):
+> - **(1) Padronização Executiva dos Cards de Rentabilidade e Metodologias (Opção A)**: Reestruturação completa dos 4 cards analíticos no Dossiê Patrimonial (`WealthTearSheetModal`) e dos 5 cards no modal explicativo de investimentos (`ResumoTab`):
+>   - Cabeçalho padronizado com ícones semânticos neutros (`TrendingUp`, `Activity`, `Briefcase`, `CircleDollarSign`, `Landmark`) no padrão *icon-only* (`size-3.5 text-muted-foreground`), em estrita conformidade com a Regra 13 de governança;
+>   - Pílulas de valor em `<Badge size="xs">` com variação semântica dinâmica (`positive`, `negative`, `muted`) e `<MoneyText />` automático, eliminando cores estáticas incorretas;
+>   - Tag conceitual em caixa alta (`text-[9.5px] font-bold text-muted-foreground uppercase`) separando a definição teórica da aplicação prática;
+>   - Rodapé contextual com badge de recomendação de uso (`Recomendado para: Comparação com CDI e Ibovespa`, `Recomendado para: Eficiência do timing de aportes`, etc.).
+> - **(2) Refinamento da Narrativa Executiva & Eliminação de Lacunas de Setor**: Sanitização de textos condicionais na síntese da Página 1 do Tear Sheet, prevenindo pontuações soltas ou frases incompletas (`"localiza-se em ."`) e garantindo renderização fluida da exposição internacional.
+> - **(3) Cabeçalho Enriquecido de Classes no `thead` (`ReportClassTables`)**: Exibição imediata do valor financeiro consolidado (`<MoneyText />`), participação percentual na carteira e rentabilidade da classe (`formatSignedPct`) diretamente na linha de cabeçalho da tabela de custódia.
+> - **(4) Calibração Temporal e Rótulo Defensivo do Índice Sharpe (`risk-metrics.ts`)**: Mapeamento do intervalo `[-0.5, 0.0]` para o rótulo `"Neutro / Defensivo"` e calibração da taxa de CDI a 12 meses no gráfico de performance para evitar inflação por flutuação pontual diária.
+> - **(5) Suíte 100% Verde & Governança**: 283 arquivos de teste / 2.029 testes passando (100% verde), zero erros de typecheck (`tsc --noEmit`) e lint estrito (`eslint .`) sem emojis.
+
 > **v2.29** registra a **Reconciliação Contábil & Visual na Síntese Executiva do Dossiê de Investimentos (P&L Total vs. Custódia Viva & Posições Encerradas)** (2026-09-07):
 > - **(1) Reconciliação Matemática na Síntese Executiva (`WealthTearSheetModal`)**: Integração da ponte contábil no parágrafo analítico de abertura conectando o Retorno Vivo sob custódia (valorização de cota + proventos) ao Resultado Realizado de posições encerradas (resgates/lucro bruto de capital), totalizando com exatidão o P&L Econômico Histórico Consolidado (eliminando o descompasso visual entre R$ 16.511,84 no cabeçalho e R$ 16.405,80 na custódia);
 > - **(2) Subtexto Adaptativo no KPI de Resultado Histórico**: Exibição dinâmica de `"P&L Total (Vivo + Encerrados)"` quando existirem posições passadas realizadas, preservando `"P&L Econômico Total"` quando o investidor possuir apenas posições ativas;
