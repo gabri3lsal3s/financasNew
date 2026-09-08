@@ -66,7 +66,7 @@ describe("PortfolioSnapshotsCarousel", () => {
     );
 
     expect(screen.getByText("Evolução Histórica")).toBeInTheDocument();
-    expect(screen.getByText("(3 meses recentes)")).toBeInTheDocument();
+    expect(screen.getByText("(3 meses)")).toBeInTheDocument();
 
     // Meses formatados em ordem decrescente (Set/2026 primeiro)
     const monthElements = screen.getAllByText(/(Set|Ago|Jul)\/2026/);
@@ -79,7 +79,7 @@ describe("PortfolioSnapshotsCarousel", () => {
 
     // Valores
     expect(screen.getByText(/108\.000,00/)).toBeInTheDocument();
-    expect(screen.getByText("+2.1% no mês")).toBeInTheDocument();
+    expect(screen.getByText("+2.1% m/m")).toBeInTheDocument();
 
     // Botões de rolagem por setas no desktop
     expect(screen.getByRole("button", { name: /Rolar carrossel para a esquerda/i })).toBeInTheDocument();

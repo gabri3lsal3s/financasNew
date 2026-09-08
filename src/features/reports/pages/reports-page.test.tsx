@@ -66,6 +66,11 @@ vi.mock("@/state", () => ({
     error: null,
   }),
 
+  useMacroIndicators: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   usePortfolioContributions: () => ({
     data: [],
     isLoading: false,

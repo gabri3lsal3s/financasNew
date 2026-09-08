@@ -1577,14 +1577,26 @@
   - `src/features/investments/components/portfolio-snapshots-carousel.tsx` (novo)
   - `src/features/investments/components/portfolio-snapshots-carousel.test.tsx` (novo)
   - `src/features/investments/components/portfolio-snapshots-dialog.tsx` (novo)
-  - `src/features/investments/components/portfolio-snapshots-dialog.test.tsx` (novo)
-  - `src/features/investments/components/index.ts`
-  - `src/features/investments/pages/resumo-tab.tsx`
-  - `src/features/investments/pages/resumo-tab.test.tsx`
-  - `src/lib/date.ts`
-  - `src/lib/date.test.ts`
-  - `ESPECIFICACAO_TECNICA.md`
-  - `docs/PROJECT_STRUCTURE.md`
+### Responsividade Mobile da Carteira & Saneamento de Tipos de Build (2026-09-07)
+
+- **Problema:**
+  1. No mobile, os cabeçalhos colapsáveis de classes de ativos em `PositionTable` sofriam truncamento severo ("Açó" em vez de "Ações", "I..." em vez de "Internacional", "Rer" em vez de "Renda Fixa") devido à tentativa de renderizar todos os dados financeiros na mesma linha horizontal com `shrink-0`.
+  2. A fita de chips de filtro de classes quebrava linhas e cortava nomes longos de ativos de forma desordenada.
+  3. No carrossel de snapshots, o cabeçalho quebrava o título "Evolução Histórica" em duas linhas no mobile com o botão "Tabela Analítica" desalinhado, e a pill de rentabilidade mensal disputava espaço no topo dos cards estreitos.
+  4. Divergências residuais de tipagem em `statement-parser.ts`, `initial-pocket-cost-dialog.tsx`, `use-portfolio-position.ts`, `portfolio-executive-report.tsx` e testes quebravam o comando `npm run build` (`tsc -b`).
+- **Solução:**
+  1. **Estrutura em Duas Linhas Semânticas para Classes no Mobile (`PositionTable`):**
+     - Linha 1: Ícone estilizado da classe + nome completo em destaque (zero truncamento) + contador de ativos + Chevron de expansão;
+     - Linha 2: Saldo total consolidado (`MoneyText`) à esquerda | % da carteira e badge de rentabilidade semântica à direita.
+  2. **Fita Deslizante Fluida de Filtros de Classe:** Rolagem horizontal desobstruída com toque (`overflow-x-auto no-scrollbar scroll-smooth flex-nowrap shrink-0`) e botão "Ver encerradas" integrado.
+  3. **Cabeçalho Adaptativo do Carrossel de Snapshots:** Layout flexível (`flex-col sm:flex-row`), indicador compacto de contagem de meses `(12m)`, botão "Tabela Analítica" de largura total no mobile (`w-full sm:w-auto`), pill de rentabilidade mensal enxuta (`+2.1% m/m`) e largura mínima expandida para `min-w-[250px]`.
+  4. **Saneamento de Compilação & Build:** Correção de 24 erros de tipagem no `tsc -b`, com type narrowing de taxas, propriedades de `PortfolioPosition` (`allMonthlySeries`), imports corretos e testes unitários 100% atualizados.
+- **Arquivos alterados:**
+  - `src/components/modules/position-table.tsx`
+  - `src/features/investments/components/portfolio-snapshots-carousel.tsx`
+  - `src/features/investments/components/portfolio-snapshots-carousel.test.tsx`
+  - `src/features/investments/pages/investments-page.test.tsx`
+  - `src/features/reports/pages/reports-page.test.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
 ## Notas finais

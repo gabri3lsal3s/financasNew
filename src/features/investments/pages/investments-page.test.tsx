@@ -128,7 +128,7 @@ describe("InvestmentsPage — F17 unificada", () => {
     };
     renderPage();
 
-    expect(screen.getByText(/Saldo em Caixa/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Saldo em Caixa/i).length).toBeGreaterThan(0);
     expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();
     expect(screen.getAllByText("R$ 8.000,00").length).toBeGreaterThan(0);
     expect(screen.getByText("TIR (Fluxo do Bolso)")).toBeInTheDocument();
