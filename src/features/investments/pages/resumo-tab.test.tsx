@@ -205,13 +205,14 @@ function renderResumo(entry = "/investments") {
 }
 
 describe("ResumoTab", () => {
-  it("renderiza o card exclusivo de Caixa & Liquidez com ações de editar e excluir, e o grid de 4 KPIs de performance", () => {
+  it("renderiza o card exclusivo de Caixa & Liquidez com ações de ajustar e aportar caixa, e o grid de 4 KPIs de performance", () => {
     renderResumo();
 
     // Card exclusivo de caixa & liquidez
     expect(screen.getByText(/Saldo em Caixa & Liquidez/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Editar saldo em caixa/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Excluir ativo de caixa/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Simular aporte com caixa/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Excluir ativo de caixa/i })).not.toBeInTheDocument();
 
     // 4 KPIs de performance
     expect(screen.getByText("Patrimônio Total")).toBeInTheDocument();

@@ -1620,7 +1620,27 @@
   - `src/features/investments/components/portfolio-activity-panel.tsx`
   - `src/features/investments/components/asset-detail-sheet.tsx`
   - `src/state/queries/use-macro-indicators.test.tsx`
-  - `src/components/modules/reports/reports.test.tsx`
+### Redirecionamento de Aporte com Caixa & Remoção do Botão de Excluir Caixa (2026-09-07)
+
+- **Problema:**
+  1. O card de Saldo em Caixa & Liquidez (`CashKpiCard`) continha um botão de exclusão por lixeira (`Trash2`), que gerava risco acidental e inconsistência, uma vez que o saldo em caixa é gerenciado pelo fluxo de ajuste contábil (`Ajustar Caixa`) para R$ 0.
+  2. O botão "Aportar Caixa" não injetava o valor do saldo disponível no formulário de simulação de rebalanceamento, exigindo redigitação manual do usuário.
+- **Solução:**
+  1. **Remoção do Botão de Excluir (`CashKpiCard`):**
+     - O botão de exclusão foi completamente removido das variantes `banner` e `card`. O card mantém com clareza apenas as ações ativas de *"Ajustar Caixa"* e *"Aportar Caixa"*.
+  2. **Redirecionamento Fluido com Injeção de Parâmetro (`ResumoTab` → `InvestmentsPage`):**
+     - O clique em *"Aportar Caixa"* direciona imediatamente para a aba de aportes passando o montante em centavos (`?tab=aporte&valor=${cashCents}`).
+  3. **Animação Numérica Suave & Carregamento Instantâneo de Sugestões (`AporteTab`):**
+     - Implementada interpolação numérica com curva cúbica ease-out via `requestAnimationFrame` (~400ms), fazendo o valor monetário rolar de forma fluida de R$ 0,00 até o total em caixa no `MoneyInput`;
+     - O motor hierárquico calcula e renderiza imediatamente as ordens e rotas sugeridas de rebalanceamento (`AporteResult`) com transição suave (`animate-fade-in`).
+- **Arquivos alterados:**
+  - `src/components/modules/cash-kpi-card.tsx`
+  - `src/components/modules/cash-kpi-card.test.tsx`
+  - `src/features/investments/pages/investments-page.tsx`
+  - `src/features/investments/pages/resumo-tab.tsx`
+  - `src/features/investments/pages/resumo-tab.test.tsx`
+  - `src/features/investments/pages/aporte-tab.tsx`
+  - `src/features/investments/pages/aporte-tab.test.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
 ## Notas finais

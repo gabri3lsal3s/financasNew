@@ -89,4 +89,18 @@ describe("AporteTab — Calculadora e Aportes", () => {
 
     expect(screen.getByTestId("import-dialog")).toBeInTheDocument();
   });
+
+  it("preenche automaticamente o valor e carrega sugestões quando a URL contém o parâmetro de valor", () => {
+    render(
+      <MemoryRouter initialEntries={["/investimentos?tab=aporte&valor=100000"]}>
+        <AporteTab />
+      </MemoryRouter>,
+    );
+
+    const input = screen.getByRole("textbox", { name: /Valor do aporte/i });
+    expect(input).toHaveValue("R$ 1.000,00");
+    expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Aporte sugerido/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /Lançar compras no extrato/i })).toBeInTheDocument();
+  });
 });

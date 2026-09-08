@@ -25,18 +25,14 @@ describe("CashKpiCard", () => {
     expect(screen.getByText(/\(25\.0% do patrimônio\)/i)).toBeInTheDocument();
 
     const editBtn = screen.getByRole("button", { name: /Editar saldo em caixa/i });
-    const deleteBtn = screen.getByRole("button", { name: /Excluir ativo de caixa/i });
     const aporteBtn = screen.getByRole("button", { name: /Simular aporte com caixa/i });
 
     expect(editBtn).toBeInTheDocument();
-    expect(deleteBtn).toBeInTheDocument();
     expect(aporteBtn).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Excluir ativo de caixa/i })).not.toBeInTheDocument();
 
     fireEvent.click(editBtn);
     expect(onEdit).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(deleteBtn);
-    expect(onDelete).toHaveBeenCalledTimes(1);
 
     fireEvent.click(aporteBtn);
     expect(onAporte).toHaveBeenCalledTimes(1);

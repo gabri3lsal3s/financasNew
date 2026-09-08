@@ -37,12 +37,17 @@ export function InvestmentsPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
 
-  const handleTabChange = (nextTab: string) => {
+  const handleTabChange = (nextTab: string, params?: Record<string, string | number>) => {
     const valid = nextTab as InvestmentsTab;
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set("tab", valid);
+        if (params) {
+          Object.entries(params).forEach(([key, val]) => {
+            next.set(key, String(val));
+          });
+        }
         return next;
       },
       { replace: true },

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Calculator, Sparkles, Upload } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
@@ -44,7 +44,12 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const executeBatch = useExecutePortfolioBatchAporte();
 
   const rawSubTab = (searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba"))?.toLowerCase();
-  const validSubTab = rawSubTab === "metas" || rawSubTab === "historico" || rawSubTab === "calculadora" ? rawSubTab : null;
+  const hasValorParam = Boolean(searchParams.get("valor"));
+  const validSubTab = hasValorParam
+    ? "calculadora"
+    : rawSubTab === "metas" || rawSubTab === "historico" || rawSubTab === "calculadora"
+      ? rawSubTab
+      : null;
   const [selectedSubTab, setSelectedSubTab] = useState<AporteSubTab>("calculadora");
   const subTab: AporteSubTab = validSubTab ?? selectedSubTab;
 
@@ -55,6 +60,74 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
     const parsed = Number(raw);
     return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 0;
   })();
+
+  const animatedRafRef = useRef<number | null>(null);
+  const lastParamValorRef = useRef<string | null>(null);
+
+  const animateToCents = useCallback((targetCents: number, fromCents?: number) => {
+    const baseFrom = fromCents !== undefined ? fromCents : (userAporteCents ?? 0);
+
+    if (typeof window === "undefined") {
+      setUserAporteCents(targetCents);
+      return;
+    }
+
+    const prefersReducedMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (prefersReducedMotion || targetCents === baseFrom) {
+      setUserAporteCents(targetCents);
+      return;
+    }
+
+    if (animatedRafRef.current) {
+      cancelAnimationFrame(animatedRafRef.current);
+    }
+
+    const durationMs = 400;
+    let startTimestamp: number | null = null;
+
+    const tick = (now: number) => {
+      if (startTimestamp === null) startTimestamp = now;
+      const progress = Math.min(1, (now - startTimestamp) / durationMs);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(baseFrom + (targetCents - baseFrom) * eased);
+      setUserAporteCents(current);
+
+      if (progress < 1) {
+        animatedRafRef.current = requestAnimationFrame(tick);
+      } else {
+        setUserAporteCents(targetCents);
+        animatedRafRef.current = null;
+      }
+    };
+
+    animatedRafRef.current = requestAnimationFrame(tick);
+  }, [userAporteCents]);
+
+  useEffect(() => {
+    return () => {
+      if (animatedRafRef.current) {
+        cancelAnimationFrame(animatedRafRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const raw = searchParams.get("valor");
+    if (raw && raw !== lastParamValorRef.current) {
+      lastParamValorRef.current = raw;
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        const target = Math.round(parsed);
+        const raf = requestAnimationFrame(() => {
+          animateToCents(target, 0);
+        });
+        return () => cancelAnimationFrame(raf);
+      }
+    }
+  }, [searchParams, animateToCents]);
 
   const aporteCents = userAporteCents ?? paramValorCents;
   const setAporteCents = (val: number) => setUserAporteCents(val);
@@ -255,7 +328,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setAporteCents(Math.round(position.cashBRL * 100));
+                        animateToCents(Math.round(position.cashBRL * 100));
                         triggerSensory("selection");
                       }}
                       className="self-start text-[11px] text-portfolio hover:underline font-medium cursor-pointer pt-0.5"
@@ -273,18 +346,20 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
               </section>
 
               {result ? (
-                <AporteResult
-                  mode="both"
-                  aporte={result.aporte}
-                  totalAllocated={result.totalAllocated}
-                  leftover={result.leftover}
-                  routes={routes}
-                  classSummaries={result.classSummaries}
-                  sectorSummaries={result.sectorSummaries}
-                  skippedAssets={result.skippedAssets}
-                  onExecuteAporte={eligibleRoutes.length > 0 ? () => setConfirmBatchOpen(true) : undefined}
-                  executing={isApplying}
-                />
+                <div className="animate-fade-in transition-all duration-300">
+                  <AporteResult
+                    mode="both"
+                    aporte={result.aporte}
+                    totalAllocated={result.totalAllocated}
+                    leftover={result.leftover}
+                    routes={routes}
+                    classSummaries={result.classSummaries}
+                    sectorSummaries={result.sectorSummaries}
+                    skippedAssets={result.skippedAssets}
+                    onExecuteAporte={() => setConfirmBatchOpen(true)}
+                    executing={isApplying}
+                  />
+                </div>
               ) : null}
             </>
           )}

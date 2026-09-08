@@ -63,7 +63,7 @@ import type { PriceSource } from "@/domain/portfolio";
 export interface ResumoTabProps {
   onOpenWizard?: (asset?: PortfolioAsset | null, mode?: WizardMode) => void;
   onOpenCash?: () => void;
-  onSelectTab?: (tab: string) => void;
+  onSelectTab?: (tab: string, params?: Record<string, string | number>) => void;
 }
 
 /**
@@ -507,10 +507,14 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         hasCashAsset={Boolean(cashAsset)}
         isLoading={position.isLoading}
         onEdit={handleOpenCash}
-        onDelete={() => {
-          if (cashAsset) setAssetToDelete(cashAsset);
+        onAporte={() => {
+          const cashCents = Math.round(position.cashBRL * 100);
+          if (onSelectTab) {
+            onSelectTab("aporte", { valor: cashCents });
+          } else {
+            navigate(`/investimentos?tab=aporte&valor=${cashCents}`);
+          }
         }}
-        onAporte={() => (onSelectTab ? onSelectTab("aporte") : navigate("/carteira?tab=aporte"))}
       />
 
       {/* Alerta de Concentração Elevada */}

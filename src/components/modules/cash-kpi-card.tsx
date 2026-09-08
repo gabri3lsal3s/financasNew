@@ -1,4 +1,4 @@
-import { Coins, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { Coins, Pencil, Plus, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
@@ -12,13 +12,13 @@ export interface CashKpiCardProps {
   cashPct?: number;
   /**
    * Quando `true`, o ativo de Caixa já existe e o card exibe
-   * os botões "Ajustar Caixa" e "Excluir". Quando `false`/`undefined`,
+   * os botões "Ajustar Caixa" e "Aportar Caixa". Quando `false`/`undefined`,
    * exibe apenas o botão "Cadastrar Saldo em Caixa".
    */
   hasCashAsset?: boolean;
   /** Chamado ao clicar em "Ajustar caixa" ou "Cadastrar saldo em caixa". */
   onEdit: () => void;
-  /** Chamado ao clicar em "Excluir caixa" (só renderizado quando hasCashAsset). */
+  /** @deprecated O ativo de caixa não é mais excluído via card; ajuste para R$ 0 para zerar. */
   onDelete?: () => void;
   /** Ação contextual para navegar ou simular aporte com o caixa disponível. */
   onAporte?: () => void;
@@ -45,7 +45,6 @@ export function CashKpiCard({
   cashPct,
   hasCashAsset = false,
   onEdit,
-  onDelete,
   onAporte,
   variant = "banner",
   isLoading = false,
@@ -103,19 +102,6 @@ export function CashKpiCard({
                   >
                     <Pencil className="size-3" aria-hidden="true" />
                   </Button>
-                  {onDelete ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={onDelete}
-                      aria-label="Excluir ativo de caixa"
-                      title="Excluir ativo de caixa"
-                      className="size-6 p-0 text-muted-foreground hover:text-negative-strong hover:bg-negative-surface/30 cursor-pointer"
-                    >
-                      <Trash2 className="size-3" aria-hidden="true" />
-                    </Button>
-                  ) : null}
                 </>
               ) : (
                 <Button
@@ -244,20 +230,6 @@ export function CashKpiCard({
               >
                 <Coins className="size-3.5" aria-hidden="true" />
                 Aportar Caixa
-              </Button>
-            ) : null}
-
-            {onDelete ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={onDelete}
-                aria-label="Excluir ativo de caixa"
-                title="Excluir ativo de caixa"
-                className="size-8 p-0 text-muted-foreground hover:text-negative-strong hover:bg-negative-surface/30 cursor-pointer shrink-0"
-              >
-                <Trash2 className="size-3.5" aria-hidden="true" />
               </Button>
             ) : null}
           </>
