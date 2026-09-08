@@ -1596,7 +1596,31 @@
   - `src/features/investments/components/portfolio-snapshots-carousel.tsx`
   - `src/features/investments/components/portfolio-snapshots-carousel.test.tsx`
   - `src/features/investments/pages/investments-page.test.tsx`
-  - `src/features/reports/pages/reports-page.test.tsx`
+### Otimização de Responsividade Mobile de Abas, Renda Fixa e Histórico de Transações (2026-09-07)
+
+- **Problema:**
+  1. No Diálogo de Custos/Extrato (`initial-pocket-cost-dialog.tsx`), as abas ficavam encavaladas em larguras estreitas de mobile (`fullWidth={true}` dividindo igualmente 3 itens com texto longo) e o botão "Processar Extrato" cortava na borda direita.
+  2. Nos cards mobile de ativos em `PositionTable` (`renderMobileCard`), títulos de Renda Fixa e Tesouro sofriam reticências em centavos de Saldo Atual e Lucro/Prejuízo (`R$ 1.0...`, `+R$ 284...`) devido a `grid-cols-3` rígido e classes `truncate` diretas em valores monetários (violando as Regras de Ouro 10 e 11).
+  3. No painel de Histórico de Transações (`portfolio-activity-panel.tsx`) e na Ficha do Ativo (`asset-detail-sheet.tsx`), quantidades e cotações unitárias (`5 un @ R$ 99,01`) colidiam e encavalavam diretamente sobre o valor total (`R$ 495,05`) na mesma linha com os botões de ação em telas estreitas.
+- **Solução:**
+  1. **Abas Fluidas com Scroll Desobstruído e Rodapé Adaptativo (`initial-pocket-cost-dialog.tsx`):**
+     - Aplicação da Regra de Ouro 9: container de abas com rolagem horizontal suave (`overflow-x-auto no-scrollbar scroll-smooth flex-nowrap`) e `fullWidth={false}` (`shrink-0 flex-initial min-w-fit px-3 py-2`);
+     - Rodapé do assistente de extrato com layout responsivo (`flex-col sm:flex-row gap-2.5`) e botão de ação em largura completa no mobile (`w-full sm:w-auto h-9`).
+  2. **Grid Mobile-First Sem Esmagamento de Centavos (`position-table.tsx`):**
+     - Substituição do `grid-cols-3` rígido por layout adaptativo `grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5`;
+     - Preço Inicial e Saldo Atual ocupam 50% cada com visualização integral de dígitos e centavos;
+     - Lucro/Prejuízo alocado em linha dedicada de largura total no mobile (`col-span-2 sm:col-span-1`) com rótulo canônico e sem reticências.
+  3. **Layout Anti-Colisão em Duas Linhas no Histórico de Transações (`portfolio-activity-panel.tsx`, `asset-detail-sheet.tsx`):**
+     - Linha 1 no mobile: Ícone + Ticker + Badge de Tipo (padronizado em `size="xs"`) + Data à esquerda | Valor Total (`MoneyText`) destacado no canto direito;
+     - Linha 2 no mobile: Detalhes de cotação unitária à esquerda | Botões de Editar e Excluir agrupados à direita;
+     - Desktop preservado em linha única contínua e espaçosa (`sm:flex-row`).
+- **Arquivos alterados:**
+  - `src/features/investments/components/initial-pocket-cost-dialog.tsx`
+  - `src/components/modules/position-table.tsx`
+  - `src/features/investments/components/portfolio-activity-panel.tsx`
+  - `src/features/investments/components/asset-detail-sheet.tsx`
+  - `src/state/queries/use-macro-indicators.test.tsx`
+  - `src/components/modules/reports/reports.test.tsx`
   - `docs/FASES_IMPLEMENTADAS.md`
 
 ## Notas finais

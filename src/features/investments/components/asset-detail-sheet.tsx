@@ -526,46 +526,60 @@ export function AssetDetailSheet({
                   return (
                     <div
                       key={tx.id}
-                      className="flex items-center justify-between p-3 text-xs hover:bg-surface-hover/60 transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 p-3 text-xs hover:bg-surface-hover/60 transition-colors"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Badge variant={txInfo.variant} className="text-[10px] px-1.5 py-0 shrink-0">
-                          {txInfo.label}
-                        </Badge>
-                        <span className="font-mono text-muted-foreground shrink-0">{tx.date}</span>
-                        {tx.quantity > 0 && !isTotalValue && (
-                          <span className="text-muted-foreground font-mono truncate">
-                            ({tx.quantity} un @ <MoneyText cents={numberToCents(tx.price)} currency={currentAsset.currency} />)
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <span className="font-mono font-semibold text-foreground mr-1">
+                      {/* Linha 1 no mobile / Lado esquerdo no desktop */}
+                      <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Badge variant={txInfo.variant} size="xs" className="shrink-0">
+                            {txInfo.label}
+                          </Badge>
+                          <span className="font-mono text-muted-foreground shrink-0">{tx.date}</span>
+                        </div>
+                        {/* No mobile, exibe o total na ponta da linha 1 */}
+                        <span className="font-mono font-semibold text-foreground sm:hidden shrink-0">
                           <MoneyText cents={numberToCents(tx.total)} currency={currentAsset.currency} />
                         </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setTxToEdit(tx)}
-                          className="size-7 p-0 text-muted-foreground hover:text-foreground"
-                          title="Editar lançamento"
-                          aria-label="Editar lançamento"
-                        >
-                          <Pencil className="size-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setTxToDelete(tx)}
-                          className="size-7 p-0 text-muted-foreground hover:text-negative-strong"
-                          title="Excluir lançamento"
-                          aria-label="Excluir lançamento"
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                        </Button>
+                      </div>
+
+                      {/* Linha 2 no mobile: detalhes de cotação e botões de ação / Lado direito no desktop */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                        {tx.quantity > 0 && !isTotalValue ? (
+                          <span className="text-muted-foreground font-mono text-[11px] sm:text-xs">
+                            {tx.quantity} un @ <MoneyText cents={numberToCents(tx.price)} currency={currentAsset.currency} />
+                          </span>
+                        ) : (
+                          <span className="hidden sm:inline" />
+                        )}
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* No desktop, exibe o total antes dos botões */}
+                          <span className="font-mono font-semibold text-foreground hidden sm:inline mr-1">
+                            <MoneyText cents={numberToCents(tx.total)} currency={currentAsset.currency} />
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setTxToEdit(tx)}
+                            className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                            title="Editar lançamento"
+                            aria-label="Editar lançamento"
+                          >
+                            <Pencil className="size-3.5" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setTxToDelete(tx)}
+                            className="size-7 p-0 text-muted-foreground hover:text-negative-strong"
+                            title="Excluir lançamento"
+                            aria-label="Excluir lançamento"
+                          >
+                            <Trash2 className="size-3.5" aria-hidden="true" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   );

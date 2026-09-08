@@ -27,6 +27,7 @@ describe("useMacroIndicators hook", () => {
     vi.spyOn(quotesService, "fetchBcbIndicator").mockImplementation(async (indicator) => {
       if (indicator === "CDI") return 11.25;
       if (indicator === "SELIC") return 11.50;
+      if (indicator === "IPCA") return 4.25;
       return null;
     });
 
@@ -37,6 +38,7 @@ describe("useMacroIndicators hook", () => {
     expect(result.current.data).toEqual({
       annualCdiRate: 11.25,
       annualSelicRate: 11.50,
+      annualIpcaRate: 4.25,
     });
   });
 

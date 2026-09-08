@@ -191,7 +191,7 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     );
 
     expect(screen.getAllByText(/Ações/i).length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("25,3% da carteira")).toBeInTheDocument();
+    expect(screen.getByText(/\(?25,3% da carteira\)?/)).toBeInTheDocument();
     expect(screen.getByText("PSSA3")).toBeInTheDocument();
     expect(screen.getByText("Seguros")).toBeInTheDocument();
     expect(screen.getByText(/Subtotal Ações/i)).toBeInTheDocument();

@@ -426,67 +426,62 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
               return (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between gap-3 p-3.5 hover:bg-surface-hover/50 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-3.5 hover:bg-surface-hover/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={cn(
-                        "flex size-8 shrink-0 items-center justify-center rounded-lg ring-1",
-                        isBuy && "bg-positive/10 text-positive-strong ring-positive/20",
-                        isSell && "bg-destructive/10 text-critical-strong ring-destructive/20",
-                        isDividend && "bg-portfolio/10 text-portfolio ring-portfolio/20",
-                        isSplit && "bg-surface-hover text-muted-foreground ring-border/60",
-                      )}
-                    >
-                      {isBuy ? (
-                        <ArrowDownLeft className="size-4" aria-hidden="true" />
-                      ) : isSell ? (
-                        <ArrowUpRight className="size-4" aria-hidden="true" />
-                      ) : isDividend ? (
-                        <Coins className="size-4" aria-hidden="true" />
-                      ) : (
-                        <Layers className="size-4" aria-hidden="true" />
-                      )}
-                    </div>
-
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-semibold text-foreground truncate">
-                          {item.ticker}
-                        </span>
-                        <Badge
-                          variant={isBuy ? "positive" : isSell ? "critical" : isDividend ? "portfolio" : "muted"}
-                          size="xs"
-                        >
-                          {item.notes?.toLowerCase().includes("aporte inicial")
-                            ? "Aporte Inicial"
-                            : isBuy
-                              ? "Compra"
-                              : isSell
-                                ? "Venda / Resgate"
-                                : isDividend
-                                  ? "Provento"
-                                  : "Split"}
-                        </Badge>
-                        <span className="text-[11px] text-muted-foreground">{formatDateBR(item.date)}</span>
+                  {/* Linha 1 no Mobile / Lado Esquerdo no Desktop: Ícone + Ticker + Badge + Data + Valor Total no Mobile */}
+                  <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={cn(
+                          "flex size-8 shrink-0 items-center justify-center rounded-lg ring-1",
+                          isBuy && "bg-positive/10 text-positive-strong ring-positive/20",
+                          isSell && "bg-destructive/10 text-critical-strong ring-destructive/20",
+                          isDividend && "bg-portfolio/10 text-portfolio ring-portfolio/20",
+                          isSplit && "bg-surface-hover text-muted-foreground ring-border/60",
+                        )}
+                      >
+                        {isBuy ? (
+                          <ArrowDownLeft className="size-4" aria-hidden="true" />
+                        ) : isSell ? (
+                          <ArrowUpRight className="size-4" aria-hidden="true" />
+                        ) : isDividend ? (
+                          <Coins className="size-4" aria-hidden="true" />
+                        ) : (
+                          <Layers className="size-4" aria-hidden="true" />
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground truncate">
-                        {item.quantity && item.quantity > 0 && item.price && item.price > 0 ? (
-                          <span>
-                            {item.quantity} un @ <MoneyText cents={numberToCents(item.price)} currency={itemCurrency} tone="default" />
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs font-semibold text-foreground">
+                            {item.ticker}
                           </span>
-                        ) : null}
-                        {item.notes ? <span>• {item.notes}</span> : null}
+                          <Badge
+                            variant={isBuy ? "positive" : isSell ? "critical" : isDividend ? "portfolio" : "muted"}
+                            size="xs"
+                          >
+                            {item.notes?.toLowerCase().includes("aporte inicial")
+                              ? "Aporte Inicial"
+                              : isBuy
+                                ? "Compra"
+                                : isSell
+                                  ? "Venda / Resgate"
+                                  : isDividend
+                                    ? "Provento"
+                                    : "Split"}
+                          </Badge>
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            {formatDateBR(item.date)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="flex flex-col items-end mr-1">
+                    {/* No mobile, o valor total aparece destacado no canto direito da Linha 1 */}
+                    <div className="sm:hidden shrink-0 text-right">
                       <span
                         className={cn(
-                          "text-xs font-semibold",
+                          "text-xs font-bold whitespace-nowrap tabular-nums",
                           isBuy && "text-foreground",
                           isSell && "text-critical-strong",
                           isDividend && "text-positive-strong",
@@ -495,37 +490,66 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                         <MoneyText cents={numberToCents(item.total)} currency={itemCurrency} sign={isSell ? "explicit" : "auto"} />
                       </span>
                     </div>
+                  </div>
 
-                    {item.source === "transaction" && item.rawTransaction && assetMap.get(item.rawTransaction.asset_id) ? (
+                  {/* Linha 2 no Mobile / Lado Direito no Desktop: Quantidade/Preço à esquerda e Ações à direita */}
+                  <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pl-10.5 sm:pl-0 pt-0.5 sm:pt-0">
+                    {/* Quantidade e Preço Unitário com respiro */}
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono truncate">
+                      {item.quantity && item.quantity > 0 && item.price && item.price > 0 ? (
+                        <span className="whitespace-nowrap">
+                          {item.quantity} un @ <MoneyText cents={numberToCents(item.price)} currency={itemCurrency} tone="default" />
+                        </span>
+                      ) : null}
+                      {item.notes ? <span className="truncate max-w-[150px] sm:max-w-[200px] text-muted-foreground/80">• {item.notes}</span> : null}
+                    </div>
+
+                    {/* Bloco Desktop com Valor Total + Botões */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="hidden sm:flex flex-col items-end mr-1">
+                        <span
+                          className={cn(
+                            "text-xs font-semibold whitespace-nowrap tabular-nums",
+                            isBuy && "text-foreground",
+                            isSell && "text-critical-strong",
+                            isDividend && "text-positive-strong",
+                          )}
+                        >
+                          <MoneyText cents={numberToCents(item.total)} currency={itemCurrency} sign={isSell ? "explicit" : "auto"} />
+                        </span>
+                      </div>
+
+                      {item.source === "transaction" && item.rawTransaction && assetMap.get(item.rawTransaction.asset_id) ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const asset = assetMap.get(item.rawTransaction!.asset_id);
+                            if (asset) {
+                              setEditingTx({ transaction: item.rawTransaction!, asset });
+                            }
+                          }}
+                          className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Editar movimentação"
+                          aria-label={`Editar movimentação de ${item.ticker}`}
+                        >
+                          <Pencil className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      ) : null}
+
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          const asset = assetMap.get(item.rawTransaction!.asset_id);
-                          if (asset) {
-                            setEditingTx({ transaction: item.rawTransaction!, asset });
-                          }
-                        }}
-                        className="size-7 p-0 text-muted-foreground hover:text-foreground"
-                        title="Editar movimentação"
-                        aria-label={`Editar movimentação de ${item.ticker}`}
+                        onClick={() => setItemToDelete(item)}
+                        className="size-7 p-0 text-muted-foreground hover:text-negative-strong cursor-pointer"
+                        title="Excluir movimentação"
+                        aria-label={`Excluir movimentação de ${item.ticker}`}
                       >
-                        <Pencil className="size-3.5" aria-hidden="true" />
+                        <Trash2 className="size-3.5" aria-hidden="true" />
                       </Button>
-                    ) : null}
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setItemToDelete(item)}
-                      className="size-7 p-0 text-muted-foreground hover:text-negative-strong"
-                      title="Excluir movimentação"
-                      aria-label={`Excluir movimentação de ${item.ticker}`}
-                    >
-                      <Trash2 className="size-3.5" aria-hidden="true" />
-                    </Button>
+                    </div>
                   </div>
                 </div>
               );

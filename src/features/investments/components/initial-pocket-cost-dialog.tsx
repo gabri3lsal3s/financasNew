@@ -508,30 +508,32 @@ export function InitialPocketCostDialog({
           </div>
         </div>
 
-        {/* Abas de Navegação dos Modos */}
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          variant="pills"
-          fullWidth
-          items={[
-            {
-              value: "manual",
-              label: "Lançamento Individual",
-              icon: <History className="size-3.5" aria-hidden="true" />,
-            },
-            {
-              value: "extrato",
-              label: "Assistente de Extrato",
-              icon: <Sparkles className="size-3.5" aria-hidden="true" />,
-            },
-            {
-              value: "rapido",
-              label: "Modo Rápido",
-              icon: <Zap className="size-3.5" aria-hidden="true" />,
-            },
-          ]}
-        />
+        {/* Abas de Navegação dos Modos — fluidas com scroll desobstruído */}
+        <div className="w-full overflow-x-auto no-scrollbar scroll-smooth -mx-1 px-1">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            variant="pills"
+            fullWidth={false}
+            items={[
+              {
+                value: "manual",
+                label: "Lançamento Individual",
+                icon: <History className="size-3.5" aria-hidden="true" />,
+              },
+              {
+                value: "extrato",
+                label: "Assistente de Extrato",
+                icon: <Sparkles className="size-3.5" aria-hidden="true" />,
+              },
+              {
+                value: "rapido",
+                label: "Modo Rápido",
+                icon: <Zap className="size-3.5" aria-hidden="true" />,
+              },
+            ]}
+          />
+        </div>
 
         {/* =================================================================== */}
         {/* ABA 1: ASSISTENTE DE EXTRATO INTELIGENTE */}
@@ -558,8 +560,8 @@ export function InitialPocketCostDialog({
                 rows={5}
                 className="font-mono text-xs"
               />
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-muted-foreground">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1.5">
+                <span className="text-[11px] text-muted-foreground leading-tight">
                   Suporta formatos da XP, BTG, Itaú, Kinvo, Gorila e planilhas Excel.
                 </span>
                 <Button
@@ -567,7 +569,7 @@ export function InitialPocketCostDialog({
                   variant="default"
                   size="sm"
                   onClick={handleProcessStatement}
-                  className="gap-1.5"
+                  className="gap-1.5 w-full sm:w-auto shrink-0 justify-center h-9 sm:h-8 cursor-pointer"
                 >
                   <Sparkles className="size-3.5" aria-hidden="true" />
                   <span>Processar Extrato</span>
