@@ -812,6 +812,31 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         size="lg"
       >
         <div className="flex flex-col gap-3.5 text-xs mt-2">
+          {/* Calibragem de Dados Anteriores ao App (Marcos Históricos) */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <Info className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5 text-[11px] leading-relaxed text-muted-foreground min-w-0">
+                <span className="font-semibold text-foreground">Calibragem de Dados Anteriores ao App</span>
+                <p>
+                  Se você investia antes de começar no app, cadastre seus Marcos Históricos ou importe seu extrato no assistente para que a TIR e o TWR considerem os aportes e lucros passados com precisão matemática.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant={position.hasMarcoZeroContribution ? "outline" : "default"}
+              size="sm"
+              onClick={() => {
+                setExplainModalOpen(false);
+                setInitialCostDialogOpen(true);
+              }}
+              className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
+            >
+              <span>{position.hasMarcoZeroContribution ? "Gerenciar Marcos Históricos" : "Cadastrar Marcos Históricos"}</span>
+            </Button>
+          </div>
+
           {/* Ponto 1: Card 1 do Dashboard — Patrimônio Total & Retorno Contábil */}
           <div className="rounded-xl border border-border/80 bg-surface/40 p-3.5 flex flex-col justify-between gap-2.5">
             <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 flex-wrap">
@@ -945,31 +970,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
                 Recomendado para: Liquidez e comparação justa
               </Badge>
             </div>
-          </div>
-
-          {/* Dica do Aporte Histórico */}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-2.5 min-w-0">
-              <Info className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-              <div className="flex flex-col gap-0.5 text-[11px] leading-relaxed text-muted-foreground min-w-0">
-                <span className="font-semibold text-foreground">Calibragem de Dados Anteriores ao App</span>
-                <p>
-                  Se você investia antes de começar no app, cadastre seus Marcos Históricos ou importe seu extrato no assistente para que a TIR e o TWR considerem os aportes e lucros passados com precisão matemática.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant={position.hasMarcoZeroContribution ? "outline" : "default"}
-              size="sm"
-              onClick={() => {
-                setExplainModalOpen(false);
-                setInitialCostDialogOpen(true);
-              }}
-              className="gap-1.5 shrink-0 w-full sm:w-auto text-xs"
-            >
-              <span>{position.hasMarcoZeroContribution ? "Gerenciar Marcos Históricos" : "Cadastrar Marcos Históricos"}</span>
-            </Button>
           </div>
         </div>
       </Modal>
