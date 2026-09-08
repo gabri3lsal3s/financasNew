@@ -137,7 +137,7 @@ describe("AporteTab — Calculadora e Aportes", () => {
 
     const input = screen.getByRole("textbox", { name: /Valor do aporte/i });
     // MoneyInput pode usar espaço não-quebrável (\u00A0) — usa regex para flexibilidade
-    await waitFor(() => expect(input.value).toMatch(/1[\.,]000,00/));
+    await waitFor(() => expect(input.value).toMatch(/1[.,]000,00/));
     expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Aporte sugerido/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: /Lançar compras no extrato/i })).toBeInTheDocument();
