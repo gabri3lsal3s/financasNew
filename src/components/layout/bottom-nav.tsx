@@ -162,7 +162,7 @@ export function BottomNav() {
     <>
       <MoreMenuSheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen} />
       <nav
-        className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur pb-[env(safe-area-inset-bottom,0px)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur pb-[env(safe-area-inset-bottom,0px)] lg:hidden"
         aria-label="Navegação principal"
       >
         {create ? (

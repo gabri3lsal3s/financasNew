@@ -79,7 +79,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        "fixed inset-y-0 left-0 z-sidebar hidden flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+        "fixed inset-y-0 left-0 z-sidebar hidden flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
         expanded ? "w-64" : "w-20",
         // Overlay por hover: sombra só quando flutuando sobre o conteúdo.
         hoverExpanded && isCollapsed && "shadow-2xl",

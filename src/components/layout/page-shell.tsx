@@ -67,7 +67,7 @@ export function PageShell() {
       <div
         className={cn(
           "flex flex-1 flex-col overflow-hidden transition-[padding] duration-200 ease-out motion-reduce:transition-none",
-          isCollapsed ? "md:pl-20" : "md:pl-20 lg:pl-64",
+          isCollapsed ? "lg:pl-20" : "lg:pl-64",
         )}
       >
         {/* Header fluido com elevação dinâmica de rolagem (F7.3/F56 / DESIGN_SYSTEM §6 e §8).
@@ -82,13 +82,13 @@ export function PageShell() {
         >
           <div className="mx-auto flex w-full max-w-7xl items-center gap-1.5 px-4 sm:px-6 lg:px-8 app-region-no-drag">
             {visual.headerButtons.logo && (
-              <div className="flex items-center md:hidden mr-1 shrink-0">
+              <div className="flex items-center lg:hidden mr-1 shrink-0">
                 <LogoProfileButton />
               </div>
             )}
-            {/* Separador visual entre logo e busca (mobile) */}
+            {/* Separador visual entre logo e busca (mobile/tablet) */}
             {visual.headerButtons.logo && (
-              <div className="h-5 w-px bg-border shrink-0 md:hidden" aria-hidden="true" />
+              <div className="h-5 w-px bg-border shrink-0 lg:hidden" aria-hidden="true" />
             )}
             <GlobalSearch className="flex-1 min-w-0" />
             {showCalc && <CalculatorButton />}
@@ -98,7 +98,7 @@ export function PageShell() {
           </div>
         </header>
         <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
-          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-24 md:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-24 lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
             {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
             <div key={location.pathname} className="animate-route-in min-w-0 w-full">
               <Suspense fallback={<RouteFallback />}>
