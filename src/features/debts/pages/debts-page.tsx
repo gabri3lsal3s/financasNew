@@ -471,7 +471,7 @@ export function DebtsPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Dívidas
+            Contas & Dívidas
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
             Gestão de contas a pagar, a receber e contratos

@@ -3,3 +3,4 @@ export { ResumoTab } from "./resumo-tab";
 export { AporteTab } from "./aporte-tab";
 export { TargetsTab } from "./targets-tab";
 export { ProventosTab } from "./proventos-tab";
+export { MovimentacoesTab } from "./movimentacoes-tab";

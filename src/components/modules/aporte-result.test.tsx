@@ -105,7 +105,7 @@ describe("AporteResult", () => {
       />,
     );
 
-    const launchBtn = screen.getByRole("button", { name: "Lançar compras no extrato" });
+    const launchBtn = screen.getByRole("button", { name: /Lançar compras no extrato/i });
     expect(launchBtn).toBeInTheDocument();
     await user.click(launchBtn);
 

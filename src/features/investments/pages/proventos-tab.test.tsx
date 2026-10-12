@@ -98,7 +98,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     expect(screen.getByText("Sem proventos ainda")).toBeInTheDocument();
   });
 
-  it("exibe proventos históricos iniciais mesmo sem lançamentos periódicos", () => {
+  it("exibe proventos históricos iniciais mesmo sem lançamentos periódicos ao acessar a aba Por Ativo", async () => {
     dividendsMock.mockReturnValue([]);
     assetsMock.mockReturnValue([
       {
@@ -112,16 +112,20 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
         accumulated_dividends: 1200,
       },
     ]);
+    const user = userEvent.setup();
     renderTab();
 
     expect(screen.queryByText("Sem proventos ainda")).not.toBeInTheDocument();
+    expect(screen.getByText("Nenhum provento recebido neste mês.")).toBeInTheDocument();
+
+    // Navega para Por Ativo
+    await user.click(screen.getByRole("tab", { name: "Por Ativo" }));
     expect(screen.getByText("Histórico Anterior")).toBeInTheDocument();
     expect(screen.getAllByText("R$ 1.200,00").length).toBeGreaterThan(0);
     expect(screen.getByText("Proventos por Ativo")).toBeInTheDocument();
-    expect(screen.getByText("Nenhum provento recebido neste mês.")).toBeInTheDocument();
   });
 
-  it("exibe a Bola de Neve usando dividendo estimado quando não há lançamentos periódicos", () => {
+  it("exibe a Bola de Neve usando dividendo estimado na sub-aba Bola de Neve", async () => {
     dividendsMock.mockReturnValue([]);
     assetsMock.mockReturnValue([
       {
@@ -135,9 +139,13 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
         estimated_monthly_dividend_per_share: 0.1,
       },
     ]);
+    const user = userEvent.setup();
     renderTab();
 
     expect(screen.queryByText("Sem proventos ainda")).not.toBeInTheDocument();
+
+    // Navega para Bola de Neve
+    await user.click(screen.getByRole("tab", { name: "Bola de Neve" }));
     expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
     expect(screen.getByText("Estimado")).toBeInTheDocument();
   });
@@ -158,10 +166,12 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     expect(screen.getAllByText("R$ 40,00").length).toBeGreaterThan(0);
   });
 
-  it("exibe o indicador do Efeito Bola de Neve para ativos com proventos", () => {
+  it("exibe o indicador do Efeito Bola de Neve para ativos com proventos", async () => {
     dividendsMock.mockReturnValue(dividends);
+    const user = userEvent.setup();
     renderTab();
 
+    await user.click(screen.getByRole("tab", { name: "Bola de Neve" }));
     expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
     expect(screen.getByText(/Progresso para que os proventos mensais comprem 1 nova cota inteira sozinhos/i)).toBeInTheDocument();
   });

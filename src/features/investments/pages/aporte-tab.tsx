@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Calculator, Sparkles, Upload } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, SkeletonChart, SkeletonKpi, Tabs } from "@/components/ui";
+import { Calculator, Sparkles } from "lucide-react";
+import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, SkeletonChart, SkeletonKpi } from "@/components/ui";
 
-import { AporteResult, type AporteRouteRow } from "@/components/modules";
+import { AporteResult, type AporteRouteRow, type CustomAporteExecutionItem } from "@/components/modules";
 import {
   inferSectorFromTicker,
   simulateCombinedAporte,
@@ -20,20 +20,11 @@ import {
   useGroupTargets,
   usePortfolioPosition,
 } from "@/state";
-import { PortfolioActivityPanel, PortfolioImportDialog } from "../components";
-import { TargetsTab } from "./targets-tab";
-
-type AporteSubTab = "calculadora" | "metas" | "historico";
 
 /**
  * Calculadora de aporte (§F36) — simulação hierárquica unificada (Classe -> Setor -> Ativo).
  * Ao aplicar o lote, executa a transação atômica via RPC (`execute_portfolio_batch_aporte`)
  * atualizando posições, registrando compras em `portfolio_transactions` e histórico em `portfolio_contributions`.
- *
- * Sub-tabs:
- * - Calculadora: rebalanceador interativo hierárquico
- * - Metas: gestão visual de alocação por ativo, setor e classe
- * - Histórico: lista de aportes registrados por mês (§F37)
  */
 export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,12 +33,6 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
   const executeBatch = useExecutePortfolioBatchAporte();
-
-  const [selectedSubTab, setSelectedSubTab] = useState<AporteSubTab>(() => {
-    const raw = (searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba"))?.toLowerCase();
-    return raw === "metas" || raw === "historico" ? raw : "calculadora";
-  });
-  const subTab: AporteSubTab = selectedSubTab;
 
   // Valor do aporte: por padrão ZERO (R$ 0,00)
   const [userAporteCents, setUserAporteCents] = useState<number>(0);
@@ -132,7 +117,6 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   }, [searchParams, setSearchParams]);
 
   // Passo 2 — Dispara a animação após delay (600ms), aguardando a transição de rota fechar
-  // setState ocorre dentro do callback assíncrono do timer, não no body do effect
   useEffect(() => {
     const timer = setTimeout(() => {
       if (pendingInjectRef.current !== null) {
@@ -147,9 +131,9 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const setAporteCents = (val: number) => setUserAporteCents(val);
 
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
+  const [pendingCustomItems, setPendingCustomItems] = useState<CustomAporteExecutionItem[] | null>(null);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
 
   const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? sectorTargetsQuery.error;
   const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || sectorTargetsQuery.isLoading;
@@ -213,13 +197,25 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
 
   const eligibleRoutes = routes.filter((r) => r.quantity > 0);
 
+  const handleTriggerAporte = (items?: CustomAporteExecutionItem[]) => {
+    setPendingCustomItems(items ?? null);
+    setConfirmBatchOpen(true);
+  };
+
   const handleExecuteBatch = async () => {
-    if (eligibleRoutes.length === 0 || isApplying) return;
+    const activeItems = pendingCustomItems ?? eligibleRoutes.map((r) => ({
+      assetId: r.assetId,
+      ticker: r.ticker,
+      quantity: r.quantity,
+      priceBRL: r.priceBRL,
+      allocatedBRL: r.allocatedBRL,
+    }));
+    if (activeItems.length === 0 || isApplying) return;
     setBatchError(null);
     setIsApplying(true);
     try {
       const date = todayISO();
-      const items = eligibleRoutes.map((r) => {
+      const items = activeItems.map((r) => {
         const row = position.rows.find((p) => p.assetId === r.assetId);
         const isUSD = row?.currency === "USD";
         const rate = isUSD ? (row?.usdRate || 5.25) : 1;
@@ -230,16 +226,17 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
           total: isUSD ? Math.round((r.allocatedBRL / rate) * 100) / 100 : r.allocatedBRL,
         };
       });
-      const totalAmount = result?.totalAllocated ?? eligibleRoutes.reduce((acc, r) => acc + r.allocatedBRL, 0);
+      const totalAmount = activeItems.reduce((acc, r) => acc + r.allocatedBRL, 0);
 
       await executeBatch.mutateAsync({
         items,
         date,
         totalAmount,
-        notes: `Aporte inteligente (${eligibleRoutes.length} ativos)`,
+        notes: `Aporte inteligente (${activeItems.length} ativos)`,
       });
 
       setConfirmBatchOpen(false);
+      setPendingCustomItems(null);
       setAporteCents(0);
       onGoToPosition?.();
     } catch (err) {
@@ -251,146 +248,98 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <Tabs
-        value={subTab}
-        onValueChange={(v) => {
-          setSelectedSubTab(v as AporteSubTab);
-          triggerSensory("selection");
-        }}
-        variant="pills"
-        items={[
-          { value: "calculadora", label: "Calculadora" },
-          { value: "metas", label: "Metas de Alocação" },
-          { value: "historico", label: "Extrato de Movimentações" },
-        ]}
-      />
+      {batchError ? <Alert variant="error">{batchError}</Alert> : null}
 
-      {subTab === "metas" && <TargetsTab onGoToPosition={onGoToPosition} />}
-
-      {subTab === "historico" && (
-        <div className="flex flex-col gap-5">
-          <PortfolioActivityPanel />
-          <section
-            aria-label="Importar posição via planilha"
-            className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border/80 bg-surface/70 px-4 py-3.5 shadow-xs transition-all hover:border-border"
-          >
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="text-xs font-semibold text-foreground">Posição ou histórico desatualizado?</span>
-              <span className="text-xs text-muted-foreground">
-                Importe um arquivo .xlsx ou .csv para atualizar suas posições e registrar operações em lote.
+      {loading ? (
+        <div className="flex flex-col gap-4">
+          <SkeletonKpi />
+          <SkeletonChart />
+        </div>
+      ) : error ? (
+        <ErrorState
+          message={getErrorMessage(error)}
+          onRetry={() => {
+            position.refetch();
+            void targetsQuery.refetch();
+            void classTargetsQuery.refetch();
+            void sectorTargetsQuery.refetch();
+          }}
+        />
+      ) : nonCashRows.length === 0 ? (
+        <EmptyState
+          icon={<Calculator className="size-6" />}
+          title="Nenhum ativo investido para simular aporte"
+          description="Cadastre ativos e metas na aba 'Metas' para que a calculadora distribua seu aporte de forma ideal."
+          action={
+            <Button variant="default" onClick={() => onGoToPosition?.()}>
+              Ver Carteira
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full min-w-0">
+              Valor do aporte
+              <MoneyInput
+                cents={aporteCents}
+                onCentsChange={setAporteCents}
+                size="md"
+                aria-label="Valor do aporte"
+                placeholder="R$ 0,00"
+              />
+              {position.cashBRL > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    animateToCents(Math.round(position.cashBRL * 100));
+                    triggerSensory("selection");
+                  }}
+                  className="self-start text-[11px] text-portfolio hover:underline font-medium cursor-pointer pt-0.5"
+                >
+                  Usar saldo em caixa (R$ {position.cashBRL.toFixed(2)})
+                </button>
+              ) : null}
+            </label>
+            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
+              <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+              <span>
+                <strong className="font-semibold text-foreground">Motor Hierárquico:</strong> Estabiliza primeiro a macroclasse com maior déficit e depois distribui pelas metas dos ativos.
               </span>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setImportOpen(true)}
-              className="h-8 text-xs gap-1.5 shrink-0 sm:flex-initial"
-            >
-              <Upload className="size-3.5 text-portfolio" aria-hidden="true" />
-              <span>Importar Planilha</span>
-            </Button>
           </section>
-        </div>
-      )}
 
-      {subTab === "calculadora" && (
-        <>
-          {batchError ? <Alert variant="error">{batchError}</Alert> : null}
-
-          {loading ? (
-            <div className="flex flex-col gap-4">
-              <SkeletonKpi />
-              <SkeletonChart />
+          {result ? (
+            <div className="animate-fade-in transition-all duration-300">
+              <AporteResult
+                mode="both"
+                aporte={result.aporte}
+                totalAllocated={result.totalAllocated}
+                leftover={result.leftover}
+                routes={routes}
+                classSummaries={result.classSummaries}
+                sectorSummaries={result.sectorSummaries}
+                skippedAssets={result.skippedAssets}
+                onExecuteAporte={handleTriggerAporte}
+                executing={isApplying}
+              />
             </div>
-          ) : error ? (
-            <ErrorState
-              message={getErrorMessage(error)}
-              onRetry={() => {
-                position.refetch();
-                void targetsQuery.refetch();
-                void classTargetsQuery.refetch();
-                void sectorTargetsQuery.refetch();
-              }}
-            />
-
-
-          ) : nonCashRows.length === 0 ? (
-            <EmptyState
-              icon={<Calculator className="size-6" />}
-              title="Nenhum ativo investido para simular aporte"
-              description="Cadastre ativos e metas na aba 'Metas' para que a calculadora distribua seu aporte de forma ideal."
-              action={
-                <Button variant="default" onClick={() => setSelectedSubTab("metas")}>
-                  Configurar Metas
-                </Button>
-              }
-            />
-          ) : (
-            <>
-              <section aria-label="Parâmetros da simulação" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground w-full min-w-0">
-                  Valor do aporte
-                  <MoneyInput
-                    cents={aporteCents}
-                    onCentsChange={setAporteCents}
-                    size="md"
-                    aria-label="Valor do aporte"
-                    placeholder="R$ 0,00"
-                  />
-                  {position.cashBRL > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        animateToCents(Math.round(position.cashBRL * 100));
-                        triggerSensory("selection");
-                      }}
-                      className="self-start text-[11px] text-portfolio hover:underline font-medium cursor-pointer pt-0.5"
-                    >
-                      Usar saldo em caixa (R$ {position.cashBRL.toFixed(2)})
-                    </button>
-                  ) : null}
-                </label>
-                <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
-                  <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-                  <span>
-                    <strong className="font-semibold text-foreground">Motor Hierárquico:</strong> Estabiliza primeiro a macroclasse com maior déficit e depois distribui pelas metas dos ativos.
-                  </span>
-                </div>
-              </section>
-
-              {result ? (
-                <div className="animate-fade-in transition-all duration-300">
-                  <AporteResult
-                    mode="both"
-                    aporte={result.aporte}
-                    totalAllocated={result.totalAllocated}
-                    leftover={result.leftover}
-                    routes={routes}
-                    classSummaries={result.classSummaries}
-                    sectorSummaries={result.sectorSummaries}
-                    skippedAssets={result.skippedAssets}
-                    onExecuteAporte={() => setConfirmBatchOpen(true)}
-                    executing={isApplying}
-                  />
-                </div>
-              ) : null}
-            </>
-          )}
+          ) : null}
         </>
       )}
 
       <ConfirmDialog
         open={confirmBatchOpen}
-        onOpenChange={setConfirmBatchOpen}
+        onOpenChange={(open) => {
+          setConfirmBatchOpen(open);
+          if (!open) setPendingCustomItems(null);
+        }}
         title="Aplicar aporte à carteira?"
-        description={`Essa ação atualizará a quantidade e o preço médio ponderado de ${eligibleRoutes.length} ativos da sua carteira e registrará a contribuição deste mês.`}
+        description={`Essa ação atualizará a quantidade e o preço médio ponderado de ${(pendingCustomItems ?? eligibleRoutes).length} ativos da sua carteira e registrará a contribuição deste mês.`}
         confirmLabel="Aplicar aporte"
         confirmPending={isApplying}
         onConfirm={() => void handleExecuteBatch()}
       />
-
-      <PortfolioImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

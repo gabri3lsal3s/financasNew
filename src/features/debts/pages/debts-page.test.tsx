@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DebtsPage } from "./debts-page";
 
 vi.mock("react-router", () => ({
@@ -91,6 +91,15 @@ vi.mock("@/state", () => ({
 }));
 
 describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-09-15T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("lista dívidas com status derivado", async () => {
     const user = userEvent.setup();
     render(<DebtsPage />);

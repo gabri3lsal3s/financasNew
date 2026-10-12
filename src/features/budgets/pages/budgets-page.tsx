@@ -46,8 +46,8 @@ export function BudgetsPage() {
   const effectiveHighlightId = highlightId ?? targetCategory;
 
   const [month, setMonth] = useState(currentMonth());
-  const [tab, setTab] = useState<"limits" | "goals">(() =>
-    targetType === "income" ? "goals" : "limits",
+  const [tab, setTab] = useState<"limits" | "goals" | "categories">(() =>
+    targetType === "income" ? "goals" : targetType === "category" ? "categories" : "limits",
   );
   const [limitFor, setLimitFor] = useState<Category | null>(null);
   const [goalFor, setGoalFor] = useState<Category | null>(null);
@@ -538,15 +538,62 @@ export function BudgetsPage() {
     </div>
   );
 
+  const renderCategoriesContent = () => (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Catálogo com todas as categorias do sistema e personalizadas.
+        </p>
+        <Button size="sm" onClick={handleOpenCreateCategory} className="gap-1.5">
+          <Plus className="size-4" aria-hidden="true" />
+          <span>Nova categoria</span>
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {allCategories.map((category) => (
+          <div
+            key={category.id}
+            className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0"
+          >
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <CategoryIcon icon={category.icon} color={category.color} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {category.name}
+                </p>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  {category.type === "income" ? "Receita" : "Despesa"}
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="size-7 text-muted-foreground hover:text-foreground"
+              aria-label={`Editar cadastro de ${category.name}`}
+              title={`Editar cadastro de ${category.name}`}
+              onClick={() => handleEditCategory(category)}
+            >
+              <Edit3 className="size-3.5" aria-hidden="true" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Categorias
+            Orçamentos
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
-            Gestão de categorias, limites de gastos e expectativas de renda
+            Tetos de gastos mensais, metas de renda e controle de categorias
           </p>
         </div>
         <Button
@@ -573,7 +620,7 @@ export function BudgetsPage() {
 
       <Tabs
         value={tab}
-        onValueChange={(value) => setTab(value as "limits" | "goals")}
+        onValueChange={(value) => setTab(value as "limits" | "goals" | "categories")}
         variant="underline"
         swipeable
         items={[
@@ -588,6 +635,12 @@ export function BudgetsPage() {
             label: "Rendas",
             icon: <TrendingUp className="size-4" aria-hidden="true" />,
             content: renderGoalsContent(),
+          },
+          {
+            value: "categories",
+            label: "Categorias",
+            icon: <PiggyBank className="size-4" aria-hidden="true" />,
+            content: renderCategoriesContent(),
           },
         ]}
       />

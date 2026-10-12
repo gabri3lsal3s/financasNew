@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Briefcase, Coins, Plus, TrendingUp, Wallet } from "lucide-react";
+import { ArrowLeftRight, Briefcase, Coins, Plus, Target, TrendingUp, Wallet } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
@@ -9,12 +9,16 @@ import { usePermission } from "@/state";
 import { ResumoTab } from "./resumo-tab";
 import { ProventosTab } from "./proventos-tab";
 import { AporteTab } from "./aporte-tab";
+import { TargetsTab } from "./targets-tab";
+import { MovimentacoesTab } from "./movimentacoes-tab";
 import { CashFormDialog } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
 import type { PortfolioAsset } from "@/types";
 
-type InvestmentsTab = "resumo" | "aporte" | "proventos";
+type InvestmentsTab = "resumo" | "aporte" | "metas" | "proventos" | "movimentacoes";
+
+const VALID_TABS: readonly InvestmentsTab[] = ["resumo", "aporte", "metas", "proventos", "movimentacoes"];
 
 /**
  * Investimentos — área única de consolidação da carteira (unificação /carteira
@@ -25,7 +29,7 @@ export function InvestmentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab: InvestmentsTab =
-    tabParam && ["resumo", "aporte", "proventos"].includes(tabParam)
+    tabParam && (VALID_TABS as readonly string[]).includes(tabParam)
       ? (tabParam as InvestmentsTab)
       : "resumo";
 
@@ -162,10 +166,22 @@ export function InvestmentsPage() {
             content: <AporteTab onGoToPosition={() => handleTabChange("resumo")} />,
           },
           {
+            value: "metas",
+            label: "Metas",
+            icon: <Target className="size-4" aria-hidden="true" />,
+            content: <TargetsTab onGoToPosition={() => handleTabChange("resumo")} />,
+          },
+          {
             value: "proventos",
             label: "Proventos",
             icon: <Coins className="size-4" aria-hidden="true" />,
             content: <ProventosTab onOpenWizard={handleOpenWizard} />,
+          },
+          {
+            value: "movimentacoes",
+            label: "Movimentações",
+            icon: <ArrowLeftRight className="size-4" aria-hidden="true" />,
+            content: <MovimentacoesTab />,
           },
         ]}
       />

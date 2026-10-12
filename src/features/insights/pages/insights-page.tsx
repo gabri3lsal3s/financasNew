@@ -48,7 +48,7 @@ import { DiagnosticsTab, ProjectionTab, RecurrencesTab, type WarningItem } from 
  * helpers compartilhados de budgets), fontes únicas de essencialidade e
  * investimentos reais da carteira nas projeções.
  */
-export function InsightsPage() {
+export function InsightsPage({ showHeader = true }: { showHeader?: boolean } = {}) {
   const [tab, setTab] = useState("diagnostics");
   const [showIgnored, setShowIgnored] = useState(false);
   const [expandedWarnings, setExpandedWarnings] = useState(false);
@@ -285,14 +285,14 @@ export function InsightsPage() {
         ]
       : []),
     // Radar de Vencimentos & Inteligência Fiscal de Renda Fixa (Fase 63/72)
-    ...position.rows
+    ...(position.rows ?? [])
       .filter((r) => r.isMatured)
       .map((r) => ({
         id: `matured-${r.assetId}`,
         variant: "warning" as const,
         message: `Título Vencido: O ativo ${r.ticker} atingiu a data de vencimento (${r.maturityDate}). Realize o resgate para voltar a rentabilizar seu capital.`,
       })),
-    ...position.rows
+    ...(position.rows ?? [])
       .filter((r) => !r.isMatured && r.maturityDate)
       .filter((r) => {
         if (!r.maturityDate) return false;
@@ -309,7 +309,7 @@ export function InsightsPage() {
           message: `Vencimento Próximo: O ativo ${r.ticker} vencerá em ${diffDays} dia(s) (${r.maturityDate}). Planeje a reinvestimento do montante.`,
         };
       }),
-    ...position.rows
+    ...(position.rows ?? [])
       .filter((r) => r.fixedIncomeResult?.taxCountdown && r.fixedIncomeResult.taxCountdown.daysRemaining <= 30)
       .map((r) => ({
         id: `tax-opt-${r.assetId}`,
@@ -320,22 +320,24 @@ export function InsightsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Insights
-          </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Diagnósticos inteligentes, assinaturas recorrentes e projeções de gastos
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-1.5 self-start rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground sm:self-auto shrink-0">
-          <Calendar className="size-3.5" aria-hidden="true" />
-          <span>
-            Referência: <strong className="font-medium text-foreground">{monthLabel(month)}</strong>
-          </span>
-        </div>
-      </header>
+      {showHeader ? (
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              Insights
+            </h1>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Diagnósticos inteligentes, assinaturas recorrentes e projeções de gastos
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-1.5 self-start rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground sm:self-auto shrink-0">
+            <Calendar className="size-3.5" aria-hidden="true" />
+            <span>
+              Referência: <strong className="font-medium text-foreground">{monthLabel(month)}</strong>
+            </span>
+          </div>
+        </header>
+      ) : null}
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 

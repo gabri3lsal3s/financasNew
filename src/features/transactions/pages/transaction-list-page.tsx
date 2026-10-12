@@ -1,22 +1,21 @@
 import { useNavigate, useSearchParams } from "react-router";
-import { useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, FileSpreadsheet, Plus, Repeat, Zap } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeftRight, Calendar, FileSpreadsheet, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { MoneyText } from "@/components/ui/money-text";
-
 import { SkeletonList } from "@/components/ui/skeleton";
-import { VirtualList } from "@/components/ui/virtual-list";
+import { Tabs } from "@/components/ui/tabs";
 import { HighlightRow, KpiCard, MonthPicker, ReadOnlyBanner, TransactionRow, UpgradeDialog } from "@/components/modules";
-import { currentMonth, isValidMonth } from "@/lib/date";
+import { currentMonth, formatDateBR, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useCategories, useExpenses, useIncomes, usePermission, useRecurrences } from "@/state";
 import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
-import { partitionInvoiceExpenses } from "@/domain/cards";
+import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain/expenses";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
 import { BankStatementImportDialog } from "@/features/transactions/components/bank-statement-import-dialog";
@@ -56,10 +55,6 @@ function ExpenseRow({
   );
 }
 
-// Altura fixa das linhas (py-2.5 + ícone 36px ≈ 56px; folga p/ badges).
-const ROW_HEIGHT = 64;
-// Acima deste total renderiza tudo direto (sem janela) — meses comuns.
-const PLAIN_THRESHOLD = 60;
 
 function IncomeRow({
   income,
@@ -140,14 +135,13 @@ export function TransactionListPage() {
   const balanceCents = incomesTotalCents - expensesTotalCents;
   const balanceWeightedCents = incomesWeightedCents - expensesWeightedCents;
 
-  // Partição de despesas: recorrentes (recurrence_id) × parceladas × à vista
-  // — mesmo motor puro usado na página de cartões (domain/cards).
-  const expenseRecurring = (expensesQuery.data ?? []).filter((expense) => expense.recurrence_id != null);
-  const { installments: expenseInstallments, regular: expenseRegular } = partitionInvoiceExpenses(
-    (expensesQuery.data ?? []).filter((expense) => expense.recurrence_id == null),
+  const [filter, setFilter] = useState<FeedFilter>("all");
+
+  const feedItems = useMemo(
+    () => buildUnifiedFeedItems(expensesQuery.data ?? [], incomesQuery.data ?? [], filter),
+    [expensesQuery.data, incomesQuery.data, filter],
   );
-  const incomeRecurring = (incomesQuery.data ?? []).filter((income) => income.recurrence_id != null);
-  const incomeRegular = (incomesQuery.data ?? []).filter((income) => income.recurrence_id == null);
+  const feedGroups = useMemo(() => groupFeedByDay(feedItems), [feedItems]);
 
   // Frequência por template (Fase 32) — subtítulo "Mensal", "Semanal", etc.
   const frequencyById = new Map(
@@ -260,213 +254,87 @@ export function TransactionListPage() {
         </Button>
       </div>
 
+      <Tabs
+        value={filter}
+        onValueChange={(val) => setFilter(val as FeedFilter)}
+        fullWidth={false}
+        items={[
+          { value: "all", label: "Tudo" },
+          { value: "incomes", label: "Receitas" },
+          { value: "expenses", label: "Despesas" },
+          { value: "recurring", label: "Recorrentes" },
+          { value: "installments", label: "Parceladas" },
+        ]}
+      />
+
       {error ? (
         <ErrorState
           message={getErrorMessage(error)}
           onRetry={() => void Promise.all([expensesQuery.refetch(), incomesQuery.refetch(), categoriesQuery.refetch(), recurrencesQuery.refetch()])}
         />
       ) : loading ? (
-
         <div className="flex flex-col gap-2">
           <SkeletonList rows={4} />
         </div>
+      ) : feedGroups.length === 0 ? (
+        <EmptyState
+          icon={<ArrowLeftRight className="size-6" aria-hidden="true" />}
+          title="Nenhum lançamento encontrado"
+          description={
+            filter === "incomes"
+              ? "Nenhuma receita registrada neste mês."
+              : filter === "expenses"
+                ? "Nenhuma despesa registrada neste mês."
+                : filter === "recurring"
+                  ? "Nenhum lançamento recorrente neste mês."
+                  : filter === "installments"
+                    ? "Nenhum lançamento parcelado neste mês."
+                    : "Registre sua primeira transação do mês."
+          }
+        />
       ) : (
-        <div className="flex flex-col gap-6">
-          <section aria-label="Receitas do mês" className="flex flex-col gap-2">
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              <ArrowDownLeft className="size-4 text-positive-strong" aria-hidden="true" />
-              Receitas
-            </h2>
-            {(incomesQuery.data ?? []).length === 0 ? (
-              <EmptyState
-                icon={<ArrowDownLeft className="size-6" aria-hidden="true" />}
-                title="Nenhuma receita"
-                description="Registre sua primeira renda do mês."
-                tone="positive"
-              />
-            ) : (
-              <div className="flex flex-col gap-4">
-                {incomeRecurring.length > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <Repeat className="size-3.5" aria-hidden="true" />
-                        Recorrentes
-                      </h3>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {incomeRecurring.length} {incomeRecurring.length === 1 ? "item" : "itens"}
-                      </span>
-                    </div>
-                    <VirtualList
-                      key={`${month}-income-recurring`}
-                      rows={incomeRecurring}
-                      rowKey={(income) => income.id}
-                      itemHeight={ROW_HEIGHT}
-                      plainThreshold={PLAIN_THRESHOLD}
-                      maxHeight={560}
-                      gap={8}
-                      aria-label="Rendas recorrentes do mês"
-                      renderRow={(income) => (
-                        <HighlightRow highlightId={highlightId} id={income.id}>
-                          <IncomeRow
-                            income={income}
-                            category={categoryById.get(income.category_id)}
-                            recurrenceLabel={recurrenceLabel(income.recurrence_id)}
-                            onClick={() => setSelectedIncome(income)}
-                          />
-                        </HighlightRow>
-                      )}
-                    />
-                  </div>
-                ) : null}
-                {incomeRegular.length > 0 ? (
-                  <VirtualList
-                    key={`${month}-income-regular`}
-                    rows={incomeRegular}
-                    rowKey={(income) => income.id}
-                    itemHeight={ROW_HEIGHT}
-                    plainThreshold={PLAIN_THRESHOLD}
-                    maxHeight={560}
-                    gap={8}
-                    aria-label="Receitas avulsas do mês"
-                    renderRow={(income) => (
-                      <HighlightRow highlightId={highlightId} id={income.id}>
-                        <IncomeRow
-                          income={income}
-                          category={categoryById.get(income.category_id)}
-                          onClick={() => setSelectedIncome(income)}
-                        />
-                      </HighlightRow>
-                    )}
-                  />
-                ) : null}
-              </div>
-            )}
-          </section>
-
-          <section aria-label="Despesas do mês" className="flex flex-col gap-3">
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              <ArrowUpRight className="size-4 text-negative-strong" aria-hidden="true" />
-              Despesas
-            </h2>
-            {(expensesQuery.data ?? []).length === 0 ? (
-              <EmptyState
-                icon={<ArrowUpRight className="size-6" aria-hidden="true" />}
-                title="Nenhuma despesa"
-                description="Registre seu primeiro gasto do mês."
-                tone="negative"
-              />
-            ) : (
-              <div className="flex flex-col gap-4">
-                {/* Recorrentes — recorrência formal (Fase 32, topo) */}
-                {expenseRecurring.length > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <Repeat className="size-3.5" aria-hidden="true" />
-                        Recorrentes
-                      </h3>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {expenseRecurring.length} {expenseRecurring.length === 1 ? "item" : "itens"}
-                      </span>
-                    </div>
-                    <VirtualList
-                      key={`${month}-expense-recurring`}
-                      rows={expenseRecurring}
-                      rowKey={(expense) => expense.id}
-                      itemHeight={ROW_HEIGHT}
-                      plainThreshold={PLAIN_THRESHOLD}
-                      maxHeight={560}
-                      gap={8}
-                      aria-label="Despesas recorrentes do mês"
-                      renderRow={(expense) => (
-                        <HighlightRow highlightId={highlightId} id={expense.id}>
-                          <ExpenseRow
-                            expense={expense}
-                            category={categoryById.get(expense.category_id)}
-                            recurrenceLabel={recurrenceLabel(expense.recurrence_id)}
-                            onClick={() => setSelectedExpense(expense)}
-                          />
-                        </HighlightRow>
-                      )}
-                    />
-                  </div>
-                ) : null}
-
-                {/* Parceladas — compras com mais de 1 parcela */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Repeat className="size-3.5" aria-hidden="true" />
-                      Parceladas
-                    </h3>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {expenseInstallments.length} {expenseInstallments.length === 1 ? "item" : "itens"}
-                    </span>
-                  </div>
-                  {expenseInstallments.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhuma despesa parcelada no mês.</p>
-                  ) : (
-                    <VirtualList
-                      key={`${month}-installments`}
-                      rows={expenseInstallments}
-                      rowKey={(expense) => expense.id}
-                      itemHeight={ROW_HEIGHT}
-                      plainThreshold={PLAIN_THRESHOLD}
-                      maxHeight={560}
-                      gap={8}
-                      aria-label="Despesas parceladas do mês"
-                      renderRow={(expense) => (
-                        <HighlightRow highlightId={highlightId} id={expense.id}>
-                          <ExpenseRow
-                            expense={expense}
-                            category={categoryById.get(expense.category_id)}
-                            onClick={() => setSelectedExpense(expense)}
-                          />
-                        </HighlightRow>
-                      )}
-                    />
-                  )}
+        <div className="flex flex-col gap-5">
+          {feedGroups.map((group) => (
+            <section
+              key={group.date}
+              aria-label={`Lançamentos de ${formatDateBR(group.date)}`}
+              className="flex flex-col gap-2"
+            >
+              <div className="flex items-center justify-between border-b border-border/40 pb-1.5 pt-1 px-1">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                  <Calendar className="size-3.5" aria-hidden="true" />
+                  <span className="text-foreground">{formatDateBR(group.date)}</span>
                 </div>
-
-                {/* À vista — gastos sem parcelamento (abaixo) */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Zap className="size-3.5" aria-hidden="true" />
-                      À vista
-                    </h3>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {expenseRegular.length} {expenseRegular.length === 1 ? "item" : "itens"}
-                    </span>
-                  </div>
-                  {expenseRegular.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhuma despesa à vista no mês.</p>
-                  ) : (
-                    <VirtualList
-                      key={`${month}-regular`}
-                      rows={expenseRegular}
-                      rowKey={(expense) => expense.id}
-                      itemHeight={ROW_HEIGHT}
-                      plainThreshold={PLAIN_THRESHOLD}
-                      maxHeight={560}
-                      gap={8}
-                      aria-label="Despesas à vista do mês"
-                      renderRow={(expense) => (
-                        <HighlightRow highlightId={highlightId} id={expense.id}>
-                          <ExpenseRow
-                            expense={expense}
-                            category={categoryById.get(expense.category_id)}
-                            onClick={() => setSelectedExpense(expense)}
-                          />
-                        </HighlightRow>
-                      )}
-                    />
-                  )}
-                </div>
+                <MoneyText
+                  cents={group.netCents}
+                  tone={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "default"}
+                  sign="auto"
+                  className="text-xs font-semibold tabular-nums"
+                />
               </div>
-            )}
-          </section>
+              <div className="flex flex-col gap-2">
+                {group.items.map((item) => (
+                  <HighlightRow key={item.id} highlightId={highlightId} id={item.id}>
+                    {item.kind === "income" && item.rawIncome ? (
+                      <IncomeRow
+                        income={item.rawIncome}
+                        category={categoryById.get(item.categoryId)}
+                        recurrenceLabel={recurrenceLabel(item.recurrenceId)}
+                        onClick={() => setSelectedIncome(item.rawIncome!)}
+                      />
+                    ) : item.rawExpense ? (
+                      <ExpenseRow
+                        expense={item.rawExpense}
+                        category={categoryById.get(item.categoryId)}
+                        recurrenceLabel={recurrenceLabel(item.recurrenceId)}
+                        onClick={() => setSelectedExpense(item.rawExpense!)}
+                      />
+                    ) : null}
+                  </HighlightRow>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       )}
 

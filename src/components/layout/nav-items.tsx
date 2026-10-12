@@ -6,7 +6,6 @@ import {
   CreditCard,
   HandCoins,
   House,
-  Lightbulb,
   PiggyBank,
   Settings,
   ShieldCheck,
@@ -33,11 +32,10 @@ export const navItems: NavItem[] = [
   { label: "Início", shortLabel: "Início", path: "/", icon: House, featureKey: "overview" },
   { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
   { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
-  { label: "Dívidas", shortLabel: "Dívidas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
+  { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
   { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
+  { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
   { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
-  { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Lightbulb, featureKey: "insights" },
-  { label: "Categorias", shortLabel: "Orçamento", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
   { label: "Lembretes", shortLabel: "Lembretes", path: "/lembretes", icon: Bell, featureKey: "reminders" },
   { label: "Configurações", shortLabel: "Ajustes", path: "/configuracoes", icon: Settings },
   { label: "Administração", shortLabel: "Admin", path: "/admin", icon: ShieldCheck, adminOnly: true },
@@ -46,25 +44,24 @@ export const navItems: NavItem[] = [
 /** Grupos semânticos para organização na Sidebar desktop e menu Mais no mobile. */
 export const navGroups: NavGroup[] = [
   {
-    title: "Dia a Dia",
+    title: "Operações",
     items: [
       { label: "Início", shortLabel: "Início", path: "/", icon: House, featureKey: "overview" },
       { label: "Transações", shortLabel: "Extrato", path: "/transacoes", icon: ArrowLeftRight, featureKey: "transactions" },
       { label: "Cartões", shortLabel: "Cartões", path: "/cartoes", icon: CreditCard, featureKey: "cards" },
+      { label: "Contas & Dívidas", shortLabel: "Contas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
     ],
   },
   {
-    title: "Planejamento & Análise",
+    title: "Estratégia & Análise",
     items: [
-      { label: "Dívidas", shortLabel: "Dívidas", path: "/dividas", icon: HandCoins, featureKey: "debts" },
       { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
+      { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
       { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
-      { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Lightbulb, featureKey: "insights" },
-      { label: "Categorias", shortLabel: "Orçamento", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
     ],
   },
   {
-    title: "Notificações & Sistema",
+    title: "Sistema",
     items: [
       { label: "Lembretes", shortLabel: "Lembretes", path: "/lembretes", icon: Bell, featureKey: "reminders" },
       { label: "Configurações", shortLabel: "Ajustes", path: "/configuracoes", icon: Settings },

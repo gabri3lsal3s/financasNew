@@ -383,18 +383,6 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             >
               Vendas/Resgates
             </button>
-            <button
-              type="button"
-              onClick={() => setFilterType("dividend")}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                filterType === "dividend"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Proventos
-            </button>
           </div>
         </div>
 

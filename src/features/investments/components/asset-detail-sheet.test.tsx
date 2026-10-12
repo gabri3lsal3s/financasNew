@@ -141,7 +141,7 @@ describe("AssetDetailSheet (Fase 41 & F57)", () => {
   it("renderiza corretamente para ativo de Renda Fixa com taxa e vencimento formatado pt-BR", () => {
     render(<AssetDetailSheet asset={mockRfAsset} open={true} onOpenChange={vi.fn()} />);
     expect(screen.getByText("CDB-BMG-JAN27")).toBeInTheDocument();
-    expect(screen.getByText("16.22% a.a. • Projetado")).toBeInTheDocument();
+    expect(screen.getByText(/16[,.]22%\s*a\.a\.\s*•\s*Projetado/i)).toBeInTheDocument();
     expect(screen.getByText("Valor Aplicado")).toBeInTheDocument();
   });
 

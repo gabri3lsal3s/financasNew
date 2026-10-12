@@ -54,10 +54,11 @@ import {
   PortfolioExecutiveReport,
   PortfolioSnapshotsCarousel,
   PortfolioSnapshotsDialog,
+  QuickTransactionSheet,
 } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
-import type { AssetCurrency, PortfolioAsset } from "@/types";
+import type { AssetCurrency, PortfolioAsset, PortfolioTransactionType } from "@/types";
 import type { PriceSource } from "@/domain/portfolio";
 
 export interface ResumoTabProps {
@@ -89,6 +90,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [wizardInitialMode, setWizardInitialMode] = useState<WizardMode>("select");
   const [snapshotsDialogOpen, setSnapshotsDialogOpen] = useState(false);
   const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
+  const [quickTxAsset, setQuickTxAsset] = useState<PortfolioAsset | null>(null);
+  const [quickTxType, setQuickTxType] = useState<PortfolioTransactionType>("buy");
 
   const isWizardOpen = wizardOpen || wizardDeepOpen;
   const handleWizardOpenChange = (next: boolean) => {
@@ -199,17 +202,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
       } else {
         setDetailAsset(asset);
         setDismissedHighlight(false);
-      }
-    }
-  };
-
-  const openWizardForAsset = (assetId: string, mode: WizardMode = "buy") => {
-    const asset = assetById(assetId);
-    if (asset) {
-      if (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA") {
-        handleOpenCash();
-      } else {
-        handleOpenWizard(asset, mode);
       }
     }
   };
@@ -723,10 +715,21 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         onAction={(action, asset) => {
           setDetailAsset(null);
           setDismissedHighlight(true);
-          const mode: WizardMode =
+          const txType: PortfolioTransactionType =
             action === "sell" || action === "dividend" || action === "split" ? action : "buy";
-          openWizardForAsset(asset.id, mode);
+          setQuickTxAsset(asset);
+          setQuickTxType(txType);
         }}
+      />
+
+      {/* QuickTransactionSheet (Operação Rápida em 1 tela para ativo existente) */}
+      <QuickTransactionSheet
+        open={quickTxAsset !== null}
+        onOpenChange={(open) => {
+          if (!open) setQuickTxAsset(null);
+        }}
+        asset={quickTxAsset}
+        initialType={quickTxType}
       />
 
       {/* Diálogo de Edição Cadastral */}

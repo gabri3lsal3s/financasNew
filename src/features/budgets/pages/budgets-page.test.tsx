@@ -192,5 +192,17 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     // Restaura para não contaminar os demais testes.
     setIncomeGoalMock.mockResolvedValue(undefined);
   });
+
+  it("aba categorias: exibe o catálogo completo de categorias com botões de edição", async () => {
+    const user = userEvent.setup();
+    renderBudgetsPage();
+    await user.click(screen.getByRole("tab", { name: "Categorias" }));
+
+    expect(screen.getByText("Catálogo com todas as categorias do sistema e personalizadas.")).toBeInTheDocument();
+    expect(screen.getByText("Moradia")).toBeInTheDocument();
+    expect(screen.getByText("Lazer")).toBeInTheDocument();
+    expect(screen.getByText("Salário")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar cadastro de Moradia" })).toBeInTheDocument();
+  });
 });
 

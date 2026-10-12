@@ -16,11 +16,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { ClassAporteSummary, SectorAporteSummary, SkippedAssetDiagnostic } from "@/domain/portfolio";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -37,6 +39,14 @@ export interface AporteRouteRow {
   priceBRL: number;
 }
 
+export interface CustomAporteExecutionItem {
+  assetId: string;
+  ticker: string;
+  quantity: number;
+  priceBRL: number;
+  allocatedBRL: number;
+}
+
 export interface AporteResultProps {
   mode: "asset" | "class" | "both";
   aporte: number;
@@ -47,7 +57,7 @@ export interface AporteResultProps {
   sectorSummaries?: SectorAporteSummary[];
   skippedAssets?: SkippedAssetDiagnostic[];
   /** Ação rápida para gravar todas as transações sugeridas no extrato */
-  onExecuteAporte?: () => void;
+  onExecuteAporte?: (items?: CustomAporteExecutionItem[]) => void;
   executing?: boolean;
 }
 
@@ -77,8 +87,8 @@ function formatQuantity(qty: number): string {
 export function AporteResult({
   mode,
   aporte,
-  totalAllocated,
-  leftover,
+  totalAllocated: initialTotalAllocated,
+  leftover: initialLeftover,
   routes,
   classSummaries = [],
   sectorSummaries = [],
@@ -94,15 +104,120 @@ export function AporteResult({
   const [showAllClasses, setShowAllClasses] = useState(false);
   const [showAllSectors, setShowAllSectors] = useState(false);
 
+  // Armazena exclusões e overrides de cotas sem necessidade de useEffect síncrono
+  const [excludedAssetIds, setExcludedAssetIds] = useState<Set<string>>(() => new Set());
+  const [quantityOverrides, setQuantityOverrides] = useState<Map<string, number>>(() => new Map());
+
+  const toggleAssetSelection = (assetId: string, isChecked: boolean) => {
+    setExcludedAssetIds((prev) => {
+      const next = new Set(prev);
+      if (isChecked) {
+        next.delete(assetId);
+      } else {
+        next.add(assetId);
+      }
+      return next;
+    });
+  };
+
+  const setAssetQuantity = (assetId: string, quantity: number) => {
+    setQuantityOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(assetId, quantity);
+      return next;
+    });
+    if (quantity > 0) {
+      setExcludedAssetIds((prev) => {
+        if (prev.has(assetId)) {
+          const next = new Set(prev);
+          next.delete(assetId);
+          return next;
+        }
+        return prev;
+      });
+    }
+  };
+
+  const hasCustomizations = excludedAssetIds.size > 0 || quantityOverrides.size > 0;
+
+  const effectiveRouteMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        isSelected: boolean;
+        effectiveQuantity: number;
+        effectiveAllocatedBRL: number;
+        isQuantityCustom: boolean;
+      }
+    >();
+
+    for (const r of routes) {
+      const isExcluded = excludedAssetIds.has(r.assetId);
+      const customQty = quantityOverrides.get(r.assetId);
+      const isQuantityCustom = customQty !== undefined && customQty !== r.quantity;
+      const effectiveQty = customQty !== undefined ? customQty : r.quantity;
+      const isSelected = !isExcluded && effectiveQty > 0;
+      const quantityToApply = isSelected ? effectiveQty : 0;
+      const effectiveAllocatedBRL = Math.round(quantityToApply * r.priceBRL * 100) / 100;
+
+      map.set(r.assetId, {
+        isSelected,
+        effectiveQuantity: quantityToApply,
+        effectiveAllocatedBRL,
+        isQuantityCustom,
+      });
+    }
+
+    return map;
+  }, [routes, excludedAssetIds, quantityOverrides]);
+
+  const effectiveTotalAllocated = useMemo(() => {
+    if (!hasCustomizations && typeof initialTotalAllocated === "number") {
+      return initialTotalAllocated;
+    }
+    let sum = 0;
+    for (const r of routes) {
+      const eff = effectiveRouteMap.get(r.assetId);
+      if (eff?.isSelected) {
+        sum += eff.effectiveAllocatedBRL;
+      }
+    }
+    return Math.round(sum * 100) / 100;
+  }, [hasCustomizations, initialTotalAllocated, routes, effectiveRouteMap]);
+
+  const effectiveLeftover = useMemo(() => {
+    if (!hasCustomizations && typeof initialLeftover === "number") {
+      return initialLeftover;
+    }
+    return Math.max(0, Math.round((aporte - effectiveTotalAllocated) * 100) / 100);
+  }, [hasCustomizations, initialLeftover, aporte, effectiveTotalAllocated]);
+
+  const selectedExecutionItems: CustomAporteExecutionItem[] = useMemo(() => {
+    const items: CustomAporteExecutionItem[] = [];
+    for (const r of routes) {
+      const eff = effectiveRouteMap.get(r.assetId);
+      if (eff?.isSelected && eff.effectiveQuantity > 0) {
+        items.push({
+          assetId: r.assetId,
+          ticker: r.ticker,
+          quantity: eff.effectiveQuantity,
+          priceBRL: r.priceBRL,
+          allocatedBRL: eff.effectiveAllocatedBRL,
+        });
+      }
+    }
+    return items;
+  }, [routes, effectiveRouteMap]);
+
   const toggleTicker = (ticker: string) => {
     setCompletedTickers((prev) => {
       const next = new Set(prev);
       if (next.has(ticker)) {
         next.delete(ticker);
-        triggerHaptic("light");
+        triggerSensory("selection");
       } else {
         next.add(ticker);
-        triggerHaptic("success");
+        triggerSensory("success");
       }
       return next;
     });
@@ -209,6 +324,22 @@ export function AporteResult({
     cell: (row: AporteRouteRow) => ReactNode;
   }[] = [
     {
+      key: "select",
+      header: <span className="sr-only">Selecionar</span>,
+      cell: (row) => {
+        const eff = effectiveRouteMap.get(row.assetId);
+        const isEligible = row.quantity > 0;
+        return (
+          <Checkbox
+            checked={eff?.isSelected ?? false}
+            disabled={!isEligible}
+            onCheckedChange={(checked) => toggleAssetSelection(row.assetId, checked)}
+            aria-label={`Selecionar ${row.ticker} para aporte`}
+          />
+        );
+      },
+    },
+    {
       key: "ticker",
       header: "Ativo",
       cell: (row) => {
@@ -245,13 +376,41 @@ export function AporteResult({
       key: "allocated",
       header: "Aporte sugerido",
       align: "right",
-      cell: (row) => <MoneyText cents={numberToCents(row.allocatedBRL)} tone="portfolio" />,
+      cell: (row) => {
+        const eff = effectiveRouteMap.get(row.assetId);
+        return <MoneyText cents={numberToCents(eff?.effectiveAllocatedBRL ?? row.allocatedBRL)} tone="portfolio" />;
+      },
     },
     {
       key: "quantity",
       header: "Quantidade",
       align: "right",
-      cell: (row) => <span className="num text-sm text-muted-foreground">{formatQuantity(row.quantity)}</span>,
+      cell: (row) => {
+        const eff = effectiveRouteMap.get(row.assetId);
+        const currentQty = quantityOverrides.get(row.assetId) ?? row.quantity;
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            <Input
+              type="number"
+              step="any"
+              min="0"
+              value={currentQty}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                const nextVal = Number.isFinite(val) && val >= 0 ? val : 0;
+                setAssetQuantity(row.assetId, nextVal);
+              }}
+              aria-label={`Quantidade de cotas para ${row.ticker}`}
+              className="h-7 w-16 px-1.5 py-0.5 text-right font-mono text-xs"
+            />
+            {eff?.isQuantityCustom ? (
+              <span className="text-[10px] text-muted-foreground font-mono" title={`Sugerido originalmente: ${formatQuantity(row.quantity)}`}>
+                (sug: {formatQuantity(row.quantity)})
+              </span>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       key: "price",
@@ -348,14 +507,14 @@ export function AporteResult({
         <ResultStat
           icon={<ArrowDownToLine className="size-4 shrink-0" aria-hidden="true" />}
           label={completedCount > 0 ? `Alocado (${completedCount}/${routes.length} feitos)` : "Alocado em ativos"}
-          cents={numberToCents(totalAllocated)}
+          cents={numberToCents(effectiveTotalAllocated)}
           accent
         />
         <ResultStat
           icon={<Wallet className="size-4 shrink-0" aria-hidden="true" />}
           label="Sobra para caixa"
-          cents={numberToCents(leftover)}
-          tone={leftover > 0 ? "attention" : "neutral"}
+          cents={numberToCents(effectiveLeftover)}
+          tone={effectiveLeftover > 0 ? "attention" : "neutral"}
         />
       </div>
 
@@ -506,17 +665,23 @@ export function AporteResult({
                 </button>
               </div>
             </div>
-            {onExecuteAporte && routes.some((r) => r.quantity > 0) ? (
+            {onExecuteAporte && (routes.some((r) => r.quantity > 0) || selectedExecutionItems.length > 0) ? (
               <Button
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={onExecuteAporte}
-                disabled={executing}
+                onClick={() => onExecuteAporte(selectedExecutionItems)}
+                disabled={executing || selectedExecutionItems.length === 0}
                 className="gap-1.5 shrink-0"
               >
                 <CheckCheck className="size-4" aria-hidden="true" />
-                <span>{executing ? "Lançando…" : "Lançar compras no extrato"}</span>
+                <span>
+                  {executing
+                    ? "Lançando…"
+                    : selectedExecutionItems.length > 0
+                      ? `Lançar compras no extrato (${selectedExecutionItems.length})`
+                      : "Nenhum ativo selecionado"}
+                </span>
               </Button>
             ) : null}
           </div>
@@ -544,6 +709,8 @@ export function AporteResult({
                 ) : (
                   sortedRoutes.map((row, index) => {
                     const isDone = completedTickers.has(row.ticker);
+                    const eff = effectiveRouteMap.get(row.assetId);
+                    const currentQty = quantityOverrides.get(row.assetId) ?? row.quantity;
                     return (
                       <div
                         key={`${row.ticker}:${index}`}
@@ -552,24 +719,33 @@ export function AporteResult({
                           isDone && "bg-muted/10 opacity-75",
                         )}
                       >
-                        {/* Cabeçalho do Card: Ticker + Badges à esquerda, Botão de Execução à direita */}
+                        {/* Cabeçalho do Card: Checkbox + Ticker + Badges à esquerda, Botão de Execução à direita */}
                         <div className="flex items-start justify-between gap-2 min-w-0">
-                          <div className="flex flex-col gap-1 min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-sm font-bold text-foreground truncate">
-                                {row.ticker}
-                              </span>
-                              {row.assetClass ? (
-                                <Badge variant="muted" className="text-[10px] shrink-0 font-medium">
-                                  {row.assetClass}
-                                </Badge>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <Checkbox
+                              checked={eff?.isSelected ?? false}
+                              disabled={row.quantity <= 0}
+                              onCheckedChange={(checked) => toggleAssetSelection(row.assetId, checked)}
+                              aria-label={`Selecionar ${row.ticker} para aporte`}
+                              className="shrink-0"
+                            />
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-sm font-bold text-foreground truncate">
+                                  {row.ticker}
+                                </span>
+                                {row.assetClass ? (
+                                  <Badge variant="muted" className="text-[10px] shrink-0 font-medium">
+                                    {row.assetClass}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              {row.sector ? (
+                                <span className="text-[11px] text-muted-foreground font-medium truncate">
+                                  {row.sector}
+                                </span>
                               ) : null}
                             </div>
-                            {row.sector ? (
-                              <span className="text-[11px] text-muted-foreground font-medium truncate">
-                                {row.sector}
-                              </span>
-                            ) : null}
                           </div>
 
                           <button
@@ -596,17 +772,37 @@ export function AporteResult({
 
                         {/* Grid 2 Colunas: Aporte Sugerido (Destaque) & Posição Alvo vs Atual */}
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60">
-                          <div className="flex flex-col gap-0.5 min-w-0">
+                          <div className="flex flex-col gap-1 min-w-0">
                             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                               Aporte Sugerido
                             </span>
                             <MoneyText
-                              cents={numberToCents(row.allocatedBRL)}
+                              cents={numberToCents(eff?.effectiveAllocatedBRL ?? row.allocatedBRL)}
                               tone="portfolio"
                               className="text-sm font-bold truncate"
                             />
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                              <label htmlFor={`mobile-qty-${row.assetId}`} className="text-[10px] text-muted-foreground">
+                                Cotas:
+                              </label>
+                              <Input
+                                id={`mobile-qty-${row.assetId}`}
+                                type="number"
+                                step="any"
+                                min="0"
+                                value={currentQty}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  const nextVal = Number.isFinite(val) && val >= 0 ? val : 0;
+                                  setAssetQuantity(row.assetId, nextVal);
+                                }}
+                                aria-label={`Quantidade de cotas para ${row.ticker}`}
+                                className="h-6 w-16 px-1 text-right font-mono text-xs"
+                              />
+                            </div>
                             <span className="text-[10px] text-muted-foreground font-mono truncate">
-                              {formatQuantity(row.quantity)} un • R$ {row.priceBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              @ R$ {row.priceBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {eff?.isQuantityCustom ? ` (sug: ${formatQuantity(row.quantity)})` : ""}
                             </span>
                           </div>
 

@@ -31,7 +31,7 @@ export type { PositionRow, PositionTableProps } from "./position-table";
 export { TargetEditor } from "./target-editor";
 export type { TargetEditorProps, TargetEditorRow } from "./target-editor";
 export { AporteResult } from "./aporte-result";
-export type { AporteResultProps, AporteRouteRow } from "./aporte-result";
+export type { AporteResultProps, AporteRouteRow, CustomAporteExecutionItem } from "./aporte-result";
 export { HighlightRow } from "./highlight-row";
 export type { HighlightRowProps } from "./highlight-row";
 export { OnboardingCard } from "./onboarding-card";

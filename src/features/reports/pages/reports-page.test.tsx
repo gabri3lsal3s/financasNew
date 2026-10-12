@@ -82,6 +82,27 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   usePortfolioPosition: () => ({
+    totalBRL: 80000,
+    totalCostBRL: 70000,
+    cashBRL: 15000,
+    rows: [
+      {
+        assetId: "a1",
+        ticker: "PETR4",
+        name: "Petrobras PN",
+        assetClass: "acoes",
+        currency: "BRL",
+        quantity: 100,
+        averagePrice: 30,
+        currentPrice: 38.5,
+        valueBRL: 3850,
+        unrealizedPnl: 850,
+        unrealizedPnlPct: 28.33,
+        totalDividends: 450,
+        yieldOnCost: 15.0,
+        isCash: false,
+      },
+    ],
     data: {
       totalBRL: 80000,
       totalCostBRL: 70000,
@@ -174,6 +195,20 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useBudgets: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
+  useFeedback: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
+  useSetFeedback: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useUserAccess: () => ({
     role: "user",
     status: "active",
@@ -187,16 +222,27 @@ vi.mock("@/state", () => ({
 
 
 describe("ReportsPage (Central Unificada §F42)", () => {
-  it("renderiza o Hub com o cabeçalho padronizado e as 4 abas principais", () => {
+  it("renderiza o Hub com o cabeçalho padronizado e as 5 abas principais", () => {
     renderReports();
     expect(screen.getByRole("heading", { level: 1, name: "Relatórios" })).toBeInTheDocument();
     expect(
       screen.getByText("Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"),
     ).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Finanças & DRE/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Insights & Diagnósticos/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Investimentos & Carteira/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Balanço & Liberdade/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Fiscal & Declaração/i })).toBeInTheDocument();
+  });
+
+  it("permite alternar para a aba Insights & Diagnósticos", async () => {
+    const user = userEvent.setup();
+    renderReports();
+
+    const insightsTab = screen.getByRole("tab", { name: /Insights & Diagnósticos/i });
+    await user.click(insightsTab);
+
+    expect(screen.getByRole("tab", { name: "Diagnósticos" })).toBeInTheDocument();
   });
 
   it("exibe os dados financeiros da aba Finanças & DRE por padrão", () => {

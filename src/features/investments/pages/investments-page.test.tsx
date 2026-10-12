@@ -59,6 +59,12 @@ vi.mock("@/state", () => ({
   useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSaveAllocationTargets: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useSaveGroupTarget: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRemoveGroupTarget: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAllocationPresets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useCreateAllocationPreset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteAllocationPreset: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateAllocationPreset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -68,6 +74,7 @@ vi.mock("@/state", () => ({
   useBatchCreateHistoricalContributions: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpsertMarcoZero: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeletePortfolioDividend: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioTransactionsBatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioTransaction: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -112,7 +119,9 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByRole("button", { name: "Nova operação" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Carteira" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aporte" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Metas" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Movimentações" })).toBeInTheDocument();
   });
 
   it("estado vazio quando não há ativos", () => {
@@ -153,4 +162,16 @@ describe("InvestmentsPage — F17 unificada", () => {
     renderPage("/investments?novo=investimento");
     expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
   });
+
+  it("permite navegar para a aba de Metas e Movimentações diretamente", async () => {
+    renderPage();
+    const metasTab = screen.getByRole("tab", { name: "Metas" });
+    await userEvent.click(metasTab);
+    expect(screen.getByRole("tab", { name: "Metas", selected: true })).toBeInTheDocument();
+
+    const movTab = screen.getByRole("tab", { name: "Movimentações" });
+    await userEvent.click(movTab);
+    expect(screen.getByRole("tab", { name: "Movimentações", selected: true })).toBeInTheDocument();
+  });
 });
+

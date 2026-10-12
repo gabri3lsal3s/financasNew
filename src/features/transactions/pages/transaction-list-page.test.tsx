@@ -62,20 +62,41 @@ describe("TransactionListPage — listagem por mês", () => {
 
     expect(screen.getByText("Salário")).toBeInTheDocument();
     expect(screen.getByText("Aluguel")).toBeInTheDocument();
-    expect(screen.getByText("+R$ 3.500,00")).toBeInTheDocument();
-    expect(screen.getByText("−R$ 1.500,00")).toBeInTheDocument();
+    expect(screen.getAllByText("+R$ 3.500,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("−R$ 1.500,00").length).toBeGreaterThan(0);
   });
 
   it("calcula os KPIs de receitas, despesas e saldo", () => {
     render(<TransactionListPage />);
-    // "Receitas"/"Despesas" aparecem no KPI e no título da seção.
+    // "Receitas"/"Despesas" aparecem no KPI e nas abas de filtro.
     expect(screen.getAllByText("Receitas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Despesas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Saldo do mês").length).toBeGreaterThan(0);
     // Receitas 3.500,00 · Despesas 1.500,00 · Saldo 2.000,00
-    expect(screen.getByText("R$ 3.500,00")).toBeInTheDocument();
-    expect(screen.getByText("R$ 1.500,00")).toBeInTheDocument();
-    expect(screen.getByText("R$ 2.000,00")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 3.500,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 1.500,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("R$ 2.000,00").length).toBeGreaterThan(0);
+  });
+
+  it("filtra itens pelas abas do feed", async () => {
+    const user = userEvent.setup();
+    render(<TransactionListPage />);
+
+    // Aba Tudo exibe ambos
+    expect(screen.getByText("Salário")).toBeInTheDocument();
+    expect(screen.getByText("Aluguel")).toBeInTheDocument();
+
+    // Filtra apenas receitas
+    const receitaTab = screen.getByRole("tab", { name: "Receitas" });
+    await user.click(receitaTab);
+    expect(screen.getByText("Salário")).toBeInTheDocument();
+    expect(screen.queryByText("Aluguel")).not.toBeInTheDocument();
+
+    // Filtra apenas despesas
+    const despesaTab = screen.getByRole("tab", { name: "Despesas" });
+    await user.click(despesaTab);
+    expect(screen.queryByText("Salário")).not.toBeInTheDocument();
+    expect(screen.getByText("Aluguel")).toBeInTheDocument();
   });
 
   it("abre o modal de detalhamento de despesa ao clicar na linha de despesa", async () => {

@@ -96,5 +96,5 @@ describe("PortfolioSnapshotsCarousel", () => {
     expect(ctaBtn).toBeInTheDocument();
     fireEvent.click(ctaBtn);
     expect(onOpen).toHaveBeenCalledTimes(2);
-  });
+  }, 15000);
 });

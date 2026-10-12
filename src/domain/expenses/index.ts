@@ -58,3 +58,5 @@ export function resolveExpenseDeleteIds(
 ): string[] {
   return resolveInstallmentGroupDeleteIds(expenses, expenseId, mode);
 }
+
+export * from "./feed";
