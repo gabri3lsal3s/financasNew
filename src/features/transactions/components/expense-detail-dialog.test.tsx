@@ -22,9 +22,15 @@ const stateMocks = vi.hoisted(() => ({
       is_active: true,
     },
   ] as unknown[],
+  isReadOnly: false,
 }));
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: !stateMocks.isReadOnly,
+    isReadOnly: stateMocks.isReadOnly,
+    tier: stateMocks.isReadOnly ? "read_only" : "pro_annual",
+  }),
   useCategories: () => ({
     data: [
       { id: "cat1", name: "Alimentação", icon: "Utensils", color: "#EF4444" },
@@ -296,5 +302,17 @@ describe("ExpenseDetailDialog", () => {
     expect(await screen.findByText("Falha ao salvar")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Editar despesa" })).toBeInTheDocument();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("intercepta o clique em Editar com UpgradeDialog quando a conta estiver em modo somente-leitura", async () => {
+    stateMocks.isReadOnly = true;
+    const user = userEvent.setup();
+    render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+
+    // O modal de upgrade deve abrir
+    expect(await screen.findByRole("dialog", { name: /Editar Despesa/i })).toBeInTheDocument();
+    stateMocks.isReadOnly = false;
   });
 });

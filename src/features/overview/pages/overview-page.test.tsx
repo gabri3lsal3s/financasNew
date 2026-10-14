@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SubscriptionStatus } from "@/types";
 import { OverviewPage } from "./overview-page";
 
 vi.mock("react-router", () => ({
@@ -55,6 +56,23 @@ let debtsMock = [
   { id: "d1", name: "A receber", type: "receivable", amount: 1000, due_date: "2026-08-20", paid_at: null },
   { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
 ];
+
+const defaultSubscriptionMock: SubscriptionStatus = {
+  tier: "pro_annual",
+  trialDaysRemaining: null,
+  trialEndsAt: null,
+  currentPeriodEnd: "2027-01-01",
+  plan: "annual",
+  cancelAtPeriodEnd: false,
+  isFullAccess: true,
+  isTrial: false,
+  isPro: true,
+  isLifetime: false,
+  isReadOnly: false,
+  canWrite: true,
+};
+
+let subscriptionMock: SubscriptionStatus = { ...defaultSubscriptionMock };
 
 vi.mock("@/state", () => ({
   useIncomes: (month: string) => ({
@@ -146,6 +164,7 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
     isPending: false,
   }),
+  useUserSubscription: () => subscriptionMock,
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {
@@ -165,6 +184,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       { id: "d1", name: "A receber", type: "receivable", amount: 1000, due_date: "2026-08-20", paid_at: null },
       { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
     ];
+    subscriptionMock = { ...defaultSubscriptionMock };
   });
 
   afterEach(() => {
@@ -340,6 +360,39 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     // Se fosse ponderado: 50 - (100 - 40) = -10 (R$ 10,00)
     expect(screen.getByText("Radar de Descasamento de Fluxo")).toBeInTheDocument();
     expect(screen.getByText("R$ 110,00")).toBeInTheDocument();
+  });
+
+  it("renderiza TrialEndingBanner no carrossel quando faltarem <= 7 dias de trial", () => {
+    subscriptionMock = {
+      ...defaultSubscriptionMock,
+      tier: "trial",
+      isPro: false,
+      isTrial: true,
+      trialDaysRemaining: 6,
+      trialEndsAt: "2026-08-21T12:00:00Z",
+    };
+
+    render(<OverviewPage />);
+
+    expect(screen.getByText("Seu período de teste Pro encerra em 6 dias")).toBeInTheDocument();
+    expect(screen.getByText("6d restantes")).toBeInTheDocument();
+  });
+
+  it("renderiza ReadOnlyBanner no topo quando a conta estiver em modo somente-leitura", () => {
+    subscriptionMock = {
+      ...defaultSubscriptionMock,
+      tier: "read_only",
+      isPro: false,
+      isTrial: false,
+      isReadOnly: true,
+      canWrite: false,
+      trialDaysRemaining: 0,
+    };
+
+    render(<OverviewPage />);
+
+    expect(screen.getByText("Modo Somente-Leitura Ativo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ativar Plano Pro/i })).toBeInTheDocument();
   });
 });
 

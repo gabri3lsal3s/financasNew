@@ -11,6 +11,9 @@ import {
   ArrowUpRight,
   Calendar,
   RefreshCw,
+  CreditCard,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   Card,
@@ -19,12 +22,19 @@ import {
   CardTitle,
   Button,
   Badge,
+  Input,
+  Modal,
   ConfirmDialog,
 } from "@/components/ui";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { useUserSubscription } from "@/state";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { formatCardNumber, formatCardExpiry } from "@/services/masks";
+import {
+  cancelSubscription,
+  updateSubscriptionCreditCard,
+} from "@/data/repositories/billing";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 
@@ -33,7 +43,7 @@ import type { SubscriptionPlan } from "@/types";
  *
  * Exibe o status atual do plano, datas e ações disponíveis:
  * - Trial: barra de progresso com dias restantes + CTA de upgrade.
- * - Pro: data de renovação, método de pagamento e cancelamento em 1 clique.
+ * - Pro: data de renovação, método de pagamento, troca de cartão e cancelamento em 1 clique.
  * - Somente-leitura: CTA para reativar o Pro.
  *
  * Regras: zero emojis, zero controles nativos, cards com trinca canônica (AGENTS.md).
@@ -44,21 +54,36 @@ export function SubscriptionTab() {
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [updateCardOpen, setUpdateCardOpen] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   const handleProceedToCheckout = (plan: SubscriptionPlan) => {
     setUpgradeOpen(false);
     navigate(`/assinatura?plano=${plan}`);
   };
 
-  const handleCancelConfirm = () => {
-    // TODO: integrar com endpoint de cancelamento do gateway
-    triggerSensory("destructive");
-    pushToast({
-      title: "Cancelamento registrado",
-      description: "Seu plano permanece ativo até o fim do período pago.",
-      variant: "default",
-    });
-    setCancelOpen(false);
+  const handleCancelConfirm = async () => {
+    setIsCanceling(true);
+    try {
+      await cancelSubscription();
+      triggerSensory("destructive");
+      pushToast({
+        title: "Cancelamento registrado",
+        description: "Seu plano permanece ativo até o fim do período já pago.",
+        variant: "default",
+      });
+      setCancelOpen(false);
+    } catch (err: unknown) {
+      triggerSensory("destructive");
+      const msg = err instanceof Error ? err.message : "Falha ao registrar cancelamento no Asaas.";
+      pushToast({
+        title: "Erro no cancelamento",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCanceling(false);
+    }
   };
 
   return (
@@ -76,6 +101,38 @@ export function SubscriptionTab() {
         </CardContent>
       </Card>
 
+      {/* Forma de Pagamento e Troca de Cartão — apenas para assinantes Pro */}
+      {subscription.isPro && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
+              <span>Forma de Pagamento</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-0.5">
+              <p className="text-xs font-semibold text-foreground">
+                Cartão de Crédito Recorrente
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Cobrança processada com segurança pelo gateway Asaas.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setUpdateCardOpen(true)}
+              className="gap-2 shrink-0 cursor-pointer"
+            >
+              <CreditCard className="size-3.5" aria-hidden="true" />
+              Alterar Cartão
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabela comparativa de planos */}
       <Card>
         <CardHeader>
@@ -91,7 +148,7 @@ export function SubscriptionTab() {
             <div className="mt-5">
               <Button
                 type="button"
-                className="w-full gap-2"
+                className="w-full gap-2 cursor-pointer"
                 onClick={() => setUpgradeOpen(true)}
               >
                 <Sparkles className="size-4" aria-hidden="true" />
@@ -112,21 +169,39 @@ export function SubscriptionTab() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Ao cancelar, seu acesso Pro permanece ativo até o fim do período já pago. Todos
-              os seus dados são preservados para sempre — você poderá reativar o Pro a qualquer
-              momento.
-            </p>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => setCancelOpen(true)}
-              className="gap-2"
-            >
-              <XCircle className="size-4" aria-hidden="true" />
-              Cancelar Assinatura
-            </Button>
+            {subscription.cancelAtPeriodEnd ? (
+              <div className="rounded-xl border border-warning/30 bg-warning/5 p-3.5 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="warning" size="xs">
+                    Cancelamento agendado
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Sua assinatura não será renovada ao final do ciclo atual. Seu acesso Pro permanece
+                  ativo normalmente até o término do período pago e todos os seus dados ficam
+                  preservados.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Ao cancelar, seu acesso Pro permanece ativo até o fim do período já pago. Todos
+                  os seus dados e relatórios são preservados para sempre — você poderá reativar o Pro a qualquer
+                  momento em 1 clique.
+                </p>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={isCanceling}
+                  onClick={() => setCancelOpen(true)}
+                  className="gap-2 cursor-pointer"
+                >
+                  <XCircle className="size-4" aria-hidden="true" />
+                  Cancelar Assinatura
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -141,11 +216,16 @@ export function SubscriptionTab() {
       <ConfirmDialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
-        title="Cancelar assinatura Pro?"
-        description="Seu plano fica ativo até o fim do período pago. Nenhum dado será excluído e você pode reativar a qualquer momento."
-        confirmLabel="Cancelar Assinatura"
+        title="Cancelar renovação da assinatura Pro?"
+        description="Seu plano continuará ativo normalmente até o término do período já pago. Nenhum dado será excluído e você poderá reativar a qualquer momento."
+        confirmLabel={isCanceling ? "Cancelando..." : "Confirmar Cancelamento"}
         variant="destructive"
-        onConfirm={handleCancelConfirm}
+        onConfirm={() => { void handleCancelConfirm(); }}
+      />
+
+      <UpdateCardModal
+        open={updateCardOpen}
+        onOpenChange={setUpdateCardOpen}
       />
     </div>
   );
@@ -208,7 +288,7 @@ function StatusBlock({ subscription, onUpgrade }: StatusBlockProps) {
           </p>
         </div>
 
-        <Button type="button" className="w-full gap-2" onClick={onUpgrade}>
+        <Button type="button" className="w-full gap-2 cursor-pointer" onClick={onUpgrade}>
           <Sparkles className="size-4" aria-hidden="true" />
           Assinar Plano Pro e manter tudo ativo
         </Button>
@@ -242,7 +322,7 @@ function StatusBlock({ subscription, onUpgrade }: StatusBlockProps) {
           <InfoRow
             icon={RefreshCw}
             label="Cancelamento"
-            value="A qualquer momento, sem taxas"
+            value="A qualquer momento em 1 clique"
           />
         </div>
       </div>
@@ -261,12 +341,12 @@ function StatusBlock({ subscription, onUpgrade }: StatusBlockProps) {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Seu período de teste encerrou. Todos os seus dados estão preservados e você pode
-        consultar seu histórico a qualquer momento. Para lançar novos registros, ative o
+        Seu período de teste encerrou. Todos os seus dados e relatórios estão preservados e você pode
+        consultar seu histórico a qualquer momento. Para lançar novos registros e orçamentos, ative o
         Plano Pro.
       </p>
 
-      <Button type="button" className="w-full gap-2" onClick={onUpgrade}>
+      <Button type="button" className="w-full gap-2 cursor-pointer" onClick={onUpgrade}>
         <Sparkles className="size-4" aria-hidden="true" />
         Ativar Plano Pro
       </Button>
@@ -303,8 +383,8 @@ const COMPARISON_ROWS = [
   { feature: "Parcelamentos em até 60x", readOnly: false, pro: true },
   { feature: "Rebalanceamento de investimentos", readOnly: false, pro: true },
   { feature: "Radar Fiscal IR e DARF", readOnly: false, pro: true },
-  { feature: "Exportação Excel (.xlsx)", readOnly: false, pro: true },
-  { feature: "Simulador FIRE e Projeção", readOnly: false, pro: true },
+  { feature: "Exportação Excel (.xlsx)", readOnly: true, pro: true },
+  { feature: "Simulador FIRE e Projeção", readOnly: true, pro: true },
 ] as const;
 
 function PlanComparisonTable({ isFullAccess }: { isFullAccess: boolean }) {
@@ -361,5 +441,161 @@ function PlanComparisonTable({ isFullAccess }: { isFullAccess: boolean }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+interface UpdateCardModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
+  const [holderName, setHolderName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCcv, setCardCcv] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    setError(null);
+    if (!holderName.trim()) {
+      setError("Informe o nome do titular.");
+      return;
+    }
+    const rawNumber = cardNumber.replace(/\D/g, "");
+    if (rawNumber.length < 13 || rawNumber.length > 19) {
+      setError("Número do cartão inválido.");
+      return;
+    }
+    const [expMonth, expYear] = cardExpiry.split("/");
+    if (!expMonth || !expYear || parseInt(expMonth, 10) < 1 || parseInt(expMonth, 10) > 12) {
+      setError("Validade inválida (MM/AA).");
+      return;
+    }
+    if (cardCcv.length < 3) {
+      setError("CVV inválido.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateSubscriptionCreditCard({
+        holderName: holderName.trim().toUpperCase(),
+        number: rawNumber,
+        expiryMonth: expMonth.padStart(2, "0"),
+        expiryYear: expYear,
+        ccv: cardCcv,
+      });
+
+      triggerSensory("success");
+      pushToast({
+        title: "Cartão atualizado com sucesso!",
+        description: "As próximas cobranças utilizarão o novo cartão informado.",
+        variant: "default",
+      });
+      onOpenChange(false);
+      setHolderName("");
+      setCardNumber("");
+      setCardExpiry("");
+      setCardCcv("");
+    } catch (err: unknown) {
+      triggerSensory("destructive");
+      const msg = err instanceof Error ? err.message : "Falha ao atualizar cartão no Asaas.";
+      setError(msg);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      size="md"
+      title="Alterar Cartão de Crédito"
+      description="Informe os dados do novo cartão para cobranças futuras da sua assinatura Pro."
+    >
+      <div className="space-y-4 pt-2">
+        {error && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive-strong"
+          >
+            <AlertCircle className="size-4 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-foreground">Nome no Cartão</label>
+          <Input
+            placeholder="Nome impresso no cartão"
+            value={holderName}
+            onChange={(e) => setHolderName(e.target.value)}
+            autoComplete="cc-name"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-foreground">Número do Cartão</label>
+          <Input
+            placeholder="0000 0000 0000 0000"
+            value={cardNumber}
+            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+            autoComplete="cc-number"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground">Validade</label>
+            <Input
+              placeholder="MM/AA"
+              value={cardExpiry}
+              onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
+              maxLength={5}
+              autoComplete="cc-exp"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground">CVV</label>
+            <Input
+              placeholder="123"
+              value={cardCcv}
+              onChange={(e) => setCardCcv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              maxLength={4}
+              autoComplete="cc-csc"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={isSaving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={() => { void handleSubmit(); }}
+            disabled={isSaving}
+            className="gap-2"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                Atualizando no Asaas...
+              </>
+            ) : (
+              "Salvar Novo Cartão"
+            )}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }

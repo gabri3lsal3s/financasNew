@@ -261,6 +261,15 @@ export function CardsPage() {
     setImportOpen(true);
   };
 
+  const handleDeletePaymentClick = (payment: CardPayment) => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Excluir Pagamento de Fatura");
+      setUpgradeOpen(true);
+      return;
+    }
+    setDeletingPayment(payment);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Título de acessibilidade */}
@@ -565,7 +574,7 @@ export function CardsPage() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setDeletingPayment(payment)}
+                        onClick={() => handleDeletePaymentClick(payment)}
                         aria-label={`Excluir estorno ${payment.note || ""}`}
                         className="size-7 p-0 text-muted-foreground hover:text-critical"
                       >
@@ -585,7 +594,7 @@ export function CardsPage() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setDeletingPayment(payment)}
+                        onClick={() => handleDeletePaymentClick(payment)}
                         aria-label={`Excluir pagamento ${payment.note || ""}`}
                         className="size-7 p-0 text-muted-foreground hover:text-critical"
                       >

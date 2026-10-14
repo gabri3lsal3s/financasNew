@@ -4,4 +4,6 @@
  */
 export { formatCentsAsBRL, formatCentsAsCurrency } from "./money";
 export { formatPercent } from "./percent";
+export { formatCardNumber, formatCardExpiry } from "./card";
+
 

@@ -33,6 +33,7 @@ import {
   usePortfolioAssets,
   usePortfolioPosition,
 } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import type { PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 import { AssetEditDialog } from "./asset-edit-dialog";
 import { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
@@ -51,6 +52,7 @@ export function AssetDetailSheet({
   onOpenChange,
   onAction,
 }: AssetDetailSheetProps) {
+  const { guardAction, upgradeModal } = useMutationGuard();
   const assetId = asset?.id ?? null;
   const { data: txs, isLoading: txLoading } = useAssetPosition(assetId);
   const assetsQuery = usePortfolioAssets();
@@ -232,7 +234,7 @@ export function AssetDetailSheet({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => onAction?.("buy", currentAsset)}
+                onClick={() => guardAction(() => onAction?.("buy", currentAsset), "Registrar Aporte")}
                 className="gap-1 text-xs text-primary flex-1 sm:flex-initial"
               >
                 <Plus className="size-3.5" aria-hidden="true" />
@@ -243,7 +245,7 @@ export function AssetDetailSheet({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => onAction?.("sell", currentAsset)}
+                  onClick={() => guardAction(() => onAction?.("sell", currentAsset), "Registrar Resgate")}
                   className={`gap-1 text-xs flex-1 sm:flex-initial ${positionRow?.isMatured ? "border-critical-strong/60 text-critical-strong" : ""}`}
                 >
                   <ArrowDownLeft className="size-3.5" aria-hidden="true" />
@@ -255,7 +257,7 @@ export function AssetDetailSheet({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setCalibrateOpen(true)}
+                  onClick={() => guardAction(() => setCalibrateOpen(true), "Calibrar Renda Fixa")}
                   className="gap-1 text-xs text-muted-foreground flex-1 sm:flex-initial"
                   title="Calibrar com saldo do extrato"
                 >
@@ -268,7 +270,7 @@ export function AssetDetailSheet({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => onAction?.("dividend", currentAsset)}
+                  onClick={() => guardAction(() => onAction?.("dividend", currentAsset), "Lançar Proventos")}
                   className="gap-1 text-xs text-positive-strong flex-1 sm:flex-initial"
                 >
                   <Receipt className="size-3.5" aria-hidden="true" />
@@ -279,8 +281,8 @@ export function AssetDetailSheet({
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={() => setEditOpen(true)}
-                className="size-8 p-0 text-muted-foreground shrink-0"
+                onClick={() => guardAction(() => setEditOpen(true), "Editar Ativo")}
+                className="size-8 p-0 text-muted-foreground shrink-0 cursor-pointer"
                 title="Editar Ativo"
                 aria-label="Editar Ativo"
               >
@@ -342,7 +344,7 @@ export function AssetDetailSheet({
                 <span className="text-[11px] font-medium text-muted-foreground truncate">
                   {isTotalValue ? "Saldo Atual" : "Posição Total"}
                 </span>
-                <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate" title={formatCentsAsBRL(numberToCents(currentValue))}>
+                <span className="font-mono text-sm sm:text-base font-bold text-foreground tabular-nums tracking-tight whitespace-nowrap" title={formatCentsAsBRL(numberToCents(currentValue))}>
                   <MoneyText cents={numberToCents(currentValue)} />
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono truncate">
@@ -548,8 +550,8 @@ export function AssetDetailSheet({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => setTxToEdit(tx)}
-                            className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                            onClick={() => guardAction(() => setTxToEdit(tx), "Editar Operação de Investimento")}
+                            className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
                             title="Editar lançamento"
                             aria-label="Editar lançamento"
                           >
@@ -559,8 +561,8 @@ export function AssetDetailSheet({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => setTxToDelete(tx)}
-                            className="size-7 p-0 text-muted-foreground hover:text-negative-strong"
+                            onClick={() => guardAction(() => setTxToDelete(tx), "Excluir Operação de Investimento")}
+                            className="size-7 p-0 text-muted-foreground hover:text-negative-strong cursor-pointer"
                             title="Excluir lançamento"
                             aria-label="Excluir lançamento"
                           >
@@ -581,8 +583,8 @@ export function AssetDetailSheet({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setDeleteConfirmOpen(true)}
-              className="text-xs text-negative-strong hover:bg-negative-surface/40"
+              onClick={() => guardAction(() => setDeleteConfirmOpen(true), "Excluir Ativo da Carteira")}
+              className="text-xs text-negative-strong hover:bg-negative-surface/40 cursor-pointer"
             >
               <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
               Excluir Ativo da Carteira
@@ -657,6 +659,8 @@ export function AssetDetailSheet({
         asset={currentAsset}
         transaction={txToEdit}
       />
+
+      {upgradeModal}
     </>
   );
 }

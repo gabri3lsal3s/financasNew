@@ -18,3 +18,4 @@ export { useOnboardingDismissed } from "./use-onboarding-dismissed";
 export { useContainerScroll } from "./use-container-scroll";
 export type { UseContainerScrollOptions, UseContainerScrollResult } from "./use-container-scroll";
 export { useNetworkStatus } from "./use-network-status";
+export { useMutationGuard, type UseMutationGuardOptions, type UseMutationGuardReturn } from "./use-mutation-guard";

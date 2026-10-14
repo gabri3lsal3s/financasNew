@@ -18,7 +18,7 @@ import {
 } from "@/domain/budgets";
 import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import {
@@ -307,13 +307,13 @@ export function BudgetsPage() {
                       tabIndex={0}
                       aria-label={`Editar limite de ${row.category.name}`}
                       onClick={() => {
-                        triggerHaptic("light");
+                        triggerSensory("action");
                         handleOpenLimit(row.category);
                       }}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          triggerHaptic("light");
+                          triggerSensory("action");
                           handleOpenLimit(row.category);
                         }
                       }}
@@ -354,13 +354,13 @@ export function BudgetsPage() {
                     tabIndex={0}
                     aria-label={`Editar limite de ${row.category.name}`}
                     onClick={() => {
-                      triggerHaptic("light");
+                      triggerSensory("action");
                       handleOpenLimit(row.category);
                     }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        triggerHaptic("light");
+                        triggerSensory("action");
                         handleOpenLimit(row.category);
                       }
                     }}
@@ -437,13 +437,13 @@ export function BudgetsPage() {
                       tabIndex={0}
                       aria-label={`Editar meta de renda de ${category.name}`}
                       onClick={() => {
-                        triggerHaptic("light");
+                        triggerSensory("action");
                         handleOpenGoal(category);
                       }}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          triggerHaptic("light");
+                          triggerSensory("action");
                           handleOpenGoal(category);
                         }
                       }}
@@ -484,13 +484,13 @@ export function BudgetsPage() {
                     tabIndex={0}
                     aria-label={`Editar meta de renda de ${category.name}`}
                     onClick={() => {
-                      triggerHaptic("light");
+                      triggerSensory("action");
                       handleOpenGoal(category);
                     }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        triggerHaptic("light");
+                        triggerSensory("action");
                         handleOpenGoal(category);
                       }
                     }}

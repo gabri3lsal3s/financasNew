@@ -94,3 +94,6 @@ export { UpgradeDialog } from "./subscription/upgrade-dialog";
 export type { UpgradeDialogProps } from "./subscription/upgrade-dialog";
 export { ReadOnlyBanner } from "./subscription/read-only-banner";
 export type { ReadOnlyBannerProps } from "./subscription/read-only-banner";
+export { TrialEndingBanner } from "./subscription/trial-ending-banner";
+export type { TrialEndingBannerProps } from "./subscription/trial-ending-banner";
+

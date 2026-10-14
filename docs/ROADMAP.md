@@ -1,5 +1,48 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.33** registra o **Saneamento Global de Fragilidades, Governança Estrita do Design System e Sincronização PIX Asaas** (2026-10-14):
+> - **(1) Hardening de Segurança no Webhook Asaas (`asaas-webhook/index.ts`)**:
+>   - Validação *fail-secure* imediata: rejeição com 401 caso `ASAAS_WEBHOOK_TOKEN` não esteja configurado no Supabase Secrets ou divirja do token recebido na requisição;
+> - **(2) Saneamento Arquitetural de Hooks Globais & Rules of Hooks**:
+>   - `useMutationGuard`: Unificado no import canônico `useUserSubscription` de `@/state`, eliminando wrappers com `try/catch` e contornos dinâmicos;
+>   - `useCreateDeepLink`: Desacoplado para hook puro com opção `isReadOnly?: boolean`, sem acoplamento a contexto de roteamento em testes unitários;
+> - **(3) Governança Estrita do Design System (Regras 5, 11 e 17 do `AGENTS.md`)**:
+>   - *Regra 5 (Desacoplamento em `components/modules`):* `RealCashHeroCard` agora recebe prop opcional `onCalibrate?: () => void`, delegando o controle de diálogo e guardião de mutações à página controladora (`OverviewPage`);
+>   - *Regra 11 (Zero Reticências em Moeda):* Extinta a aplicação de `truncate` em contêineres de `<MoneyText />` na ficha de ativos e em `AporteResult`;
+>   - *Regra 17 (Gateway Sensorial Centralizado & Zero Duplos Hápticos):* Todas as chamadas manuais `triggerHaptic` foram substituídas pelo gateway unificado `triggerSensory` (`src/services/sensory.ts`), e chamadas duplicadas dentro de handlers `onClick` de `<Button />` foram eliminadas em todo o app (`DebtsPage`, `BudgetsPage`, `RemindersPage`, `CategoriesPage`, `CreditCardWallet`, `InsightList`, `NotificationsPopover`, `CashCheckpointDialog`);
+> - **(4) Polling Inteligente e Sincronização PIX no Checkout Asaas (`SubscriptionCheckoutPage`)**:
+>   - Polling reativo a cada 3.5 segundos invalidando `USER_SUBSCRIPTION_KEY` enquanto o QR Code PIX estiver em tela aguardando liquidação bancária;
+>   - Celebração sensorial imediata (`triggerSensory("success")`), toast comemorativo e redirecionamento instantâneo para `/` no momento em que o webhook confirmar o pagamento no backend;
+> - **(5) Isolamento de Erros no Dashboard (`OverviewPage`)**:
+>   - Segregação de queries críticas (`incomes`, `expenses`, `realCashData`) das secundárias/históricas, evitando telas de erro totais causadas por oscilações pontuais de rede em métricas não-bloqueantes;
+> - **(6) Qualidade de Código & Definition of Done**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis);
+>   - Suíte de testes 100% verde com **295 arquivos / 2.123 testes passando**;
+>   - Build de produção Vite + Workbox PWA gerado com sucesso em 2.01s.
+
+> **v2.32** registra a **Blindagem Universal de Mutações, Modo Somente-Leitura Perpétuo e Governança do Trial de 30 Dias** (2026-10-14):
+> - **(1) Regras de Negócio e Política de Acesso (Alinhamento /grill-me)**:
+>   - *Período de Trial:* **30 dias de acesso total** (leitura e escrita irrestritas);
+>   - *Modo Somente-Leitura:* Após os 30 dias sem assinatura Pro ativa, o usuário mantém **leitura 100% liberada permanentemente** (DRE, relatórios analíticos, exportação Excel `.xlsx`, simulação FIRE, histórico completo), mas **zero mutações** (proibido criar, editar, excluir, duplicar, liquidar ou importar);
+>   - *Avisos de Trial:* O `TrialEndingBanner` é disparado no carrossel da `OverviewPage` quando restarem **7 dias ou menos** (`trialDaysRemaining <= 7`);
+>   - *Interceptação Instantânea:* Qualquer tentativa de mutação no modo somente-leitura abre imediatamente o `UpgradeDialog` com contexto explicativo claro do benefício Pro (ex.: *"Assine o Pro para editar lançamentos"*).
+> - **(2) Hook Central DRY (`useMutationGuard`)**:
+>   - Criação de `useMutationGuard` em `src/hooks/use-mutation-guard.tsx` com fallback desacoplado resiliente a testes e ambientes isolados sem context provider;
+>   - Expõe `{ canWrite, isReadOnlyMode, guardAction, upgradeModal }` reutilizável em todo o app.
+> - **(3) Blindagem Completa das Funcionalidades**:
+>   - *FAB Móvel & Deep-Links:* Interceptação de deep-links `?novo=<key>` em `useCreateDeepLink` e do botão `+` da barra inferior móvel (`BottomNav`), impedindo abertura de formulários de escrita;
+>   - *Visão Geral (`OverviewPage` & `RealCashHeroCard`):* Bloqueio do botão de calibrar saldo bancário sem permissão de escrita;
+>   - *Transações:* Proteção dos modais de detalhe de Despesas (`ExpenseDetailDialog`) e Receitas (`IncomeDetailDialog`) nas ações de Editar, Duplicar e Excluir;
+>   - *Cartões:* Proteção da ação de exclusão de pagamentos de fatura em `CardsPage`;
+>   - *Lembretes:* Proteção dos botões de adiar (`snooze`), marcar como lido e marcar todas como lidas em `RemindersPage`;
+>   - *Investimentos:* Proteção na ficha de detalhes de ativos (`AssetDetailSheet`) para aporte, resgate, calibração, proventos, edição e exclusão de ativo e transações;
+>   - *Categorias:* Proteção nos botões de criação e edição/exclusão de categorias em `CategoriesPage`.
+> - **(4) Suíte 100% Verde & Qualidade de Código**:
+>   - Typecheck estrito (`tsc -b`) passando com zero erros;
+>   - ESLint (`npm run lint`) limpo e sem emojis/caracteres decorativos;
+>   - Todos os testes unitários e de integração colocalizados atualizados e passando.
+
 > **v2.31** registra o **Saneamento Integral de 10 Incongruências Contábeis, Numéricas e Metodológicas no Dossiê Executivo de Investimentos** (2026-09-07):
 > - **(1) Reconciliação Centavo a Centavo da Síntese Executiva**: Abertura formal da composição patrimonial na narrativa de abertura discriminando ativos mobiliários (R$ 107.932,19) e reserva de caixa (R$ 6,91), fechando a equação contábil exata da valorização de cota ($107.932,19 - 98.546,13 = \text{R\$ } 9.386,06$);
 > - **(2) Diagnóstico Integral de Gaps de Alocação**: Preenchimento completo da coluna de desvios para todas as 5 classes com sinalização explícita de superávits (`+R$ 1.035,91` em Ações, `+R$ 113,88` em Renda Fixa, `+R$ 456,82` em Internacional, `+R$ 6,91` em Caixa) e déficits (`-R$ 1.613,53` em FIIs), eliminando células em branco (`—`);

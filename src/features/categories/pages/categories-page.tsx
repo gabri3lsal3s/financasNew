@@ -4,12 +4,13 @@ import { Plus, Tags, TrendingDown, TrendingUp } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { CategoryIcon, HighlightRow } from "@/components/modules";
 import { cn } from "@/lib/utils";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useAllCategories, useCategoryUsage } from "@/state";
 import { CategoryFormDialog } from "@/features/categories/components/category-form-dialog";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import type { Category, CategoryType } from "@/types";
 
 /** Gestão de categorias (CRUD §3.5.1) — sugestão inteligente e migração na exclusão. */
@@ -38,6 +39,7 @@ export function CategoriesPage() {
   // FAB contextual (F12): ?novo=categoria abre o formulário de criação.
   const { open: formOpen, setOpen: setFormOpen } = useCreateDeepLink("categoria");
   const [editing, setEditing] = useState<Category | null>(null);
+  const { guardAction, upgradeModal } = useMutationGuard();
 
   const categoriesQuery = useAllCategories();
   const usageQuery = useCategoryUsage(editing ? editing.id : null);
@@ -47,8 +49,10 @@ export function CategoriesPage() {
   const error = categoriesQuery.error;
 
   const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
+    guardAction(() => {
+      setEditing(null);
+      setFormOpen(true);
+    }, "criar categorias");
   };
 
   const renderCategoryList = (type: CategoryType) => {
@@ -87,9 +91,11 @@ export function CategoriesPage() {
                 onClick={
                   isClickable
                     ? () => {
-                        triggerHaptic("light");
-                        setEditing(category);
-                        setFormOpen(true);
+                        guardAction(() => {
+                          triggerSensory("action");
+                          setEditing(category);
+                          setFormOpen(true);
+                        }, "editar categorias");
                       }
                     : undefined
                 }
@@ -98,9 +104,11 @@ export function CategoriesPage() {
                     ? (event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          triggerHaptic("light");
-                          setEditing(category);
-                          setFormOpen(true);
+                          guardAction(() => {
+                            triggerSensory("action");
+                            setEditing(category);
+                            setFormOpen(true);
+                          }, "editar categorias");
                         }
                       }
                     : undefined
@@ -183,6 +191,8 @@ export function CategoriesPage() {
         siblings={editing ? siblings : undefined}
         usage={editing ? (usageQuery.data ?? null) : undefined}
       />
+
+      {upgradeModal}
     </div>
   );
 }

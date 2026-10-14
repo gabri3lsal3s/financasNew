@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { UseRealCashBalanceResult } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { CashCheckpointDialog } from "./cash-checkpoint-dialog";
 
 export interface RealCashHeroCardProps {
   realCashData: UseRealCashBalanceResult;
   className?: string;
+  onCalibrate?: () => void;
 }
 
 /**
@@ -19,9 +21,18 @@ export interface RealCashHeroCardProps {
  * Exibe o saldo cumulativo em contas bancárias, permite calibração rápida
  * em 1 clique ("Bater com o banco") e demonstra o Saldo Livre Real (Safe-to-Spend).
  */
-export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardProps) {
+export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealCashHeroCardProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { guardAction, upgradeModal } = useMutationGuard();
   const { cashBalance, safeToSpend } = realCashData;
+
+  const handleCalibrate = () => {
+    if (onCalibrate) {
+      onCalibrate();
+    } else {
+      guardAction(() => setDialogOpen(true), "Calibrar Saldo com o Banco");
+    }
+  };
 
   const latestCheckpoint = cashBalance.latestCheckpoint;
   const hasCheckpoint = latestCheckpoint !== null;
@@ -51,7 +62,7 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setDialogOpen(true)}
+              onClick={handleCalibrate}
               aria-label="Calibrar com o banco"
               className="h-7 gap-1 px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80"
             >
@@ -102,11 +113,15 @@ export function RealCashHeroCard({ realCashData, className }: RealCashHeroCardPr
         </div>
       </div>
 
-      <CashCheckpointDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        currentBalanceCents={cashBalance.currentBalanceCents}
-      />
+      {!onCalibrate && (
+        <CashCheckpointDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          currentBalanceCents={cashBalance.currentBalanceCents}
+        />
+      )}
+
+      {!onCalibrate && upgradeModal}
     </>
   );
 }

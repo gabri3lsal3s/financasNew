@@ -4,9 +4,10 @@ import { Bell, CheckCheck } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { HighlightRow, ReadOnlyBanner, ReminderItem } from "@/components/modules";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import {
   useMarkAllRemindersAsRead,
   usePermission,
@@ -26,6 +27,7 @@ type SubFilter = "all" | "overdue" | "bills" | "debts";
 export function RemindersPage() {
   const navigate = useNavigate();
   const permission = usePermission("reminders");
+  const { guardAction, upgradeModal } = useMutationGuard();
   const today = todayISO();
   const { highlightId } = useHighlightTarget("q");
   const [mainTabOverride, setMainTabOverride] = useState<MainTab | null>(null);
@@ -52,7 +54,9 @@ export function RemindersPage() {
   const mainTab: MainTab = mainTabOverride ?? (isTargetRead ? "read" : "pending");
 
   const handle = (occurrenceKey: string, state: { kind: "read" | "snoozed"; snoozeUntil?: string } | null) => {
-    setState.mutate({ occurrenceKey, state });
+    guardAction(() => {
+      setState.mutate({ occurrenceKey, state });
+    }, "Gerenciar Lembretes");
   };
 
   const snooze = (key: string) => {
@@ -95,11 +99,12 @@ export function RemindersPage() {
   const unreadFilteredItems = filteredItems.filter((i) => stateMap.get(i.key) !== "read");
 
   const handleMarkAllRead = () => {
-    triggerHaptic("medium");
-    const keys = unreadFilteredItems.map((i) => i.key);
-    if (keys.length > 0) {
-      markAllMutation.mutate(keys);
-    }
+    guardAction(() => {
+      const keys = unreadFilteredItems.map((i) => i.key);
+      if (keys.length > 0) {
+        markAllMutation.mutate(keys);
+      }
+    }, "Marcar Lembretes como Lidos");
   };
 
   const billsCount = allItems.filter((i) => i.kind === "bill" && stateMap.get(i.key) !== "read").length;
@@ -141,12 +146,12 @@ export function RemindersPage() {
             <button
               type="button"
               onClick={() => {
-                triggerHaptic("light");
+                triggerSensory("action");
                 setSubFilter("all");
               }}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
                 subFilter === "all"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                   ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                   : "bg-muted/60 text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -156,7 +161,7 @@ export function RemindersPage() {
               <button
                 type="button"
                 onClick={() => {
-                  triggerHaptic("light");
+                  triggerSensory("action");
                   setSubFilter("overdue");
                 }}
                 className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
@@ -172,7 +177,7 @@ export function RemindersPage() {
               <button
                 type="button"
                 onClick={() => {
-                  triggerHaptic("light");
+                  triggerSensory("action");
                   setSubFilter("bills");
                 }}
                 className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
@@ -188,7 +193,7 @@ export function RemindersPage() {
               <button
                 type="button"
                 onClick={() => {
-                  triggerHaptic("light");
+                  triggerSensory("action");
                   setSubFilter("debts");
                 }}
                 className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
@@ -333,7 +338,6 @@ export function RemindersPage() {
         <Tabs
           value={mainTab}
           onValueChange={(val) => {
-            triggerHaptic("light");
             setMainTabOverride(val as MainTab);
             setSubFilter("all");
           }}
@@ -374,6 +378,8 @@ export function RemindersPage() {
           tone="positive"
         />
       )}
+
+      {upgradeModal}
     </div>
   );
 }

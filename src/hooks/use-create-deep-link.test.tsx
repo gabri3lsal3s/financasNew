@@ -65,4 +65,17 @@ describe("useCreateDeepLink (F12 — FAB contextual)", () => {
     const next = typeof updater === "function" ? updater(new URLSearchParams("novo=cartao")) : undefined;
     expect(next?.get("novo")).toBeNull();
   });
+
+  it("não abre o diálogo e bloqueia setOpen quando isReadOnly for true", () => {
+    params.set("novo", "cartao");
+
+    const { result } = renderHook(() => useCreateDeepLink("cartao", { isReadOnly: true }));
+    expect(result.current.open).toBe(false);
+    expect(result.current.fromUrl).toBe(false);
+    expect(result.current.isReadOnly).toBe(true);
+
+    act(() => result.current.setOpen(true));
+    expect(result.current.open).toBe(false);
+    expect(setSearchParamsMock).not.toHaveBeenCalled();
+  });
 });

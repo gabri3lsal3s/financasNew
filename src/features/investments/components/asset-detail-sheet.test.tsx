@@ -85,6 +85,11 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue(true),
     isPending: false,
   }),
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
 }));
 
 

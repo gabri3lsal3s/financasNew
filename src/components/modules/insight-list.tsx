@@ -2,7 +2,7 @@ import { Check, RotateCcw, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks/money";
 
 export interface InsightListItemBadge {
@@ -116,7 +116,7 @@ export function InsightList({
                   <button
                     type="button"
                     onClick={() => {
-                      triggerHaptic("light");
+                      triggerSensory("action");
                       onRestore?.(item.key);
                     }}
                     className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-all duration-200 hover:bg-primary/10 hover:text-primary-strong active:scale-95 sm:h-8"
@@ -136,7 +136,7 @@ export function InsightList({
                   <button
                     type="button"
                     onClick={() => {
-                      triggerHaptic("light");
+                      triggerSensory("action");
                       onRestore?.(item.key);
                     }}
                     className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-positive-strong transition-all duration-200 hover:bg-positive/20 active:scale-95 sm:h-8"
@@ -156,7 +156,7 @@ export function InsightList({
                   <button
                     type="button"
                     onClick={() => {
-                      triggerHaptic("light");
+                      triggerSensory("action");
                       onIgnore?.(item.key);
                     }}
                     className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-200 hover:bg-negative/10 hover:text-negative-strong active:scale-95 sm:size-8"
@@ -169,7 +169,7 @@ export function InsightList({
                   <button
                     type="button"
                     onClick={() => {
-                      triggerHaptic("success");
+                      triggerSensory("success");
                       onConfirm?.(item.key);
                     }}
                     className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-200 hover:bg-positive/10 hover:text-positive-strong active:scale-95 sm:size-8"

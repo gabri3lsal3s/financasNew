@@ -18,6 +18,7 @@ import {
   useUpdateExpenseGrouped,
   useUpdateRecurrenceOccurrences,
 } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 
 import type { Category, ChargeKind, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod, RecurrenceGroupFields } from "@/types";
 
@@ -398,6 +399,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
+  const { guardAction, upgradeModal } = useMutationGuard();
 
   const categoriesQuery = useCategories("expense");
   const cardsQuery = useCreditCards();
@@ -598,7 +600,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                     variant="outline"
                     size="sm"
                     className="shrink-0"
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => guardAction(() => setIsEditing(true), "Editar Despesa")}
                   >
                     <Pencil className="size-3.5" aria-hidden="true" />
                     Editar
@@ -678,7 +680,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                       variant="ghost"
                       size="sm"
                       className="shrink-0"
-                      onClick={() => void handleRepeat()}
+                      onClick={() => guardAction(() => void handleRepeat(), "Duplicar Despesa")}
                       disabled={createExpense.isPending}
                     >
                       <Copy className="size-3.5" aria-hidden="true" />
@@ -687,8 +689,8 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                   </div>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setConfirmOpen(true)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                    onClick={() => guardAction(() => setConfirmOpen(true), "Excluir Despesa")}
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
                     Excluir
@@ -726,6 +728,8 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
           </div>
         ) : null}
       </ConfirmDialog>
+
+      {upgradeModal}
     </>
   );
 }

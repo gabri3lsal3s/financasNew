@@ -15,7 +15,7 @@ import { useOnboardingDismissed } from "@/hooks";
 import { isOnboardingComplete, onboardingProgress } from "@/domain/onboarding";
 import type { ReminderItem, ReminderStatus } from "@/domain/reminders";
 import { cn } from "@/lib/utils";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 
 const STATUS_VARIANTS: Record<ReminderStatus, "critical" | "warning" | "muted"> = {
   overdue: "critical",
@@ -52,7 +52,7 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
   const effectiveTotalCount = totalCount + (showOnboarding ? 1 : 0);
 
   const handleOpenItem = (item: ReminderItem) => {
-    triggerHaptic("light");
+    triggerSensory("action");
     onOpenChange?.(false);
     if (!item.link) {
       navigate("/lembretes");
@@ -63,7 +63,7 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
   };
 
   const handleOpenOnboarding = () => {
-    triggerHaptic("light");
+    triggerSensory("action");
     onOpenChange?.(false);
     if (!onboardingQuery.data?.expenseCategories) {
       navigate("/categorias?type=expense");
@@ -78,12 +78,10 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
 
   const handleMarkRead = (e: React.MouseEvent, key: string) => {
     e.stopPropagation();
-    triggerHaptic("medium");
     setReminderStateMutation.mutate({ occurrenceKey: key, state: { kind: "read" } });
   };
 
   const handleMarkAllRead = () => {
-    triggerHaptic("medium");
     const keys = items.map((i) => i.key);
     if (keys.length > 0) {
       markAllMutation.mutate(keys);
@@ -91,7 +89,6 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
   };
 
   const handleViewAll = () => {
-    triggerHaptic("light");
     onOpenChange?.(false);
     navigate("/lembretes");
   };
@@ -184,7 +181,6 @@ export function NotificationsPopover({ children, open, onOpenChange }: Notificat
                     className="size-7 p-0 shrink-0 opacity-80 group-hover:opacity-100 hover:bg-surface-active cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
-                      triggerHaptic("medium");
                       dismiss();
                     }}
                     aria-label="Ignorar configuração inicial"

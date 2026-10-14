@@ -14,6 +14,8 @@ import {
   RealCashHeroCard,
   SurplusAporteBanner,
   CashGapAlert,
+  ReadOnlyBanner,
+  TrialEndingBanner,
 } from "@/components/modules";
 import {
   budgetLimitsByCategory,
@@ -49,8 +51,11 @@ import {
   useIncomesByRange,
   usePortfolioContributions,
   useRealCashBalance,
+  useUserSubscription,
 } from "@/state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
+import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
 import { CategoryBreakdownDialog, OtherBudgetsDialog } from "../components";
 
@@ -63,6 +68,9 @@ export function OverviewPage() {
   const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
   const visual = useVisualCustomization();
   const navigate = useNavigate();
+  const subscription = useUserSubscription();
+  const [checkpointOpen, setCheckpointOpen] = useState(false);
+  const { guardAction, upgradeModal } = useMutationGuard();
 
   const prevMonth = shiftMonth(month, -1);
   const startRange = shiftMonth(month, -5);
@@ -89,36 +97,15 @@ export function OverviewPage() {
   const contributionsQuery = usePortfolioContributions();
   const realCashData = useRealCashBalance(today);
 
+  // Isolamento de erros críticos (§Fase 4): a tela só bloqueia se o fluxo financeiro base falhar
   const loading =
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
-    prevIncomesQuery.isLoading ||
-    prevExpensesQuery.isLoading ||
-    incomesRangeQuery.isLoading ||
-    expensesRangeQuery.isLoading ||
-    debtsQuery.isLoading ||
-    cardsQuery.isLoading ||
-    budgetsQuery.isLoading ||
-    expenseCategories.isLoading ||
-    cardExpensesQuery.isLoading ||
-    cardPaymentsQuery.isLoading ||
-    contributionsQuery.isLoading ||
     realCashData.isLoading;
 
   const error =
     incomesQuery.error ??
     expensesQuery.error ??
-    prevIncomesQuery.error ??
-    prevExpensesQuery.error ??
-    incomesRangeQuery.error ??
-    expensesRangeQuery.error ??
-    debtsQuery.error ??
-    cardsQuery.error ??
-    budgetsQuery.error ??
-    expenseCategories.error ??
-    cardExpensesQuery.error ??
-    cardPaymentsQuery.error ??
-    contributionsQuery.error ??
     realCashData.error;
 
   // Computação pura dos totais do mês (§3.6). Padrão do app: BRUTO como métrica principal, informando ponderado quando houver.
@@ -390,6 +377,13 @@ export function OverviewPage() {
       priority: 4,
       content: <SurplusAporteBanner surplusCents={surplusCapacity.suggestedAporteCents} />,
     },
+    subscription.isTrial &&
+      subscription.trialDaysRemaining !== null &&
+      subscription.trialDaysRemaining <= 7 && {
+        id: "trial-ending-banner",
+        priority: 2,
+        content: <TrialEndingBanner daysRemaining={subscription.trialDaysRemaining} />,
+      },
   ];
 
   return (
@@ -404,6 +398,8 @@ export function OverviewPage() {
 
       {!loading && !error && <DashboardAlertsCarousel items={alertItems} />}
 
+      {!loading && !error && subscription.isReadOnly && <ReadOnlyBanner />}
+
       {loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
           <SkeletonHeroCard />
@@ -417,7 +413,10 @@ export function OverviewPage() {
         </div>
       ) : (
         <>
-          <RealCashHeroCard realCashData={realCashData} />
+          <RealCashHeroCard
+            realCashData={realCashData}
+            onCalibrate={() => guardAction(() => setCheckpointOpen(true), "Calibrar Saldo com o Banco")}
+          />
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
           {visual.dashboardWidgets.kpis && (
@@ -775,6 +774,14 @@ export function OverviewPage() {
               description={`Registre receitas e despesas de ${monthLabel(month)} para ver os KPIs aqui.`}
             />
           ) : null}
+
+          <CashCheckpointDialog
+            open={checkpointOpen}
+            onOpenChange={setCheckpointOpen}
+            currentBalanceCents={realCashData.cashBalance.currentBalanceCents}
+          />
+
+          {upgradeModal}
         </>
       )}
     </div>

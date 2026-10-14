@@ -110,6 +110,11 @@ vi.mock("@/state", () => ({
       error: null,
     };
   },
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
 }));
 
 describe("RemindersPage (central de lembretes §3.10)", () => {

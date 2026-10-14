@@ -9,6 +9,11 @@ const deleteIncomeMock = vi.fn();
 const createIncomeMock = vi.fn();
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
   useCategories: () => ({
     data: [
       { id: "cat1", name: "Salário", icon: "Briefcase", color: "#10B981" },

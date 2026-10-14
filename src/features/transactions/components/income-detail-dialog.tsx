@@ -18,6 +18,7 @@ import {
   useUpdateIncomeGrouped,
   useUpdateRecurrenceOccurrences,
 } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 
 import type { Category, DbInsert, Income, InstallmentDeleteMode, ReceiveType, RecurrenceGroupFields } from "@/types";
 
@@ -276,6 +277,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
+  const { guardAction, upgradeModal } = useMutationGuard();
 
   const categoriesQuery = useCategories("income");
   const deleteIncome = useDeleteIncome();
@@ -457,7 +459,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
                       variant="outline"
                       size="sm"
                       className="shrink-0"
-                      onClick={() => setIsEditing(true)}
+                      onClick={() => guardAction(() => setIsEditing(true), "Editar Receita")}
                     >
                       <Pencil className="size-3.5" aria-hidden="true" />
                       Editar
@@ -526,7 +528,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
                         variant="ghost"
                         size="sm"
                         className="shrink-0"
-                        onClick={() => void handleRepeat()}
+                        onClick={() => guardAction(() => void handleRepeat(), "Duplicar Receita")}
                         disabled={createIncome.isPending}
                       >
                         <Copy className="size-3.5" aria-hidden="true" />
@@ -535,8 +537,8 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
                     </div>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => setConfirmOpen(true)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                      onClick={() => guardAction(() => setConfirmOpen(true), "Excluir Receita")}
                     >
                       <Trash2 className="size-3.5" aria-hidden="true" />
                       Excluir
@@ -573,6 +575,8 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
           </div>
         ) : null}
       </ConfirmDialog>
+
+      {upgradeModal}
     </>
   );
 }

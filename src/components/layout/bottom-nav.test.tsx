@@ -3,7 +3,13 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { BottomNav } from "./bottom-nav";
 
+let mockSubscription = {
+  isReadOnly: false,
+  canWrite: true,
+};
+
 vi.mock("@/state", () => ({
+  useUserSubscription: () => mockSubscription,
   useReminders: () => ({
     totalCount: 0,
     urgentCount: 0,
@@ -88,5 +94,17 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     // "Transações" tem aria-label="Transações" mas texto visível "Extrato"
     const txLink = screen.getByRole("link", { name: "Transações" });
     expect(txLink).toHaveTextContent("Extrato");
+  });
+
+  it("bloqueia navegação e abre diálogo de Upgrade ao clicar no FAB em modo somente-leitura", () => {
+    mockSubscription = { isReadOnly: true, canWrite: false };
+    renderNav("/");
+
+    const fab = screen.getByRole("link", { name: "Nova transação" });
+    fireEvent.click(fab);
+
+    // O diálogo de upgrade deve abrir
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/Nova transação/i)).toBeInTheDocument();
   });
 });

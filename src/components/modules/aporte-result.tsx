@@ -1041,7 +1041,7 @@ function ResultStat({
         variant="value"
         tone="default"
         animated
-        className={cn("text-lg sm:text-xl font-semibold truncate", accent && "text-portfolio", tone === "attention" && "text-warning-strong")}
+        className={cn("text-lg sm:text-xl font-semibold tabular-nums tracking-tight whitespace-nowrap", accent && "text-portfolio", tone === "attention" && "text-warning-strong")}
       />
     </div>
   );

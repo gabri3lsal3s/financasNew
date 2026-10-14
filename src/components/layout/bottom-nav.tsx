@@ -7,6 +7,7 @@ import type { NavItem } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
 import { useReminders, useUserAccess } from "@/state";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { MoreMenuSheet } from "./more-menu-sheet";
 
 
@@ -84,6 +85,7 @@ export function BottomNav() {
   const location = useLocation();
   const { hasFeature, isAdmin } = useUserAccess();
   const { totalCount, urgentCount } = useReminders();
+  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard();
 
   const allowedItems = filterNavItems(navItems, isAdmin, hasFeature);
   const { primarySlots, moreMenuSlots } = resolveBottomNavSlots(allowedItems);
@@ -161,6 +163,7 @@ export function BottomNav() {
   return (
     <>
       <MoreMenuSheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen} />
+      {upgradeModal}
       <nav
         className="fixed inset-x-0 bottom-0 z-bottom-nav border-t border-border bg-surface/90 backdrop-blur pb-[env(safe-area-inset-bottom,0px)] lg:hidden"
         aria-label="Navegação principal"
@@ -181,7 +184,13 @@ export function BottomNav() {
               to={create.to}
               aria-label={create.label}
               className="flex min-h-11 items-center justify-center"
-              onClick={() => triggerSensory("action")}
+              onClick={(e) => {
+                triggerSensory("action");
+                if (isReadOnlyMode) {
+                  e.preventDefault();
+                  guardAction(() => {}, create.label);
+                }
+              }}
             >
               <span className="-mt-6 flex size-14 items-center justify-center rounded-full bg-background shadow-xs transform-gpu">
                 <span className="flex size-12 items-center justify-center rounded-full border-[1.5px] border-primary bg-surface text-primary shadow-sm transition-transform active:scale-95 hover:border-primary-strong hover:text-primary-strong transform-gpu">

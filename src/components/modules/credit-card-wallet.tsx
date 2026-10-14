@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type TouchEvent } from "react";
 import { ChevronLeft, ChevronRight, Plus, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui";
 import { CreditCard3D } from "./credit-card-3d";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import type { InvoiceStatus } from "@/domain/cards";
 import { cn } from "@/lib/utils";
 import type { CreditCard } from "@/types";
@@ -55,7 +55,7 @@ export function CreditCardWallet({
     const nextIdx = (selectedIndex - 1 + cards.length) % cards.length;
     const nextCard = cards[nextIdx];
     if (nextCard) {
-      triggerHaptic("light");
+      triggerSensory("selection");
       onSelectCard(nextCard.id);
     }
   };
@@ -65,7 +65,7 @@ export function CreditCardWallet({
     const nextIdx = (selectedIndex + 1) % cards.length;
     const nextCard = cards[nextIdx];
     if (nextCard) {
-      triggerHaptic("light");
+      triggerSensory("selection");
       onSelectCard(nextCard.id);
     }
   };
@@ -174,7 +174,7 @@ export function CreditCardWallet({
                 isSelected={true}
                 isInteractive={true}
                 onClick={() => {
-                  triggerHaptic("light");
+                  triggerSensory("action");
                   if (onEditCard) {
                     onEditCard(currentCard);
                   } else {
@@ -212,7 +212,7 @@ export function CreditCardWallet({
                 aria-selected={card.id === currentCard?.id}
                 aria-label={`Ir para cartão ${card.name}`}
                 onClick={() => {
-                  triggerHaptic("light");
+                  triggerSensory("selection");
                   onSelectCard(card.id);
                 }}
                 className={cn(
@@ -234,7 +234,7 @@ export function CreditCardWallet({
                   key={card.id}
                   type="button"
                   onClick={() => {
-                    triggerHaptic("light");
+                    triggerSensory("selection");
                     onSelectCard(card.id);
                   }}
                   aria-pressed={isSelected}

@@ -8,7 +8,7 @@ import { debtStatus, todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { useDebts, useDeleteDebt, useLoans, usePermission, useUpdateDebt } from "@/state";
@@ -40,7 +40,7 @@ function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
           type="button"
           aria-label={`Editar ${debt.name}`}
           onClick={() => {
-            triggerHaptic("light");
+            triggerSensory("action");
             onEdit(debt);
           }}
           className="flex min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md cursor-pointer active:scale-[0.99]"
@@ -80,7 +80,7 @@ function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
             <button
               type="button"
               onClick={() => {
-                triggerHaptic("light");
+                triggerSensory("action");
                 onUnsettle(debt);
               }}
               className="inline-flex h-7 items-center gap-1 rounded-lg border border-positive/30 bg-positive/10 px-2.5 text-[11px] font-medium text-positive-strong hover:bg-positive/20 active:scale-95 transition-all cursor-pointer"
@@ -96,7 +96,6 @@ function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
               variant="outline"
               aria-label={`Quitar ${debt.name}`}
               onClick={() => {
-                triggerHaptic("light");
                 onSettle(debt);
               }}
               className="h-7 px-2.5 text-[11px] sm:h-8 sm:px-3 sm:text-xs"

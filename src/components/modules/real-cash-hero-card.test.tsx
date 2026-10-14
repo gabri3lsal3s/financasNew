@@ -4,6 +4,11 @@ import { RealCashHeroCard } from "./real-cash-hero-card";
 import type { UseRealCashBalanceResult } from "@/state";
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
   useCreateCashCheckpoint: () => ({
     mutateAsync: vi.fn(),
     isPending: false,

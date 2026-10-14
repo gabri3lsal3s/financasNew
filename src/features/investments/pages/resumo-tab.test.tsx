@@ -8,6 +8,11 @@ const mockDeleteAsset = vi.fn();
 const mockSyncQuotes = vi.fn();
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
   usePortfolioPosition: () => ({
     totalBRL: 15000,
     cashBRL: 5000,

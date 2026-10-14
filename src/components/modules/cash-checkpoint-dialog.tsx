@@ -7,7 +7,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { todayISO } from "@/domain/debts";
 import { useCreateCashCheckpoint } from "@/state";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 
 export interface CashCheckpointDialogProps {
   open: boolean;
@@ -39,7 +39,6 @@ function CashCheckpointForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    triggerHaptic("light");
 
     const payload = {
       date,
@@ -53,6 +52,7 @@ function CashCheckpointForm({
       await createMutation.mutateAsync(payload);
     }
 
+    triggerSensory("success");
     onOpenChange(false);
   };
 

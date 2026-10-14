@@ -16,6 +16,11 @@ const receiveDebtMock = vi.fn();
 const settleMock = vi.fn();
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    canWrite: true,
+    isReadOnly: false,
+    tier: "pro_annual",
+  }),
   usePermission: () => ({ isHidden: false, canRead: true, canWrite: true, isReadOnlyMode: false, accessLevel: "admin" }),
   useDebts: () => ({
     data: [

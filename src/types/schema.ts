@@ -102,6 +102,7 @@ export type Profile = {
   id: string;
   name: string | null;
   email: string | null;
+  cpf?: string | null;
   role?: UserRole;
   status?: UserStatus;
   approved_at?: string | null;
@@ -146,6 +147,9 @@ export type UserSubscription = {
   trial_ends_at?: string | null;
   current_period_end?: string | null;
   cancel_at_period_end: boolean;
+  asaas_customer_id?: string | null;
+  asaas_subscription_id?: string | null;
+  asaas_payment_id?: string | null;
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
