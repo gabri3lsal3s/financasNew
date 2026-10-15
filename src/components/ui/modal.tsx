@@ -156,7 +156,12 @@ export function Modal({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className={cn("fixed inset-0 bg-overlay backdrop-blur-sm", z)} />
+        <DialogPrimitive.Overlay
+          className={cn(
+            "fixed inset-0 bg-overlay backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200",
+            z,
+          )}
+        />
         <DialogPrimitive.Content
           ref={contentRef}
           onPointerDown={onPointerDown}
@@ -167,26 +172,26 @@ export function Modal({
           onCloseAutoFocus={(e) => e.preventDefault()}
           style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
           className={cn(
-            // Mobile (base): bottom sheet com slide-up e alça; md+: diálogo centralizado.
-            "fixed inset-x-0 bottom-0 w-full max-h-[90dvh] overflow-y-auto rounded-t-2xl border border-border/80 bg-surface p-4 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] shadow-xs focus:outline-none animate-sheet-in",
-            "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:rounded-2xl md:pb-6 md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none",
+            // Mobile (base): bottom sheet com slide-up e alça; md+: diálogo centralizado com animação.
+            "fixed inset-x-0 bottom-0 w-full max-h-[90dvh] overflow-y-auto rounded-t-2xl border border-border/80 bg-surface p-4 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] shadow-xs focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background animate-sheet-in",
+            "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:rounded-2xl md:pb-6 md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:duration-200",
             SIZE_MAX_W[size],
             z,
             className,
           )}
         >
-          {/* Alça do bottom sheet (F25) — visível apenas no mobile. */}
+          {/* Alça do bottom sheet (F25) — visível apenas no mobile com micro-interação. */}
           <div
             aria-hidden="true"
-            className="mx-auto mb-4 h-1 w-10 shrink-0 rounded-full bg-border md:hidden"
+            className="mx-auto mb-4 h-1 w-10 shrink-0 rounded-full bg-border/80 hover:bg-primary/50 transition-colors md:hidden"
           />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <DialogPrimitive.Title className="font-display text-lg font-bold">
+              <DialogPrimitive.Title className="font-display text-lg font-bold text-foreground tracking-tight">
                 {title}
               </DialogPrimitive.Title>
               {description ? (
-                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground leading-relaxed">
                   {description}
                 </DialogPrimitive.Description>
               ) : null}
@@ -200,6 +205,7 @@ export function Modal({
                   size="icon"
                   aria-label="Abrir calculadora"
                   title="Calculadora"
+                  className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                   onClick={() => {
                     triggerSensory("action");
                     setCalculatorOpen(true);
@@ -209,7 +215,13 @@ export function Modal({
                 </Button>
               ) : null}
               <DialogPrimitive.Close asChild>
-                <Button type="button" variant="ghost" size="icon" aria-label="Fechar">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Fechar"
+                  className="text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+                >
                   <X aria-hidden="true" />
                 </Button>
               </DialogPrimitive.Close>

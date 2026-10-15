@@ -63,7 +63,7 @@ export function Select({
             // Evita que o fechamento transfira o foco ou acione outros controles indesejados
             e.preventDefault();
           }}
-          className="z-floating-tools max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-lg"
+          className="z-floating-tools max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-lg border border-border/80 bg-surface p-1 shadow-xl backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
           <SelectPrimitive.Viewport>
             {options.map((option) => (
@@ -73,7 +73,7 @@ export function Select({
                 onPointerDown={(e) => e.stopPropagation()}
                 onPointerUp={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
-                className="relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 pr-8 text-sm text-foreground outline-none transition-colors focus:bg-primary/10 data-[state=checked]:font-medium"
+                className="relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 pr-8 text-sm text-foreground outline-none transition-colors focus:bg-primary/10 data-[state=checked]:font-medium data-[state=checked]:text-primary"
               >
                 <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                 <SelectPrimitive.ItemIndicator className="absolute right-2">

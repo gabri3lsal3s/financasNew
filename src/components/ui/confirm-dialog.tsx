@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { triggerSensory } from "@/services/sensory";
 
 export interface ConfirmDialogProps {
@@ -33,7 +33,7 @@ export function ConfirmDialog({
   return (
     <Modal open={open} onOpenChange={onOpenChange} title={title} description={description} size="sm">
       {children ? <div className="mt-3">{children}</div> : null}
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-6 border-t border-border/80">
+      <ModalFooter className="mt-6">
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
           {cancelLabel}
         </Button>
@@ -49,7 +49,7 @@ export function ConfirmDialog({
         >
           {confirmLabel}
         </Button>
-      </div>
+      </ModalFooter>
     </Modal>
   );
 }

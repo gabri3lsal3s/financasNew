@@ -30,7 +30,7 @@ const variantIcon: Record<ToastVariant, typeof Info> = {
 };
 
 const variantClass: Record<ToastVariant, string> = {
-  default: "border-border",
+  default: "border-border/80",
   success: "border-positive/40",
   info: "border-primary/40",
   warning: "border-warning/40",
@@ -68,7 +68,7 @@ export function Toast({
         }
       }}
       className={cn(
-        "pointer-events-auto flex w-full cursor-pointer select-none items-start gap-3 rounded-xl border bg-surface p-4 shadow-lg transition-transform active:scale-[0.99] data-[state=open]:animate-toast-in data-[state=closed]:animate-toast-out",
+        "pointer-events-auto flex w-full cursor-pointer select-none items-start gap-3 rounded-xl border bg-surface p-4 shadow-xl backdrop-blur-md transition-transform active:scale-[0.99] data-[state=open]:animate-toast-in data-[state=closed]:animate-toast-out",
         variantClass[variant],
       )}
     >

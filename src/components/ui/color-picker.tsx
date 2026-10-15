@@ -134,7 +134,7 @@ export function ColorPicker({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          className="z-modal w-64 rounded-xl border border-border bg-surface p-3 shadow-lg focus:outline-none"
+          className="z-modal w-64 rounded-xl border border-border/80 bg-surface p-3 shadow-xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
           <div className="flex flex-col gap-3">
             <p className="text-xs font-medium text-muted-foreground">Paleta</p>
@@ -157,7 +157,7 @@ export function ColorPicker({
                       onValueChange(swatch);
                     }}
                     className={cn(
-                      "flex size-7 items-center justify-center rounded-full border border-border/60 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "flex size-7 items-center justify-center rounded-full border border-border/80 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       selected && "ring-2 ring-ring ring-offset-1 ring-offset-surface",
                     )}
                     style={{ backgroundColor: swatch }}

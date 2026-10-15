@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Modal, type ModalSize } from "./modal";
+import { Modal, ModalFooter, type ModalSize } from "./modal";
 import { cn } from "@/lib/utils";
 
 export interface ResponsiveDialogProps {
@@ -21,8 +21,8 @@ export interface ResponsiveDialogProps {
  * Primitivo canônico de Diálogo / BottomSheet responsivo (F55).
  * 
  * Unifica contratos de modais no sistema:
- * - Mobile (< lg): Bottom Sheet deslizante com drag-to-close e alça ergonômica.
- * - Desktop (lg+): Diálogo centralizado com backdrop blur e tamanhos canônicos.
+ * - Mobile (< md): Bottom Sheet deslizante com drag-to-close e alça ergonômica.
+ * - Desktop (md+): Diálogo centralizado com backdrop blur e tamanhos canônicos.
  * - Suporte nativo a sticky footer, calculadora contextual e Zero Auto-Focus.
  */
 export function ResponsiveDialog({
@@ -53,11 +53,7 @@ export function ResponsiveDialog({
     >
       <div className={cn("flex flex-col gap-3.5 mt-4", contentClassName)}>
         <div className="flex-1 min-w-0">{children}</div>
-        {footer ? (
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
-            {footer}
-          </div>
-        ) : null}
+        {footer ? <ModalFooter>{footer}</ModalFooter> : null}
       </div>
     </Modal>
   );

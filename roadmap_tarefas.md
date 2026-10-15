@@ -26,12 +26,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 02: Padronização e Limpeza de Pop-ups e Modais
+### Tarefa 02: Padronização e Limpeza de Pop-ups e Modais [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Revisar todos os pop-ups e modais, garantindo herança da cor de destaque (accent) e tema ativo, eliminando redundâncias.
 - **Ações:**
-  1. Mapear e consolidar modais redundantes em um componente reutilizável padrão.
-  2. Garantir que todos os modais herdem as variáveis do tema ativo (background, bordas, botões) e a cor de destaque definida pelo usuário.
-  3. Remover diálogos obsoletos que causem poluição visual.
+  1. Mapear e consolidar modais redundantes em um componente reutilizável padrão. (Concluído: `ResponsiveDialog` e `ConfirmDialog` consolidados utilizando o `ModalFooter` canônico do `Modal`, unificando safe-area padding e botões).
+  2. Garantir que todos os modais herdem as variáveis do tema ativo (background, bordas, botões) e a cor de destaque definida pelo usuário. (Concluído: anéis de foco com `--ring` e `--primary`, hover states nos botões de calculadora e drag-handle, paleta de comando, seletores e date/color/icon pickers com `border-border/80`, `bg-surface` e `backdrop-blur-md`).
+  3. Remover diálogos obsoletos que causem poluição visual e padronizar tipografia/bordas nos modais analíticos (Concluído: remoção de classes ad-hoc `text-[9.5px]` e `border-border/60` no modal explicativo de investimentos, alinhado às Regras 14 e 16 de `AGENTS.md`).
 - **Commit:** `refactor(ui): standardize popups and modals to reflect active accent theme`
 
 ---
