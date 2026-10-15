@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.34** registra o **Refinamento Holístico do Bloco 1 (Core Diário: Visão Geral, Extrato/Transações e Cartões)** (2026-10-14):
+> - **(1) Extrato & Transações (`TransactionListPage`)**:
+>   - Cabeçalho diário enriquecido com `<Badge size="sm">` para exibição semântica e elegante do saldo líquido (`netCents`), contador de lançamentos por data e layout responsivo com privacidade ativa;
+> - **(2) Cartões de Crédito (`CardsPage`)**:
+>   - Seletor de competência de faturas em abas segmentadas com feedback sensorial imediato (`triggerSensory("selection")`), permitindo alternar com 1 toque entre *Fatura Anterior* ($M-1$), *Fatura Atual* ($M$) e *Próxima Fatura* ($M+1$), cada uma exibindo o nome do mês e badge de status em tempo real;
+>   - Exportação canônica pura de `shiftMonth` em `src/domain/cards` e expansão de props de `InvoiceStatusBadge` (`size` e `className`);
+> - **(3) Visão Geral (`OverviewPage`)**:
+>   - Harmonização do layout de desktop eliminando o túnel vertical: a seção de **Orçamentos do Mês** e os cards de **Resumo Financeiro** (Saldo Líquido de Contas + Taxa de Poupança) agora compartilham um grid equilibrado de 2 colunas (`lg:grid-cols-2`), espelhando a simetria da seção de gráficos;
+>   - Saneamento da Regra 11 do Design System no card de saldo líquido (`whitespace-nowrap` em vez de `truncate`);
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck (`tsc -b`) com 0 erros;
+>   - ESLint (`eslint .`) limpo com 0 erros e 0 avisos;
+>   - Suíte de testes de Bloco 1 100% verde (10 arquivos / 94 testes);
+>   - Build de produção Vite + PWA concluído com sucesso.
+
 > **v2.33** registra o **Saneamento Global de Fragilidades, Governança Estrita do Design System e Sincronização PIX Asaas** (2026-10-14):
 > - **(1) Hardening de Segurança no Webhook Asaas (`asaas-webhook/index.ts`)**:
 >   - Validação *fail-secure* imediata: rejeição com 401 caso `ASAAS_WEBHOOK_TOKEN` não esteja configurado no Supabase Secrets ou divirja do token recebido na requisição;

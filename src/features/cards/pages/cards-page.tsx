@@ -20,6 +20,7 @@ import {
   buildCompetenceSummaries,
   invoiceStatus,
   partitionInvoiceExpenses,
+  shiftMonth,
 } from "@/domain/cards";
 import { currentMonth, monthLabel } from "@/lib/date";
 import { serializeCardInvoiceCsv } from "@/domain/export";
@@ -28,6 +29,7 @@ import type { CardInvoiceExpenseRow, CardInvoicePaymentRow } from "@/components/
 import { numberToCents } from "@/domain/money";
 import { downloadCsv } from "@/services/export-actions";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
@@ -98,6 +100,21 @@ export function CardsPage() {
   const summaries = buildCompetenceSummaries(expensesQuery.data ?? [], paymentsQuery.data ?? []);
   const effectiveMonth = month ?? (summaries.length > 0 ? autoSelectBillMonth(summaries) : currentMonth());
   const summary = summaries.find((s) => s.month === effectiveMonth);
+
+  const currMonth = currentMonth();
+  const prevMonth = shiftMonth(currMonth, -1);
+  const nextMonth = shiftMonth(currMonth, 1);
+
+  const getMonthStatus = (m: string) => {
+    if (!selectedCard) return "closed";
+    const sum = summaries.find((s) => s.month === m);
+    return invoiceStatus(m, selectedCard.due_day, sum?.saldoCents ?? 0);
+  };
+
+  const handleSelectQuickMonth = (m: string) => {
+    triggerSensory("selection");
+    setMonth(m);
+  };
 
   const competenceExpenses = (expensesQuery.data ?? []).filter((e) => e.bill_competence === effectiveMonth);
   const competencePayments = (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth);
@@ -373,7 +390,67 @@ export function CardsPage() {
               SEÇÃO 2: SELETOR DE MÊS, STATUS DA FATURA E KPIS
              ========================================================================= */}
           <div className="flex flex-col gap-4">
-            <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
+            {/* Seletor rápido de faturas (Anterior, Atual, Próxima) + Navegador */}
+            <div className="flex flex-col gap-2.5">
+              <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Seletor rápido de faturas">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveMonth === prevMonth}
+                  onClick={() => handleSelectQuickMonth(prevMonth)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all text-center",
+                    effectiveMonth === prevMonth
+                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
+                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                  )}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Anterior</span>
+                  <span className="text-xs sm:text-sm font-semibold text-foreground capitalize mt-0.5">{monthLabel(prevMonth).split(" ")[0]}</span>
+                  <div className="mt-1">
+                    <InvoiceStatusBadge status={getMonthStatus(prevMonth)} size="xs" />
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveMonth === currMonth}
+                  onClick={() => handleSelectQuickMonth(currMonth)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all text-center",
+                    effectiveMonth === currMonth
+                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
+                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                  )}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Atual</span>
+                  <span className="text-xs sm:text-sm font-semibold text-foreground capitalize mt-0.5">{monthLabel(currMonth).split(" ")[0]}</span>
+                  <div className="mt-1">
+                    <InvoiceStatusBadge status={getMonthStatus(currMonth)} size="xs" />
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveMonth === nextMonth}
+                  onClick={() => handleSelectQuickMonth(nextMonth)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all text-center",
+                    effectiveMonth === nextMonth
+                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
+                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
+                  )}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Próxima</span>
+                  <span className="text-xs sm:text-sm font-semibold text-foreground capitalize mt-0.5">{monthLabel(nextMonth).split(" ")[0]}</span>
+                  <div className="mt-1">
+                    <InvoiceStatusBadge status={getMonthStatus(nextMonth)} size="xs" />
+                  </div>
+                </button>
+              </div>
+
+              <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
+            </div>
 
             {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">

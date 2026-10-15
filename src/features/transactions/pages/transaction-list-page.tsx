@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeftRight, Calendar, FileSpreadsheet, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { EmptyState } from "@/components/ui/empty-state";
@@ -300,17 +301,28 @@ export function TransactionListPage() {
               aria-label={`Lançamentos de ${formatDateBR(group.date)}`}
               className="flex flex-col gap-2"
             >
-              <div className="flex items-center justify-between border-b border-border/40 pb-1.5 pt-1 px-1">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                  <Calendar className="size-3.5" aria-hidden="true" />
-                  <span className="text-foreground">{formatDateBR(group.date)}</span>
+              <div className="flex items-center justify-between border-b border-border/40 pb-2 pt-1 px-1">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <span>{formatDateBR(group.date)}</span>
+                  </div>
+                  <span className="text-[11px] font-medium text-muted-foreground/80">
+                    ({group.items.length} {group.items.length === 1 ? "lançamento" : "lançamentos"})
+                  </span>
                 </div>
-                <MoneyText
-                  cents={group.netCents}
-                  tone={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "default"}
-                  sign="auto"
-                  className="text-xs font-semibold tabular-nums"
-                />
+                <Badge
+                  variant={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "muted"}
+                  size="sm"
+                  className="font-semibold"
+                >
+                  <MoneyText
+                    cents={group.netCents}
+                    tone={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "default"}
+                    sign="auto"
+                    className="text-[11px]"
+                  />
+                </Badge>
               </div>
               <div className="flex flex-col gap-2">
                 {group.items.map((item) => (

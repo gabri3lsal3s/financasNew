@@ -62,8 +62,8 @@ export function invoiceStatus(
   return "open";
 }
 
-/** Desloca um mês YYYY-MM por `delta` meses (helper local puro). */
-function shiftMonth(month: string, delta: number): string {
+/** Desloca um mês YYYY-MM por `delta` meses (helper puro). */
+export function shiftMonth(month: string, delta: number): string {
   const [year, monthNum] = month.split("-").map(Number);
   const total = (year ?? 0) * 12 + ((monthNum ?? 1) - 1) + delta;
   const y = Math.floor(total / 12);
