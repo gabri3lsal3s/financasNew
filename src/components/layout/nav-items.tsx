@@ -9,6 +9,7 @@ import {
   PiggyBank,
   Settings,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SystemFeatureKey } from "@/types";
@@ -36,6 +37,7 @@ export const navItems: NavItem[] = [
   { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
   { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
   { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
+  { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },
   { label: "Lembretes", shortLabel: "Lembretes", path: "/lembretes", icon: Bell, featureKey: "reminders" },
   { label: "Configurações", shortLabel: "Ajustes", path: "/configuracoes", icon: Settings },
   { label: "Administração", shortLabel: "Admin", path: "/admin", icon: ShieldCheck, adminOnly: true },
@@ -58,6 +60,7 @@ export const navGroups: NavGroup[] = [
       { label: "Investimentos", shortLabel: "Carteira", path: "/investments", icon: ChartLine, featureKey: "investments" },
       { label: "Orçamentos", shortLabel: "Orçamentos", path: "/orcamentos", icon: PiggyBank, featureKey: "budgets" },
       { label: "Relatórios", shortLabel: "Relatórios", path: "/relatorios", icon: ChartPie, featureKey: "reports" },
+      { label: "Insights", shortLabel: "Insights", path: "/insights", icon: Sparkles, featureKey: "insights" },
     ],
   },
   {

@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.49** registra a **Unificação Arquitetural da Central de Insights em Página Única & Refinamentos da Carteira de Cartões 3D** (2026-10-15):
+> - **(1) Unificação de Insights em Página Única (`/insights`)**:
+>   - Fim da duplicação de Insights dentro de `/relatorios` e eliminação do antipadrão tab-in-tab;
+>   - Implementação do design unificado em **Scroll Contínuo com Pills de Filtro Rápido** no topo (`Tudo`, `Diagnósticos`, `Recorrências`, `Projeção`, `Planejamento FIRE`);
+>   - Adição do atalho contextual direto no rodapé da DRE em Relatórios Financeiros apontando para `/insights`;
+>   - Inclusão do item permanente "Insights" na navegação principal (Sidebar Desktop e navegação mobile) no grupo "Estratégia & Análise";
+>   - Resiliência na leitura de URL/Search Params (`useSearchParams` com fallback seguro);
+> - **(2) Refinamento e Correção da Carteira de Cartões (`/cartoes`)**:
+>   - *Correção do Bug de Edição*: Clicar no cartão 3D agora abre o formulário pré-carregado com os dados do cartão clicado para edição/exclusão (eliminando a abertura acidental em modo criação de novo cartão gerada por deep-link redundante);
+>   - *Limpeza Visual do Cartão 3D (`CreditCard3D`)*: Remoção do código fictício de cartão (`•••• 8492`) e da barra espremida de limite disponível; reconstrução do rodapé em linha única com respiro e tipografia mono: `Melhor dia: X · Fech.: Y · Venc.: Z` e `Limite: R$ W`;
+>   - *Priorização Inteligente de Abertura*: Ao carregar `/cartoes`, o app avalia todas as faturas abertas em segundo plano via `useAllCardExpenses()` e `useAllCardPayments()`, selecionando automaticamente o cartão e a competência com a fatura em aberto com vencimento mais próximo/urgente para pagamento;
+>   - *Otimização de Performance*: Cálculo consolidado de `usedLimitMap` sem dependência cíclica, em total conformidade com o React Compiler;
+> - **(3) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes unitários 100% verde;
+>   - Build de produção (`vite build`) gerado com sucesso.
+> 
 > **v2.48** registra o **Refinamento Holístico de UI/UX — Camada 3: Modais, Formulários & Espaçamentos (Gaps)** (2026-10-15):
 > - **(1) Primitivos Centrais de Modais (`Modal`, `ResponsiveDialog`, `ConfirmDialog`)**:
 >   - Ajuste de padding mobile para `p-4 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]`, elevação canônica `border border-border/80 bg-surface shadow-xs` e rodapés com margem negativa compensatória e separador semântico `border-t border-border/80`;

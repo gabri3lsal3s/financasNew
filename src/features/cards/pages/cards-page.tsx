@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
 import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
@@ -18,6 +18,7 @@ import {
 import {
   autoSelectBillMonth,
   buildCompetenceSummaries,
+  invoiceDueDate,
   invoiceStatus,
   partitionInvoiceExpenses,
   shiftMonth,
@@ -33,6 +34,8 @@ import { triggerSensory } from "@/services/sensory";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
+  useAllCardExpenses,
+  useAllCardPayments,
   useCardExpenses,
   useCardPayments,
   useCategories,
@@ -62,14 +65,71 @@ export function CardsPage() {
   const cardsQuery = useCreditCards();
   const updateCardMutation = useUpdateCard();
   const deleteCardPaymentMutation = useDeleteCardPayment();
+  const allCardExpensesQuery = useAllCardExpenses();
+  const allCardPaymentsQuery = useAllCardPayments();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const cards = useMemo(() => cardsQuery.data ?? [], [cardsQuery.data]);
 
   // Destaque do cartão via ?q= (um-shot — limpo pelo hook); seleção via
   // ?card= (derivada) ou escolha manual (limpa o param). Sem setState em effect.
   const { isHighlighted } = useHighlightTarget("q");
   const paramCard = searchParams.get("card");
+  const paramMonth = searchParams.get("month");
+
+  // Derivação pura: prioriza o cartão e fatura em aberto com vencimento mais próximo
+  const prioritySelection = useMemo(() => {
+    if (cards.length === 0) return { cardId: null, month: null };
+    const allExpenses = allCardExpensesQuery.data ?? [];
+    const allPayments = allCardPaymentsQuery.data ?? [];
+
+    interface OpenBillCandidate {
+      cardId: string;
+      month: string;
+      dueDate: string;
+      saldoCents: number;
+    }
+
+    const openBills: OpenBillCandidate[] = [];
+
+    for (const card of cards.filter((c) => c.is_active)) {
+      const cExpenses = allExpenses.filter((e) => e.card_id === card.id);
+      const cPayments = allPayments.filter((p) => p.card_id === card.id);
+      const cSummaries = buildCompetenceSummaries(cExpenses, cPayments);
+
+      for (const s of cSummaries) {
+        if (s.saldoCents > 0) {
+          const dueDate = invoiceDueDate(s.month, card.due_day);
+          openBills.push({
+            cardId: card.id,
+            month: s.month,
+            dueDate,
+            saldoCents: s.saldoCents,
+          });
+        }
+      }
+    }
+
+    if (openBills.length > 0) {
+      // Ordena por vencimento: prioridade máxima para a fatura mais urgente / vencida em aberto
+      openBills.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+      return { cardId: openBills[0]!.cardId, month: openBills[0]!.month };
+    }
+
+    // Se nenhum cartão tiver saldo em aberto, busca o cartão cujo vencimento no mês atual é o mais próximo
+    const currentM = currentMonth();
+    const sortedByDue = [...cards.filter((c) => c.is_active)].sort((a, b) => {
+      const dueA = invoiceDueDate(currentM, a.due_day);
+      const dueB = invoiceDueDate(currentM, b.due_day);
+      return dueA.localeCompare(dueB);
+    });
+
+    const fallbackCard = sortedByDue[0] ?? cards[0];
+    return { cardId: fallbackCard?.id ?? null, month: null };
+  }, [cards, allCardExpensesQuery.data, allCardPaymentsQuery.data]);
+
   const [pickedCardId, setPickedCardId] = useState<string | null>(null);
-  const selectedCardId = paramCard ?? pickedCardId;
+  const selectedCardId = paramCard ?? pickedCardId ?? prioritySelection.cardId;
 
   const [month, setMonth] = useState<string | null>(null);
   // Deep link direto (F12): ?novo=cartao abre o formulário de criação.
@@ -82,7 +142,6 @@ export function CardsPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  const cards = cardsQuery.data ?? [];
   const selectedCard =
     cards.find((card) => card.id === selectedCardId) ?? (selectedCardId ? undefined : cards[0]) ?? null;
 
@@ -98,7 +157,11 @@ export function CardsPage() {
 
   // Derivação pura (domain/cards): resumos por competência + seleção automática de mês.
   const summaries = buildCompetenceSummaries(expensesQuery.data ?? [], paymentsQuery.data ?? []);
-  const effectiveMonth = month ?? (summaries.length > 0 ? autoSelectBillMonth(summaries) : currentMonth());
+  const effectiveMonth =
+    paramMonth ??
+    month ??
+    (pickedCardId === null && !paramCard && prioritySelection.month ? prioritySelection.month : null) ??
+    (summaries.length > 0 ? autoSelectBillMonth(summaries) : currentMonth());
   const summary = summaries.find((s) => s.month === effectiveMonth);
 
   const currMonth = currentMonth();
@@ -239,11 +302,20 @@ export function CardsPage() {
   };
 
   const usedLimitMap: Record<string, { brutoCents: number; ponderadoCents: number }> = {};
-  if (selectedCard && summary) {
-    usedLimitMap[selectedCard.id] = {
-      brutoCents: summary.saldoBrutoCents,
-      ponderadoCents: summary.saldoPonderadoCents,
-    };
+  const allExpenses = allCardExpensesQuery.data ?? [];
+  const allPayments = allCardPaymentsQuery.data ?? [];
+
+  for (const card of cards) {
+    const cExpenses = allExpenses.filter((e) => e.card_id === card.id);
+    const cPayments = allPayments.filter((p) => p.card_id === card.id);
+    const cSummaries = buildCompetenceSummaries(cExpenses, cPayments);
+    const cSum = cSummaries.find((s) => s.month === effectiveMonth);
+    if (cSum) {
+      usedLimitMap[card.id] = {
+        brutoCents: cSum.saldoBrutoCents,
+        ponderadoCents: cSum.saldoPonderadoCents,
+      };
+    }
   }
 
   const permission = usePermission("cards");
@@ -686,11 +758,28 @@ export function CardsPage() {
         </>
       )}
 
-      {/* Deep-link do FAB sempre abre em modo criação (ignora edição pendente). */}
+      {/* Diálogo de Cartão: Edição quando editingCard estiver definido; Criação caso contrário */}
       <CardFormDialog
-        card={fromUrl ? null : editingCard}
-        open={formOpen}
-        onOpenChange={setFormOpen}
+        card={editingCard}
+        open={formOpen || fromUrl}
+        onOpenChange={(next) => {
+          if (!next) {
+            setFormOpen(false);
+            setEditingCard(null);
+            if (fromUrl) {
+              setSearchParams(
+                (prev) => {
+                  const updated = new URLSearchParams(prev);
+                  updated.delete("novo");
+                  return updated;
+                },
+                { replace: true },
+              );
+            }
+          } else {
+            setFormOpen(true);
+          }
+        }}
         onDeleted={(deletedId) => {
           const remaining = cards.filter((c) => c.id !== deletedId);
           if (selectedCard?.id === deletedId) {

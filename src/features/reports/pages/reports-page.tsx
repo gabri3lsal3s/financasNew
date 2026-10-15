@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
-import { FileSpreadsheet, Landmark, Lightbulb, Scale, TrendingUp } from "lucide-react";
+import { FileSpreadsheet, Landmark, Scale, TrendingUp } from "lucide-react";
 import { Button, ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker, YearPicker } from "@/components/modules";
@@ -43,7 +43,6 @@ import {
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { ExpenseDetailDialog } from "@/features/transactions";
 import { PortfolioDarfMonitor } from "@/features/investments/components";
-import { InsightsPage } from "@/features/insights";
 import {
   ConsolidatedWealthModal,
   DividendFreedomModal,
@@ -61,12 +60,12 @@ import type { Expense } from "@/types";
 import { numberToCents } from "@/domain/money";
 import type { ExcelWorkbookData } from "@/services/excel-export";
 
-type MainTab = "financas" | "insights" | "investimentos" | "balanco" | "fiscal";
+type MainTab = "financas" | "investimentos" | "balanco" | "fiscal";
 type PeriodMode = "month" | "year" | "custom";
 
 /**
  * Central Unificada de Relatórios & Consultoria Patrimonial (§F42).
- * Hub orquestrador com 5 sub-abas: Finanças, Insights, Investimentos, Balanço 360° e Fiscal.
+ * Hub orquestrador com 4 pilares contábeis: Finanças & DRE, Investimentos, Balanço 360° e Fiscal.
  */
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -87,11 +86,10 @@ export function ReportsPage() {
   const availableTabs = useMemo(() => {
     const list: MainTab[] = [];
     if (hasFinanceFeatures) list.push("financas");
-    if (hasFinanceFeatures) list.push("insights");
     if (hasInvestmentsFeature) list.push("investimentos");
     if (hasFinanceFeatures) list.push("balanco");
     if (hasInvestmentsFeature) list.push("fiscal");
-    if (list.length === 0) return ["financas", "insights", "investimentos", "balanco", "fiscal"] as MainTab[];
+    if (list.length === 0) return ["financas", "investimentos", "balanco", "fiscal"] as MainTab[];
     return list;
   }, [hasFinanceFeatures, hasInvestmentsFeature]);
 
@@ -788,13 +786,6 @@ export function ReportsPage() {
                 onShowDetail={(title, expenseList) => setDetailModal({ title, expenses: expenseList })}
               />
             ),
-          },
-          {
-            value: "insights",
-            label: "Insights & Diagnósticos",
-            shortLabel: "Insights",
-            icon: <Lightbulb className="size-4" aria-hidden="true" />,
-            content: <InsightsPage showHeader={false} />,
           },
         ]
       : []),

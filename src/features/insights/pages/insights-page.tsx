@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Activity, Calendar, Flame, LineChart, Repeat } from "lucide-react";
-import { ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { useSearchParams } from "react-router";
+import { Activity, Calendar, Flame, LineChart, Repeat, Sparkles } from "lucide-react";
+import { Button, ErrorState, Skeleton } from "@/components/ui";
 import { PlanningSection } from "@/components/modules";
 import { triggerSensory } from "@/services/sensory";
+import { cn } from "@/lib/utils";
 import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
 import { partitionFeedback, type FeedbackDecision, type FeedbackMap } from "@/domain/insights/feedback";
@@ -42,16 +44,47 @@ import {
 } from "@/state";
 import { DiagnosticsTab, ProjectionTab, RecurrencesTab, type WarningItem } from "../components";
 
+export type InsightFilter = "all" | "diagnostics" | "recurrences" | "projection" | "planning";
+
+interface FilterItem {
+  value: InsightFilter;
+  label: string;
+  icon: React.ReactNode;
+}
+
+const FILTER_ITEMS: FilterItem[] = [
+  { value: "all", label: "Tudo", icon: <Sparkles className="size-3.5" aria-hidden="true" /> },
+  { value: "diagnostics", label: "Diagnósticos", icon: <Activity className="size-3.5" aria-hidden="true" /> },
+  { value: "recurrences", label: "Recorrências", icon: <Repeat className="size-3.5" aria-hidden="true" /> },
+  { value: "projection", label: "Projeção", icon: <LineChart className="size-3.5" aria-hidden="true" /> },
+  { value: "planning", label: "Planejamento FIRE", icon: <Flame className="size-3.5" aria-hidden="true" /> },
+];
+
 /**
- * Insights (§3.7) — alertas críticos, assinaturas/recorrências com
- * aprendizado (ignorar/confirmar/restaurar), projeção & corte e diagnósticos.
- *
- * F19 — reuso de motores do domínio (computeOverview, aggregateByWeekday,
- * helpers compartilhados de budgets), fontes únicas de essencialidade e
- * investimentos reais da carteira nas projeções.
+ * Insights (§3.7) — Central Unificada de Inteligência Financeira.
+ * Alertas críticos, diagnósticos de hábitos, assinaturas e recorrências com aprendizado,
+ * projeção e desafios de corte, e planejamento FIRE em página contínua com filtros rápidos.
  */
-export function InsightsPage({ showHeader = true }: { showHeader?: boolean } = {}) {
-  const [tab, setTab] = useState("diagnostics");
+export function InsightsPage({
+  showHeader = true,
+  initialFilter = "all",
+}: {
+  showHeader?: boolean;
+  initialFilter?: InsightFilter;
+} = {}) {
+  let searchParams: URLSearchParams | null = null;
+  let setSearchParams: ReturnType<typeof useSearchParams>[1] | null = null;
+
+  try {
+    const routerParams = useSearchParams();
+    searchParams = routerParams[0];
+    setSearchParams = routerParams[1];
+  } catch {
+    // Permite renderização resiliente fora de Router (testes unitários isolados)
+  }
+
+  const queryTab = searchParams?.get("aba") as InsightFilter | null;
+  const [filter, setFilter] = useState<InsightFilter>(() => queryTab ?? initialFilter);
   const [showIgnored, setShowIgnored] = useState(false);
   const [expandedWarnings, setExpandedWarnings] = useState(false);
   const month = currentMonth();
@@ -325,19 +358,87 @@ export function InsightsPage({ showHeader = true }: { showHeader?: boolean } = {
       })),
   ];
 
+  const handleFilterChange = (nextFilter: InsightFilter) => {
+    triggerSensory("selection");
+    setFilter(nextFilter);
+    if (searchParams && setSearchParams) {
+      if (nextFilter === "all") {
+        searchParams.delete("aba");
+      } else {
+        searchParams.set("aba", nextFilter);
+      }
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
+
+  const diagnosticsContent = (
+    <DiagnosticsTab
+      warnings={warnings}
+      expandedWarnings={expandedWarnings}
+      setExpandedWarnings={setExpandedWarnings}
+      health={health}
+      savingsRate={savingsRate}
+      burnRate={burnRate}
+      concentration={concentration}
+      weekendComparable={weekendComparable}
+      weekendRatio={weekendRatio}
+      trendSignificant={trendSignificant}
+      trendPercent={trendPercent}
+    />
+  );
+
+  const recurrencesContent = (
+    <RecurrencesTab
+      totalRecurringCents={totalRecurringCents}
+      totalAnnualRecurringCents={totalAnnualRecurringCents}
+      canCutRecurringCents={canCutRecurringCents}
+      canCutAnnualCents={canCutAnnualCents}
+      activeOccurrences={activeOccurrences}
+      ignoredOccurrences={ignoredOccurrences}
+      feedbackMap={feedbackMap}
+      showIgnored={showIgnored}
+      setShowIgnored={setShowIgnored}
+      onFeedback={handleFeedback}
+    />
+  );
+
+  const projectionContent = (
+    <ProjectionTab
+      dailyCents={daily.dailyCents}
+      projectedExpensesCents={projection.projectedExpensesCents}
+      surplusCents={projection.surplusCents}
+      onTrack={projection.onTrack}
+      spentPercent={pace.spentPercent}
+      elapsedPercent={pace.elapsedPercent}
+      paceActive={pace.active}
+      pendingSummary={pendingSummary}
+      challenges={challenges}
+      showDiscretionary={showDiscretionary}
+      discretionary={discretionary}
+      limitSuggestions={limitSuggestions}
+    />
+  );
+
+  const planningContent = (
+    <PlanningSection
+      balanceCents={balanceCents}
+      monthlyExpensesCents={expenseCents}
+    />
+  );
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 min-w-0">
       {showHeader ? (
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              Insights
+              Insights & Inteligência
             </h1>
             <p className="text-xs text-muted-foreground sm:text-sm">
-              Diagnósticos inteligentes, assinaturas recorrentes e projeções de gastos
+              Diagnósticos preditivos, radar de recorrências, oportunidades de economia e saúde financeira
             </p>
           </div>
-          <div className="inline-flex items-center gap-1.5 self-start rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground sm:self-auto shrink-0">
+          <div className="inline-flex items-center gap-1.5 self-start rounded-lg border border-border/80 bg-surface px-3 py-1.5 text-xs text-muted-foreground sm:self-auto shrink-0 shadow-xs">
             <Calendar className="size-3.5" aria-hidden="true" />
             <span>
               Referência: <strong className="font-medium text-foreground">{monthLabel(month)}</strong>
@@ -348,101 +449,104 @@ export function InsightsPage({ showHeader = true }: { showHeader?: boolean } = {
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
+      {/* Barra de Filtro Rápido com Pills */}
+      <div
+        role="tablist"
+        aria-label="Filtro de seções de insights"
+        className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pb-1 -mx-1 px-1"
+      >
+        {FILTER_ITEMS.map((item) => {
+          const isSelected = filter === item.value;
+          return (
+            <Button
+              key={item.value}
+              role="tab"
+              aria-selected={isSelected}
+              type="button"
+              variant={isSelected ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange(item.value)}
+              className={cn(
+                "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
+                isSelected
+                  ? "shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
           </div>
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-40 w-full rounded-xl" />
         </div>
+      ) : filter === "all" ? (
+        <div className="flex flex-col gap-8 min-w-0">
+          {/* Seção 1: Diagnósticos & Alertas */}
+          <section aria-labelledby="section-diagnostics" className="flex flex-col gap-3.5 min-w-0">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-border/80">
+              <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
+              <h2 id="section-diagnostics" className="text-sm font-semibold text-foreground">
+                Diagnósticos de Hábitos & Alertas
+              </h2>
+            </div>
+            {diagnosticsContent}
+          </section>
+
+          {/* Seção 2: Recorrências & Assinaturas */}
+          <section aria-labelledby="section-recurrences" className="flex flex-col gap-3.5 min-w-0">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-border/80">
+              <Repeat className="size-4 text-muted-foreground" aria-hidden="true" />
+              <h2 id="section-recurrences" className="text-sm font-semibold text-foreground">
+                Radar de Assinaturas & Recorrências
+              </h2>
+            </div>
+            {recurrencesContent}
+          </section>
+
+          {/* Seção 3: Projeção & Economia */}
+          <section aria-labelledby="section-projection" className="flex flex-col gap-3.5 min-w-0">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-border/80">
+              <LineChart className="size-4 text-muted-foreground" aria-hidden="true" />
+              <h2 id="section-projection" className="text-sm font-semibold text-foreground">
+                Fechamento Projetado & Oportunidades de Economia
+              </h2>
+            </div>
+            {projectionContent}
+          </section>
+
+          {/* Seção 4: Planejamento FIRE */}
+          <section aria-labelledby="section-planning" className="flex flex-col gap-3.5 min-w-0">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-border/80">
+              <Flame className="size-4 text-muted-foreground" aria-hidden="true" />
+              <h2 id="section-planning" className="text-sm font-semibold text-foreground">
+                Reserva de Emergência & Planejamento FIRE
+              </h2>
+            </div>
+            {planningContent}
+          </section>
+        </div>
+      ) : filter === "diagnostics" ? (
+        <div className="flex flex-col gap-4 min-w-0">{diagnosticsContent}</div>
+      ) : filter === "recurrences" ? (
+        <div className="flex flex-col gap-4 min-w-0">{recurrencesContent}</div>
+      ) : filter === "projection" ? (
+        <div className="flex flex-col gap-4 min-w-0">{projectionContent}</div>
       ) : (
-        <Tabs
-          value={tab}
-          onValueChange={(val) => {
-            triggerSensory("selection");
-            setTab(val);
-          }}
-          swipeable
-          items={[
-            {
-              value: "diagnostics",
-              label: "Diagnósticos",
-              icon: <Activity className="size-4" aria-hidden="true" />,
-              content: (
-                <DiagnosticsTab
-                  warnings={warnings}
-                  expandedWarnings={expandedWarnings}
-                  setExpandedWarnings={setExpandedWarnings}
-                  health={health}
-                  savingsRate={savingsRate}
-                  burnRate={burnRate}
-                  concentration={concentration}
-                  weekendComparable={weekendComparable}
-                  weekendRatio={weekendRatio}
-                  trendSignificant={trendSignificant}
-                  trendPercent={trendPercent}
-                />
-              ),
-            },
-            {
-              value: "recurrences",
-              label: "Recorrências",
-              icon: <Repeat className="size-4" aria-hidden="true" />,
-              content: (
-                <RecurrencesTab
-                  totalRecurringCents={totalRecurringCents}
-                  totalAnnualRecurringCents={totalAnnualRecurringCents}
-                  canCutRecurringCents={canCutRecurringCents}
-                  canCutAnnualCents={canCutAnnualCents}
-                  activeOccurrences={activeOccurrences}
-                  ignoredOccurrences={ignoredOccurrences}
-                  feedbackMap={feedbackMap}
-                  showIgnored={showIgnored}
-                  setShowIgnored={setShowIgnored}
-                  onFeedback={handleFeedback}
-                />
-              ),
-            },
-            {
-              value: "projection",
-              label: "Projeção",
-              icon: <LineChart className="size-4" aria-hidden="true" />,
-              content: (
-                <ProjectionTab
-                  dailyCents={daily.dailyCents}
-                  projectedExpensesCents={projection.projectedExpensesCents}
-                  surplusCents={projection.surplusCents}
-                  onTrack={projection.onTrack}
-                  spentPercent={pace.spentPercent}
-                  elapsedPercent={pace.elapsedPercent}
-                  paceActive={pace.active}
-                  pendingSummary={pendingSummary}
-                  challenges={challenges}
-                  showDiscretionary={showDiscretionary}
-                  discretionary={discretionary}
-                  limitSuggestions={limitSuggestions}
-                />
-              ),
-            },
-            {
-              value: "planning",
-              label: "Planejamento FIRE",
-              icon: <Flame className="size-4" aria-hidden="true" />,
-              content: (
-                <PlanningSection
-                  balanceCents={balanceCents}
-                  monthlyExpensesCents={expenseCents}
-                />
-              ),
-            },
-          ]}
-        />
+        <div className="flex flex-col gap-4 min-w-0">{planningContent}</div>
       )}
     </div>
   );

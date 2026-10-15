@@ -157,9 +157,6 @@ export function CreditCard3D({
   const limit = cardLimitUsage(card.credit_limit, usedLimitCents);
   const bestDay = bestPurchaseDay(card.closing_day);
 
-  // 4 dígitos virtuais
-  const lastFourDigits = (card.id.replace(/\D/g, "") + "8492").slice(-4);
-
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (disableTilt || !cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
@@ -272,41 +269,20 @@ export function CreditCard3D({
           </div>
         </div>
 
-        {/* Linha 3: Rodapé — Número Mascarado, Ciclo de Datas e Limite */}
-        <div className="relative z-10 flex flex-col gap-1.5 pt-2 border-t border-white/10">
-          {/* Dados do Ciclo: Melhor Dia, Fechamento, Vencimento */}
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] sm:text-xs text-white/75 font-mono min-w-0">
-            <span className="truncate">Melhor dia: {bestDay}</span>
-
-            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-              <span>Fech.: {card.closing_day}</span>
-              <span>Venc.: {card.due_day}</span>
-            </div>
+        {/* Linha 3: Rodapé — Ciclo de Datas e Limite Total */}
+        <div className="relative z-10 flex items-center justify-between gap-2 pt-2 border-t border-white/10 text-[10px] sm:text-xs text-white/80 font-mono">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 truncate">
+            <span>Melhor dia: {bestDay}</span>
+            <span className="text-white/40">·</span>
+            <span>Fech.: {card.closing_day}</span>
+            <span className="text-white/40">·</span>
+            <span>Venc.: {card.due_day}</span>
           </div>
 
-          {/* Limite Total e Disponível com Barra Sutil */}
           {limit.totalLimitCents !== null && (
-            <div className="flex flex-col gap-1 min-w-0">
-              <div className="flex flex-wrap justify-between items-center gap-x-2 gap-y-0.5 text-[10px] text-white/70 font-mono min-w-0">
-                <span className="shrink-0">•••• {lastFourDigits}</span>
-                <span className="truncate">
-                  Disp: <strong className="text-white">{formatCentsAsBRL(limit.availableLimitCents ?? 0)}</strong> / {formatCentsAsBRL(limit.totalLimitCents)}
-                </span>
-              </div>
-
-              <div className="h-1 w-full rounded-full bg-black/40 overflow-hidden">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-300",
-                    limit.usagePercentage >= 90
-                      ? "bg-rose-400"
-                      : limit.usagePercentage >= 70
-                        ? "bg-amber-300"
-                        : "bg-emerald-400",
-                  )}
-                  style={{ width: `${Math.min(100, Math.max(3, limit.usagePercentage))}%` }}
-                />
-              </div>
+            <div className="shrink-0 text-right">
+              <span className="text-white/70">Limite: </span>
+              <strong className="text-white font-semibold">{formatCentsAsBRL(limit.totalLimitCents)}</strong>
             </div>
           )}
         </div>

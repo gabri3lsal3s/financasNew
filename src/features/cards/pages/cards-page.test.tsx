@@ -79,6 +79,18 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useAllCardExpenses: () => ({
+    data: stateMocks.expenses,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  useAllCardPayments: () => ({
+    data: [{ id: "p1", competence_month: "2026-08", amount: 100, date: "2026-08-10", note: null }],
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
   useCreateCardPayment: () => ({ mutateAsync: paymentMock, isPending: false }),
   useCreateRefund: () => ({ mutateAsync: refundMock, isPending: false }),
   useCreateCard: () => ({ mutateAsync: createCardMock, isPending: false }),

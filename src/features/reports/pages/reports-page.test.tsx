@@ -222,27 +222,22 @@ vi.mock("@/state", () => ({
 
 
 describe("ReportsPage (Central Unificada §F42)", () => {
-  it("renderiza o Hub com o cabeçalho padronizado e as 5 abas principais", () => {
+  it("renderiza o Hub com o cabeçalho padronizado e os 4 pilares contábeis principais", () => {
     renderReports();
     expect(screen.getByRole("heading", { level: 1, name: "Relatórios" })).toBeInTheDocument();
     expect(
       screen.getByText("Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"),
     ).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Finanças & DRE/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Insights & Diagnósticos/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Investimentos & Carteira/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Balanço & Liberdade/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Fiscal & Declaração/i })).toBeInTheDocument();
   });
 
-  it("permite alternar para a aba Insights & Diagnósticos", async () => {
-    const user = userEvent.setup();
+  it("exibe atalho contextual para a Central de Insights na aba Finanças & DRE", () => {
     renderReports();
-
-    const insightsTab = screen.getByRole("tab", { name: /Insights & Diagnósticos/i });
-    await user.click(insightsTab);
-
-    expect(screen.getByRole("tab", { name: "Diagnósticos" })).toBeInTheDocument();
+    expect(screen.getByText("Radar de Inteligência & Insights")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Abrir Insights/i })).toHaveAttribute("href", "/insights");
   });
 
   it("exibe os dados financeiros da aba Finanças & DRE por padrão", () => {
