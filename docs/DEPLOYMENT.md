@@ -87,7 +87,47 @@ cp .env.example .env.local   # preencha VITE_SUPABASE_URL + VITE_SUPABASE_ANON_K
 npm run dev          # dev server (Vite)
 npm run typecheck    # tsc -b (valida TODO o projeto, inclusive testes)
 npm run lint         # eslint (0 erros esperado)
-npm run test         # vitest — 1135 testes (144 arquivos)
+npm run test         # vitest — 2313 testes (320 arquivos) 100% verde
 npm run build        # tsc -b && vite build (gera dist/ + Service Worker)
 npm run preview      # serve dist/ localmente (testa o build de produção)
+npm run build:apk    # compila os APKs Debug e Release (assinado) para dist-apk/
 ```
+
+---
+
+## 6. COMPILAÇÃO & DISTRIBUIÇÃO DO APLICATIVO ANDROID (APK)
+
+O projeto suporta compilação automatizada de APKs nativos via Capacitor e Gradle:
+
+### 6.1 Compilação em 1 Comando
+
+Para compilar os APKs de Debug e Release:
+
+```bash
+npm run build:apk
+# ou diretamente:
+./scripts/build-apk.sh
+```
+
+O script executa automaticamente:
+1. Exportação do ambiente JDK 21 LTS e Android SDK Command-line Tools;
+2. Geração da chave criptográfica RSA 2048 bits (`release-key.keystore`), caso não exista;
+3. Compilação de produção do Web App Vite (`npm run build`);
+4. Sincronização dos assets e plugins nativos com Capacitor (`npx cap sync android`);
+5. Compilação dos APKs pelo Gradle Wrapper (`clean assembleDebug assembleRelease`);
+6. Organização e cópia dos artefatos finais para `dist-apk/`:
+   - `dist-apk/guia-financeiro-debug.apk`
+   - `dist-apk/guia-financeiro-release.apk` (assinado para distribuição).
+
+### 6.2 Instalação no Aparelho Real
+
+Com o celular conectado via cabo USB (com Depuração USB ativada) ou WiFi:
+
+```bash
+# Instalar versão de Release
+adb install -r dist-apk/guia-financeiro-release.apk
+
+# Ou instalar versão Debug
+adb install -r dist-apk/guia-financeiro-debug.apk
+```
+

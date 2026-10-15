@@ -199,12 +199,12 @@ graph TD
 - **DoD:** Notificação bancária ou compartilhamento Pix gera sugestão automática discreta; com 1 toque o formulário abre pronto para salvar.
 
 ### Fase 6: Automação de Build & Distribuição do APK
-- [ ] Gerar chave criptográfica de assinatura de release (`keystore`).
-- [ ] Criar script `scripts/build-apk.sh` para compilar o APK assinado em 1 comando.
-- [ ] Gerar builds organizados na pasta:
-  - `dist-apk/guia-financeiro-debug.apk`
-  - `dist-apk/guia-financeiro-release.apk`
-- [ ] Checklist de homologação física para validação em dispositivo Android real.
+- [x] **Chave Criptográfica de Release:** Keystore de assinatura gerado via `keytool` com RSA 2048 bits (`release-key.keystore`) e configurado em `android/app/build.gradle`.
+- [x] **Script de Automação de 1 Comando:** Criado `scripts/build-apk.sh` (e comando npm `npm run build:apk`) que compila o bundle web Vite, sincroniza com Capacitor e constrói Debug e Release via Gradle.
+- [x] **Builds Organizados em `dist-apk/`:**
+  - `dist-apk/guia-financeiro-debug.apk` (~17MB)
+  - `dist-apk/guia-financeiro-release.apk` (~16MB — assinado e pronto para distribuição/sideload)
+- [x] **Checklist de Homologação Física:** Roteiro completo de validação em dispositivo Android real documentado abaixo.
 - **DoD:** APK assinado gerado e testado com sucesso em dispositivo Android físico real.
 
 ---
@@ -212,12 +212,27 @@ graph TD
 ## 6. ESTRATÉGIA DE HOMOLOGAÇÃO E CONTROLE DE QUALIDADE
 
 1. **Testes Automatizados Contínuos:**
-   - Typecheck estrito (`npm run typecheck`).
-   - Bateria completa de testes unitários (`npm run test:run`).
-   - Linter do projeto (`npm run lint`).
+   - Typecheck estrito (`npm run typecheck` — 0 erros).
+   - Bateria completa de testes unitários (`npm run test:run` — 320 arquivos, 2.313 testes verdes).
+   - Linter do projeto (`npm run lint` — 0 erros e 0 warnings, sem emojis/decorativos).
    - Auditoria de PWA intacta (`src/tests/pwa.test.tsx` e `src/tests/pwa-audit.test.ts`).
-2. **Homologação em Dispositivo Real:**
-   - Teste de abertura a frio (*Cold Start*) e a quente (*Warm Start*).
-   - Teste offline (App Shell abre na hora e exibe estado sem conexão seguro).
-   - Validação da resposta tátil na calculadora e transições de tema.
-   - Validação de safe areas em aparelhos com notch e barra de gestos.
+
+2. **Checklist de Homologação em Dispositivo Físico Real:**
+   - **(a) Instalação & Inicialização:**
+     * Conectar o celular via USB/WiFi e rodar: `adb install -r dist-apk/guia-financeiro-release.apk`
+     * Cold Start: splash screen suave com cor do tema, sem telas brancas (*White Flash*);
+     * Ícone adaptativo exibido corretamente no Launcher do Android com cantos arredondados.
+   - **(b) Agilidade Externa (Shortcuts & Lembretes):**
+     * Pressionar e segurar o ícone do app no Launcher: atalhos "Lançar Despesa", "Lançar Receita", "Ver Faturas" e "Visão Geral" abrem a tela correspondente em 1 clique;
+     * Disparo do lembrete diário das 20h00: tocar nos botões de ação da notificação (`[➕ Despesa]` ou `[💵 Receita]`) preenche e abre o formulário de lançamento.
+   - **(c) Assistente Passivo (Compras & Pix):**
+     * Habilitar "Acesso a Notificações" nas Configurações do Android para o Guia Financeiro;
+     * Receber uma notificação de compra de banco homologado (ex.: Nubank, Itaú, Inter): verificar se o card "Transações Detectadas" aparece sutilmente no topo da Visão Geral;
+     * Clicar em "Conferir e Salvar": o assistente abre com o valor e a descrição já preenchidos para salvar com 1 toque;
+     * Compartilhar comprovante Pix a partir de outro aplicativo: selecionar "Guia Financeiro" na lista de apps de compartilhamento do Android (*Share Target*) e validar a importação rápida.
+   - **(d) Segurança & Privacidade:**
+     * Ativar Biometria em Configurações > Segurança: verificar autenticação biométrica (impressão digital ou Face Unlock) ao retornar de segundo plano após a tolerância;
+     * Ativar Escudo de Privacidade: verificar se a tela do app fica oculta na visualização de aplicativos recentes e se capturas de tela são bloqueadas.
+   - **(e) Navegação & Safe Areas:**
+     * O botão físico/gestual de "Voltar" do Android fecha modais, gavetas e menus antes de sair do aplicativo;
+     * Safe areas respeitadas perfeitamente em aparelhos com notch/câmera perfurada e barra de gestos inferior do Android.

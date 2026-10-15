@@ -59,6 +59,19 @@
 │       ├── screenshots/           # 1280x800 (desktop) + 720x1280 (mobile)
 │       └── offline.html           # Fallback offline (App Shell mínimo)
 │
+├── android/                       # Projeto nativo Android (Capacitor Bridge, plugins e manifest)
+│   ├── app/                       #   Código nativo Java (MainActivity, BankNotificationListenerService, plugins)
+│   └── build.gradle               #   Gradle configuration (signingConfigs de release, SDK 36)
+│
+├── dist-apk/                      # Artefatos compilados de distribuição do Android (debug e release assinados)
+│   ├── guia-financeiro-debug.apk  #   APK de depuração
+│   └── guia-financeiro-release.apk #  APK de release assinado com RSA 2048 bits
+│
+├── scripts/                       # Scripts operacionais e de automação
+│   ├── build-apk.sh               #   Pipeline automatizado de compilação de APKs em 1 comando
+│   ├── deploy-quotes.mjs          #   Deploy e cron da edge function de cotações
+│   └── generate-icons.mjs         #   Gerador de ícones e favicons
+│
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
 │   ├── migrations/                # 0001..0039_security_fixes_and_feature_flag_triggers.sql
 │   │                              # (schema, RLS estrito com is_current_user_active, triggers,

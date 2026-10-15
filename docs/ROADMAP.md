@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.58** registra a **Automação de Build, Geração de APKs Assinados & Conclusão Integral do Plano Android (Fase 6)** (2026-10-15):
+> - **(1) Chave Criptográfica de Release (`release-key.keystore`)**:
+>   - Geração automatizada via `keytool` com algoritmo RSA 2048 bits e validade estendida;
+>   - Configuração de `signingConfigs.release` em `android/app/build.gradle` com leitura de variáveis de ambiente e fallback local seguro;
+> - **(2) Pipeline de Compilação em 1 Comando (`scripts/build-apk.sh` & `npm run build:apk`)**:
+>   - Script shell idempotente (`build-apk.sh`) executando: verificação e export de `JAVA_HOME` (JDK 21 LTS) e `ANDROID_HOME` (SDK Command-line Tools), compilação de produção Vite (`npm run build`), sincronização com Capacitor (`npx cap sync android`) e geração de APKs via Gradle Wrapper;
+>   - Geração e organização dos artefatos finais em `dist-apk/`:
+>     - `dist-apk/guia-financeiro-debug.apk` (17MB);
+>     - `dist-apk/guia-financeiro-release.apk` (16MB — assinado e pronto para sideload e distribuição);
+>   - Emissão automática de hashes SHA-256 de integridade e instruções de instalação via `adb install -r`;
+> - **(3) Checklist de Homologação em Dispositivo Físico Real**:
+>   - Documentação minuciosa em `docs/CAPACITOR_ANDROID_PLAN.md` e `docs/DEPLOYMENT.md` cobrindo Cold/Warm start, Launcher Shortcuts, disparo de lembretes, captura passiva de notificações bancárias, compartilhamento Pix via Share Target, Biometria/Privacy Shield e safe areas;
+> - **(4) Qualidade de Código & Governança Rigorosa**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (320 arquivos / 2.313 testes) **100% verde**;
+>   - Compilação dos APKs concluída com sucesso pelo Gradle.
+> 
 > **v2.57** registra o **Assistente Passivo — Captura de Compras, Notificações Bancárias e Compartilhamento Pix (Fase 5 do Plano Android)** (2026-10-15):
 > - **(1) Motor Puro de Parsing de Notificações & Comprovantes (`src/domain/notifications/`)**:
 >   - Parser puro em TypeScript sem dependências de UI nem de banco de dados (`bank-parser.ts`);

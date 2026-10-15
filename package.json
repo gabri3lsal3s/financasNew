@@ -27,7 +27,8 @@
     "quotes:cron": "node scripts/deploy-quotes.mjs cron",
     "cap:sync": "cap sync android",
     "cap:open": "cap open android",
-    "cap:build": "npm run build && cap sync android"
+    "cap:build": "npm run build && cap sync android",
+    "build:apk": "./scripts/build-apk.sh"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
