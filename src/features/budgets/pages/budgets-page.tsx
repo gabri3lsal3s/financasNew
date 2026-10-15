@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowRight, Edit3, PiggyBank, Plus, Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, Edit3, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
@@ -32,8 +32,12 @@ import {
   usePermission,
   useReallocateBudget,
 } from "@/state";
-import { LimitDialog } from "@/features/budgets/components/limit-dialog";
-import { IncomeGoalDialog } from "@/features/budgets/components/income-goal-dialog";
+import {
+  BudgetAdjustDialog,
+  IncomeGoalDialog,
+  LimitDialog,
+  type BudgetAdjustCategoryItem,
+} from "@/features/budgets/components";
 import { CategoryFormDialog } from "@/features/categories/components/category-form-dialog";
 import type { Category } from "@/types";
 
@@ -151,6 +155,22 @@ export function BudgetsPage() {
       return;
     }
     setGoalFor(category);
+  };
+
+  const [adjustOpen, setAdjustOpen] = useState(false);
+
+  const adjustCategories: BudgetAdjustCategoryItem[] = allExpenseRows.map((r) => ({
+    category: r.category,
+    currentLimitCents: r.limitCents,
+  }));
+
+  const handleOpenAdjustBudget = () => {
+    if (permission.isReadOnlyMode) {
+      setUpgradeContext("Ajustar Orçamento");
+      setUpgradeOpen(true);
+      return;
+    }
+    setAdjustOpen(true);
   };
 
   const handleOpenCreateCategory = () => {
@@ -633,15 +653,27 @@ export function BudgetsPage() {
             Tetos de gastos mensais, metas de renda e controle de categorias
           </p>
         </div>
-        <Button
-          size="sm"
-          aria-label="Nova categoria"
-          onClick={handleOpenCreateCategory}
-          className="shrink-0 self-start sm:self-auto gap-1.5"
-        >
-          <Plus aria-hidden="true" className="size-4" />
-          <span>Nova categoria</span>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Ajustar orçamento"
+            onClick={handleOpenAdjustBudget}
+            className="gap-1.5"
+          >
+            <SlidersHorizontal aria-hidden="true" className="size-4" />
+            <span>Ajustar orçamento</span>
+          </Button>
+          <Button
+            size="sm"
+            aria-label="Nova categoria"
+            onClick={handleOpenCreateCategory}
+            className="gap-1.5"
+          >
+            <Plus aria-hidden="true" className="size-4" />
+            <span>Nova categoria</span>
+          </Button>
+        </div>
       </header>
 
       {permission.isReadOnlyMode && (
@@ -748,6 +780,13 @@ export function BudgetsPage() {
           setUpgradeOpen(false);
           navigate(`/assinatura?plano=${p}`);
         }}
+      />
+
+      <BudgetAdjustDialog
+        open={adjustOpen}
+        onOpenChange={setAdjustOpen}
+        month={month}
+        categories={adjustCategories}
       />
     </div>
   );

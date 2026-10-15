@@ -50,6 +50,7 @@ export {
 export {
   useSetBudgetLimit,
   useRemoveBudgetLimit,
+  useSetBatchBudgetLimits,
   useSetIncomeGoal,
   useRemoveIncomeGoal,
   useReallocateBudget,

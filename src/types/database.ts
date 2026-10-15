@@ -496,6 +496,13 @@ export interface Database {
         };
         Returns: PortfolioContribution;
       };
+      set_batch_budget_limits: {
+        Args: {
+          p_month: string;
+          p_items: readonly { categoryId: string; limit: number }[];
+        };
+        Returns: void;
+      };
     };
   };
 }

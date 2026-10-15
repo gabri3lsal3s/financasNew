@@ -39,3 +39,33 @@ export async function removeBudget(categoryId: string, month: string): Promise<v
     throw new AppError(classified.kind, classified.message, error);
   }
 }
+
+export interface SetBatchBudgetEntry {
+  categoryId: string;
+  limit: number;
+}
+
+/** Define múltiplos limites de categorias no mês via RPC transacional, com fallback resiliente. */
+export async function setBatchBudgets(
+  month: string,
+  entries: readonly SetBatchBudgetEntry[],
+): Promise<void> {
+  try {
+    const { setBatchBudgetLimits } = await import("@/data/rpc");
+    await setBatchBudgetLimits(month, entries);
+  } catch (err: unknown) {
+    const isRpcMissing =
+      (typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === "PGRST202") ||
+      String(err).includes("set_batch_budget_limits");
+    if (isRpcMissing) {
+      await Promise.all(
+        entries.map((entry) =>
+          entry.limit > 0 ? setBudget(entry.categoryId, month, entry.limit) : removeBudget(entry.categoryId, month),
+        ),
+      );
+    } else {
+      throw err;
+    }
+  }
+}
+

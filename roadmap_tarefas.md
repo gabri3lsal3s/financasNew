@@ -105,12 +105,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 09: Ajuste Proporcional do Orçamento Global
+### Tarefa 09: Ajuste Proporcional do Orçamento Global [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Adicionar a ferramenta de ajuste de orçamento em lote com redistribuição proporcional.
 - **Ações:**
-  1. Adicionar o botão "Ajustar Orçamento" ao lado do botão "Nova Categoria".
-  2. Abrir modal que permita ajuste por percentual (+/- X%) ou por valor total pretendido.
-  3. Redistribuir proporcionalmente entre as categorias: `Novo = Atual * (1 + delta%)`, com ajuste fino de centavos na soma final.
+  1. Adicionar o botão "Ajustar Orçamento" ao lado do botão "Nova Categoria". (Concluído: adicionado botão com ícone SlidersHorizontal ao lado de "Nova Categoria" no cabeçalho de `BudgetsPage`, protegido pelo gateway de permissões de assinatura).
+  2. Abrir modal que permita ajuste por percentual (+/- X%) ou por valor total pretendido. (Concluído: criado componente `BudgetAdjustDialog` com abas para ajuste percentual com atalhos de -15% a +20% e ajuste por novo valor total em R$, exibindo tabela comparativa e KPIs de impacto em tempo real).
+  3. Redistribuir proporcionalmente entre as categorias: `Novo = Atual * (1 + delta%)`, com ajuste fino de centavos na soma final. (Concluído: motor puro de redistribuição proporcional em `src/domain/budgets/proportional.ts` com método de maiores restos [Hamilton-Hare] garantindo zero centavos de resíduo, RPC transacional `set_batch_budget_limits` e mutação TanStack Query com invalidação de cache e testes automatizados).
 - **Commit:** `feat(budget): add proportional budget adjustment tool`
 
 ---

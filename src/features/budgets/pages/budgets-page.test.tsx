@@ -82,6 +82,7 @@ vi.mock("@/state", () => ({
   }),
   useSetBudgetLimit: () => ({ mutateAsync: setBudgetLimitMock, isPending: false }),
   useRemoveBudgetLimit: () => ({ mutateAsync: removeBudgetLimitMock, isPending: false }),
+  useSetBatchBudgetLimits: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSetIncomeGoal: () => ({ mutateAsync: setIncomeGoalMock, isPending: false }),
   useRemoveIncomeGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReallocateBudget: () => ({ mutateAsync: reallocateMock, isPending: false }),
@@ -203,6 +204,20 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(screen.getByText("Lazer")).toBeInTheDocument();
     expect(screen.getByText("Salário")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Editar cadastro de Moradia" })).toBeInTheDocument();
+  });
+
+  it("exibe o botão 'Ajustar orçamento' ao lado de 'Nova categoria' e abre o modal de ajuste proporcional", async () => {
+    const user = userEvent.setup();
+    renderBudgetsPage();
+
+    const adjustBtn = screen.getByRole("button", { name: "Ajustar orçamento" });
+    expect(adjustBtn).toBeInTheDocument();
+
+    const newCatBtn = screen.getByRole("button", { name: "Nova categoria" });
+    expect(newCatBtn).toBeInTheDocument();
+
+    await user.click(adjustBtn);
+    expect(screen.getByRole("heading", { name: "Ajustar Orçamento" })).toBeInTheDocument();
   });
 });
 

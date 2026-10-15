@@ -460,6 +460,25 @@ export async function setBudgetLimit(categoryId: string, month: string, limit: n
   );
 }
 
+export interface BatchBudgetLimitItem {
+  categoryId: string;
+  limit: number;
+}
+
+/** Atualização em lote de orçamentos por mês — RPC transacional (§Tarefa 09). */
+export async function setBatchBudgetLimits(
+  month: string,
+  items: readonly BatchBudgetLimitItem[],
+): Promise<void> {
+  await unwrapRpc(
+    callRpc("set_batch_budget_limits", {
+      p_month: month,
+      p_items: items,
+    }),
+    true,
+  );
+}
+
 /** Upsert de meta de renda por categoria + mês. */
 export async function setIncomeGoal(categoryId: string, month: string, expected: number): Promise<void> {
   await unwrapRpc(

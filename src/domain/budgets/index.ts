@@ -268,3 +268,14 @@ export function spentGrossByCategoryMap(
   }
   return spent;
 }
+
+export {
+  redistributeProportionalBudget,
+  redistributeProportionalBudgetByPercent,
+} from "./proportional";
+export type {
+  ProportionalCategoryInput,
+  ProportionalCategoryOutput,
+  ProportionalBudgetResult,
+} from "./proportional";
+

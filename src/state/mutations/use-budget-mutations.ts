@@ -60,3 +60,22 @@ export function useReallocateBudget() {
     onSuccess: () => invalidateFinance(queryClient),
   });
 }
+
+/** Atualização em lote de limites de categorias (ajuste proporcional) — RPC auditado (§Tarefa 09). */
+export function useSetBatchBudgetLimits() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      month,
+      items,
+    }: {
+      month: string;
+      items: readonly { categoryId: string; limit: number }[];
+    }) => {
+      const { setBatchBudgets } = await import("@/data/repositories/budgets");
+      await setBatchBudgets(month, items);
+    },
+    onSuccess: () => invalidateFinance(queryClient),
+  });
+}
+
