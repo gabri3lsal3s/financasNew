@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
   ShieldCheck,
-  KeyRound,
-  QrCode,
   Lock,
   LogOut,
   Database,
@@ -51,7 +49,6 @@ import {
   useCreditCards,
 } from "@/state";
 import { triggerSensory } from "@/services/sensory";
-import { pushToast } from "@/services/toast";
 
 interface BackupExpenseItem {
   date: string;
@@ -264,6 +261,13 @@ export function SecurityTab() {
             </div>
           </div>
 
+          <div className="p-3.5 rounded-xl border border-border/80 bg-surface text-xs text-muted-foreground leading-relaxed flex items-center gap-2.5">
+            <Lock className="size-4 text-positive-strong shrink-0" />
+            <span>
+              Sua conta está protegida por isolamento Row-Level Security (RLS) e criptografia de ponta a ponta.
+            </span>
+          </div>
+
           <div className="pt-2 flex justify-end">
             <Button variant="destructive" onClick={handleLogout} className="gap-2">
               <LogOut className="size-4" />
@@ -273,62 +277,7 @@ export function SecurityTab() {
         </CardContent>
       </Card>
 
-      {/* Card 2: Autenticação em Duas Etapas (2FA / TOTP) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Autenticação em Duas Etapas (2FA / TOTP)</span>
-            </div>
-            <Badge variant={userAccess.isAdmin ? "warning" : "muted"} size="xs" className="font-normal">
-              {userAccess.isAdmin ? "Obrigatório p/ Admin" : "Recomendado"}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/80 bg-muted/20">
-            <div className="flex items-start gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong shrink-0">
-                <QrCode className="size-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-sm text-foreground flex items-center gap-2">
-                  <span>Aplicativo Autenticador (TOTP)</span>
-                  <Badge variant="positive" size="xs">Pronto</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  Compatível com Google Authenticator, Microsoft Authenticator, 1Password e Authy. Adiciona uma camada extra de proteção ao solicitar um código de 6 dígitos no login.
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                triggerSensory("selection");
-                pushToast({
-                  title: "2FA Gerenciado",
-                  description: "Configurações de TOTP disponíveis no painel de autenticação.",
-                });
-              }}
-              className="gap-2 shrink-0"
-            >
-              <QrCode className="size-4" />
-              <span>Gerenciar 2FA</span>
-            </Button>
-          </div>
-
-          <div className="p-3.5 rounded-xl border border-border/60 bg-surface text-xs text-muted-foreground leading-relaxed flex items-center gap-2.5">
-            <Lock className="size-4 text-positive-strong shrink-0" />
-            <span>
-              Sua conta está protegida por isolamento Row-Level Security (RLS) e criptografia de ponta a ponta.
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 3: Gestão de Dados & Backup */}
+      {/* Card 2: Gestão de Dados & Backup */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">

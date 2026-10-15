@@ -216,12 +216,14 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     const securityTab = screen.getByRole("tab", { name: "Segurança" });
     await user.click(securityTab);
 
-    // Conteúdo de Segurança
-    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
-    expect(screen.getByText("Aplicativo Autenticador (TOTP)")).toBeInTheDocument();
+    // Conteúdo de Segurança (Conta & Sessão e Proteção)
     expect(screen.getByText("Conta & Sessão")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Gerenciar 2FA/i })).toBeInTheDocument();
+    expect(screen.getByText("Status da Conta")).toBeInTheDocument();
+    expect(screen.getByText("Conta Ativa")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
+    expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
+    expect(screen.queryByText("Aplicativo Autenticador (TOTP)")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Gerenciar 2FA/i })).not.toBeInTheDocument();
 
     // Conteúdo de Dados
     expect(screen.getByText("Gestão de Dados & Backup")).toBeInTheDocument();
@@ -250,7 +252,8 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
   it("ativa a aba de Segurança quando acessado via ?tab=perfil", () => {
     renderSettings(["/configuracoes?tab=perfil"]);
-    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
+    expect(screen.getByText("Conta & Sessão")).toBeInTheDocument();
+    expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
   });
 
   it("ativa a aba de Segurança quando acessado via ?subtab=dados", () => {
@@ -260,7 +263,8 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
 
   it("ativa a aba de Segurança quando acessado via ?tab=seguranca", () => {
     renderSettings(["/configuracoes?tab=seguranca"]);
-    expect(screen.getByText("Autenticação em Duas Etapas (2FA / TOTP)")).toBeInTheDocument();
+    expect(screen.getByText("Conta & Sessão")).toBeInTheDocument();
+    expect(screen.queryByText("Autenticação em Duas Etapas (2FA / TOTP)")).not.toBeInTheDocument();
   });
 
   it("ativa a aba de Personalização quando acessado via ?tab=aparencia", () => {

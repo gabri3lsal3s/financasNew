@@ -66,8 +66,6 @@ function resolveSettingsTab(param: string | null): string {
       "conta",
       "usuario",
       "usuário",
-      "2fa",
-      "mfa",
       "senha",
       "dados",
       "exportar",

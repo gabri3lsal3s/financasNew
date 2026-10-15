@@ -687,7 +687,7 @@
 | **F44** | Padronização Editorial A4, Gráficos Vetoriais & PDF | `ReportDocumentLayout`, supressão de ruídos nativos, gráficos SVG/CSS e Tear Sheet | Relatórios & PDFs |
 | **F45** | Hardening de Segurança no Banco & RLS | RLS com `is_current_user_active()`, `search_path` estrito e sanitização Formula Injection | Segurança Backend |
 | **F46** | Escalabilidade de Consultas & Índices Cobridores | Índices com `INCLUDE`, RPCs set-based e eliminação de waterfalls no client | Performance Banco |
-| **F47** | Autenticação Avançada: 2FA/MFA (TOTP) & Anti-Abuso | 2FA/TOTP nativo, Turnstile e desconexão reativa Realtime | Segurança Auth |
+| **F47** | Autenticação Avançada: Proteção Anti-Abuso & Sessão | Turnstile anti-bot e desconexão reativa Realtime (2FA descontinuado na Tarefa 01) | Segurança Auth |
 | **F48** | Governança em Larga Escala & Retenção Histórica | Particionamento declarativo e rotina de retenção/expurgo de auditoria | Governança Dados |
 | **F49** | Saldo em Caixa Real & Checkpoints de Âncora | Regime de caixa estrito, checkpoints âncora "Bater com o banco" e card mestre | Caixa Real & Liquidez |
 | **F50** | Proatividade: Sobra de Caixa, Auto-Snapshots & Bola de Neve | Ponte "Sobra de Caixa → Aporte", materialização de snapshots e gatilhos de reinvestimento | Proatividade Carteira |
@@ -2085,7 +2085,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 | 30 | **F44** — Padronização Editorial A4, Elementos Gráficos & Tear Sheet Completo | UI & Relatórios | F42 | ✅ Concluída (2026-08-24) — layout base `ReportDocumentLayout`, supressão de ruídos do browser (`@page { margin: 0 }`), 6 gráficos vetoriais nativos (SVG/CSS), expansão institucional do Tear Sheet e unificação dos 7 relatórios |
 | 31 | **F45** — Hardening de Segurança, RLS & Imunização contra Injeção | Segurança & Infra | F43 | ✅ Concluída (2026-08-24) — padronização RLS `(select auth.uid())` + `is_current_user_active()`, `search_path` em 100% das RPCs, proteção contra Formula Injection (CSV/Excel) |
 | 32 | **F46** — Escalabilidade, Eliminação de Micro-Waterfalls & Índices | Performance & Escala | F45 | ✅ Concluída (2026-08-24) — índices compostos/cobridores `(user_id, date)` com `INCLUDE` (expenses, incomes, debts, portfolio_assets, recurrences) e index-only scans |
-| 33 | **F47** — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso | Segurança & Auth | F43 | ✅ Concluída (2026-08-24) — motor de domínio MFA/TOTP (AAL1/AAL2), componente Turnstile anti-bot em formulários públicos e aba Segurança & 2FA |
+| 33 | **F47** — Autenticação Avançada: Proteção Anti-Abuso & Sessão | Segurança & Auth | F43 | ✅ Concluída (2026-08-24) — componente Turnstile anti-bot em formulários públicos e aba Segurança (2FA descontinuado e removido na Tarefa 01) |
 | 34 | **F48** — Governança em Larga Escala, Particionamento & Retenção | Dados & Escala | F46 | ✅ Concluída (2026-08-24) — rotinas de expurgo/retenção de logs de auditoria (cleanup_old_audit_events / admin_trigger_audit_retention) e índices temporais |
 | 35 | **F49** — Saldo em Caixa Real (Regime de Caixa Estrito), Checkpoints de Âncora & Previsão de Liquidez | A / Caixa & Liquidez Real | F2/F3/F33 | ✅ Concluída (2026-08-24) — saldo cumulativo real em conta bancária, checkpoints de calibração rápida ("Bater com o banco"), cálculo estrito de regime de caixa e métrica Safe-to-Spend |
 | 36 | **F50** — Proatividade Patrimonial: Conexão Sobra de Caixa → Aporte, Auto-Snapshots & Gatilhos da Bola de Neve | B / Proatividade & Investimentos | F41/F44/F49 | ✅ Concluída (2026-08-24) — ponte automática fluxo de caixa → calculadora de aporte, materialização mensal autônoma de snapshots e gatilhos de reinvestimento |
@@ -2879,29 +2879,19 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ---
 
-### Fase 47 — Autenticação Avançada: 2FA/MFA (TOTP) & Proteção Anti-Abuso (Auth & Client)
+### Fase 47 — Autenticação Avançada: Proteção Anti-Abuso & Gestão de Sessão (Auth & Client)
 
-> **Status:** ✅ Concluída (2026-08-24) — motor de domínio para MFA/2FA com verificação de códigos TOTP e checagem de AAL1/AAL2 (`src/domain/auth/mfa.ts`), componente `Turnstile` de proteção anti-bot e anti-força bruta em formulários públicos (`/entrar`, `/cadastro`, `/recuperar-senha`), e aba "Segurança & 2FA" no centro de configurações com gestão de sessão e status de autenticação.
+> **Status:** ✅ Concluída (2026-08-24 / Revisão Tarefa 01) — componente `Turnstile` de proteção anti-bot e anti-força bruta em formulários públicos (`/entrar`, `/cadastro`, `/recuperar-senha`), aba "Segurança" no centro de configurações com gestão de sessão e status de autenticação RLS. O fluxo anterior de 2FA/MFA foi removido de forma limpa na Tarefa 01 do roadmap de refatoração para simplificar a jornada de autenticação.
 
-**Objetivo:** elevar o nível de segurança de contas de usuários comuns e administradores da plataforma:
-1. **2FA / MFA com TOTP:** suporte nativo a códigos de autenticação (Google Authenticator, Authy, 1Password) nas Configurações de Perfil (`/configuracoes`), com exigência obrigatória para contas com cargo `admin` ou `superadmin`;
-2. **Proteção Anti-Bot com Cloudflare Turnstile:** integração de verificação inteligente invisível nas telas de Login (`/login`), Cadastro (`/cadastro`) e Recuperação de Senha, blindando as APIs do Supabase Auth contra ataques de força bruta e stuffing;
-3. **Desconexão Reativa em Tempo Real:** canal Supabase Realtime escutando alterações no status da conta; caso o usuário seja suspenso ou banido pelo painel administrativo, o cliente efetua teardown atômico imediato (`useSignOut`) e redireciona para a tela de bloqueio em < 500ms.
-
-**Organização da Implementação em 3 Etapas:**
-1. **Etapa 47.1 — Fluxo de 2FA/MFA (Client & Supabase Auth):**
-   - Diálogo de configuração com QR Code, verificação de código e geração de códigos de recuperação.
-   - Desafio de 2FA no login para contas com MFA ativo.
-   - Enforcement de 2FA para administradores ao acessar `/admin`.
-2. **Etapa 47.2 — Proteção Anti-Abuso (Turnstile):**
-   - Componente Turnstile nos formulários públicos de autenticação.
-3. **Etapa 47.3 — Sincronização em Tempo Real de Suspensão:**
-   - Listener Realtime no `AuthProvider` monitorando `profiles(status)` com acionamento do `resetAppState`.
+**Objetivo:** elevar o nível de segurança e estabilidade das contas de usuários da plataforma:
+1. **Proteção Anti-Bot com Cloudflare Turnstile:** integração de verificação inteligente nos formulários públicos de Login (`/entrar`), Cadastro (`/cadastro`) e Recuperação de Senha, blindando as APIs do Supabase Auth contra ataques de força bruta e stuffing;
+2. **Desconexão Reativa em Tempo Real:** canal Supabase Realtime escutando alterações no status da conta; caso o usuário seja suspenso ou banido pelo painel administrativo, o cliente efetua teardown atômico imediato (`useSignOut`) e redireciona para a tela de bloqueio em < 500ms;
+3. **Gestão de Sessão e Isolamento RLS:** painel de segurança em Configurações exibindo status da conta, confirmação de isolamento por Row-Level Security (RLS) e saída segura.
 
 **✅ DoD (critérios de aceite):**
-- Usuário consegue ativar e desativar 2FA com sucesso via aplicativo autenticador.
-- Acesso ao painel `/admin` bloqueado se o administrador não possuir 2FA ativo.
+- Formulários públicos protegidos contra bots via Turnstile.
 - Suspensão de conta desconecta o usuário no navegador em tempo real sem necessidade de reload.
+- Gestão de sessão e saída segura funcionais na aba de Segurança.
 - Suíte de testes e typecheck 100% verdes.
 
 ---
@@ -3216,7 +3206,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
      - `sensory-tab.tsx` (sons, hápticos, animações);
      - `widgets-tab.tsx` (visibilidade e ordenação de widgets da Home e Insights);
      - `backup-tab.tsx` (exportação JSON/CSV e restauração via `useRestoreBackup` e `useExportData`);
-     - `security-tab.tsx` (MFA/2FA TOTP, sessões ativas e alteração de senha);
+     - `security-tab.tsx` (sessões ativas, status de autenticação e proteção RLS);
      - `reminders-tab.tsx` (preferências e janelas de notificação de faturas e dívidas);
    - Eliminação de 100% dos imports diretos de `src/data/repositories/*` na `SettingsPage`.
 
