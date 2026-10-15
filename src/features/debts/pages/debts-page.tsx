@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowDownLeft, ArrowUpRight, Calendar, Check, ChevronDown, ChevronUp, Coins, HandCoins, Landmark, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Calendar, Check, ChevronDown, ChevronUp, Coins, Download, HandCoins, Landmark, Plus } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { DebtStatusBadge, HighlightRow, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { debtStatus, todayISO } from "@/domain/debts";
 import { numberToCents } from "@/domain/money";
+import { serializeDebtsCsv, type ExportDebtRow } from "@/domain/export";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
+import { downloadCsv } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
@@ -213,6 +215,49 @@ export function DebtsPage() {
   const error = debtsQuery.error || loansQuery.error;
   const today = todayISO();
   const thisMonth = currentMonth();
+
+  const handleExportDebtsCsv = () => {
+    if (tab === "loans") {
+      if (loans.length === 0) return;
+      const rows: ExportDebtRow[] = loans.map((loan) => ({
+        name: loan.name,
+        type: "payable",
+        status: "Ativo",
+        amountCents: numberToCents(loan.principal_amount),
+        dueDate: loan.start_date,
+        paidAt: null,
+        notes: `Taxa: ${loan.interest_rate_monthly}% a.m. | Parcelas: ${loan.total_installments}x (${loan.amortization_system})`,
+      }));
+      downloadCsv(`financiamentos_${today}.csv`, serializeDebtsCsv(rows));
+      return;
+    }
+
+    const currentList = tab === "payable" ? payableDebts : receivableDebts;
+    const filteredList = showPaid ? currentList : currentList.filter((d) => !d.paid_at);
+    if (filteredList.length === 0) return;
+
+    const rows: ExportDebtRow[] = filteredList.map((d) => {
+      const status = debtStatus(d.due_date, d.paid_at, today);
+      let statusLabel = "Pendente";
+      if (status === "paid") statusLabel = "Quitada";
+      else if (status === "overdue") statusLabel = "Atrasada";
+      else if (status === "due_today") statusLabel = "Vence Hoje";
+
+      return {
+        name: d.name,
+        type: d.type,
+        status: statusLabel,
+        amountCents: numberToCents(d.amount),
+        dueDate: d.due_date,
+        paidAt: d.paid_at ?? null,
+        notes: null,
+      };
+    });
+
+    const filePrefix = tab === "payable" ? "contas_a_pagar" : "contas_a_receber";
+    const statusSlug = showPaid ? "todas" : "pendentes";
+    downloadCsv(`${filePrefix}_${statusSlug}_${today}.csv`, serializeDebtsCsv(rows));
+  };
 
   const renderDebtsContent = (type: "payable" | "receivable") => {
     const list = type === "payable" ? payableDebts : receivableDebts;
@@ -487,6 +532,19 @@ export function DebtsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExportDebtsCsv}
+            disabled={tab === "loans" ? loans.length === 0 : (tab === "payable" ? payableDebts : receivableDebts).length === 0}
+            className="flex-1 sm:flex-initial gap-1.5"
+            aria-label="Exportar CSV"
+            title="Exportar contas em CSV"
+          >
+            <Download className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Exportar </span>CSV
+          </Button>
           <Button
             variant="outline"
             size="sm"

@@ -11,12 +11,17 @@ const CSV_DELIMITER = ";";
 
 /**
  * Sanitiza valores de texto para proteção contra CSV/Formula Injection (DDE).
- * Previne execução de comandos em planilhas iniciados por '=', '+', '-', '@', '\t' ou '\r'.
+ * Previne execução de comandos em planilhas iniciados por '=', '+', '-', '@', '\t', '\r' ou '|'.
+ * Trata espaços em branco antes de fórmulas maliciosas e preserva números legítimos com sinal.
  */
 export function sanitizeFormulaInjection(value: string): string {
-  if (/^[-=+@\t\r]/.test(value)) {
+  if (/^[\t\r]/.test(value)) {
+    return `'${value}`;
+  }
+  const trimmed = value.trim();
+  if (/^[-=+@|]/.test(trimmed)) {
     // Permite números legítimos com sinal (ex.: "-15,50" ou "+100")
-    if (/^[-+]?\d+(?:[.,]\d+)?$/.test(value.trim())) {
+    if (/^[-+]?\d+(?:[.,]\d+)?$/.test(trimmed)) {
       return value;
     }
     return `'${value}`;
@@ -24,7 +29,7 @@ export function sanitizeFormulaInjection(value: string): string {
   return value;
 }
 
-/** Escapa um campo: sanitiza contra injeção e aplica aspas duplas quando necessário. */
+/** Escapa um campo: sanitiza contra injeção e aplica aspas duplas quando contiver delimitador, aspas ou quebras de linha. */
 export function escapeCsvField(value: string): string {
   const sanitized = sanitizeFormulaInjection(value);
   if (/[";\r\n]/.test(sanitized)) {
@@ -33,15 +38,20 @@ export function escapeCsvField(value: string): string {
   return sanitized;
 }
 
-/** Concatena um arquivo CSV com quebras de linha Windows (Excel-friendly). */
-export function toCsv(headers: readonly string[], rows: readonly (readonly (string | number)[])[]): string {
-  const lines = [headers, ...rows].map((row) => row.map((cell) => escapeCsvField(String(cell))).join(CSV_DELIMITER));
+/** Concatena um arquivo CSV com delimitador ';' e quebras de linha Windows CRLF (compatibilidade universal Excel / LibreOffice). */
+export function toCsv(
+  headers: readonly string[],
+  rows: readonly (readonly (string | number | null | undefined)[])[],
+): string {
+  const lines = [headers, ...rows].map((row) =>
+    row.map((cell) => escapeCsvField(cell == null ? "" : String(cell))).join(CSV_DELIMITER),
+  );
   return lines.join("\r\n") + "\r\n";
 }
 
-/** Prefixa o BOM UTF-8 (Excel abre corretamente acentos sem "mojibake"). */
+/** Prefixa o BOM UTF-8 (Excel abre corretamente acentos pt-BR sem "mojibake"). */
 export function csvWithBom(csv: string): string {
-  return `\uFEFF${csv}`;
+  return csv.startsWith("\uFEFF") ? csv : `\uFEFF${csv}`;
 }
 
 /**
@@ -53,7 +63,10 @@ export function csvWithBom(csv: string): string {
  * via BOM UTF-8 + delimitador `;` (padrão pt-BR).
  */
 export function formatCsvDecimal(cents: number): string {
-  return (cents / 100).toFixed(2).replace(".", ",");
+  if (!Number.isFinite(cents)) return "0,00";
+  const safeCents = Math.round(cents);
+  if (safeCents === 0 || Object.is(safeCents, -0)) return "0,00";
+  return (safeCents / 100).toFixed(2).replace(".", ",");
 }
 
 /** Formata um float com até `maxDecimals` casas, vírgula decimal (ex.: "0,5"). */
@@ -255,4 +268,122 @@ export function serializePositionsCsv(rows: readonly ExportPositionRow[]): strin
     ];
   });
   return csvWithBom(toCsv(POSITION_HEADERS, data));
+}
+
+// ---------------------------------------------------------------------------
+// Extratos de Transações Unificadas, Dívidas e Atividades de Carteira
+// ---------------------------------------------------------------------------
+
+export interface ExportUnifiedTransactionRow {
+  date: string;
+  type: "income" | "expense";
+  description: string;
+  categoryName: string;
+  valueCents: number;
+  reportValueCents: number;
+  detailsOrMethod: string;
+  cardName: string | null;
+  installments: string;
+  recurrenceLabel?: string;
+}
+
+const UNIFIED_TRANSACTION_HEADERS = [
+  "Data",
+  "Tipo",
+  "Descrição",
+  "Categoria",
+  "Valor (R$)",
+  "Valor p/ relatório (R$)",
+  "Forma / Detalhes",
+  "Cartão",
+  "Parcelas",
+  "Recorrência",
+];
+
+/** Extrato CSV unificado de transações do mês respeitando filtros ativos (padrão pt-BR + BOM). */
+export function serializeUnifiedTransactionsCsv(rows: readonly ExportUnifiedTransactionRow[]): string {
+  const data = rows.map((r) => [
+    formatCsvDate(r.date),
+    r.type === "income" ? "Receita" : "Despesa",
+    r.description,
+    r.categoryName,
+    formatCsvDecimal(r.valueCents),
+    formatCsvDecimal(r.reportValueCents),
+    r.detailsOrMethod,
+    r.cardName ?? "",
+    r.installments,
+    r.recurrenceLabel ?? "",
+  ]);
+  return csvWithBom(toCsv(UNIFIED_TRANSACTION_HEADERS, data));
+}
+
+export interface ExportDebtRow {
+  name: string;
+  type: "payable" | "receivable";
+  status: string;
+  amountCents: number;
+  dueDate: string;
+  paidAt: string | null;
+  notes: string | null;
+}
+
+const DEBT_HEADERS = [
+  "Nome / Descrição",
+  "Tipo",
+  "Status",
+  "Valor (R$)",
+  "Vencimento",
+  "Data de quitação",
+  "Observações",
+];
+
+/** Extrato CSV de dívidas e contas a pagar/receber (padrão pt-BR + BOM). */
+export function serializeDebtsCsv(rows: readonly ExportDebtRow[]): string {
+  const data = rows.map((r) => [
+    r.name,
+    r.type === "receivable" ? "A Receber" : "A Pagar",
+    r.status,
+    formatCsvDecimal(r.amountCents),
+    formatCsvDate(r.dueDate),
+    r.paidAt ? formatCsvDate(r.paidAt) : "",
+    r.notes ?? "",
+  ]);
+  return csvWithBom(toCsv(DEBT_HEADERS, data));
+}
+
+export interface ExportPortfolioActivityRow {
+  date: string;
+  type: string;
+  ticker: string;
+  assetClass: string | null;
+  quantity: number | null;
+  price: number | null;
+  total: number;
+  notes: string | null;
+}
+
+const PORTFOLIO_ACTIVITY_HEADERS = [
+  "Data",
+  "Tipo",
+  "Ticker / Ativo",
+  "Classe",
+  "Quantidade",
+  "Preço unitário (R$)",
+  "Valor total (R$)",
+  "Observações",
+];
+
+/** Extrato CSV de movimentações da carteira respeitando filtros de mês, tipo e busca (padrão pt-BR + BOM). */
+export function serializePortfolioActivitiesCsv(rows: readonly ExportPortfolioActivityRow[]): string {
+  const data = rows.map((r) => [
+    formatCsvDate(r.date),
+    r.type,
+    r.ticker,
+    r.assetClass ?? "",
+    r.quantity != null && r.quantity > 0 ? formatCsvFloat(r.quantity, 8) : "",
+    r.price != null && r.price > 0 ? formatCsvDecimal(Math.round(r.price * 100)) : "",
+    formatCsvDecimal(Math.round(r.total * 100)),
+    r.notes ?? "",
+  ]);
+  return csvWithBom(toCsv(PORTFOLIO_ACTIVITY_HEADERS, data));
 }

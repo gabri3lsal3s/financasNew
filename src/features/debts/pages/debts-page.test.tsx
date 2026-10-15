@@ -14,6 +14,12 @@ const updateDebtMock = vi.fn();
 const payDebtMock = vi.fn();
 const receiveDebtMock = vi.fn();
 const settleMock = vi.fn();
+const mockDownloadCsv = vi.fn();
+
+vi.mock("@/services/export-actions", () => ({
+  downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
+  shareText: vi.fn(),
+}));
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
@@ -97,6 +103,7 @@ vi.mock("@/state", () => ({
 
 describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
   beforeEach(() => {
+    mockDownloadCsv.mockClear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-09-15T12:00:00Z"));
   });
@@ -269,4 +276,20 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     expect(screen.getByLabelText("Nome")).toHaveValue("Conta de luz");
     expect((screen.getByRole("textbox", { name: "Valor da dívida" }) as HTMLInputElement).value).toMatch(/200,00/);
   });
+
+  it("exporta as dívidas ativas em CSV respeitando o filtro da aba", async () => {
+    const user = userEvent.setup();
+    render(<DebtsPage />);
+
+    const exportBtn = screen.getByRole("button", { name: "Exportar CSV" });
+    await user.click(exportBtn);
+
+    expect(mockDownloadCsv).toHaveBeenCalledTimes(1);
+    const [filename, content] = mockDownloadCsv.mock.calls[0] as [string, string];
+    expect(filename).toMatch(/^contas_a_pagar_pendentes_\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(content).toContain("Nome / Descrição;Tipo;Status;Valor (R$);Vencimento;Data de quitação;Observações");
+    expect(content).toContain("Conta de luz");
+    expect(content).toContain("Pendente");
+  });
 });
+

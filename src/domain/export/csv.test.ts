@@ -6,10 +6,13 @@ import {
   formatCsvDecimal,
   formatCsvFloat,
   serializeCardInvoiceCsv,
+  serializeDebtsCsv,
   serializeExpensesCsv,
   serializeIncomesCsv,
   serializeInvoicesCsv,
+  serializePortfolioActivitiesCsv,
   serializePositionsCsv,
+  serializeUnifiedTransactionsCsv,
   toCsv,
 } from "./csv";
 
@@ -168,5 +171,115 @@ describe("domain/export — CSV", () => {
     // Números legítimos com sinal negativo/positivo não devem ser corrompidos
     expect(escapeCsvField("-15,50")).toBe("-15,50");
     expect(escapeCsvField("+100")).toBe("+100");
+
+    // Espaços antes de gatilhos de injeção são detectados e tratados
+    expect(escapeCsvField("  =cmd|' /C calc'!A0")).toBe("'  =cmd|' /C calc'!A0");
+    expect(escapeCsvField("  +cmd")).toBe("'  +cmd");
+    expect(escapeCsvField("  -cmd")).toBe("'  -cmd");
+    expect(escapeCsvField("  @malicious")).toBe("'  @malicious");
+    expect(escapeCsvField("  |pipeCommand")).toBe("'  |pipeCommand");
+  });
+
+  it("trata valores nulos ou indefinidos em toCsv sem emitir 'null' ou 'undefined'", () => {
+    const csv = toCsv(["A", "B", "C"], [[null, undefined, "texto"]]);
+    expect(csv).toBe("A;B;C\r\n;;texto\r\n");
+  });
+
+  it("trata -0 e números não finitos em formatCsvDecimal", () => {
+    expect(formatCsvDecimal(-0)).toBe("0,00");
+    expect(formatCsvDecimal(0)).toBe("0,00");
+    expect(formatCsvDecimal(Number.NaN)).toBe("0,00");
+    expect(formatCsvDecimal(Number.POSITIVE_INFINITY)).toBe("0,00");
+  });
+
+  it("serializa transações unificadas com data, tipo, detalhes e valores", () => {
+    const csv = serializeUnifiedTransactionsCsv([
+      {
+        date: "2026-10-05",
+        type: "income",
+        description: "Salário Mensal",
+        categoryName: "Trabalho",
+        valueCents: 850000,
+        reportValueCents: 850000,
+        detailsOrMethod: "Pix",
+        cardName: null,
+        installments: "—",
+        recurrenceLabel: "Mensal",
+      },
+      {
+        date: "2026-10-12",
+        type: "expense",
+        description: "Supermercado Pão de Açúcar",
+        categoryName: "Alimentação",
+        valueCents: 45030,
+        reportValueCents: 45030,
+        detailsOrMethod: "Cartão de Crédito",
+        cardName: "Nubank Ultravioleta",
+        installments: "1/3",
+      },
+    ]);
+
+    expect(csv.startsWith("\uFEFF")).toBe(true);
+    expect(csv).toContain("Data;Tipo;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Forma / Detalhes;Cartão;Parcelas;Recorrência");
+    expect(csv).toContain("05/10/2026;Receita;Salário Mensal;Trabalho;8500,00;8500,00;Pix;;—;Mensal");
+    expect(csv).toContain("12/10/2026;Despesa;Supermercado Pão de Açúcar;Alimentação;450,30;450,30;Cartão de Crédito;Nubank Ultravioleta;1/3;");
+  });
+
+  it("serializa dívidas e contas a pagar e receber", () => {
+    const csv = serializeDebtsCsv([
+      {
+        name: "Empréstimo Família",
+        type: "payable",
+        status: "Pendente",
+        amountCents: 150000,
+        dueDate: "2026-11-15",
+        paidAt: null,
+        notes: "Sem juros",
+      },
+      {
+        name: "Venda notebook usado",
+        type: "receivable",
+        status: "Quitada",
+        amountCents: 200000,
+        dueDate: "2026-10-01",
+        paidAt: "2026-10-02",
+        notes: "Recebido via TED",
+      },
+    ]);
+
+    expect(csv.startsWith("\uFEFF")).toBe(true);
+    expect(csv).toContain("Nome / Descrição;Tipo;Status;Valor (R$);Vencimento;Data de quitação;Observações");
+    expect(csv).toContain("Empréstimo Família;A Pagar;Pendente;1500,00;15/11/2026;;Sem juros");
+    expect(csv).toContain("Venda notebook usado;A Receber;Quitada;2000,00;01/10/2026;02/10/2026;Recebido via TED");
+  });
+
+  it("serializa movimentações de carteira com tipo, ticker, preços e quantidades", () => {
+    const csv = serializePortfolioActivitiesCsv([
+      {
+        date: "2026-08-15",
+        type: "Compra / Aporte",
+        ticker: "PETR4",
+        assetClass: "Ações",
+        quantity: 100,
+        price: 38.5,
+        total: 3850,
+        notes: "Ordem executada na B3",
+      },
+      {
+        date: "2026-08-16",
+        type: "Provento",
+        ticker: "MXRF11",
+        assetClass: "FIIs",
+        quantity: null,
+        price: null,
+        total: 45.8,
+        notes: "Rendimento mensal",
+      },
+    ]);
+
+    expect(csv.startsWith("\uFEFF")).toBe(true);
+    expect(csv).toContain("Data;Tipo;Ticker / Ativo;Classe;Quantidade;Preço unitário (R$);Valor total (R$);Observações");
+    expect(csv).toContain("15/08/2026;Compra / Aporte;PETR4;Ações;100;38,50;3850,00;Ordem executada na B3");
+    expect(csv).toContain("16/08/2026;Provento;MXRF11;FIIs;;;45,80;Rendimento mensal");
   });
 });

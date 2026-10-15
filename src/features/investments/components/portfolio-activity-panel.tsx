@@ -3,6 +3,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Coins,
+  Download,
   History,
   Layers,
   Pencil,
@@ -24,6 +25,8 @@ import { numberToCents } from "@/domain/money";
 import { currentMonth, formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
+import { downloadCsv } from "@/services/export-actions";
+import { serializePortfolioActivitiesCsv, type ExportPortfolioActivityRow } from "@/domain/export";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { TransactionFormDialog } from "./transaction-form-dialog";
@@ -243,6 +246,31 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
     });
   }, [monthActivities, filterType, search]);
 
+  const handleExportCsv = () => {
+    if (filteredActivities.length === 0) return;
+    const rows: ExportPortfolioActivityRow[] = filteredActivities.map((item) => {
+      let typeLabel = "Operação";
+      if (item.type === "buy" || item.type === "contribution") typeLabel = "Compra / Aporte";
+      else if (item.type === "sell") typeLabel = "Venda / Resgate";
+      else if (item.type === "dividend") typeLabel = "Provento";
+      else if (item.type === "split") typeLabel = "Desdobramento";
+
+      return {
+        date: item.date,
+        type: typeLabel,
+        ticker: item.ticker,
+        assetClass: item.assetClass ?? null,
+        quantity: item.quantity ?? null,
+        price: item.price ?? null,
+        total: item.total,
+        notes: item.notes ?? null,
+      };
+    });
+
+    const filterSlug = filterType === "all" ? "todas" : filterType;
+    downloadCsv(`movimentacoes_carteira_${month}_${filterSlug}.csv`, serializePortfolioActivitiesCsv(rows));
+  };
+
   const handleDeleteItem = async () => {
     if (!itemToDelete) return;
     try {
@@ -383,6 +411,19 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             >
               Vendas/Resgates
             </button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={filteredActivities.length === 0}
+              className="h-7 text-xs gap-1.5 shrink-0"
+              aria-label="Exportar CSV"
+              title={filteredActivities.length === 0 ? "Nenhuma movimentação para exportar" : "Exportar movimentações filtradas em CSV"}
+            >
+              <Download className="size-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Exportar </span>CSV
+            </Button>
           </div>
         </div>
 

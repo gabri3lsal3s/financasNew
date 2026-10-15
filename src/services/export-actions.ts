@@ -38,7 +38,8 @@ function downloadBlob(filename: string, blob: Blob): void {
 /** Baixa um CSV (garante prefixo BOM UTF-8 para abertura sem falhas de acentuação no Excel). */
 export function downloadCsv(filename: string, csvContent: string): void {
   const contentWithBom = csvContent.startsWith("\uFEFF") ? csvContent : `\uFEFF${csvContent}`;
-  downloadBlob(filename, new Blob([contentWithBom], { type: "text/csv;charset=utf-8" }));
+  const safeFilename = filename.toLowerCase().endsWith(".csv") ? filename : `${filename}.csv`;
+  downloadBlob(safeFilename, new Blob([contentWithBom], { type: "text/csv;charset=utf-8" }));
 }
 
 /** Baixa um objeto JSON formatado. */

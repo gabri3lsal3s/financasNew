@@ -5,6 +5,13 @@ import { PortfolioActivityPanel } from "./portfolio-activity-panel";
 const mockDeleteTransaction = vi.fn().mockResolvedValue(undefined);
 const mockDeleteContribution = vi.fn().mockResolvedValue(undefined);
 const mockDeleteDividend = vi.fn().mockResolvedValue(undefined);
+const mockDownloadCsv = vi.fn();
+
+vi.mock("@/services/export-actions", () => ({
+  downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
+  shareText: vi.fn(),
+}));
+
 
 vi.mock("@/state", () => ({
   useAllPortfolioTransactions: () => ({
@@ -94,4 +101,20 @@ describe("PortfolioActivityPanel", () => {
     expect(screen.getByText("Aporte Inicial")).toBeInTheDocument();
     expect(screen.getByText(/Aporte inicial · Compra de PETR4/i)).toBeInTheDocument();
   });
+
+  it("exporta movimentações da carteira em CSV respeitando os filtros", () => {
+    mockDownloadCsv.mockClear();
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    const exportBtn = screen.getByRole("button", { name: "Exportar CSV" });
+    fireEvent.click(exportBtn);
+
+    expect(mockDownloadCsv).toHaveBeenCalledTimes(1);
+    const [filename, content] = mockDownloadCsv.mock.calls[0] as [string, string];
+    expect(filename).toBe("movimentacoes_carteira_2026-08_todas.csv");
+    expect(content).toContain("Data;Tipo;Ticker / Ativo;Classe;Quantidade;Preço unitário (R$);Valor total (R$);Observações");
+    expect(content).toContain("PETR4");
+    expect(content).toContain("CDB-FACTA");
+  });
 });
+

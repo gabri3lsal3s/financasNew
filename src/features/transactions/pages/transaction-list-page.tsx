@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router";
 import { useMemo, useState } from "react";
-import { ArrowLeftRight, Calendar, FileSpreadsheet, Plus } from "lucide-react";
+import { ArrowLeftRight, Calendar, Download, FileSpreadsheet, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -12,11 +12,13 @@ import { Tabs } from "@/components/ui/tabs";
 import { HighlightRow, KpiCard, MonthPicker, ReadOnlyBanner, TransactionRow, UpgradeDialog } from "@/components/modules";
 import { currentMonth, formatDateBR, isValidMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
+import { downloadCsv } from "@/services/export-actions";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import { useCategories, useExpenses, useIncomes, usePermission, useRecurrences } from "@/state";
-import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
+import { useCategories, useCreditCards, useExpenses, useIncomes, usePermission, useRecurrences } from "@/state";
+import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain/expenses";
+import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import { IncomeDetailDialog } from "@/features/transactions/components/income-detail-dialog";
 import { BankStatementImportDialog } from "@/features/transactions/components/bank-statement-import-dialog";
@@ -168,6 +170,56 @@ export function TransactionListPage() {
     setWizardOpen(true);
   };
 
+  const cardsQuery = useCreditCards();
+  const cardById = useMemo(
+    () => new Map((cardsQuery.data ?? []).map((c) => [c.id, c.name])),
+    [cardsQuery.data],
+  );
+
+  const handleExportCsv = () => {
+    if (feedItems.length === 0) return;
+    const rows: ExportUnifiedTransactionRow[] = feedItems.map((item) => {
+      const isExpense = item.kind === "expense";
+      const exp = item.rawExpense ?? null;
+      const inc = item.rawIncome ?? null;
+
+      const catId = exp?.category_id ?? inc?.category_id ?? item.categoryId;
+      const catName = (catId ? categoryById.get(catId)?.name : null) ?? "Sem categoria";
+
+      const cardName = exp?.card_id ? (cardById.get(exp.card_id) ?? null) : null;
+      const installments =
+        exp && exp.installments_total > 1
+          ? `${exp.installment_number}/${exp.installments_total}`
+          : "—";
+
+      const detailsOrMethod = isExpense
+        ? exp
+          ? (PAYMENT_METHOD_LABELS[exp.payment_method] ?? exp.payment_method)
+          : ""
+        : inc
+          ? (RECEIVE_TYPE_LABELS[inc.receive_type] ?? inc.receive_type)
+          : "";
+
+      const recLabel = recurrenceLabel(exp?.recurrence_id ?? inc?.recurrence_id ?? item.recurrenceId);
+
+      return {
+        date: item.date,
+        type: item.kind,
+        description: item.description,
+        categoryName: catName,
+        valueCents: item.amountCents,
+        reportValueCents: Math.round(item.amountCents * (item.reportWeight ?? 1)),
+        detailsOrMethod,
+        cardName,
+        installments,
+        recurrenceLabel: recLabel,
+      };
+    });
+
+    const filterSlug = filter === "all" ? "todas" : filter;
+    downloadCsv(`transacoes_${month}_${filterSlug}.csv`, serializeUnifiedTransactionsCsv(rows));
+  };
+
   const handleImportStatement = () => {
     if (permission.isReadOnlyMode) {
       setUpgradeContext("Importar Extrato Bancário");
@@ -252,6 +304,17 @@ export function TransactionListPage() {
         >
           <FileSpreadsheet className="size-4" aria-hidden="true" />
           Importar extrato
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto gap-1.5"
+          onClick={handleExportCsv}
+          disabled={feedItems.length === 0}
+          aria-label="Exportar CSV"
+          title={feedItems.length === 0 ? "Nenhum lançamento para exportar" : "Exportar lançamentos filtrados em CSV"}
+        >
+          <Download className="size-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Exportar </span>CSV
         </Button>
       </div>
 

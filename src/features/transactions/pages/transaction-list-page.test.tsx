@@ -3,6 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TransactionListPage } from "./transaction-list-page";
 
+const mockDownloadCsv = vi.fn();
+vi.mock("@/services/export-actions", () => ({
+  downloadCsv: (...args: unknown[]) => mockDownloadCsv(...args),
+  shareText: vi.fn(),
+}));
+
 vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
@@ -141,4 +147,20 @@ describe("TransactionListPage — listagem por mês", () => {
     render(<TransactionListPage />);
     expect(screen.getByRole("button", { name: "Nova transação" })).toBeInTheDocument();
   });
+
+  it("exporta lançamentos filtrados em CSV com BOM UTF-8", async () => {
+    const user = userEvent.setup();
+    render(<TransactionListPage />);
+
+    const exportBtn = screen.getByRole("button", { name: "Exportar CSV" });
+    await user.click(exportBtn);
+
+    expect(mockDownloadCsv).toHaveBeenCalledTimes(1);
+    const [filename, content] = mockDownloadCsv.mock.calls[0] as [string, string];
+    expect(filename).toMatch(/^transacoes_\d{4}-\d{2}_todas\.csv$/);
+    expect(content).toContain("Data;Tipo;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Forma / Detalhes;Cartão;Parcelas;Recorrência");
+    expect(content).toContain("Salário");
+    expect(content).toContain("Aluguel");
+  });
 });
+

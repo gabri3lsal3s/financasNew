@@ -164,12 +164,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 14: Validação e Fidelidade na Exportação de CSV
+### Tarefa 14: Validação e Fidelidade na Exportação de CSV [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Garantir integridade total na geração de planilhas CSV em todas as telas.
 - **Ações:**
-  1. Configurar BOM UTF-8 (`\uFEFF`) e ponto e vírgula (`;`) para abertura correta no Excel brasileiro.
-  2. Tratar escapes de aspas, quebras de linha e caracteres especiais.
-  3. Garantir correspondência rigorosa entre os filtros ativos em tela e os dados exportados.
+  1. Configurar BOM UTF-8 (`\uFEFF`) e ponto e vírgula (`;`) para abertura correta no Excel brasileiro. (Concluído: garantido cabeçalho BOM UTF-8 `\uFEFF` e delimitador de ponto e vírgula em `src/domain/export/csv.ts` e `src/services/export-actions.ts`, com formatação numérica brasileira de centavos sem separadores de milhar espúrios, permitindo cálculo nativo em fórmulas do Excel).
+  2. Tratar escapes de aspas, quebras de linha e caracteres especiais. (Concluído: escape de aspas duplas RFC 4180 `""`, quebras de linha preservadas entre aspas, tratamento defensivo para `null`/`undefined`, mitigação e sanitização robusta contra CSV/Formula Injection [DDE] para prefixos perigosos `=`, `+`, `-`, `@`, `|`, tabs e múltiplos espaços iniciais, preservando números monetários legítimos).
+  3. Garantir correspondência rigorosa entre os filtros ativos em tela e os dados exportados. (Concluído: implementada exportação com fidelidade total aos filtros de mês, abas e buscas em `TransactionListPage`, `PortfolioActivityPanel`, `DebtsPage`, `CardsPage` e `SecurityTab`, com nomenclatura dinâmica e cobertura completa de testes automatizados com Vitest).
 - **Commit:** `fix(export): audit and harden CSV generator for full data fidelity and UTF-8 encoding`
 
 ---
