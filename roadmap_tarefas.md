@@ -94,12 +94,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 3: Módulos Financeiros (Cartões, Orçamentos e Insights)
 
-### Tarefa 08: Preenchimento Automático do Valor da Fatura de Cartão
+### Tarefa 08: Preenchimento Automático do Valor da Fatura de Cartão [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Carregar automaticamente o valor total pendente da fatura ao abrir o fluxo de registrar pagamento.
 - **Ações:**
-  1. Identificar o modal de registrar pagamento de fatura na tela de Cartões.
-  2. Pré-popular o input com o valor integral pendente por padrão, mantendo-o editável para pagamentos parciais.
-  3. Tratar faturas zeradas ou já quitadas adequadamente.
+  1. Identificar o modal de registrar pagamento de fatura na tela de Cartões. (Concluído: identificado `PaymentDialog` e seu conteúdo interno `PaymentDialogContent` em `src/features/cards/components/payment-dialog.tsx`, instanciado por `CardsPage`).
+  2. Pré-popular o input com o valor integral pendente por padrão, mantendo-o editável para pagamentos parciais. (Concluído: repassado `openBalanceCents` ao estado inicial `cents` de `PaymentDialogContent` em modo `payment`, adicionada linha informativa com total pendente e ação rápida de "Restaurar total" caso o usuário altere o valor, mantendo edição livre para pagamentos parciais).
+  3. Tratar faturas zeradas ou já quitadas adequadamente. (Concluído: faturas com `openBalanceCents <= 0` iniciam com valor zerado `R$ 0,00`, exibem alerta informativo de fatura quitada/sem saldo pendente e mantêm botão de confirmação desabilitado até inserção de valor positivo, além da remoção de bloqueio estático no botão principal para permitir abertura explicativa ou antecipações de fatura, acompanhado de testes unitários automatizados com 100% de cobertura).
 - **Commit:** `feat(cards): autofill invoice amount on payment trigger`
 
 ---

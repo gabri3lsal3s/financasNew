@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, DatePicker, Input, Modal, MoneyInput } from "@/components/ui";
+import { Alert, Button, DatePicker, Input, Modal, MoneyInput, MoneyText } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { toISODate } from "@/domain/money";
 import { useCreateCardPayment, useCreateRefund } from "@/state";
@@ -21,6 +21,7 @@ interface PaymentDialogContentProps {
   mode: "payment" | "refund";
   onClose: () => void;
   onOpenRefinance?: () => void;
+  openBalanceCents?: number;
 }
 
 function PaymentDialogContent({
@@ -29,17 +30,20 @@ function PaymentDialogContent({
   mode,
   onClose,
   onOpenRefinance,
+  openBalanceCents = 0,
 }: PaymentDialogContentProps) {
-  const [cents, setCents] = useState(0);
+  const isRefund = mode === "refund";
+  const initialCents = !isRefund && openBalanceCents > 0 ? openBalanceCents : 0;
+  const [cents, setCents] = useState(initialCents);
   const [date, setDate] = useState(toISODate(new Date()));
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const isZeroOrPaid = !isRefund && openBalanceCents <= 0;
+
   const createPayment = useCreateCardPayment();
   const createRefund = useCreateRefund();
   const pending = createPayment.isPending || createRefund.isPending;
-
-  const isRefund = mode === "refund";
 
   const handleSubmit = async () => {
     setError(null);
@@ -73,6 +77,36 @@ function PaymentDialogContent({
       className="mt-4 flex flex-col gap-4"
     >
       {error ? <Alert variant="error">{error}</Alert> : null}
+
+      {isZeroOrPaid && (
+        <Alert variant="info">
+          Esta fatura não possui saldo pendente no momento ou já foi quitada.
+        </Alert>
+      )}
+
+      {!isRefund && openBalanceCents > 0 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground -mb-1">
+          <span>
+            Total pendente:{" "}
+            <span className="font-semibold text-foreground">
+              <MoneyText cents={openBalanceCents} tone="default" />
+            </span>
+          </span>
+          {cents !== openBalanceCents ? (
+            <button
+              type="button"
+              onClick={() => setCents(openBalanceCents)}
+              className="font-medium text-primary hover:underline cursor-pointer"
+            >
+              Restaurar total
+            </button>
+          ) : (
+            <span className="text-[11px] text-muted-foreground/80 font-medium">
+              Valor integral pré-preenchido
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="payment-amount" className="text-xs font-semibold text-foreground">
@@ -152,6 +186,7 @@ export function PaymentDialog({
             cardId={cardId}
             competenceMonth={competenceMonth}
             mode={mode}
+            openBalanceCents={openBalanceCents}
             onClose={() => onOpenChange(false)}
             onOpenRefinance={() => {
               onOpenChange(false);

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CardsPage } from "./cards-page";
 
 const searchParamsMock = vi.fn(() => [new URLSearchParams(), vi.fn()]);
@@ -16,6 +16,15 @@ const createCardMock = vi.fn();
 const updateCardMock = vi.fn();
 const deleteCardMock = vi.fn();
 const deleteCardPaymentMock = vi.fn();
+
+beforeEach(() => {
+  paymentMock.mockClear();
+  refundMock.mockClear();
+  createCardMock.mockClear();
+  updateCardMock.mockClear();
+  deleteCardMock.mockClear();
+  deleteCardPaymentMock.mockClear();
+});
 
 // Despesas da fatura variáveis por teste (para validar a separação parceladas × à vista).
 const stateMocks = vi.hoisted(() => ({
@@ -179,14 +188,15 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(deleteCardMock).toHaveBeenCalledWith("c1");
   });
 
-  it("registra pagamento via diálogo", async () => {
+  it("registra pagamento via diálogo carregando automaticamente o saldo em aberto", async () => {
     paymentMock.mockResolvedValue("p1");
     const user = userEvent.setup();
     render(<CardsPage />);
 
     await user.click(screen.getByRole("button", { name: "Registrar pagamento" }));
     const input = screen.getByRole("textbox", { name: "Valor do pagamento" });
-    await user.type(input, "5000");
+    // Pré-popular o input com o valor integral pendente por padrão (R$ 50,00)
+    expect(input).toHaveValue("R$\u00a050,00");
     await user.click(screen.getByRole("button", { name: "Confirmar pagamento" }));
 
     expect(paymentMock).toHaveBeenCalledTimes(1);
@@ -194,6 +204,61 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(params.cardId).toBe("c1");
     expect(params.competenceMonth).toBe("2026-08");
     expect(params.amount).toBe(50);
+  });
+
+  it("permite alterar o valor pre-preenchido para pagamento parcial", async () => {
+    paymentMock.mockResolvedValue("p2");
+    const user = userEvent.setup();
+    render(<CardsPage />);
+
+    await user.click(screen.getByRole("button", { name: "Registrar pagamento" }));
+    const input = screen.getByRole("textbox", { name: "Valor do pagamento" });
+    expect(input).toHaveValue("R$\u00a050,00");
+    await user.clear(input);
+    await user.type(input, "2500");
+    await user.click(screen.getByRole("button", { name: "Confirmar pagamento" }));
+
+    expect(paymentMock).toHaveBeenCalled();
+    const params = paymentMock.mock.calls[0]?.[0];
+    expect(params.amount).toBe(25);
+  });
+
+  it("trata fatura quitada exibindo aviso e valor inicial zerado", async () => {
+    // Quando a fatura estiver quitada (gastos 100, pagamentos 100 -> saldo 0)
+    stateMocks.expenses = [
+      {
+        id: "e1",
+        description: "Supermercado",
+        date: "2026-08-05",
+        value: 100,
+        report_weight: 1,
+        bill_competence: "2026-08",
+        installments_total: 1,
+        installment_number: 1,
+      },
+    ];
+    try {
+      render(<CardsPage />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Registrar pagamento" }));
+      expect(screen.getByText("Esta fatura não possui saldo pendente no momento ou já foi quitada.")).toBeInTheDocument();
+      const input = screen.getByRole("textbox", { name: "Valor do pagamento" });
+      expect(input).toHaveValue("R$\u00a00,00");
+      expect(screen.getByRole("button", { name: "Confirmar pagamento" })).toBeDisabled();
+    } finally {
+      stateMocks.expenses = [
+        {
+          id: "e1",
+          description: "Supermercado",
+          date: "2026-08-05",
+          value: 150,
+          report_weight: 1,
+          bill_competence: "2026-08",
+          installments_total: 1,
+          installment_number: 1,
+        },
+      ];
+    }
   });
 
   it("registra estorno via diálogo (gera renda automática)", async () => {

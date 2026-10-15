@@ -582,7 +582,6 @@ export function CardsPage() {
                   <Button
                     size="sm"
                     onClick={() => handleOpenPayment("payment")}
-                    disabled={(summary?.saldoCents ?? 0) <= 0}
                     className="gap-1.5 flex-1 sm:flex-none justify-center"
                   >
                     Registrar pagamento
