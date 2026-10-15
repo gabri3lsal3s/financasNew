@@ -106,7 +106,7 @@ function IncomeGoalDialogContent({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-2 pt-1">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 mt-2 border-t border-border/80">
         {currentExpectedCents > 0 ? (
           <Button
             type="button"
@@ -119,7 +119,7 @@ function IncomeGoalDialogContent({
         ) : (
           <span />
         )}
-        <div className="flex gap-2">
+        <div className="flex items-center justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
@@ -147,6 +147,7 @@ export function IncomeGoalDialog({
       onOpenChange={onOpenChange}
       title={`Meta de Renda — ${category.name}`}
       description={`Definição para o mês ${month}`}
+      size="md"
       showCalculator
     >
       {open ? (

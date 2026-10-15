@@ -596,25 +596,25 @@ export function InitialPocketCostDialog({
 
                 {/* Resumo do Parser */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                  <div className="p-2 rounded-lg bg-surface border border-border/60 flex flex-col">
+                  <div className="p-2 rounded-lg bg-surface border border-border/80 flex flex-col">
                     <span className="text-muted-foreground">Meses Analisados</span>
                     <span className="font-semibold font-mono text-foreground">
                       {parseResult.rows.length}
                     </span>
                   </div>
-                  <div className="p-2 rounded-lg bg-surface border border-border/60 flex flex-col">
+                  <div className="p-2 rounded-lg bg-surface border border-border/80 flex flex-col">
                     <span className="text-muted-foreground">Aportes Brutos</span>
                     <span className="font-semibold font-mono text-positive">
                       + <MoneyText cents={numberToCents(parseResult.totalAportes)} />
                     </span>
                   </div>
-                  <div className="p-2 rounded-lg bg-surface border border-border/60 flex flex-col">
+                  <div className="p-2 rounded-lg bg-surface border border-border/80 flex flex-col">
                     <span className="text-muted-foreground">Resgates Brutos</span>
                     <span className="font-semibold font-mono text-warning">
                       - <MoneyText cents={numberToCents(parseResult.totalResgates)} />
                     </span>
                   </div>
-                  <div className="p-2 rounded-lg bg-surface border border-border/60 flex flex-col">
+                  <div className="p-2 rounded-lg bg-surface border border-border/80 flex flex-col">
                     <span className="text-muted-foreground">Meses sem aporte</span>
                     <span className="font-semibold font-mono text-muted-foreground">
                       {parseResult.rows.length - parseResult.actionableRows.length} (ignorados)
@@ -642,7 +642,7 @@ export function InitialPocketCostDialog({
                   {parseResult.actionableRows.map((row, idx) => (
                     <div
                       key={`${row.date}-${idx}`}
-                      className="rounded-lg border border-border/60 bg-surface px-2.5 py-1.5 flex items-center justify-between gap-2"
+                      className="rounded-lg border border-border/80 bg-surface px-2.5 py-1.5 flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-mono text-xs text-foreground font-medium shrink-0">
@@ -680,7 +680,7 @@ export function InitialPocketCostDialog({
                 </div>
 
                 {/* Opção de Substituição e Confirmação */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pt-2 border-t border-border/60">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pt-2 border-t border-border/80">
                   <Checkbox
                     checked={replaceExisting}
                     onCheckedChange={setReplaceExisting}
@@ -751,7 +751,7 @@ export function InitialPocketCostDialog({
               </div>
 
               {/* Seletor de Tipo: Aporte (+) vs Resgate (-) */}
-              <div className="flex items-center gap-1.5 p-1 rounded-lg bg-surface border border-border/60 self-start">
+              <div className="flex items-center gap-1.5 p-1 rounded-lg bg-surface border border-border/80 self-start">
                 <Button
                   type="button"
                   variant={entryType === "aporte" ? "default" : "ghost"}
@@ -1073,7 +1073,7 @@ export function InitialPocketCostDialog({
         ) : null}
 
         {/* Rodapé Canônico */}
-        <div className="flex items-center justify-end pt-3 border-t border-border/60">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
           <Button
             type="button"
             variant="outline"

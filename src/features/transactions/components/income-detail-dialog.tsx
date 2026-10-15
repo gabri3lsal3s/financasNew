@@ -245,18 +245,16 @@ function IncomeEditForm({
         ariaLabelCustom="Valor considerado no relatório"
       />
 
-      <div className="mt-2 flex items-center justify-end gap-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
         <Button
           type="button"
-          variant="ghost"
-          size="sm"
+          variant="outline"
           onClick={onCancel}
         >
           Cancelar
         </Button>
         <Button
           type="submit"
-          size="sm"
           disabled={isPending}
         >
           {isPending ? "Salvando…" : "Salvar alterações"}
@@ -511,7 +509,7 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
                 </dl>
 
                 {!isReadOnly ? (
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
+                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-border/80 mt-2">
                     <div className="flex items-center gap-1">
                       <Button
                         type="button"
@@ -535,14 +533,16 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
                         {createIncome.isPending ? "Repetindo…" : "Repetir no mês atual"}
                       </Button>
                     </div>
-                    <button
+                    <Button
                       type="button"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-critical transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1 text-xs font-medium text-critical hover:bg-critical/10 hover:text-critical cursor-pointer"
                       onClick={() => guardAction(() => setConfirmOpen(true), "Excluir Receita")}
                     >
                       <Trash2 className="size-3.5" aria-hidden="true" />
                       Excluir
-                    </button>
+                    </Button>
                   </div>
                 ) : null}
               </div>

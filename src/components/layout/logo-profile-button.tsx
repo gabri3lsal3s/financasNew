@@ -127,7 +127,7 @@ export function LogoProfileButton({
         open={open}
         onOpenChange={setOpen}
         title="Minha Conta"
-        size="md"
+        size="sm"
       >
         <div className="space-y-4 pt-1">
           {/* Card de Identidade do Usuário */}
@@ -223,7 +223,7 @@ export function LogoProfileButton({
           </div>
 
           {/* Rodapé: Logout e Identificação do App */}
-          <div className="space-y-2 pt-1 border-t border-border">
+          <div className="space-y-2 pt-1 border-t border-border/80">
             <Button
               variant="ghost"
               className="w-full justify-start gap-2.5 text-danger hover:text-danger hover:bg-danger-surface text-xs"

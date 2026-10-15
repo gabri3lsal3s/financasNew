@@ -54,11 +54,11 @@ function LoanEditForm({ loan, onClose }: LoanEditFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 pt-2">
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="edit-loan-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <label htmlFor="edit-loan-name" className="text-xs font-semibold text-foreground">
           Nome do Contrato / Instituição
         </label>
         <Input
@@ -71,7 +71,7 @@ function LoanEditForm({ loan, onClose }: LoanEditFormProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="text-xs font-semibold text-foreground">
           Tipo de Empréstimo
         </span>
         <Select
@@ -82,7 +82,7 @@ function LoanEditForm({ loan, onClose }: LoanEditFormProps) {
         />
       </div>
 
-      <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/80">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
         <Button
           type="button"
           variant="outline"
@@ -116,7 +116,7 @@ export function LoanEditDialog({
       onOpenChange={onOpenChange}
       title="Editar Contrato de Empréstimo"
       description="Atualize o nome, categoria e observações deste contrato."
-      size="lg"
+      size="md"
     >
       {open && <LoanEditForm loan={loan} onClose={() => onOpenChange(false)} />}
     </Modal>

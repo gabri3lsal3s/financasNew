@@ -206,13 +206,13 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
           </span>
 
           {customizeModules && (
-            <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border/60 pl-1">
+            <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border/80 pl-1">
               {AVAILABLE_MODULES.map((mod) => {
                 const currentLevel = moduleGrants[mod.key] ?? "write";
                 return (
                   <div
                     key={mod.key}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg border border-border/60 bg-surface text-xs"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg border border-border/80 bg-surface text-xs"
                   >
                     <div className="flex flex-col min-w-0">
                       <span className="font-semibold text-foreground">{mod.label}</span>
@@ -284,7 +284,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
               <label htmlFor="invite-expires" className="text-xs font-semibold text-foreground">
                 Validade do Convite
               </label>
-              <span className="text-[10px] text-muted-foreground">Opcional</span>
+              <span className="text-[11px] text-muted-foreground">(opcional)</span>
             </div>
             <DatePicker
               value={expiresAt}
@@ -299,7 +299,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
               <label htmlFor="invite-notes" className="text-xs font-semibold text-foreground">
                 Observações Administrativas
               </label>
-              <span className="text-[10px] text-muted-foreground">Opcional</span>
+              <span className="text-[11px] text-muted-foreground">(opcional)</span>
             </div>
             <Input
               id="invite-notes"

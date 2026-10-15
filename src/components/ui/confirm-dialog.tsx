@@ -31,9 +31,9 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={title} description={description}>
-      {children}
-      <div className="mt-6 flex justify-end gap-2">
+    <Modal open={open} onOpenChange={onOpenChange} title={title} description={description} size="sm">
+      {children ? <div className="mt-3">{children}</div> : null}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-6 border-t border-border/80">
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
           {cancelLabel}
         </Button>

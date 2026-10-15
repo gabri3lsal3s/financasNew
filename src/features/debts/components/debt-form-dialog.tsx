@@ -65,12 +65,12 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
           void handleSubmit();
         }
       }}
-      className="mt-4 flex flex-col gap-4"
+      className="mt-4 flex flex-col gap-3.5"
     >
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="debt-name" className="text-sm font-medium">
+        <label htmlFor="debt-name" className="text-xs font-semibold text-foreground">
           Nome
         </label>
         <Input id="debt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Conta de luz" />
@@ -88,14 +88,14 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="debt-amount" className="text-sm font-medium">
+          <label htmlFor="debt-amount" className="text-xs font-semibold text-foreground">
             Valor
           </label>
           <MoneyInput id="debt-amount" cents={cents} onCentsChange={setCents} aria-label="Valor da dívida" />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Vencimento</span>
+          <span className="text-xs font-semibold text-foreground">Vencimento</span>
           <DatePicker value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
         </div>
       </div>
@@ -119,7 +119,7 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
             </Button>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border/80 p-3 text-xs text-muted-foreground">
             <span>A dívida será reaberta como pendente ao salvar.</span>
             <Button
               type="button"
@@ -134,24 +134,26 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
         )
       ) : null}
 
-      <div className="flex items-center gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 pt-4 mt-2 border-t border-border/80">
         {debt && onDelete ? (
           <Button
             type="button"
             variant="ghost"
-            className="mr-auto text-negative hover:bg-negative/10 hover:text-negative"
+            className="text-negative hover:bg-negative/10 hover:text-negative"
             onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="size-4" aria-hidden="true" />
             Excluir
           </Button>
         ) : null}
-        <Button type="button" variant="ghost" onClick={onClose} className="ml-auto">
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={!valid || pending}>
-          {pending ? "Salvando…" : debt ? "Salvar alterações" : "Criar dívida"}
-        </Button>
+        <div className="flex items-center justify-end gap-2 sm:ml-auto">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={!valid || pending}>
+            {pending ? "Salvando…" : debt ? "Salvar alterações" : "Criar dívida"}
+          </Button>
+        </div>
       </div>
 
       {debt && onDelete ? (

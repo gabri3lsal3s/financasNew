@@ -57,7 +57,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                     key={item.path}
                     to={item.path}
                     onClick={() => onOpenChange(false)}
-                    className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-hover active:scale-[0.99]"
+                    className="flex items-center justify-between rounded-xl border border-border/80 bg-surface shadow-xs px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-hover active:scale-[0.99]"
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className="size-5 text-muted-foreground" aria-hidden="true" />

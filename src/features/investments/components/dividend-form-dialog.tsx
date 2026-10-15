@@ -132,7 +132,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
       size="lg"
       showCalculator
     >
-      <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3.5">
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         <div className="flex flex-col gap-1.5">
@@ -168,7 +168,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
         {/* Alternador de Modo de Data: Diário vs Extrato do Mês */}
         <div className="flex flex-col gap-2">
           <span className="text-xs font-semibold text-foreground">Modo de Registro</span>
-          <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/60">
+          <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/80">
             <button
               type="button"
               onClick={() => {
@@ -213,7 +213,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
         </div>
 
         {/* Alternador de Modo de Entrada: Total vs Por Cota */}
-        <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/60">
+        <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/80">
           <button
             type="button"
             onClick={() => {

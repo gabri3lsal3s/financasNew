@@ -75,7 +75,7 @@ function PaymentDialogContent({
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="payment-amount" className="text-sm font-medium">
+        <label htmlFor="payment-amount" className="text-xs font-semibold text-foreground">
           {isRefund ? "Valor do estorno" : "Valor pago"}
         </label>
         <MoneyInput
@@ -87,13 +87,13 @@ function PaymentDialogContent({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Data</span>
+        <span className="text-xs font-semibold text-foreground">Data</span>
         <DatePicker value={date} onValueChange={setDate} ariaLabel={isRefund ? "Data do estorno" : "Data do pagamento"} />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="payment-note" className="text-sm font-medium">
-          Observação (opcional)
+        <label htmlFor="payment-note" className="text-xs font-semibold text-foreground">
+          Observação <span className="text-[11px] font-normal text-muted-foreground">(opcional)</span>
         </label>
         <Input id="payment-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ex.: Parcial" />
       </div>
@@ -112,7 +112,7 @@ function PaymentDialogContent({
         </div>
       ) : null}
 
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
@@ -143,6 +143,7 @@ export function PaymentDialog({
         onOpenChange={onOpenChange}
         title={isRefund ? "Registrar estorno" : "Registrar pagamento"}
         description={`Fatura de ${competenceMonth}`}
+        size="md"
         showCalculator
       >
         {open ? (

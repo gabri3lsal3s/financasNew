@@ -84,11 +84,11 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
       size="xl"
       showCalculator
     >
-      <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3.5">
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="loan-name" className="text-sm font-medium">
+          <label htmlFor="loan-name" className="text-xs font-semibold text-foreground">
             Nome do contrato ou credor
           </label>
           <Input
@@ -99,9 +99,9 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-type" className="text-sm font-medium">
+            <label htmlFor="loan-type" className="text-xs font-semibold text-foreground">
               Tipo de crédito
             </label>
             <Select
@@ -113,7 +113,7 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-system" className="text-sm font-medium">
+            <label htmlFor="loan-system" className="text-xs font-semibold text-foreground">
               Sistema de amortização
             </label>
             <Select
@@ -125,9 +125,9 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-principal" className="text-sm font-medium">
+            <label htmlFor="loan-principal" className="text-xs font-semibold text-foreground">
               Valor financiado (principal)
             </label>
             <MoneyInput
@@ -139,7 +139,7 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-installments" className="text-sm font-medium">
+            <label htmlFor="loan-installments" className="text-xs font-semibold text-foreground">
               Número de parcelas
             </label>
             <NumberStepperInput
@@ -153,9 +153,9 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="loan-rate" className="text-sm font-medium">
+            <label htmlFor="loan-rate" className="text-xs font-semibold text-foreground">
               Taxa de juros (% a.m.)
             </label>
             <Input
@@ -167,13 +167,13 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Data da 1ª parcela</span>
+            <span className="text-xs font-semibold text-foreground">Data da 1ª parcela</span>
             <DatePicker value={startDate} onValueChange={setStartDate} ariaLabel="Data inicial" />
           </div>
         </div>
 
         {preview.schedule.length > 0 ? (
-          <div className="rounded-md border border-border p-3 bg-muted/20 flex flex-col gap-2">
+          <div className="rounded-xl border border-border/80 p-3.5 bg-surface shadow-xs flex flex-col gap-2">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Primeira parcela:</span>
               <span className="font-semibold text-foreground">
@@ -197,8 +197,7 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           </div>
         ) : null}
 
-
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

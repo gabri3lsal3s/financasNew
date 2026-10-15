@@ -115,7 +115,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
             void submit();
           }
         }}
-        className="mt-4 flex flex-col gap-4"
+        className="mt-4 flex flex-col gap-3.5"
       >
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Tipo de operação
@@ -191,7 +191,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
 
         {error ? <Alert variant="error">{error}</Alert> : null}
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 mt-2 border-t border-border/80">
           {isEdit ? (
             <Button type="button" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={pending}>
               Excluir lançamento
@@ -199,7 +199,7 @@ function TransactionFormContent({ asset, transaction = null, onClose }: Transact
           ) : (
             <span />
           )}
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>

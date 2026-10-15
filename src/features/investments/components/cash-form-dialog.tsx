@@ -191,7 +191,7 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
         </label>
 
         {/* Rodapé de Ações */}
-        <div className="flex items-center justify-between gap-2 pt-3 border-t border-border mt-2">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 border-t border-border/80 mt-2">
           {isEdit ? (
             <Button
               type="button"
@@ -208,7 +208,7 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
             <div />
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -255,6 +255,7 @@ export function CashFormDialog({ open, onOpenChange, asset = null }: CashFormDia
       onOpenChange={onOpenChange}
       title={asset ? "Editar Saldo em Caixa" : "Cadastrar Saldo em Caixa"}
       description="Informe o valor disponível em conta ou corretora reservado para oportunidades e novos aportes."
+      size="md"
       showCalculator
     >
       {open ? (

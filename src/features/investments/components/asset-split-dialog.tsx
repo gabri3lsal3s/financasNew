@@ -70,7 +70,7 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
       size="md"
       showCalculator
     >
-      <div className="mt-4 flex flex-col gap-4">
+      <div className="mt-4 flex flex-col gap-3.5">
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         {/* Proporção da operação */}
@@ -158,7 +158,7 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

@@ -72,7 +72,7 @@ export function ReportDetailDialog({
     >
       <div className="flex flex-col gap-4 mt-4">
         {/* Resumo do agrupamento */}
-        <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3">
+        <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface shadow-xs p-3.5">
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Lançamentos</span>
             <span className="text-sm font-semibold text-foreground">
@@ -113,7 +113,7 @@ export function ReportDetailDialog({
             description="Não há despesas registradas para este filtro no período."
           />
         ) : (
-          <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto pr-1">
+          <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto no-scrollbar scroll-smooth pr-1">
             {expenses.map((expense) => {
               const cat = categoryById.get(expense.category_id);
               const itemTitle = expense.description || cat?.name || "Despesa";

@@ -42,7 +42,7 @@ function DeleteCategoryContent({ category, siblings, usage, onClose }: DeleteCat
   };
 
   return (
-    <div className="mt-4 flex flex-col gap-4">
+    <div className="mt-4 flex flex-col gap-3.5">
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       {usage === null ? (
@@ -71,7 +71,7 @@ function DeleteCategoryContent({ category, siblings, usage, onClose }: DeleteCat
         <p className="text-sm text-muted-foreground">Esta categoria não tem lançamentos — pode ser excluída diretamente.</p>
       )}
 
-      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
@@ -95,6 +95,7 @@ export function DeleteCategoryDialog({ category, siblings, usage, open, onOpenCh
       open={open}
       onOpenChange={onOpenChange}
       title={`Excluir ${category.name}?`}
+      size="md"
     >
       {open ? (
         <DeleteCategoryContent

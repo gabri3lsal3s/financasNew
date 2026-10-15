@@ -116,7 +116,7 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <div className="flex items-center justify-between gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 mt-2 border-t border-border/80">
         {asset.source === "manual" ? (
           <Button
             type="button"
@@ -132,7 +132,7 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
         ) : (
           <span />
         )}
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
             Cancelar
           </Button>
@@ -156,6 +156,7 @@ export function ManualPriceDialog({ open, onOpenChange, asset }: ManualPriceDial
       onOpenChange={onOpenChange}
       title={`Cotação · ${asset?.ticker ?? ""}`}
       description={`Defina o preço unitário em ${asset?.currency ?? "BRL"} ou restaure a cotação automática.`}
+      size="md"
       showCalculator
     >
       {open && asset ? (

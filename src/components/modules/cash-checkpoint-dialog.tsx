@@ -58,7 +58,7 @@ function CashCheckpointForm({
 
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 pt-2">
       <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
         <Info className="size-4 shrink-0 text-primary mt-0.5" aria-hidden="true" />
         <p className="leading-relaxed">
@@ -75,7 +75,6 @@ function CashCheckpointForm({
           cents={balanceCents}
           onCentsChange={(cents) => setBalanceCents(cents)}
         />
-
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -98,7 +97,7 @@ function CashCheckpointForm({
         />
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2">
         <Button
           type="button"
           variant="outline"

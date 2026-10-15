@@ -12,7 +12,7 @@ export function PricingSection() {
   const { trialUrl, proUrl } = useLandingCta();
 
   return (
-    <section id="precos" className="py-14 md:py-32 bg-surface/40 border-y border-border/60 scroll-mt-20">
+    <section id="precos" className="py-14 md:py-32 bg-surface/40 border-y border-border/80 scroll-mt-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <ScrollReveal className="text-center max-w-4xl mx-auto">
           <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-primary">
@@ -117,7 +117,7 @@ export function PricingSection() {
                 </div>
               </div>
 
-              <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/60">
+              <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/80">
                 <Link
                   to={trialUrl}
                   className={cn(
@@ -194,7 +194,7 @@ export function PricingSection() {
                 </div>
               </div>
 
-              <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/60">
+              <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/80">
                 <Link
                   to={proUrl(isAnnual ? "pro-anual" : "pro-mensal")}
                   className={cn(

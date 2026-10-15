@@ -77,7 +77,7 @@ export function CategoryBreakdownDialog({
         </div>
       }
       footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between w-full gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between w-full gap-2.5">
           <Button
             type="button"
             variant="outline"
@@ -102,7 +102,7 @@ export function CategoryBreakdownDialog({
     >
       <div className="flex flex-col gap-4">
         {/* Card Consolidado da Categoria */}
-        <div className="flex flex-col gap-3 rounded-xl bg-surface-hover/40 border border-border/60 p-3.5 sm:p-4">
+        <div className="flex flex-col gap-3 rounded-xl bg-surface-hover/40 border border-border/80 p-3.5 sm:p-4">
           <div className="flex items-start justify-between gap-2 flex-wrap">
             <div className="flex flex-col gap-0.5">
               <span className="text-[11px] font-medium text-muted-foreground">Total considerado no mês</span>
@@ -193,7 +193,7 @@ export function CategoryBreakdownDialog({
               <p className="text-xs text-muted-foreground">Nenhum lançamento registrado nesta categoria em {monthLabel(month)}.</p>
             </div>
           ) : (
-            <div className="flex flex-col divide-y divide-border/40 rounded-xl border border-border/60 bg-surface">
+            <div className="flex flex-col divide-y divide-border/40 rounded-xl border border-border/80 bg-surface">
               {sortedExpenses.map((expense) => {
                 const isCard = Boolean(expense.card_id);
                 const paymentLabel = isCard

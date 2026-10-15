@@ -151,7 +151,7 @@ function BillRefinanceContent({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Categoria dos juros</span>
+          <span className="text-xs font-semibold text-foreground">Categoria dos juros</span>
           {expenseCategories.isLoading ? (
             <Skeleton className="h-10 w-full" />
           ) : (
@@ -167,7 +167,7 @@ function BillRefinanceContent({
       </div>
 
       {plan.installments.length > 0 ? (
-        <div className="rounded-md border border-border p-3 bg-card flex flex-col gap-2">
+        <div className="rounded-xl border border-border/80 p-3.5 bg-surface shadow-xs flex flex-col gap-2">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Saldo a financiar:</span>
             <span>{formatCentsAsBRL(balanceToFinance)}</span>
@@ -178,7 +178,7 @@ function BillRefinanceContent({
               {formatCentsAsBRL(plan.totalInterestCents)}
             </span>
           </div>
-          <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-t border-border/50">
+          <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-t border-border/80">
             <span>Parcela estimada na fatura:</span>
             <span>
               {formatCentsAsBRL(plan.installments[0]?.amountCents ?? 0)}{" "}
@@ -188,8 +188,7 @@ function BillRefinanceContent({
         </div>
       ) : null}
 
-
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>

@@ -182,7 +182,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
           {/* Formulário Coluna Direita */}
           <div className="md:col-span-7 flex flex-col gap-3.5">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="card-name" className="text-sm font-medium">
+              <label htmlFor="card-name" className="text-xs font-semibold text-foreground">
                 Nome
               </label>
               <Input
@@ -193,9 +193,9 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="card-brand" className="text-sm font-medium">
+                <label htmlFor="card-brand" className="text-xs font-semibold text-foreground">
                   Bandeira
                 </label>
                 <Input
@@ -206,13 +206,13 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Cor</span>
+                <span className="text-xs font-semibold text-foreground">Cor</span>
                 <ColorPicker value={color} onValueChange={setColor} ariaLabel="Cor do cartão" />
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="card-limit" className="text-sm font-medium">
+              <label htmlFor="card-limit" className="text-xs font-semibold text-foreground">
                 Limite total
               </label>
               <MoneyInput
@@ -223,9 +223,9 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Dia de fechamento</span>
+                <span className="text-xs font-semibold text-foreground">Dia de fechamento</span>
                 <NumberStepper
                   value={closingDay}
                   onValueChange={setClosingDay}
@@ -236,7 +236,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Dia de vencimento</span>
+                <span className="text-xs font-semibold text-foreground">Dia de vencimento</span>
                 <NumberStepper
                   value={dueDay}
                   onValueChange={setDueDay}
@@ -266,7 +266,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 pt-3 border-t border-border mt-1">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 border-t border-border/80 mt-2">
           {card ? (
             <Button
               type="button"
@@ -282,7 +282,7 @@ function CardFormContent({ card, onClose, onDeleted }: CardFormContentProps) {
             <div />
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>

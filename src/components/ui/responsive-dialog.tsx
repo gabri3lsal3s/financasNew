@@ -51,10 +51,10 @@ export function ResponsiveDialog({
       headerActions={headerActions}
       className={className}
     >
-      <div className={cn("flex flex-col gap-4 mt-4", contentClassName)}>
+      <div className={cn("flex flex-col gap-3.5 mt-4", contentClassName)}>
         <div className="flex-1 min-w-0">{children}</div>
         {footer ? (
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-3 mt-2 border-t border-border/80">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
             {footer}
           </div>
         ) : null}

@@ -105,7 +105,7 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
         </div>
 
         {result.eliminatedInstallmentIds.length > 0 ? (
-          <div className="rounded-md border border-border p-3 bg-muted/20 flex flex-col gap-2">
+          <div className="rounded-xl border border-border/80 p-3.5 bg-surface shadow-xs flex flex-col gap-2">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Parcelas eliminadas do final:</span>
               <span className="font-semibold text-foreground">
@@ -122,13 +122,12 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
                 {formatCentsAsBRL(result.totalDiscountCents)}
               </span>
             </div>
-            <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-t border-border/50">
+            <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-t border-border/80">
               <span>Total efetivo a pagar hoje:</span>
               <span className="text-primary font-bold">
                 {formatCentsAsBRL(result.totalPresentValuePaidCents)}
               </span>
             </div>
-
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">
@@ -138,7 +137,7 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
 
         {withExpense && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Categoria da despesa</span>
+            <span className="text-xs font-semibold text-foreground">Categoria da despesa</span>
             {expenseCategories.isLoading ? (
               <Skeleton className="h-10 w-full" />
             ) : (
@@ -153,7 +152,7 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

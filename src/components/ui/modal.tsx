@@ -168,7 +168,7 @@ export function Modal({
           style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
           className={cn(
             // Mobile (base): bottom sheet com slide-up e alça; md+: diálogo centralizado.
-            "fixed inset-x-0 bottom-0 w-full max-h-[90dvh] overflow-y-auto rounded-t-2xl border border-border bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] shadow-lg focus:outline-none animate-sheet-in",
+            "fixed inset-x-0 bottom-0 w-full max-h-[90dvh] overflow-y-auto rounded-t-2xl border border-border/80 bg-surface p-4 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] shadow-xs focus:outline-none animate-sheet-in",
             "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:rounded-2xl md:pb-6 md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none",
             SIZE_MAX_W[size],
             z,
@@ -231,7 +231,7 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
     <div
       className={cn(
-        "flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-3 mt-4 border-t border-border/80 sticky bottom-0 bg-surface/95 backdrop-blur-sm -mx-6 px-6 -mb-2 pb-2",
+        "flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-4 border-t border-border/80 sticky bottom-0 bg-surface/95 backdrop-blur-sm -mx-4 sm:-mx-6 px-4 sm:px-6 -mb-2 pb-2",
         className,
       )}
     >

@@ -129,7 +129,7 @@ function LimitDialogContent({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-2 pt-1">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 pt-4 mt-2 border-t border-border/80">
         {!inherited && currentLimitCents > 0 ? (
           <Button type="button" variant="ghost" className="text-critical hover:text-critical" onClick={() => void handleRemove()}>
             Remover limite
@@ -137,7 +137,7 @@ function LimitDialogContent({
         ) : (
           <span />
         )}
-        <div className="flex gap-2">
+        <div className="flex items-center justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
@@ -167,6 +167,7 @@ export function LimitDialog({
       onOpenChange={onOpenChange}
       title={`Limite — ${category.name}`}
       description={`Mês ${month}${inherited ? " · herdado do mês anterior (ao salvar, vira limite próprio)" : ""}`}
+      size="md"
       showCalculator
     >
       {open ? (

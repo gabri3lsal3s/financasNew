@@ -55,7 +55,7 @@ export function OtherBudgetsDialog({
       size="md"
       description={`Categorias adicionais com limites em ${monthLabel(month)}`}
       headerActions={
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover border border-border/60 text-muted-foreground">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover border border-border/80 text-muted-foreground">
           <Layers className="size-4" aria-hidden="true" />
         </span>
       }
@@ -76,7 +76,7 @@ export function OtherBudgetsDialog({
     >
       <div className="flex flex-col gap-4">
         {/* Resumo do Grupo Outros */}
-        <div className="flex items-center justify-between gap-2 rounded-xl bg-surface-hover/40 border border-border/60 p-3.5">
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-surface-hover/40 border border-border/80 p-3.5">
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-medium text-muted-foreground">Total em outras categorias</span>
             <div className="flex items-baseline gap-1.5">

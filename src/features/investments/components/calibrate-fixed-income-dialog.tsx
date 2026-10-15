@@ -98,7 +98,7 @@ export function CalibrateFixedIncomeDialog({
       description={`Redefina o saldo de ${asset.ticker} e reinicie o cálculo a partir do Marco Zero (D₀).`}
       size="md"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 pt-2">
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         <div className="flex flex-col gap-1.5">

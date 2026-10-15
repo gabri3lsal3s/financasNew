@@ -243,7 +243,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
             </div>
           </div>
 
-          <div className="flex items-center justify-end pt-2 border-t border-border/60">
+          <div className="flex items-center justify-end pt-2 border-t border-border/80">
             <Button
               type="button"
               variant="default"

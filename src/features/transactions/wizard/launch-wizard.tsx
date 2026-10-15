@@ -333,7 +333,7 @@ export function LaunchWizard({
           }}
         />
 
-        <footer className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-4">
+        <footer className="mt-auto flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-2.5 border-t border-border/80 pt-4 mt-2">
           <Button type="button" variant="ghost" disabled={state.step === 1 || pending} onClick={() => goTo(state.step - 1)}>
             Voltar
           </Button>

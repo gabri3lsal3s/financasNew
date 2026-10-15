@@ -1,5 +1,25 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.48** registra o **Refinamento Holístico de UI/UX — Camada 3: Modais, Formulários & Espaçamentos (Gaps)** (2026-10-15):
+> - **(1) Primitivos Centrais de Modais (`Modal`, `ResponsiveDialog`, `ConfirmDialog`)**:
+>   - Ajuste de padding mobile para `p-4 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]`, elevação canônica `border border-border/80 bg-surface shadow-xs` e rodapés com margem negativa compensatória e separador semântico `border-t border-border/80`;
+>   - Fixação de `size="sm"` canônico em `ConfirmDialog` (Regra 18) com rodapé empilhável seguro no mobile (`flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-6 border-t border-border/80`);
+> - **(2) Diálogos de Formulários & CRUDs do Domínio (36 componentes auditados e normalizados)**:
+>   - **Categorias** (`CategoryFormDialog`, `DeleteCategoryDialog`): tamanho canônico `size="md"`, gaps uniformizados em `gap-3.5`, grid responsivo de 2 colunas `sm:grid-cols-2 gap-3.5` e rodapé empilhável no mobile;
+>   - **Transações & Wizard** (`ExpenseDetailDialog`, `IncomeDetailDialog`, `LaunchWizard`): rodapés padronizados com separador `border-border/80`, botões nativos substituídos pelo primitivo `<Button variant="ghost">` (Regra 7);
+>   - **Cartões & Faturas** (`CardFormDialog`, `PaymentDialog`, `BillRefinanceDialog`): rótulos em `text-xs font-semibold`, grids responsivos de campos, cards informativos com trinca canônica `border-border/80 bg-surface shadow-xs` (Regra 16);
+>   - **Orçamentos & Metas** (`LimitDialog`, `IncomeGoalDialog`): fixação de `size="md"`, gaps em `gap-3.5` e rodapés responsivos;
+>   - **Dívidas & Empréstimos** (`DebtFormDialog`, `SettleDialog`, `LoanFormDialog`, `EarlyAmortizationDialog`, `LoanEditDialog`, `LoanScheduleDialog`): rótulos padronizados, eliminação de classes manuais `text-[10px]` em `<Badge>` normalizadas para `size="xs"` (Regra 14), grids responsivos e rodapés com separador canônico;
+>   - **Investimentos & Proventos** (`CashFormDialog`, `ManualPriceDialog`, `TransactionFormDialog`, `AssetSplitDialog`, `CalibrateFixedIncomeDialog`, `DividendFormDialog`, `InitialPocketCostDialog`, `CashCheckpointDialog`): unificação das bordas para `border-border/80`, gaps em `gap-3.5` e rodapés adaptativos;
+>   - **Administração, Relatórios & Utilidades** (`UserEditDialog`, `CreateInviteDialog`, `ReportDetailDialog`, `SavePresetDialog`, `LogoProfileButton`, `MoreMenuSheet`, `CategoryBreakdownDialog`, `OtherBudgetsDialog`, `PricingSection`): eliminação total de bordas divergentes `border-border/60` substituídas por `border-border/80 bg-surface shadow-xs` (Regra 16);
+> - **(3) Anatomia de Formulários e Diálogos (Regra 15)**:
+>   - Rótulos uniformizados em `text-xs font-semibold text-foreground`, helper text `text-[11px] text-muted-foreground`, indicador discreto `(opcional)` e rodapés com Cancelar à esquerda e Salvar à direita no desktop com empilhamento seguro no mobile;
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes unitários (296 arquivos / 2.126 testes) 100% verde;
+>   - Build de produção (`vite build`) gerado com sucesso em 3.36s.
+> 
 > **v2.47** registra o **Refinamento Holístico de UI/UX — Camada 2: Cards, KPIs & Quebras de Texto (KpiCard, StatCard, RealCashHeroCard, AlertCard e SurplusAporteBanner)** (2026-10-14):
 > - **(1) Módulo Universal de Métricas (`KpiCard` & `StatCard`)**:
 >   - Substituição de `truncate` rígido por quebra harmonizada de até 2 linhas com altura mínima uniforme (`line-clamp-2 min-h-[2rem]` / `min-h-[2.25rem] leading-snug break-words`), eliminando palavras soltas espremidas e alinhando perfeitamente os cards lado a lado nos grids;

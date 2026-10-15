@@ -237,7 +237,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
         </>
       )}
 
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-2 border-t border-border/80">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
@@ -269,6 +269,7 @@ export function SettleDialog({ debt, open, onOpenChange }: SettleDialogProps) {
       onOpenChange={onOpenChange}
       title={title}
       description={debt.name}
+      size="md"
       showCalculator
     >
       {open ? (

@@ -55,11 +55,11 @@ function SavePresetForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 pt-2">
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="preset-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <label htmlFor="preset-name" className="text-xs font-semibold text-foreground">
           Nome do Cenário
         </label>
         <Input
@@ -70,12 +70,11 @@ function SavePresetForm({
           maxLength={60}
           disabled={saving}
         />
-
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="preset-desc" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Descrição / Tese (Opcional)
+        <label htmlFor="preset-desc" className="text-xs font-semibold text-foreground">
+          Descrição / Tese <span className="text-[11px] font-normal text-muted-foreground">(opcional)</span>
         </label>
         <Input
           id="preset-desc"
@@ -90,16 +89,16 @@ function SavePresetForm({
       {/* Resumo do Snapshot */}
       <div className="flex items-center gap-4 rounded-xl border border-border/80 bg-surface/50 p-3 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5 font-medium text-foreground">
-          <PieChart className="size-4 text-primary" aria-hidden="true" />
+          <PieChart className="size-4 text-muted-foreground" aria-hidden="true" />
           <span>{assetCount} {assetCount === 1 ? "ativo com meta" : "ativos com meta"}</span>
         </div>
         <div className="flex items-center gap-1.5 font-medium text-foreground">
-          <Layers className="size-4 text-accent" aria-hidden="true" />
+          <Layers className="size-4 text-muted-foreground" aria-hidden="true" />
           <span>{classCount} {classCount === 1 ? "classe definida" : "classes definidas"}</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2">
         <Button
           type="button"
           variant="outline"

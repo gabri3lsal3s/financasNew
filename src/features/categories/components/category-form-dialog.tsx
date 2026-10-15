@@ -94,7 +94,7 @@ function CategoryFormContent({
           void handleSubmit();
         }
       }}
-      className="mt-4 flex flex-col gap-4"
+      className="mt-4 flex flex-col gap-3.5"
     >
       {error ? <Alert variant="error">{error}</Alert> : null}
 
@@ -135,7 +135,7 @@ function CategoryFormContent({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-foreground">Ícone</span>
           <IconPicker
@@ -156,7 +156,7 @@ function CategoryFormContent({
         </div>
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 pt-2 sm:justify-end">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 pt-4 mt-2 border-t border-border/80 sm:justify-end">
         {category && siblings !== undefined ? (
           <Button
             type="button"
@@ -193,7 +193,7 @@ export function CategoryFormDialog({ category, defaultType, open, onOpenChange, 
         onOpenChange={onOpenChange}
         title={category ? "Editar categoria" : "Nova categoria"}
         description={category ? undefined : "A sugestão inteligente infere ícone, cor e limite por nome."}
-        size="lg"
+        size="md"
       >
         {open ? (
           <CategoryFormContent
