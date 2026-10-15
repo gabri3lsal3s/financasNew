@@ -10,7 +10,7 @@ import {
   Trash2,
   TrendingUp,
 } from "lucide-react";
-import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, Tabs } from "@/components/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, SkeletonTable } from "@/components/ui";
 import { MonthPicker, SnowballActionCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -24,6 +24,8 @@ import {
 import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
+import { cn } from "@/lib/utils";
 import {
   useDeletePortfolioDividend,
   usePortfolioAssets,
@@ -41,6 +43,19 @@ export interface ProventosTabProps {
   onOpenWizard?: (asset?: PortfolioAsset | null, mode?: WizardMode) => void;
 }
 
+interface SubTabItem {
+  value: ProventosSubTab;
+  label: string;
+  icon: React.ReactNode;
+}
+
+const SUBTAB_ITEMS: SubTabItem[] = [
+  { value: "mensal", label: "Extrato Mensal", icon: <Calendar className="size-3.5" aria-hidden="true" /> },
+  { value: "calendario", label: "Calendário", icon: <CalendarDays className="size-3.5" aria-hidden="true" /> },
+  { value: "ativos", label: "Por Ativo", icon: <Layers className="size-3.5" aria-hidden="true" /> },
+  { value: "snowball", label: "Bola de Neve", icon: <Sparkles className="size-3.5" aria-hidden="true" /> },
+];
+
 /**
  * Proventos da carteira (§F36 e §F39) — extrato mensal dos rendimentos RECEBIDOS
  * a partir de `portfolio_dividends`, indicador do Efeito Bola de Neve, consolidação por ativo e calendário anual.
@@ -52,13 +67,23 @@ export interface ProventosTabProps {
  * - Bola de Neve: renda passiva estimada total, ativos autossuficientes e progresso de cotas.
  */
 export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) {
-  const [searchParams] = useSearchParams();
+  let searchParams: URLSearchParams | null = null;
+  let setSearchParams: ReturnType<typeof useSearchParams>[1] | null = null;
+
+  try {
+    const routerParams = useSearchParams();
+    searchParams = routerParams[0];
+    setSearchParams = routerParams[1];
+  } catch {
+    // Permite renderização resiliente fora de Router (testes unitários isolados)
+  }
+
   const dividendsQuery = usePortfolioDividends();
   const assetsQuery = usePortfolioAssets();
   const position = usePortfolioPosition();
   const deleteDividend = useDeletePortfolioDividend();
 
-  const rawSubTab = (searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba"))?.toLowerCase();
+  const rawSubTab = (searchParams?.get("subtab") || searchParams?.get("subTab") || searchParams?.get("aba"))?.toLowerCase();
   const normalizedSubTab = rawSubTab === "extrato" ? "mensal" : rawSubTab;
   const validSubTab =
     normalizedSubTab === "mensal" ||
@@ -68,11 +93,29 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
       ? (normalizedSubTab as ProventosSubTab)
       : null;
 
-  const [selectedSubTab, setSelectedSubTab] = useState<ProventosSubTab>("mensal");
+  const [selectedSubTab, setSelectedSubTab] = useState<ProventosSubTab>(() => validSubTab ?? "mensal");
   const subTab: ProventosSubTab = validSubTab ?? selectedSubTab;
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [dividendToDelete, setDividendToDelete] = useState<PortfolioDividend | null>(null);
   const [dividendFormOpen, setDividendFormOpen] = useState(false);
+
+  const handleSubTabChange = (nextTab: ProventosSubTab) => {
+    triggerSensory("selection");
+    setSelectedSubTab(nextTab);
+    if (searchParams && setSearchParams) {
+      const next = new URLSearchParams(searchParams);
+      if (nextTab === "mensal") {
+        next.delete("subtab");
+        next.delete("subTab");
+        next.delete("aba");
+      } else {
+        next.set("subtab", nextTab);
+        next.delete("subTab");
+        next.delete("aba");
+      }
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   const rawDividends = dividendsQuery.data;
   const rawAssets = assetsQuery.data;
@@ -332,8 +375,35 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   // Conteúdo da Aba 1: Extrato Mensal
   const mensalContent = (
     <div className="flex flex-col gap-5">
-      {/* 3 KPIs Focados Estritamente no Mês */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Seletor de Mês/Ano posicionado abaixo dos subseletores e acima da lista de dados */}
+      <div className="flex items-center min-w-0">
+        <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês dos proventos" />
+      </div>
+
+      {!hasAny ? (
+        <EmptyState
+          icon={<TrendingUp className="size-6" aria-hidden="true" />}
+          title="Sem proventos ainda"
+          description="Registre os rendimentos e dividendos recebidos das suas cotas para acompanhar o extrato e calendário anual."
+          tone="default"
+          headingLevel="h2"
+          action={
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={() => setDividendFormOpen(true)}
+              className="gap-1.5 h-8 text-xs font-semibold"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              <span>Registrar primeiro provento</span>
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          {/* 3 KPIs Focados Estritamente no Mês */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-muted-foreground">Recebido em {monthLabel(month)}</span>
@@ -455,6 +525,8 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
           </ul>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 
@@ -525,7 +597,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                       type="button"
                       onClick={() => {
                         setMonth(entry.month);
-                        setSelectedSubTab("mensal");
+                        handleSubTabChange("mensal");
                       }}
                       aria-pressed={active}
                       className={`flex w-full flex-col gap-2 rounded-xl border p-3 text-left transition-all cursor-pointer ${
@@ -854,74 +926,53 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   );
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Seletor de Mês (apenas na sub-aba mensal) */}
-      {subTab === "mensal" ? (
-        <div className="flex items-center min-w-0">
-          <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês dos proventos" />
-        </div>
-      ) : null}
-
+    <div className="flex flex-col gap-5 min-w-0">
       {error ? (
         <ErrorState message={getErrorMessage(error)} onRetry={() => dividendsQuery.refetch()} />
       ) : null}
+
+      {/* Barra de Subseletores com Pills no padrão Insights (§F36 e §F39) */}
+      <div
+        role="tablist"
+        aria-label="Sub-abas de proventos"
+        className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pb-1 -mx-1 px-1"
+      >
+        {SUBTAB_ITEMS.map((item) => {
+          const isSelected = subTab === item.value;
+          return (
+            <Button
+              key={item.value}
+              role="tab"
+              aria-selected={isSelected}
+              type="button"
+              variant={isSelected ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSubTabChange(item.value)}
+              className={cn(
+                "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
+                isSelected
+                  ? "shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Button>
+          );
+        })}
+      </div>
 
       {loading ? (
         <div aria-hidden="true">
           <SkeletonTable rows={4} />
         </div>
-      ) : !hasAny ? (
-        <EmptyState
-          icon={<TrendingUp className="size-6" aria-hidden="true" />}
-          title="Sem proventos ainda"
-          description="Registre os rendimentos e dividendos recebidos das suas cotas para acompanhar o extrato e calendário anual."
-          tone="default"
-          headingLevel="h2"
-          action={
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={() => setDividendFormOpen(true)}
-              className="gap-1.5 h-8 text-xs font-semibold"
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              <span>Registrar primeiro provento</span>
-            </Button>
-          }
-        />
       ) : (
-        <Tabs
-          value={subTab}
-          onValueChange={(value) => setSelectedSubTab(value as ProventosSubTab)}
-          variant="pills"
-          items={[
-            {
-              value: "mensal",
-              label: "Extrato Mensal",
-              icon: <Calendar className="size-4 shrink-0" aria-hidden="true" />,
-              content: mensalContent,
-            },
-            {
-              value: "calendario",
-              label: "Calendário",
-              icon: <CalendarDays className="size-4 shrink-0" aria-hidden="true" />,
-              content: calendarioContent,
-            },
-            {
-              value: "ativos",
-              label: "Por Ativo",
-              icon: <Layers className="size-4 shrink-0" aria-hidden="true" />,
-              content: ativosContent,
-            },
-            {
-              value: "snowball",
-              label: "Bola de Neve",
-              icon: <Sparkles className="size-4 shrink-0" aria-hidden="true" />,
-              content: snowballContent,
-            },
-          ]}
-        />
+        <div className="flex flex-col gap-5 min-w-0">
+          {subTab === "mensal" && mensalContent}
+          {subTab === "calendario" && calendarioContent}
+          {subTab === "ativos" && ativosContent}
+          {subTab === "snowball" && snowballContent}
+        </div>
       )}
 
       {/* Diálogo de Novo Provento */}

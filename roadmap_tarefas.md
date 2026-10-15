@@ -189,13 +189,16 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 16: Refatoração dos Subseletores de Investimentos e Reposicionamento do Seletor de Mês
+### Tarefa 16: Refatoração dos Subseletores de Investimentos e Reposicionamento do Seletor de Mês [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Padronizar os subseletores de investimentos com o comportamento dos seletores de Insights e mover o seletor de mês para baixo das abas.
 - **Ações:**
-  1. Padronizar a navegação em abas de 2º nível (Extrato Mensal, Calendário, Por Ativo, Bola de Neve) seguindo o padrão de renderização dinâmica e design da aba de Insights.
-  2. Mover o seletor de mês/ano (`< Outubro De 2026 >`) para ficar posicionado abaixo dos subseletores e acima da lista de dados.
-  3. Garantir a persistência do estado e manter a barra de subseletores consistente no topo.
+  1. Padronizar a navegação em abas de 2º nível (Extrato Mensal, Calendário, Por Ativo, Bola de Neve) seguindo o padrão de renderização dinâmica e design da aba de Insights. (Concluído: implementada barra de subseletores em pills com `role="tablist"`, `SUBTAB_ITEMS`, botões com variante dinâmica `default`/`outline`, ícones `size-3.5` e renderização modular condicional `{subTab === "mensal" && ...}`, `{subTab === "calendario" && ...}`, `{subTab === "ativos" && ...}`, `{subTab === "snowball" && ...}`).
+  2. Mover o seletor de mês/ano (`< Outubro De 2026 >`) para ficar posicionado abaixo dos subseletores e acima da lista de dados. (Concluído: `<MonthPicker />` reposicionado logo abaixo dos subseletores e acima dos KPIs/extrato em `mensalContent`, eliminando deslocamentos e saltos de layout ao alternar entre as visões da aba de proventos).
+  3. Garantir a persistência do estado e manter a barra de subseletores consistente no topo. (Concluído: sincronização bidirecional via `useSearchParams` com fallback resiliente para isolamento de testes, persistência de `subtab` na URL, feedback sensorial via `triggerSensory("selection")`, navegação integrada do calendário para o extrato mensal e barra de subseletores fixa no topo mesmo em estados vazios, com 100% de testes unitários aprovados).
 - **Commit:** `refactor(investments): align sub-selectors behavior with insights pattern and move month picker below tabs`
+
+---
 
 ### Tarefa 17: Correções dos erros de Build
 - **Objetivo:** Analise o log, faça testes e corrija os erros de build

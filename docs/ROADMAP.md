@@ -1,5 +1,22 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.51** registra a **Refatoração dos Subseletores de Investimentos e Reposicionamento do Seletor de Mês** (2026-10-15):
+> - **(1) Subseletores em Pills Padronizados no Design de Insights (`ProventosTab`)**:
+>   - Navegação em abas de 2º nível (*Extrato Mensal*, *Calendário*, *Por Ativo*, *Bola de Neve*) estruturada com `role="tablist"`, botões em pills com variant condicional (`default` para selecionada, `outline` para inativas), ícones padronizados `size-3.5` e rolagem horizontal suave no mobile (`overflow-x-auto no-scrollbar scroll-smooth`);
+>   - Desacoplamento da renderização de abas com execução dinâmica modular (`mensalContent`, `calendarioContent`, `ativosContent`, `snowballContent`), eliminando o componente monolítico rígido;
+> - **(2) Reposicionamento do Seletor de Mês (`MonthPicker`)**:
+>   - Seletor de competência mensal (`<MonthPicker />`) posicionado diretamente abaixo dos subseletores e imediatamente acima dos KPIs e extrato mensal de proventos;
+>   - Eliminação de saltos de layout ao alternar de aba e ocultação automática do seletor em visões anuais/vitalícias (Calendário, Por Ativo e Bola de Neve);
+> - **(3) Persistência de Estado, Sincronização de URL & Feedback Sensorial**:
+>   - Sincronização bidirecional do parâmetro `subtab` na URL via `useSearchParams` com substituição limpa (`replace: true`), permitindo deep linking direto e histórico seguro;
+>   - Feedback tátil/sonoro via Gateway Central Sensorial (`triggerSensory("selection")`) ao alternar abas e ao navegar do calendário anual para o extrato mensal;
+>   - Barra de subseletores mantida consistentemente no topo mesmo em estados de carregamento ou dados vazios;
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (303 arquivos / 2.213 testes) **100% verde**;
+>   - Build de produção PWA (`vite build`) gerado com sucesso.
+> 
 > **v2.50** registra o **Onboarding de Primeiro Uso no Dashboard, Motor de Demonstração com Limpeza Cirúrgica & Empty States Ricos e Acionáveis** (2026-10-15):
 > - **(1) Onboarding de Primeiro Uso no Dashboard (`OverviewPage`)**:
 >   - Integração do `OnboardingCard` no topo da Visão Geral, monitorando dinamicamente a contagem de categorias de receita/despesa, cartões e transações via `useOnboardingCounts`;

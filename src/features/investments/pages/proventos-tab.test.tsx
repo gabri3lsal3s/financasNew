@@ -4,8 +4,14 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProventosTab } from "./proventos-tab";
 
-function renderTab(ui = <ProventosTab defaultMonth="2026-08" />) {
-  return render(<MemoryRouter>{ui}</MemoryRouter>);
+const triggerSensoryMock = vi.fn();
+
+vi.mock("@/services/sensory", () => ({
+  triggerSensory: (...args: unknown[]) => triggerSensoryMock(...args),
+}));
+
+function renderTab(ui = <ProventosTab defaultMonth="2026-08" />, initialEntries = ["/"]) {
+  return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>);
 }
 
 const dividendsMock = vi.fn();
@@ -174,5 +180,66 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     await user.click(screen.getByRole("tab", { name: "Bola de Neve" }));
     expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
     expect(screen.getByText(/Progresso para que os proventos mensais comprem 1 nova cota inteira sozinhos/i)).toBeInTheDocument();
+  });
+
+  it("renderiza a barra de subseletores em pills com role='tablist' e aria-selected correto", async () => {
+    dividendsMock.mockReturnValue(dividends);
+    const user = userEvent.setup();
+    renderTab();
+
+    const tabList = screen.getByRole("tablist", { name: "Sub-abas de proventos" });
+    expect(tabList).toBeInTheDocument();
+
+    const mensalTab = screen.getByRole("tab", { name: "Extrato Mensal" });
+    const calendarioTab = screen.getByRole("tab", { name: "Calendário" });
+    const ativosTab = screen.getByRole("tab", { name: "Por Ativo" });
+    const snowballTab = screen.getByRole("tab", { name: "Bola de Neve" });
+
+    // Mensal selecionado por padrão
+    expect(mensalTab).toHaveAttribute("aria-selected", "true");
+    expect(calendarioTab).toHaveAttribute("aria-selected", "false");
+    expect(ativosTab).toHaveAttribute("aria-selected", "false");
+    expect(snowballTab).toHaveAttribute("aria-selected", "false");
+
+    // Alternar para Por Ativo dispara feedback sensorial e atualiza aria-selected
+    triggerSensoryMock.mockClear();
+    await user.click(ativosTab);
+    expect(triggerSensoryMock).toHaveBeenCalledWith("selection");
+    expect(ativosTab).toHaveAttribute("aria-selected", "true");
+    expect(mensalTab).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("posiciona o MonthPicker na subaba Extrato Mensal e o oculta nas demais subabas", async () => {
+    dividendsMock.mockReturnValue(dividends);
+    const user = userEvent.setup();
+    renderTab();
+
+    // MonthPicker visível na subaba mensal
+    expect(screen.getByRole("group", { name: "Selecionar mês" })).toBeInTheDocument();
+
+    // Alterna para Calendário: MonthPicker deve ser ocultado
+    await user.click(screen.getByRole("tab", { name: "Calendário" }));
+    expect(screen.queryByRole("group", { name: "Selecionar mês" })).not.toBeInTheDocument();
+
+    // Alterna para Por Ativo: MonthPicker continua oculto
+    await user.click(screen.getByRole("tab", { name: "Por Ativo" }));
+    expect(screen.queryByRole("group", { name: "Selecionar mês" })).not.toBeInTheDocument();
+
+    // Alterna para Bola de Neve: MonthPicker continua oculto
+    await user.click(screen.getByRole("tab", { name: "Bola de Neve" }));
+    expect(screen.queryByRole("group", { name: "Selecionar mês" })).not.toBeInTheDocument();
+
+    // Retorna para Extrato Mensal: MonthPicker reaparece abaixo dos subseletores
+    await user.click(screen.getByRole("tab", { name: "Extrato Mensal" }));
+    expect(screen.getByRole("group", { name: "Selecionar mês" })).toBeInTheDocument();
+  });
+
+  it("sincroniza o estado inicial da subaba a partir do parâmetro subtab na URL", () => {
+    dividendsMock.mockReturnValue(dividends);
+    renderTab(undefined, ["/investimentos?tab=proventos&subtab=snowball"]);
+
+    const snowballTab = screen.getByRole("tab", { name: "Bola de Neve" });
+    expect(snowballTab).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
   });
 });
