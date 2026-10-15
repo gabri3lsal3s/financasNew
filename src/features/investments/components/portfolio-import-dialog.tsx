@@ -124,8 +124,12 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
       return;
     }
 
-    // Se possui múltiplas linhas e delimitadores de planilha (; \t | ou , com colunas), abre o Mapeamento de Colunas
-    if ((trimmed.includes(";") || trimmed.includes("\t") || trimmed.includes("|") || trimmed.includes(",")) && trimmed.split(/\r?\n/).length > 1) {
+    const nonBlankLines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    const firstLine = nonBlankLines[0] ?? "";
+    const isSpreadsheetHeader = /data\s+do\s+negocio|data\s+do\s+negócio|codigo\s+de\s+negociacao|código\s+de\s+negociação|preco\s+medio|preço\s+médio|tipo\s+de\s+movimentacao|tipo\s+de\s+movimentação|quantidade\s+disponivel|quantidade\s+disponível/i.test(firstLine);
+
+    // Se é uma planilha com delimitadores clássicos (; \t |) e cabeçalhos claros, abre Mapeamento de Colunas
+    if (nonBlankLines.length > 1 && (firstLine.includes(";") || firstLine.includes("\t") || firstLine.includes("|") || isSpreadsheetHeader)) {
       const detection = detectPortfolioColumns(trimmed);
       if (detection.rows.length > 0 && detection.rows[0]?.cells && detection.rows[0].cells.length > 1) {
         setRawRows(detection.rows);

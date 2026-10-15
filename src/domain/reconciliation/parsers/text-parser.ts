@@ -1,32 +1,40 @@
 import type { RawParsedRow } from "../types";
 import { addDaysISO, todayISO } from "@/domain/debts";
+import { isStatementNoiseOrSummary } from "../clean";
 
 const MONTH_NAME_TO_NUMBER: Record<string, string> = {
   janeiro: "01",
   jan: "01",
   fevereiro: "02",
   fev: "02",
+  feb: "02",
   marco: "03",
   março: "03",
   mar: "03",
   abril: "04",
   abr: "04",
+  apr: "04",
   maio: "05",
   mai: "05",
+  may: "05",
   junho: "06",
   jun: "06",
   julho: "07",
   jul: "07",
   agosto: "08",
   ago: "08",
+  aug: "08",
   setembro: "09",
   set: "09",
+  sep: "09",
   outubro: "10",
   out: "10",
+  oct: "10",
   novembro: "11",
   nov: "11",
   dezembro: "12",
   dez: "12",
+  dec: "12",
 };
 
 /**
@@ -55,8 +63,8 @@ function extractDateEntity(
     return { dateStr, remainingText };
   }
 
-  // 2. YYYY-MM-DD ou YYYY/MM/DD
-  const isoMatch = /\b(\d{4})[/-](\d{2})[/-](\d{2})\b/.exec(text);
+  // 2. YYYY-MM-DD ou YYYY/MM/DD ou YYYY.MM.DD
+  const isoMatch = /\b(\d{4})[/.-](\d{2})[/.-](\d{2})\b/.exec(text);
   if (isoMatch && isoMatch[1] && isoMatch[2] && isoMatch[3]) {
     const dateStr = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
     const remainingText = text.replace(isoMatch[0], " ").trim();
@@ -74,22 +82,26 @@ function extractDateEntity(
     return { dateStr, remainingText };
   }
 
-  // 4. DD de [Mês] (de [Ano])? -> ex: 15 de agosto de 2026, 10 de maio, 1º de junho
+  // 4. DD de [Mês] (de [Ano])? ou DD-[Mês]-[Ano] ou DD [Mês] [Ano] -> ex: 15 de agosto de 2026, 15 ago 2026, 15-ago-2026, 15/ago/2026, 15 AGO
   const namedMonthMatch =
-    /\b(\d{1,2})(?:º|o)?\s*(?:de\s+)?(janeiro|jan|fevereiro|fev|março|marco|mar|abril|abr|maio|mai|junho|jun|julho|jul|agosto|ago|setembro|set|outubro|out|novembro|nov|dezembro|dez)(?:\s*(?:de\s+)?(\d{4}))?\b/i.exec(
+    /\b(\d{1,2})(?:º|o)?\s*(?:de\s+|[/-])?\s*(janeiro|jan|fevereiro|fev|feb|março|marco|mar|abril|abr|apr|maio|mai|may|junho|jun|julho|jul|agosto|ago|aug|setembro|set|sep|outubro|out|oct|novembro|nov|dezembro|dez|dec)(?:(?:\s*(?:de\s+|[/-])?\s*|\s+)(\d{2,4}))?\b/i.exec(
       text,
     );
   if (namedMonthMatch && namedMonthMatch[1] && namedMonthMatch[2]) {
     const day = namedMonthMatch[1].padStart(2, "0");
     const monthKey = namedMonthMatch[2].toLowerCase();
     const month = MONTH_NAME_TO_NUMBER[monthKey] ?? "01";
-    const year = namedMonthMatch[3] ?? defaultYear.toString();
+    let rawYear = namedMonthMatch[3];
+    if (rawYear && rawYear.length === 2) {
+      rawYear = `20${rawYear}`;
+    }
+    const year = rawYear ?? defaultYear.toString();
     const dateStr = `${year}-${month}-${day}`;
     const remainingText = text.replace(namedMonthMatch[0], " ").trim();
     return { dateStr, remainingText };
   }
 
-  // 5. DD/MM/YY
+  // 5. DD/MM/YY ou DD-MM-YY
   const dmyShortMatch = /\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2})\b/.exec(text);
   if (dmyShortMatch && dmyShortMatch[1] && dmyShortMatch[2] && dmyShortMatch[3]) {
     const day = dmyShortMatch[1].padStart(2, "0");
@@ -100,7 +112,7 @@ function extractDateEntity(
     return { dateStr, remainingText };
   }
 
-  // 6. DD/MM ou DD-MM (sem ano)
+  // 6. DD/MM ou DD-MM ou DD.MM (sem ano)
   const dmMatch = /\b(\d{1,2})[/.-](\d{1,2})\b/.exec(text);
   if (dmMatch && dmMatch[1] && dmMatch[2]) {
     const day = dmMatch[1].padStart(2, "0");
@@ -127,19 +139,40 @@ function extractDateEntity(
  * Extrai valor monetário e seu sinal do texto, retornando o valor formatado e o texto restante.
  */
 function extractAmountEntity(text: string): { amountStr: string; remainingText: string } | null {
-  // 1. Valores com prefixo R$ ou $ ou BRL (ex: R$ 1.250,75, R$ 45,90, R$ 50)
+  // 1. Valores entre parênteses: (R$ 150,00) ou (150,00) ou (2.500,00) -> negativo contábil
+  const parenRegex = /\(\s*(?:R\$|BRL|\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?|\d+)\s*\)/i;
+  const parenMatch = parenRegex.exec(text);
+  if (parenMatch && parenMatch[1]) {
+    const rawVal = `-${parenMatch[1]}`;
+    const remainingText = text.replace(parenMatch[0], " ").trim();
+    return { amountStr: rawVal, remainingText };
+  }
+
+  // 2. Valores com sinal e moeda: [+-]? R$ [+-]? ... com sufixo opcional D/C/+/-
+  // ex: "+ R$ 1.250,75", "- R$ 45,90", "R$ -50,00", "R$ 150,00 D", "R$ 2.000,00 C"
   const prefixRegex =
-    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?(?:R\$|BRL|\$)\s*(-?\s*\d{1,3}(?:\.\d{3})*,\d{2}|-?\s*\d+(?:[.,]\d{1,2})?|-?\s*\d+)/i;
+    /(?:\b(?:por|paguei|gastei|valor\s*:?|de|total\s*:?)\s+)?([+-]?\s*(?:R\$|BRL|\$)\s*[+-]?\s*(?:\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?|\d+)(?:\s*(?:[dDcC]|\([dDcC]\)|[+-]))?)/i;
   const prefixMatch = prefixRegex.exec(text);
   if (prefixMatch && prefixMatch[1]) {
-    const rawVal = prefixMatch[1].replace(/\s+/g, "");
+    const matchedStr = prefixMatch[1].trim();
+    let sign = "";
+    if (matchedStr.startsWith("-") || matchedStr.includes(" -")) sign = "-";
+    else if (matchedStr.startsWith("+") || matchedStr.includes(" +")) sign = "+";
+
+    const cleanNum = matchedStr
+      .replace(/^[+-]\s*/, "")
+      .replace(/(?:R\$|BRL|\$)\s*/i, "")
+      .replace(/^[+-]\s*/, "")
+      .trim();
+
+    const rawVal = sign ? `${sign}${cleanNum}` : cleanNum;
     const remainingText = text.replace(prefixMatch[0], " ").trim();
     return { amountStr: rawVal, remainingText };
   }
 
-  // 2. Valores com sufixo "reais" ou "real" (ex: 50 reais, 120,50 reais)
+  // 3. Valores com sufixo "reais", "real", "conto": 50 reais, -120,50 reais, +200 reais
   const suffixRegex =
-    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?(-?\s*\d{1,3}(?:\.\d{3})*,\d{2}|-?\s*\d+(?:[.,]\d{1,2})?|-?\s*\d+)\s*(?:reais|real|conto)\b/i;
+    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?([+-]?\s*\d{1,3}(?:\.\d{3})*,\d{2}|[+-]?\s*\d+(?:[.,]\d{1,2})?|[+-]?\s*\d+)\s*(?:reais|real|conto)\b/i;
   const suffixMatch = suffixRegex.exec(text);
   if (suffixMatch && suffixMatch[1]) {
     const rawVal = suffixMatch[1].replace(/\s+/g, "");
@@ -147,9 +180,19 @@ function extractAmountEntity(text: string): { amountStr: string; remainingText: 
     return { amountStr: rawVal, remainingText };
   }
 
-  // 3. Padrão monetário brasileiro com vírgula decimal (ex: 1.250,75 ou 45,90 ou 250,00)
+  // 4. Padrão monetário com sufixo D/C ou sinal: 150,00 D, 2.000,00 C, 150,00D, 2.000,00+, 150,00-
+  const dcSuffixRegex =
+    /\b([+-]?\d{1,3}(?:\.\d{3})*,\d{2}|[+-]?\d+(?:[.,]\d{1,2})?)\s*([dDcC]|\([dDcC]\)|[+-])\b/i;
+  const dcMatch = dcSuffixRegex.exec(text);
+  if (dcMatch && dcMatch[1] && dcMatch[2]) {
+    const rawVal = `${dcMatch[1].trim()} ${dcMatch[2].trim()}`;
+    const remainingText = text.replace(dcMatch[0], " ").trim();
+    return { amountStr: rawVal, remainingText };
+  }
+
+  // 5. Padrão monetário brasileiro com vírgula decimal (ex: 1.250,75 ou -45,90 ou +250,00)
   const brlDecimalRegex =
-    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?\b(-?\d{1,3}(?:\.\d{3})*,\d{2})\b/i;
+    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?\b([+-]?\d{1,3}(?:\.\d{3})*,\d{2})\b/i;
   const brlDecimalMatch = brlDecimalRegex.exec(text);
   if (brlDecimalMatch && brlDecimalMatch[1]) {
     const rawVal = brlDecimalMatch[1];
@@ -157,9 +200,9 @@ function extractAmountEntity(text: string): { amountStr: string; remainingText: 
     return { amountStr: rawVal, remainingText };
   }
 
-  // 4. Padrão com ponto decimal monetário (ex: 45.90 ou 1234.56)
+  // 6. Padrão com ponto decimal monetário (ex: 45.90 ou -1234.56)
   const dotDecimalRegex =
-    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?\b(-?\d+\.\d{2})\b/i;
+    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?\b([+-]?\d+\.\d{2})\b/i;
   const dotDecimalMatch = dotDecimalRegex.exec(text);
   if (dotDecimalMatch && dotDecimalMatch[1]) {
     const rawVal = dotDecimalMatch[1];
@@ -167,8 +210,8 @@ function extractAmountEntity(text: string): { amountStr: string; remainingText: 
     return { amountStr: rawVal, remainingText };
   }
 
-  // 5. Palavras-chave indicando valor inteiro ou decimal (ex: "valor 150", "por 250", "de 80")
-  const kwRegex = /(?:valor|por|paguei|gastei)\s*:?\s*(?:de\s+)?(-?\d+(?:[.,]\d{1,2})?)\b/i;
+  // 7. Palavras-chave indicando valor inteiro ou decimal (ex: "valor 150", "por 250", "de 80")
+  const kwRegex = /(?:valor|por|paguei|gastei)\s*:?\s*(?:de\s+)?([+-]?\d+(?:[.,]\d{1,2})?)\b/i;
   const kwMatch = kwRegex.exec(text);
   if (kwMatch && kwMatch[1]) {
     const rawVal = kwMatch[1];
@@ -176,8 +219,8 @@ function extractAmountEntity(text: string): { amountStr: string; remainingText: 
     return { amountStr: rawVal, remainingText };
   }
 
-  // 6. Número isolado no fim da linha que não seja parte de data
-  const trailingNumRegex = /(?<![/.-])\b(-?\d+(?:[.,]\d{1,2})?)\s*$/;
+  // 8. Número isolado no fim da linha que não seja parte de data
+  const trailingNumRegex = /(?<![/.-])\b([+-]?\d+(?:[.,]\d{1,2})?)\s*$/;
   const trailingMatch = trailingNumRegex.exec(text);
   if (trailingMatch && trailingMatch[1]) {
     const rawVal = trailingMatch[1];
@@ -211,6 +254,40 @@ function sanitizeNaturalDescription(desc: string): string {
     .trim();
 
   return cleaned;
+}
+
+/**
+ * Verifica se um conjunto de células tabulares representa uma linha de cabeçalho.
+ */
+function isHeaderCells(cells: string[]): boolean {
+  if (cells.length < 2) return false;
+  const headerKeywords = [
+    "data", "date", "dt", "dia",
+    "descrição", "descricao", "desc", "histórico", "historico", "detalhe", "lançamento", "lancamento", "estabelecimento", "transação", "transacao", "title", "memo",
+    "valor", "amount", "total", "preço", "preco", "saída", "saida", "entrada",
+    "saldo", "saldo (r$)", "saldo atual", "saldo anterior",
+    "tipo", "d/c", "debito", "débito", "credito", "crédito",
+    "docto", "documento", "num doc", "nº doc", "doc",
+    "titular", "portador", "cartão", "cartao", "card", "conta",
+    "categoria", "status"
+  ];
+
+  const nonBlank = cells.filter((c) => c.trim().length > 0);
+  if (nonBlank.length === 0) return true;
+
+  // Se tem qualquer célula que é claramente uma data formatada ou valor monetário com dígitos, não é cabeçalho
+  const hasDateOrAmount = nonBlank.some((c) => {
+    const t = c.trim();
+    return /^\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?$/.test(t) || /^\d{4}-\d{2}-\d{2}$/.test(t) || /(?:R\$|\$)?\s*\d+[.,]\d{2}/.test(t);
+  });
+  if (hasDateOrAmount) return false;
+
+  const matchCount = nonBlank.filter((c) => {
+    const lower = c.trim().toLowerCase();
+    return headerKeywords.some((kw) => lower === kw || lower.startsWith(kw) || lower.endsWith(kw));
+  }).length;
+
+  return matchCount / nonBlank.length >= 0.6;
 }
 
 /**
@@ -252,16 +329,26 @@ export function parseNaturalLanguageLine(
   // 3. Sanitiza a descrição
   const description = sanitizeNaturalDescription(descCandidate) || descCandidate.trim() || "Transação";
 
+  let amountStr = amountEntity.amountStr;
+
+  // 4. Se a frase tiver verbos explícitos de entrada/receita e o valor não tiver sinal nem sufixo, prefixa '+'
+  const isExplicitIncomePhrase =
+    /\b(recebi|recebimento|ganhei|entrou|sal[aá]rio|folha|pro-labore|pro labore|rendimento|dividendo|dividendos|jcp|provento|proventos|estorno|dep[oó]sito|reembolso)\b/i.test(line);
+  if (isExplicitIncomePhrase && !/^[+-]/.test(amountStr) && !/[dDcC+-]$/.test(amountStr)) {
+    amountStr = `+${amountStr}`;
+  }
+
   return {
     date: dateStr,
     description,
-    amount: amountEntity.amountStr,
+    amount: amountStr,
   };
 }
 
 /**
  * Parser de texto livre copiado da web / internet banking / linguagem natural (Quick-Paste).
- * Analisa tanto dados tabulares quanto frases em linguagem natural.
+ * Analisa tanto dados tabulares quanto frases em linguagem natural,
+ * ignorando automaticamente cabeçalhos e linhas ruidosas.
  */
 export function parseTextToRows(rawText: string, defaultYear = new Date().getFullYear()): RawParsedRow[] {
   const lines = rawText.split(/\r?\n/);
@@ -271,6 +358,9 @@ export function parseTextToRows(rawText: string, defaultYear = new Date().getFul
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
+
+    // Filtra ruídos, separadores, metadados de relatório e somatórios/saldos contábeis
+    if (isStatementNoiseOrSummary(trimmed)) continue;
 
     let cells: string[] = [];
 
@@ -301,6 +391,16 @@ export function parseTextToRows(rawText: string, defaultYear = new Date().getFul
       }
     }
 
+    // Se as células tabulares formam um cabeçalho de colunas (ex: Data | Descrição | Valor), ignora
+    if (cells.length > 0 && isHeaderCells(cells)) {
+      continue;
+    }
+
+    // Se alguma célula individual da linha representa ruído de extrato ou saldo contábil, ignora
+    if (cells.length > 0 && cells.some((c) => isStatementNoiseOrSummary(c))) {
+      continue;
+    }
+
     // Se encontrou 3+ células ou 2 células com data/valor identificáveis, usa a divisão tabular
     if (cells.length >= 3) {
       rows.push({
@@ -314,6 +414,11 @@ export function parseTextToRows(rawText: string, defaultYear = new Date().getFul
     // 6. Caso não seja tabular delimitado, processa como linguagem natural
     const natural = parseNaturalLanguageLine(trimmed, defaultYear);
     if (natural) {
+      // Ignora se a descrição resultante for ruído de extrato
+      if (isStatementNoiseOrSummary(natural.description)) {
+        continue;
+      }
+
       rows.push({
         rowIndex: rowIndex++,
         rawText: trimmed,
@@ -322,22 +427,17 @@ export function parseTextToRows(rawText: string, defaultYear = new Date().getFul
       continue;
     }
 
-    // 7. Fallback: se houver células parciais, armazena
+    // 7. Fallback: se houver células parciais e não forem ruído, armazena
     if (cells.length > 0) {
       rows.push({
         rowIndex: rowIndex++,
         rawText: trimmed,
         cells,
       });
-    } else {
-      rows.push({
-        rowIndex: rowIndex++,
-        rawText: trimmed,
-        cells: [trimmed],
-      });
     }
   }
 
   return rows;
 }
+
 

@@ -54,6 +54,25 @@ describe("PortfolioImportDialog — Fase 35 & 36", () => {
     });
   });
 
+  it("interpreta múltiplas linhas de linguagem natural com vírgulas decimais diretamente para conferência sem passar por mapeamento", async () => {
+    render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
+
+    const textarea = screen.getByRole("textbox");
+    const multiline = `15/08 comprei 100 PETR4 a 38,50
+16/08 comprei 50 MXRF11 a 10,20`;
+    fireEvent.change(textarea, { target: { value: multiline } });
+
+    const processBtn = screen.getByRole("button", { name: /Processar texto/i });
+    fireEvent.click(processBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("PETR4")).toBeInTheDocument();
+      expect(screen.getByText("MXRF11")).toBeInTheDocument();
+      expect(screen.queryByText(/Coluna de Código \/ Ticker/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Confirmar importação \(2\)/i })).toBeInTheDocument();
+    });
+  });
+
   it("avança para o passo de Mapeamento de Colunas ao processar planilha CSV com cabeçalhos", async () => {
     render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
 

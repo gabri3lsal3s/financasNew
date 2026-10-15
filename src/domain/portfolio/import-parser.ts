@@ -77,10 +77,20 @@ export function inferAssetClassFromTicker(ticker: string): string | null {
   const t = ticker.trim().toUpperCase();
   if (!t) return null;
 
-  if (["BTC", "ETH", "SOL", "USDT", "USDC", "BITCOIN", "ETHEREUM"].includes(t)) {
+  if (["BTC", "ETH", "SOL", "USDT", "USDC", "BNB", "ADA", "XRP", "DOGE", "AVAX", "LINK", "DOT", "MATIC", "BITCOIN", "ETHEREUM"].includes(t)) {
     return "Cripto";
   }
-  if (t.startsWith("TESOURO") || t.startsWith("CDB") || t.startsWith("LCI") || t.startsWith("LCA") || t === "SELIC" || t === "CDI") {
+  if (
+    t.startsWith("TESOURO") ||
+    t.startsWith("CDB") ||
+    t.startsWith("LCI") ||
+    t.startsWith("LCA") ||
+    t.startsWith("CRI") ||
+    t.startsWith("CRA") ||
+    t.startsWith("DEBENTURE") ||
+    t === "SELIC" ||
+    t === "CDI"
+  ) {
     return "Renda Fixa";
   }
   if (t === "CAIXA" || t === "RESERVA") {
@@ -94,8 +104,8 @@ export function inferAssetClassFromTicker(ticker: string): string | null {
   if (/^[A-Z]{4}11$/.test(t)) {
     return "FIIs";
   }
-  // Ações B3 ordinárias/preferenciais/units (terminações 3, 4, 5, 6, 7, 8)
-  if (/^[A-Z]{4}(?:3|4|5|6|7|8)$/.test(t)) {
+  // Ações B3 ordinárias/preferenciais/units (terminações 3, 4, 5, 6, 7, 8, 12)
+  if (/^[A-Z]{4}(?:3|4|5|6|7|8|12)$/.test(t)) {
     return "Ações";
   }
   // Internacional puro (1 a 5 letras sem dígitos)
@@ -191,7 +201,53 @@ export const KNOWN_SINGLE_LETTER_US_TICKERS = new Set([
 ]);
 
 /**
- * Extrai e normaliza o Ticker a partir de strings da B3 e texto livre:
+ * Palavras reservadas e cabeçalhos a ignorar como tickers.
+ */
+const PORTFOLIO_HEADER_KEYWORDS = [
+  "data do negocio",
+  "data do negócio",
+  "codigo de negociacao",
+  "código de negociação",
+  "tipo de movimentacao",
+  "tipo de movimentação",
+  "preco medio",
+  "preço médio",
+  "quantidade disponivel",
+  "quantidade disponível",
+  "posicao atualizada",
+  "posição atualizada",
+  "saldo em custodia",
+  "saldo em custódia",
+  "valor aplicado",
+  "total geral",
+  "area do investidor",
+  "área do investidor",
+  "extrato de custodia",
+  "extrato de custódia",
+  "relatorio de",
+  "relatório de",
+  "pagina 1",
+  "página 1",
+];
+
+/**
+ * Identifica se uma linha é cabeçalho de relatório de investimentos ou ruído de extrato.
+ */
+export function isPortfolioNoiseOrHeader(line: string): boolean {
+  if (!line) return true;
+  const trimmed = line.trim();
+  if (/^[-–—=_*.#\s]{3,}$/.test(trimmed)) return true;
+  const lower = trimmed.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return PORTFOLIO_HEADER_KEYWORDS.some((kw) => {
+    const normKw = kw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return lower === normKw || lower.startsWith(normKw) || lower.includes(normKw);
+  });
+}
+
+/**
+ * Extrai e normaliza o Ticker a partir de strings da B3, Tesouro Direto, Renda Fixa e texto livre:
+ * - Detecta títulos públicos do Tesouro Direto (ex: "Tesouro Selic 2029", "Tesouro IPCA+ 2035")
+ * - Detecta instrumentos de Renda Fixa (ex: "CDB Banco Inter", "LCI Caixa", "LCA BB")
  * - Trata fracionário B3: PETR4F -> PETR4, VALE3F -> VALE3
  * - Extrai ticker de descrições longas da B3: "PETR4 - PETROLEO BRASILEIRO" -> "PETR4"
  */
@@ -199,28 +255,48 @@ export function extractTickerFromText(text: string): { ticker: string; textWitho
   const clean = text.trim();
   if (!clean) return null;
 
-  // 1. Tickers B3 Fracionários (ex: PETR4F, VALE3F, BBDC4F, TAEE11F, BOVA11F)
+  // 1. Títulos Públicos Federais (Tesouro Direto)
+  const tesouroMatch = /\b(TESOURO\s+(?:SELIC|IPCA(?:\s*\+)?|PREFIXADO|EDUCA(?:\s*\+)?|RENDA(?:\s*\+)?)(?:\s+\d{4})?)\b/i.exec(clean);
+  if (tesouroMatch && tesouroMatch[1]) {
+    const ticker = tesouroMatch[1].toUpperCase().replace(/\s+/g, " ");
+    return { ticker, textWithoutTicker: clean.replace(tesouroMatch[0], " ").trim() };
+  }
+
+  // 2. Tickers B3 Fracionários (ex: PETR4F, VALE3F, BBDC4F, TAEE11F, BOVA11F)
   const b3FracMatch = /\b([A-Z]{4}(?:3|4|5|6|7|8|11|32|33|34|35|39))F\b/i.exec(clean);
   if (b3FracMatch && b3FracMatch[1]) {
     const ticker = b3FracMatch[1].toUpperCase();
     return { ticker, textWithoutTicker: clean.replace(b3FracMatch[0], " ").trim() };
   }
 
-  // 2. Tickers B3 comuns com números: PETR4, VALE3, MXRF11, BOVA11, AAPL34, etc.
-  const b3Match = /\b([A-Z]{4}(?:3|4|5|6|7|8|11|32|33|34|35|39|12))\b/i.exec(clean);
+  // 3. Tickers B3 comuns com números: PETR4, VALE3, MXRF11, BOVA11, AAPL34, B3SA3, etc.
+  const b3Match = /\b([A-Z]{4}(?:3|4|5|6|7|8|11|12|32|33|34|35|39))\b/i.exec(clean);
   if (b3Match && b3Match[1]) {
     const ticker = b3Match[1].toUpperCase();
     return { ticker, textWithoutTicker: clean.replace(b3Match[0], " ").trim() };
   }
 
-  // 3. Criptoativos conhecidos
-  const cryptoMatch = /\b(BTC|ETH|SOL|USDT|USDC)\b/i.exec(clean);
+  // 4. Instrumentos de Renda Fixa Bancária e Crédito Privado (CDB, LCI, LCA, CRI, CRA, DEBENTURE)
+  const fixedIncomeMatch =
+    /\b((?:CDB|LCI|LCA|CRI|CRA|DEB[EÊ]NTURE)(?:\s+(?!a\b|por\b|no\b|na\b|de\b|em\b|com\b|para\b|valor\b|total\b|qtd\b|quantidade\b|\d+\b)[A-Za-z0-9À-ÿ%+-]+){1,4})/i.exec(
+      clean,
+    );
+  if (fixedIncomeMatch && fixedIncomeMatch[1]) {
+    const rawName = fixedIncomeMatch[1].trim();
+    const cleanName = rawName.replace(/\s+(?:comprei|vendi|aporte|taxa|hoje|ontem).*$/i, "").trim().toUpperCase();
+    if (cleanName.length >= 3) {
+      return { ticker: cleanName, textWithoutTicker: clean.replace(fixedIncomeMatch[0], " ").trim() };
+    }
+  }
+
+  // 5. Criptoativos conhecidos
+  const cryptoMatch = /\b(BTC|ETH|SOL|USDT|USDC|BNB|ADA|XRP|DOGE|AVAX|LINK|DOT|MATIC|BITCOIN|ETHEREUM)\b/i.exec(clean);
   if (cryptoMatch && cryptoMatch[1]) {
     const ticker = cryptoMatch[1].toUpperCase();
     return { ticker, textWithoutTicker: clean.replace(cryptoMatch[0], " ").trim() };
   }
 
-  // 4. Tickers Internacionais (1 a 5 letras isoladas em maiúsculo, ex.: AAPL, MSFT, NVDA, TSLA, O, T)
+  // 6. Tickers Internacionais (1 a 5 letras isoladas em maiúsculo, ex.: AAPL, MSFT, NVDA, TSLA, O, T)
   const usMatches = clean.matchAll(/\b([A-Z]{1,5})\b/g);
   const ignoredWords = new Set([
     "POR", "COM", "SEM", "HOJE", "ONTEM", "DE", "EM", "NA", "NO", "A", "E",
@@ -262,6 +338,143 @@ export function parseNumberClean(raw: string): number {
   return parseFloat(clean);
 }
 
+export interface ExtractedInvestmentValues {
+  quantity: number;
+  price: number;
+  total: number;
+}
+
+/**
+ * Desambigua de forma inteligente a Quantidade, o Preço Unitário e o Valor Total
+ * a partir de marcadores léxicos e coerência matemática (quantidade * preço = total).
+ */
+export function extractInvestmentValues(text: string, isFixedIncome = false): ExtractedInvestmentValues {
+  // 1. Procura quantidade explícita (ex: "100 ações", "50 cotas", "10 un", "qtd: 20", "100x")
+  let explicitQty: number | null = null;
+  const qtyPatterns = [
+    /\b(\d+(?:[.,]\d+)?)\s*(?:a[çc][oõ]es|cotas|unidades?|unids?|pap[eé]is|un\b|tokens?|contratos?)\b/i,
+    /\b(?:qtd|quantidade|quant|qnt)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\b/i,
+    /\b(\d+)\s*x\b/i,
+  ];
+  for (const p of qtyPatterns) {
+    const m = p.exec(text);
+    if (m && m[1]) {
+      const q = parseNumberClean(m[1]);
+      if (q > 0) {
+        explicitQty = q;
+        break;
+      }
+    }
+  }
+
+  // 2. Procura total explícito (ex: "total R$ 3.850,00", "totalizando 3850", "no total de 3.850", "valor total: 3.850")
+  let explicitTotal: number | null = null;
+  const totalPattern =
+    /\b(?:total|totalizando|no\s+total\s+de|valor\s+total|montante)\s*[:=]?\s*(?:de\s+)?(?:R\$|\$|BRL)?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?)\b/i;
+  const totalMatch = totalPattern.exec(text);
+  if (totalMatch && totalMatch[1]) {
+    const t = parseNumberClean(totalMatch[1]);
+    if (t > 0) explicitTotal = t;
+  }
+
+  // 3. Procura preço unitário explícito (ex: "preço 38,50", "pu: 38,50", "unitário 38,50", "a 38,50 cada")
+  let explicitPrice: number | null = null;
+  const pricePattern =
+    /\b(?:pre[çc]o|pu|unit[aá]rio|cota[çc][aã]o|valor\s+unit[aá]rio)\s*[:=]?\s*(?:de\s+)?(?:R\$|\$|BRL)?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,4})?)\b/i;
+  const priceMatch = pricePattern.exec(text);
+  if (priceMatch && priceMatch[1]) {
+    const p = parseNumberClean(priceMatch[1]);
+    if (p > 0) explicitPrice = p;
+  }
+
+  // 4. Extrai todos os números encontrados no texto
+  const numbersFound: number[] = [];
+  const numRegex = /(?:R\$|\$|BRL)?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,4})?)/g;
+  let match: RegExpExecArray | null;
+  while ((match = numRegex.exec(text)) !== null) {
+    if (match[1]) {
+      const val = parseNumberClean(match[1]);
+      if (!Number.isNaN(val) && val > 0) {
+        numbersFound.push(val);
+      }
+    }
+  }
+
+  // Caso A: Se temos 3 números, tenta a reconciliação matemática qty * price ~ total
+  if (numbersFound.length >= 3) {
+    const n1 = numbersFound[0]!;
+    const n2 = numbersFound[1]!;
+    const n3 = numbersFound[2]!;
+
+    if (Math.abs(n1 * n2 - n3) <= Math.max(1, 0.05 * n3)) {
+      const [qty, prc] = explicitQty === n1 ? [n1, n2] : explicitQty === n2 ? [n2, n1] : Number.isInteger(n1) && !Number.isInteger(n2) ? [n1, n2] : [n1, n2];
+      return { quantity: qty, price: prc, total: Math.round(n3 * 100) / 100 };
+    }
+    if (Math.abs(n1 * n3 - n2) <= Math.max(1, 0.05 * n2)) {
+      const [qty, prc] = explicitQty === n1 ? [n1, n3] : explicitQty === n3 ? [n3, n1] : Number.isInteger(n1) && !Number.isInteger(n3) ? [n1, n3] : [n1, n3];
+      return { quantity: qty, price: prc, total: Math.round(n2 * 100) / 100 };
+    }
+    if (Math.abs(n2 * n3 - n1) <= Math.max(1, 0.05 * n1)) {
+      const [qty, prc] = explicitQty === n2 ? [n2, n3] : explicitQty === n3 ? [n3, n2] : Number.isInteger(n2) && !Number.isInteger(n3) ? [n2, n3] : [n2, n3];
+      return { quantity: qty, price: prc, total: Math.round(n1 * 100) / 100 };
+    }
+  }
+
+  // Caso B: Se quantidade e total explícitos foram identificados
+  if (explicitQty !== null && explicitTotal !== null) {
+    const price = Math.round((explicitTotal / explicitQty) * 10000) / 10000;
+    return { quantity: explicitQty, price, total: Math.round(explicitTotal * 100) / 100 };
+  }
+
+  // Caso C: Se quantidade e preço unitário explícitos foram identificados
+  if (explicitQty !== null && explicitPrice !== null) {
+    const total = Math.round(explicitQty * explicitPrice * 100) / 100;
+    return { quantity: explicitQty, price: explicitPrice, total };
+  }
+
+  // Caso D: Se temos 2 números identificados
+  if (numbersFound.length >= 2) {
+    const n1 = numbersFound[0]!;
+    const n2 = numbersFound[1]!;
+
+    if (explicitQty !== null) {
+      const other = explicitQty === n1 ? n2 : n1;
+      if (explicitTotal !== null) {
+        return { quantity: explicitQty, price: Math.round((explicitTotal / explicitQty) * 10000) / 10000, total: explicitTotal };
+      }
+      return { quantity: explicitQty, price: other, total: Math.round(explicitQty * other * 100) / 100 };
+    }
+
+    if (explicitPrice !== null) {
+      const other = explicitPrice === n1 ? n2 : n1;
+      return { quantity: other, price: explicitPrice, total: Math.round(other * explicitPrice * 100) / 100 };
+    }
+
+    // Se n1 tem centavos e n2 é inteiro, inverte
+    if (!Number.isInteger(n1) && Number.isInteger(n2)) {
+      return { quantity: n2, price: n1, total: Math.round(n1 * n2 * 100) / 100 };
+    }
+
+    const total = Math.round(n1 * n2 * 100) / 100;
+    return { quantity: n1, price: n2, total };
+  }
+
+  // Caso E: Apenas 1 número identificado
+  if (numbersFound.length === 1) {
+    const val = numbersFound[0]!;
+    if (isFixedIncome) {
+      return { quantity: 1, price: val, total: val };
+    }
+    if (explicitQty !== null) {
+      return { quantity: explicitQty, price: 0, total: 0 };
+    }
+    return { quantity: 1, price: val, total: val };
+  }
+
+  // Nenhum número
+  return { quantity: 0, price: 0, total: 0 };
+}
+
 /**
  * Tenta analisar uma linha de texto em linguagem natural para investimento.
  */
@@ -270,7 +483,7 @@ export function parseNaturalInvestmentLine(
   defaultYear = new Date().getFullYear(),
 ): ParsedPortfolioImportRow | null {
   const trimmed = line.trim();
-  if (!trimmed) return null;
+  if (!trimmed || isPortfolioNoiseOrHeader(trimmed)) return null;
 
   const { dateStr, textWithoutDate } = extractDateFromText(trimmed, defaultYear);
   const type = identifyTransactionType(textWithoutDate);
@@ -318,58 +531,16 @@ export function parseNaturalInvestmentLine(
   }
 
   // Compras, Vendas e Subscrições: quantidade e preço
-  const numbersFound: number[] = [];
-  const numRegex = /(?:R\$|\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,4})?)/g;
-  let match: RegExpExecArray | null;
-  while ((match = numRegex.exec(textWithoutTicker)) !== null) {
-    if (match[1]) {
-      const val = parseNumberClean(match[1]);
-      if (!isNaN(val) && val > 0) {
-        numbersFound.push(val);
-      }
-    }
-  }
+  const isFixedIncome = assetClass === "Renda Fixa";
+  const { quantity, price, total } = extractInvestmentValues(textWithoutTicker, isFixedIncome);
 
-  if (numbersFound.length >= 2) {
-    const quantity = numbersFound[0] ?? 0;
-    const price = numbersFound[1] ?? 0;
-    const total = Math.round(quantity * price * 100) / 100;
-    return {
-      date: dateStr,
-      ticker,
-      type,
-      quantity,
-      price,
-      total,
-      assetClass,
-      currency,
-      rawText: trimmed,
-    };
-  }
-
-  if (numbersFound.length === 1) {
-    const singleVal = numbersFound[0] ?? 0;
-    return {
-      date: dateStr,
-      ticker,
-      type,
-      quantity: 1,
-      price: singleVal,
-      total: singleVal,
-      assetClass,
-      currency,
-      rawText: trimmed,
-    };
-  }
-
-  // Se nenhum número foi informado, trata como cadastro de ativo puro
   return {
     date: dateStr,
     ticker,
-    type: "buy",
-    quantity: 0,
-    price: 0,
-    total: 0,
+    type,
+    quantity,
+    price,
+    total,
     assetClass,
     currency,
     rawText: trimmed,
@@ -399,13 +570,19 @@ export function detectPortfolioColumns(rawContent: string): { rows: RawPortfolio
   }
 
   const firstLine = lines[0] ?? "";
-  const delimiter = firstLine.includes("\t")
-    ? "\t"
-    : firstLine.includes(";")
-      ? ";"
-      : firstLine.includes("|")
-        ? "|"
-        : ",";
+  let delimiter = ";";
+  if (firstLine.includes("\t")) {
+    delimiter = "\t";
+  } else if (firstLine.includes(";")) {
+    delimiter = ";";
+  } else if (firstLine.includes("|")) {
+    delimiter = "|";
+  } else if (firstLine.includes(",")) {
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    if (commaCount >= 2 || (lines[1] && (lines[1].match(/,/g) || []).length === commaCount && commaCount >= 1)) {
+      delimiter = ",";
+    }
+  }
 
   const rows: RawPortfolioRow[] = lines.map((line, index) => ({
     rowIndex: index,

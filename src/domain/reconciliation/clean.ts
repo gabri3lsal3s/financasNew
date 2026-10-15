@@ -248,3 +248,68 @@ export function isPaymentOrSettlement(raw: string): boolean {
   return PAYMENT_KEYWORDS.some((kw) => lower.includes(kw)) || isCreditCardPayment(raw);
 }
 
+const STATEMENT_SUMMARY_OR_NOISE_KEYWORDS = [
+  "saldo anterior",
+  "saldo do dia",
+  "saldo atual",
+  "saldo final",
+  "saldo disponivel",
+  "saldo disponível",
+  "saldo bloqueado",
+  "saldo credor",
+  "saldo devedor",
+  "saldo em conta",
+  "saldo inicial",
+  "saldo do periodo",
+  "saldo do período",
+  "total da fatura",
+  "valor total da fatura",
+  "total do periodo",
+  "total do período",
+  "total geral",
+  "total de debitos",
+  "total de débitos",
+  "total debitos",
+  "total débitos",
+  "total de creditos",
+  "total de créditos",
+  "total creditos",
+  "total créditos",
+  "total de entradas",
+  "total de saidas",
+  "total de saídas",
+  "total de lancamentos",
+  "total de lançamentos",
+  "subtotal",
+  "pagamento minimo",
+  "pagamento mínimo",
+  "pagto minimo",
+  "pagto mínimo",
+  "encargos e iof",
+  "limite total",
+  "limite disponivel",
+  "limite disponível",
+  "fatura anterior",
+  "resumo da fatura",
+  "demonstrativo",
+];
+
+const METADATA_NOISE_REGEX =
+  /^(?:extrato\b|comprovante\b|p[aá]gina\s+\d+|ag[eê]ncia\b|agencia\b|conta\s*:\s*[\d-]+|per[ií]odo\b|periodo\b|cnpj\b|cpf\b|impresso\s+em|emitido\s+em|gerado\s+em|relat[oó]rio\b|relatorio\b|banco\b|transa[çc][oõ]es\s+sujeitas|informa[çc][oõ]es\s+de\s+uso)\b/i;
+
+const DIVIDER_LINE_REGEX = /^[-–—=_*.#\s]{3,}$/;
+
+/**
+ * Identifica se uma linha de texto ou descrição representa ruído de extrato,
+ * linhas de cabeçalho/rodapé de relatório ou somatórios/saldos contábeis.
+ */
+export function isStatementNoiseOrSummary(text: string): boolean {
+  if (!text) return true;
+  const trimmed = text.trim();
+  if (DIVIDER_LINE_REGEX.test(trimmed)) return true;
+  if (METADATA_NOISE_REGEX.test(trimmed)) return true;
+
+  const lower = trimmed.toLowerCase();
+  return STATEMENT_SUMMARY_OR_NOISE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+

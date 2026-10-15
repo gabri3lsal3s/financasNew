@@ -110,11 +110,28 @@ describe("domain/reconciliation", () => {
       expect(normalizeDateToISO("15/08", 2026)).toBe("2026-08-15");
     });
 
+    it("converte datas com nomes de meses em português e inglês", () => {
+      expect(normalizeDateToISO("15 Aug 2026")).toBe("2026-08-15");
+      expect(normalizeDateToISO("15-ago-2026")).toBe("2026-08-15");
+      expect(normalizeDateToISO("10/fev/26")).toBe("2026-02-10");
+      expect(normalizeDateToISO("01-dec-2026")).toBe("2026-12-01");
+      expect(normalizeDateToISO("25 de abril de 2026")).toBe("2026-04-25");
+    });
+
     it("converte valores monetários para centavos inteiros", () => {
       expect(parseAmountToCents("R$ 1.250,75")).toEqual({ amountCents: 125075, isNegative: false });
       expect(parseAmountToCents("-50,00")).toEqual({ amountCents: 5000, isNegative: true });
       expect(parseAmountToCents("123.45")).toEqual({ amountCents: 12345, isNegative: false });
       expect(parseAmountToCents("(30,00)")).toEqual({ amountCents: 3000, isNegative: true });
+    });
+
+    it("interpreta valores com prefixo/sufixo de crédito/débito e sinais", () => {
+      expect(parseAmountToCents("+ R$ 2.000,00")).toEqual({ amountCents: 200000, isNegative: false });
+      expect(parseAmountToCents("- R$ 45,90")).toEqual({ amountCents: 4590, isNegative: true });
+      expect(parseAmountToCents("150,00 D")).toEqual({ amountCents: 15000, isNegative: true, isDebitSuffix: true });
+      expect(parseAmountToCents("2.500,00 C")).toEqual({ amountCents: 250000, isNegative: false, isCreditSuffix: true });
+      expect(parseAmountToCents("80,00-")).toEqual({ amountCents: 8000, isNegative: true, isDebitSuffix: true });
+      expect(parseAmountToCents("200,00+")).toEqual({ amountCents: 20000, isNegative: false, isCreditSuffix: true });
     });
 
     it("identifica colunas por amostragem em CSV sem cabeçalho", () => {
@@ -229,6 +246,40 @@ Netflix 55,90 10/08
       expect(rows).toHaveLength(2);
       expect(rows[0]?.cells).toEqual(["12/08/2026", "Padaria Bella Vista", "R$ 18,50"]);
       expect(rows[1]?.cells).toEqual(["10/08", "Posto Ipiranga", "200,00"]);
+    });
+
+    it("ignora automaticamente cabeçalhos e linhas ruidosas de extrato", () => {
+      const noisyText = `
+BANCO DO BRASIL - EXTRATO DE CONTA CORRENTE
+Agência: 1234-5 Conta: 98765-4 Período: 01/08 a 31/08
+-------------------------------------------------------
+Data | Histórico | Documento | Valor
+Saldo anterior: R$ 5.430,20
+15/08/2026 | PIX RECEBIDO JOAO | 12345 | 1.500,00
+16/08/2026 | COMPRA CARTAO PADARIA | 67890 | 45,90-
+-------------------------------------------------------
+Total de Débitos: R$ 45,90
+Total de Créditos: R$ 1.500,00
+Saldo do Dia: R$ 6.884,30
+Página 1 de 1
+`;
+      const rows = parseTextToRows(noisyText, 2026);
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.cells[0]).toBe("15/08/2026");
+      expect(rows[0]?.cells[1]).toBe("PIX RECEBIDO JOAO");
+      expect(rows[1]?.cells[0]).toBe("16/08/2026");
+      expect(rows[1]?.cells[1]).toBe("COMPRA CARTAO PADARIA");
+    });
+
+    it("detecta entradas financeiras em linguagem natural a partir de verbos de receita", () => {
+      const natural = `
+recebi salário de 5.000,00 no dia 05/08
+ganhei 200 reais de pix da maria
+`;
+      const rows = parseTextToRows(natural, 2026);
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.cells[2]).toContain("+");
+      expect(rows[1]?.cells[2]).toContain("+");
     });
 
     it("converte texto em linguagem natural para transações completas de extrato via parseStatementInput", () => {

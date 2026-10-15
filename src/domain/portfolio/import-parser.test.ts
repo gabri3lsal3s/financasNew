@@ -48,6 +48,12 @@ describe("domain/portfolio/import-parser — Fase 35 & 36", () => {
     it("identifica Renda Fixa", () => {
       expect(inferAssetClassFromTicker("TESOURO_SELIC")).toBe("Renda Fixa");
       expect(inferAssetClassFromTicker("CDB_BANCO_INTER")).toBe("Renda Fixa");
+      expect(inferAssetClassFromTicker("TESOURO SELIC 2029")).toBe("Renda Fixa");
+      expect(inferAssetClassFromTicker("TESOURO IPCA+ 2035")).toBe("Renda Fixa");
+      expect(inferAssetClassFromTicker("LCI CAIXA")).toBe("Renda Fixa");
+      expect(inferAssetClassFromTicker("LCA BB")).toBe("Renda Fixa");
+      expect(inferAssetClassFromTicker("CRI DIRECIONAL")).toBe("Renda Fixa");
+      expect(inferAssetClassFromTicker("DEBENTURE VALE")).toBe("Renda Fixa");
     });
   });
 
@@ -67,6 +73,17 @@ describe("domain/portfolio/import-parser — Fase 35 & 36", () => {
       const resFii = extractTickerFromText("MXRF11 - MAXI RENDA FII");
       expect(resFii?.ticker).toBe("MXRF11");
     });
+
+    it("detecta Tesouro Direto e Renda Fixa em descrições de texto", () => {
+      const resSelic = extractTickerFromText("15/08 apliquei 5000 no Tesouro Selic 2029");
+      expect(resSelic?.ticker).toBe("TESOURO SELIC 2029");
+
+      const resIpca = extractTickerFromText("Tesouro IPCA+ 2035 aporte 2500");
+      expect(resIpca?.ticker).toBe("TESOURO IPCA+ 2035");
+
+      const resCdb = extractTickerFromText("CDB Banco Inter 100% CDI");
+      expect(resCdb?.ticker).toBe("CDB BANCO INTER");
+    });
   });
 
   describe("parseNaturalInvestmentLine — Quick-Paste", () => {
@@ -81,6 +98,31 @@ describe("domain/portfolio/import-parser — Fase 35 & 36", () => {
       expect(result?.total).toBe(3850);
       expect(result?.currency).toBe("BRL");
       expect(result?.assetClass).toBe("Ações");
+    });
+
+    it("reconcilia matematicamente quantidade, preço unitário e valor total quando os 3 estão presentes", () => {
+      const line = "15/08 comprei 100 cotas a R$ 38,50 total R$ 3.850,00 de PETR4";
+      const result = parseNaturalInvestmentLine(line, 2026);
+      expect(result).not.toBeNull();
+      expect(result?.ticker).toBe("PETR4");
+      expect(result?.quantity).toBe(100);
+      expect(result?.price).toBe(38.5);
+      expect(result?.total).toBe(3850);
+    });
+
+    it("interpreta aporte em Tesouro Direto e Renda Fixa com total único", () => {
+      const selic = parseNaturalInvestmentLine("10/08 aporte de 5000 no Tesouro Selic 2029", 2026);
+      expect(selic).not.toBeNull();
+      expect(selic?.ticker).toBe("TESOURO SELIC 2029");
+      expect(selic?.assetClass).toBe("Renda Fixa");
+      expect(selic?.total).toBe(5000);
+      expect(selic?.quantity).toBe(1);
+
+      const cdb = parseNaturalInvestmentLine("12/08 apliquei 10000 em CDB Banco Inter", 2026);
+      expect(cdb).not.toBeNull();
+      expect(cdb?.ticker).toBe("CDB BANCO INTER");
+      expect(cdb?.assetClass).toBe("Renda Fixa");
+      expect(cdb?.total).toBe(10000);
     });
 
     it("interpreta provento de FII (rendimento)", () => {
@@ -297,6 +339,25 @@ Total Geral;;625;;15550,00;;16800,00`;
         total: 7000,
         assetClass: "FIIs",
       });
+    });
+
+    it("filtra ruídos, separadores e linhas de saldo ao colar lote de investimentos", () => {
+      const noisyText = `
+EXTRATO DE CUSTÓDIA - ÁREA DO INVESTIDOR
+----------------------------------------
+Saldo em Custódia: R$ 25.000,00
+Total Aplicado: R$ 20.000,00
+15/08 comprei 100 PETR4 a 38,50
+16/08 comprei 50 MXRF11 a 10,20
+========================================
+Total Geral: R$ 4.360,00
+`;
+      const rows = parsePortfolioInput(noisyText, 2026);
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.ticker).toBe("PETR4");
+      expect(rows[0]?.quantity).toBe(100);
+      expect(rows[1]?.ticker).toBe("MXRF11");
+      expect(rows[1]?.quantity).toBe(50);
     });
 
     it("retorna array vazio para entrada vazia ou em branco", () => {

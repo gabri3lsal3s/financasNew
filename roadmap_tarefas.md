@@ -153,12 +153,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 13: Parser Inteligente de Texto Colado (Paste Import) Global
+### Tarefa 13: Parser Inteligente de Texto Colado (Paste Import) Global [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Otimizar a importação por colagem de texto em Extratos, Faturas e Investimentos.
 - **Ações:**
-  1. Aprimorar regex e heurísticas para datas (`DD/MM/AAAA`), valores (`R$ 1.234,56`), descrição e sinal (+/-).
-  2. Em investimentos: detectar ticker de ativos, quantidade e valores unitários/totais.
-  3. Ignorar automaticamente cabeçalhos e linhas ruidosas, abrindo a tabela de revisão antes da confirmação.
+  1. Aprimorar regex e heurísticas para datas (`DD/MM/AAAA`), valores (`R$ 1.234,56`), descrição e sinal (+/-). (Concluído: implementado suporte ampliado a meses em português e inglês [ex.: "15 Aug 2026", "15-ago-2026", "10/fev/26"], prefixos e sufixos bancários de crédito e débito [ex.: "+ R$ 150,00", "150,00 D", "2.500,00 C", "80,00-", "200,00+"], parênteses contábeis e detecção semântica automática de entradas via verbos de receita como "recebi", "ganhei", "salário" e "rendimento").
+  2. Em investimentos: detectar ticker de ativos, quantidade e valores unitários/totais. (Concluído: adicionado reconhecimento avançado de Tesouro Direto ["Tesouro Selic 2029", "Tesouro IPCA+ 2035"], Renda Fixa bancária e crédito privado [CDB, LCI, LCA, CRI, CRA, Debêntures], novos criptoativos e reconciliação matemática tripla em `extractInvestmentValues` resolvendo perfeitamente equações quantidade × preço unitário ≈ valor total sem ambiguidades).
+  3. Ignorar automaticamente cabeçalhos e linhas ruidosas, abrindo a tabela de revisão antes da confirmação. (Concluído: criadas funções de filtro `isStatementNoiseOrSummary` e `isPortfolioNoiseOrHeader` descartando metadados de bancos, divisores de relatório, totais contábeis e saldos do dia/período, encaminhando textos em lote diretamente para o staging/conferência interativa com edição e validação pré-gravação).
 - **Commit:** `feat(import): revamp text paste import across transactions and investments with smart regex parsing`
 
 ---
@@ -183,3 +184,18 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
      - Etapa 3: Identificação de duplicados com opções de ação (Pular, Sobrescrever ou Manter ambos).
      - Etapa 4: Resumo e confirmação transacional.
 - **Commit:** `feat(backup): implement full-scope backup and interactive restore wizard with deduplication`
+
+---
+
+### Tarefa 16: Refatoração dos Subseletores de Investimentos e Reposicionamento do Seletor de Mês
+- **Objetivo:** Padronizar os subseletores de investimentos com o comportamento dos seletores de Insights e mover o seletor de mês para baixo das abas.
+- **Ações:**
+  1. Padronizar a navegação em abas de 2º nível (Extrato Mensal, Calendário, Por Ativo, Bola de Neve) seguindo o padrão de renderização dinâmica e design da aba de Insights.
+  2. Mover o seletor de mês/ano (`< Outubro De 2026 >`) para ficar posicionado abaixo dos subseletores e acima da lista de dados.
+  3. Garantir a persistência do estado e manter a barra de subseletores consistente no topo.
+- **Commit:** `refactor(investments): align sub-selectors behavior with insights pattern and move month picker below tabs`
+
+### Tarefa 17: Correções dos erros de Build
+- **Objetivo:** Analise o log, faça testes e corrija os erros de build
+Log: 2026-10-15T18:42:08.560Z	✘ [ERROR] npm error Cannot read properties of null (reading 'edgesOut')
+- **Ações:** Faça as melhorias e correções necessárias

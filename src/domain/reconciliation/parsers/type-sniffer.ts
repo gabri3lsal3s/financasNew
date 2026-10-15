@@ -6,27 +6,34 @@ const MONTH_NAMES_DICT: Record<string, string> = {
   jan: "01",
   fevereiro: "02",
   fev: "02",
+  feb: "02",
   marco: "03",
   março: "03",
   mar: "03",
   abril: "04",
   abr: "04",
+  apr: "04",
   maio: "05",
   mai: "05",
+  may: "05",
   junho: "06",
   jun: "06",
   julho: "07",
   jul: "07",
   agosto: "08",
   ago: "08",
+  aug: "08",
   setembro: "09",
   set: "09",
+  sep: "09",
   outubro: "10",
   out: "10",
+  oct: "10",
   novembro: "11",
   nov: "11",
   dezembro: "12",
   dez: "12",
+  dec: "12",
 };
 
 /**
@@ -68,15 +75,19 @@ export function normalizeDateToISO(rawDate: string, defaultYear = new Date().get
     return `${year}-${month}-${day}`;
   }
 
-  // 4. DD de [Mês] (de [Ano])?
+  // 4. DD de [Mês] (de [Ano])? ou DD-[Mês]-[Ano] ou DD [Mês] [Ano]
   const namedMatch =
-    /^(\d{1,2})(?:º|o)?\s*(?:de\s+)?(janeiro|jan|fevereiro|fev|março|marco|mar|abril|abr|maio|mai|junho|jun|julho|jul|agosto|ago|setembro|set|outubro|out|novembro|nov|dezembro|dez)(?:\s*(?:de\s+)?(\d{4}))?$/i.exec(
+    /^(\d{1,2})(?:º|o)?\s*(?:de\s+|[/-])?\s*(janeiro|jan|fevereiro|fev|feb|março|marco|mar|abril|abr|apr|maio|mai|may|junho|jun|julho|jul|agosto|ago|aug|setembro|set|sep|outubro|out|oct|novembro|nov|dezembro|dez|dec)(?:(?:\s*(?:de\s+|[/-])?\s*|\s+)(\d{2,4}))?$/i.exec(
       trimmed,
     );
   if (namedMatch && namedMatch[1] && namedMatch[2]) {
     const day = namedMatch[1].padStart(2, "0");
     const month = MONTH_NAMES_DICT[namedMatch[2].toLowerCase()] ?? "01";
-    const year = namedMatch[3] ?? defaultYear.toString();
+    let rawYear = namedMatch[3];
+    if (rawYear && rawYear.length === 2) {
+      rawYear = `20${rawYear}`;
+    }
+    const year = rawYear ?? defaultYear.toString();
     return `${year}-${month}-${day}`;
   }
 
@@ -118,23 +129,31 @@ export function parseAmountToCents(raw: string): {
     return null;
   }
 
-  // Detecta sufixo D/C ou sinal no formato bancário brasileiro (ex.: "150,00 D", "2.000,00 C", "150,00D", "2.000,00C")
+  // Detecta prefixo ou sufixo D/C ou sinal no formato bancário brasileiro (ex.: "150,00 D", "2.000,00 C", "+ R$ 150,00", "(150,00)")
+  const hasCreditPrefix = /^\+\s*(?:R\$|BRL|\$)?/i.test(trimmed);
+  const hasDebitPrefix = /^-\s*(?:R\$|BRL|\$)?/i.test(trimmed);
   const hasDebitSuffix =
     /(?:^|\s|\d|\))(?:[dD]|\([dD]\)|-)$/.test(trimmed) && !/card|id|feed/i.test(trimmed);
   const hasCreditSuffix =
     /(?:^|\s|\d|\))(?:[cC]|\([cC]\)|\+)$/.test(trimmed) && !/doc|pix/i.test(trimmed);
 
+  const isCredit = hasCreditSuffix || hasCreditPrefix;
+
   // Detecta sinal negativo
   const isNegative =
-    hasDebitSuffix ||
-    trimmed.startsWith("-") ||
-    trimmed.endsWith("-") ||
-    (trimmed.startsWith("(") && trimmed.endsWith(")")) ||
-    /\b(estorno|devolução|devolucao|reembolso)\b/i.test(trimmed);
+    (hasDebitSuffix ||
+      hasDebitPrefix ||
+      trimmed.startsWith("-") ||
+      trimmed.endsWith("-") ||
+      (trimmed.startsWith("(") && trimmed.endsWith(")")) ||
+      /\b(estorno|devolução|devolucao|reembolso)\b/i.test(trimmed)) &&
+    !isCredit;
 
-  // Remove rótulos de moeda e palavras de preenchimento
+  // Remove rótulos de moeda, prefixos de sinal e palavras de preenchimento
   const sanitized = trimmed
+    .replace(/^[+-]\s*/, "")
     .replace(/^(?:R\$|BRL|\$)\s*/i, "")
+    .replace(/^[+-]\s*/, "")
     .replace(/\s*(?:reais|real|conto)\b/i, "")
     .replace(/\s*\([dDcC]\)\s*$/, "")
     .replace(/\s+[dDcC]\s*$/, "")
@@ -172,7 +191,7 @@ export function parseAmountToCents(raw: string): {
 
   return {
     amountCents: Math.abs(amountCents),
-    isNegative: hasCreditSuffix ? false : isNegative,
+    isNegative: isCredit ? false : isNegative,
     isCreditSuffix: hasCreditSuffix || undefined,
     isDebitSuffix: hasDebitSuffix || undefined,
   };
