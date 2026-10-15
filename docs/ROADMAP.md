@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.47** registra o **Refinamento Holístico de UI/UX — Camada 2: Cards, KPIs & Quebras de Texto (KpiCard, StatCard, RealCashHeroCard, AlertCard e SurplusAporteBanner)** (2026-10-14):
+> - **(1) Módulo Universal de Métricas (`KpiCard` & `StatCard`)**:
+>   - Substituição de `truncate` rígido por quebra harmonizada de até 2 linhas com altura mínima uniforme (`line-clamp-2 min-h-[2rem]` / `min-h-[2.25rem] leading-snug break-words`), eliminando palavras soltas espremidas e alinhando perfeitamente os cards lado a lado nos grids;
+>   - Elevação oficial e superfície unificadas na trinca canônica `border-border/80 bg-surface shadow-xs` (Regra 16);
+>   - Preservação da exibição monetária em `tabular-nums tracking-tight whitespace-nowrap` sem corte de centavos (Regra 11);
+> - **(2) Card Mestre de Saldo Bancário (`RealCashHeroCard`)**:
+>   - Adoção de cabeçalho composto adaptativo com `flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between min-w-0` (Regra 12), impedindo colisões de títulos e quebras feias de texto com o Badge e botão "Calibrar" no mobile < 400px;
+> - **(3) Banners de Alerta & Aporte (`AlertCard` & `SurplusAporteBanner`)**:
+>   - Títulos com quebra de linha suave `break-words` sem truncamento abrupto de advertências financeiras prioritárias;
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis);
+>   - Suíte de testes de Cards e KPIs (4 arquivos / 15 testes) 100% verde;
+>   - Total conformidade com as decisões alinhadas no `/grill-me`.
+
 > **v2.46** registra o **Refinamento Holístico de UI/UX — Camada 1: Contêineres, Tabelas & Scroll Global (PageShell, DataList, PositionTable, ReportClassTables, ReportRedemptionsTable e Admin Tables)** (2026-10-14):
 > - **(1) Contêiner Global & Padding Fluido (`PageShell`)**:
 >   - Adoção de padding horizontal fluido `px-3 sm:px-6 lg:px-8` no cabeçalho sticky e no contêiner principal `main`, liberando 8px de área útil crítica em smartphones ultracompactos (< 380px) sem esmagar métricas e evitando colisão de botões;

@@ -42,7 +42,7 @@ export function AlertCard({ priority, title, description, icon, actions }: Alert
           <span className="flex size-8 shrink-0 items-center justify-center">
             {icon ?? <Icon className="size-4" aria-hidden="true" />}
           </span>
-          <h3 className="text-sm font-semibold text-foreground truncate min-w-0">{title}</h3>
+          <h3 className="text-sm font-semibold text-foreground break-words leading-snug min-w-0 flex-1">{title}</h3>
         </div>
         <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground shrink-0">
           #{priority}

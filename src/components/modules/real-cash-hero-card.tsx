@@ -46,10 +46,10 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
         )}
       >
         {/* Topo do Card: Título + Badge + Ação de Calibrar */}
-        <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap sm:flex-nowrap">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <Landmark className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground break-words min-w-0">
               Saldo Disponível em Conta
             </h2>
           </div>

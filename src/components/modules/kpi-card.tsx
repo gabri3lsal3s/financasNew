@@ -67,9 +67,9 @@ export function KpiCard({ label, value, cents, tone = "default", hint, icon, spa
       className="flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 lg:p-5 h-full rounded-2xl border-border/80 bg-surface shadow-xs transition-all hover:border-border"
     >
       <div>
-        <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
-          {icon ? <span className={cn("shrink-0", toneIcon[tone])}>{icon}</span> : null}
+        <div className="flex items-start justify-between gap-1.5 min-w-0">
+          <span className="line-clamp-2 min-h-[2rem] leading-snug break-words text-xs font-medium text-muted-foreground flex-1">{label}</span>
+          {icon ? <span className={cn("shrink-0 mt-0.5", toneIcon[tone])}>{icon}</span> : null}
         </div>
         {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
         <p className={cn("num mt-1 sm:mt-1.5 tabular-nums tracking-tight whitespace-nowrap text-lg sm:text-xl lg:text-2xl font-bold overflow-x-auto no-scrollbar", toneValue[tone])}>

@@ -49,7 +49,7 @@ export function SurplusAporteBanner({
           </span>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
+              <h2 className="text-sm font-semibold tracking-tight text-foreground break-words">
                 Capacidade de Aporte Estimada
               </h2>
             </div>

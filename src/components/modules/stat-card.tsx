@@ -28,7 +28,7 @@ export interface StatCardProps {
 }
 
 const VARIANT_BORDER_MAP: Record<NonNullable<StatCardProps["variant"]>, string> = {
-  default: "border-border/70",
+  default: "border-border/80 bg-surface shadow-xs",
   positive: "border-positive/30 bg-positive/5",
   warning: "border-warning/30 bg-warning/5",
   critical: "border-critical/30 bg-critical/5",
@@ -77,7 +77,7 @@ export function StatCard({
     <Card className={cn("relative overflow-hidden transition-all duration-200", VARIANT_BORDER_MAP[variant], className)}>
       <CardContent className="p-3.5 sm:p-5 flex flex-col justify-between h-full gap-2">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate" title={title}>
+          <span className="text-xs sm:text-sm font-medium text-muted-foreground line-clamp-2 min-h-[2.25rem] leading-snug break-words flex-1" title={title}>
             {title}
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
