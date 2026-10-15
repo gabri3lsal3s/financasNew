@@ -44,10 +44,10 @@ export interface LaunchState {
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
 
-export function defaultLaunchState(): LaunchState {
+export function defaultLaunchState(type: EntryType = "expense"): LaunchState {
   return {
     step: 1,
-    type: "expense",
+    type,
     valueCents: 0,
     installments: 1,
     categoryId: "",

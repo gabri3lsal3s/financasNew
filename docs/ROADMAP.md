@@ -1,5 +1,28 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.56** registra a **Agilidade Externa — Launcher Shortcuts, Notificações Locais com Botões Rápidos e Deep Links de Lançamento (Fase 4 do Plano Android)** (2026-10-15):
+> - **(1) Atalhos Estáticos de Launcher & Manifest PWA (`shortcuts.xml` & `manifest.webmanifest`)**:
+>   - Configuração de App Shortcuts nativos no Android via `res/xml/shortcuts.xml` e strings internacionalizadas em `strings.xml`:
+>     - *Lançar Despesa* (`/transacoes?novo=despesa`);
+>     - *Lançar Receita* (`/transacoes?novo=receita`);
+>     - *Ver Faturas* (`/cartoes`);
+>     - *Visão Geral* (`/`);
+>   - Paridade completa com Web/PWA no `public/pwa/manifest.webmanifest` sincronizando os 4 atalhos;
+> - **(2) Deep Links & Roteamento Contextual (`src/services/native/deep-links.ts` & `src/components/layout/page-shell.tsx`)**:
+>   - Módulo nativo `deep-links.ts` interceptando URLs de sistema (`appUrlOpen`) e convertendo para navegação client-side via React Router sem recarregar a aplicação;
+>   - `LaunchWizard` e `PageShell` com inicialização contextual imediata em Despesa (`novo=despesa`) ou Receita (`novo=receita`), limpando a URL ao fechar sem poluir o histórico;
+> - **(3) Notificações Locais & Lembrete Diário (`src/services/native/local-notifications.ts`)**:
+>   - Integração com `@capacitor/local-notifications` com agendamento recorrente diário (padrão 20h00, configurável);
+>   - Ações com botões interativos na notificação (`[➕ Despesa]` e `[💵 Receita]`) levando direto ao lançamento;
+>   - Listener nativo `initNotificationActionListener` integrado ao roteador global (`NativeIntegrationsHandler`);
+> - **(4) Controles em Configurações > Personalização (`AppearanceTab`)**:
+>   - Card de Lembretes & Notificações ampliado com toggle de lembrete diário no dispositivo, seletor de horários (`Select`) e feedback sensorial/toast;
+> - **(5) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (316 arquivos / 2.277 testes) **100% verde**;
+>   - Build de produção PWA e sincronização nativa (`npm run build && npx cap sync android`) com 7 plugins sincronizados no Android.
+> 
 > **v2.55** registra a **Segurança, Biometria Adaptativa & Privacy Shield (Fase 3 do Plano Android)** (2026-10-15):
 > - **(1) Biometria Adaptativa (`src/services/native/biometrics.ts`)**:
 >   - Integração do sensor biométrico nativo (impressão digital, face e íris) via `@aparajita/capacitor-biometric-auth`;

@@ -1,4 +1,5 @@
-import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { useEffect } from "react";
+import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen, PageShell } from "@/components/layout";
 import { FloatingCalculator } from "@/components/modules/floating-calculator";
@@ -16,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { useUserAccess } from "@/state";
+import { initDeepLinkListener, initNotificationActionListener } from "@/services/native";
 
 /** Mapeamento de rotas para suas respectivas Feature Flags (§F43). */
 const ROUTE_FEATURE_MAP: Record<string, string> = {
@@ -101,9 +103,35 @@ function RequireAuth() {
   );
 }
 
+/**
+ * Escuta eventos do sistema operacional nativo (atalhos de launcher, deep links e
+ * ações de notificações locais) redirecionando suavemente a navegação interna.
+ */
+function NativeIntegrationsHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const cleanupDeepLinks = initDeepLinkListener((path) => {
+      navigate(path);
+    });
+
+    const cleanupNotifications = initNotificationActionListener((path) => {
+      navigate(path);
+    });
+
+    return () => {
+      void cleanupDeepLinks();
+      void cleanupNotifications();
+    };
+  }, [navigate]);
+
+  return null;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <NativeIntegrationsHandler />
       <Routes>
         {/* Páginas públicas de apresentação & planos */}
         <Route path="/apresentacao" element={<LandingPage />} />

@@ -180,15 +180,15 @@ graph TD
 - [x] **Privacy Shield:** Ativar `FLAG_SECURE` na janela nativa para bloquear screenshots e visualização no alternador de apps recentes.
 - **DoD:** Ao alternar de app e retornar após o tempo limite, o app solicita digital/face e oculta dados confidenciais na visualização de tarefas recentes.
 
-### Fase 4: Agilidade Externa (Shortcuts no Launcher & Notificação Local)
-- [ ] **Atalhos no Launcher:** Configurar `res/xml/shortcuts.xml` nativo com ações instantâneas:
+### Fase 4: Agilidade Externa (Shortcuts no Launcher & Notificação Local) [Concluída]
+- [x] **Atalhos no Launcher:** Configurar `res/xml/shortcuts.xml` nativo com ações instantâneas:
   - ⚡ *Lançar Despesa* (`/transacoes?novo=despesa`)
   - 💰 *Lançar Receita* (`/transacoes?novo=receita`)
   - 💳 *Ver Faturas* (`/cartoes`)
   - 📊 *Visão Geral* (`/`)
-- [ ] **Plugin Local Notifications:** Instalar e configurar `@capacitor/local-notifications`.
-- [ ] **Lembrete de Fechamento Diário:** Disparo offline programado (ex: 20h00) com botões `[➕ Despesa]` e `[💵 Receita]`.
-- [ ] **Deep Links de Ação:** O clique nos botões da notificação leva direto ao formulário preenchido daquela ação.
+- [x] **Plugin Local Notifications:** Instalar e configurar `@capacitor/local-notifications`.
+- [x] **Lembrete de Fechamento Diário:** Disparo offline programado (ex: 20h00) com botões `[➕ Despesa]` e `[💵 Receita]`.
+- [x] **Deep Links de Ação:** O clique nos botões da notificação leva direto ao formulário preenchido daquela ação.
 - **DoD:** Atalhos funcionam ao segurar o ícone na tela inicial; notificação das 20h abre a ação correspondente com 1 clique.
 
 ### Fase 5: Assistente Passivo (Captura de Compras & Compartilhamento Pix)

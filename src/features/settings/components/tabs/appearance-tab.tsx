@@ -59,6 +59,22 @@ import {
 } from "@/state";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
+import {
+  isDailyReminderEnabled,
+  setDailyReminderEnabled,
+  getDailyReminderTime,
+  setDailyReminderTime,
+  scheduleDailyReminder,
+  cancelDailyReminder,
+  requestNotificationPermissions,
+} from "@/services/native";
+
+const DAILY_REMINDER_TIME_OPTIONS: SelectOption[] = [
+  { value: "19:00", label: "19:00 (Início da noite)" },
+  { value: "20:00", label: "20:00 (Padrão sugerido)" },
+  { value: "21:00", label: "21:00" },
+  { value: "22:00", label: "22:00 (Final da noite)" },
+];
 
 const MOTION_OPTIONS: { id: MotionLevel; label: string; desc: string }[] = [
   { id: "fluid", label: "Cinemática / Fluida", desc: "Física spring, tickers animados e ripple tátil" },
@@ -293,6 +309,62 @@ export function AppearanceTab() {
     const num = parseInt(valStr, 10);
     if (!Number.isNaN(num) && num >= 0 && num <= 30) {
       updateReminderPreferencesMutation.mutate({ reminderDaysBeforeDebt: num });
+    }
+  };
+
+  const [dailyReminderActive, setDailyReminderActive] = useState(() => isDailyReminderEnabled());
+  const [dailyReminderTime, setDailyReminderTimeState] = useState(() => getDailyReminderTime());
+
+  const handleToggleDailyReminder = async (enabled: boolean) => {
+    if (enabled) {
+      const perm = await requestNotificationPermissions();
+      if (!perm.granted) {
+        pushToast({
+          title: "Permissão de notificação necessária",
+          description: "Habilite as notificações nas configurações do seu celular para receber o lembrete.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const [h, m] = dailyReminderTime.split(":").map(Number);
+      const scheduled = await scheduleDailyReminder({ hour: h || 20, minute: m || 0 });
+      if (scheduled) {
+        setDailyReminderEnabled(true);
+        setDailyReminderActive(true);
+        pushToast({
+          title: "Lembrete diário ativado",
+          description: `Você receberá uma notificação com botões rápidos todos os dias às ${dailyReminderTime}.`,
+          variant: "success",
+        });
+      } else {
+        pushToast({
+          title: "Falha ao agendar",
+          description: "Não foi possível agendar o lembrete diário no dispositivo.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      await cancelDailyReminder();
+      setDailyReminderEnabled(false);
+      setDailyReminderActive(false);
+      pushToast({
+        title: "Lembrete diário desativado",
+        variant: "default",
+      });
+    }
+  };
+
+  const handleDailyReminderTimeChange = async (time: string) => {
+    setDailyReminderTimeState(time);
+    setDailyReminderTime(time);
+    if (dailyReminderActive) {
+      const [h, m] = time.split(":").map(Number);
+      await scheduleDailyReminder({ hour: h || 20, minute: m || 0 });
+      pushToast({
+        title: "Horário atualizado",
+        description: `Lembrete diário reagendado para às ${time}.`,
+        variant: "success",
+      });
     }
   };
 
@@ -1005,6 +1077,42 @@ export function AppearanceTab() {
                 )}
               </div>
             )}
+
+            {/* Lembrete de Fechamento Diário (Notificação no Celular / Dispositivo) */}
+            <div className="pt-3.5 border-t border-border/80 space-y-3">
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs">
+                <div className="pr-4 space-y-0.5">
+                  <div className="font-semibold text-sm text-foreground">
+                    Lembrete de Fechamento Diário
+                  </div>
+                  <div className="text-xs text-muted-foreground leading-relaxed">
+                    Receba uma notificação no dispositivo com ações rápidas para registrar despesas e receitas do dia.
+                  </div>
+                </div>
+                <Checkbox
+                  checked={dailyReminderActive}
+                  onCheckedChange={handleToggleDailyReminder}
+                  aria-label="Habilitar Lembrete de Fechamento Diário"
+                />
+              </div>
+
+              {dailyReminderActive && (
+                <div className="p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-2">
+                  <span className="text-xs font-semibold text-foreground">
+                    Horário do Lembrete
+                  </span>
+                  <Select
+                    value={dailyReminderTime}
+                    onValueChange={handleDailyReminderTimeChange}
+                    options={DAILY_REMINDER_TIME_OPTIONS}
+                    ariaLabel="Selecione o horário para o lembrete diário"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    O aplicativo emitirá a notificação programada todos os dias no horário selecionado.
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

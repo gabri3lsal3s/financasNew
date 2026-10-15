@@ -4,4 +4,12 @@
     <string name="title_activity_main">Guia Financeiro</string>
     <string name="package_name">com.guiafinanceiro.app</string>
     <string name="custom_url_scheme">com.guiafinanceiro.app</string>
+    <string name="shortcut_new_expense">Lançar Despesa</string>
+    <string name="shortcut_new_expense_long">Lançar nova despesa financeira</string>
+    <string name="shortcut_new_income">Lançar Receita</string>
+    <string name="shortcut_new_income_long">Lançar nova receita recebida</string>
+    <string name="shortcut_invoices">Ver Faturas</string>
+    <string name="shortcut_invoices_long">Acompanhar faturas de cartões</string>
+    <string name="shortcut_overview">Visão Geral</string>
+    <string name="shortcut_overview_long">Visão geral e resumo do patrimônio</string>
 </resources>

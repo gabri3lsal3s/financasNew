@@ -6,3 +6,5 @@ export * from "./splash-screen";
 export * from "./biometrics";
 export * from "./privacy-shield";
 export * from "./app-lock";
+export * from "./deep-links";
+export * from "./local-notifications";

@@ -35,8 +35,9 @@
     }
   ],
   "shortcuts": [
-
-    { "name": "Lançar despesa", "url": "/transacoes?novo=despesa" },
-    { "name": "Visão geral", "url": "/" }
+    { "name": "Lançar Despesa", "short_name": "Despesa", "url": "/transacoes?novo=despesa" },
+    { "name": "Lançar Receita", "short_name": "Receita", "url": "/transacoes?novo=receita" },
+    { "name": "Ver Faturas", "short_name": "Faturas", "url": "/cartoes" },
+    { "name": "Visão Geral", "short_name": "Início", "url": "/" }
   ]
 }

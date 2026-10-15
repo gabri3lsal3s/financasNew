@@ -1,5 +1,5 @@
-import { Suspense } from "react";
-import { Outlet, useLocation } from "react-router";
+import { Suspense, useState } from "react";
+import { Outlet, useLocation, useSearchParams } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BackToTop } from "@/components/layout/back-to-top";
@@ -13,7 +13,6 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Skeleton } from "@/components/ui";
 import { LaunchWizard } from "@/features/transactions";
 import { useContainerScroll } from "@/hooks";
-import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { useReminders } from "@/state";
@@ -33,7 +32,29 @@ export function PageShell() {
   const visual = useVisualCustomization();
   const { isCollapsed, toggle } = useSidebarState();
   const location = useLocation();
-  const { open: wizardOpen, setOpen: setWizardOpen } = useCreateDeepLink("transacao");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Suporte aos atalhos rápidos nativos e de launcher (?novo=despesa, ?novo=receita, ?novo=transacao)
+  const novoParam = searchParams.get("novo");
+  const isShortcutNew = novoParam === "transacao" || novoParam === "despesa" || novoParam === "receita";
+  const [localWizardOpen, setLocalWizardOpen] = useState(false);
+  const wizardOpen = isShortcutNew || localWizardOpen;
+  const initialType = novoParam === "receita" ? "income" : "expense";
+
+  const handleWizardOpenChange = (next: boolean) => {
+    setLocalWizardOpen(next);
+    if (!next && isShortcutNew) {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          updated.delete("novo");
+          return updated;
+        },
+        { replace: true },
+      );
+    }
+  };
+
   const { totalCount } = useReminders();
   const { isScrolled, showBackToTop } = useContainerScroll({
     containerId: "main-content",
@@ -60,7 +81,12 @@ export function PageShell() {
   return (
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
       {/* Wizard contextual em overlay (preserva rota ativa e contexto em qualquer página) */}
-      <LaunchWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+      <LaunchWizard
+        key={`${initialType}-${wizardOpen ? "open" : "closed"}`}
+        open={wizardOpen}
+        initialType={initialType}
+        onOpenChange={handleWizardOpenChange}
+      />
       {/* Estado da sidebar vive aqui (fonte única) e a margem acompanha em tempo real. */}
       <Sidebar isCollapsed={isCollapsed} onToggle={toggle} />
       {/* Margem acompanha o estado da sidebar (F7.2): lg:pl-64 expandida ↔ lg:pl-20 compacta. */}

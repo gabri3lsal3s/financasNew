@@ -238,7 +238,8 @@
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
     ├── services/                  # Apresentação + integrações
     │   ├── native/                #   Gateway nativo (Capacitor/Android): platform, back-button,
-    │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock
+    │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,
+    │   │                          #     deep-links, local-notifications
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)
