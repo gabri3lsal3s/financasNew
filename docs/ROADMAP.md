@@ -1,5 +1,31 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.39** registra o **Refinamento Holístico do Bloco 6 (Insights, Saúde Financeira & Projeção FIRE - InsightsPage, DiagnosticsTab, RecurrencesTab, ProjectionTab e PlanningSection)** (2026-10-14):
+> - **(1) Hub Central de Insights (`InsightsPage`)**:
+>   - Adição da 4ª aba nativa: **Planejamento FIRE** (`Flame`, `size-4`), integrando o Simulador FIRE determinístico, o Termômetro da Reserva de Emergência em 3 faixas e o Conversor do Impacto do Hábito na Aposentadoria (`PlanningSection`), com layout responsivo e scroll suave desobstruído (`Tabs` fluido conforme Regra 9);
+>   - Integração do Gateway Central Sensorial (`triggerSensory("selection")`) na alternância reativa entre as 4 abas ("Diagnósticos", "Recorrências", "Projeção", "Planejamento FIRE");
+>   - Saneamento semântico de alertas críticos: severidade `critical` agora mapeada diretamente para variante `error` com `role="alert"` e bordas em vermelho semântico;
+> - **(2) Dossiê de Diagnósticos & Hábitos (`DiagnosticsTab` & `DiagnosticCard`)**:
+>   - `DiagnosticsTab`: Botão de expansão/colapso de alertas enriquecido com feedback tátil e contador formatado em `<Badge size="xs" variant="muted">` (Regra 14);
+>   - `DiagnosticCard`: Elevação e bordas canônicas `border-border/80 bg-surface shadow-xs` (Regra 16);
+>   - Tipografia de KPIs adaptativa sem `truncate` direto (`text-lg sm:text-xl font-semibold tabular-nums tracking-tight whitespace-nowrap`), garantindo leitura íntegra de percentuais e múltiplos (Regra 11);
+> - **(3) Assinaturas & Recorrências (`RecurrencesTab` & `InsightList`)**:
+>   - Card de resumo com elevação canônica e contadores anuais e mensais formatados;
+>   - Seção colapsável de ocorrências ignoradas com resposta tátil ao clique no toggle;
+> - **(4) Projeção & Otimização de Limites (`ProjectionTab`)**:
+>   - Saneamento de bordas e elevações para o padrão canônico (`border-border/80 bg-surface shadow-xs`);
+>   - Ícones de cabeçalhos de metas e pendências harmonizados em tom neutro suave `text-muted-foreground` (Regra 13);
+>   - Pendências do período e desafios de corte com `tabular-nums whitespace-nowrap` sem reticências (Regra 11);
+> - **(5) Módulo de Planejamento FIRE & Reserva (`PlanningSection`)**:
+>   - Badges de caixa e status padronizados com `<Badge size="sm">` (Regra 14);
+>   - Valores de projeção de hábitos de 10, 20 e 30 anos enriquecidos com `tabular-nums whitespace-nowrap` (Regra 11);
+>   - Contêineres de cards alinhados com `border-border/80 bg-surface shadow-xs` (Regra 16);
+> - **(6) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis);
+>   - Suíte de testes de Insights e Planejamento FIRE (14 testes) 100% verde;
+>   - Build de produção Vite + Workbox PWA gerado com sucesso em 1.26s.
+
 > **v2.38** registra o **Refinamento Holístico do Bloco 5 (Diálogos Operacionais de Entrada - LaunchWizard, BankStatementImportDialog e StatementImportDialog)** (2026-10-14):
 > - **(1) Assistente de Lançamento Rápido (`LaunchWizard`)**:
 >   - Adição de feedback tátil e sonoro nativo (`triggerSensory("selection")`) na navegação entre etapas (`goTo`) e nas alternâncias de abas de tipo (Despesa / Renda);

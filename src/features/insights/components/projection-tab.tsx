@@ -56,20 +56,20 @@ export function ProjectionTab({
           />
 
           {/* Pendências projetadas */}
-          <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
+          <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
             <h3 className="text-sm font-semibold text-foreground">Pendências do período</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
                 <p className="text-muted-foreground">A receber</p>
-                <MoneyText cents={pendingSummary.receivablesCents} tone="positive" className="text-sm font-semibold whitespace-nowrap" />
+                <MoneyText cents={pendingSummary.receivablesCents} tone="positive" className="text-sm font-semibold whitespace-nowrap tabular-nums" />
               </div>
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
                 <p className="text-muted-foreground">A pagar</p>
-                <MoneyText cents={pendingSummary.payablesCents} tone="negative" className="text-sm font-semibold whitespace-nowrap" />
+                <MoneyText cents={pendingSummary.payablesCents} tone="negative" className="text-sm font-semibold whitespace-nowrap tabular-nums" />
               </div>
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
                 <p className="text-muted-foreground">Saldo projetado das pendências</p>
-                <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-sm font-semibold whitespace-nowrap" />
+                <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-sm font-semibold whitespace-nowrap tabular-nums" />
               </div>
 
             </div>
@@ -83,11 +83,9 @@ export function ProjectionTab({
           Plano de Economia & Cortes
         </h2>
 
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-warning/10 border border-warning/20 text-warning-strong">
-              <Sparkles className="size-3.5" aria-hidden="true" />
-            </span>
+        <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground">Desafios de economia sugeridos</h3>
               <p className="text-[11px] text-muted-foreground truncate">Metas inteligentes de corte nas suas categorias de maior volume.</p>
@@ -102,9 +100,9 @@ export function ProjectionTab({
                 <div key={`${challenge.categoryId}-${challenge.percent}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 p-3 text-xs min-w-0">
                   <span className="font-medium text-foreground min-w-0 flex-1">
                     {challenge.name} — cortar {challenge.percent}% (meta{" "}
-                    <MoneyText cents={challenge.targetCents} tone="default" className="privacy-mask text-xs" />)
+                    <MoneyText cents={challenge.targetCents} tone="default" className="privacy-mask text-xs whitespace-nowrap tabular-nums" />)
                   </span>
-                  <span className="num shrink-0 font-semibold text-positive-strong">
+                  <span className="shrink-0 font-semibold text-positive-strong tabular-nums whitespace-nowrap">
                     <MoneyText cents={-challenge.savingsCents} tone="positive" sign="explicit" />/mês
                   </span>
                 </div>
@@ -112,7 +110,7 @@ export function ProjectionTab({
               {showDiscretionary && discretionary ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-positive/40 bg-positive/5 p-3 text-xs min-w-0">
                   <span className="font-medium text-foreground min-w-0 flex-1">30% em não essenciais</span>
-                  <span className="num shrink-0 font-semibold text-positive-strong">
+                  <span className="shrink-0 font-semibold text-positive-strong tabular-nums whitespace-nowrap">
                     <MoneyText cents={-discretionary.savingsCents} tone="positive" sign="explicit" />/mês
                   </span>
                 </div>
@@ -128,7 +126,7 @@ export function ProjectionTab({
           Otimização de Limites
         </h2>
 
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden">
+        <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground">Sugestões de ajuste de limite</h3>
             <p className="text-[11px] text-muted-foreground">Ajustes recomendados para alinhar os limites de orçamento ao consumo real.</p>

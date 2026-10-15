@@ -189,4 +189,13 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     render(<InsightsPage />);
     expect(screen.getByText(/Saldo negativo:/)).toBeInTheDocument();
   });
+
+  it("renderiza a aba Planejamento FIRE com simulador e termometro de reserva", async () => {
+    const user = userEvent.setup();
+    render(<InsightsPage />);
+    await user.click(screen.getByRole("tab", { name: /Planejamento FIRE/i }));
+    expect(screen.getByText("Termômetro da Reserva de Emergência")).toBeInTheDocument();
+    expect(screen.getByText("Independência financeira (FIRE)")).toBeInTheDocument();
+    expect(screen.getByText("O Impacto do Hábito na Aposentadoria")).toBeInTheDocument();
+  });
 });

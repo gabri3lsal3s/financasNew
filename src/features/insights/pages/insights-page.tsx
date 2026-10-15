@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Activity, Calendar, LineChart, Repeat } from "lucide-react";
+import { Activity, Calendar, Flame, LineChart, Repeat } from "lucide-react";
 import { ErrorState, Skeleton, Tabs } from "@/components/ui";
+import { PlanningSection } from "@/components/modules";
+import { triggerSensory } from "@/services/sensory";
 import { criticalAlerts } from "@/domain/insights/alerts";
 import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
 import { partitionFeedback, type FeedbackDecision, type FeedbackMap } from "@/domain/insights/feedback";
@@ -250,7 +252,12 @@ export function InsightsPage({ showHeader = true }: { showHeader?: boolean } = {
   const warnings: WarningItem[] = [
     ...alerts.map((a) => ({
       id: a.id,
-      variant: a.severity === "praise" ? ("success" as const) : ("warning" as const),
+      variant:
+        a.severity === "critical"
+          ? ("error" as const)
+          : a.severity === "praise"
+            ? ("success" as const)
+            : ("warning" as const),
       message: `${a.title}: ${a.description}`,
     })),
     ...(concentration.alert
@@ -357,7 +364,10 @@ export function InsightsPage({ showHeader = true }: { showHeader?: boolean } = {
       ) : (
         <Tabs
           value={tab}
-          onValueChange={setTab}
+          onValueChange={(val) => {
+            triggerSensory("selection");
+            setTab(val);
+          }}
           swipeable
           items={[
             {
@@ -417,6 +427,17 @@ export function InsightsPage({ showHeader = true }: { showHeader?: boolean } = {
                   showDiscretionary={showDiscretionary}
                   discretionary={discretionary}
                   limitSuggestions={limitSuggestions}
+                />
+              ),
+            },
+            {
+              value: "planning",
+              label: "Planejamento FIRE",
+              icon: <Flame className="size-4" aria-hidden="true" />,
+              content: (
+                <PlanningSection
+                  balanceCents={balanceCents}
+                  monthlyExpensesCents={expenseCents}
                 />
               ),
             },

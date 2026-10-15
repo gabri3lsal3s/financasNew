@@ -8,9 +8,10 @@ export interface DiagnosticCardProps {
   tone?: "positive" | "negative" | "neutral";
 }
 
+
 export function DiagnosticCard({ icon, label, value, subtitle, tone }: DiagnosticCardProps) {
   return (
-    <div className="flex flex-col justify-between gap-2 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 overflow-hidden">
+    <div className="flex flex-col justify-between gap-2 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 min-w-0 shadow-xs">
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
         {icon ? <span className="shrink-0 text-muted-foreground">{icon}</span> : null}
@@ -18,11 +19,11 @@ export function DiagnosticCard({ icon, label, value, subtitle, tone }: Diagnosti
       <div className="flex flex-col gap-0.5">
         <span
           className={cn(
-            "num text-lg sm:text-xl font-semibold truncate",
+            "text-lg sm:text-xl font-semibold tabular-nums tracking-tight whitespace-nowrap",
             tone === "positive"
               ? "text-positive-strong"
               : tone === "negative"
-                ? "text-critical"
+                ? "text-critical-strong"
                 : "text-foreground",
           )}
         >
@@ -33,3 +34,4 @@ export function DiagnosticCard({ icon, label, value, subtitle, tone }: Diagnosti
     </div>
   );
 }
+

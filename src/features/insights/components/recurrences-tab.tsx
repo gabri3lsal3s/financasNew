@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, EyeOff, Repeat } from "lucide-react";
 import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { InsightList } from "@/components/modules";
+import { triggerSensory } from "@/services/sensory";
 import { SERVICE_SEGMENT_LABELS } from "@/domain/insights";
 import { RECURRENCE_LEVEL_LABELS } from "@/lib/labels";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
@@ -35,7 +36,7 @@ export function RecurrencesTab({
   return (
     <div className="flex flex-col gap-4">
       {/* Card de Resumo de Recorrências */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:p-5">
+      <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 w-full">
           <div>
             <span className="text-xs font-medium text-muted-foreground">Total mensal recorrente</span>
@@ -129,7 +130,10 @@ export function RecurrencesTab({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => setShowIgnored((prev) => !prev)}
+            onClick={() => {
+              triggerSensory("selection");
+              setShowIgnored((prev) => !prev);
+            }}
             className="flex items-center justify-between gap-2 self-start text-xs text-muted-foreground hover:text-foreground"
             aria-expanded={showIgnored}
           >

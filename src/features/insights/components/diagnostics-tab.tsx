@@ -10,13 +10,14 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { Alert, Button } from "@/components/ui";
+import { Alert, Badge, Button } from "@/components/ui";
+import { triggerSensory } from "@/services/sensory";
 import { SAVINGS_HEALTH_LABELS, WEEKEND_RATIO_LIMIT, type SavingsHealth } from "@/domain/insights";
 import { DiagnosticCard } from "./diagnostic-card";
 
 export interface WarningItem {
   id: string;
-  variant: "warning" | "success";
+  variant: "warning" | "success" | "error";
   message: string;
 }
 
@@ -56,9 +57,9 @@ export function DiagnosticsTab({
             Avisos & Recomendações
           </h2>
           {warnings.length > 2 && (
-            <span className="text-[11px] text-muted-foreground">
+            <Badge size="xs" variant="muted">
               {expandedWarnings ? `${warnings.length} de ${warnings.length}` : `2 de ${warnings.length} alertas`}
-            </span>
+            </Badge>
           )}
         </div>
         {warnings.length === 0 ? (
@@ -83,7 +84,10 @@ export function DiagnosticsTab({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setExpandedWarnings(!expandedWarnings)}
+                onClick={() => {
+                  triggerSensory("selection");
+                  setExpandedWarnings((prev) => !prev);
+                }}
                 className="self-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mt-0.5"
               >
                 {expandedWarnings ? (

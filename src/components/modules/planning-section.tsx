@@ -76,8 +76,8 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
               </p>
             </div>
           </div>
-          <Badge variant="portfolio" className="text-xs">
-            Caixa Atual: <MoneyText cents={balanceCents} tone="default" className="font-semibold ml-1" />
+          <Badge variant="portfolio" size="sm">
+            Caixa Atual: <MoneyText cents={balanceCents} tone="default" className="font-semibold ml-1 whitespace-nowrap tabular-nums" />
           </Badge>
         </div>
 
@@ -98,11 +98,11 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
             >
               <div className="flex items-center justify-between gap-1 text-xs">
                 <span className="font-medium text-foreground">{label}</span>
-                <span className="num font-semibold text-muted-foreground">{data.progressPercent}%</span>
+                <span className="font-semibold text-muted-foreground tabular-nums whitespace-nowrap">{data.progressPercent}%</span>
               </div>
               <Progress value={data.progressPercent} className="h-1.5" />
               <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
-                <span>Alvo: <MoneyText cents={data.targetCents} tone="default" /></span>
+                <span>Alvo: <MoneyText cents={data.targetCents} tone="default" className="whitespace-nowrap tabular-nums" /></span>
                 <span className="flex items-center gap-1">
                   <Calendar className="size-3" aria-hidden="true" />
                   {data.isReached ? "Concluído" : data.estimatedCompletionMonth ? `Previsão: ${data.estimatedCompletionMonth}` : "Sem previsão"}
@@ -116,7 +116,7 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
       {/* Simulador FIRE — card em linha cheia */}
       <section
         aria-label="Independência financeira"
-        className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:p-5 min-w-0 overflow-hidden shadow-xs"
+        className="flex flex-col gap-4 rounded-xl border border-border/80 bg-surface p-4 sm:p-5 min-w-0 shadow-xs"
       >
         <div className="flex items-center gap-2.5">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-positive/10 border border-positive/20 text-positive-strong">
@@ -152,12 +152,12 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
         <div className="grid grid-cols-2 gap-3 text-xs min-w-0">
           <div className="rounded-lg border border-border/60 bg-muted/30 p-3 min-w-0">
             <p className="text-muted-foreground">Meta FIRE (4%)</p>
-            <MoneyText cents={projection.targetCents} tone="positive" className="text-sm font-semibold whitespace-nowrap" />
+            <MoneyText cents={projection.targetCents} tone="positive" className="text-sm font-semibold whitespace-nowrap tabular-nums" />
 
           </div>
           <div className="rounded-lg border border-border/60 bg-muted/30 p-3 min-w-0">
             <p className="text-muted-foreground">Tempo até a meta</p>
-            <p className="num text-sm font-semibold text-foreground truncate">
+            <p className="text-sm font-semibold text-foreground whitespace-nowrap tabular-nums">
               {projection.yearsToFire === null ? `+${projection.series.length - 1} anos` : `${projection.yearsToFire} ${projection.yearsToFire === 1 ? "ano" : "anos"}`}
             </p>
           </div>
@@ -212,15 +212,15 @@ export function PlanningSection({ balanceCents, monthlyExpensesCents, className 
 
           <div className="p-2.5 rounded-lg border border-border/60 bg-muted/30">
             <span className="text-[10px] text-muted-foreground block">Em 10 anos:</span>
-            <MoneyText cents={habitImpact.futureValue10yCents} tone="default" className="text-xs font-semibold" />
+            <MoneyText cents={habitImpact.futureValue10yCents} tone="default" className="text-xs font-semibold whitespace-nowrap tabular-nums" />
           </div>
           <div className="p-2.5 rounded-lg border border-border/60 bg-muted/30">
             <span className="text-[10px] text-muted-foreground block">Em 20 anos:</span>
-            <MoneyText cents={habitImpact.futureValue20yCents} tone="default" className="text-xs font-semibold" />
+            <MoneyText cents={habitImpact.futureValue20yCents} tone="default" className="text-xs font-semibold whitespace-nowrap tabular-nums" />
           </div>
           <div className="p-2.5 rounded-lg border border-border/60 bg-muted/30">
             <span className="text-[10px] text-muted-foreground block">Em 30 anos:</span>
-            <MoneyText cents={habitImpact.futureValue30yCents} tone="positive" className="text-xs font-semibold" />
+            <MoneyText cents={habitImpact.futureValue30yCents} tone="positive" className="text-xs font-semibold whitespace-nowrap tabular-nums" />
           </div>
         </div>
       </section>
