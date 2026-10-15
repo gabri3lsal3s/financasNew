@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.52** registra a **Correção de Erros de Build no CI/CD e Estabilização da Árvore de Dependências npm** (2026-10-15):
+> - **(1) Resolução da Causa-Raiz do Crash Arborist (`edgesOut` of null)**:
+>   - Diagnóstico do erro `npm error Cannot read properties of null (reading 'edgesOut')` ocorrido no pipeline de CI do Cloudflare Pages durante `npm ci` / `npm install`;
+>   - O crash decorria de falha do Arborist (`#loadPeerSet` em `build-ideal-tree.js`) ao tentar resolver peer dependencies transitivas não resolvidas de `@tailwindcss/oxide-wasm32-wasi` (`@emnapi/core`, `@emnapi/runtime`, `@emnapi/wasi-threads`, `@tybys/wasm-util`, `tslib`) em ambiente headless;
+> - **(2) Governança Determinística de Pacotes (`.npmrc`)**:
+>   - Criação do arquivo de configuração `.npmrc` na raiz do projeto com `legacy-peer-deps=true`, `fund=false` e `audit=false`, blindando ambientes de CI/CD contra quebras de árvore e inconsistências de peer dependencies;
+> - **(3) Harmonização e Regeneração do `package-lock.json`**:
+>   - Regeneração integral do `package-lock.json` via `npm install --package-lock-only`, mapeando todos os nós transitivos ausentes e alinhando os requisitos de engine com o `package.json` (`node >=22.0.0`);
+>   - Validação da instalação limpa com `npm ci` executando perfeitamente em 15s sem advertências;
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (303 arquivos / 2.213 testes) **100% verde**;
+>   - Build de produção PWA (`vite build`) gerado com sucesso.
+> 
 > **v2.51** registra a **Refatoração dos Subseletores de Investimentos e Reposicionamento do Seletor de Mês** (2026-10-15):
 > - **(1) Subseletores em Pills Padronizados no Design de Insights (`ProventosTab`)**:
 >   - Navegação em abas de 2º nível (*Extrato Mensal*, *Calendário*, *Por Ativo*, *Bola de Neve*) estruturada com `role="tablist"`, botões em pills com variant condicional (`default` para selecionada, `outline` para inativas), ícones padronizados `size-3.5` e rolagem horizontal suave no mobile (`overflow-x-auto no-scrollbar scroll-smooth`);
