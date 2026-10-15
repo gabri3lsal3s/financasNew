@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.44** registra o **Refinamento Holístico do Bloco 11 (Fluxo de Assinatura, Checkout PIX/Cartão & Upgrade Pro - SubscriptionCheckoutPage)** (2026-10-14):
+> - **(1) Página de Checkout & Seleção de Métodos (`SubscriptionCheckoutPage`)**:
+>   - Eliminação de botões nativos soltos no header e substituição pelo primitivo `<Button variant="ghost" size="sm">` com ícone oficial `<ArrowLeft className="size-3.5" aria-hidden="true" />` (Regra 7);
+>   - Adição de resposta tátil imediata via Gateway Central (`triggerSensory("selection")`) na alternância entre Cartão de Crédito e PIX Instantâneo no `MethodButton` (Regra 17);
+>   - Eliminação completa de SVG ad-hoc manual (`ClockIcon`), substituído pelo ícone padronizado oficial `<Clock className="size-3.5 shrink-0" aria-hidden="true" />` do `lucide-react` (Regra 8);
+>   - Valores monetários de planos (mensal R$ 19,90 e anual R$ 178,80) e economia blindados contra cortes com `tabular-nums tracking-tight whitespace-nowrap` sem `truncate` (Regra 11);
+>   - Superfície e elevação do resumo de benefícios e formulário de checkout unificados com a trinca canônica `border-border/80 bg-surface shadow-xs` (Regra 16);
+> - **(2) Suíte de Testes Automatizados**:
+>   - Criação de suíte de testes unitários dedicada (`subscription-checkout-page.test.tsx`) com 100% de aprovação na renderização do plano anual e chaveamento de métodos para PIX;
+> - **(3) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem SVGs duplicados);
+>   - Testes de Assinatura (1 arquivo / 2 testes) 100% verde;
+>   - Total conformidade com as Regras de Ouro de UI e Governança Sensorial.
+
 > **v2.43** registra o **Refinamento Holístico do Bloco 10 (Autenticação, Recuperação de Senha & Telas de Status de Conta - AuthShell, LoginPage, RegisterPage, ForgotPasswordPage, PendingApprovalPage e SuspendedAccountPage)** (2026-10-14):
 > - **(1) Casca de Autenticação (`AuthShell`)**:
 >   - Elevação e superfície do card de autenticação padronizadas para `border-border/80 bg-surface shadow-xs` (Regra 16);

@@ -14,6 +14,7 @@ import {
   Copy,
   Check,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -266,14 +267,16 @@ export function SubscriptionCheckoutPage() {
       <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
           <BrandLogo markClassName="size-7" />
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => void navigate(-1)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-3.5" aria-hidden="true" />
             Voltar
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -489,7 +492,7 @@ export function SubscriptionCheckoutPage() {
                   )}
                 </Button>
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground text-center">
-                  <ClockIcon className="size-3.5 shrink-0" />
+                  <Clock className="size-3.5 shrink-0" aria-hidden="true" />
                   <span>Aguardando pagamento... A ativação é automática.</span>
                 </div>
               </div>
@@ -587,9 +590,12 @@ function MethodButton({ active, icon: Icon, label, onClick }: MethodButtonProps)
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        triggerSensory("selection");
+        onClick();
+      }}
       className={cn(
-        "flex flex-col items-center gap-2 rounded-xl border p-3 text-xs font-medium transition-all duration-200 cursor-pointer",
+        "flex flex-col items-center gap-2 rounded-xl border p-3 text-xs font-medium transition-all duration-200 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/20",
         active
           ? "border-primary bg-primary/8 text-primary shadow-2xs"
           : "border-border/80 bg-surface text-muted-foreground hover:border-border hover:text-foreground",
@@ -612,24 +618,5 @@ function SecuritySeal({ icon: Icon, label }: SecuritySealProps) {
       <Icon className="size-3.5 shrink-0" aria-hidden="true" />
       {label}
     </div>
-  );
-}
-
-function ClockIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
   );
 }
