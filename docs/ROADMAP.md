@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.40** registra o **Refinamento Holístico do Bloco 7 (Gestão de Categorias & Limites Orçamentários - CategoriesPage, CategoryFormDialog e DeleteCategoryDialog)** (2026-10-14):
+> - **(1) Painel de Categorias (`CategoriesPage`)**:
+>   - Adição de feedback tátil nativo (`triggerSensory("selection")`) na alternância das abas de tipo ("Despesas" / "Rendas") e `triggerSensory("action")` no acionamento de criação e edição de categorias;
+>   - `HighlightRow`: Atualização da elevação canônica com `border-border/80 bg-surface shadow-xs` (Regra 16);
+>   - Badges de categoria: Padronização rigorosa para `<Badge size="xs" variant="muted">` para categorias reservadas do sistema e inclusão de badge explícito para categorias inativas (Regra 14);
+> - **(2) Diálogo de Criação/Edição (`CategoryFormDialog`)**:
+>   - Alinhamento rigoroso à anatomia canônica de formulários: rótulos de campos padronizados para `text-xs font-semibold text-foreground` e helper texts em `text-[11px] text-muted-foreground` (Regra 15);
+>   - Integração do Gateway Central Sensorial: `triggerSensory("selection")` na alternância de rádio de tipos, `triggerSensory("success")` na gravação/atualização de categoria e `triggerSensory("destructive")` no tratamento de erro;
+>   - Rodapé adaptativo responsivo com empilhamento seguro no mobile (`flex-col-reverse sm:flex-row`) e distribuição correta com botão de excluir à esquerda no desktop (`sm:mr-auto`);
+> - **(3) Diálogo de Exclusão e Migração (`DeleteCategoryDialog`)**:
+>   - Rótulos de campos padronizados para `text-xs font-semibold text-foreground` e feedback háptico na seleção de categoria de destino;
+>   - Disparo sensorial `triggerSensory("destructive")` ao confirmar a exclusão com migração transacional;
+>   - Rodapé alinhado com layout unificado (`flex-col-reverse sm:flex-row sm:justify-end`);
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis);
+>   - Suíte de testes de Categorias (7 testes) 100% verde;
+>   - Build de produção Vite + Workbox PWA gerado com sucesso em 1.28s.
+
 > **v2.39** registra o **Refinamento Holístico do Bloco 6 (Insights, Saúde Financeira & Projeção FIRE - InsightsPage, DiagnosticsTab, RecurrencesTab, ProjectionTab e PlanningSection)** (2026-10-14):
 > - **(1) Hub Central de Insights (`InsightsPage`)**:
 >   - Adição da 4ª aba nativa: **Planejamento FIRE** (`Flame`, `size-4`), integrando o Simulador FIRE determinístico, o Termômetro da Reserva de Emergência em 3 faixas e o Conversor do Impacto do Hábito na Aposentadoria (`PlanningSection`), com layout responsivo e scroll suave desobstruído (`Tabs` fluido conforme Regra 9);

@@ -25,6 +25,7 @@ export function CategoriesPage() {
   const tab: CategoryType = paramType === "income" ? "income" : paramType === "expense" ? "expense" : pickedTab;
 
   const handleTabChange = (next: CategoryType) => {
+    triggerSensory("selection");
     setPickedTab(next);
     setSearchParams(
       (prev) => {
@@ -50,6 +51,7 @@ export function CategoriesPage() {
 
   const openCreate = () => {
     guardAction(() => {
+      triggerSensory("action");
       setEditing(null);
       setFormOpen(true);
     }, "criar categorias");
@@ -83,7 +85,7 @@ export function CategoriesPage() {
         {list.map((category) => {
           const isClickable = !category.is_reserved;
           return (
-            <HighlightRow key={category.id} highlightId={highlightId} id={category.id} className="border border-border bg-surface overflow-hidden">
+            <HighlightRow key={category.id} highlightId={highlightId} id={category.id} className="border border-border/80 bg-surface shadow-xs overflow-hidden">
               <div
                 role={isClickable ? "button" : undefined}
                 tabIndex={isClickable ? 0 : undefined}
@@ -129,11 +131,17 @@ export function CategoriesPage() {
                     </p>
                   </div>
                 </div>
-                {category.is_reserved ? (
-                  <Badge variant="muted" className="text-[11px]">
-                    Reservada
-                  </Badge>
-                ) : null}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {category.is_reserved ? (
+                    <Badge variant="muted" size="xs">
+                      Reservada
+                    </Badge>
+                  ) : !category.is_active ? (
+                    <Badge variant="muted" size="xs">
+                      Inativa
+                    </Badge>
+                  ) : null}
+                </div>
               </div>
             </HighlightRow>
           );

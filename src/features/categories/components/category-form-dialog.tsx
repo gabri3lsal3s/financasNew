@@ -4,6 +4,7 @@ import { Alert, Button, ColorPicker, IconPicker, Input, Modal, RadioGroup } from
 import type { IconPickerOption } from "@/components/ui";
 import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
 import { suggestCategory } from "@/domain/budgets";
+import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCategory, useUpdateCategory } from "@/state";
 import { DeleteCategoryDialog } from "@/features/categories/components/delete-category-dialog";
@@ -77,8 +78,10 @@ function CategoryFormContent({
       } else {
         await createCategory.mutateAsync({ type, name: name.trim(), icon: icon || null, color: color || null });
       }
+      triggerSensory("success");
       onClose();
     } catch (err) {
+      triggerSensory("destructive");
       setError(getErrorMessage(err));
     }
   };
@@ -98,7 +101,10 @@ function CategoryFormContent({
       {!category ? (
         <RadioGroup
           value={type}
-          onValueChange={(value) => setType(value as CategoryType)}
+          onValueChange={(value) => {
+            triggerSensory("selection");
+            setType(value as CategoryType);
+          }}
           name="category-type"
           options={[
             { value: "expense", label: "Despesa" },
@@ -108,7 +114,7 @@ function CategoryFormContent({
       ) : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="category-name" className="text-sm font-medium">
+        <label htmlFor="category-name" className="text-xs font-semibold text-foreground">
           Nome
         </label>
         <Input
@@ -121,7 +127,7 @@ function CategoryFormContent({
           placeholder="Ex.: Alimentação"
         />
         {!category && name.trim() ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground">
             {suggestCategory(name)
               ? "Ícone e cor sugeridos automaticamente (e limite de orçamento por % da renda)."
               : "Sem regra conhecida para este nome — escolha ícone e cor manualmente."}
@@ -131,7 +137,7 @@ function CategoryFormContent({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Ícone</span>
+          <span className="text-xs font-semibold text-foreground">Ícone</span>
           <IconPicker
             value={icon}
             onValueChange={setIcon}
@@ -141,7 +147,7 @@ function CategoryFormContent({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Cor</span>
+          <span className="text-xs font-semibold text-foreground">Cor</span>
           <ColorPicker
             value={color}
             onValueChange={setColor}
@@ -150,19 +156,22 @@ function CategoryFormContent({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 pt-2 sm:justify-end">
         {category && siblings !== undefined ? (
           <Button
             type="button"
             variant="ghost"
-            className="mr-auto text-negative hover:bg-negative/10 hover:text-negative"
-            onClick={onOpenDelete}
+            className="sm:mr-auto text-negative hover:bg-negative/10 hover:text-negative"
+            onClick={() => {
+              triggerSensory("action");
+              onOpenDelete?.();
+            }}
           >
             <Trash2 className="size-4" aria-hidden="true" />
             Excluir
           </Button>
         ) : null}
-        <Button type="button" variant="ghost" onClick={onClose} className="ml-auto">
+        <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
         <Button type="submit" disabled={name.trim() === "" || pending}>

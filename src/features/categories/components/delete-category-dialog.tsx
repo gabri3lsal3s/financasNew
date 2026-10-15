@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Alert, Button, Modal, Select, Skeleton } from "@/components/ui";
+import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { useDeleteCategory } from "@/state";
 import type { Category } from "@/types";
@@ -32,8 +33,10 @@ function DeleteCategoryContent({ category, siblings, usage, onClose }: DeleteCat
     setError(null);
     try {
       await deleteCategory.mutateAsync({ id: category.id, migrateTo: migrateTo || null });
+      triggerSensory("destructive");
       onClose();
     } catch (err) {
+      triggerSensory("destructive");
       setError(getErrorMessage(err));
     }
   };
@@ -51,10 +54,13 @@ function DeleteCategoryContent({ category, siblings, usage, onClose }: DeleteCat
             lançamentos precisam ser movidos para outra categoria do mesmo tipo.
           </p>
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Mover lançamentos para</span>
+            <span className="text-xs font-semibold text-foreground">Mover lançamentos para</span>
             <Select
               value={migrateTo}
-              onValueChange={setMigrateTo}
+              onValueChange={(val) => {
+                triggerSensory("selection");
+                setMigrateTo(val);
+              }}
               options={siblings.map((sibling) => ({ value: sibling.id, label: sibling.name }))}
               placeholder="Selecione a categoria"
               ariaLabel="Categoria de destino da migração"
@@ -65,7 +71,7 @@ function DeleteCategoryContent({ category, siblings, usage, onClose }: DeleteCat
         <p className="text-sm text-muted-foreground">Esta categoria não tem lançamentos — pode ser excluída diretamente.</p>
       )}
 
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancelar
         </Button>
