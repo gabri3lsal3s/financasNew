@@ -3,6 +3,7 @@ import { AlertCircle } from "lucide-react";
 import { Alert, Modal } from "@/components/ui";
 import {
   buildTransactionsFromRows,
+  generateStatementHash,
   parseStatementInput,
   reconcileBankTransactions,
   type ColumnMapping,
@@ -10,6 +11,8 @@ import {
   type ExistingIncomeForReconciliation,
   type RawParsedRow,
   type BankTransactionItem,
+  type BankTransactionKind,
+  type StatementTransaction,
 } from "@/domain/reconciliation";
 import { numberToCents } from "@/domain/money";
 import {
@@ -238,6 +241,103 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
     );
   };
 
+  const handleEditItem = (
+    id: string,
+    updated: {
+      date: string;
+      cleanDescription: string;
+      amountCents: number;
+      kind: BankTransactionKind;
+      selectedCategoryId: string;
+      selectedReceiveType?: string;
+    },
+  ) => {
+    setReconciledItems((prev) =>
+      prev.map((it) => {
+        if (it.transaction.id !== id) return it;
+        const newHash = generateStatementHash({
+          cardId: "bank_account",
+          competenceMonth,
+          date: updated.date,
+          amountCents: updated.amountCents,
+          cleanDescription: updated.cleanDescription,
+          occurrenceIndex: it.transaction.occurrenceIndex,
+        });
+        return {
+          ...it,
+          selected: true,
+          kind: updated.kind,
+          selectedCategoryId: updated.selectedCategoryId,
+          selectedReceiveType: updated.selectedReceiveType,
+          transaction: {
+            ...it.transaction,
+            date: updated.date,
+            cleanDescription: updated.cleanDescription,
+            rawDescription: updated.cleanDescription,
+            amountCents: updated.amountCents,
+            statementHash: newHash,
+          },
+        };
+      }),
+    );
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setReconciledItems((prev) => prev.filter((it) => it.transaction.id !== id));
+  };
+
+  const handleAddManualItem = (item: {
+    date: string;
+    cleanDescription: string;
+    amountCents: number;
+    kind: BankTransactionKind;
+    selectedCategoryId: string;
+    selectedReceiveType?: string;
+  }) => {
+    const newId = `stmt-manual-${Date.now()}`;
+    const newHash = generateStatementHash({
+      cardId: "bank_account",
+      competenceMonth,
+      date: item.date,
+      amountCents: item.amountCents,
+      cleanDescription: item.cleanDescription,
+      occurrenceIndex: 0,
+    });
+    const newTx: StatementTransaction = {
+      id: newId,
+      index: reconciledItems.length,
+      occurrenceIndex: 0,
+      date: item.date,
+      rawDescription: item.cleanDescription,
+      cleanDescription: item.cleanDescription,
+      amountCents: item.amountCents,
+      isRefund: item.kind === "income",
+      isPayment: false,
+      statementHash: newHash,
+    };
+    const newItem: BankTransactionItem = {
+      transaction: newTx,
+      kind: item.kind,
+      status: "unmatched_new",
+      score: 0,
+      suggestedCategoryId: item.selectedCategoryId,
+      selectedCategoryId: item.selectedCategoryId,
+      suggestedReceiveType: item.selectedReceiveType,
+      selectedReceiveType: item.selectedReceiveType,
+      selected: true,
+      ignoredByDefault: false,
+    };
+    setReconciledItems((prev) => [newItem, ...prev]);
+  };
+
+  const handleUncheckDuplicates = () => {
+    setReconciledItems((prev) =>
+      prev.map((it) =>
+        it.isInternalDuplicate || it.status === "exact_match" ? { ...it, selected: false } : it,
+      ),
+    );
+  };
+
   const handleFinalImport = async () => {
     setError(null);
     const selectedItems = reconciledItems.filter((it) => it.selected);
@@ -326,6 +426,10 @@ function BankStatementImportContent({ competenceMonth, onClose }: BankStatementI
           onToggleAll={handleToggleAll}
           onChangeCategory={handleChangeCategory}
           onChangeReceiveType={handleChangeReceiveType}
+          onEditItem={handleEditItem}
+          onRemoveItem={handleRemoveItem}
+          onAddManualItem={handleAddManualItem}
+          onUncheckDuplicates={handleUncheckDuplicates}
           onBack={() => setStep(parsedRows.length > 0 ? "mapping" : "upload")}
           onConfirm={handleFinalImport}
           isPending={importMutation.isPending}

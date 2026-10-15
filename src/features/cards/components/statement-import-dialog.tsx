@@ -3,12 +3,14 @@ import { AlertCircle } from "lucide-react";
 import { Alert, Modal } from "@/components/ui";
 import {
   buildTransactionsFromRows,
+  generateStatementHash,
   parseStatementInput,
   reconcileStatementTransactions,
   type ColumnMapping,
   type ExistingExpenseForReconciliation,
   type RawParsedRow,
   type ReconciliationItem,
+  type StatementTransaction,
 } from "@/domain/reconciliation";
 import { numberToCents } from "@/domain/money";
 import { useCategories, useCardExpenses, usePredictionHistory, useImportStatementExpenses } from "@/state";
@@ -203,6 +205,98 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
     );
   };
 
+  const handleEditItem = (
+    id: string,
+    updated: {
+      date: string;
+      cleanDescription: string;
+      amountCents: number;
+      selectedCategoryId: string;
+      installment?: { current: number; total: number };
+    },
+  ) => {
+    setReconciledItems((prev) =>
+      prev.map((it) => {
+        if (it.transaction.id !== id) return it;
+        const newHash = generateStatementHash({
+          cardId: card.id,
+          competenceMonth,
+          date: updated.date,
+          amountCents: updated.amountCents,
+          cleanDescription: updated.cleanDescription,
+          occurrenceIndex: it.transaction.occurrenceIndex,
+        });
+        return {
+          ...it,
+          selected: true,
+          selectedCategoryId: updated.selectedCategoryId,
+          transaction: {
+            ...it.transaction,
+            date: updated.date,
+            cleanDescription: updated.cleanDescription,
+            rawDescription: updated.cleanDescription,
+            amountCents: updated.amountCents,
+            installment: updated.installment,
+            statementHash: newHash,
+          },
+        };
+      }),
+    );
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setReconciledItems((prev) => prev.filter((it) => it.transaction.id !== id));
+  };
+
+  const handleAddManualItem = (item: {
+    date: string;
+    cleanDescription: string;
+    amountCents: number;
+    selectedCategoryId: string;
+    installment?: { current: number; total: number };
+  }) => {
+    const newId = `stmt-manual-${Date.now()}`;
+    const newHash = generateStatementHash({
+      cardId: card.id,
+      competenceMonth,
+      date: item.date,
+      amountCents: item.amountCents,
+      cleanDescription: item.cleanDescription,
+      occurrenceIndex: 0,
+    });
+    const newTx: StatementTransaction = {
+      id: newId,
+      index: reconciledItems.length,
+      occurrenceIndex: 0,
+      date: item.date,
+      rawDescription: item.cleanDescription,
+      cleanDescription: item.cleanDescription,
+      amountCents: item.amountCents,
+      isRefund: false,
+      isPayment: false,
+      installment: item.installment,
+      statementHash: newHash,
+    };
+    const newItem: ReconciliationItem = {
+      transaction: newTx,
+      status: "unmatched_new",
+      score: 0,
+      suggestedCategoryId: item.selectedCategoryId,
+      selectedCategoryId: item.selectedCategoryId,
+      selected: true,
+      ignoredByDefault: false,
+    };
+    setReconciledItems((prev) => [newItem, ...prev]);
+  };
+
+  const handleUncheckDuplicates = () => {
+    setReconciledItems((prev) =>
+      prev.map((it) =>
+        it.isInternalDuplicate || it.status === "exact_match" ? { ...it, selected: false } : it,
+      ),
+    );
+  };
+
   /**
    * Submissão final: envia os itens selecionados ao RPC atômico.
    */
@@ -272,6 +366,10 @@ function StatementImportContent({ card, competenceMonth, onClose }: StatementImp
           onToggleItem={handleToggleItem}
           onToggleAll={handleToggleAll}
           onChangeCategory={handleChangeCategory}
+          onEditItem={handleEditItem}
+          onRemoveItem={handleRemoveItem}
+          onAddManualItem={handleAddManualItem}
+          onUncheckDuplicates={handleUncheckDuplicates}
           onBack={() => setStep(parsedRows.length > 0 ? "mapping" : "upload")}
           onConfirm={handleConfirmImport}
           isPending={importMutation.isPending}

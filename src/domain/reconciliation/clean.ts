@@ -42,15 +42,25 @@ const PAYMENT_KEYWORDS = [
   "total da fatura",
 ];
 
+const BANK_OPERATION_PREFIX_REGEX =
+  /^(?:PIX\s+(?:TRANSF(?:ERENCIA)?|ENVIAD[OA]|RECEBID[OA])|TED\s+(?:ENVIAD[OA]|RECEBID[OA]|TRANSF)|DOC\s+(?:ENVIAD[OA]|RECEBID[OA])|COMPRA\s+(?:NO\s+D[EÉ]BITO|NO\s+CR[EÉ]DITO|A\s+VISTA|CART[AÃ]O|PARCELADA)|PAGTO\s+(?:ELETRON\s+)?COBRANCA)\s*[-:]?\s*/i;
+
 /**
  * Higieniza o texto da descrição do extrato, removendo prefixos de
- * adquirentes, cidades e múltiplos espaços em branco.
+ * adquirentes, operações bancárias padrão, cidades e múltiplos espaços em branco.
  */
 export function cleanDescription(raw: string): string {
   if (!raw) return "";
 
-  return raw
-    .trim()
+  let cleaned = raw.trim();
+
+  // Remove prefixos de operações bancárias apenas se houver conteúdo descritivo restante relevante (não apenas dígitos ou vazio)
+  const afterBankPrefix = cleaned.replace(BANK_OPERATION_PREFIX_REGEX, "");
+  if (afterBankPrefix.trim().length >= 3 && !/^\d+$/.test(afterBankPrefix.trim())) {
+    cleaned = afterBankPrefix;
+  }
+
+  return cleaned
     .replace(PREFIX_REGEX, "")
     .replace(/\s*\(\d{1,2}\/\d{1,2}\)/g, "")
     .replace(/\s*\bPARC(?:ELA)?\s*\d{1,2}\s*(?:DE|\/)\s*\d{1,2}\b/gi, "")

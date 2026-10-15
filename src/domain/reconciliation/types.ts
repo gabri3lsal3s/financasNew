@@ -29,6 +29,8 @@ export interface StatementTransaction {
   };
   /** Hash determinístico SHA-256 ordinal anti-duplicação. */
   statementHash: string;
+  /** Identificador único do banco (FITID no OFX, se disponível). */
+  fitid?: string;
 }
 
 /**
@@ -69,6 +71,10 @@ export interface ReconciliationItem {
   selected: boolean;
   /** Se a linha deve ser ignorada por padrão (ex.: pagamento de fatura). */
   ignoredByDefault?: boolean;
+  /** Se o item é uma duplicata detectada dentro do próprio arquivo importado. */
+  isInternalDuplicate?: boolean;
+  /** Motivo ou detalhe descritivo de duplicidade detectada. */
+  duplicateReason?: string;
 }
 
 /**
@@ -112,6 +118,8 @@ export interface ColumnMapping {
   descriptionColIndex: number;
   amountColIndex: number;
   typeColIndex?: number;
+  debitColIndex?: number;
+  creditColIndex?: number;
   hasHeader: boolean;
   startRowIndex: number;
 }
@@ -169,6 +177,10 @@ export interface BankTransactionItem {
   ignoredByDefault?: boolean;
   /** Motivo descritivo para ter sido ignorada (ex.: "Pagamento de fatura de cartão"). */
   ignoreReason?: string;
+  /** Se o item é uma duplicata detectada dentro do próprio arquivo importado. */
+  isInternalDuplicate?: boolean;
+  /** Motivo ou detalhe descritivo de duplicidade detectada. */
+  duplicateReason?: string;
 }
 
 /**
@@ -201,5 +213,6 @@ export const statementTransactionSchema = z.object({
     })
     .optional(),
   statementHash: z.string().min(8),
+  fitid: z.string().optional(),
 });
 

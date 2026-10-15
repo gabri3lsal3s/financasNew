@@ -143,7 +143,7 @@ describe("StatementImportDialog", () => {
       created_at: "2026-08-07T00:00:00Z",
     };
 
-    vi.spyOn(await import("@/state"), "useCardExpenses").mockReturnValue({
+    const expenseSpy = vi.spyOn(await import("@/state"), "useCardExpenses").mockReturnValue({
       data: [existingExpense],
     } as unknown as UseQueryResult<Expense[], Error>);
 
@@ -190,6 +190,8 @@ describe("StatementImportDialog", () => {
         }),
       ],
     });
+
+    expenseSpy.mockRestore();
   });
 
   it("exibe alerta e aba 'No App apenas' para despesas cadastradas no app que não constam no extrato", async () => {
@@ -214,7 +216,7 @@ describe("StatementImportDialog", () => {
       created_at: "2026-08-20T00:00:00Z",
     };
 
-    vi.spyOn(await import("@/state"), "useCardExpenses").mockReturnValue({
+    const expenseSpy = vi.spyOn(await import("@/state"), "useCardExpenses").mockReturnValue({
       data: [orphanExpense],
     } as unknown as UseQueryResult<Expense[], Error>);
 
@@ -251,5 +253,108 @@ describe("StatementImportDialog", () => {
     await user.click(appOnlyTab);
     expect(screen.getByText(/Gasto Manual Cancelado/i)).toBeInTheDocument();
     expect(screen.getByText(/Ausente no Extrato/i)).toBeInTheDocument();
+
+    expenseSpy.mockRestore();
+  });
+
+  it("permite editar campos, remover itens e adicionar linhas manuais na staging area da fatura", async () => {
+    const user = userEvent.setup();
+    mutateAsyncMock.mockClear();
+
+    render(
+      <StatementImportDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        card={mockCard}
+        competenceMonth="2026-08"
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Colar Extrato/i }));
+    const textarea = screen.getByPlaceholderText(/Cole aqui as linhas/i);
+    await user.type(
+      textarea,
+      "15/08/2026\tCompra Cartao 1\t100,00\n16/08/2026\tItem Indesejado\t50,00",
+    );
+    await user.click(screen.getByRole("button", { name: /Processar Texto/i }));
+    await user.click(screen.getByRole("button", { name: /Avançar para Conferência/i }));
+
+    expect(screen.getByText("Compra Cartao 1")).toBeInTheDocument();
+    expect(screen.getByText("Item Indesejado")).toBeInTheDocument();
+
+    // 1. Remove item indesejado
+    const removeBtn = screen.getByRole("button", { name: /Remover Item Indesejado da importação/i });
+    await user.click(removeBtn);
+    expect(screen.queryByText("Item Indesejado")).not.toBeInTheDocument();
+
+    // 2. Edita item
+    const editBtn = screen.getByRole("button", { name: /Editar Compra Cartao 1/i });
+    await user.click(editBtn);
+
+    expect(screen.getByText("Editar Lançamento")).toBeInTheDocument();
+    const descInput = screen.getByPlaceholderText("Descrição da despesa");
+    await user.clear(descInput);
+    await user.type(descInput, "Compra Editada");
+    await user.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    expect(screen.getByText("Compra Editada")).toBeInTheDocument();
+
+    // 3. Adiciona linha manual
+    const addManualBtn = screen.getByRole("button", { name: /Adicionar linha/i });
+    await user.click(addManualBtn);
+
+    expect(screen.getByText("Adicionar Linha Manual")).toBeInTheDocument();
+    const manualDescInput = screen.getByPlaceholderText(/Ex.: Compra Farmácia/i);
+    await user.type(manualDescInput, "Linha Manual Cartao");
+    const manualValueInput = screen.getByPlaceholderText("R$ 0,00");
+    await user.type(manualValueInput, "6500"); // R$ 65,00
+    await user.click(screen.getByRole("button", { name: /^Adicionar Linha$/i }));
+
+    expect(screen.getByText("Linha Manual Cartao")).toBeInTheDocument();
+
+    // 4. Importa
+    const importBtn = screen.getByRole("button", { name: /Importar 2 Lançamentos/i });
+    await user.click(importBtn);
+
+    expect(mutateAsyncMock).toHaveBeenCalledWith({
+      cardId: mockCard.id,
+      competenceMonth: "2026-08",
+      expenses: expect.arrayContaining([
+        expect.objectContaining({
+          description: "Compra Editada",
+          value: 100,
+        }),
+        expect.objectContaining({
+          description: "Linha Manual Cartao",
+          value: 65,
+        }),
+      ]),
+    });
+  });
+
+  it("detecta duplicidades na fatura e exibe alerta de duplicidade", async () => {
+    const user = userEvent.setup();
+    mutateAsyncMock.mockClear();
+
+    render(
+      <StatementImportDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        card={mockCard}
+        competenceMonth="2026-08"
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Colar Extrato/i }));
+    const textarea = screen.getByPlaceholderText(/Cole aqui as linhas/i);
+    await user.type(
+      textarea,
+      "15/08/2026\tZara Shopping\t350,00\n15/08/2026\tZara Shopping\t350,00",
+    );
+    await user.click(screen.getByRole("button", { name: /Processar Texto/i }));
+    await user.click(screen.getByRole("button", { name: /Avançar para Conferência/i }));
+
+    expect(screen.getByText(/1 potencial duplicidade detectada nesta fatura/i)).toBeInTheDocument();
+    expect(screen.getByText(/Duplicata no Arquivo/i)).toBeInTheDocument();
   });
 });

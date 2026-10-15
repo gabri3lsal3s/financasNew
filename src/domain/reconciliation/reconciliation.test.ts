@@ -533,4 +533,193 @@ GABRIEL I S SALES;10/08/2026;Seguro Corolla;222,34
       expect(result.transactions[0]?.amountCents).toBe(4250);
     });
   });
+
+  describe("Modernização OFX e Bancos Brasileiros (Tarefa 12)", () => {
+    it("extrai FITID, desescapa entidades XML e combina NAME e MEMO quando distintos", () => {
+      const ofx = `
+OFXHEADER:100
+<OFX>
+  <BANKMSGSRSV1>
+    <STMTTRNRS>
+      <STMTRS>
+        <BANKTRANLIST>
+          <STMTTRN>
+            <TRNTYPE>DEBIT</TRNTYPE>
+            <DTPOSTED>20260810143000[-3:BRT]</DTPOSTED>
+            <TRNAMT>-150.75</TRNAMT>
+            <FITID>20260810123456789</FITID>
+            <NAME>PIX TRANSF</NAME>
+            <MEMO>JOAO &amp; MARIA LTDA</MEMO>
+          </STMTTRN>
+        </BANKTRANLIST>
+      </STMTRS>
+    </STMTTRNRS>
+  </BANKMSGSRSV1>
+</OFX>
+`;
+      const txs = parseOfxToTransactions(ofx, {
+        cardId: "bank_acc",
+        competenceMonth: "2026-08",
+      });
+
+      expect(txs).toHaveLength(1);
+      const tx = txs[0]!;
+      expect(tx.date).toBe("2026-08-10");
+      expect(tx.amountCents).toBe(15075);
+      expect(tx.fitid).toBe("20260810123456789");
+      expect(tx.rawDescription).toBe("PIX TRANSF - JOAO & MARIA LTDA");
+      expect(tx.cleanDescription).toBe("JOAO & MARIA LTDA");
+      expect(tx.isRefund).toBe(false);
+    });
+
+    it("faz fallback para DTUSER se DTPOSTED estiver ausente", () => {
+      const ofx = `
+<STMTTRN>
+  <TRNTYPE>CREDIT</TRNTYPE>
+  <DTUSER>20260812</DTUSER>
+  <TRNAMT>500.00</TRNAMT>
+  <MEMO>TED RECEBIDA</MEMO>
+</STMTTRN>
+`;
+      const txs = parseOfxToTransactions(ofx, {
+        cardId: "bank_acc",
+        competenceMonth: "2026-08",
+      });
+
+      expect(txs).toHaveLength(1);
+      expect(txs[0]?.date).toBe("2026-08-12");
+      expect(txs[0]?.amountCents).toBe(50000);
+      expect(txs[0]?.isRefund).toBe(true);
+    });
+
+    it("suporta TRNTYPE=DEBIT forçando débito mesmo se valor for positivo no XML", () => {
+      const ofx = `
+<STMTTRN>
+  <TRNTYPE>DEBIT</TRNTYPE>
+  <DTPOSTED>20260815</DTPOSTED>
+  <TRNAMT>80.00</TRNAMT>
+  <MEMO>FARMACIA POPULAR</MEMO>
+</STMTTRN>
+`;
+      const txs = parseOfxToTransactions(ofx, {
+        cardId: "card_1",
+        competenceMonth: "2026-08",
+      });
+
+      expect(txs).toHaveLength(1);
+      expect(txs[0]?.isRefund).toBe(false);
+      expect(txs[0]?.amountCents).toBe(8000);
+    });
+  });
+
+  describe("Parser CSV: Remoção de BOM e Formatos de Valores Brasileiros (Tarefa 12)", () => {
+    it("remove BOM UTF-8 (\\uFEFF) e detecta delimitador corretamente", () => {
+      const csvWithBom = "\uFEFFData;Histórico;Valor\n01/08/2026;Supermercado;120,50";
+      const rows = parseCsvToRows(csvWithBom);
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.cells[0]).toBe("Data");
+      expect(rows[1]?.cells[0]).toBe("01/08/2026");
+    });
+
+    it("interpreta sufixos D (Débito) e C (Crédito) brasileiros em parseAmountToCents", () => {
+      const deb = parseAmountToCents("150,00 D");
+      expect(deb).toEqual({
+        amountCents: 15000,
+        isNegative: true,
+        isDebitSuffix: true,
+        isCreditSuffix: undefined,
+      });
+
+      const cred = parseAmountToCents("2.000,00 C");
+      expect(cred).toEqual({
+        amountCents: 200000,
+        isNegative: false,
+        isDebitSuffix: undefined,
+        isCreditSuffix: true,
+      });
+
+      const credParen = parseAmountToCents("350,50 (C)");
+      expect(credParen?.isCreditSuffix).toBe(true);
+      expect(credParen?.amountCents).toBe(35050);
+
+      const debSuffixNoSpace = parseAmountToCents("85,20D");
+      expect(debSuffixNoSpace?.isDebitSuffix).toBe(true);
+      expect(debSuffixNoSpace?.amountCents).toBe(8520);
+    });
+
+    it("sniffa e processa extrato estilo Bradesco com colunas separadas de Débito e Crédito", () => {
+      const bradescoCsv = `Data;Histórico;Docto;Crédito (R$);Débito (R$);Saldo (R$)
+05/08/2026;PAGTO ELETRON COBRANCA;00123;;150,00;1.200,00
+06/08/2026;PIX RECEBIDO OUTRA IF;00456;500,00;;1.700,00`;
+
+      const rows = parseCsvToRows(bradescoCsv);
+      const mapping = sniffColumnMapping(rows);
+
+      expect(mapping.hasHeader).toBe(true);
+      expect(mapping.dateColIndex).toBe(0);
+      expect(mapping.descriptionColIndex).toBe(1);
+      expect(mapping.creditColIndex).toBe(3);
+      expect(mapping.debitColIndex).toBe(4);
+
+      const txs = parseStatementInput(bradescoCsv, "bradesco.csv", {
+        cardId: "bank_acc",
+        competenceMonth: "2026-08",
+      }).transactions;
+
+      expect(txs).toHaveLength(2);
+      expect(txs[0]?.cleanDescription).toBe("PAGTO ELETRON COBRANCA");
+      expect(txs[0]?.amountCents).toBe(15000);
+      expect(txs[0]?.isRefund).toBe(false); // Débito
+
+      expect(txs[1]?.cleanDescription).toBe("OUTRA IF");
+      expect(txs[1]?.amountCents).toBe(50000);
+      expect(txs[1]?.isRefund).toBe(true); // Crédito
+    });
+  });
+
+  describe("Detecção Visual de Duplicidades (Tarefa 12)", () => {
+    it("detecta duplicidades internas no mesmo arquivo e desmarca por padrão", () => {
+      const stmt1: StatementTransaction = {
+        id: "tx-1",
+        index: 0,
+        occurrenceIndex: 0,
+        date: "2026-08-15",
+        rawDescription: "RESTAURANTE COCO BAMBU",
+        cleanDescription: "RESTAURANTE COCO BAMBU",
+        amountCents: 18000,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-coco-1",
+      };
+
+      const stmt2: StatementTransaction = {
+        id: "tx-2",
+        index: 1,
+        occurrenceIndex: 1,
+        date: "2026-08-15",
+        rawDescription: "RESTAURANTE COCO BAMBU",
+        cleanDescription: "RESTAURANTE COCO BAMBU",
+        amountCents: 18000,
+        isRefund: false,
+        isPayment: false,
+        statementHash: "hash-coco-2",
+      };
+
+      const result = reconcileStatementTransactions({
+        statementTransactions: [stmt1, stmt2],
+        existingExpenses: [],
+        history: [],
+        defaultCategoryId: "cat-restaurante",
+      });
+
+      expect(result.items).toHaveLength(2);
+      expect(result.items[0]?.isInternalDuplicate).toBe(false);
+      expect(result.items[0]?.selected).toBe(true);
+
+      // O segundo lançamento repetido no mesmo arquivo deve ser marcado como duplicata interna e desmarcado
+      expect(result.items[1]?.isInternalDuplicate).toBe(true);
+      expect(result.items[1]?.duplicateReason).toContain("Lançamento duplicado no mesmo arquivo");
+      expect(result.items[1]?.selected).toBe(false);
+    });
+  });
 });

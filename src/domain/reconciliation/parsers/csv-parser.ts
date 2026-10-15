@@ -4,7 +4,8 @@ import type { RawParsedRow } from "../types";
  * Detecta o delimitador do CSV por contagem de ocorrências consistentes nas primeiras linhas.
  */
 export function detectDelimiter(text: string): string {
-  const lines = text
+  const cleanText = text.replace(/^[\uFEFF\uFFFE]/, "");
+  const lines = cleanText
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 0)
@@ -80,21 +81,24 @@ export function parseCsvLine(line: string, delimiter: string): string[] {
  * Decodifica um buffer binário ou texto tentando UTF-8 e fazendo fallback para Latin-1 (ISO-8859-1).
  */
 export function decodeBufferToString(buffer: ArrayBuffer): string {
+  let decoded: string;
   try {
     const decoder = new TextDecoder("utf-8", { fatal: true });
-    return decoder.decode(buffer);
+    decoded = decoder.decode(buffer);
   } catch {
     const latinDecoder = new TextDecoder("iso-8859-1");
-    return latinDecoder.decode(buffer);
+    decoded = latinDecoder.decode(buffer);
   }
+  return decoded.replace(/^[\uFEFF\uFFFE]/, "");
 }
 
 /**
  * Converte o texto CSV em matriz de linhas parseadas `RawParsedRow[]`.
  */
 export function parseCsvToRows(text: string, customDelimiter?: string): RawParsedRow[] {
-  const delimiter = customDelimiter || detectDelimiter(text);
-  const lines = text.split(/\r?\n/);
+  const cleanText = text.replace(/^[\uFEFF\uFFFE]/, "");
+  const delimiter = customDelimiter || detectDelimiter(cleanText);
+  const lines = cleanText.split(/\r?\n/);
   const rows: RawParsedRow[] = [];
 
   let rowIndex = 0;

@@ -104,7 +104,7 @@ describe("BankStatementImportDialog", () => {
       incomes: expect.arrayContaining([
         expect.objectContaining({
           date: "2026-08-16",
-          description: "Pix Recebido Ana",
+          description: "Ana",
           value: 120,
         }),
       ]),
@@ -190,11 +190,11 @@ describe("BankStatementImportDialog", () => {
       created_at: "2026-08-22T00:00:00Z",
     };
 
-    vi.spyOn(await import("@/state"), "useExpenses").mockReturnValue({
+    const expenseSpy = vi.spyOn(await import("@/state"), "useExpenses").mockReturnValue({
       data: [orphanExpense],
     } as unknown as UseQueryResult<Expense[], Error>);
 
-    vi.spyOn(await import("@/state"), "useIncomes").mockReturnValue({
+    const incomeSpy = vi.spyOn(await import("@/state"), "useIncomes").mockReturnValue({
       data: [orphanIncome],
     } as unknown as UseQueryResult<Income[], Error>);
 
@@ -229,5 +229,118 @@ describe("BankStatementImportDialog", () => {
 
     // Deve exibir normalmente a transação importada
     expect(screen.getByText("Compra Outra")).toBeInTheDocument();
+
+    expenseSpy.mockRestore();
+    incomeSpy.mockRestore();
+  });
+
+  it("permite editar campos, remover itens indesejados e adicionar linhas manuais na staging area", async () => {
+    const user = userEvent.setup();
+    mutateAsyncMock.mockClear();
+
+    render(
+      <BankStatementImportDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        competenceMonth="2026-08"
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Quick-Paste/i }));
+    const textarea = screen.getByPlaceholderText(/Cole aqui linhas copiadas/i);
+    await user.type(
+      textarea,
+      "15/08/2026\tItem Original\t50,00\n16/08/2026\tItem Para Remover\t30,00",
+    );
+    await user.click(screen.getByRole("button", { name: /Processar Texto/i }));
+
+    const advanceBtn = screen.queryByRole("button", { name: /Avançar para Conferência/i });
+    if (advanceBtn) {
+      await user.click(advanceBtn);
+    }
+
+    expect(screen.getByText("Item Original")).toBeInTheDocument();
+    expect(screen.getByText("Item Para Remover")).toBeInTheDocument();
+
+    // 1. Remove o item indesejado
+    const removeBtn = screen.getByRole("button", { name: /Remover Item Para Remover da importação/i });
+    await user.click(removeBtn);
+    expect(screen.queryByText("Item Para Remover")).not.toBeInTheDocument();
+
+    // 2. Edita o item original
+    const editBtn = screen.getByRole("button", { name: /Editar Item Original/i });
+    await user.click(editBtn);
+
+    expect(screen.getByText("Editar Lançamento")).toBeInTheDocument();
+    const descInput = screen.getByPlaceholderText("Descrição da transação");
+    await user.clear(descInput);
+    await user.type(descInput, "Item Modificado");
+    await user.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    expect(screen.getByText("Item Modificado")).toBeInTheDocument();
+
+    // 3. Adiciona uma linha manual
+    const addManualBtn = screen.getByRole("button", { name: /Adicionar linha/i });
+    await user.click(addManualBtn);
+
+    expect(screen.getByText("Adicionar Linha Manual")).toBeInTheDocument();
+    const manualDescInput = screen.getByPlaceholderText(/Ex.: Depósito em dinheiro/i);
+    await user.type(manualDescInput, "Linha Manual Extra");
+    const manualValueInput = screen.getByPlaceholderText("R$ 0,00");
+    await user.type(manualValueInput, "4000"); // R$ 40,00
+    await user.click(screen.getByRole("button", { name: /^Adicionar Linha$/i }));
+
+    expect(screen.getByText("Linha Manual Extra")).toBeInTheDocument();
+
+    // 4. Confirma a importação
+    const importBtn = screen.getByRole("button", { name: /Importar \(2\)/i });
+    await user.click(importBtn);
+
+    expect(mutateAsyncMock).toHaveBeenCalledWith({
+      expenses: expect.arrayContaining([
+        expect.objectContaining({
+          description: "Item Modificado",
+          value: 50,
+        }),
+        expect.objectContaining({
+          description: "Linha Manual Extra",
+          value: 40,
+        }),
+      ]),
+      incomes: [],
+    });
+  });
+
+  it("detecta duplicidades na staging area e exibe aviso com opção de desmarcar", async () => {
+    const user = userEvent.setup();
+    mutateAsyncMock.mockClear();
+
+    render(
+      <BankStatementImportDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        competenceMonth="2026-08"
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Quick-Paste/i }));
+    const textarea = screen.getByPlaceholderText(/Cole aqui linhas copiadas/i);
+    await user.type(
+      textarea,
+      "15/08/2026\tCoco Bambu\t150,00\n15/08/2026\tCoco Bambu\t150,00",
+    );
+    await user.click(screen.getByRole("button", { name: /Processar Texto/i }));
+
+    const advanceBtn = screen.queryByRole("button", { name: /Avançar para Conferência/i });
+    if (advanceBtn) {
+      await user.click(advanceBtn);
+    }
+
+    // Deve exibir alerta de duplicidade
+    expect(screen.getByText(/1 potencial duplicidade detectada no extrato/i)).toBeInTheDocument();
+    expect(screen.getByText(/Duplicata no Arquivo/i)).toBeInTheDocument();
+
+    // O item duplicado já vem desmarcado por padrão (apenas 1 item selecionado)
+    expect(screen.getByRole("button", { name: /Importar \(1\)/i })).toBeInTheDocument();
   });
 });

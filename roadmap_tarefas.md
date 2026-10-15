@@ -142,12 +142,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 5: Engenharia de Dados (Importadores, Exportação e Backup)
 
-### Tarefa 12: Modernização da Importação de Faturas e Extratos (OFX/CSV)
+### Tarefa 12: Modernização da Importação de Faturas e Extratos (OFX/CSV) [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Criar staging area interativa para arquivos de extratos e faturas.
 - **Ações:**
-  1. Reforçar parsing de `.ofx` e `.csv` dos bancos brasileiros mais comuns.
-  2. Criar tabela intermediária de pré-visualização permitindo editar campos, remover itens indesejados e adicionar linhas manuais antes de gravar no banco.
-  3. Adicionar detecção visual de potenciais duplicidades antes do salvamento final.
+  1. Reforçar parsing de `.ofx` e `.csv` dos bancos brasileiros mais comuns. (Concluído: aprimorado OFX parser com entidades SGML/XML, FITID, fallback DTPOSTED/DTUSER e junção inteligente de MEMO/NAME; enriquecido CSV parser com detecção e remoção de BOM UTF-8/UTF-16, suporte a sufixos bancários D/C brasileiros [ex.: "150,00 D"], detecção de colunas separadas de Débito e Crédito [Bradesco, BB, Sicredi] e higienização refinada de prefixos bancários preservando integridade das descrições).
+  2. Criar tabela intermediária de pré-visualização permitindo editar campos, remover itens indesejados e adicionar linhas manuais antes de gravar no banco. (Concluído: implementada staging area interativa nas etapas de reconciliação de extrato bancário e de faturas de cartão com ações por linha para remoção e edição com modal canônico [data, descrição, valor, categoria, tipo/parcelas], além de botão "+ Adicionar linha" para inclusão de lançamentos avulsos antes da importação final).
+  3. Adicionar detecção visual de potenciais duplicidades antes do salvamento final. (Concluído: implementada desduplicação ordinal no lote por assinatura de data/valor/descrição e detecção contra despesas/receitas existentes no app; adicionado banner de alerta com contagem, ação rápida "Desmarcar duplicatas", aba dedicada de filtro e badges visuais sem emojis, com travas anti-duplicidade e cobertura completa de testes automatizados com Vitest).
 - **Commit:** `feat(import): enhance statement and invoice parsing with interactive staging table`
 
 ---

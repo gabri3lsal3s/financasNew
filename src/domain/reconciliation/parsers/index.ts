@@ -31,46 +31,70 @@ export function buildTransactionsFromRows(
   for (const row of dataRows) {
     const rawDate = row.cells[mapping.dateColIndex] ?? "";
     const rawDesc = row.cells[mapping.descriptionColIndex] ?? "";
-    const rawAmt = row.cells[mapping.amountColIndex] ?? "";
 
     const date = normalizeDateToISO(rawDate, startYear);
-    const parsedAmt = parseAmountToCents(rawAmt);
-
-    if (!date || !parsedAmt || !rawDesc.trim()) {
+    if (!date || !rawDesc.trim()) {
       continue;
     }
 
-    const { amountCents, isNegative } = parsedAmt;
+    let amountCents: number;
+    let isCredit: boolean;
 
-    // Determina se é crédito (entrada):
-    // 1. Coluna D/C explícita (maior precisão)
-    // 2. Valor negativo no texto (ex.: -150,00)
-    // 3. Fallback heurístico: texto original contém palavras-chave de renda
-    let isCredit = isNegative;
+    if (mapping.debitColIndex !== undefined && mapping.creditColIndex !== undefined) {
+      const rawDebit = row.cells[mapping.debitColIndex] ?? "";
+      const rawCredit = row.cells[mapping.creditColIndex] ?? "";
+      const parsedDebit = parseAmountToCents(rawDebit);
+      const parsedCredit = parseAmountToCents(rawCredit);
 
-    if (mapping.typeColIndex !== undefined) {
-      const typeVal = (row.cells[mapping.typeColIndex] ?? "").trim().toLowerCase();
-      if (
-        typeVal === "c" ||
-        typeVal === "credito" ||
-        typeVal === "crédito" ||
-        typeVal === "entrada" ||
-        typeVal === "+"
-      ) {
-        isCredit = true;
-      } else if (
-        typeVal === "d" ||
-        typeVal === "debito" ||
-        typeVal === "débito" ||
-        typeVal === "saida" ||
-        typeVal === "saída" ||
-        typeVal === "-"
-      ) {
+      if (parsedDebit && parsedDebit.amountCents > 0) {
+        amountCents = parsedDebit.amountCents;
         isCredit = false;
+      } else if (parsedCredit && parsedCredit.amountCents > 0) {
+        amountCents = parsedCredit.amountCents;
+        isCredit = true;
+      } else {
+        continue;
       }
-    } else if (!isNegative) {
-      // Sem coluna D/C e valor positivo: tenta inferir pelo texto completo da linha
-      isCredit = isLikelyIncomeDescription(row.rawText);
+    } else {
+      const rawAmt = row.cells[mapping.amountColIndex] ?? "";
+      const parsedAmt = parseAmountToCents(rawAmt);
+      if (!parsedAmt) {
+        continue;
+      }
+
+      amountCents = parsedAmt.amountCents;
+
+      if (parsedAmt.isCreditSuffix) {
+        isCredit = true;
+      } else if (parsedAmt.isDebitSuffix) {
+        isCredit = false;
+      } else if (mapping.typeColIndex !== undefined) {
+        const typeVal = (row.cells[mapping.typeColIndex] ?? "").trim().toLowerCase();
+        if (
+          typeVal === "c" ||
+          typeVal === "credito" ||
+          typeVal === "crédito" ||
+          typeVal === "entrada" ||
+          typeVal === "+"
+        ) {
+          isCredit = true;
+        } else if (
+          typeVal === "d" ||
+          typeVal === "debito" ||
+          typeVal === "débito" ||
+          typeVal === "saida" ||
+          typeVal === "saída" ||
+          typeVal === "-"
+        ) {
+          isCredit = false;
+        } else {
+          isCredit = parsedAmt.isNegative;
+        }
+      } else if (!parsedAmt.isNegative) {
+        isCredit = isLikelyIncomeDescription(row.rawText);
+      } else {
+        isCredit = parsedAmt.isNegative;
+      }
     }
 
     const isPayment = isPaymentOrSettlement(rawDesc);

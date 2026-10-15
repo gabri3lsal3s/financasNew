@@ -106,7 +106,15 @@ export function reconcileStatementTransactions(params: {
   // Mapa de despesas existentes que já receberam match para evitar duplo match
   const matchedExistingIds = new Set<string>();
 
+  // Mapa de ocorrências de assinaturas no próprio lote para detectar duplicidades internas
+  const seenSignatures = new Map<string, number>();
+
   const items: ReconciliationItem[] = statementTransactions.map((tx) => {
+    const signature = `${tx.date}|${tx.amountCents}|${tx.cleanDescription.toLowerCase()}`;
+    const previousOccurrences = seenSignatures.get(signature) ?? 0;
+    seenSignatures.set(signature, previousOccurrences + 1);
+    const isInternalDuplicate = previousOccurrences > 0;
+
     // Pagamento de fatura: ignorado por padrão
     if (tx.isPayment) {
       return {
@@ -117,6 +125,10 @@ export function reconcileStatementTransactions(params: {
         selectedCategoryId: defaultCategoryId,
         selected: false,
         ignoredByDefault: true,
+        isInternalDuplicate,
+        duplicateReason: isInternalDuplicate
+          ? "Lançamento duplicado no arquivo"
+          : "Pagamento de fatura anterior",
       };
     }
 
@@ -156,6 +168,10 @@ export function reconcileStatementTransactions(params: {
         selectedCategoryId: bestMatch.categoryId,
         // Já conciliado: fica desmarcado por padrão para não duplicar despesa
         selected: false,
+        isInternalDuplicate,
+        duplicateReason: isInternalDuplicate
+          ? "Lançamento duplicado no arquivo e já cadastrado no app"
+          : "Despesa já cadastrada no app",
       };
     }
 
@@ -173,6 +189,8 @@ export function reconcileStatementTransactions(params: {
         selectedCategoryId: bestMatch.categoryId,
         // Sugestão vinculada a item existente: fica DESMARCADO por padrão para não duplicar despesa
         selected: false,
+        isInternalDuplicate,
+        duplicateReason: isInternalDuplicate ? "Lançamento duplicado no arquivo" : undefined,
       };
     }
 
@@ -185,8 +203,10 @@ export function reconcileStatementTransactions(params: {
       score: 0,
       suggestedCategoryId: suggestedCatId,
       selectedCategoryId: suggestedCatId,
-      // Novo lançamento: marcado para importação
-      selected: !tx.isRefund,
+      // Se for duplicata interna ou estorno, desmarca por padrão
+      selected: !tx.isRefund && !isInternalDuplicate,
+      isInternalDuplicate,
+      duplicateReason: isInternalDuplicate ? "Lançamento duplicado no mesmo arquivo" : undefined,
     };
   });
 

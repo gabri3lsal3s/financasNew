@@ -39,6 +39,7 @@ export function reconcileBankTransactions(params: ReconcileBankParams): BankReco
   const matchedExpenseIds = new Set<string>();
   const matchedIncomeIds = new Set<string>();
   const items: BankTransactionItem[] = [];
+  const seenSignatures = new Map<string, number>();
 
   for (const tx of statementTransactions) {
     // 1. Heurísticas de detecção de natureza e travas anti-fragilidade
@@ -62,6 +63,11 @@ export function reconcileBankTransactions(params: ReconcileBankParams): BankReco
     } else if (tx.isRefund || isRefund || isLikelyIncome) {
       kind = "income";
     }
+
+    const signature = `${tx.date}|${tx.amountCents}|${tx.cleanDescription.toLowerCase()}|${kind}`;
+    const previousOccurrences = seenSignatures.get(signature) ?? 0;
+    seenSignatures.set(signature, previousOccurrences + 1);
+    const isInternalDuplicate = previousOccurrences > 0;
 
     // 2. Reconciliação para ENTRADAS (Receitas)
     if (kind === "income") {
@@ -113,6 +119,10 @@ export function reconcileBankTransactions(params: ReconcileBankParams): BankReco
           selected: false, // Itens já conciliados vêm desmarcados por padrão
           ignoredByDefault,
           ignoreReason,
+          isInternalDuplicate,
+          duplicateReason: isInternalDuplicate
+            ? "Receita duplicada no arquivo e já cadastrada no app"
+            : "Receita já cadastrada no app",
         });
       } else {
         const receiveType = inferReceiveTypeFromDescription(tx.rawDescription);
@@ -125,9 +135,11 @@ export function reconcileBankTransactions(params: ReconcileBankParams): BankReco
           selectedCategoryId: defaultCategoryId,
           suggestedReceiveType: receiveType,
           selectedReceiveType: receiveType,
-          selected: !ignoredByDefault,
+          selected: !ignoredByDefault && !isInternalDuplicate,
           ignoredByDefault,
           ignoreReason,
+          isInternalDuplicate,
+          duplicateReason: isInternalDuplicate ? "Receita duplicada no arquivo" : undefined,
         });
       }
       continue;
@@ -171,6 +183,10 @@ export function reconcileBankTransactions(params: ReconcileBankParams): BankReco
         selected: false, // Itens conciliados vêm desmarcados por padrão
         ignoredByDefault,
         ignoreReason,
+        isInternalDuplicate,
+        duplicateReason: isInternalDuplicate
+          ? "Despesa duplicada no arquivo e já cadastrada no app"
+          : "Despesa já cadastrada no app",
       });
     } else {
       const predictedCategory = predictCategoryForDescription(
@@ -186,9 +202,11 @@ export function reconcileBankTransactions(params: ReconcileBankParams): BankReco
         score: 0,
         suggestedCategoryId: predictedCategory,
         selectedCategoryId: predictedCategory,
-        selected: !ignoredByDefault,
+        selected: !ignoredByDefault && !isInternalDuplicate,
         ignoredByDefault,
         ignoreReason,
+        isInternalDuplicate,
+        duplicateReason: isInternalDuplicate ? "Despesa duplicada no arquivo" : undefined,
       });
     }
   }

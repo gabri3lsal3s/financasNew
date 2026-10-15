@@ -104,7 +104,12 @@ export function normalizeDateToISO(rawDate: string, defaultYear = new Date().get
  * Extrai o valor monetário em centavos (inteiro).
  * Retorna null se não for um número válido.
  */
-export function parseAmountToCents(raw: string): { amountCents: number; isNegative: boolean } | null {
+export function parseAmountToCents(raw: string): {
+  amountCents: number;
+  isNegative: boolean;
+  isCreditSuffix?: boolean;
+  isDebitSuffix?: boolean;
+} | null {
   if (!raw) return null;
   const trimmed = raw.trim();
 
@@ -113,8 +118,15 @@ export function parseAmountToCents(raw: string): { amountCents: number; isNegati
     return null;
   }
 
+  // Detecta sufixo D/C ou sinal no formato bancário brasileiro (ex.: "150,00 D", "2.000,00 C", "150,00D", "2.000,00C")
+  const hasDebitSuffix =
+    /(?:^|\s|\d|\))(?:[dD]|\([dD]\)|-)$/.test(trimmed) && !/card|id|feed/i.test(trimmed);
+  const hasCreditSuffix =
+    /(?:^|\s|\d|\))(?:[cC]|\([cC]\)|\+)$/.test(trimmed) && !/doc|pix/i.test(trimmed);
+
   // Detecta sinal negativo
   const isNegative =
+    hasDebitSuffix ||
     trimmed.startsWith("-") ||
     trimmed.endsWith("-") ||
     (trimmed.startsWith("(") && trimmed.endsWith(")")) ||
@@ -124,6 +136,10 @@ export function parseAmountToCents(raw: string): { amountCents: number; isNegati
   const sanitized = trimmed
     .replace(/^(?:R\$|BRL|\$)\s*/i, "")
     .replace(/\s*(?:reais|real|conto)\b/i, "")
+    .replace(/\s*\([dDcC]\)\s*$/, "")
+    .replace(/\s+[dDcC]\s*$/, "")
+    .replace(/([0-9,.]+)[dDcC]\s*$/, "$1")
+    .replace(/\s*[+-]\s*$/, "")
     .trim();
 
   // Remove caracteres que não sejam dígitos, vírgula ou ponto
@@ -156,7 +172,9 @@ export function parseAmountToCents(raw: string): { amountCents: number; isNegati
 
   return {
     amountCents: Math.abs(amountCents),
-    isNegative,
+    isNegative: hasCreditSuffix ? false : isNegative,
+    isCreditSuffix: hasCreditSuffix || undefined,
+    isDebitSuffix: hasDebitSuffix || undefined,
   };
 }
 
@@ -181,6 +199,8 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
   // Scores para cada coluna
   const dateScores = new Array(maxCols).fill(0);
   const amountScores = new Array(maxCols).fill(0);
+  const debitScores = new Array(maxCols).fill(0);
+  const creditScores = new Array(maxCols).fill(0);
   const textScores = new Array(maxCols).fill(0);
   const typeScores = new Array(maxCols).fill(0);
 
@@ -200,6 +220,10 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
       firstRowText.includes("estabelecimento") ||
       firstRowText.includes("tipo") ||
       firstRowText.includes("d/c") ||
+      firstRowText.includes("débito") ||
+      firstRowText.includes("debito") ||
+      firstRowText.includes("crédito") ||
+      firstRowText.includes("credito") ||
       firstRowText.includes("titular");
 
     if (hasHeaderKeywords) {
@@ -214,7 +238,7 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
           dateScores[c] = (dateScores[c] ?? 0) + 100;
         }
 
-        // Cabeçalho de valor
+        // Cabeçalho de valor genérico
         if (
           headerCell.includes("valor") ||
           headerCell.includes("amount") ||
@@ -223,6 +247,60 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
           headerCell.includes("preco")
         ) {
           amountScores[c] = (amountScores[c] ?? 0) + 100;
+        }
+
+        // Cabeçalho de débito dedicado
+        if (
+          headerCell === "débito" ||
+          headerCell === "debito" ||
+          headerCell.includes("débito (r$)") ||
+          headerCell.includes("debito (r$)") ||
+          headerCell.includes("valor débito") ||
+          headerCell.includes("valor debito") ||
+          headerCell === "saída" ||
+          headerCell === "saida" ||
+          headerCell.includes("saída (r$)") ||
+          headerCell.includes("saida (r$)")
+        ) {
+          debitScores[c] = (debitScores[c] ?? 0) + 120;
+          amountScores[c] = (amountScores[c] ?? 0) + 100;
+        }
+
+        // Cabeçalho de crédito dedicado
+        if (
+          headerCell === "crédito" ||
+          headerCell === "credito" ||
+          headerCell.includes("crédito (r$)") ||
+          headerCell.includes("credito (r$)") ||
+          headerCell.includes("valor crédito") ||
+          headerCell.includes("valor credito") ||
+          headerCell === "entrada" ||
+          headerCell === "entradas" ||
+          headerCell.includes("entrada (r$)")
+        ) {
+          creditScores[c] = (creditScores[c] ?? 0) + 120;
+          amountScores[c] = (amountScores[c] ?? 0) + 100;
+        }
+
+        // Cabeçalho de Saldo (NÃO deve ser considerado valor de transação)
+        if (headerCell.includes("saldo")) {
+          amountScores[c] = (amountScores[c] ?? 0) - 200;
+          debitScores[c] = (debitScores[c] ?? 0) - 200;
+          creditScores[c] = (creditScores[c] ?? 0) - 200;
+          textScores[c] = (textScores[c] ?? 0) - 200;
+        }
+
+        // Cabeçalho de Documento / Num Doc / Docto
+        if (
+          headerCell.includes("docto") ||
+          headerCell.includes("documento") ||
+          headerCell.includes("num doc") ||
+          headerCell.includes("nº doc") ||
+          headerCell === "doc" ||
+          headerCell === "doc."
+        ) {
+          amountScores[c] = (amountScores[c] ?? 0) - 150;
+          textScores[c] = (textScores[c] ?? 0) - 50;
         }
 
         // Cabeçalho de tipo (D/C)
@@ -343,14 +421,42 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     }
   }
 
-  // Encontra a melhor coluna de valor (diferente da de data)
-  let bestAmountCol = (bestDateCol + 1) % maxCols;
-  let maxAmountScore = -1;
+  // Verifica se há colunas dedicadas de débito e crédito no cabeçalho
+  let bestDebitCol: number | undefined;
+  let bestCreditCol: number | undefined;
+  let maxDebit = 100;
+  let maxCredit = 100;
+
   for (let i = 0; i < maxCols; i++) {
     if (i === bestDateCol) continue;
-    if ((amountScores[i] ?? 0) > maxAmountScore) {
-      maxAmountScore = amountScores[i] ?? 0;
-      bestAmountCol = i;
+    if ((debitScores[i] ?? 0) >= maxDebit) {
+      maxDebit = debitScores[i] ?? 0;
+      bestDebitCol = i;
+    }
+  }
+
+  for (let i = 0; i < maxCols; i++) {
+    if (i === bestDateCol || i === bestDebitCol) continue;
+    if ((creditScores[i] ?? 0) >= maxCredit) {
+      maxCredit = creditScores[i] ?? 0;
+      bestCreditCol = i;
+    }
+  }
+
+  const hasDualAmountCols = bestDebitCol !== undefined && bestCreditCol !== undefined;
+
+  // Encontra a melhor coluna de valor (diferente da de data)
+  let bestAmountCol = (bestDateCol + 1) % maxCols;
+  if (hasDualAmountCols && bestDebitCol !== undefined) {
+    bestAmountCol = bestDebitCol;
+  } else {
+    let maxAmountScore = -1;
+    for (let i = 0; i < maxCols; i++) {
+      if (i === bestDateCol) continue;
+      if ((amountScores[i] ?? 0) > maxAmountScore) {
+        maxAmountScore = amountScores[i] ?? 0;
+        bestAmountCol = i;
+      }
     }
   }
 
@@ -358,18 +464,26 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
   let bestTypeCol: number | undefined;
   let maxTypeScore = 10; // Threshold mínimo
   for (let i = 0; i < maxCols; i++) {
-    if (i === bestDateCol || i === bestAmountCol) continue;
+    if (i === bestDateCol || i === bestAmountCol || i === bestDebitCol || i === bestCreditCol) continue;
     if ((typeScores[i] ?? 0) > maxTypeScore) {
       maxTypeScore = typeScores[i] ?? 0;
       bestTypeCol = i;
     }
   }
 
-  // Encontra a melhor coluna de descrição (diferente de data, valor e tipo)
+  // Encontra a melhor coluna de descrição (diferente de data, valor, tipo, débito e crédito)
   let bestDescCol = 0;
   let maxTextScore = -Infinity;
   for (let i = 0; i < maxCols; i++) {
-    if (i === bestDateCol || i === bestAmountCol || i === bestTypeCol) continue;
+    if (
+      i === bestDateCol ||
+      i === bestAmountCol ||
+      i === bestTypeCol ||
+      i === bestDebitCol ||
+      i === bestCreditCol
+    ) {
+      continue;
+    }
     if ((textScores[i] ?? 0) > maxTextScore) {
       maxTextScore = textScores[i] ?? 0;
       bestDescCol = i;
@@ -381,6 +495,8 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     descriptionColIndex: bestDescCol,
     amountColIndex: bestAmountCol,
     typeColIndex: bestTypeCol,
+    debitColIndex: hasDualAmountCols ? bestDebitCol : undefined,
+    creditColIndex: hasDualAmountCols ? bestCreditCol : undefined,
     hasHeader,
     startRowIndex: hasHeader ? 1 : 0,
   };
