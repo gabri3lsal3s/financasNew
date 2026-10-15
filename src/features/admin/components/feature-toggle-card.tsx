@@ -1,5 +1,7 @@
 import { Check, Layers, ShieldAlert } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
+import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
 import { useAdminToggleGlobalFeature } from "@/state";
 import type { SystemFeature } from "@/types";
 
@@ -11,14 +13,27 @@ export function FeatureToggleCard({ feature }: FeatureToggleCardProps) {
   const toggleMutation = useAdminToggleGlobalFeature();
 
   const handleToggle = () => {
-    toggleMutation.mutate({
-      featureKey: feature.key,
-      enabled: !feature.is_globally_enabled,
-    });
+    const nextState = !feature.is_globally_enabled;
+    toggleMutation.mutate(
+      {
+        featureKey: feature.key,
+        enabled: nextState,
+      },
+      {
+        onSuccess: () => {
+          triggerSensory(nextState ? "success" : "destructive");
+          pushToast({
+            title: nextState ? "Módulo ativado globalmente" : "Módulo desativado via Kill-Switch",
+            description: `${feature.name} agora está ${nextState ? "disponível" : "bloqueado"} na plataforma.`,
+            variant: nextState ? "default" : "destructive",
+          });
+        },
+      },
+    );
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface/90 shadow-xs transition-all hover:border-border">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-xl border border-border/80 bg-surface shadow-xs transition-all hover:border-border">
       <div className="flex items-start gap-3.5 min-w-0 flex-1">
         <span
           className={`flex size-10 shrink-0 items-center justify-center rounded-xl border mt-0.5 sm:mt-0 ${
@@ -38,15 +53,12 @@ export function FeatureToggleCard({ feature }: FeatureToggleCardProps) {
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-foreground text-sm">{feature.name}</span>
-            <span
-              className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                feature.is_globally_enabled
-                  ? "bg-positive/10 text-positive-strong border border-positive/20"
-                  : "bg-critical/10 text-critical border border-critical/20"
-              }`}
+            <Badge
+              variant={feature.is_globally_enabled ? "positive" : "critical"}
+              size="xs"
             >
               {feature.is_globally_enabled ? "Ativo Globalmente" : "Desativado (Kill-Switch)"}
-            </span>
+            </Badge>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
         </div>

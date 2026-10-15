@@ -1,5 +1,27 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.42** registra o **Refinamento Holístico do Bloco 9 (Painel de Administração & Governança da Plataforma - AdminPage, OverviewTab, UsersTab, InvitesTab, SystemTab, UserEditDialog, CreateInviteDialog e FeatureToggleCard)** (2026-10-14):
+> - **(1) Painel de Administração & Abas (`AdminPage`, `OverviewTab`, `UsersTab`, `InvitesTab`, `SystemTab`)**:
+>   - Integração de `triggerSensory("selection")` no alternador de abas de governança (`handleTabChange`);
+>   - Eliminação de duplos disparos hápticos em botões de ação (`<Button />`), deslocando o feedback tátil para os callbacks de mutação `onSuccess` e `onError` (Regra 17);
+>   - Saneamento visual dos ícones descritivos de KPIs e cabeçalhos para o tom neutro suave `text-muted-foreground` (`size-4`, Regra 13), prevenindo sobrecarga da cor de destaque (*accent fatigue*);
+>   - Elevação e superfície dos contêineres e tabelas unificadas na trinca canônica `rounded-xl border border-border/80 bg-surface shadow-xs` (Regra 16);
+>   - Spans customizados de ações de auditoria no `SystemTab` convertidos para `<Badge variant="muted" size="xs" className="font-mono">` (Regra 14);
+> - **(2) Diálogos de Gestão de Usuários e Convites (`UserEditDialog` & `CreateInviteDialog`)**:
+>   - Spans manuais de tiers, permissões e papéis convertidos para variantes oficiais `<Badge size="xs">` (Regra 14);
+>   - Ícones de cabeçalho e papéis sanitizados para `text-muted-foreground` (`size-4`, Regra 13);
+>   - Feedback sensorial contextualizado (`triggerSensory("success")`, `triggerSensory("action")`) e toasts informativos (`pushToast`) nas mutações;
+>   - Rodapés adaptativos responsivos com empilhamento seguro no mobile (`flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2`, Regra 15);
+> - **(3) Painel de Flags de Funcionalidades & Kill-Switch (`FeatureToggleCard`)**:
+>   - Tags de status global unificadas com `<Badge size="xs">` (Regra 14);
+>   - Elevação canônica dos cards com `rounded-xl border border-border/80 bg-surface shadow-xs` (Regra 16);
+>   - Micro-interações e confirmações via Gateway Sensorial ao comutar o estado do Kill-Switch operacional;
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis);
+>   - Suíte de testes de Administração (3 arquivos / 11 testes) 100% verde;
+>   - Build de produção Vite + Workbox PWA gerado com sucesso em 1.43s.
+
 > **v2.41** registra o **Refinamento Holístico do Bloco 8 (Ficha Detalhada de Ativos & Modais Densos de Investimentos - AssetDetailSheet, AssetFormDialog, AssetSellTab, DividendFormDialog, CalibrateFixedIncomeDialog e QuickTransactionSheet)** (2026-10-14):
 > - **(1) Ficha Detalhada do Ativo (`AssetDetailSheet`)**:
 >   - Badges padronizados com variantes oficiais `<Badge size="xs">` para posição encerrada, moeda, taxas e isenções tributárias, eliminando classes manuais inline (Regra 14);

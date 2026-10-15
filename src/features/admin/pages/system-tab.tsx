@@ -62,12 +62,12 @@ export function SystemTab() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldCheck className="size-3.5 text-positive-strong" />
+            <ShieldCheck className="size-3.5 text-muted-foreground" />
             <span>Últimos 100 registros</span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+        <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
           {auditQuery.isLoading ? (
             <div className="p-6 flex flex-col gap-3">
               <Skeleton className="h-12 w-full rounded-xl" />
@@ -88,9 +88,9 @@ export function SystemTab() {
                 {logs.map((log) => (
                   <div key={log.id} className="p-4 flex flex-col gap-2 hover:bg-surface-hover/20 transition-colors text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono font-semibold text-foreground border border-border">
+                      <Badge variant="muted" size="xs" className="font-mono">
                         {log.action}
-                      </span>
+                      </Badge>
                       <span className="text-muted-foreground text-[11px]">
                         {new Date(log.created_at).toLocaleDateString("pt-BR", {
                           day: "2-digit",
@@ -145,9 +145,9 @@ export function SystemTab() {
                           })}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span className="inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono font-semibold text-foreground border border-border">
+                          <Badge variant="muted" size="xs" className="font-mono">
                             {log.action}
-                          </span>
+                          </Badge>
                         </td>
                         <td className="py-3 px-4 font-mono text-muted-foreground whitespace-nowrap">
                           {log.entity_type} {log.entity_id ? `(${log.entity_id.slice(0, 8)})` : ""}

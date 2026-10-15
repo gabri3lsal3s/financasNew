@@ -3,8 +3,9 @@ import type { FormEvent } from "react";
 import { Copy, KeyRound, Plus, Sparkles } from "lucide-react";
 import { Button, Checkbox, DatePicker, Input, Modal, Select } from "@/components/ui";
 import { generateInviteCode } from "@/domain/admin";
-import { useAdminCreateModularInvite } from "@/state";
+import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { useAdminCreateModularInvite } from "@/state";
 import type { ModuleAccessLevel, SubscriptionTier } from "@/types";
 
 export interface CreateInviteDialogProps {
@@ -37,6 +38,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
   const [moduleGrants, setModuleGrants] = useState<Record<string, ModuleAccessLevel>>({});
 
   const handleGenerateNew = () => {
+    triggerSensory("action");
     setCode(generateInviteCode());
   };
 
@@ -62,6 +64,13 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
         targetEmail: targetEmail.trim() ? targetEmail.trim() : null,
         notes: notes.trim() ? notes.trim() : null,
       });
+
+      triggerSensory("success");
+      pushToast({
+        title: "Convite gerado",
+        description: `Código ${code.trim().toUpperCase()} criado com sucesso.`,
+      });
+
       onOpenChange(false);
       setCode(generateInviteCode());
       setTargetTier("trial");
@@ -73,6 +82,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
       setModuleGrants({});
       setMaxUses(1);
     } catch {
+      triggerSensory("destructive");
       // Erro tratado no hook
     }
   };
@@ -80,6 +90,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(code);
+      triggerSensory("action");
       pushToast({
         title: "Código copiado",
         description: "O código do convite foi copiado para a área de transferência.",
@@ -137,7 +148,7 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
         {/* Plano / Tier Concedido pelo Convite */}
         <div className="flex flex-col gap-1.5 p-3.5 rounded-xl border border-border/80 bg-surface/60">
           <div className="flex items-center gap-2">
-            <KeyRound className="size-4 text-primary" aria-hidden="true" />
+            <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
             <label htmlFor="invite-tier" className="text-xs font-semibold text-foreground">
               Plano / Tier Atribuído ao Usuário
             </label>
@@ -301,11 +312,11 @@ export function CreateInviteDialog({ open, onOpenChange }: CreateInviteDialogPro
         </div>
 
         {/* Ações */}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 pt-3 border-t border-border mt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto justify-center">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancelar
           </Button>
-          <Button type="submit" variant="default" disabled={createInviteMutation.isPending} className="gap-1.5 w-full sm:w-auto justify-center">
+          <Button type="submit" variant="default" disabled={createInviteMutation.isPending} className="gap-1.5 w-full sm:w-auto">
             <Plus className="size-4" aria-hidden="true" />
             {createInviteMutation.isPending ? "Criando…" : "Salvar Convite"}
           </Button>

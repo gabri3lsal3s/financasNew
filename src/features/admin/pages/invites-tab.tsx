@@ -30,16 +30,27 @@ export function InvitesTab() {
   };
 
   const handleRevoke = (inviteId: string) => {
-    triggerSensory("destructive");
-    revokeMutation.mutate({ inviteId });
+    revokeMutation.mutate(
+      { inviteId },
+      {
+        onSuccess: () => {
+          triggerSensory("destructive");
+          pushToast({
+            title: "Convite revogado",
+            description: "O código foi desativado e não poderá mais ser utilizado.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
   };
 
   return (
     <div className="flex flex-col gap-5 w-full min-w-0">
       {/* Cabeçalho com Ação de Criar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all hover:border-border">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-xl border border-border/80 bg-surface shadow-xs transition-all hover:border-border">
         <div className="flex items-center gap-3.5 min-w-0">
-          <KeyRound className="size-5 text-portfolio shrink-0" aria-hidden="true" />
+          <KeyRound className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-bold text-foreground truncate">Gestão de Convites &amp; Allowlist</span>
             <span className="text-xs text-muted-foreground leading-relaxed">
@@ -51,10 +62,7 @@ export function InvitesTab() {
         <Button
           type="button"
           variant="default"
-          onClick={() => {
-            triggerSensory("selection");
-            setCreateOpen(true);
-          }}
+          onClick={() => setCreateOpen(true)}
           className="gap-2 w-full sm:w-auto justify-center shrink-0 h-9"
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -63,7 +71,7 @@ export function InvitesTab() {
       </div>
 
       {/* Lista / Tabela de Convites com Layout Adaptativo */}
-      <div className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+      <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
         {invitesQuery.isLoading ? (
           <div className="p-6 flex flex-col gap-3">
             <Skeleton className="h-12 w-full rounded-xl" />

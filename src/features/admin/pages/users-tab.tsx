@@ -61,7 +61,7 @@ export function UsersTab() {
       </div>
 
       {/* Lista / Tabela de Usuários com Layout Adaptativo */}
-      <div className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+      <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
         {usersQuery.isLoading ? (
           <div className="p-6 flex flex-col gap-3">
             <Skeleton className="h-12 w-full rounded-xl" />

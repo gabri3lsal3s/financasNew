@@ -23,11 +23,11 @@ export function OverviewTab() {
   const totalFeaturesCount = features.length;
 
   const handleApprove = (userId: string, userName?: string | null) => {
-    triggerSensory("action");
     updateStatusMutation.mutate(
       { userId, status: "active" },
       {
         onSuccess: () => {
+          triggerSensory("success");
           pushToast({
             title: "Usuário aprovado",
             description: userName ? `Acesso liberado para ${userName}.` : "Conta ativada com sucesso.",
@@ -39,11 +39,11 @@ export function OverviewTab() {
   };
 
   const handleReject = (userId: string, userName?: string | null) => {
-    triggerSensory("destructive");
     updateStatusMutation.mutate(
       { userId, status: "banned", reason: "Cadastro recusado pela administração." },
       {
         onSuccess: () => {
+          triggerSensory("destructive");
           pushToast({
             title: "Cadastro recusado",
             description: userName ? `Cadastro de ${userName} foi recusado.` : "Usuário bloqueado.",
@@ -59,7 +59,7 @@ export function OverviewTab() {
       {/* Grade de KPIs Executivos do SaaS */}
       <section aria-label="Métricas do SaaS" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {/* Total de Usuários */}
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
+        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs font-medium text-muted-foreground">Total de Usuários</span>
             <Users className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -74,10 +74,10 @@ export function OverviewTab() {
         </div>
 
         {/* Contas Ativas */}
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
+        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs font-medium text-muted-foreground">Contas Ativas</span>
-            <UserCheck className="size-4 text-positive-strong" aria-hidden="true" />
+            <UserCheck className="size-4 text-muted-foreground" aria-hidden="true" />
           </div>
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
@@ -89,10 +89,10 @@ export function OverviewTab() {
         </div>
 
         {/* Fila de Aprovação */}
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
+        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs font-medium text-muted-foreground">Fila de Aprovação</span>
-            <Clock className="size-4 text-warning-strong" aria-hidden="true" />
+            <Clock className="size-4 text-muted-foreground" aria-hidden="true" />
           </div>
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
@@ -104,10 +104,10 @@ export function OverviewTab() {
         </div>
 
         {/* Suspensos / Bloqueados */}
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
+        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs font-medium text-muted-foreground">Bloqueados</span>
-            <Shield className="size-4 text-critical-strong" aria-hidden="true" />
+            <Shield className="size-4 text-muted-foreground" aria-hidden="true" />
           </div>
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
@@ -119,10 +119,10 @@ export function OverviewTab() {
         </div>
 
         {/* Convites Gerados */}
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
+        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs font-medium text-muted-foreground">Convites Criados</span>
-            <KeyRound className="size-4 text-portfolio" aria-hidden="true" />
+            <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
           </div>
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
@@ -134,10 +134,10 @@ export function OverviewTab() {
         </div>
 
         {/* Convites Resgatados */}
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
+        <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border flex flex-col justify-between gap-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs font-medium text-muted-foreground">Convites Usados</span>
-            <KeyRound className="size-4 text-positive-strong" aria-hidden="true" />
+            <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
           </div>
           {metricsQuery.isLoading ? (
             <Skeleton className="h-8 w-20" />
@@ -150,7 +150,7 @@ export function OverviewTab() {
       </section>
 
       {/* Radar de Saúde & Status dos Módulos */}
-      <section aria-label="Status do Sistema" className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <section aria-label="Status do Sistema" className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Activity className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
           <div>
@@ -177,7 +177,7 @@ export function OverviewTab() {
       </section>
 
       {/* Fila Rápida de Aprovação com Layout Adaptativo Mobile e Desktop */}
-      <section aria-label="Fila de Aprovação" className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs flex flex-col gap-4">
+      <section aria-label="Fila de Aprovação" className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5">
             <Clock className="size-4 text-muted-foreground" aria-hidden="true" />

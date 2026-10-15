@@ -1,6 +1,7 @@
 import { useSearchParams } from "react-router";
 import { KeyRound, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
 import { Tabs, type TabItem } from "@/components/ui";
+import { triggerSensory } from "@/services/sensory";
 import { OverviewTab } from "./overview-tab";
 import { UsersTab } from "./users-tab";
 import { InvitesTab } from "./invites-tab";
@@ -41,6 +42,7 @@ export function AdminPage() {
   const activeTab = resolveAdminTab(rawParam);
 
   const handleTabChange = (val: string) => {
+    triggerSensory("selection");
     const nextTab = val as AdminTab;
     setSearchParams(
       (prev) => {

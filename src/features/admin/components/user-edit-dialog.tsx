@@ -1,13 +1,15 @@
 import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
 import { Check, Crown, RotateCcw, Shield, Sparkles, UserCheck, X } from "lucide-react";
-import { Button, Input, Modal, Select } from "@/components/ui";
+import { Badge, Button, Input, Modal, Select } from "@/components/ui";
 import {
   ROLE_LABELS,
   STATUS_LABELS,
   canManageRole,
   canManageUserStatus,
 } from "@/domain/admin";
+import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
 import {
   useAdminRemoveUserModulePermission,
   useAdminSetUserModulePermission,
@@ -104,8 +106,15 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         });
       }
 
+      triggerSensory("success");
+      pushToast({
+        title: "Usuário atualizado",
+        description: `Status e privilégios de ${user.name || user.email} salvos com sucesso.`,
+      });
+
       onOpenChange(false);
     } catch {
+      triggerSensory("destructive");
       // Erros tratados nos hooks
     }
   };
@@ -118,12 +127,18 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         tier: effectiveTier,
         status: effectiveSubStatus,
       });
+      triggerSensory("success");
+      pushToast({
+        title: "Plano SaaS atualizado",
+        description: `Assinatura de ${user.name || user.email} atualizada para ${effectiveTier}.`,
+      });
     } catch {
-      // no-op
+      triggerSensory("destructive");
     }
   };
 
   const handleSetModulePermission = async (moduleKey: string, accessLevel: ModuleAccessLevel) => {
+    triggerSensory("action");
     await setModulePermissionMutation.mutateAsync({
       userId: user.id,
       moduleKey,
@@ -132,6 +147,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   };
 
   const handleRemoveModulePermission = async (moduleKey: string) => {
+    triggerSensory("action");
     await removeModulePermissionMutation.mutateAsync({
       userId: user.id,
       moduleKey,
@@ -173,14 +189,14 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
               </span>
             </div>
             {subscriptionQuery.data?.tier === "lifetime" ? (
-              <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold bg-portfolio/10 text-portfolio border border-portfolio/25">
+              <Badge variant="portfolio" size="xs" className="gap-1">
                 <Sparkles className="size-3" aria-hidden="true" />
                 Vitalício VIP
-              </span>
+              </Badge>
             ) : (
-              <span className="inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold bg-surface-hover text-muted-foreground border border-border">
+              <Badge variant="muted" size="xs">
                 Tier: {subscriptionQuery.data?.tier || "trial"}
-              </span>
+              </Badge>
             )}
           </div>
 
@@ -268,21 +284,22 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-foreground">{mod.label}</span>
                       {hasOverride ? (
-                        <span
-                          className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                        <Badge
+                          variant={
                             currentLevel === "write" || currentLevel === "admin"
-                              ? "bg-positive/10 text-positive-strong border border-positive/25"
+                              ? "positive"
                               : currentLevel === "read"
-                                ? "bg-warning/10 text-warning border border-warning/25"
-                                : "bg-critical/10 text-critical border border-critical/25"
-                          }`}
+                                ? "warning"
+                                : "critical"
+                          }
+                          size="xs"
                         >
                           Override: {currentLevel === "write" || currentLevel === "admin" ? "Acesso Total" : currentLevel === "read" ? "Somente Leitura" : "Bloqueado"}
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold bg-surface-hover text-muted-foreground border border-border">
+                        <Badge variant="muted" size="xs">
                           Padrão do Plano
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
@@ -402,7 +419,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         {/* Nível de Acesso (Role) */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
-            <Shield className="size-3.5 text-portfolio" aria-hidden="true" />
+            <Shield className="size-3.5 text-muted-foreground" aria-hidden="true" />
             <label htmlFor="user-role" className="text-xs font-semibold text-foreground">
               Nível de Permissão Administrativa (Role)
             </label>
@@ -425,15 +442,15 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         </div>
 
         {/* Rodapé */}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 pt-2 border-t border-border mt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto justify-center">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80 mt-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Fechar
           </Button>
           <Button
             type="submit"
             variant="default"
             disabled={updateStatusMutation.isPending || setRoleMutation.isPending}
-            className="gap-1.5 w-full sm:w-auto justify-center"
+            className="gap-1.5 w-full sm:w-auto"
           >
             <UserCheck className="size-4" aria-hidden="true" />
             Salvar Status &amp; Cargo
