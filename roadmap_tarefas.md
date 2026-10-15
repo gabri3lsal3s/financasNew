@@ -129,12 +129,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 ## FASE 4: Investimentos e Relatórios Temporais
 
 ### Tarefa 11: Sincronização Temporal dos Relatórios de Investimentos e Snapshots
+- **Status:** ✅ Concluída
 - **Objetivo:** Garantir que composição, métricas e relatórios de investimentos reflitam fielmente o mês/ano selecionado.
 - **Ações:**
-  1. Parametrizar todos os cálculos do relatório de investimentos para consumir estritamente o mês/ano filtrado, sem apontar estaticamente para o mês corrente.
-  2. Validar persistência e recuperação de snapshots mensais de carteira.
-  3. Exibir empty state informativo se não houver dados no mês selecionado, sem fazer fallback involuntário para o mês atual.
-  4. Garantir que exportações/impressões do relatório usem os dados do período ativo.
+  1. Parametrizar todos os cálculos do relatório de investimentos para consumir estritamente o mês/ano filtrado, sem apontar estaticamente para o mês corrente. (Concluído: parametrizados todos os cálculos em `reports-page.tsx` para consumir o período ativo [mês, ano ou custom], filtrando transações, compras, vendas, proventos e resgates estritamente pela competência ativa sem fallback estático para `currentMonth()`).
+  2. Validar persistência e recuperação de snapshots mensais de carteira. (Concluído: integrada a consulta `usePortfolioSnapshots` em `reports-page.tsx`, recuperando snapshots históricos gravados em `portfolio_snapshots` para exibir o patrimônio consolidado e custo investido exatos de cada competência anterior).
+  3. Exibir empty state informativo se não houver dados no mês selecionado, sem fazer fallback involuntário para o mês atual. (Concluído: adicionado `EmptyState` calmo e padronizado em `InvestmentsTab` quando não houver snapshots ou movimentações no período selecionado, incluindo botão CTA "Ver mês atual" para restabelecer a visualização da carteira viva).
+  4. Garantir que exportações/impressões do relatório usem os dados do período ativo. (Concluído: exportação em planilha Excel [`workbookData`] e modal de dossiê patrimonial A4 [`WealthTearSheetModal`] atualizados para refletir rigorosamente o período ativo, seus proventos e sumário de movimentações).
 - **Commit:** `fix(investments): align monthly reports with selected period and enforce historical snapshots`
 
 ---

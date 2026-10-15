@@ -589,7 +589,7 @@ export function WealthTearSheetModal({
         <div className="bg-muted/30 rounded-xl border border-border/80 px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs print:bg-white print:border-slate-200/90 shadow-2xs">
           <div className="flex items-center gap-1.5 text-foreground font-bold uppercase tracking-wider text-[10px]">
             <Calendar className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <span>Movimentação do Mês ({monthSummary.monthLabel}):</span>
+            <span>Movimentação do Período ({monthSummary.monthLabel}):</span>
           </div>
           {monthSummary.buysBRL === 0 && monthSummary.sellsBRL === 0 && monthSummary.dividendsBRL === 0 ? (
             <span className="text-muted-foreground text-[11px] italic">

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router";
 import { FileSpreadsheet, Landmark, Scale, TrendingUp } from "lucide-react";
 import { Button, ErrorState, Skeleton, Tabs, type TabItem } from "@/components/ui";
@@ -17,8 +17,8 @@ import {
   validateCustomPeriod,
 } from "@/domain/reports";
 import { isCashAssetClass } from "@/domain/portfolio";
-import { addDaysISO } from "@/domain/debts";
-import { currentMonth, currentYear, monthLabel, monthRange, shiftMonth, yearRange } from "@/lib/date";
+import { addDaysISO, todayISO } from "@/domain/debts";
+import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import {
@@ -36,6 +36,7 @@ import {
   usePortfolioContributions,
   usePortfolioDividends,
   usePortfolioPosition,
+  usePortfolioSnapshots,
   useMacroIndicators,
   useUserAccess,
   useUserPreferences,
@@ -151,6 +152,43 @@ export function ReportsPage() {
   const isYear = mode === "year";
   const isCustom = mode === "custom";
 
+  const periodLabel = useMemo(() => {
+    if (mode === "month") {
+      const parts = month.split("-");
+      const y = parts[0];
+      const m = parts[1];
+      if (y && m) {
+        const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+        const monthName = date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+        return monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      }
+      return month;
+    }
+    if (mode === "year") {
+      return `Exercício de ${year}`;
+    }
+    if (customStart && customEnd) {
+      return `${customStart} a ${customEnd}`;
+    }
+    return "Período Personalizado";
+  }, [mode, month, year, customStart, customEnd]);
+
+  const isDateInPeriod = useCallback(
+    (dateStr: string) => {
+      if (mode === "month") {
+        return dateStr.startsWith(month);
+      }
+      if (mode === "year") {
+        return dateStr.startsWith(String(year));
+      }
+      if (mode === "custom" && customValid && customStart && customEnd) {
+        return dateStr >= customStart && dateStr <= customEnd;
+      }
+      return true;
+    },
+    [mode, month, year, customValid, customStart, customEnd],
+  );
+
   // Queries de Finanças — condicionadas a hasFinanceFeatures
   const monthlyExpenses = useExpenses(month, { enabled: hasFinanceFeatures });
   const monthlyIncomes = useIncomes(month, { enabled: hasFinanceFeatures });
@@ -171,6 +209,7 @@ export function ReportsPage() {
 
   // Queries de Investimentos & Patrimônio
   const positionQuery = usePortfolioPosition();
+  const snapshotsQuery = usePortfolioSnapshots();
   const macroIndicatorsQuery = useMacroIndicators();
   const assetsQuery = usePortfolioAssets();
   const dividendsQuery = usePortfolioDividends();
@@ -215,6 +254,7 @@ export function ReportsPage() {
     debtsQuery.isLoading ||
     categoriesQuery.isLoading ||
     positionQuery.isLoading ||
+    snapshotsQuery.isLoading ||
     assetsQuery.isLoading ||
     transactionsQuery.isLoading ||
     sectorTargetsQuery.isLoading;
@@ -228,6 +268,7 @@ export function ReportsPage() {
     debtsQuery.error ??
     categoriesQuery.error ??
     positionQuery.error ??
+    snapshotsQuery.error ??
     transactionsQuery.error ??
     sectorTargetsQuery.error;
 
@@ -238,6 +279,7 @@ export function ReportsPage() {
   const dividends = useMemo(() => dividendsQuery.data ?? [], [dividendsQuery.data]);
   const transactions = useMemo(() => transactionsQuery.data ?? [], [transactionsQuery.data]);
   const contributions = useMemo(() => contributionsQuery.data ?? [], [contributionsQuery.data]);
+  const snapshots = useMemo(() => snapshotsQuery.data ?? [], [snapshotsQuery.data]);
   const positionRows = useMemo(() => positionQuery.rows ?? [], [positionQuery.rows]);
   const classTargets = useMemo(() => classTargetsQuery.data ?? [], [classTargetsQuery.data]);
   const sectorTargets = useMemo(
@@ -250,10 +292,6 @@ export function ReportsPage() {
   );
   const assetTargets = useMemo(() => assetTargetsQuery.data ?? [], [assetTargetsQuery.data]);
 
-  const totalPatrimonyBRL = positionQuery.totalBRL ?? 0;
-  const cashBalanceBRL = positionQuery.cashBRL ?? 0;
-  const totalInvestedCostBRL = positionQuery.totalCostBRL ?? 0;
-
   const usdRate = useMemo(
     () => positionRows.find((r) => r.currency === "USD")?.usdRate ?? 5.25,
     [positionRows],
@@ -264,32 +302,46 @@ export function ReportsPage() {
     [assets],
   );
 
-  const currentYearNum = new Date().getFullYear();
+  // Proventos alinhados estritamente ao exercício/ano selecionado
+  const selectedYearNum = useMemo(() => {
+    if (mode === "year") return year;
+    if (mode === "month") return parseInt(month.slice(0, 4), 10) || new Date().getFullYear();
+    if (customStart) return parseInt(customStart.slice(0, 4), 10) || new Date().getFullYear();
+    return new Date().getFullYear();
+  }, [mode, year, month, customStart]);
+
   const yearDividendsBRL = useMemo(() => {
     const tableDivs = dividends
-      .filter((d) => d.date.startsWith(String(currentYearNum)))
+      .filter((d) => d.date.startsWith(String(selectedYearNum)))
       .reduce((acc, d) => {
         const curr = d.asset_id ? assetCurrencyMap.get(d.asset_id) : "BRL";
         const rate = curr === "USD" ? usdRate : 1;
         return acc + d.amount * rate;
       }, 0);
     if (tableDivs > 0) return tableDivs;
-    return positionQuery.totalDividendsBRL;
-  }, [dividends, currentYearNum, positionQuery.totalDividendsBRL, assetCurrencyMap, usdRate]);
+    if (selectedYearNum === new Date().getFullYear()) {
+      return positionQuery.totalDividendsBRL;
+    }
+    return 0;
+  }, [dividends, selectedYearNum, positionQuery.totalDividendsBRL, assetCurrencyMap, usdRate]);
 
-  const currentMonthStr = currentMonth();
-  const currentMonthFormatted = monthLabel(currentMonthStr);
-  const monthTransactions = useMemo(
-    () => transactions.filter((t) => t.date.startsWith(currentMonthStr)),
-    [transactions, currentMonthStr],
+  // Movimentações, proventos e aportes filtrados estritamente pelo período ativo
+  const periodTransactions = useMemo(
+    () => transactions.filter((t) => isDateInPeriod(t.date)),
+    [transactions, isDateInPeriod],
   );
-  const monthDividendsList = useMemo(
-    () => dividends.filter((d) => d.date.startsWith(currentMonthStr)),
-    [dividends, currentMonthStr],
+  const periodDividendsList = useMemo(
+    () => dividends.filter((d) => isDateInPeriod(d.date)),
+    [dividends, isDateInPeriod],
   );
-  const monthBuysBRL = useMemo(
+  const periodContributions = useMemo(
+    () => contributions.filter((c) => isDateInPeriod(c.date)),
+    [contributions, isDateInPeriod],
+  );
+
+  const periodBuysBRL = useMemo(
     () =>
-      monthTransactions
+      periodTransactions
         .filter((t) => t.type === "buy")
         .reduce((acc, t) => {
           const curr = assetCurrencyMap.get(t.asset_id);
@@ -297,11 +349,11 @@ export function ReportsPage() {
           const totalVal = t.total ?? (t.quantity * t.price);
           return acc + totalVal * rate;
         }, 0),
-    [monthTransactions, assetCurrencyMap, usdRate],
+    [periodTransactions, assetCurrencyMap, usdRate],
   );
-  const monthSellsBRL = useMemo(
+  const periodSellsBRL = useMemo(
     () =>
-      monthTransactions
+      periodTransactions
         .filter((t) => t.type === "sell")
         .reduce((acc, t) => {
           const curr = assetCurrencyMap.get(t.asset_id);
@@ -309,29 +361,105 @@ export function ReportsPage() {
           const totalVal = t.total ?? (t.quantity * t.price);
           return acc + totalVal * rate;
         }, 0),
-    [monthTransactions, assetCurrencyMap, usdRate],
+    [periodTransactions, assetCurrencyMap, usdRate],
   );
-  const monthDividendsAmountBRL = useMemo(
+  const periodDividendsAmountBRL = useMemo(
     () =>
-      monthDividendsList.reduce((acc, d) => {
+      periodDividendsList.reduce((acc, d) => {
         const curr = d.asset_id ? assetCurrencyMap.get(d.asset_id) : "BRL";
         const rate = curr === "USD" ? usdRate : 1;
         return acc + d.amount * rate;
       }, 0),
-    [monthDividendsList, assetCurrencyMap, usdRate],
+    [periodDividendsList, assetCurrencyMap, usdRate],
   );
-  const monthNetFlowBRL = monthBuysBRL - monthSellsBRL + monthDividendsAmountBRL;
+  const periodNetFlowBRL = periodBuysBRL - periodSellsBRL + periodDividendsAmountBRL;
 
-  const monthFlowSummary = useMemo(
+  const periodFlowSummary = useMemo(
     () => ({
-      buysBRL: monthBuysBRL,
-      sellsBRL: monthSellsBRL,
-      dividendsBRL: monthDividendsAmountBRL,
-      netFlowBRL: monthNetFlowBRL,
-      monthLabel: currentMonthFormatted,
+      buysBRL: periodBuysBRL,
+      sellsBRL: periodSellsBRL,
+      dividendsBRL: periodDividendsAmountBRL,
+      netFlowBRL: periodNetFlowBRL,
+      monthLabel: periodLabel,
     }),
-    [monthBuysBRL, monthSellsBRL, monthDividendsAmountBRL, monthNetFlowBRL, currentMonthFormatted],
+    [periodBuysBRL, periodSellsBRL, periodDividendsAmountBRL, periodNetFlowBRL, periodLabel],
   );
+
+  // Resolução temporal de patrimônio via snapshots ou posição viva
+  const selectedSnapshot = useMemo(() => {
+    if (mode === "month") {
+      return snapshots.find((s) => s.month === month) ?? null;
+    }
+    if (mode === "year") {
+      const yearSnaps = snapshots
+        .filter((s) => s.month.startsWith(String(year)))
+        .sort((a, b) => b.month.localeCompare(a.month));
+      return yearSnaps[0] ?? null;
+    }
+    if (mode === "custom" && customEnd) {
+      const customEndMonth = customEnd.slice(0, 7);
+      const inRangeSnaps = snapshots
+        .filter((s) => s.month <= customEndMonth)
+        .sort((a, b) => b.month.localeCompare(a.month));
+      return inRangeSnaps[0] ?? null;
+    }
+    return null;
+  }, [snapshots, mode, month, year, customEnd]);
+
+  const isCurrentPeriod = useMemo(() => {
+    if (mode === "month") return month === currentMonth();
+    if (mode === "year") return year === currentYear();
+    if (mode === "custom") return !!customEnd && customEnd >= todayISO();
+    return true;
+  }, [mode, month, year, customEnd]);
+
+  const periodPatrimonyBRL = useMemo(() => {
+    if (isCurrentPeriod) {
+      return positionQuery.totalBRL ?? 0;
+    }
+    if (selectedSnapshot) {
+      return Number(selectedSnapshot.total_value);
+    }
+    return 0;
+  }, [isCurrentPeriod, positionQuery.totalBRL, selectedSnapshot]);
+
+  const periodInvestedCostBRL = useMemo(() => {
+    if (isCurrentPeriod) {
+      return positionQuery.totalCostBRL ?? 0;
+    }
+    if (selectedSnapshot) {
+      return Number(selectedSnapshot.total_cost);
+    }
+    return 0;
+  }, [isCurrentPeriod, positionQuery.totalCostBRL, selectedSnapshot]);
+
+  const hasDataForPeriod = useMemo(() => {
+    if (isCurrentPeriod) {
+      return (positionQuery.totalBRL ?? 0) > 0 || assets.length > 0;
+    }
+    const hasSnapshot = selectedSnapshot !== null;
+    const hasTx = periodTransactions.length > 0;
+    const hasDiv = periodDividendsList.length > 0;
+    const hasContrib = periodContributions.length > 0;
+    return hasSnapshot || hasTx || hasDiv || hasContrib;
+  }, [
+    isCurrentPeriod,
+    positionQuery.totalBRL,
+    assets.length,
+    selectedSnapshot,
+    periodTransactions.length,
+    periodDividendsList.length,
+    periodContributions.length,
+  ]);
+
+  const handleResetToCurrentMonth = useCallback(() => {
+    setMode("month");
+    setMonth(currentMonth());
+  }, []);
+
+  const totalPatrimonyBRL = periodPatrimonyBRL;
+  const cashBalanceBRL = positionQuery.cashBRL ?? 0;
+  const totalInvestedCostBRL = periodInvestedCostBRL;
 
   const periodRedemptions = useMemo(() => {
     return filterPeriodRedemptions({
@@ -425,27 +553,6 @@ export function ReportsPage() {
       }),
     );
   }, [yearDividendsBRL, monthlyExpenses.data, cashBalanceBRL, assets, usdRate]);
-
-  const periodLabel = useMemo(() => {
-    if (mode === "month") {
-      const parts = month.split("-");
-      const y = parts[0];
-      const m = parts[1];
-      if (y && m) {
-        const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
-        const monthName = date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-        return monthName.charAt(0).toUpperCase() + monthName.slice(1);
-      }
-      return month;
-    }
-    if (mode === "year") {
-      return `Exercício de ${year}`;
-    }
-    if (customStart && customEnd) {
-      return `${customStart} a ${customEnd}`;
-    }
-    return "Período Personalizado";
-  }, [mode, month, year, customStart, customEnd]);
 
   // Conversão de dados da aba finanças
   const expenseEntries = useMemo(() => {
@@ -631,18 +738,20 @@ export function ReportsPage() {
             yocPct: yoc,
           };
         }),
-      dividends: dividends.map((d) => {
-        const asset = assets.find((a) => a.id === d.asset_id);
-        const isUSD = asset?.currency === "USD";
-        const rate = isUSD ? usdRate : 1;
-        return {
-          date: d.date,
-          ticker: asset?.ticker ?? "Ativo",
-          assetClass: asset?.asset_class ?? "outros",
-          amountBRL: d.amount * rate,
-          notes: d.notes,
-        };
-      }),
+      dividends: dividends
+        .filter((d) => isDateInPeriod(d.date))
+        .map((d) => {
+          const asset = assets.find((a) => a.id === d.asset_id);
+          const isUSD = asset?.currency === "USD";
+          const rate = isUSD ? usdRate : 1;
+          return {
+            date: d.date,
+            ticker: asset?.ticker ?? "Ativo",
+            assetClass: asset?.asset_class ?? "outros",
+            amountBRL: d.amount * rate,
+            notes: d.notes,
+          };
+        }),
       dreMonthly: [
         {
           month,
@@ -702,6 +811,7 @@ export function ReportsPage() {
     consolidatedBalance.dre,
     positionRows,
     dividends,
+    isDateInPeriod,
     assets,
     month,
     debts,
@@ -751,6 +861,7 @@ export function ReportsPage() {
               debtsQuery.refetch(),
               categoriesQuery.refetch(),
               positionQuery.refetch(),
+              snapshotsQuery.refetch(),
               assetsQuery.refetch(),
             ]);
           }}
@@ -799,6 +910,9 @@ export function ReportsPage() {
             content: (
               <InvestmentsTab
                 totalPatrimonyBRL={totalPatrimonyBRL}
+                hasDataForPeriod={hasDataForPeriod}
+                periodLabel={periodLabel}
+                onResetToCurrentMonth={handleResetToCurrentMonth}
                 allocationAnalysis={allocationAnalysis}
                 concentrationRisk={concentrationRisk}
                 classSegments={investmentDonutData.classSegments}
@@ -995,7 +1109,7 @@ export function ReportsPage() {
         periodRedemptions={periodRedemptions}
         cashBRL={cashBalanceBRL}
         yearDividendsBRL={yearDividendsBRL}
-        monthSummary={monthFlowSummary}
+        monthSummary={periodFlowSummary}
         allocationAnalysis={allocationAnalysis}
         concentrationRisk={concentrationRisk}
         portfolioIrr={positionQuery.portfolioIrr}

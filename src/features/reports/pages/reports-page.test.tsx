@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
+import { currentMonth, shiftMonth } from "@/lib/date";
 import { ReportsPage } from "./reports-page";
 
 function renderReports(initialEntry = "/relatorios") {
@@ -20,6 +21,7 @@ const expenses = [
 const incomes = [{ id: "i1", date: "2026-08-05", category_id: "c3", value: 5000, report_weight: 1 }];
 
 let mockHasFeature: (key: string) => boolean = () => true;
+let mockSnapshots: Array<{ id: string; month: string; total_value: number; total_cost: number }> = [];
 
 
 vi.mock("@/state", () => ({
@@ -80,6 +82,12 @@ vi.mock("@/state", () => ({
     data: [],
     isLoading: false,
     error: null,
+  }),
+  usePortfolioSnapshots: () => ({
+    data: mockSnapshots,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
   }),
   usePortfolioPosition: () => ({
     totalBRL: 80000,
@@ -353,13 +361,63 @@ describe("ReportsPage (Central Unificada §F42)", () => {
   });
 
   it("exibe valores brutos como principais e ponderados para consulta quando pesos estiverem ativos", () => {
-
     renderReports();
 
     // Despesas Totais: Bruto = R$ 2.000,00 (1000 + 500 + 500), Ponderado = R$ 1.750,00 (1000 + 250 + 500)
     expect(screen.getByText("Despesas Totais")).toBeInTheDocument();
     // Confere presença do texto de consulta ponderada
     expect(screen.getAllByText(/ponderado:/i).length).toBeGreaterThan(0);
+  });
+
+  it("exibe empty state informativo na aba de investimentos quando selecionado um mês anterior sem dados", async () => {
+    const user = userEvent.setup();
+    mockSnapshots = [];
+    renderReports();
+
+    // Navega para aba Investimentos
+    await user.click(screen.getByRole("tab", { name: /Investimentos & Carteira/i }));
+
+    // No mês atual, com ativos cadastrados, exibe o resumo patrimonial normalmente
+    expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
+
+    // Clica para voltar ao mês anterior
+    const prevMonthButton = screen.getByRole("button", { name: "Mês anterior" });
+    await user.click(prevMonthButton);
+
+    // Deve exibir o EmptyState informativo sem fallback involuntário para a custódia do mês corrente
+    expect(screen.getByText(/Nenhum dado patrimonial para/i)).toBeInTheDocument();
+    expect(screen.queryByText("Patrimônio Consolidado")).not.toBeInTheDocument();
+
+    // Clica em 'Ver mês atual' para restabelecer
+    const resetBtn = screen.getByRole("button", { name: /Ver mês atual/i });
+    await user.click(resetBtn);
+
+    // Retorna ao mês atual
+    expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
+  });
+
+  it("recupera o snapshot histórico de carteira quando disponível para a competência selecionada", async () => {
+    const user = userEvent.setup();
+    const prevMonthKey = shiftMonth(currentMonth(), -1);
+    mockSnapshots = [
+      { id: "snap-hist", month: prevMonthKey, total_value: 45000, total_cost: 40000 },
+    ];
+
+    renderReports();
+
+    // Navega para aba Investimentos
+    await user.click(screen.getByRole("tab", { name: /Investimentos & Carteira/i }));
+
+    // Clica para voltar ao mês anterior
+    const prevMonthButton = screen.getByRole("button", { name: "Mês anterior" });
+    await user.click(prevMonthButton);
+
+    // Não deve exibir empty state, mas sim o valor do snapshot histórico (R$ 45.000,00)
+    expect(screen.queryByText(/Nenhum dado patrimonial para/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
+    expect(screen.getAllByText(/45\.000/)[0]).toBeInTheDocument();
+
+    mockSnapshots = [];
   });
 });
 

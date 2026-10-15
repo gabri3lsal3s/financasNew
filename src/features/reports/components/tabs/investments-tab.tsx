@@ -1,6 +1,6 @@
 import { Fragment, useState, type Dispatch, type SetStateAction } from "react";
 import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp } from "lucide-react";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, EmptyState } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { ReportAllocationDonuts } from "@/components/modules/reports";
 import { AllocationBreakdownDialog, AssetDetailSheet } from "@/features/investments/components";
@@ -20,6 +20,9 @@ export interface InvestmentsTabProps {
   expandedTreeSectors: Set<string>;
   setExpandedTreeSectors: Dispatch<SetStateAction<Set<string>>>;
   onOpenTearSheet: () => void;
+  hasDataForPeriod?: boolean;
+  periodLabel?: string;
+  onResetToCurrentMonth?: () => void;
 }
 
 /**
@@ -38,6 +41,9 @@ export function InvestmentsTab({
   expandedTreeSectors,
   setExpandedTreeSectors,
   onOpenTearSheet,
+  hasDataForPeriod = true,
+  periodLabel,
+  onResetToCurrentMonth,
 }: InvestmentsTabProps) {
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
@@ -52,6 +58,25 @@ export function InvestmentsTab({
   const detailAsset = assetDetailId
     ? (assetsQuery.data ?? []).find((a) => a.id === assetDetailId) ?? null
     : null;
+
+  if (!hasDataForPeriod) {
+    return (
+      <div className="flex flex-col gap-6">
+        <EmptyState
+          icon={<TrendingUp className="size-8" aria-hidden="true" />}
+          title={`Nenhum dado patrimonial para ${periodLabel ?? "o período selecionado"}`}
+          description="Não foram encontrados snapshots, movimentações ou proventos registrados para o período selecionado. Você pode retornar ao mês atual ou selecionar outra competência."
+          action={
+            onResetToCurrentMonth ? (
+              <Button type="button" onClick={onResetToCurrentMonth}>
+                Ver mês atual
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
