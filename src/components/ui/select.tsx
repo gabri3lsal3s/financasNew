@@ -58,6 +58,7 @@ export function Select({
         <SelectPrimitive.Content
           position="popper"
           sideOffset={4}
+          collisionPadding={8}
           align="start"
           onCloseAutoFocus={(e) => {
             // Evita que o fechamento transfira o foco ou acione outros controles indesejados

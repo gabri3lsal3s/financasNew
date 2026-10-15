@@ -150,6 +150,30 @@ Regra: cards sempre ≥ `xl`; inputs `md`; badges `pill`. Nunca radius diferente
 
 **OLED refinado (F5.2 + F10):** sobre o true black `#000`, bordas são a principal pista de elevação — `--border` ardósia `#1C2E3D` e `--input` 22% garantem definição sem acender pixels; hover/pressed mais perceptíveis (`8%`/`12%`); `--muted-foreground` 50% assegura AA (5.3:1) para texto secundário; `--overlay` 70% escurece o conteúdo atrás de modais sem perder o preto puro; scrollbar com polegar ardósia `22%` discreto. Acentos luminosos (teal vivo/ouro) dão o caráter "Órbitas Douradas".
 
+### 6.1 Escala Canônica de Z-Index e Posicionamento Responsivo
+
+A governança visual adota uma escala estrita e padronizada de camadas para evitar colisões entre elementos fixos de navegação e componentes flutuantes:
+
+$$\text{dropdowns (20)} < \text{tooltips (25)} < \text{bottom bar (30)} < \text{sidebar (40)} < \text{modais (50)} < \text{floating-tools (60)} < \text{toasts (70)}$$
+
+| Token | Valor | Camada / Componente | Comportamento de Sobreposição |
+|---|---|---|---|
+| `--z-base` | 10 | Conteúdo padrão da página | Base de renderização |
+| `--z-sticky` | 20 | Header fixo do app (`app-region-drag`) | Rola sobre o conteúdo da página |
+| `--z-dropdown` | 20 | Menus, popovers e selects de página | Rola sob a barra de navegação inferior |
+| `--z-page-floating` | 24 | Botão flutuante "Voltar ao topo" | Flutua acima da página, abaixo da barra inferior |
+| `--z-tooltip` | 25 | Tooltips descritivos acessíveis | Visíveis sobre a página, abaixo da barra inferior |
+| `--z-bottom-nav` | 30 | Bottom Navigation Bar (mobile) | Fixo no rodapé com `pb-[env(safe-area-inset-bottom)]` |
+| `--z-sidebar` | 40 | Sidebar fixa no desktop (`lg:flex`) | Fixo na lateral esquerda |
+| `--z-modal` | 50 | Modais e Diálogos (`<Modal>`, `<Dialog>`) | Overlay escurece e cobre BottomNav e Sidebar |
+| `--z-floating-tools` | 60 | Menus dentro de modais, FAB de calculadora | Camada superior aos modais regulares |
+| `--z-toast` | 70 | Notificações do sistema (`Toaster`) | Sempre visível sobre qualquer diálogo ou ferramenta |
+
+**Regras de Reposicionamento Responsivo:**
+1. **Mobile (Bottom Sheet):** modais ancorados na base com `rounded-t-2xl`, safe area inferior (`pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]`) e backdrop em `z-modal (50)` cobrindo integralmente a `BottomNav (30)`. `ModalFooter` sticky adota espaçamento seguro `pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))]`. Foco inicial não abre teclado virtual automaticamente (`< 768px`).
+2. **Desktop (Modal Centralizado):** centralização bidirecional (`md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2`) com margens mínimas de respiro (`md:max-h-[calc(100dvh-3rem)]`), isolamento de foco ativo e overlay cobrindo a `Sidebar (40)`.
+3. **Collision Padding em Popovers:** todo menu dropdown, seletor de data ou paleta adota `collisionPadding={8}`, evitando colisão com as bordas do viewport.
+
 ---
 
 ## 7. ESTADOS DE COMPONENTES

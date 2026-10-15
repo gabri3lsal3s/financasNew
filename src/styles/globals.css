@@ -73,16 +73,17 @@
   --color-scrollbar-thumb: hsl(var(--scrollbar-thumb));
   --color-scrollbar-track: hsl(var(--scrollbar-track));
 
-  /* Escala centralizada de Z-Index */
+  /* Escala centralizada e padronizada de Z-Index */
   --z-base: var(--z-base);
   --z-sticky: var(--z-sticky);
+  --z-dropdown: var(--z-dropdown);
   --z-page-floating: var(--z-page-floating);
+  --z-tooltip: var(--z-tooltip);
   --z-bottom-nav: var(--z-bottom-nav);
   --z-sidebar: var(--z-sidebar);
   --z-modal: var(--z-modal);
   --z-floating-tools: var(--z-floating-tools);
   --z-toast: var(--z-toast);
-  --z-tooltip: var(--z-tooltip);
 
   /* Animações dos primitivos (Radix) */
   --animate-accordion-down: accordion-down 0.2s ease-out;
@@ -394,15 +395,21 @@
     scroll-behavior: auto !important;
   }
 
-  /* Utilitários de camada Z-Index */
+  /* Utilitários de camada Z-Index padronizados (dropdowns < tooltips < bottom bar < modais < toasts) */
   .z-base {
     z-index: var(--z-base);
   }
   .z-sticky {
     z-index: var(--z-sticky);
   }
+  .z-dropdown {
+    z-index: var(--z-dropdown);
+  }
   .z-page-floating {
     z-index: var(--z-page-floating);
+  }
+  .z-tooltip {
+    z-index: var(--z-tooltip);
   }
   .z-bottom-nav {
     z-index: var(--z-bottom-nav);
@@ -419,22 +426,19 @@
   .z-toast {
     z-index: var(--z-toast);
   }
-  .z-tooltip {
-    z-index: var(--z-tooltip);
-  }
 
-  /* Hotfix — portais de popovers dentro de modais (Radix Select/Popover/
-     DropdownMenu): o Dialog modal aplica `pointer-events: none` no <body> e o
-     wrapper fixed do popper herda esse valor sem estilo próprio. Em
-     navegadores/versões com hit-testing inconsistente (WebKit), o dropdown
-     "renderiza mas não responde a cliques" (os itens ficam inertes). Garante
-     interatividade explícita em TODAS as camadas do portal — o wrapper
-     intermediário e as camadas internas (conteúdo/listbox) — além de
-     `z-index` explícito, para o dropdown nunca ficar sob o overlay do modal
-     (o Radix só injeta o z-index do wrapper via efeito, um frame depois). */
+  /* Portais de popovers e dropdowns (Radix Select/Popover/DropdownMenu):
+     Garante interatividade explícita em todas as camadas e escala de z-index adequada:
+     - Na página comum: z-dropdown (20), abaixo da BottomNav (30) e Sidebar (40);
+     - Dentro de modais ou quando elevado: z-floating-tools (60), acima do Modal (50). */
   [data-radix-popper-content-wrapper] {
-    z-index: var(--z-modal);
+    z-index: var(--z-dropdown);
     pointer-events: auto;
+  }
+  [data-radix-popper-content-wrapper]:has(.z-modal),
+  [data-radix-popper-content-wrapper]:has(.z-floating-tools),
+  body[data-scroll-locked] [data-radix-popper-content-wrapper] {
+    z-index: var(--z-floating-tools);
   }
   [data-radix-select-content],
   [data-radix-popover-content],

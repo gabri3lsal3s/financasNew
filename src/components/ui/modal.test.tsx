@@ -132,6 +132,20 @@ describe("Modal", () => {
 
     expect(onOpenChange).not.toHaveBeenCalled();
   });
+  it("adota safe areas inferiores e centralização com margens adequadas no desktop", () => {
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Responsivo">
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.className).toContain("pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]");
+    expect(dialog.className).toContain("md:max-h-[calc(100dvh-3rem)]");
+    expect(dialog.className).toContain("md:left-1/2");
+    expect(dialog.className).toContain("md:top-1/2");
+    expect(dialog.className).toContain("md:-translate-x-1/2");
+    expect(dialog.className).toContain("md:-translate-y-1/2");
+  });
 });
 
 describe("ConfirmDialog", () => {
@@ -177,6 +191,8 @@ describe("ModalFooter (Fase 68)", () => {
     const footer = screen.getByText("Salvar").parentElement;
     expect(footer).toBeInTheDocument();
     expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-border/80");
+    expect(footer?.className).toContain("pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))]");
   });
 });
+
 

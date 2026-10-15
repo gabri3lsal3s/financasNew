@@ -403,6 +403,7 @@ export function DatePicker({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
+          collisionPadding={8}
           className="z-modal max-h-[85dvh] w-[calc(100vw-1.5rem)] max-w-sm overflow-y-auto rounded-xl border border-border/80 bg-surface p-2 shadow-xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
           {viewMode === "days" ? (

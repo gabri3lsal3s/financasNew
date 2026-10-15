@@ -85,16 +85,17 @@ html[data-theme="light"] {
   --ring: 173 58% 39%;
   --ring-offset: 204 29% 97%;
 
-  /* Escala centralizada de Z-Index */
+  /* Escala centralizada e padronizada de Z-Index (dropdowns < tooltips < bottom bar < modais < toasts) */
   --z-base: 10;
   --z-sticky: 20;
-  --z-page-floating: 25;
+  --z-dropdown: 20;
+  --z-page-floating: 24;
+  --z-tooltip: 25;
   --z-bottom-nav: 30;
   --z-sidebar: 40;
   --z-modal: 50;
   --z-floating-tools: 60;
   --z-toast: 70;
-  --z-tooltip: 80;
 }
 
 /* ----------------------------------------------------------------

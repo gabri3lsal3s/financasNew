@@ -21,6 +21,27 @@ describe("Popover component", () => {
     expect(screen.queryByText("Conteúdo do Popover")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Abrir Popover" }));
-    expect(screen.getByText("Conteúdo do Popover")).toBeInTheDocument();
+    const content = screen.getByText("Conteúdo do Popover").parentElement;
+    expect(content).toBeInTheDocument();
+    expect(content?.className).toContain("z-dropdown");
+  });
+
+  it("aplica z-floating-tools quando elevated=true", async () => {
+    const user = userEvent.setup();
+    render(
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button">Abrir Popover Elevado</button>
+        </PopoverTrigger>
+        <PopoverContent elevated>
+          <div>Conteúdo Elevado</div>
+        </PopoverContent>
+      </Popover>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir Popover Elevado" }));
+    const content = screen.getByText("Conteúdo Elevado").parentElement;
+    expect(content?.className).toContain("z-floating-tools");
   });
 });
+

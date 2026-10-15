@@ -37,12 +37,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 03: Reposicionamento Responsivo de Modais e Pop-ups
+### Tarefa 03: Reposicionamento Responsivo de Modais e Pop-ups [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Ajustar a ancoragem de modais/pop-ups para não sobrepor barras de navegação (bottom bar no mobile e sidebar no desktop).
 - **Ações:**
-  1. Mobile: implementar safe areas inferiores e estratégia de Bottom Sheet ou modal centralizado com backdrop que não fique escondido sob a bottom navigation bar.
-  2. Desktop: centralizar modais com margens adequadas e isolamento de foco.
-  3. Padronizar a escala global de `z-index` (dropdowns < tooltips < bottom bar < modais < toasts).
+  1. Mobile: implementar safe areas inferiores e estratégia de Bottom Sheet ou modal centralizado com backdrop que não fique escondido sob a bottom navigation bar. (Concluído: `Modal` com `pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]`, `ModalFooter` sticky com `pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))]` e overlay em `z-modal: 50` cobrindo integralmente a `BottomNav: 30`).
+  2. Desktop: centralizar modais com margens adequadas e isolamento de foco. (Concluído: centralização responsiva com `md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2`, respiro vertical garantido via `md:max-h-[calc(100dvh-3rem)]`, overlay cobrindo `Sidebar: 40`, e foco inicial condicional evitando abertura acidental de teclado virtual no mobile).
+  3. Padronizar a escala global de `z-index` (dropdowns < tooltips < bottom bar < modais < toasts). (Concluído: escala unificada em tokens/globals: `dropdowns (20) < tooltips (25) < bottom bar (30) < sidebar (40) < modais (50) < floating-tools (60) < toasts (70)`, além de `collisionPadding={8}` e regras de elevação dinâmica para poppers em modais).
 - **Commit:** `fix(ui): reposition popups and modals to avoid overlapping navigation bars`
 
 ---
