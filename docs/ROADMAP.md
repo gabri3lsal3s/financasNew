@@ -1,5 +1,19 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.45** registra o **Refinamento Holístico do Bloco 12 (Landing Page Pública, Apresentação Institucional & Simuladores - PricingSection, MinimalWealthSimulator e LandingPage)** (2026-10-14):
+> - **(1) Seção de Preços & Planos (`PricingSection`)**:
+>   - Adição de resposta tátil imediata via Gateway Central (`triggerSensory("selection")`) na alternância do ciclo de faturamento entre Mensal e Anual (Regra 17);
+>   - Elevação canônica dos cards de teste gratuito e Plano Pro Featured unificada com a trinca oficial `border-border/80 bg-surface shadow-xs` e `border-primary/50 ring-1 ring-primary/20` (Regra 16);
+>   - Valores monetários blindados sem `truncate` com `tabular-nums tracking-tight whitespace-nowrap` (Regra 11);
+> - **(2) Simulador de Carteira & Aportes (`MinimalWealthSimulator`)**:
+>   - Governança sensorial com micro-interações discretas `{ skipSound: true }` nos controles de simulação de patrimônio e aportes;
+>   - Responsividade fluida mobile-first com gráficos adaptativos `AllocationDonut` e curva de projeção FIRE (`FireProjectionCurve`);
+> - **(3) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Suíte de testes da Landing Page (8 arquivos / 28 testes) 100% verde;
+>   - Total conformidade com as Regras de Ouro de UI e Governança Sensorial.
+
 > **v2.44** registra o **Refinamento Holístico do Bloco 11 (Fluxo de Assinatura, Checkout PIX/Cartão & Upgrade Pro - SubscriptionCheckoutPage)** (2026-10-14):
 > - **(1) Página de Checkout & Seleção de Métodos (`SubscriptionCheckoutPage`)**:
 >   - Eliminação de botões nativos soltos no header e substituição pelo primitivo `<Button variant="ghost" size="sm">` com ícone oficial `<ArrowLeft className="size-3.5" aria-hidden="true" />` (Regra 7);

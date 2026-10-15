@@ -4,6 +4,7 @@ import { Card, Badge, buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router";
 import { useLandingCta } from "@/features/landing/hooks";
+import { triggerSensory } from "@/services/sensory";
 import { ScrollReveal } from "./scroll-reveal";
 
 export function PricingSection() {
@@ -28,7 +29,10 @@ export function PricingSection() {
           <div className="mt-6 sm:mt-8 inline-flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-xl border border-border bg-surface shadow-xs">
             <button
               type="button"
-              onClick={() => setIsAnnual(false)}
+              onClick={() => {
+                triggerSensory("selection");
+                setIsAnnual(false);
+              }}
               className={`min-h-[40px] sm:min-h-[44px] px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer inline-flex items-center justify-center ${
                 !isAnnual
                   ? "bg-primary text-primary-foreground shadow-sm"
@@ -39,7 +43,10 @@ export function PricingSection() {
             </button>
             <button
               type="button"
-              onClick={() => setIsAnnual(true)}
+              onClick={() => {
+                triggerSensory("selection");
+                setIsAnnual(true);
+              }}
               className={`min-h-[40px] sm:min-h-[44px] px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
                 isAnnual
                   ? "bg-primary text-primary-foreground shadow-sm"
@@ -67,7 +74,7 @@ export function PricingSection() {
         <div className="mt-8 sm:mt-12 grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 max-w-4xl mx-auto items-stretch">
           {/* Card 1: Teste de 30 Dias (Depois Somente-Leitura) */}
           <ScrollReveal delay={0} className="h-full">
-            <Card className="flex flex-col justify-between border-border/80 bg-surface/90 shadow-sm p-5 sm:p-8 rounded-2xl sm:rounded-3xl h-full">
+            <Card className="flex flex-col justify-between border-border/80 bg-surface shadow-xs p-5 sm:p-8 rounded-2xl sm:rounded-3xl h-full">
               <div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-wider">
@@ -131,7 +138,7 @@ export function PricingSection() {
 
           {/* Card 2: Plano Pro (Featured) */}
           <ScrollReveal delay={100} className="h-full">
-            <Card className="flex flex-col justify-between border-primary/50 bg-surface/95 shadow-xl p-5 sm:p-8 relative overflow-hidden ring-2 ring-primary/20 rounded-2xl sm:rounded-3xl h-full">
+            <Card className="flex flex-col justify-between border-primary/50 bg-surface shadow-xs p-5 sm:p-8 relative overflow-hidden ring-1 ring-primary/20 rounded-2xl sm:rounded-3xl h-full">
               {/* Top highlight banner */}
               <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl">
                 Mais Escolhido
