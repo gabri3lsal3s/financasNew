@@ -6,6 +6,7 @@ import { OverviewPage } from "./overview-page";
 
 vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 
 const navigateMock = vi.fn();
@@ -165,6 +166,9 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useUserSubscription: () => subscriptionMock,
+  useHasDemoData: () => ({ data: false, isLoading: false, isError: false }),
+  useLoadDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useClearDemoData: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("OverviewPage — visão consolidada (§3.6)", () => {

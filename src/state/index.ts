@@ -175,6 +175,7 @@ export {
 } from "./mutations/use-cash-checkpoint-mutations";
 export { useExportData, EXPORT_DATA_QUERY_KEY } from "./queries/use-export-data";
 export { useRestoreBackup } from "./mutations/use-restore-backup";
+export { useLoadDemoData, useClearDemoData } from "./mutations/use-demo-data";
 
 export { useUserSubscription, USER_SUBSCRIPTION_KEY } from "./queries/use-user-subscription";
 export { usePermission, type PermissionResult } from "./queries/use-permission";

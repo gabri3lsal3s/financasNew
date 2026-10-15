@@ -290,6 +290,16 @@ export function DebtsPage() {
                 ? "Cadastre contas a pagar para acompanhar vencimentos e quitações."
                 : "Cadastre contas a receber para acompanhar valores a receber."
             }
+            action={
+              <Button
+                size="sm"
+                onClick={() => handleOpenDebtForm(null)}
+                className="gap-1.5 cursor-pointer"
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                {type === "payable" ? "Nova conta a pagar" : "Nova conta a receber"}
+              </Button>
+            }
           />
         ) : (
           <div className="flex flex-col gap-6">

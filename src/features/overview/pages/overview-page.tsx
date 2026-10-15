@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Activity, ChevronRight, DollarSign, Inbox, PieChart, PiggyBank, Plus, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, MoneyText, NumberTicker, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
@@ -8,8 +8,10 @@ import {
   DashboardAlertsCarousel,
   type DashboardAlertItem,
   DeltaHint,
+  DemoModeBanner,
   KpiCard,
   MonthPicker,
+  OnboardingCard,
   PaceAlertBanner,
   RealCashHeroCard,
   SurplusAporteBanner,
@@ -17,6 +19,8 @@ import {
   ReadOnlyBanner,
   TrialEndingBanner,
 } from "@/components/modules";
+import { isOnboardingComplete, type OnboardingCounts } from "@/domain/onboarding";
+import { isDemoItem } from "@/services/demo-data";
 import {
   budgetLimitsByCategory,
   isInheritedLimit,
@@ -91,11 +95,30 @@ export function OverviewPage() {
   const cardsQuery = useCreditCards();
   const budgetsQuery = useBudgets();
   const expenseCategories = useCategories("expense");
+  const incomeCategories = useCategories("income");
   const debtsQuery = useDebts();
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
   const contributionsQuery = usePortfolioContributions();
   const realCashData = useRealCashBalance(today);
+
+  // Detecção de dados de demonstração ([Exemplo]) para banner informativo
+  const hasDemoData = useMemo(() => {
+    const hasDemoExpenses = (expensesQuery.data ?? []).some((e) => isDemoItem(e.description));
+    const hasDemoIncomes = (incomesQuery.data ?? []).some((i) => isDemoItem(i.description));
+    const hasDemoCards = (cardsQuery.data ?? []).some((c) => isDemoItem(c.name));
+    return hasDemoExpenses || hasDemoIncomes || hasDemoCards;
+  }, [expensesQuery.data, incomesQuery.data, cardsQuery.data]);
+
+  // Contagens para o checklist de Onboarding de primeiro uso
+  const onboardingCounts: OnboardingCounts = useMemo(() => ({
+    expenseCategories: (expenseCategories.data ?? []).filter((c) => !c.is_reserved).length,
+    incomeCategories: (incomeCategories.data ?? []).filter((c) => !c.is_reserved).length,
+    cards: (cardsQuery.data ?? []).length,
+    transactions: (incomesQuery.data ?? []).length + (expensesQuery.data ?? []).length,
+  }), [expenseCategories.data, incomeCategories.data, cardsQuery.data, incomesQuery.data, expensesQuery.data]);
+
+  const showOnboarding = !isOnboardingComplete(onboardingCounts);
 
   // Isolamento de erros críticos (§Fase 4): a tela só bloqueia se o fluxo financeiro base falhar
   const loading =
@@ -396,9 +419,15 @@ export function OverviewPage() {
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
+      {!loading && !error && hasDemoData && <DemoModeBanner />}
+
       {!loading && !error && <DashboardAlertsCarousel items={alertItems} />}
 
       {!loading && !error && subscription.isReadOnly && <ReadOnlyBanner />}
+
+      {!loading && !error && showOnboarding && !hasDemoData && (
+        <OnboardingCard counts={onboardingCounts} />
+      )}
 
       {loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
@@ -791,6 +820,16 @@ export function OverviewPage() {
               icon={<Inbox className="size-6" aria-hidden="true" />}
               title="Sem lançamentos neste mês"
               description={`Registre receitas e despesas de ${monthLabel(month)} para ver os KPIs aqui.`}
+              action={
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/transacoes?novo=transacao")}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  Novo lançamento
+                </Button>
+              }
             />
           ) : null}
 

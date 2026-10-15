@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ShieldCheck,
   KeyRound,
@@ -5,6 +6,8 @@ import {
   Lock,
   LogOut,
   Database,
+  Sparkles,
+  Trash2,
 } from "lucide-react";
 import {
   Card,
@@ -13,6 +16,7 @@ import {
   CardTitle,
   Button,
   Badge,
+  ConfirmDialog,
 } from "@/components/ui";
 import { ExportDataHub } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
@@ -39,6 +43,8 @@ import {
 import {
   useExportData,
   useRestoreBackup,
+  useLoadDemoData,
+  useClearDemoData,
   usePortfolioPosition,
   useUserAccess,
   useCategories,
@@ -85,6 +91,9 @@ export function SecurityTab() {
   const portfolioPosition = usePortfolioPosition();
   const exportDataQuery = useExportData({ enabled: false });
   const restoreBackupMutation = useRestoreBackup();
+  const loadDemoMutation = useLoadDemoData();
+  const clearDemoMutation = useClearDemoData();
+  const [confirmClearDemoOpen, setConfirmClearDemoOpen] = useState(false);
   const categoriesQuery = useCategories();
   const creditCardsQuery = useCreditCards();
 
@@ -339,8 +348,66 @@ export function SecurityTab() {
               ...(userAccess.hasFeature("investments") ? (["positions"] as const) : []),
             ]}
           />
+
+          <div className="pt-4 border-t border-border/80">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/80 bg-surface">
+              <div className="flex items-start gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong shrink-0">
+                  <Sparkles className="size-5" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm text-foreground flex items-center gap-2">
+                    <span>Ambiente de Demonstração</span>
+                    <Badge variant="muted" size="xs">Dados de Teste</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    Carregue um conjunto realista de transações, cartão e investimentos para explorar a plataforma, ou limpe os dados demonstrativos a qualquer momento.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadDemoMutation.mutate()}
+                  disabled={loadDemoMutation.isPending}
+                  className="gap-1.5 border-primary/40 hover:bg-primary/10 text-xs font-medium cursor-pointer"
+                >
+                  <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+                  <span>{loadDemoMutation.isPending ? "Carregando…" : "Carregar dados de exemplo"}</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmClearDemoOpen(true)}
+                  disabled={clearDemoMutation.isPending}
+                  className="gap-1.5 border-warning/40 hover:bg-warning/10 text-xs font-medium cursor-pointer"
+                >
+                  <Trash2 className="size-3.5 text-warning-strong" aria-hidden="true" />
+                  <span>{clearDemoMutation.isPending ? "Limpando…" : "Limpar dados de exemplo"}</span>
+                </Button>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmClearDemoOpen}
+        onOpenChange={setConfirmClearDemoOpen}
+        title="Limpar dados de exemplo?"
+        description="Esta ação removerá cirurgicamente apenas os lançamentos, cartões e ativos de demonstração com a marca [Exemplo]. Qualquer dado real cadastrado por você permanecerá intacto."
+        confirmLabel="Limpar dados"
+        variant="destructive"
+        onConfirm={async () => {
+          await clearDemoMutation.mutateAsync();
+          setConfirmClearDemoOpen(false);
+        }}
+      />
     </div>
   );
 }

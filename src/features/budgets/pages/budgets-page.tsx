@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowRight, Edit3, PiggyBank, Plus, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, Edit3, PiggyBank, Plus, Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
@@ -302,12 +302,27 @@ export function BudgetsPage() {
         <EmptyState
           icon={<PiggyBank className="size-6" aria-hidden="true" />}
           title="Nenhum orçamento configurado"
-          description="Defina um limite mensal por categoria de despesa para acompanhar os gastos ou crie uma nova categoria."
+          description={
+            categories.length > 0
+              ? "Você já possui categorias criadas. Ative a visualização de categorias para definir o teto mensal de cada uma."
+              : "Defina um limite mensal por categoria de despesa para acompanhar os gastos ou crie uma nova categoria."
+          }
           action={
-            <Button size="sm" onClick={handleOpenCreateCategory}>
-              <Plus className="size-4" aria-hidden="true" />
-              Nova categoria
-            </Button>
+            categories.length > 0 ? (
+              <Button
+                size="sm"
+                onClick={() => setShowAllCategories(true)}
+                className="gap-1.5 cursor-pointer"
+              >
+                <Target className="size-4" aria-hidden="true" />
+                Definir limites por categoria
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleOpenCreateCategory} className="gap-1.5 cursor-pointer">
+                <Plus className="size-4" aria-hidden="true" />
+                Nova categoria
+              </Button>
+            )
           }
         />
       ) : (

@@ -290,7 +290,24 @@ export function TransactionListPage() {
                   ? "Nenhum lançamento recorrente neste mês."
                   : filter === "installments"
                     ? "Nenhum lançamento parcelado neste mês."
-                    : "Registre sua primeira transação do mês."
+                    : "Registre sua primeira transação do mês ou importe seu extrato bancário."
+          }
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              <Button size="sm" onClick={handleNewTransaction} className="gap-1.5 cursor-pointer">
+                <Plus className="size-4" aria-hidden="true" />
+                Nova transação
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleImportStatement}
+                className="gap-1.5 cursor-pointer"
+              >
+                <FileSpreadsheet className="size-4" aria-hidden="true" />
+                Importar extrato
+              </Button>
+            </div>
           }
         />
       ) : (

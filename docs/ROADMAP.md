@@ -1,5 +1,28 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.50** registra o **Onboarding de Primeiro Uso no Dashboard, Motor de Demonstração com Limpeza Cirúrgica & Empty States Ricos e Acionáveis** (2026-10-15):
+> - **(1) Onboarding de Primeiro Uso no Dashboard (`OverviewPage`)**:
+>   - Integração do `OnboardingCard` no topo da Visão Geral, monitorando dinamicamente a contagem de categorias de receita/despesa, cartões e transações via `useOnboardingCounts`;
+>   - Adição do CTA de alto impacto "Explorar com dados de exemplo" (`Sparkles`) no cabeçalho do checklist de primeiro uso;
+> - **(2) Motor de Demonstração & Limpeza Cirúrgica (`src/services/demo-data.ts`)**:
+>   - `loadDemoData()`: Injeção de 2 competências realistas (mês anterior e atual) contendo receitas, despesas em conta, compras parceladas no cartão de crédito, orçamentos categorizados e ativo de renda fixa com aporte inicial;
+>   - Marcação canônica por tag `[Exemplo]` em todos os registros demonstrativos;
+>   - `clearDemoData()`: Exclusão cirúrgica e segura restrita exclusivamente aos registros identificados com `[Exemplo]`, preservando 100% de quaisquer dados reais cadastrados pelo usuário;
+>   - Hooks TanStack Query com invalidação de cache atômica e feedback sensorial (`useLoadDemoData`, `useClearDemoData`, `useHasDemoData`);
+> - **(3) Banner de Modo de Demonstração (`DemoModeBanner`) & Gestão em Configurações (`SecurityTab`)**:
+>   - Exibição de banner contextual no topo da Visão Geral quando houver dados demonstrativos ativos, com ação de limpeza rápida e diálogo de confirmação seguro (`ConfirmDialog`);
+>   - Bloco de gestão de dados de exemplo em "Configurações > Segurança > Gestão de Dados & Backup";
+> - **(4) Empty States Ricos e Acionáveis nas Telas do Sistema**:
+>   - `OverviewPage`: EmptyState do mês sem lançamentos com CTA direto `Novo lançamento`;
+>   - `TransactionListPage`: EmptyState com CTAs de `Nova transação` e `Importar extrato`;
+>   - `DebtsPage`: EmptyState de contas com CTA contextual `Nova conta a pagar` / `Nova conta a receber`;
+>   - `BudgetsPage`: Detecção inteligente de categorias prévias sem limites com CTA `Definir limites por categoria`;
+> - **(5) Verificação Completa e Prontidão de Produção**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (298 arquivos / 2.132 testes) **100% verde**;
+>   - Build de produção PWA (`vite build`) gerado com sucesso.
+> 
 > **v2.49** registra a **Unificação Arquitetural da Central de Insights em Página Única & Refinamentos da Carteira de Cartões 3D** (2026-10-15):
 > - **(1) Unificação de Insights em Página Única (`/insights`)**:
 >   - Fim da duplicação de Insights dentro de `/relatorios` e eliminação do antipadrão tab-in-tab;

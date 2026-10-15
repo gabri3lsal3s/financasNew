@@ -8,6 +8,13 @@ vi.mock("react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 
+vi.mock("@/state", () => ({
+  useLoadDemoData: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}));
+
 const empty: OnboardingCounts = { expenseCategories: 0, incomeCategories: 0, cards: 0, transactions: 0 };
 const partial: OnboardingCounts = { expenseCategories: 1, incomeCategories: 0, cards: 1, transactions: 0 };
 const full: OnboardingCounts = { expenseCategories: 1, incomeCategories: 1, cards: 1, transactions: 1 };
