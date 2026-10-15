@@ -77,8 +77,8 @@
     │   ├── routes.tsx             # Mapa de rotas + deep-links (?card=, ?month=, ?q=) +
     │   │                          #   redirect /carteira → /investments (em redirect-to-investments.tsx)
     │   ├── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
-    │   │                          #   instalação/atualização (PWA_GUIDELINES §6)
-    │   └── theme-provider.tsx     # ThemeProvider — aplica tema/accent do usuário (F11)
+    │   ├── theme-provider.tsx     # ThemeProvider — aplica tema/accent do usuário (F11)
+    │   └── app-lock-overlay.tsx   # Escudo de bloqueio do aplicativo com biometria (App Lock)
     │
     ├── components/
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button (+ button-variants), input,
@@ -237,7 +237,8 @@
     │                              #   use-container-scroll (monitoramento cirúrgico de rolagem a 120fps sem re-render),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
     ├── services/                  # Apresentação + integrações
-    │   ├── native/                #   Gateway de plataforma nativa (Capacitor/Android/iOS): detecção e isolamento
+    │   ├── native/                #   Gateway nativo (Capacitor/Android): platform, back-button,
+    │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)

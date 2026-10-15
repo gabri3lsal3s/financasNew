@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.55** registra a **Segurança, Biometria Adaptativa & Privacy Shield (Fase 3 do Plano Android)** (2026-10-15):
+> - **(1) Biometria Adaptativa (`src/services/native/biometrics.ts`)**:
+>   - Integração do sensor biométrico nativo (impressão digital, face e íris) via `@aparajita/capacitor-biometric-auth`;
+>   - Verificação inteligente de disponibilidade de hardware e credenciais cadastradas com degradação graciosa para Web/PWA;
+>   - Testes unitários completos cobrindo disponibilidade, fluxo de sucesso e tratamento de erros;
+> - **(2) Escudo de Privacidade — Privacy Shield (`src/services/native/privacy-shield.ts`)**:
+>   - Proteção de janela nativa via `@capacitor-community/privacy-screen` (`FLAG_SECURE`);
+>   - Ocultação imediata de miniaturas com saldos e gráficos sensíveis na visualização de tarefas recentes do Android e bloqueio contra capturas de tela indevidas;
+> - **(3) App Lock com Tolerância Configurável (`src/services/native/app-lock.ts` & `src/app/app-lock-overlay.tsx`)**:
+>   - Interceptação de ciclo de vida (`appStateChange`) bloqueando o acesso após tolerância de tempo configurável (0 min = imediato, 1 min, 5 min, 15 min, 30 min) ao retornar do segundo plano;
+>   - Overlay protetor em tela cheia com backdrop blur (`AppLockOverlay`) montado globalmente em `AppProviders`, acionando biometria suavemente e mantendo a sessão do usuário intacta;
+> - **(4) Controles Visuais em Configurações > Segurança (`SecurityTab`)**:
+>   - Card dedicado "Bloqueio do Aplicativo & Privacidade" com badge dinâmico do sensor, toggle de ativação biométrica com verificação prévia, seletor de tolerância (`Select`) e toggle do Escudo de Privacidade;
+> - **(5) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (313 arquivos / 2.259 testes) **100% verde**;
+>   - Build de produção PWA e sincronização nativa (`npm run build && npx cap sync android`) com 6 plugins sincronizados no Android.
+> 
 > **v2.54** registra a **Ergonomia Nativa de SO — Back Button, Status Bar Dinâmica, Haptics Refinado & Splash Screen (Fase 2 do Plano Android)** (2026-10-15):
 > - **(1) Hardware Back Button (`src/services/native/back-button.ts`)**:
 >   - Escuta ao botão voltar físico do Android via `@capacitor/app` com fechamento hierárquico e gracioso: handlers prioritários registrados (`registerBackHandler`) > fechamento da calculadora flutuante (`setCalculatorOpen(false)`) > despacho de tecla Escape para fechar modais/popovers ativos no DOM > recuo de histórico (`window.history.back()`) > minimização segura do app na raiz (`App.minimizeApp()`);

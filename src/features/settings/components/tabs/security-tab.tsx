@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ShieldCheck,
   Lock,
@@ -6,6 +6,7 @@ import {
   Database,
   Sparkles,
   Trash2,
+  Fingerprint,
 } from "lucide-react";
 import {
   Card,
@@ -15,13 +16,27 @@ import {
   Button,
   Badge,
   ConfirmDialog,
+  Checkbox,
+  Select,
 } from "@/components/ui";
+import type { SelectOption } from "@/components/ui";
 import { ExportDataHub } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
 import { RestoreWizardDialog } from "../restore-wizard";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { downloadCsv, downloadJson } from "@/services/export-actions";
+import { pushToast } from "@/services/toast";
+import {
+  checkBiometricsAvailability,
+  authenticateWithBiometrics,
+  isBiometricLockEnabled,
+  setBiometricLockEnabled,
+  getAppLockGraceMinutes,
+  setAppLockGraceMinutes,
+  isPrivacyShieldEnabled,
+  setPrivacyShieldEnabled,
+} from "@/services/native";
 import { todayLocalIso } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { numberToCents } from "@/domain/money";
@@ -81,10 +96,79 @@ interface BackupCardPaymentItem {
   is_refund?: boolean;
 }
 
+const APP_LOCK_GRACE_OPTIONS: SelectOption[] = [
+  { value: "0", label: "Imediato (ao sair do app)" },
+  { value: "1", label: "Após 1 minuto em segundo plano" },
+  { value: "5", label: "Após 5 minutos em segundo plano" },
+  { value: "15", label: "Após 15 minutos em segundo plano" },
+  { value: "30", label: "Após 30 minutos em segundo plano" },
+];
+
 export function SecurityTab() {
   const { user } = useAuth();
   const userAccess = useUserAccess();
   const { signOut } = useSignOut();
+
+  // Estados de segurança nativa / app lock
+  const [biometricsAvailable, setBiometricsAvailable] = useState<boolean | null>(null);
+  const [biometryType, setBiometryType] = useState<string>("none");
+  const [bioLockEnabled, setBioLockEnabled] = useState(() => isBiometricLockEnabled());
+  const [graceMinutes, setGraceMinutes] = useState(() => String(getAppLockGraceMinutes()));
+  const [privacyEnabled, setPrivacyEnabled] = useState(() => isPrivacyShieldEnabled());
+
+  useEffect(() => {
+    checkBiometricsAvailability().then((res) => {
+      setBiometricsAvailable(res.isAvailable);
+      setBiometryType(res.biometryType);
+    });
+  }, []);
+
+  const handleToggleBiometrics = async (enabled: boolean) => {
+    if (enabled) {
+      const result = await authenticateWithBiometrics({
+        reason: "Confirme sua biometria para habilitar o bloqueio do aplicativo",
+      });
+      if (!result.success) {
+        pushToast({
+          title: "Autenticação não concluída",
+          description: result.error ?? "Não foi possível validar sua biometria.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setBiometricLockEnabled(true);
+      setBioLockEnabled(true);
+      pushToast({
+        title: "Bloqueio biométrico ativado",
+        description: "O aplicativo exigirá biometria ao retornar do segundo plano.",
+        variant: "success",
+      });
+    } else {
+      setBiometricLockEnabled(false);
+      setBioLockEnabled(false);
+      pushToast({
+        title: "Bloqueio biométrico desativado",
+        variant: "default",
+      });
+    }
+  };
+
+  const handleGraceMinutesChange = (val: string) => {
+    setGraceMinutes(val);
+    setAppLockGraceMinutes(Number(val));
+  };
+
+  const handleTogglePrivacyShield = async (enabled: boolean) => {
+    await setPrivacyShieldEnabled(enabled);
+    setPrivacyEnabled(enabled);
+    pushToast({
+      title: enabled ? "Escudo de privacidade ativado" : "Escudo de privacidade desativado",
+      description: enabled
+        ? "Capturas de tela e miniaturas no alternador de tarefas foram bloqueadas."
+        : "Capturas de tela foram reabilitadas.",
+      variant: "default",
+    });
+  };
 
   const portfolioPosition = usePortfolioPosition();
   const exportDataQuery = useExportData({ enabled: false });
@@ -279,7 +363,86 @@ export function SecurityTab() {
         </CardContent>
       </Card>
 
-      {/* Card 2: Gestão de Dados & Backup */}
+      {/* Card 2: Bloqueio do Aplicativo & Privacidade */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Fingerprint className="size-4 text-muted-foreground" aria-hidden="true" />
+              <span>Bloqueio do Aplicativo &amp; Privacidade</span>
+            </span>
+            {biometricsAvailable ? (
+              <Badge variant="positive" size="xs">
+                {biometryType === "face"
+                  ? "Reconhecimento Facial"
+                  : biometryType === "iris"
+                    ? "Leitor de Íris"
+                    : "Sensor Biométrico Ativo"}
+              </Badge>
+            ) : biometricsAvailable === false ? (
+              <Badge variant="muted" size="xs">
+                Biometria Indisponível
+              </Badge>
+            ) : null}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-0.5">
+                <span className="text-sm font-semibold text-foreground">
+                  Exigir biometria ao retornar
+                </span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Bloqueia o acesso às suas informações financeiras quando você alternar de aplicativo ou minimizar a tela.
+                </p>
+              </div>
+              <Checkbox
+                id="toggle-biometrics"
+                aria-label="Exigir biometria ao retornar ao aplicativo"
+                checked={bioLockEnabled}
+                onCheckedChange={handleToggleBiometrics}
+              />
+            </div>
+
+            {bioLockEnabled ? (
+              <div className="pt-3 border-t border-border/60 space-y-2">
+                <span className="text-xs font-semibold text-foreground">
+                  Tolerância para bloqueio
+                </span>
+                <Select
+                  value={graceMinutes}
+                  onValueChange={handleGraceMinutesChange}
+                  options={APP_LOCK_GRACE_OPTIONS}
+                  ariaLabel="Selecione o tempo de tolerância para bloqueio"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Define quanto tempo o app pode permanecer em segundo plano antes de exigir nova validação biométrica.
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
+            <div className="space-y-0.5">
+              <span className="text-sm font-semibold text-foreground">
+                Escudo de Privacidade (Privacy Shield)
+              </span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Oculta saldos e dados na tela de aplicativos recentes do sistema e bloqueia capturas de tela.
+              </p>
+            </div>
+            <Checkbox
+              id="toggle-privacy-shield"
+              aria-label="Ativar escudo de privacidade contra capturas e visualização recente"
+              checked={privacyEnabled}
+              onCheckedChange={handleTogglePrivacyShield}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Card 3: Gestão de Dados & Backup */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">

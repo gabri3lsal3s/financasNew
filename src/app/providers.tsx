@@ -9,6 +9,8 @@ import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { syncVisualWithCloud } from "@/hooks/use-visual-customization";
+import { AppLockOverlay } from "@/app/app-lock-overlay";
+import { initAppLockListener } from "@/services/native";
 
 /**
  * Sincroniza o ciclo de vida do TanStack Query e das stores locais
@@ -82,6 +84,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
       }),
   );
 
+  useEffect(() => {
+    const cleanup = initAppLockListener();
+    return cleanup;
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthQuerySync>
@@ -92,6 +99,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
               <PWAUpdateToast />
               {/* Host do bus de toasts (services/toast) — rollbacks otimistas etc. */}
               <ToastHost />
+              {/* Overlay de bloqueio biométrico do aplicativo */}
+              <AppLockOverlay />
               {children}
             </Toaster>
           </ThemeProvider>

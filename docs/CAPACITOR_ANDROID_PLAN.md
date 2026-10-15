@@ -173,11 +173,11 @@ graph TD
 - [x] **Splash Screen Suave:** Integrar `@capacitor/splash-screen` à casca visual `#app-splash`.
 - **DoD:** O app no Android respeita o botão voltar sem fechar repentinamente; barra de status muda de cor dinamicamente com o tema.
 
-### Fase 3: Segurança, Biometria & Privacy Shield
-- [ ] **Biometria Adaptativa:** Criar `src/services/native/biometrics.ts` (Android usa sensor nativo; Web usa WebAuthn ou ignora).
-- [ ] **App Lock com Tolerância:** Interceptar retorno do app (`appStateChange`) e exigir desbloqueio biométrico após $X$ minutos em segundo plano (configurável).
-- [ ] **Opção em Configurações:** Toggle discreto em `Configurações > Segurança > Desbloqueio por Biometria`.
-- [ ] **Privacy Shield:** Ativar `FLAG_SECURE` na janela nativa para bloquear screenshots e visualização no alternador de apps recentes.
+### Fase 3: Segurança, Biometria & Privacy Shield [Concluída]
+- [x] **Biometria Adaptativa:** Criar `src/services/native/biometrics.ts` (Android usa sensor nativo; Web usa WebAuthn ou ignora).
+- [x] **App Lock com Tolerância:** Interceptar retorno do app (`appStateChange`) e exigir desbloqueio biométrico após $X$ minutos em segundo plano (configurável).
+- [x] **Opção em Configurações:** Toggle discreto em `Configurações > Segurança > Desbloqueio por Biometria`.
+- [x] **Privacy Shield:** Ativar `FLAG_SECURE` na janela nativa para bloquear screenshots e visualização no alternador de apps recentes.
 - **DoD:** Ao alternar de app e retornar após o tempo limite, o app solicita digital/face e oculta dados confidenciais na visualização de tarefas recentes.
 
 ### Fase 4: Agilidade Externa (Shortcuts no Launcher & Notificação Local)
