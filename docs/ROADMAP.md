@@ -1,5 +1,25 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.53** registra o **Setup da Casca Android Nativa & Integração do Capacitor (Fase 1 do Plano Android)** (2026-10-15):
+> - **(1) Integração do Capacitor Core, CLI e Android Runtime**:
+>   - Instalação e compatibilização de `@capacitor/core`, `@capacitor/android` e `@capacitor/cli`;
+>   - Criação do `capacitor.config.ts` (`appId: "com.guiafinanceiro.app"`, `appName: "Guia Financeiro"`, `webDir: "dist"`, `androidScheme: "https"`);
+>   - Inicialização da casca nativa `android/` com integração Gradle limpa via `npx cap add android`;
+> - **(2) Gateway de Plataforma Nativa (`src/services/native/`)**:
+>   - Criação de `platform.ts` encapsulando detecção de ambiente (`isNativePlatform`, `isAndroidNative`, `isIOSNative`, `isWebPlatform`, `getPlatform`) com degradação graciosa para Web/PWA;
+>   - Barrel `index.ts` e cobertura completa de testes unitários (`platform.test.ts`);
+> - **(3) Isolamento Seguro do Service Worker (`src/app/pwa.ts`)**:
+>   - Condicionamento de `registerPWA()`, `getCanInstallPWA()` e `forceAppUpdate()` para execução restrita a ambientes Web/PWA (`!isNativePlatform()`), prevenindo conflitos com webview nativa;
+>   - Adição de testes de isolamento nativo em `src/tests/pwa.test.tsx` com 100% de aprovação;
+> - **(4) Scripts Operacionais & Governança de Build**:
+>   - Adição dos scripts `cap:sync`, `cap:open` e `cap:build` no `package.json`;
+>   - Atualização do `eslint.config.js` com exclusão do diretório `android` e sincronização no `docs/PROJECT_STRUCTURE.md`;
+> - **(5) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (304 arquivos / 2.218 testes) **100% verde**;
+>   - Build de produção PWA e sincronização nativa (`npm run build && npx cap sync android`) executados com sucesso.
+> 
 > **v2.52** registra a **Correção de Erros de Build no CI/CD e Estabilização da Árvore de Dependências npm** (2026-10-15):
 > - **(1) Resolução da Causa-Raiz do Crash Arborist (`edgesOut` of null)**:
 >   - Diagnóstico do erro `npm error Cannot read properties of null (reading 'edgesOut')` ocorrido no pipeline de CI do Cloudflare Pages durante `npm ci` / `npm install`;

@@ -1,4 +1,5 @@
 import { registerSW } from "virtual:pwa-register";
+import { isNativePlatform } from "@/services/native";
 
 /**
  * Registro do Service Worker + fluxo de instalação/atualização (PWA_GUIDELINES §6).
@@ -45,7 +46,7 @@ export function consumePWAUpdate(): void {
 export async function forceAppUpdate(): Promise<void> {
   if (typeof window === "undefined") return;
 
-  if ("serviceWorker" in navigator) {
+  if (!isNativePlatform() && "serviceWorker" in navigator) {
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
       for (const reg of registrations) {
@@ -89,6 +90,7 @@ export function subscribePWAInstall(listener: () => void): () => void {
 }
 
 export function getCanInstallPWA(): boolean {
+  if (isNativePlatform()) return false;
   return deferredInstallPrompt !== null && !isStandalone();
 }
 
@@ -107,6 +109,11 @@ function notifyInstallChange(): void {
 }
 
 export function registerPWA(): void {
+  // Isola Service Worker: não executa em plataformas nativas (ex: Android/iOS via Capacitor)
+  if (isNativePlatform()) {
+    return;
+  }
+
   registerSW({
     immediate: true,
     onNeedReload: notifyPWAUpdate,

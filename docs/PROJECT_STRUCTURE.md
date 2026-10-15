@@ -237,6 +237,7 @@
     │                              #   use-container-scroll (monitoramento cirúrgico de rolagem a 120fps sem re-render),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
     ├── services/                  # Apresentação + integrações
+    │   ├── native/                #   Gateway de plataforma nativa (Capacitor/Android/iOS): detecção e isolamento
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)

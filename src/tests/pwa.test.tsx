@@ -34,6 +34,19 @@ describe("PWA — instalação (beforeinstallprompt)", () => {
     // O evento de instalação é de uso único — o botão some após o prompt.
     expect(screen.queryByRole("button", { name: "Instalar app" })).not.toBeInTheDocument();
   });
+
+  it("não registra Service Worker e não permite instalação em ambiente nativo", async () => {
+    const nativeModule = await import("@/services/native");
+    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
+
+    registerPWA();
+
+    render(<InstallAppButton />);
+    const event = new Event("beforeinstallprompt");
+    window.dispatchEvent(event);
+
+    expect(screen.queryByRole("button", { name: "Instalar app" })).not.toBeInTheDocument();
+  });
 });
 
 describe("PWA — atualização automática (autoUpdate → toast)", () => {
