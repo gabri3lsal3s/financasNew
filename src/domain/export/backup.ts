@@ -75,34 +75,147 @@ export interface BackupData {
   user_preferences: BackupRow[];
 }
 
+export interface BackupMetadata {
+  schemaVersion: number;
+  app: string;
+  exportedAt: string;
+  checksum: string;
+  totalRecords: number;
+  tableCounts: Record<string, number>;
+  modulesSummary: {
+    categories: number;
+    cards: number;
+    transactions: number;
+    debts: number;
+    budgets: number;
+    investments: number;
+    preferences: number;
+  };
+}
+
 export interface BackupPayload {
   version: number;
   app: string;
   exportedAt: string;
+  checksum?: string;
+  metadata?: BackupMetadata;
   data: BackupData;
 }
 
 /** Contagem de registros restaurados por tabela (retorno do RPC). */
 export type RestoreSummary = Record<string, number>;
 
+/** Serialização JSON determinística com ordenação lexicográfica de chaves. */
+export function deterministicStringify(obj: unknown): string {
+  if (obj === null || typeof obj !== "object") {
+    return JSON.stringify(obj);
+  }
+  if (Array.isArray(obj)) {
+    return `[${obj.map(deterministicStringify).join(",")}]`;
+  }
+  const keys = Object.keys(obj as Record<string, unknown>).sort();
+  return `{${keys
+    .map((k) => `${JSON.stringify(k)}:${deterministicStringify((obj as Record<string, unknown>)[k])}`)
+    .join(",")}}`;
+}
+
+/**
+ * Calcula um checksum determinístico (hexadecimal) baseado em hash 64-bit FNV-1a
+ * sobre a representação canônica dos dados.
+ */
+export function calculateBackupChecksum(data: unknown): string {
+  const str = deterministicStringify(data);
+  let h1 = 0x811c9dc5;
+  let h2 = 0xcbf29ce4;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 0x01000193);
+    h2 = Math.imul(h2 ^ ((ch << 8) | (ch >> 8)), 0x01000193);
+  }
+  const hex1 = (h1 >>> 0).toString(16).padStart(8, "0");
+  const hex2 = (h2 >>> 0).toString(16).padStart(8, "0");
+  return `chk_${hex1}${hex2}`;
+}
+
 const rowSchema = z.record(z.string(), z.unknown());
+
+const metadataSchema = z
+  .object({
+    schemaVersion: z.number().int().positive().optional(),
+    app: z.string().optional(),
+    exportedAt: z.string().optional(),
+    checksum: z.string().optional(),
+    totalRecords: z.number().int().nonnegative().optional(),
+    tableCounts: z.record(z.string(), z.number().int().nonnegative()).optional(),
+    modulesSummary: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  })
+  .optional();
 
 const backupSchema = z.object({
   version: z.number().int().positive(),
   app: z.string(),
   exportedAt: z.string(),
+  checksum: z.string().optional(),
+  metadata: metadataSchema,
   data: z.record(z.string(), rowSchema.array()).refine(
     (data) => BACKUP_TABLE_KEYS.every((key) => Array.isArray(data[key])),
     "Backup incompleto: faltam tabelas do formato.",
   ),
 });
 
-/** Monta o payload de backup a partir dos dados brutos (fetch RLS). */
+/** Monta o payload de backup a partir dos dados brutos (fetch RLS) enriquecido com metadados e checksum. */
 export function buildBackupPayload(data: BackupData): BackupPayload {
+  const exportedAt = new Date().toISOString();
+  const checksum = calculateBackupChecksum(data);
+
+  const tableCounts = Object.fromEntries(
+    BACKUP_TABLE_KEYS.map((k) => [k, Array.isArray(data[k]) ? data[k].length : 0]),
+  ) as Record<string, number>;
+
+  const totalRecords = Object.values(tableCounts).reduce((acc, count) => acc + count, 0);
+
+  const modulesSummary = {
+    categories: data.categories?.length ?? 0,
+    cards:
+      (data.credit_cards?.length ?? 0) +
+      (data.card_payments?.length ?? 0) +
+      (data.card_competence_overrides?.length ?? 0),
+    transactions: (data.expenses?.length ?? 0) + (data.incomes?.length ?? 0),
+    debts: data.debts?.length ?? 0,
+    budgets: (data.budgets?.length ?? 0) + (data.income_goals?.length ?? 0),
+    investments:
+      (data.portfolio_assets?.length ?? 0) +
+      (data.portfolio_transactions?.length ?? 0) +
+      (data.portfolio_snapshots?.length ?? 0) +
+      (data.portfolio_contributions?.length ?? 0) +
+      (data.portfolio_dividends?.length ?? 0) +
+      (data.allocation_targets?.length ?? 0) +
+      (data.class_targets?.length ?? 0) +
+      (data.sector_targets?.length ?? 0) +
+      (data.asset_prices?.length ?? 0) +
+      (data.cash_checkpoints?.length ?? 0),
+    preferences:
+      (data.user_preferences?.length ?? 0) +
+      (data.insight_feedback?.length ?? 0) +
+      (data.reminder_states?.length ?? 0),
+  };
+
+  const metadata: BackupMetadata = {
+    schemaVersion: BACKUP_VERSION,
+    app: APP_NAME,
+    exportedAt,
+    checksum,
+    totalRecords,
+    tableCounts,
+    modulesSummary,
+  };
+
   return {
     version: BACKUP_VERSION,
     app: APP_NAME,
-    exportedAt: new Date().toISOString(),
+    exportedAt,
+    checksum,
+    metadata,
     data,
   };
 }
@@ -120,7 +233,7 @@ export type BackupValidation =
   | { ok: true; payload: BackupPayload }
   | { ok: false; errors: string[] };
 
-/** Valida estrutura (Zod) + integridade referencial interna do backup. */
+/** Valida estrutura (Zod) + checksum de integridade + integridade referencial interna do backup. */
 export function parseBackupPayload(raw: unknown): BackupValidation {
   const parsed = backupSchema.safeParse(raw);
   if (!parsed.success) {
@@ -132,17 +245,38 @@ export function parseBackupPayload(raw: unknown): BackupValidation {
   }
 
   const dataByKey = parsed.data.data as Record<string, BackupRow[]>;
+  const payloadData = Object.fromEntries(
+    BACKUP_TABLE_KEYS.map((key) => [key, dataByKey[key] ?? []]),
+  ) as unknown as BackupData;
+
   const payload: BackupPayload = {
     version: parsed.data.version,
     app: parsed.data.app,
     exportedAt: parsed.data.exportedAt,
-    data: Object.fromEntries(BACKUP_TABLE_KEYS.map((key) => [key, dataByKey[key] ?? []])) as unknown as BackupData,
+    checksum: parsed.data.checksum ?? parsed.data.metadata?.checksum,
+    metadata: parsed.data.metadata as BackupMetadata | undefined,
+    data: payloadData,
   };
+
   if (payload.version !== BACKUP_VERSION) {
     return {
       ok: false,
       errors: [`Versão de backup não suportada: ${payload.version} (esperada: ${BACKUP_VERSION}).`],
     };
+  }
+
+  // Se um checksum foi incluído no arquivo, validamos contra os dados desserializados
+  const expectedChecksum = payload.checksum;
+  if (expectedChecksum) {
+    const actualChecksum = calculateBackupChecksum(payload.data);
+    if (actualChecksum !== expectedChecksum) {
+      return {
+        ok: false,
+        errors: [
+          `Checksum de integridade inválido (esperado: ${expectedChecksum}, calculado: ${actualChecksum}). O arquivo pode ter sido corrompido ou alterado.`,
+        ],
+      };
+    }
   }
 
   const integrityErrors = validateIntegrity(payload.data);

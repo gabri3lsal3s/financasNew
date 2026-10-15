@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Database, Download, FileSpreadsheet, RefreshCcw } from "lucide-react";
+import { Database, Download, FileSpreadsheet, RefreshCcw, Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,9 +31,12 @@ export interface ExportDataHubProps {
   onRestore: (file: File) => Promise<RestoreSummary>;
   /** Executa a restauração (2ª etapa, após confirmação). */
   onConfirmRestore: (file: File) => Promise<void>;
+  /** Abre o assistente interativo de restauração com desduplicação. */
+  onOpenRestoreWizard?: () => void;
   /** Tipos de CSV disponíveis para exportação de acordo com os módulos permitidos. */
   availableCsvKinds?: ExportCsvKind[];
 }
+
 
 type RestoreStep =
   | { step: "idle" }
@@ -74,6 +77,7 @@ export function ExportDataHub({
   onExportCsv,
   onRestore,
   onConfirmRestore,
+  onOpenRestoreWizard,
   availableCsvKinds,
 }: ExportDataHubProps) {
   const [exportingJson, setExportingJson] = useState(false);
@@ -206,11 +210,25 @@ export function ExportDataHub({
           </div>
 
           <div className="flex flex-col gap-3 p-3.5 rounded-xl border border-border bg-surface">
-            <div>
-              <div className="font-semibold text-sm text-foreground">Restaurar backup</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                Substitui todos os dados atuais pelo conteúdo do arquivo. Verifique o resumo antes de confirmar.
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div>
+                <div className="font-semibold text-sm text-foreground">Restaurar backup</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Substitui todos os dados atuais pelo conteúdo do arquivo ou utilize o assistente com desduplicação.
+                </div>
               </div>
+              {onOpenRestoreWizard && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenRestoreWizard}
+                  className="gap-1.5 text-xs font-medium cursor-pointer shrink-0 self-end sm:self-auto"
+                >
+                  <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+                  <span>Restaurar com Assistente</span>
+                </Button>
+              )}
             </div>
             {restore.step === "idle" || restore.step === "validating" ? (
               <Dropzone

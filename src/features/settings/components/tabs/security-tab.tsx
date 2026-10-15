@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import { ExportDataHub } from "@/components/modules";
 import type { ExportCsvKind, ExportRange } from "@/components/modules";
+import { RestoreWizardDialog } from "../restore-wizard";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { downloadCsv, downloadJson } from "@/services/export-actions";
@@ -91,6 +92,7 @@ export function SecurityTab() {
   const loadDemoMutation = useLoadDemoData();
   const clearDemoMutation = useClearDemoData();
   const [confirmClearDemoOpen, setConfirmClearDemoOpen] = useState(false);
+  const [restoreWizardOpen, setRestoreWizardOpen] = useState(false);
   const categoriesQuery = useCategories();
   const creditCardsQuery = useCreditCards();
 
@@ -291,6 +293,7 @@ export function SecurityTab() {
             onExportCsv={handleExportCsv}
             onRestore={handleRestoreFile}
             onConfirmRestore={handleConfirmRestore}
+            onOpenRestoreWizard={() => setRestoreWizardOpen(true)}
             availableCsvKinds={[
               ...(userAccess.hasFeature("transactions") ? (["expenses", "incomes"] as const) : []),
               ...(userAccess.hasFeature("cards") ? (["invoices"] as const) : []),
@@ -357,6 +360,12 @@ export function SecurityTab() {
           setConfirmClearDemoOpen(false);
         }}
       />
+
+      <RestoreWizardDialog
+        open={restoreWizardOpen}
+        onOpenChange={setRestoreWizardOpen}
+      />
     </div>
   );
 }
+

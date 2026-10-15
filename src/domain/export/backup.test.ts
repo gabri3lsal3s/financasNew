@@ -123,4 +123,49 @@ describe("domain/export — backup JSON", () => {
     const errors = validateIntegrity(data);
     expect(errors.length).toBeLessThanOrEqual(8);
   });
+
+  it("gera metadados completos e checksum determinístico no payload", () => {
+    const data = emptyData();
+    data.categories = [CATEGORY];
+    data.expenses = [{ id: "e-1", user_id: "u-1", value: 100, date: "2026-08-01", category_id: "cat-1", payment_method: "pix", report_weight: 1, base_amount: 100 }];
+
+    const payload = buildBackupPayload(data);
+    expect(payload.checksum).toBeDefined();
+    expect(payload.checksum).toMatch(/^chk_[0-9a-f]{16}$/);
+    expect(payload.metadata).toBeDefined();
+    expect(payload.metadata?.totalRecords).toBe(2);
+    expect(payload.metadata?.modulesSummary.categories).toBe(1);
+    expect(payload.metadata?.modulesSummary.transactions).toBe(1);
+    expect(payload.metadata?.checksum).toBe(payload.checksum);
+  });
+
+  it("detecta arquivo corrompido ou adulterado através do checksum", () => {
+    const data = emptyData();
+    data.categories = [CATEGORY];
+    const payload = buildBackupPayload(data);
+
+    // Adulteração manual dos dados após o cálculo do checksum
+    payload.data.categories.push({ ...CATEGORY, id: "cat-2", name: "Injeção" });
+
+    const result = parseBackupPayload(payload);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("Checksum de integridade inválido"))).toBe(true);
+    }
+  });
+
+  it("aceita backups legados sem checksum por compatibilidade", () => {
+    const data = emptyData();
+    data.categories = [CATEGORY];
+    const legacyPayload = {
+      version: 1,
+      app: "Finanças Pessoais",
+      exportedAt: "2026-01-01T00:00:00.000Z",
+      data,
+    };
+
+    const result = parseBackupPayload(legacyPayload);
+    expect(result.ok).toBe(true);
+  });
 });
+

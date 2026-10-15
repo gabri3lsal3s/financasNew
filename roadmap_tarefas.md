@@ -175,15 +175,16 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 15: Wizard de Backup Completo e Importação com Desduplicação
+### Tarefa 15: Wizard de Backup Completo e Importação com Desduplicação [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Criar rotina de backup abrangente e um Wizard passo a passo para restauração com desduplicação.
 - **Ações:**
-  1. Backup completo: exportar contas, categorias, transações, orçamentos e snapshots de investimentos em JSON estruturado com metadados e checksum.
+  1. Backup completo: exportar contas, categorias, transações, orçamentos e snapshots de investimentos em JSON estruturado com metadados e checksum. (Concluído: implementado cálculo de checksum determinístico 64-bit FNV-1a com ordenação canônica de chaves em `calculateBackupChecksum` e geração de metadados completos com total de registros, contagem por tabela e resumo modular em `buildBackupPayload`, com validação estrita anti-corrupção em `parseBackupPayload` preservando retrocompatibilidade).
   2. Wizard de importação:
-     - Etapa 1: Validação do arquivo.
-     - Etapa 2: Seleção granular dos módulos a restaurar.
-     - Etapa 3: Identificação de duplicados com opções de ação (Pular, Sobrescrever ou Manter ambos).
-     - Etapa 4: Resumo e confirmação transacional.
+     - Etapa 1: Validação do arquivo. (Concluído: dropzone com auditoria Zod, validação de schema, checksum e integridade referencial, além de cards de metadados com badge de integridade e contagem por módulo).
+     - Etapa 2: Seleção granular dos módulos a restaurar. (Concluído: interface modular com checkboxes Radix cobrindo Categorias, Cartões, Transações, Dívidas, Orçamentos e Investimentos, com seleção rápida e detecção de riscos de FK órfã).
+     - Etapa 3: Identificação de duplicados com opções de ação. (Concluído: motor puro `analyzeBackupDuplicates` comparando chaves naturais contra a base ativa do usuário, com opções Pular [skip], Sobrescrever [overwrite], Manter ambos [keep_both com remapeamento de UUIDs] e Substituição completa [wipe_all]).
+     - Etapa 4: Resumo e confirmação transacional. (Concluído: painel recapitulativo detalhando inserções, atualizações e pulados, feedback sensorial e visual atômico, integração com o RPC transacional `restore_backup` e botão "Restaurar com Assistente" na SecurityTab e ExportDataHub).
 - **Commit:** `feat(backup): implement full-scope backup and interactive restore wizard with deduplication`
 
 ---
