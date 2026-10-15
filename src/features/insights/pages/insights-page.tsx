@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Activity, Calendar, Flame, LineChart, Repeat, Sparkles } from "lucide-react";
+import { Activity, Calendar, Flame, LineChart, Repeat } from "lucide-react";
 import { Button, ErrorState, Skeleton } from "@/components/ui";
 import { PlanningSection } from "@/components/modules";
 import { triggerSensory } from "@/services/sensory";
@@ -44,16 +44,17 @@ import {
 } from "@/state";
 import { DiagnosticsTab, ProjectionTab, RecurrencesTab, type WarningItem } from "../components";
 
-export type InsightFilter = "all" | "diagnostics" | "recurrences" | "projection" | "planning";
+export type InsightFilter = "diagnostics" | "recurrences" | "occurrences" | "projection" | "planning" | "all";
+
+type ActiveTab = "diagnostics" | "recurrences" | "projection" | "planning";
 
 interface FilterItem {
-  value: InsightFilter;
+  value: ActiveTab;
   label: string;
   icon: React.ReactNode;
 }
 
 const FILTER_ITEMS: FilterItem[] = [
-  { value: "all", label: "Tudo", icon: <Sparkles className="size-3.5" aria-hidden="true" /> },
   { value: "diagnostics", label: "Diagnósticos", icon: <Activity className="size-3.5" aria-hidden="true" /> },
   { value: "recurrences", label: "Recorrências", icon: <Repeat className="size-3.5" aria-hidden="true" /> },
   { value: "projection", label: "Projeção", icon: <LineChart className="size-3.5" aria-hidden="true" /> },
@@ -61,13 +62,16 @@ const FILTER_ITEMS: FilterItem[] = [
 ];
 
 /**
- * Insights (§3.7) — Central Unificada de Inteligência Financeira.
- * Alertas críticos, diagnósticos de hábitos, assinaturas e recorrências com aprendizado,
- * projeção e desafios de corte, e planejamento FIRE em página contínua com filtros rápidos.
+ * Insights (§3.7) — Central Modular de Inteligência Financeira.
+ * Estruturada exclusivamente em cards analíticos isolados:
+ * - Diagnósticos de Hábitos & Alertas
+ * - Bloco de Ocorrências e Gastos Frequentes (Radar de recorrências com aprendizado)
+ * - Bloco de Projeção Financeira e Runway (Fechamento projetado, runway e cortes)
+ * - Bloco de Planejamento FIRE & Reserva
  */
 export function InsightsPage({
   showHeader = true,
-  initialFilter = "all",
+  initialFilter = "diagnostics",
 }: {
   showHeader?: boolean;
   initialFilter?: InsightFilter;
@@ -83,8 +87,17 @@ export function InsightsPage({
     // Permite renderização resiliente fora de Router (testes unitários isolados)
   }
 
-  const queryTab = searchParams?.get("aba") as InsightFilter | null;
-  const [filter, setFilter] = useState<InsightFilter>(() => queryTab ?? initialFilter);
+  const rawTab = searchParams?.get("aba");
+  const resolveTab = (val: string | null | undefined): ActiveTab => {
+    if (val === "recurrences" || val === "occurrences") return "recurrences";
+    if (val === "projection") return "projection";
+    if (val === "planning") return "planning";
+    return "diagnostics";
+  };
+
+  const [filter, setFilter] = useState<ActiveTab>(() =>
+    rawTab ? resolveTab(rawTab) : resolveTab(initialFilter),
+  );
   const [showIgnored, setShowIgnored] = useState(false);
   const [expandedWarnings, setExpandedWarnings] = useState(false);
   const month = currentMonth();
@@ -358,11 +371,13 @@ export function InsightsPage({
       })),
   ];
 
-  const handleFilterChange = (nextFilter: InsightFilter) => {
+  const runwayMonths = expenseCents > 0 ? Math.max(0, balanceCents) / expenseCents : null;
+
+  const handleFilterChange = (nextFilter: ActiveTab) => {
     triggerSensory("selection");
     setFilter(nextFilter);
     if (searchParams && setSearchParams) {
-      if (nextFilter === "all") {
+      if (nextFilter === "diagnostics") {
         searchParams.delete("aba");
       } else {
         searchParams.set("aba", nextFilter);
@@ -416,6 +431,9 @@ export function InsightsPage({
       showDiscretionary={showDiscretionary}
       discretionary={discretionary}
       limitSuggestions={limitSuggestions}
+      balanceCents={balanceCents}
+      monthlyExpensesCents={expenseCents}
+      runwayMonths={runwayMonths}
     />
   );
 
@@ -493,60 +511,13 @@ export function InsightsPage({
           <Skeleton className="h-24 w-full rounded-xl" />
           <Skeleton className="h-40 w-full rounded-xl" />
         </div>
-      ) : filter === "all" ? (
-        <div className="flex flex-col gap-8 min-w-0">
-          {/* Seção 1: Diagnósticos & Alertas */}
-          <section aria-labelledby="section-diagnostics" className="flex flex-col gap-3.5 min-w-0">
-            <div className="flex items-center gap-2 pb-2.5 border-b border-border/80">
-              <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h2 id="section-diagnostics" className="text-sm font-semibold text-foreground">
-                Diagnósticos de Hábitos & Alertas
-              </h2>
-            </div>
-            {diagnosticsContent}
-          </section>
-
-          {/* Seção 2: Recorrências & Assinaturas */}
-          <section aria-labelledby="section-recurrences" className="flex flex-col gap-3.5 min-w-0">
-            <div className="flex items-center gap-2 pb-2.5 border-b border-border/80">
-              <Repeat className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h2 id="section-recurrences" className="text-sm font-semibold text-foreground">
-                Radar de Assinaturas & Recorrências
-              </h2>
-            </div>
-            {recurrencesContent}
-          </section>
-
-          {/* Seção 3: Projeção & Economia */}
-          <section aria-labelledby="section-projection" className="flex flex-col gap-3.5 min-w-0">
-            <div className="flex items-center gap-2 pb-2.5 border-b border-border/80">
-              <LineChart className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h2 id="section-projection" className="text-sm font-semibold text-foreground">
-                Fechamento Projetado & Oportunidades de Economia
-              </h2>
-            </div>
-            {projectionContent}
-          </section>
-
-          {/* Seção 4: Planejamento FIRE */}
-          <section aria-labelledby="section-planning" className="flex flex-col gap-3.5 min-w-0">
-            <div className="flex items-center gap-2 pb-2.5 border-b border-border/80">
-              <Flame className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h2 id="section-planning" className="text-sm font-semibold text-foreground">
-                Reserva de Emergência & Planejamento FIRE
-              </h2>
-            </div>
-            {planningContent}
-          </section>
-        </div>
-      ) : filter === "diagnostics" ? (
-        <div className="flex flex-col gap-4 min-w-0">{diagnosticsContent}</div>
-      ) : filter === "recurrences" ? (
-        <div className="flex flex-col gap-4 min-w-0">{recurrencesContent}</div>
-      ) : filter === "projection" ? (
-        <div className="flex flex-col gap-4 min-w-0">{projectionContent}</div>
       ) : (
-        <div className="flex flex-col gap-4 min-w-0">{planningContent}</div>
+        <div className="flex flex-col gap-4 min-w-0">
+          {filter === "diagnostics" && diagnosticsContent}
+          {filter === "recurrences" && recurrencesContent}
+          {filter === "projection" && projectionContent}
+          {filter === "planning" && planningContent}
+        </div>
       )}
     </div>
   );

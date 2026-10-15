@@ -81,12 +81,14 @@ describe("InsightsPage (motor de insights §3.7)", () => {
       { id: `${month}-2`, description: "Academia", category_id: "c2", value: 9900, report_weight: 1, date: `${month}-10`, installment_group_id: null },
     ];
   });
-  it("renderiza a pill 'Tudo' como primeira e 'Diagnósticos' como segunda", () => {
+  it("renderiza as abas de cards analíticos isolados com 'Diagnósticos' como inicial", () => {
     render(<InsightsPage />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs[0]).toHaveAccessibleName("Tudo");
-    expect(tabs[1]).toHaveAccessibleName("Diagnósticos");
-    // Na visão completa (Tudo), os diagnósticos e alertas estão presentes.
+    expect(tabs[0]).toHaveAccessibleName("Diagnósticos");
+    expect(tabs[1]).toHaveAccessibleName("Recorrências");
+    expect(tabs[2]).toHaveAccessibleName("Projeção");
+    expect(tabs[3]).toHaveAccessibleName("Planejamento FIRE");
+    // Na visão inicial de Diagnósticos, os diagnósticos e alertas estão presentes.
     expect(screen.getByText("Saúde da poupança")).toBeInTheDocument();
     expect(screen.getByText("Tendência de gastos")).toBeInTheDocument();
   });
@@ -121,11 +123,12 @@ describe("InsightsPage (motor de insights §3.7)", () => {
     });
   });
 
-  it("renderiza projeção e corte com pendências", async () => {
+  it("renderiza projeção e corte com pendências e runway", async () => {
     const user = userEvent.setup();
     render(<InsightsPage />);
     await user.click(screen.getByRole("tab", { name: "Projeção" }));
     expect(screen.getByText("Projeção de gastos")).toBeInTheDocument();
+    expect(screen.getByText("Autonomia Financeira (Runway)")).toBeInTheDocument();
     expect(screen.getByText("Pendências do período")).toBeInTheDocument();
   });
 

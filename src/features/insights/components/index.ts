@@ -2,3 +2,7 @@ export * from "./diagnostic-card";
 export * from "./diagnostics-tab";
 export * from "./recurrences-tab";
 export * from "./projection-tab";
+export { RecurrencesTab as OccurrencesBlock } from "./recurrences-tab";
+export type { RecurrencesTabProps as OccurrencesBlockProps } from "./recurrences-tab";
+export { ProjectionTab as ProjectionRunwayBlock } from "./projection-tab";
+export type { ProjectionTabProps as ProjectionRunwayBlockProps } from "./projection-tab";

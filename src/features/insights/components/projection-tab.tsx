@@ -1,4 +1,5 @@
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Hourglass, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { ProjectionLine } from "@/components/modules";
 import type { ChallengeOption, DiscretionaryChallenge, LimitSuggestion } from "@/domain/savings";
@@ -20,6 +21,9 @@ export interface ProjectionTabProps {
   showDiscretionary: boolean;
   discretionary: DiscretionaryChallenge | null;
   limitSuggestions: LimitSuggestion[];
+  balanceCents?: number;
+  monthlyExpensesCents?: number;
+  runwayMonths?: number | null;
 }
 
 export function ProjectionTab({
@@ -35,13 +39,16 @@ export function ProjectionTab({
   showDiscretionary,
   discretionary,
   limitSuggestions,
+  balanceCents,
+  monthlyExpensesCents,
+  runwayMonths,
 }: ProjectionTabProps) {
   return (
     <div className="flex flex-col gap-5">
-      {/* Bloco 1: Fechamento Projetado */}
+      {/* Bloco 1: Fechamento Projetado & Runway */}
       <section aria-label="Fechamento do mês" className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Fechamento Projetado do Mês
+          Fechamento Projetado & Runway
         </h2>
 
         <div className="flex flex-col gap-3">
@@ -54,6 +61,59 @@ export function ProjectionTab({
             elapsedPercent={elapsedPercent}
             paceActive={paceActive}
           />
+
+          {/* Autonomia Financeira (Runway) */}
+          <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Hourglass aria-hidden="true" className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">Autonomia Financeira (Runway)</h3>
+              </div>
+              {runwayMonths !== null && runwayMonths !== undefined ? (
+                <Badge
+                  variant={runwayMonths >= 6 ? "positive" : runwayMonths >= 3 ? "warning" : "critical"}
+                  size="xs"
+                >
+                  {runwayMonths >= 6 ? "Saudável" : runwayMonths >= 3 ? "Moderado" : "Atenção"}
+                </Badge>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs min-w-0">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
+                <p className="text-muted-foreground">Autonomia estimada</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-sm font-semibold text-foreground tabular-nums">
+                    {runwayMonths !== null && runwayMonths !== undefined ? `${runwayMonths.toFixed(1)} meses` : "—"}
+                  </span>
+                  {runwayMonths !== null && runwayMonths !== undefined && runwayMonths > 0 ? (
+                    <span className="text-[11px] text-muted-foreground">
+                      (~{Math.round(runwayMonths * 30)} dias)
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
+                <p className="text-muted-foreground">Caixa / Saldo disponível</p>
+                <MoneyText
+                  cents={balanceCents ?? 0}
+                  tone={(balanceCents ?? 0) >= 0 ? "positive" : "negative"}
+                  className="text-sm font-semibold whitespace-nowrap tabular-nums"
+                />
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 min-w-0">
+                <p className="text-muted-foreground">Custo de vida mensal base</p>
+                <MoneyText
+                  cents={monthlyExpensesCents ?? 0}
+                  tone="default"
+                  className="text-sm font-semibold whitespace-nowrap tabular-nums"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              O runway indica por quanto tempo seu capital e saldo atual conseguem cobrir o padrão de despesas mensais sem novas receitas.
+            </p>
+          </div>
 
           {/* Pendências projetadas */}
           <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-4 min-w-0 shadow-xs">
@@ -71,7 +131,6 @@ export function ProjectionTab({
                 <p className="text-muted-foreground">Saldo projetado das pendências</p>
                 <MoneyText cents={pendingSummary.balanceCents} tone={pendingSummary.balanceCents >= 0 ? "positive" : "negative"} className="text-sm font-semibold whitespace-nowrap tabular-nums" />
               </div>
-
             </div>
           </div>
         </div>

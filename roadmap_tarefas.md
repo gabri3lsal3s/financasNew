@@ -116,11 +116,12 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 10: Desacoplamento Modular da Aba de Insights
+### Tarefa 10: Desacoplamento Modular da Aba de Insights [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Remover o bloco agregador genérico e estruturar a aba exclusivamente em cards analíticos isolados.
 - **Ações:**
-  1. Remover o componente monolítico com o resumo consolidado de tudo.
-  2. Isolar visualizações modulares: Bloco de Ocorrências e Gastos Frequentes, Bloco de Projeção Financeira e Runway, e demais métricas em componentes autônomos.
+  1. Remover o componente monolítico com o resumo consolidado de tudo. (Concluído: removida a aba/visão agregadora "Tudo" que concatenava todas as seções verticalmente em um único scroll monolítico; `InsightsPage` agora inicia por padrão na visão focada de "Diagnósticos" com navegação fluida entre blocos isolados).
+  2. Isolar visualizações modulares: Bloco de Ocorrências e Gastos Frequentes, Bloco de Projeção Financeira e Runway, e demais métricas em componentes autônomos. (Concluído: desacoplados os blocos `DiagnosticsTab`, `RecurrencesTab`/`OccurrencesBlock` com radar de assinaturas, despesas fixas recorrentes e detecção de dispersão com aprendizado, `ProjectionTab`/`ProjectionRunwayBlock` enriquecido com card autônomo de Autonomia de Liquidez [Runway em meses e dias, caixa disponível vs custo de vida base e classificação de segurança], e `PlanningSection` com simulador FIRE e termômetro preditivo de reserva de emergência; testes unitários e de acessibilidade 100% aprovados).
 - **Commit:** `refactor(insights): decouple monolithic summary into modular analytics blocks`
 
 ---
