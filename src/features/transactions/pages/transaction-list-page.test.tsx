@@ -83,6 +83,13 @@ describe("TransactionListPage — listagem por mês", () => {
     expect(screen.getAllByText("R$ 2.000,00").length).toBeGreaterThan(0);
   });
 
+  it("exibe as abas de filtro na ordem canonica: Tudo, Receitas, Despesas, Parceladas, Recorrentes", () => {
+    render(<TransactionListPage />);
+    const tabs = screen.getAllByRole("tab");
+    const tabLabels = tabs.map((tab) => tab.textContent?.trim());
+    expect(tabLabels).toEqual(["Tudo", "Receitas", "Despesas", "Parceladas", "Recorrentes"]);
+  });
+
   it("filtra itens pelas abas do feed", async () => {
     const user = userEvent.setup();
     render(<TransactionListPage />);
@@ -102,6 +109,16 @@ describe("TransactionListPage — listagem por mês", () => {
     await user.click(despesaTab);
     expect(screen.queryByText("Salário")).not.toBeInTheDocument();
     expect(screen.getByText("Aluguel")).toBeInTheDocument();
+
+    // Filtra parceladas
+    const parceladasTab = screen.getByRole("tab", { name: "Parceladas" });
+    await user.click(parceladasTab);
+    expect(screen.getByText("Nenhum lançamento parcelado neste mês.")).toBeInTheDocument();
+
+    // Filtra recorrentes
+    const recorrentesTab = screen.getByRole("tab", { name: "Recorrentes" });
+    await user.click(recorrentesTab);
+    expect(screen.getByText("Nenhum lançamento recorrente neste mês.")).toBeInTheDocument();
   });
 
   it("abre o modal de detalhamento de despesa ao clicar na linha de despesa", async () => {

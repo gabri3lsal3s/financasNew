@@ -263,8 +263,8 @@ export function TransactionListPage() {
           { value: "all", label: "Tudo" },
           { value: "incomes", label: "Receitas" },
           { value: "expenses", label: "Despesas" },
-          { value: "recurring", label: "Recorrentes" },
           { value: "installments", label: "Parceladas" },
+          { value: "recurring", label: "Recorrentes" },
         ]}
       />
 

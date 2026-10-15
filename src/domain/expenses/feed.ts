@@ -1,7 +1,7 @@
 import type { Expense, Income } from "@/types";
 import { numberToCents } from "@/domain/money";
 
-export type FeedFilter = "all" | "incomes" | "expenses" | "recurring" | "installments";
+export type FeedFilter = "all" | "incomes" | "expenses" | "installments" | "recurring";
 
 export interface TransactionFeedItem {
   id: string;

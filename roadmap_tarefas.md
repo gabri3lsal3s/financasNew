@@ -82,11 +82,12 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 07: Reordenação dos Filtros na Página de Extrato
+### Tarefa 07: Reordenação dos Filtros na Página de Extrato [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Ajustar a sequência dos filtros de transação na listagem de Extrato.
 - **Ações:**
-  1. Definir a ordem exata das abas: **Tudo**, **Receitas**, **Despesas**, **Parceladas**, **Recorrentes**.
-  2. Preservar o estado do filtro ativo e garantir rolagem horizontal fluida no mobile.
+  1. Definir a ordem exata das abas: **Tudo**, **Receitas**, **Despesas**, **Parceladas**, **Recorrentes**. (Concluído: reordenado array de abas do componente `Tabs` em `TransactionListPage` para `[all, incomes, expenses, installments, recurring]`, alinhado à tipagem de união `FeedFilter` em `domain/expenses/feed.ts`).
+  2. Preservar o estado do filtro ativo e garantir rolagem horizontal fluida no mobile. (Concluído: mantido estado `filter` com persistência na renderização e propriedade `fullWidth={false}` que ativa scroll horizontal desobstruído com `overflow-x-auto no-scrollbar scroll-smooth` e `shrink-0 flex-initial min-w-fit px-3`, respeitando a Regra 9 de `AGENTS.md`, com testes unitários cobrindo a ordem exata e o filtro de cada aba).
 - **Commit:** `refactor(statement): reorder transaction filter tabs to all, income, expense, installments, recurring`
 
 ---
