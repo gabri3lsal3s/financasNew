@@ -1,5 +1,30 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.57** registra o **Assistente Passivo — Captura de Compras, Notificações Bancárias e Compartilhamento Pix (Fase 5 do Plano Android)** (2026-10-15):
+> - **(1) Motor Puro de Parsing de Notificações & Comprovantes (`src/domain/notifications/`)**:
+>   - Parser puro em TypeScript sem dependências de UI nem de banco de dados (`bank-parser.ts`);
+>   - Extração precisa de valores monetários em centavos inteiros (`extractCentsFromText`), suporte a bancos homologados (Nubank, Itaú, Inter, C6 Bank, Bradesco, Santander, Mercado Pago, Caixa e Banco do Brasil);
+>   - Detecção automática de receita vs despesa (`detectTransactionType`), meio de pagamento (Pix, Cartão de Crédito, Débito) e extração inteligente de estabelecimento/destinatário (`extractMerchantOrRecipient`);
+>   - Suporte completo ao parsing de comprovantes Pix compartilhados (`parsePixShareText`);
+> - **(2) Fila de Sugestões Reativa com Persistência & Isolamento (`src/services/native/suggestions-store.ts`)**:
+>   - Store reativa com `useSyncExternalStore` gerenciando sugestões pendentes em memória e persistência local via `user-storage.ts` (`pending_suggestions`);
+>   - Isolamento estrito por usuário autenticado (`subscribeActiveUserId`), deduplicação de alertas e descarte limpo;
+> - **(3) Integração Nativa Android (`BankNotificationPlugin` & `BankNotificationListenerService`)**:
+>   - Serviço nativo Android `NotificationListenerService` monitorando notificações bancárias com permissão do sistema;
+>   - Plugin Capacitor customizado `BankNotificationPlugin` transmitindo eventos em tempo real (`bankNotificationReceived` e `shareTextReceived`);
+>   - Registro de Android Share Target no `AndroidManifest.xml` (`ACTION_SEND` com `text/plain`) para receber comprovantes Pix de outros apps diretamente no Guia Financeiro;
+>   - Listener centralizado em `NativeIntegrationsHandler` no `router.tsx`;
+> - **(4) Card Discreto de Confirmação na Visão Geral (`PendingSuggestionsCard`)**:
+>   - Componente visual sutil no topo da `OverviewPage` exibindo as transações detectadas pendentes de aprovação humana;
+>   - Zero automações cegas: nada é gravado no banco sem a confirmação explícita do usuário;
+>   - Ação "Conferir e Salvar" com preenchimento contextual automático de valor, descrição, data e meio de pagamento no `LaunchWizard` via `PageShell`, descartando a sugestão ao concluir;
+>   - Ação "Descartar" e "Descartar todas" para limpeza imediata sem persistência financeira;
+> - **(5) Qualidade de Código & Verificação Rigorosa**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (320 arquivos / 2.313 testes) **100% verde**;
+>   - Build de produção PWA e sincronização nativa (`npm run build && npx cap sync android`).
+> 
 > **v2.56** registra a **Agilidade Externa — Launcher Shortcuts, Notificações Locais com Botões Rápidos e Deep Links de Lançamento (Fase 4 do Plano Android)** (2026-10-15):
 > - **(1) Atalhos Estáticos de Launcher & Manifest PWA (`shortcuts.xml` & `manifest.webmanifest`)**:
 >   - Configuração de App Shortcuts nativos no Android via `res/xml/shortcuts.xml` e strings internacionalizadas em `strings.xml`:

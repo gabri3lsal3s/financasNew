@@ -192,10 +192,10 @@ graph TD
 - **DoD:** Atalhos funcionam ao segurar o ícone na tela inicial; notificação das 20h abre a ação correspondente com 1 clique.
 
 ### Fase 5: Assistente Passivo (Captura de Compras & Compartilhamento Pix)
-- [ ] **Fila de Sugestões em Memória:** Criar store local simples para eventos de transações detectadas pendentes.
-- [ ] **Serviço de Notificações Bancárias:** `NotificationListenerService` nativo (Kotlin) filtrando bancos homologados (Nubank, Itaú, Inter, C6, Bradesco, Santander, Mercado Pago, Caixa) e extraindo valor, descrição e data.
-- [ ] **Android Share Target:** Intent Filter no `AndroidManifest.xml` para receber texto/PDF de comprovantes Pix e repassar ao motor de conciliação (`domain/reconciliation`).
-- [ ] **Card Discreto de Confirmação:** Card sutil no topo da Visão Geral exibindo compras pendentes para confirmação rápida em 1 toque (nada é gravado no banco sem o OK do usuário).
+- [x] **Fila de Sugestões em Memória:** Criar store local simples para eventos de transações detectadas pendentes (`suggestions-store.ts`).
+- [x] **Serviço de Notificações Bancárias:** `BankNotificationListenerService` nativo e `BankNotificationPlugin` filtrando bancos homologados (Nubank, Itaú, Inter, C6, Bradesco, Santander, Mercado Pago, Caixa) e extraindo valor, descrição e data.
+- [x] **Android Share Target:** Intent Filter no `AndroidManifest.xml` para receber texto de comprovantes Pix e repassar ao motor de conciliação/lançamento.
+- [x] **Card Discreto de Confirmação:** Card sutil no topo da Visão Geral (`PendingSuggestionsCard`) exibindo compras pendentes para confirmação rápida em 1 toque (nada é gravado no banco sem o OK do usuário).
 - **DoD:** Notificação bancária ou compartilhamento Pix gera sugestão automática discreta; com 1 toque o formulário abre pronto para salvar.
 
 ### Fase 6: Automação de Build & Distribuição do APK

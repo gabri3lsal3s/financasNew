@@ -17,7 +17,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { useUserAccess } from "@/state";
-import { initDeepLinkListener, initNotificationActionListener } from "@/services/native";
+import {
+  initBankNotificationListener,
+  initDeepLinkListener,
+  initNotificationActionListener,
+} from "@/services/native";
 
 /** Mapeamento de rotas para suas respectivas Feature Flags (§F43). */
 const ROUTE_FEATURE_MAP: Record<string, string> = {
@@ -119,9 +123,12 @@ function NativeIntegrationsHandler() {
       navigate(path);
     });
 
+    const cleanupBankNotifications = initBankNotificationListener();
+
     return () => {
       void cleanupDeepLinks();
       void cleanupNotifications();
+      void cleanupBankNotifications();
     };
   }, [navigate]);
 

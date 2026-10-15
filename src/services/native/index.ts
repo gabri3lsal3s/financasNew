@@ -8,3 +8,5 @@ export * from "./privacy-shield";
 export * from "./app-lock";
 export * from "./deep-links";
 export * from "./local-notifications";
+export * from "./suggestions-store";
+export * from "./bank-listener";

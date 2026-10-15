@@ -18,6 +18,7 @@ import {
   CashGapAlert,
   ReadOnlyBanner,
   TrialEndingBanner,
+  PendingSuggestionsCard,
 } from "@/components/modules";
 import { isOnboardingComplete, type OnboardingCounts } from "@/domain/onboarding";
 import { isDemoItem } from "@/services/demo-data";
@@ -416,6 +417,8 @@ export function OverviewPage() {
       <h1 className="sr-only">Visão Geral</h1>
 
       <MonthPicker value={month} onValueChange={setMonth} />
+
+      <PendingSuggestionsCard />
 
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 

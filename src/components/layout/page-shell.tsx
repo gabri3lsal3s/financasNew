@@ -1,4 +1,4 @@
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { Outlet, useLocation, useSearchParams } from "react-router";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -12,10 +12,13 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Skeleton } from "@/components/ui";
 import { LaunchWizard } from "@/features/transactions";
+import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
 import { useContainerScroll } from "@/hooks";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
+import { dismissPendingSuggestion } from "@/services/native";
 import { useReminders } from "@/state";
+import type { PaymentMethod } from "@/types";
 
 /** Fallback de carregamento das rotas lazy (bundle splitting F5.5) — Skeleton, sem spinner. */
 function RouteFallback() {
@@ -41,17 +44,47 @@ export function PageShell() {
   const wizardOpen = isShortcutNew || localWizardOpen;
   const initialType = novoParam === "receita" ? "income" : "expense";
 
+  const valorParam = searchParams.get("valor");
+  const descParam = searchParams.get("descricao") || undefined;
+  const dataParam = searchParams.get("data") || undefined;
+  const formaParam = (searchParams.get("forma") as PaymentMethod) || undefined;
+  const sugIdParam = searchParams.get("sug_id") || undefined;
+
+  const initialValues = useMemo(() => {
+    const vals: Partial<LaunchState> = {};
+    if (valorParam) {
+      const parsed = parseInt(valorParam, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        vals.valueCents = parsed;
+      }
+    }
+    if (descParam) vals.description = descParam;
+    if (dataParam) vals.date = dataParam;
+    if (formaParam) vals.paymentMethod = formaParam;
+    return Object.keys(vals).length > 0 ? vals : undefined;
+  }, [valorParam, descParam, dataParam, formaParam]);
+
   const handleWizardOpenChange = (next: boolean) => {
     setLocalWizardOpen(next);
-    if (!next && isShortcutNew) {
-      setSearchParams(
-        (prev) => {
-          const updated = new URLSearchParams(prev);
-          updated.delete("novo");
-          return updated;
-        },
-        { replace: true },
-      );
+    if (!next) {
+      if (sugIdParam) {
+        dismissPendingSuggestion(sugIdParam);
+      }
+      if (isShortcutNew) {
+        setSearchParams(
+          (prev) => {
+            const updated = new URLSearchParams(prev);
+            updated.delete("novo");
+            updated.delete("valor");
+            updated.delete("descricao");
+            updated.delete("data");
+            updated.delete("forma");
+            updated.delete("sug_id");
+            return updated;
+          },
+          { replace: true },
+        );
+      }
     }
   };
 
@@ -82,9 +115,10 @@ export function PageShell() {
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
       {/* Wizard contextual em overlay (preserva rota ativa e contexto em qualquer página) */}
       <LaunchWizard
-        key={`${initialType}-${wizardOpen ? "open" : "closed"}`}
+        key={`${initialType}-${wizardOpen ? "open" : "closed"}-${sugIdParam ?? ""}`}
         open={wizardOpen}
         initialType={initialType}
+        initialValues={initialValues}
         onOpenChange={handleWizardOpenChange}
       />
       {/* Estado da sidebar vive aqui (fonte única) e a margem acompanha em tempo real. */}

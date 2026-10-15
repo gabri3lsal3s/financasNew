@@ -41,6 +41,8 @@ export interface LaunchWizardProps {
   open?: boolean;
   /** Tipo de entrada inicial (despesa ou receita). */
   initialType?: EntryType;
+  /** Valores iniciais pré-preenchidos (ex.: atalhos, sugestões nativas). */
+  initialValues?: Partial<LaunchState>;
   /** Notificação de alteração de abertura. */
   onOpenChange?: (open: boolean) => void;
   /** Callback executado ao fechar/cancelar. */
@@ -53,12 +55,13 @@ export interface LaunchWizardProps {
 export function LaunchWizard({
   open = true,
   initialType = "expense",
+  initialValues,
   onOpenChange,
   onClose,
   onSuccess,
 }: LaunchWizardProps = {}) {
   const navigate = useNavigate();
-  const [state, setState] = useState<LaunchState>(() => defaultLaunchState(initialType));
+  const [state, setState] = useState<LaunchState>(() => defaultLaunchState(initialType, initialValues));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -68,7 +71,7 @@ export function LaunchWizard({
   const isDirty = state.valueCents > 0 || state.categoryId !== "" || state.description.trim() !== "";
 
   const handleClose = () => {
-    setState(defaultLaunchState(initialType));
+    setState(defaultLaunchState(initialType, initialValues));
     setError(null);
     setPending(false);
     onClose?.();

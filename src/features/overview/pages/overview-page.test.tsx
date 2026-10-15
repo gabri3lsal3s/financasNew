@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionStatus } from "@/types";
+import * as nativeModule from "@/services/native";
 import { OverviewPage } from "./overview-page";
 
 vi.mock("react-router", () => ({
@@ -456,5 +457,27 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getByText("Modo Somente-Leitura Ativo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Ativar Plano Pro/i })).toBeInTheDocument();
   });
+
+  it("renderiza PendingSuggestionsCard quando houver compras ou Pix pendentes de confirmação", () => {
+    vi.spyOn(nativeModule, "usePendingSuggestions").mockReturnValue([
+      {
+        id: "sug_test_1",
+        bankName: "Nubank",
+        type: "expense",
+        amountCents: 8900,
+        description: "Restaurante Bom Sabor",
+        date: "2026-10-15",
+        paymentMethod: "credit_card",
+        rawText: "Compra de R$ 89,00 aprovada",
+      },
+    ]);
+
+    render(<OverviewPage />);
+
+    expect(screen.getByText("Transações Detectadas")).toBeInTheDocument();
+    expect(screen.getByText("Restaurante Bom Sabor")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Conferir e Salvar/i })).toBeInTheDocument();
+  });
 });
+
 

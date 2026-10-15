@@ -98,4 +98,6 @@ export { ReadOnlyBanner } from "./subscription/read-only-banner";
 export type { ReadOnlyBannerProps } from "./subscription/read-only-banner";
 export { TrialEndingBanner } from "./subscription/trial-ending-banner";
 export type { TrialEndingBannerProps } from "./subscription/trial-ending-banner";
+export { PendingSuggestionsCard } from "./pending-suggestions-card";
+export type { PendingSuggestionsCardProps } from "./pending-suggestions-card";
 

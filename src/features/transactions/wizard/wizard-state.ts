@@ -44,9 +44,12 @@ export interface LaunchState {
 
 export const WIZARD_STEPS = ["Valor", "Categoria", "Detalhes", "Revisão"] as const;
 
-export function defaultLaunchState(type: EntryType = "expense"): LaunchState {
-  return {
-    step: 1,
+export function defaultLaunchState(
+  type: EntryType = "expense",
+  overrides?: Partial<LaunchState>,
+): LaunchState {
+  const base: LaunchState = {
+    step: overrides?.valueCents && overrides.valueCents > 0 ? 2 : 1,
     type,
     valueCents: 0,
     installments: 1,
@@ -68,6 +71,7 @@ export function defaultLaunchState(type: EntryType = "expense"): LaunchState {
     recurrenceEndDate: "",
     recurrenceCount: 12,
   };
+  return overrides ? { ...base, ...overrides } : base;
 }
 
 /* ------------------------------------------------------------------

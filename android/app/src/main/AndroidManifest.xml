@@ -29,11 +29,29 @@
                 <data android:scheme="https" android:host="com.guiafinanceiro.app" />
             </intent-filter>
 
+            <!-- Android Share Target para comprovantes Pix e textos bancários -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
 
         </activity>
+
+        <!-- Serviço de escuta passiva de notificações bancárias -->
+        <service
+            android:name=".BankNotificationListenerService"
+            android:label="Leitor de Notificações Bancárias"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -101,6 +101,7 @@
     │   │   │                      #   credit-card-3d + credit-card-wallet (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,
     │   │   │                      #   dashboard-alerts-carousel (carrossel inteligente de alertas do dashboard),
+    │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
     │   │   │                      #   prediction-suggestions (F21 — autopreenchimento preditivo),
     │   │   │                      #   export-data-hub (F22), monthly-close-print-view (F22),
     │   │   │                      #   emergency-fund-gauge + fire-projection-chart + planning-section (F24),
@@ -152,8 +153,7 @@
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags e validação de convites
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/             #   checklist/progresso do primeiro uso (F5.4)
-
-
+    │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias e comprovantes Pix em centavos
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing
     │   ├── competence/            #   resolveBillCompetence, clampDay, overrides
     │   ├── debts/                 #   status derivado (overdue/due_today/due_soon/…) + penalty (mora/multa/desconto)
@@ -239,7 +239,7 @@
     ├── services/                  # Apresentação + integrações
     │   ├── native/                #   Gateway nativo (Capacitor/Android): platform, back-button,
     │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,
-    │   │                          #     deep-links, local-notifications
+    │   │                          #     deep-links, local-notifications, suggestions-store, bank-listener
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)
