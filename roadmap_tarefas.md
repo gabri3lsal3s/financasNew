@@ -61,12 +61,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 2: Refinamento de UI/UX no Dashboard e Navegação
 
-### Tarefa 05: Padronização dos Ícones Lucide nos Cards do Dashboard
+### Tarefa 05: Padronização dos Ícones Lucide nos Cards do Dashboard [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Padronizar os ícones do Dashboard em duas regras visuais rígidas.
 - **Ações:**
-  1. Ícones com fundo/cores contextuais: apenas em banners, carrossel inicial de informações ou cards contextuais (reagindo a receitas, despesas, investimentos).
-  2. Ícones fixos (sem fundo): ícone Lucide puro, sem container circular/quadrado, herdando a cor do tema nos cards normais (orçamento do mês, saldo disponível, etc.).
-  3. Exceção de resultado: "Saldo Líquido em Conta" e "Taxa de Poupança" devem ter o ícone puro seguindo a cor do resultado (verde para positivo, vermelho para negativo).
+  1. Ícones com fundo/cores contextuais: apenas em banners, carrossel inicial de informações ou cards contextuais (reagindo a receitas, despesas, investimentos). (Concluído: mantidos containers com cores contextuais estritamente nos banners do carrossel inicial de alertas `PaceAlertBanner`, `SurplusAporteBanner`, `CashGapAlert`, `DemoModeBanner`, `TrialEndingBanner` e `ReadOnlyBanner`).
+  2. Ícones fixos (sem fundo): ícone Lucide puro, sem container circular/quadrado, herdando a cor do tema nos cards normais (orçamento do mês, saldo disponível, etc.). (Concluído: removidos containers `size-7 bg-surface-hover` de "Fluxo diário" e "Distribuição por categoria", padronizando com ícones Lucide puros `size-4 text-muted-foreground shrink-0` idênticos a "Orçamentos do mês" e "Saldo Disponível em Conta", em conformidade com as Regras 2 e 13 de `AGENTS.md`).
+  3. Exceção de resultado: "Saldo Líquido em Conta" e "Taxa de Poupança" devem ter o ícone puro seguindo a cor do resultado (verde para positivo, vermelho para negativo). (Concluído: removidos containers decorativos de `Wallet` e `PiggyBank`, tornando-os ícones Lucide puros `size-4` cuja cor reflete dinamicamente a semântica financeira do resultado — `text-positive-strong` para positivo/zero e `text-critical-strong` para negativo — acompanhados de testes unitários automatizados).
 - **Commit:** `style(dashboard): standardize lucide icon styles for contextual banners vs clean metric cards`
 
 ---

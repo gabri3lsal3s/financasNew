@@ -220,6 +220,36 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getAllByText("25,0%").length).toBeGreaterThan(0);
   });
 
+  it("padroniza ícones nos cards métricos: puros, sem container, e com cor de resultado para saldo líquido e taxa de poupança", () => {
+    const { container } = render(<OverviewPage />);
+
+    // Nenhum cabeçalho de card métrico no dashboard deve conter caixas/contêineres decorativos size-7
+    const size7Containers = container.querySelectorAll("span.size-7");
+    expect(size7Containers.length).toBe(0);
+
+    // Saldo líquido de contas positivo -> ícone com text-positive-strong
+    const walletIcon = screen.getByText("Saldo líquido de contas").parentElement?.querySelector("svg");
+    expect(walletIcon).toBeInTheDocument();
+    expect(walletIcon).toHaveClass("text-positive-strong");
+
+    // Taxa de poupança positiva -> ícone com text-positive-strong
+    const piggyIcon = screen.getByText("Taxa de poupança").parentElement?.querySelector("svg");
+    expect(piggyIcon).toBeInTheDocument();
+    expect(piggyIcon).toHaveClass("text-positive-strong");
+  });
+
+  it("ícone de saldo líquido e taxa de poupança segue cor crítica quando o resultado for negativo", () => {
+    debtsMock = [
+      { id: "d1", name: "A receber", type: "receivable", amount: 100, due_date: "2026-08-20", paid_at: null },
+      { id: "d2", name: "A pagar", type: "payable", amount: 5000, due_date: "2026-08-15", paid_at: null },
+    ];
+
+    render(<OverviewPage />);
+
+    const walletIcon = screen.getByText("Saldo líquido de contas").parentElement?.querySelector("svg");
+    expect(walletIcon).toHaveClass("text-critical-strong");
+  });
+
   it("calcula o saldo líquido de contas (receber 1.000 − pagar 500 − fatura 60)", () => {
     render(<OverviewPage />);
     expect(screen.getByText("Saldo líquido de contas")).toBeInTheDocument();
