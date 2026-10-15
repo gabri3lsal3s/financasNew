@@ -1,5 +1,33 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.41** registra o **Refinamento Holístico do Bloco 8 (Ficha Detalhada de Ativos & Modais Densos de Investimentos - AssetDetailSheet, AssetFormDialog, AssetSellTab, DividendFormDialog, CalibrateFixedIncomeDialog e QuickTransactionSheet)** (2026-10-14):
+> - **(1) Ficha Detalhada do Ativo (`AssetDetailSheet`)**:
+>   - Badges padronizados com variantes oficiais `<Badge size="xs">` para posição encerrada, moeda, taxas e isenções tributárias, eliminando classes manuais inline (Regra 14);
+>   - Mapeamento sensorial completo via Gateway Central (`triggerSensory("action")` em aporte, resgate, calibração, provento e edição, e `triggerSensory("destructive")` na exclusão de ativo/ordem);
+>   - Eliminação de `truncate` em contêineres de métricas monetárias (Custódia, Total Aplicado, Total Resgatado, Rentabilidade Final, Custo Médio, TIR e YoC), blindando valores com `tabular-nums tracking-tight whitespace-nowrap` (Regra 11);
+>   - Elevação canônica dos cards de métricas (`border-border/80 bg-surface shadow-xs`, Regra 16) e rodapé adaptativo com empilhamento no mobile (`flex-col-reverse sm:flex-row`, Regra 15);
+> - **(2) Diálogo Consolidado de Cadastro/Edição (`AssetFormDialog` & `AssetSellTab`)**:
+>   - Canonicalização de badges de custódia e proporção (`1:1` e `Valor Completo`) para `<Badge variant="muted" size="xs">` (Regra 14);
+>   - Alinhamento de rótulos à anatomia canônica de formulários (`text-xs font-semibold text-foreground`, Regra 15);
+>   - Rodapé adaptativo com empilhamento seguro no mobile (`flex-col-reverse sm:flex-row sm:items-center sm:justify-between`) e ação de exclusão à esquerda no desktop (`sm:mr-auto`);
+>   - `AssetSellTab`: Rodapé e badges alinhados com feedback sensorial e confirmação de desinvestimento;
+> - **(3) Lançamento de Proventos & Rendimentos (`DividendFormDialog`)**:
+>   - Rótulos padronizados em `text-xs font-semibold text-foreground` com helper text em `text-[11px] text-muted-foreground`;
+>   - Feedback sensorial imediato (`triggerSensory("selection")`) na alternância dos modos de entrada (Valor Total vs Por Cota) e modos de data (Diário vs Extrato do Mês);
+>   - Rodapé responsivo com empilhamento seguro no mobile (`flex-col-reverse sm:flex-row sm:justify-end`);
+> - **(4) Calibração com Extrato de Renda Fixa (`CalibrateFixedIncomeDialog`)**:
+>   - Disparo sensorial `triggerSensory("success")` acompanhado de toast informativo (`pushToast`) na redefinição do Marco Zero (D₀) e `triggerSensory("destructive")` no tratamento de exceção;
+>   - Anatomia de rótulos e rodapé alinhados aos tokens canônicos;
+> - **(5) Lançamento Rápido de Investimentos (`QuickTransactionSheet`)**:
+>   - Feedback sensorial `triggerSensory("selection")` nos seletores de operação (Compra, Venda, Provento, Split) e modos de proventos;
+>   - Disparo de `triggerSensory("success")` ou `"destructive"` acompanhado de `pushToast` comemorativo na conclusão da operação;
+>   - Todos os rótulos de campos padronizados para `text-xs font-semibold text-foreground` e rodapé adaptativo responsivo;
+> - **(6) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis);
+>   - Suíte de testes de Investimentos (28 arquivos / 123 testes) 100% verde;
+>   - Build de produção Vite + Workbox PWA gerado com sucesso em 1.37s.
+
 > **v2.40** registra o **Refinamento Holístico do Bloco 7 (Gestão de Categorias & Limites Orçamentários - CategoriesPage, CategoryFormDialog e DeleteCategoryDialog)** (2026-10-14):
 > - **(1) Painel de Categorias (`CategoriesPage`)**:
 >   - Adição de feedback tátil nativo (`triggerSensory("selection")`) na alternância das abas de tipo ("Despesas" / "Rendas") e `triggerSensory("action")` no acionamento de criação e edição de categorias;

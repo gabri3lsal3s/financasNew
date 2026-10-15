@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Alert, Button, DatePicker, Modal, MoneyInput } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
 import { useSetManualPrice, useUpdatePortfolioAsset } from "@/state";
 import type { FixedIncomeMetadata, PortfolioAsset } from "@/types";
 
@@ -75,8 +77,15 @@ export function CalibrateFixedIncomeDialog({
         price: newBalance,
       });
 
+      triggerSensory("success");
+      pushToast({
+        title: "Saldo calibrado com sucesso",
+        description: `${asset.ticker} calibrado para R$ ${newBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em ${baseDate}.`,
+      });
+
       onOpenChange(false);
     } catch (err) {
+      triggerSensory("destructive");
       setError(getErrorMessage(err));
     }
   };
@@ -93,7 +102,7 @@ export function CalibrateFixedIncomeDialog({
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="calib-balance" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <label htmlFor="calib-balance" className="text-xs font-semibold text-foreground">
             Saldo Atual do Extrato ({asset.currency ?? "BRL"})
           </label>
           <MoneyInput
@@ -110,7 +119,7 @@ export function CalibrateFixedIncomeDialog({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold text-foreground">
             Data do Extrato / Novo Marco Zero (D₀)
           </span>
           <DatePicker
@@ -121,16 +130,17 @@ export function CalibrateFixedIncomeDialog({
           />
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/80">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={updateAsset.isPending}
+            className="w-full sm:w-auto"
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={updateAsset.isPending}>
+          <Button type="submit" disabled={updateAsset.isPending} className="w-full sm:w-auto">
             {updateAsset.isPending ? "Calibrando..." : "Confirmar Calibração"}
           </Button>
         </div>

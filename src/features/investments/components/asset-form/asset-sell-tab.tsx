@@ -50,13 +50,13 @@ export function AssetSellTab({
           <span className="text-xs font-semibold text-foreground">
             Custódia Disponível para Venda / Resgate
           </span>
-          <Badge variant="muted" className="text-xs">
+          <Badge variant="muted" size="xs">
             {asset.quantity} {isTotalValueMode ? "posição" : "cotas"} @ {asset.currency} {asset.average_price?.toFixed(2)}
           </Badge>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
             {isTotalValueMode ? "Valor a Resgatar" : "Quantidade a Vender"}
             <NumericInput
               value={sellQtyStr}
@@ -67,7 +67,7 @@ export function AssetSellTab({
             />
           </label>
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
             Preço Unitário de Venda ({asset.currency})
             <MoneyInput
               cents={sellPriceCents}
@@ -103,7 +103,7 @@ export function AssetSellTab({
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
             Data da Operação
             <DatePicker
               value={sellDate}
@@ -188,14 +188,15 @@ export function AssetSellTab({
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
-        <Button type="button" variant="outline" onClick={onClose}>
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80">
+        <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
           Cancelar
         </Button>
         <Button
           type="submit"
           variant="destructive"
           disabled={parsedSellQty <= 0 || parsedSellPrice <= 0 || pending}
+          className="w-full sm:w-auto"
         >
           {pending ? "Processando…" : "Confirmar Venda / Resgate"}
         </Button>

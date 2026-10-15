@@ -136,7 +136,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Ativo</span>
+          <span className="text-xs font-semibold text-foreground">Ativo</span>
           <Select
             value={selectedAsset?.id ?? ""}
             onValueChange={(id) => {
@@ -156,7 +156,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Tipo de Provento</span>
+          <span className="text-xs font-semibold text-foreground">Tipo de Provento</span>
           <Select
             value={type}
             onValueChange={setType}
@@ -167,7 +167,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
 
         {/* Alternador de Modo de Data: Diário vs Extrato do Mês */}
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Modo de Registro</span>
+          <span className="text-xs font-semibold text-foreground">Modo de Registro</span>
           <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/60">
             <button
               type="button"
@@ -250,7 +250,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
         {inputMode === "per_share" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dividend-pershare" className="text-xs font-medium text-primary">
+              <label htmlFor="dividend-pershare" className="text-xs font-semibold text-primary">
                 Valor por Cota ({assetCurrency})
               </label>
               <MoneyInput
@@ -263,7 +263,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label className="text-xs font-semibold text-foreground">
                 Cotas na Data ({selectedAsset?.ticker ?? "Ativo"})
               </label>
               <NumericInput
@@ -277,12 +277,12 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
             </div>
             <div className="col-span-full flex items-center justify-between text-xs text-primary pt-1 border-t border-primary/20">
               <span>Total Calculado:</span>
-              <MoneyText cents={amountCents} currency={assetCurrency} tone="portfolio" className="font-semibold text-sm" />
+              <MoneyText cents={amountCents} currency={assetCurrency} tone="portfolio" className="font-semibold text-sm tabular-nums tracking-tight whitespace-nowrap" />
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="dividend-amount" className="text-xs font-medium text-muted-foreground">
+            <label htmlFor="dividend-amount" className="text-xs font-semibold text-foreground">
               Valor Total Recebido ({assetCurrency})
             </label>
             <MoneyInput
@@ -297,7 +297,7 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
         )}
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Observações (opcional)</label>
+          <label className="text-xs font-semibold text-foreground">Observações (opcional)</label>
           <Input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -315,11 +315,11 @@ export function DividendFormDialog({ open, onOpenChange, defaultAssetId }: Divid
           />
         </div>
 
-        <div className="mt-2 flex items-center justify-end gap-2 border-t border-border pt-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 border-t border-border/80 pt-4">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancelar
           </Button>
-          <Button type="submit" disabled={recordOrder.isPending || amountCents <= 0}>
+          <Button type="submit" disabled={recordOrder.isPending || amountCents <= 0} className="w-full sm:w-auto">
             {recordOrder.isPending ? "Salvando..." : "Salvar Provento"}
           </Button>
         </div>

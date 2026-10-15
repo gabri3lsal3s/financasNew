@@ -19,6 +19,7 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
@@ -184,45 +185,45 @@ export function AssetDetailSheet({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-4">
             <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               {isClosed ? (
-                <Badge variant="muted" className="text-xs font-semibold">
+                <Badge variant="muted" size="xs">
                   Posição Encerrada
                 </Badge>
               ) : null}
               {currentAsset.currency !== "BRL" ? (
-                <Badge variant="muted" className="text-xs">
+                <Badge variant="muted" size="xs">
                   {currentAsset.currency}
                 </Badge>
               ) : null}
               {!isClosed && currentAsset.fixed_income_metadata && currentAsset.fixed_income_metadata.rate_value > 0 ? (
-                <Badge variant="default" className="text-xs font-semibold">
+                <Badge variant="default" size="xs">
                   {formatFixedIncomeRateLabel(currentAsset.fixed_income_metadata)} • Projetado
                 </Badge>
               ) : null}
               {!isClosed && positionRow?.isMatured ? (
-                <Badge variant="negative" className="text-xs font-semibold">
+                <Badge variant="negative" size="xs">
                   Vencido em {formatDateBR(positionRow.maturityDate ?? "")}
                 </Badge>
               ) : !isClosed && positionRow?.maturityDate ? (
-                <Badge variant="warning" className="text-xs font-semibold">
+                <Badge variant="warning" size="xs">
                   Vence em {formatDateBR(positionRow.maturityDate)}
                 </Badge>
               ) : null}
               {!isClosed && positionRow?.fixedIncomeResult && positionRow.fixedIncomeResult.businessDaysAccrued > 0 ? (
-                <Badge variant="muted" className="text-xs">
+                <Badge variant="muted" size="xs">
                   {positionRow.fixedIncomeResult.businessDaysAccrued}d úteis desde {formatDateBR(currentAsset.fixed_income_metadata?.base_date ?? "")}
                 </Badge>
               ) : null}
               {!isClosed && currentAsset.fixed_income_metadata?.is_tax_exempt ? (
-                <Badge variant="positive" className="text-xs">
+                <Badge variant="positive" size="xs">
                   Isento de IR
                 </Badge>
               ) : !isClosed && positionRow?.fixedIncomeResult?.hasExplicitTaxInfo ? (
                 positionRow?.fixedIncomeResult?.taxCountdown ? (
-                  <Badge variant="muted" className="text-xs">
+                  <Badge variant="muted" size="xs">
                     IR {positionRow.taxRatePct}% ➔ {positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em {positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d
                   </Badge>
                 ) : (
-                  <Badge variant="muted" className="text-xs">
+                  <Badge variant="muted" size="xs">
                     IR {positionRow?.taxRatePct ?? 22.5}%
                   </Badge>
                 )
@@ -234,7 +235,12 @@ export function AssetDetailSheet({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => guardAction(() => onAction?.("buy", currentAsset), "Registrar Aporte")}
+                onClick={() =>
+                  guardAction(() => {
+                    triggerSensory("action");
+                    onAction?.("buy", currentAsset);
+                  }, "Registrar Aporte")
+                }
                 className="gap-1 text-xs text-primary flex-1 sm:flex-initial"
               >
                 <Plus className="size-3.5" aria-hidden="true" />
@@ -245,7 +251,12 @@ export function AssetDetailSheet({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => guardAction(() => onAction?.("sell", currentAsset), "Registrar Resgate")}
+                  onClick={() =>
+                    guardAction(() => {
+                      triggerSensory("action");
+                      onAction?.("sell", currentAsset);
+                    }, "Registrar Resgate")
+                  }
                   className={`gap-1 text-xs flex-1 sm:flex-initial ${positionRow?.isMatured ? "border-critical-strong/60 text-critical-strong" : ""}`}
                 >
                   <ArrowDownLeft className="size-3.5" aria-hidden="true" />
@@ -257,7 +268,12 @@ export function AssetDetailSheet({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => guardAction(() => setCalibrateOpen(true), "Calibrar Renda Fixa")}
+                  onClick={() =>
+                    guardAction(() => {
+                      triggerSensory("action");
+                      setCalibrateOpen(true);
+                    }, "Calibrar Renda Fixa")
+                  }
                   className="gap-1 text-xs text-muted-foreground flex-1 sm:flex-initial"
                   title="Calibrar com saldo do extrato"
                 >
@@ -270,7 +286,12 @@ export function AssetDetailSheet({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => guardAction(() => onAction?.("dividend", currentAsset), "Lançar Proventos")}
+                  onClick={() =>
+                    guardAction(() => {
+                      triggerSensory("action");
+                      onAction?.("dividend", currentAsset);
+                    }, "Lançar Proventos")
+                  }
                   className="gap-1 text-xs text-positive-strong flex-1 sm:flex-initial"
                 >
                   <Receipt className="size-3.5" aria-hidden="true" />
@@ -281,7 +302,12 @@ export function AssetDetailSheet({
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={() => guardAction(() => setEditOpen(true), "Editar Ativo")}
+                onClick={() =>
+                  guardAction(() => {
+                    triggerSensory("action");
+                    setEditOpen(true);
+                  }, "Editar Ativo")
+                }
                 className="size-8 p-0 text-muted-foreground shrink-0 cursor-pointer"
                 title="Editar Ativo"
                 aria-label="Editar Ativo"
@@ -294,9 +320,9 @@ export function AssetDetailSheet({
           {/* Grid de Métricas Principais da Posição */}
           {isClosed ? (
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 sm:gap-3">
-              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                 <span className="text-[11px] font-medium text-muted-foreground truncate">Custódia</span>
-                <span className="font-mono text-sm sm:text-base font-bold text-muted-foreground truncate">
+                <span className="font-mono text-sm sm:text-base font-bold text-muted-foreground whitespace-nowrap tabular-nums">
                   R$ 0,00
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono truncate">
@@ -304,9 +330,9 @@ export function AssetDetailSheet({
                 </span>
               </div>
 
-              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                 <span className="text-[11px] font-medium text-muted-foreground truncate">Total Aplicado</span>
-                <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
+                <span className="font-mono text-sm sm:text-base font-bold text-foreground whitespace-nowrap tabular-nums">
                   <MoneyText cents={numberToCents(appliedCost)} />
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono truncate">
@@ -314,9 +340,9 @@ export function AssetDetailSheet({
                 </span>
               </div>
 
-              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                 <span className="text-[11px] font-medium text-muted-foreground truncate">Total Resgatado</span>
-                <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
+                <span className="font-mono text-sm sm:text-base font-bold text-foreground whitespace-nowrap tabular-nums">
                   <MoneyText cents={numberToCents(redeemedAmount)} />
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono truncate">
@@ -324,12 +350,13 @@ export function AssetDetailSheet({
                 </span>
               </div>
 
-              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                 <span className="text-[11px] font-medium text-muted-foreground truncate">Rentabilidade Final</span>
                 <span
-                  className={`font-mono text-sm sm:text-base font-bold truncate ${
-                    finalPnl >= 0 ? "text-positive-strong" : "text-critical-strong"
-                  }`}
+                  className={cn(
+                    "font-mono text-sm sm:text-base font-bold whitespace-nowrap tabular-nums",
+                    finalPnl >= 0 ? "text-positive-strong" : "text-critical-strong",
+                  )}
                 >
                   <MoneyText cents={numberToCents(finalPnl)} sign="explicit" />
                 </span>
@@ -340,7 +367,7 @@ export function AssetDetailSheet({
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 sm:gap-3">
-              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                 <span className="text-[11px] font-medium text-muted-foreground truncate">
                   {isTotalValue ? "Saldo Atual" : "Posição Total"}
                 </span>
@@ -356,11 +383,11 @@ export function AssetDetailSheet({
                 </span>
               </div>
 
-              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                 <span className="text-[11px] font-medium text-muted-foreground truncate">
                   {isTotalValue ? "Valor Aplicado" : "Preço Médio (PM)"}
                 </span>
-                <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
+                <span className="font-mono text-sm sm:text-base font-bold text-foreground whitespace-nowrap tabular-nums">
                   <MoneyText cents={numberToCents(isTotalValue ? totalCost : averageCost)} currency={isTotalValue ? "BRL" : currentAsset.currency} />
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono truncate">
@@ -368,14 +395,15 @@ export function AssetDetailSheet({
                 </span>
               </div>
 
-              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                 <span className="text-[11px] font-medium text-muted-foreground truncate">
                   {isTotalValue ? "Rendimento Total" : "Resultado Total"}
                 </span>
                 <span
-                  className={`font-mono text-sm sm:text-base font-bold truncate ${
-                    (totalReturnPnl ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"
-                  }`}
+                  className={cn(
+                    "font-mono text-sm sm:text-base font-bold whitespace-nowrap tabular-nums",
+                    (totalReturnPnl ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong",
+                  )}
                   title={`Retorno Total: ${(totalReturnPnl ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(totalReturnPnl ?? 0))} (${(totalReturnPct ?? 0).toFixed(2)}%)`}
                 >
                   {(totalReturnPnl ?? 0) >= 0 ? "+" : ""}
@@ -397,13 +425,13 @@ export function AssetDetailSheet({
               </div>
 
               {/* Card 4: TIR / Fluxo do Ativo (XIRR) */}
-              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+              <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                 <span className="text-[11px] font-medium text-muted-foreground truncate" title="Taxa Interna de Retorno ponderada pelas datas de aportes, resgates e proventos">
                   TIR do Ativo
                 </span>
                 <span
                   className={cn(
-                    "font-mono text-sm sm:text-base font-bold truncate",
+                    "font-mono text-sm sm:text-base font-bold whitespace-nowrap tabular-nums",
                     hasIrr ? ((irrRate ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong") : "text-muted-foreground",
                   )}
                   title={`TIR Ponderada no Tempo: ${irrLabel} (${irrSub})`}
@@ -417,9 +445,9 @@ export function AssetDetailSheet({
 
               {/* Card 5: Vencimento (Renda Fixa sem provento) ou Yield on Cost */}
               {isTotalValue && totalDividendsNative === 0 ? (
-                <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+                <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                   <span className="text-[11px] font-medium text-muted-foreground truncate">Vencimento</span>
-                  <span className="font-mono text-sm sm:text-base font-bold text-foreground truncate">
+                  <span className="font-mono text-sm sm:text-base font-bold text-foreground whitespace-nowrap tabular-nums">
                     {positionRow?.maturityDate ? formatDateBR(positionRow.maturityDate) : "Indeterminado"}
                   </span>
                   <span className="text-[10px] text-muted-foreground font-mono truncate">
@@ -435,9 +463,9 @@ export function AssetDetailSheet({
                   </span>
                 </div>
               ) : (
-                <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5 min-w-0 overflow-hidden">
+                <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
                   <span className="text-[11px] font-medium text-muted-foreground truncate">Yield on Cost (YoC)</span>
-                  <span className="font-mono text-sm sm:text-base font-bold text-positive-strong truncate">
+                  <span className="font-mono text-sm sm:text-base font-bold text-positive-strong whitespace-nowrap tabular-nums">
                     {yieldOnCostPct.toFixed(2)}%
                   </span>
                   {accumulatedDividendsNative > 0 ? (
@@ -485,6 +513,7 @@ export function AssetDetailSheet({
                   variant="ghost"
                   size="xs"
                   onClick={() => {
+                    triggerSensory("action");
                     setTxToEdit(null);
                     setCreateTxOpen(true);
                   }}
@@ -550,7 +579,12 @@ export function AssetDetailSheet({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => guardAction(() => setTxToEdit(tx), "Editar Operação de Investimento")}
+                            onClick={() =>
+                              guardAction(() => {
+                                triggerSensory("action");
+                                setTxToEdit(tx);
+                              }, "Editar Operação de Investimento")
+                            }
                             className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
                             title="Editar lançamento"
                             aria-label="Editar lançamento"
@@ -561,7 +595,12 @@ export function AssetDetailSheet({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => guardAction(() => setTxToDelete(tx), "Excluir Operação de Investimento")}
+                            onClick={() =>
+                              guardAction(() => {
+                                triggerSensory("action");
+                                setTxToDelete(tx);
+                              }, "Excluir Operação de Investimento")
+                            }
                             className="size-7 p-0 text-muted-foreground hover:text-negative-strong cursor-pointer"
                             title="Excluir lançamento"
                             aria-label="Excluir lançamento"
@@ -578,12 +617,17 @@ export function AssetDetailSheet({
           </div>
 
           {/* Rodapé: Exclusão do Ativo da Carteira */}
-          <div className="flex items-center justify-between border-t border-border/80 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-t border-border/80 pt-4 gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => guardAction(() => setDeleteConfirmOpen(true), "Excluir Ativo da Carteira")}
+              onClick={() =>
+                guardAction(() => {
+                  triggerSensory("action");
+                  setDeleteConfirmOpen(true);
+                }, "Excluir Ativo da Carteira")
+              }
               className="text-xs text-negative-strong hover:bg-negative-surface/40 cursor-pointer"
             >
               <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
@@ -626,6 +670,7 @@ export function AssetDetailSheet({
         confirmLabel="Sim, excluir ativo"
         variant="destructive"
         onConfirm={async () => {
+          triggerSensory("destructive");
           await deleteAsset.mutateAsync(currentAsset.id);
           onOpenChange(false);
         }}
@@ -641,6 +686,7 @@ export function AssetDetailSheet({
         variant="destructive"
         onConfirm={async () => {
           if (txToDelete) {
+            triggerSensory("destructive");
             await deleteTx.mutateAsync(txToDelete);
             setTxToDelete(null);
           }

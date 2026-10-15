@@ -28,6 +28,8 @@ import {
 } from "@/domain/portfolio/valuation";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
 import { usePortfolioAssets, usePortfolioPosition, useRecordOrder } from "@/state";
 import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
 
@@ -289,9 +291,24 @@ export function QuickTransactionSheet({
         appliedCostBasis: isTotalValue && appliedCostCents > 0 ? appliedCostCents / 100 : undefined,
       });
 
+      triggerSensory(type === "sell" ? "destructive" : "success");
+      const operationLabel =
+        type === "buy" || type === "subscription"
+          ? "Compra/Aporte registrado"
+          : type === "sell"
+            ? "Venda/Resgate registrado"
+            : type === "dividend" || type === "jcp" || type === "fii_yield"
+              ? "Provento registrado"
+              : "Split registrado";
+      pushToast({
+        title: operationLabel,
+        description: `${targetAsset?.ticker ?? "Ativo"} movimentado com sucesso.`,
+      });
+
       handleOpenChange(false);
       onSuccess?.();
     } catch (err) {
+      triggerSensory("destructive");
       setError(getErrorMessage(err));
     }
   };
@@ -351,7 +368,7 @@ export function QuickTransactionSheet({
         {/* Seleção do Ativo (quando não pré-fornecido) */}
         {!asset && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-xs font-semibold text-foreground">
               Selecione o Ativo
             </span>
             <Select
@@ -377,7 +394,10 @@ export function QuickTransactionSheet({
                 type="button"
                 role="tab"
                 aria-selected={isSelected}
-                onClick={() => setType(op.id as PortfolioTransactionType)}
+                onClick={() => {
+                  setType(op.id as PortfolioTransactionType);
+                  triggerSensory("selection");
+                }}
                 className={cn(
                   "flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
                   isSelected
@@ -398,7 +418,7 @@ export function QuickTransactionSheet({
             <div className="grid grid-cols-2 gap-3">
               {isTotalValue ? (
                 <div className="flex flex-col gap-1.5 col-span-2">
-                  <label htmlFor="quick-rf-aporte-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="quick-rf-aporte-amount" className="text-xs font-semibold text-foreground">
                     Valor do Aporte / Aplicação ({targetAsset?.currency ?? "BRL"})
                   </label>
                   <MoneyInput
@@ -415,7 +435,7 @@ export function QuickTransactionSheet({
               ) : !isCash ? (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="quick-buy-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <label htmlFor="quick-buy-qty" className="text-xs font-semibold text-foreground">
                       Quantidade
                     </label>
                     <NumericInput
@@ -429,7 +449,7 @@ export function QuickTransactionSheet({
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="quick-buy-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <label htmlFor="quick-buy-price" className="text-xs font-semibold text-foreground">
                       Preço Unitário ({targetAsset?.currency ?? "BRL"})
                     </label>
                     <MoneyInput
@@ -443,7 +463,7 @@ export function QuickTransactionSheet({
                 </>
               ) : (
                 <div className="flex flex-col gap-1.5 col-span-2">
-                  <label htmlFor="quick-cash-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="quick-cash-amount" className="text-xs font-semibold text-foreground">
                     Valor do Depósito em Caixa
                   </label>
                   <MoneyInput
@@ -456,7 +476,7 @@ export function QuickTransactionSheet({
               )}
 
               <div className="flex flex-col gap-1.5 col-span-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-semibold text-foreground">
                   Data da Operação
                 </label>
                 <DatePicker value={date} onValueChange={setDate} />
@@ -505,7 +525,7 @@ export function QuickTransactionSheet({
               {isTotalValue ? (
                 <div className="flex flex-col gap-3 col-span-2">
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="quick-rf-sell-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <label htmlFor="quick-rf-sell-amount" className="text-xs font-semibold text-foreground">
                       Valor a Resgatar ({targetAsset?.currency ?? "BRL"})
                     </label>
                     <MoneyInput
@@ -546,7 +566,7 @@ export function QuickTransactionSheet({
 
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
-                      <label htmlFor="quick-rf-applied-cost" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label htmlFor="quick-rf-applied-cost" className="text-xs font-semibold text-foreground">
                         Custo Original da Aplicação (R$)
                       </label>
                       <span className="text-[10px] text-muted-foreground">Base contábil</span>
@@ -566,7 +586,7 @@ export function QuickTransactionSheet({
               ) : (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="quick-sell-qty" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <label htmlFor="quick-sell-qty" className="text-xs font-semibold text-foreground">
                       Quantidade a Vender
                     </label>
                     <NumericInput
@@ -580,7 +600,7 @@ export function QuickTransactionSheet({
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="quick-sell-price" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <label htmlFor="quick-sell-price" className="text-xs font-semibold text-foreground">
                       Preço de Venda ({targetAsset?.currency ?? "BRL"})
                     </label>
                     <MoneyInput
@@ -595,7 +615,7 @@ export function QuickTransactionSheet({
               )}
 
               <div className="flex flex-col gap-1.5 col-span-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-semibold text-foreground">
                   Data {isTotalValue ? "do Resgate" : "da Venda"}
                 </label>
                 <DatePicker value={date} onValueChange={setDate} />
@@ -719,7 +739,7 @@ export function QuickTransactionSheet({
         {(type === "dividend" || type === "jcp" || type === "fii_yield") && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5 col-span-2">
-              <label htmlFor="quick-div-amount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="quick-div-amount" className="text-xs font-semibold text-foreground">
                 Valor Total Recebido (Líquido) ({targetAsset?.currency ?? "BRL"})
               </label>
               <MoneyInput
@@ -733,13 +753,16 @@ export function QuickTransactionSheet({
 
             {/* Alternador de Modo de Data */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-semibold text-foreground">
                 Modo de Registro
               </span>
               <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/60">
                 <button
                   type="button"
-                  onClick={() => setDividendEntryMode("daily")}
+                  onClick={() => {
+                    setDividendEntryMode("daily");
+                    triggerSensory("selection");
+                  }}
                   className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                     dividendEntryMode === "daily"
                       ? "bg-primary text-primary-foreground shadow-xs"
@@ -750,7 +773,10 @@ export function QuickTransactionSheet({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDividendEntryMode("monthly")}
+                  onClick={() => {
+                    setDividendEntryMode("monthly");
+                    triggerSensory("selection");
+                  }}
                   className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                     dividendEntryMode === "monthly"
                       ? "bg-primary text-primary-foreground shadow-xs"
@@ -785,7 +811,7 @@ export function QuickTransactionSheet({
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="quick-split-factor" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="quick-split-factor" className="text-xs font-semibold text-foreground">
                   {type === "split" ? "Fator (1 para N)" : "Fator (N para 1)"}
                 </label>
                 <Input
@@ -796,12 +822,11 @@ export function QuickTransactionSheet({
                   value={splitFactor}
                   onChange={(e) => setSplitFactor(Number(e.target.value) || 2)}
                   className="font-mono"
-
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-semibold text-foreground">
                   Data do Evento
                 </label>
                 <DatePicker value={date} onValueChange={setDate} />
@@ -831,18 +856,20 @@ export function QuickTransactionSheet({
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/80">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 border-t border-border/80">
           <Button
             type="button"
             variant="outline"
             onClick={() => handleOpenChange(false)}
             disabled={recordOrder.isPending}
+            className="w-full sm:w-auto"
           >
             Cancelar
           </Button>
           <Button
             type="submit"
             disabled={recordOrder.isPending}
+            className="w-full sm:w-auto"
           >
             {recordOrder.isPending ? "Processando..." : "Confirmar Operação"}
           </Button>

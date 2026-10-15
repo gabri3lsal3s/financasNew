@@ -496,7 +496,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
           className="mt-4 flex flex-col gap-4"
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
               {isCash ? "Nome / Identificador do Caixa (opcional)" : "Ticker / Código do Ativo"}
               <Input
                 value={ticker}
@@ -507,7 +507,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               />
             </label>
 
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
               Classe
               <Input
                 value={assetClass}
@@ -546,7 +546,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   <p className="text-[11px] text-muted-foreground">Selecione o tipo de rendimento:</p>
                 </div>
               ) : (
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                   {sectorLabel}
                   <Input
                     value={sector}
@@ -584,7 +584,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
           {/* Moeda — só visível para BDRs e Internacional */}
           {needsCurrencyField && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                 Moeda de Negociação
                 <Select
                   value={currency}
@@ -598,15 +598,14 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
 
 
-
           {/* Campos de Posição Consolidada */}
           {isCash ? (
             <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground">Saldo Disponível em Caixa</span>
-                <Badge variant="muted" className="text-[11px]">1:1</Badge>
+                <Badge variant="muted" size="xs">1:1</Badge>
               </div>
-              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                 Saldo Atual (R$)
                 <NumericInput
                   value={quantityStr}
@@ -623,11 +622,11 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                 <span className="text-xs font-semibold text-foreground">
                   {isTesouro ? "Posição de Custódia (Tesouro Direto)" : "Posição de Custódia (Renda Fixa)"}
                 </span>
-                <Badge variant="muted" className="text-[11px]">Valor Completo</Badge>
+                <Badge variant="muted" size="xs">Valor Completo</Badge>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                   Preço Inicial / Valor Aplicado ({currency})
                   <MoneyInput
                     cents={initialPriceCents}
@@ -642,7 +641,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   />
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                   Preço Atual / Saldo Final ({currency})
                   <MoneyInput
                     cents={currentPriceCents}
@@ -693,7 +692,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                   Quantidade Atual (Cotas / Unidades)
                   <NumericInput
                     value={quantityStr}
@@ -704,7 +703,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                   />
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                   Preço Médio por Cota ({currency})
                   <MoneyInput
                     cents={averagePriceCents}
@@ -723,7 +722,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                     <span>Calculadora de Novo Preço Médio Ponderado</span>
                   </div>
                   <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                    <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                    <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground">
                       Novas Cotas Adquiridas
                       <NumericInput
                         value={newLotQtyStr}
@@ -734,7 +733,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
                         showCalculatorAction
                       />
                     </label>
-                    <label className="flex flex-col gap-1 text-[11px] font-medium text-muted-foreground">
+                    <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground">
                       Preço Unitário Pago ({currency})
                       <MoneyInput
                         cents={newLotPriceCents}
@@ -805,7 +804,7 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
             />
           )}
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
             Notas / Observações (opcional)
             <Input
               value={notes}
@@ -818,19 +817,25 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
 
           {error ? <Alert variant="error">{error}</Alert> : null}
 
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-4 border-t border-border/80">
             {isEdit ? (
-              <Button type="button" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={pending} className="text-negative-strong hover:text-negative-strong">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setConfirmDelete(true)}
+                disabled={pending}
+                className="text-negative-strong hover:text-negative-strong w-full sm:w-auto"
+              >
                 Excluir ativo
               </Button>
             ) : (
-              <span />
+              <span className="hidden sm:block" />
             )}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 w-full sm:w-auto">
+              <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!canSubmit}>
+              <Button type="submit" disabled={!canSubmit} className="w-full sm:w-auto">
                 {pending ? "Salvando…" : isEdit ? "Salvar alterações" : "Adicionar à carteira"}
               </Button>
             </div>
