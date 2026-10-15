@@ -7,8 +7,8 @@
  */
 
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
-import { playSound, type SoundEffect } from "./audio-fx";
-import { triggerHaptic, type HapticPattern } from "./haptics";
+import { playSound, soundManager, type SoundEffect } from "./audio-fx";
+import { triggerHaptic, hapticsManager, type HapticPattern } from "./haptics";
 
 export type SensoryIntent =
   | "selection"
@@ -54,13 +54,13 @@ export function triggerSensory(intent: SensoryIntent, options?: SensoryOptions):
 
   const mapping = SENSORY_MAP[intent];
 
-  // Disparo háptico respeitando a preferência global do usuário
-  if (!options?.skipHaptic && visual.hapticEnabled) {
+  // Disparo háptico respeitando a preferência global do usuário e mute
+  if (!options?.skipHaptic && visual.hapticEnabled && !hapticsManager.isMuted()) {
     triggerHaptic(mapping.haptic);
   }
 
-  // Disparo sonoro respeitando a preferência global do usuário
-  if (!options?.skipSound && visual.soundEnabled) {
+  // Disparo sonoro respeitando a preferência global do usuário e mute
+  if (!options?.skipSound && visual.soundEnabled && !soundManager.isMuted()) {
     if (options?.volume !== undefined) {
       playSound(mapping.sound, true, options.volume);
     } else {
@@ -70,8 +70,8 @@ export function triggerSensory(intent: SensoryIntent, options?: SensoryOptions):
 }
 
 /**
- * Utilitário ergonômico para chamadas semânticas diretas:
- * `sensory.success()`, `sensory.action()`, `sensory.destructive()`, etc.
+ * Utilitário ergonômico para chamadas semânticas diretas e controle unificado de mute:
+ * `sensory.success()`, `sensory.action()`, `sensory.mute()`, etc.
  */
 export const sensory = {
   selection: (options?: SensoryOptions) => triggerSensory("selection", options),
@@ -81,4 +81,17 @@ export const sensory = {
   warning: (options?: SensoryOptions) => triggerSensory("warning", options),
   destructive: (options?: SensoryOptions) => triggerSensory("destructive", options),
   error: (options?: SensoryOptions) => triggerSensory("error", options),
+  mute: () => {
+    soundManager.mute();
+    hapticsManager.mute();
+  },
+  unmute: () => {
+    soundManager.unmute();
+    hapticsManager.unmute();
+  },
+  isMuted: () => soundManager.isMuted() || hapticsManager.isMuted(),
+  sound: soundManager,
+  haptics: hapticsManager,
 };
+
+export { soundManager, hapticsManager };

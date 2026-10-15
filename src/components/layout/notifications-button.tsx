@@ -6,7 +6,6 @@ import { useOnboardingCounts, useReminders } from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
 import { isOnboardingComplete } from "@/domain/onboarding";
 import { cn } from "@/lib/utils";
-import { triggerHaptic } from "@/services/haptics";
 
 /**
  * Botão de notificações no header com indicador de contagem e popover rápido.
@@ -38,7 +37,6 @@ export function NotificationsButton() {
         size="icon"
         aria-label={`Notificações: ${effectiveTotalCount} pendências`}
         title="Lembretes e Avisos"
-        onClick={() => triggerHaptic("light")}
         className="relative overflow-visible"
       >
         <Bell aria-hidden="true" />

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { updateVisualCustomization } from "@/hooks/use-visual-customization";
-import { isHapticsSupported, triggerHaptic } from "./haptics";
+import { isHapticsSupported, triggerHaptic, hapticsManager, HapticsManager } from "./haptics";
 
 const vibrateMock = vi.fn();
 
@@ -70,5 +70,68 @@ describe("haptics (F8 — Decisão 3)", () => {
 
     expect(() => triggerHaptic("warning")).not.toThrow();
     expect(triggerHaptic("warning")).toBe(false);
+  });
+
+  describe("HapticsManager", () => {
+    beforeEach(() => {
+      hapticsManager.reset();
+      hapticsManager.unmute();
+    });
+
+    it("controla mudo global corretamente (mute, unmute, toggleMute)", () => {
+      const manager = new HapticsManager();
+      vibrateMock.mockReturnValue(true);
+      stubVibrate();
+
+      expect(manager.isMuted()).toBe(false);
+      manager.mute();
+      expect(manager.isMuted()).toBe(true);
+      expect(manager.trigger("light", true)).toBe(false);
+      expect(vibrateMock).not.toHaveBeenCalled();
+
+      manager.unmute();
+      expect(manager.isMuted()).toBe(false);
+
+      const toggled = manager.toggleMute();
+      expect(toggled).toBe(true);
+      expect(manager.isMuted()).toBe(true);
+
+      const toggledBack = manager.toggleMute();
+      expect(toggledBack).toBe(false);
+      expect(manager.isMuted()).toBe(false);
+    });
+
+    it("aplica throttle anti-concorrência para disparos sucessivos rápidos", () => {
+      const manager = new HapticsManager();
+      vibrateMock.mockReturnValue(true);
+      stubVibrate();
+
+      // Primeiro disparo passa
+      const first = manager.trigger("light", true);
+      expect(first).toBe(true);
+      expect(vibrateMock).toHaveBeenCalledTimes(1);
+
+      // Segundo disparo consecutivo antes do intervalo mínimo é throttled
+      const second = manager.trigger("light", true);
+      expect(second).toBe(false);
+      expect(vibrateMock).toHaveBeenCalledTimes(1);
+
+      // Padrões de alta prioridade (warning, destructive, error, success) furam throttle
+      const urgent = manager.trigger("warning", true);
+      expect(urgent).toBe(true);
+      expect(vibrateMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("reset limpa o histórico de timestamps", () => {
+      const manager = new HapticsManager();
+      vibrateMock.mockReturnValue(true);
+      stubVibrate();
+
+      manager.trigger("light", true);
+      expect(manager.trigger("light", true)).toBe(false);
+
+      manager.reset();
+      expect(manager.trigger("light", true)).toBe(true);
+    });
   });
 });

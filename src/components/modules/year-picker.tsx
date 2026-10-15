@@ -1,6 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { triggerHaptic } from "@/services/haptics";
 import { isValidYear } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +27,6 @@ export function YearPicker({
   }
 
   const handleChange = (delta: number) => {
-    triggerHaptic("light");
     onValueChange(value + delta);
   };
 

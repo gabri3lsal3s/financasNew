@@ -5,7 +5,6 @@ import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
-import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import {
@@ -358,7 +357,6 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
    */
   const handleShare = async (): Promise<void> => {
     if (!income) return;
-    triggerHaptic("light");
     const text = [
       `Receita: ${income.description || currentCategory?.name || "Receita"}`,
       `Valor: ${formatCentsAsBRL(Math.round(income.value * 100))}`,

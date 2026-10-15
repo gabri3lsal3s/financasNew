@@ -29,9 +29,12 @@ function getAudioContext(): AudioContext | null {
 
 export type SoundEffect = "click" | "success" | "pop" | "delete" | "warning" | "error";
 
-export function playSound(effect: SoundEffect, enabled = true, volume = 0.08): void {
-  if (!enabled || typeof window === "undefined") return;
+export interface SoundOptions {
+  volume?: number;
+  force?: boolean;
+}
 
+function synthesizeEffect(effect: SoundEffect, volume: number): void {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -151,4 +154,83 @@ export function playSound(effect: SoundEffect, enabled = true, volume = 0.08): v
   } catch {
     // Silencioso em caso de restrição de autoplay do navegador
   }
+}
+
+/**
+ * Utilitário centralizado de controle de áudio (soundManager) com anti-concorrência e mute global.
+ */
+export class SoundManager {
+  private muted = false;
+  private defaultVolume = 0.08;
+  private lastPlayedTime = 0;
+  private lastEffectTime: Partial<Record<SoundEffect, number>> = {};
+
+  private readonly minIntervalMs = 40;
+  private readonly minSameEffectIntervalMs = 60;
+
+  public mute(): void {
+    this.muted = true;
+  }
+
+  public unmute(): void {
+    this.muted = false;
+  }
+
+  public isMuted(): boolean {
+    return this.muted;
+  }
+
+  public toggleMute(): boolean {
+    this.muted = !this.muted;
+    return this.muted;
+  }
+
+  public setVolume(vol: number): void {
+    this.defaultVolume = Math.max(0, Math.min(1, vol));
+  }
+
+  public getVolume(): number {
+    return this.defaultVolume;
+  }
+
+  public reset(): void {
+    this.muted = false;
+    this.defaultVolume = 0.08;
+    this.lastPlayedTime = 0;
+    this.lastEffectTime = {};
+  }
+
+  public play(effect: SoundEffect, enabled = true, options?: SoundOptions | number): boolean {
+    if (this.muted || !enabled || typeof window === "undefined") return false;
+
+    const volume = typeof options === "number" ? options : options?.volume ?? this.defaultVolume;
+    const force = typeof options === "object" ? options?.force ?? false : false;
+
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const isHighPriority =
+      effect === "warning" || effect === "error" || effect === "delete" || effect === "success";
+
+    // Anti-concorrência: evita sobreposição caótica de micro-sons repetitivos em cliques rápidos
+    if (!force && !isHighPriority) {
+      if (now - this.lastPlayedTime < this.minIntervalMs) {
+        return false;
+      }
+      const lastSame = this.lastEffectTime[effect] ?? 0;
+      if (now - lastSame < this.minSameEffectIntervalMs) {
+        return false;
+      }
+    }
+
+    this.lastPlayedTime = now;
+    this.lastEffectTime[effect] = now;
+
+    synthesizeEffect(effect, volume);
+    return true;
+  }
+}
+
+export const soundManager = new SoundManager();
+
+export function playSound(effect: SoundEffect, enabled = true, volume = 0.08): void {
+  soundManager.play(effect, enabled, { volume });
 }

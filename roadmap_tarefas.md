@@ -48,12 +48,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 04: Auditoria de Feedback Sonoro e Háptico
+### Tarefa 04: Auditoria de Feedback Sonoro e Háptico [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Auditar todos os sons e vibrações do app, eliminando duplicidades e ruídos desnecessários.
 - **Ações:**
-  1. Mapear chamadas de áudio e vibração (`navigator.vibrate` / plugins nativos).
-  2. Eliminar disparos concorrentes ao clicar rapidamente ou alternar telas.
-  3. Criar utilitário centralizado (`soundManager` / `hapticsManager`) com controle de mute global e respeitando as configurações do usuário.
+  1. Mapear chamadas de áudio e vibração (`navigator.vibrate` / Web Audio API) eliminando chamadas redundantes e diretas em componentes (Concluído: remoção de chamadas concorrentes `triggerHaptic` dentro de handlers `onClick` de botões em `calculator-button`, `notifications-button`, `month-picker`, `year-picker`, `bill-refinance-dialog`, `early-amortization-dialog`, `loan-form-dialog`, `settle-dialog`, `report-detail-dialog`, `expense-detail-dialog`, `income-detail-dialog` e transição do `useSwipeNavigation` para o Gateway Central Sensorial, eliminando por completo o defeito de duplo disparo / *double-haptic* em conformidade com a Regra 17 de `AGENTS.md`).
+  2. Eliminar disparos concorrentes ao clicar rapidamente ou alternar telas (Concluído: implementado algoritmo de throttle anti-concorrência no `soundManager` com janela de 40ms geral e 60ms para mesmo efeito, e no `hapticsManager` com janela mínima de 60ms, com bypass exclusivo para alertas críticos urgentes).
+  3. Criar utilitário centralizado (`soundManager` / `hapticsManager`) com controle de mute global e respeitando as configurações do usuário (Concluído: classes `SoundManager` e `HapticsManager` integradas no `sensory` central com métodos `mute()`, `unmute()`, `isMuted()`, `sound` e `haptics`, suporte a preferências do usuário `soundEnabled`, `hapticEnabled`, `disabledSensoryIntents` e testes unitários 100% cobrindo controle de mudo e anti-concorrência).
 - **Commit:** `fix(audio): audit sound effects and haptics to eliminate duplicates and refine UX`
 
 ---

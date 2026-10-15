@@ -1,6 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { triggerHaptic } from "@/services/haptics";
 import { isValidMonthKey } from "@/domain/competence";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +36,6 @@ export function MonthPicker({ value, onValueChange, disabled, className }: Month
   }
 
   const handleChange = (delta: number) => {
-    triggerHaptic("light");
     onValueChange(addMonths(value, delta));
   };
 

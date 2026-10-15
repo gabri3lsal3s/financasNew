@@ -1,7 +1,6 @@
 import { Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { setCalculatorOpen } from "@/services/calculator-open";
-import { triggerHaptic } from "@/services/haptics";
 
 /**
  * Atalho da calculadora no header: mesmo visual dos botões de alternância (ghost, ícone).
@@ -17,7 +16,6 @@ export function CalculatorButton() {
       aria-label="Abrir calculadora"
       title="Calculadora"
       onClick={() => {
-        triggerHaptic("light");
         setCalculatorOpen(true);
       }}
     >

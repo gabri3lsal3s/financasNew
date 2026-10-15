@@ -7,7 +7,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TransactionRow } from "@/components/modules/transaction-row";
 import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
-import { triggerHaptic } from "@/services/haptics";
 import type { Category, Expense } from "@/types";
 
 export interface ReportDetailDialogProps {
@@ -41,7 +40,6 @@ export function ReportDetailDialog({
   const hasDualMetrics = totalBrutoCents !== totalPonderadoCents;
 
   const handleShare = async (): Promise<void> => {
-    triggerHaptic("light");
     setSharing(true);
     try {
       const lines = expenses.slice(0, 8).map((e) => {

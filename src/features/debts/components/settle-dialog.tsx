@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Modal, MoneyInput, RadioGroup, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
 import { todayLocalIso } from "@/lib/date";
 import { useCategories, useExpense, usePayDebt, useReceiveDebt, useSettleIntegratedReceivable } from "@/state";
@@ -77,7 +77,7 @@ function SettleDialogContent({ debt, onClose }: SettleDialogContentProps) {
           totalPaid: effectivePayableCents / 100,
         });
       }
-      triggerHaptic("success");
+      sensory.success();
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));

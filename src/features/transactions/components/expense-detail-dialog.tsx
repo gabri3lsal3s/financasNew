@@ -5,7 +5,6 @@ import { MoneyText } from "@/components/ui/money-text";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
-import { triggerHaptic } from "@/services/haptics";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import {
@@ -486,7 +485,6 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
    */
   const handleShare = async (): Promise<void> => {
     if (!expense) return;
-    triggerHaptic("light");
     const text = [
       `Despesa: ${expense.description || currentCategory?.name || "Despesa"}`,
       `Valor: ${formatCentsAsBRL(Math.round(expense.value * 100))}`,

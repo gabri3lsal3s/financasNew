@@ -1,15 +1,25 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { playSound } from "@/services/audio-fx";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 import { TransactionListDialog } from "./transaction-list-dialog";
 
 const transactionsMock = vi.fn();
 const deleteTxMock = vi.fn();
 
-vi.mock("@/services/haptics", () => ({ triggerHaptic: vi.fn() }));
-vi.mock("@/services/audio-fx", () => ({ playSound: vi.fn() }));
+vi.mock("@/services/sensory", () => ({
+  triggerSensory: vi.fn(),
+  sensory: {
+    action: vi.fn(),
+    success: vi.fn(),
+    warning: vi.fn(),
+    destructive: vi.fn(),
+    selection: vi.fn(),
+    mute: vi.fn(),
+    unmute: vi.fn(),
+    isMuted: vi.fn(),
+  },
+}));
 
 vi.mock("@/state", () => ({
   useAssetPosition: (assetId: string | null) => ({
@@ -59,8 +69,7 @@ describe("TransactionListDialog — extrato de lançamentos com CRUD", () => {
   beforeEach(() => {
     transactionsMock.mockReset();
     deleteTxMock.mockReset();
-    vi.mocked(triggerHaptic).mockClear();
-    vi.mocked(playSound).mockClear();
+    vi.mocked(triggerSensory).mockClear();
   });
 
   it("lista os lançamentos do ativo em ordem cronológica decrescente", () => {
@@ -105,7 +114,7 @@ describe("TransactionListDialog — extrato de lançamentos com CRUD", () => {
 
     expect(deleteTxMock).toHaveBeenCalledTimes(1);
     expect(deleteTxMock).toHaveBeenCalledWith(expect.objectContaining({ id: "tx1" }));
-    expect(triggerHaptic).toHaveBeenCalledWith("destructive");
+    expect(triggerSensory).toHaveBeenCalledWith("destructive");
   });
 
   it("falha ao excluir fecha a confirmação (erro via toast do hook)", async () => {

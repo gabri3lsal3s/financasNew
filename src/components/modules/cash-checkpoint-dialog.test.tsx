@@ -3,10 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { CashCheckpointDialog } from "./cash-checkpoint-dialog";
 import * as stateModule from "@/state";
 
-vi.mock("@/services/haptics", () => ({
-  triggerHaptic: vi.fn(),
-}));
-
 describe("CashCheckpointDialog", () => {
   it("renderiza campos e submete novo checkpoint de saldo", async () => {
     const mutateAsyncMock = vi.fn().mockResolvedValue({});

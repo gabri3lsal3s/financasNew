@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Modal, MoneyInput, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
 import { calculateEarlyAmortization } from "@/domain/loans";
 import { useCategories, useEarlyAmortizeLoan } from "@/state";
@@ -63,7 +63,7 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
         totalPaid: result.totalPresentValuePaidCents / 100,
         discountTotal: result.totalDiscountCents / 100,
       });
-      triggerHaptic("success");
+      sensory.success();
       onOpenChange(false);
     } catch (err) {
       setError(getErrorMessage(err));

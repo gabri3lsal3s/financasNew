@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, DatePicker, Input, Modal, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
 import { toISODate } from "@/domain/money";
 
@@ -68,7 +68,7 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
           amount: item.amountCents / 100,
         })),
       });
-      triggerHaptic("success");
+      sensory.success();
       onOpenChange(false);
     } catch (err) {
       setError(getErrorMessage(err));

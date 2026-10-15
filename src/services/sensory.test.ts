@@ -4,19 +4,41 @@ import { playSound } from "./audio-fx";
 import { triggerHaptic } from "./haptics";
 import { sensory, triggerSensory } from "./sensory";
 
+const { mockSoundManager, mockHapticsManager } = vi.hoisted(() => ({
+  mockSoundManager: {
+    mute: vi.fn(),
+    unmute: vi.fn(),
+    isMuted: vi.fn(() => false),
+    toggleMute: vi.fn(),
+    reset: vi.fn(),
+  },
+  mockHapticsManager: {
+    mute: vi.fn(),
+    unmute: vi.fn(),
+    isMuted: vi.fn(() => false),
+    toggleMute: vi.fn(),
+    reset: vi.fn(),
+  },
+}));
+
 vi.mock("./haptics", () => ({
   triggerHaptic: vi.fn(),
   isHapticsSupported: vi.fn(() => true),
+  hapticsManager: mockHapticsManager,
 }));
 
 vi.mock("./audio-fx", () => ({
   playSound: vi.fn(),
+  soundManager: mockSoundManager,
 }));
 
 describe("sensory service", () => {
   beforeEach(() => {
     vi.mocked(triggerHaptic).mockReset();
     vi.mocked(playSound).mockReset();
+    vi.clearAllMocks();
+    mockSoundManager.isMuted.mockReturnValue(false);
+    mockHapticsManager.isMuted.mockReturnValue(false);
     window.localStorage.clear();
     updateVisualCustomization({
       soundEnabled: false,
@@ -103,5 +125,28 @@ describe("sensory service", () => {
     triggerSensory("success");
     expect(triggerHaptic).toHaveBeenCalledWith("success");
     expect(playSound).toHaveBeenCalledWith("success", true);
+  });
+
+  it("controla mudo global em conjunto para som e haptics via sensory.mute/unmute", () => {
+    sensory.mute();
+    expect(mockSoundManager.mute).toHaveBeenCalledTimes(1);
+    expect(mockHapticsManager.mute).toHaveBeenCalledTimes(1);
+
+    sensory.unmute();
+    expect(mockSoundManager.unmute).toHaveBeenCalledTimes(1);
+    expect(mockHapticsManager.unmute).toHaveBeenCalledTimes(1);
+  });
+
+  it("sensory.isMuted reflete estado dos managers", () => {
+    mockSoundManager.isMuted.mockReturnValue(false);
+    mockHapticsManager.isMuted.mockReturnValue(false);
+    expect(sensory.isMuted()).toBe(false);
+
+    mockSoundManager.isMuted.mockReturnValue(true);
+    expect(sensory.isMuted()).toBe(true);
+
+    mockSoundManager.isMuted.mockReturnValue(false);
+    mockHapticsManager.isMuted.mockReturnValue(true);
+    expect(sensory.isMuted()).toBe(true);
   });
 });

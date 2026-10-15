@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Input, Modal, MoneyInput, Select, Skeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
-import { triggerHaptic } from "@/services/haptics";
+import { sensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
 import { calculateBillRefinancePlan } from "@/domain/cards/refinancing";
 import { useCategories, useRefinanceCreditCardBill } from "@/state";
@@ -69,7 +69,7 @@ function BillRefinanceContent({
           bill_competence: item.billCompetence,
         })),
       });
-      triggerHaptic("success");
+      sensory.success();
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));

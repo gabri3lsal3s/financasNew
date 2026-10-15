@@ -11,7 +11,7 @@ import {
   resolveSwipeIntent,
   type SwipeDirection,
 } from "@/domain/gestures";
-import { triggerHaptic } from "@/services/haptics";
+import { triggerSensory } from "@/services/sensory";
 
 /**
  * Engine unificada de navegação por gesto horizontal (F20).
@@ -207,7 +207,7 @@ export function useSwipeNavigation({
         gesture.locked = true;
         gesture.boundarySide = null;
         setDragging(true);
-        triggerHaptic("light");
+        triggerSensory("action", { skipSound: true });
         try {
           event.currentTarget.setPointerCapture(event.pointerId);
         } catch {
@@ -259,7 +259,7 @@ export function useSwipeNavigation({
           onNavigate("next");
         } else if (intent !== null) {
           // Tentou navegar além da borda → overscroll elástico sem navegação.
-          triggerHaptic("warning");
+          triggerSensory("warning", { skipSound: true });
           onBoundary?.();
         }
       }
