@@ -1,10 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router";
+import { ArrowLeft } from "lucide-react";
 import { Alert, Button, Input, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signInWithEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 
 
 export function LoginPage() {
@@ -27,8 +29,10 @@ export function LoginPage() {
     setPending(true);
     try {
       await signInWithEmail(email, password);
+      triggerSensory("success");
       // onAuthStateChange atualiza a sessão → o guard/redirect acima conduz.
     } catch (err) {
+      triggerSensory("destructive");
       setError(getErrorMessage(err));
     } finally {
       setPending(false);
@@ -43,7 +47,7 @@ export function LoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="login-email" className="text-sm font-medium">
+            <label htmlFor="login-email" className="text-xs font-semibold text-foreground">
               E-mail
             </label>
             <Input
@@ -57,7 +61,7 @@ export function LoginPage() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="login-password" className="text-sm font-medium">
+            <label htmlFor="login-password" className="text-xs font-semibold text-foreground">
               Senha
             </label>
             <Input
@@ -87,8 +91,9 @@ export function LoginPage() {
               Cadastre-se
             </Link>
           </p>
-          <Link to="/apresentacao" className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-2">
-            ← Conhecer o Guia Financeiro & Planos
+          <Link to="/apresentacao" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2">
+            <ArrowLeft className="size-3.5" aria-hidden="true" />
+            <span>Conhecer o Guia Financeiro & Planos</span>
           </Link>
         </div>
       </div>

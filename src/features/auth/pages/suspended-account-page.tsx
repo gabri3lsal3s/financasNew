@@ -9,7 +9,7 @@ export function SuspendedAccountPage() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background text-foreground">
-      <div className="flex w-full max-w-md flex-col items-center text-center gap-6 rounded-3xl border border-critical/30 bg-surface p-6 sm:p-8 shadow-sm">
+      <div className="flex w-full max-w-md flex-col items-center text-center gap-6 rounded-2xl border border-critical/30 bg-surface p-6 sm:p-8 shadow-xs">
         <div className="flex size-14 items-center justify-center rounded-2xl bg-critical/10 border border-critical/20 text-critical">
           <Ban className="size-7" aria-hidden="true" />
         </div>

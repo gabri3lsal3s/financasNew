@@ -1,5 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.43** registra o **Refinamento Holístico do Bloco 10 (Autenticação, Recuperação de Senha & Telas de Status de Conta - AuthShell, LoginPage, RegisterPage, ForgotPasswordPage, PendingApprovalPage e SuspendedAccountPage)** (2026-10-14):
+> - **(1) Casca de Autenticação (`AuthShell`)**:
+>   - Elevação e superfície do card de autenticação padronizadas para `border-border/80 bg-surface shadow-xs` (Regra 16);
+> - **(2) Formulários de Acesso (`LoginPage`, `RegisterPage` & `ForgotPasswordPage`)**:
+>   - Rótulos de campos alinhados à especificação canônica de formulários: `text-xs font-semibold text-foreground` com helper texts discretos `(opcional)` em `text-[11px] text-muted-foreground` (Regra 15);
+>   - Eliminação completa de caracteres Unicode decorativos nos links de retorno (`←`), substituídos pelo componente de ícone oficial `<ArrowLeft className="size-3.5" aria-hidden="true" />` (Regra 8);
+>   - Mapeamento sensorial de ponta a ponta via Gateway Central: emissão de `triggerSensory("success")` no submit bem-sucedido e `triggerSensory("destructive")` no tratamento de erros de credenciais/rede (Regra 17);
+> - **(3) Telas de Status de Conta (`PendingApprovalPage` & `SuspendedAccountPage`)**:
+>   - Elevação canônica dos contêineres de status para `rounded-2xl border border-border/80 bg-surface shadow-xs` e contêineres de alerta de e-mail com `size-4 text-muted-foreground` (Regra 13 e Regra 16);
+>   - Integração com o Gateway Sensorial no botão de verificação de aprovação (`triggerSensory("action")` e `"success"` no desbloqueio);
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Suíte de testes de Autenticação (2 arquivos / 5 testes) 100% verde;
+>   - Total conformidade com as Regras de Ouro de UI e Governança Sensorial.
+
 > **v2.42** registra o **Refinamento Holístico do Bloco 9 (Painel de Administração & Governança da Plataforma - AdminPage, OverviewTab, UsersTab, InvitesTab, SystemTab, UserEditDialog, CreateInviteDialog e FeatureToggleCard)** (2026-10-14):
 > - **(1) Painel de Administração & Abas (`AdminPage`, `OverviewTab`, `UsersTab`, `InvitesTab`, `SystemTab`)**:
 >   - Integração de `triggerSensory("selection")` no alternador de abas de governança (`handleTabChange`);

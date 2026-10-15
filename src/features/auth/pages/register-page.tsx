@@ -1,10 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
+import { ArrowLeft } from "lucide-react";
 import { Alert, Button, Input, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 
 
 export function RegisterPage() {
@@ -38,10 +40,12 @@ export function RegisterPage() {
     setPending(true);
     try {
       const result = await signUpWithEmail(email, password, name, inviteCode);
+      triggerSensory("success");
       if (result.needsEmailConfirmation) {
         setConfirmationSent(true);
       }
     } catch (err) {
+      triggerSensory("destructive");
       setError(getErrorMessage(err));
     } finally {
       setPending(false);
@@ -66,7 +70,7 @@ export function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="register-name" className="text-sm font-medium">
+            <label htmlFor="register-name" className="text-xs font-semibold text-foreground">
               Nome
             </label>
             <Input
@@ -79,7 +83,7 @@ export function RegisterPage() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="register-email" className="text-sm font-medium">
+            <label htmlFor="register-email" className="text-xs font-semibold text-foreground">
               E-mail
             </label>
             <Input
@@ -93,7 +97,7 @@ export function RegisterPage() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="register-password" className="text-sm font-medium">
+            <label htmlFor="register-password" className="text-xs font-semibold text-foreground">
               Senha
             </label>
             <Input
@@ -109,10 +113,10 @@ export function RegisterPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor="register-invite" className="text-sm font-medium">
+              <label htmlFor="register-invite" className="text-xs font-semibold text-foreground">
                 Código de Convite
               </label>
-              <span className="text-[11px] text-muted-foreground">Opcional</span>
+              <span className="text-[11px] text-muted-foreground">(opcional)</span>
             </div>
             <Input
               id="register-invite"
@@ -138,8 +142,9 @@ export function RegisterPage() {
               Entrar
             </Link>
           </p>
-          <Link to="/apresentacao" className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-2">
-            ← Conhecer o Guia Financeiro & Planos
+          <Link to="/apresentacao" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2">
+            <ArrowLeft className="size-3.5" aria-hidden="true" />
+            <span>Conhecer o Guia Financeiro & Planos</span>
           </Link>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui";
 import { useUserAccess } from "@/state";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { pushToast } from "@/services/toast";
+import { triggerSensory } from "@/services/sensory";
 
 export function PendingApprovalPage() {
   const { profile, refetch, isActive } = useUserAccess();
@@ -12,9 +13,11 @@ export function PendingApprovalPage() {
 
   const handleCheck = async () => {
     setChecking(true);
+    triggerSensory("action");
     try {
       await refetch();
       if (isActive) {
+        triggerSensory("success");
         window.location.href = "/";
       } else {
         pushToast({
@@ -30,7 +33,7 @@ export function PendingApprovalPage() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background text-foreground">
-      <div className="flex w-full max-w-md flex-col items-center text-center gap-6 rounded-3xl border border-border/80 bg-surface p-6 sm:p-8 shadow-sm">
+      <div className="flex w-full max-w-md flex-col items-center text-center gap-6 rounded-2xl border border-border/80 bg-surface p-6 sm:p-8 shadow-xs">
         <div className="flex size-14 items-center justify-center rounded-2xl bg-warning/10 border border-warning/20 text-warning">
           <Clock className="size-7" aria-hidden="true" />
         </div>
@@ -46,7 +49,7 @@ export function PendingApprovalPage() {
 
         {profile?.email ? (
           <div className="w-full rounded-xl border border-border/80 bg-surface-hover/30 p-3 flex items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
-            <ShieldAlert className="size-4 text-warning" aria-hidden="true" />
+            <ShieldAlert className="size-4 text-muted-foreground" aria-hidden="true" />
             <span>{profile.email}</span>
           </div>
         ) : null}
