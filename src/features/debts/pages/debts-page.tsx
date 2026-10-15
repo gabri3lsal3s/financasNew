@@ -303,7 +303,7 @@ export function DebtsPage() {
                       Atrasadas & Vencendo Hoje
                     </h2>
                   </div>
-                  <Badge variant="critical" className="text-[11px] font-semibold">
+                  <Badge variant="critical" size="xs">
                     {overdueOrToday.length}
                   </Badge>
                 </div>

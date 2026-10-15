@@ -1,5 +1,19 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.35** registra o **Refinamento Holístico do Bloco 2 (Orçamentos & Contas - BudgetsPage, DebtsPage e BudgetProgressBar)** (2026-10-14):
+> - **(1) Orçamentos Mensais (`BudgetsPage` & `BudgetProgressBar`)**:
+>   - Adição de barra gráfica de progresso ativa em `BudgetProgressBar` com cantos arredondados e transições de cor semânticas (verde/primário, amarelo/alerta $\ge 85\%$ e vermelho/estouro $> 100\%$);
+>   - Régua geral de orçamentos enriquecida com medidor visual do consumo consolidado do teto mensal;
+>   - Eliminação de `truncate` em `<MoneyText />` (Regra 11) e padronização integral dos badges (Regra 14);
+> - **(2) Contas & Dívidas (`DebtsPage`)**:
+>   - Padronização de badges de atraso e vencimento para variantes oficiais (`size="xs"`);
+>   - Grid mobile-first sem esmagamento (`grid-cols-1 sm:grid-cols-3`);
+> - **(3) Qualidade de Código & Verificação**:
+>   - Typecheck (`tsc -b`) passando com 0 erros;
+>   - ESLint (`eslint .`) limpo com 0 erros e 0 avisos;
+>   - Testes de Bloco 2 (20 testes) 100% verdes;
+>   - Build de produção Vite + PWA concluído com sucesso em 1.36s.
+
 > **v2.34** registra o **Refinamento Holístico do Bloco 1 (Core Diário: Visão Geral, Extrato/Transações e Cartões)** (2026-10-14):
 > - **(1) Extrato & Transações (`TransactionListPage`)**:
 >   - Cabeçalho diário enriquecido com `<Badge size="sm">` para exibição semântica e elegante do saldo líquido (`netCents`), contador de lançamentos por data e layout responsivo com privacidade ativa;

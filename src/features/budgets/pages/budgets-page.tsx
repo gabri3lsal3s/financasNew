@@ -210,14 +210,13 @@ export function BudgetsPage() {
       {/* Resumo do Orçamento Geral (§3.5.2) — Régua de 3 Métricas */}
       <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-
           <div className="min-w-0">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Total Gasto</p>
             <MoneyText
               cents={totalExpensesCents}
               tone="default"
               animated
-              className="text-base sm:text-lg font-bold text-foreground truncate block mt-0.5"
+              className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap tabular-nums block mt-0.5"
             />
           </div>
           <div className="min-w-0">
@@ -226,7 +225,7 @@ export function BudgetsPage() {
               cents={totalLimitsCents}
               tone="default"
               animated
-              className="text-base sm:text-lg font-semibold text-muted-foreground truncate block mt-0.5"
+              className="text-base sm:text-lg font-semibold text-muted-foreground whitespace-nowrap tabular-nums block mt-0.5"
             />
           </div>
           <div className="min-w-0">
@@ -237,10 +236,33 @@ export function BudgetsPage() {
               cents={Math.abs(totalLimitsCents - totalExpensesCents)}
               tone={totalLimitsCents >= totalExpensesCents ? "positive" : "negative"}
               animated
-              className="text-base sm:text-lg font-bold truncate block mt-0.5"
+              className="text-base sm:text-lg font-bold whitespace-nowrap tabular-nums block mt-0.5"
             />
           </div>
         </div>
+
+        {totalLimitsCents > 0 && (
+          <div className="mt-3.5 pt-3 border-t border-border/50">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+              <span>Consumo Geral do Teto</span>
+              <span className="font-semibold text-foreground tabular-nums">
+                {Math.round((totalExpensesCents / totalLimitsCents) * 100)}%
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted/70">
+              <div
+                className={
+                  totalExpensesCents > totalLimitsCents
+                    ? "h-full rounded-full transition-all duration-300 bg-critical"
+                    : totalExpensesCents / totalLimitsCents >= 0.85
+                      ? "h-full rounded-full transition-all duration-300 bg-warning"
+                      : "h-full rounded-full transition-all duration-300 bg-primary"
+                }
+                style={{ width: `${Math.min(100, (totalExpensesCents / totalLimitsCents) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Recomendação de realocação inteligente (§3.5.2) */}
@@ -326,9 +348,9 @@ export function BudgetsPage() {
                             {row.category.name}
                           </p>
                           {row.inherited ? (
-                            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            <Badge variant="muted" size="xs">
                               herdado
-                            </span>
+                            </Badge>
                           ) : null}
                         </div>
                       </div>
@@ -460,7 +482,7 @@ export function BudgetsPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Badge
                         variant={expectedCents === 0 ? "muted" : status === "deficit" ? "critical" : "positive"}
-                        className="text-[10px] px-1.5 py-0"
+                        size="xs"
                       >
                         {expectedCents > 0 ? INCOME_GOAL_LABELS[status] : "Sem meta"}
                       </Badge>
