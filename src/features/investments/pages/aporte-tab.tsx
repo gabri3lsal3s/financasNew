@@ -302,7 +302,7 @@ export function AporteTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
               ) : null}
             </label>
             <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
-              <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+              <Sparkles className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
               <span>
                 <strong className="font-semibold text-foreground">Motor Hierárquico:</strong> Estabiliza primeiro a macroclasse com maior déficit e depois distribui pelas metas dos ativos.
               </span>

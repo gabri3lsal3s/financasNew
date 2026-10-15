@@ -566,7 +566,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           <section aria-label="Alocação da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
-                <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+                <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                 <h2 className="text-sm font-semibold text-foreground">Distribuição Patrimonial</h2>
               </div>
 
@@ -625,7 +625,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           <section aria-label="Posições da Carteira" className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <div className="mb-4 flex items-center justify-between gap-2 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <TrendingUp className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+                <TrendingUp className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                 <h2 className="text-sm font-semibold text-foreground truncate">Posição Consolidada</h2>
               </div>
 

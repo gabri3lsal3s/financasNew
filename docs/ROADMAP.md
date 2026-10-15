@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.36** registra o **Refinamento Holístico do Bloco 3 (Investimentos & Rebalanceamento - ResumoTab, AporteTab e AporteResult)** (2026-10-14):
+> - **(1) Carteira & Posição Consolidada (`ResumoTab`)**:
+>   - Padronização de ícones de cabeçalhos e seções estruturais para `text-muted-foreground` (`size-4`) em Distribuição Patrimonial e Posição Consolidada, mitigando a fadiga de acento (*accent fatigue*) e obedecendo estritamente à Regra 13;
+> - **(2) Calculadora de Aportes & Simulador (`AporteTab` & `AporteResult`)**:
+>   - Harmonização visual de caixas explicativas e cabeçalhos de classe/setor no simulador hierárquico com ícones em tom neutro suave;
+>   - Validação da injeção animada com `animateToCents` a partir de deep-links de saldo em caixa;
+> - **(3) Qualidade de Código & Verificação**:
+>   - Typecheck (`tsc -b`) passando com 0 erros;
+>   - ESLint (`eslint .`) limpo com 0 erros e 0 avisos;
+>   - Testes de Bloco 3 (28 arquivos / 123 testes) 100% verdes;
+>   - Build de produção Vite + PWA concluído com sucesso em 1.45s.
+
 > **v2.35** registra o **Refinamento Holístico do Bloco 2 (Orçamentos & Contas - BudgetsPage, DebtsPage e BudgetProgressBar)** (2026-10-14):
 > - **(1) Orçamentos Mensais (`BudgetsPage` & `BudgetProgressBar`)**:
 >   - Adição de barra gráfica de progresso ativa em `BudgetProgressBar` com cantos arredondados e transições de cor semânticas (verde/primário, amarelo/alerta $\ge 85\%$ e vermelho/estouro $> 100\%$);

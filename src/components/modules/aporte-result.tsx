@@ -523,7 +523,7 @@ export function AporteResult({
         <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/60 p-3 sm:p-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider">
-              <Layers className="size-3.5 text-portfolio" aria-hidden="true" />
+              <Layers className="size-3.5 text-muted-foreground" aria-hidden="true" />
               <span>Distribuição Macro por Classe</span>
             </div>
             {canToggleClasses && (
@@ -575,7 +575,7 @@ export function AporteResult({
         <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/60 p-3 sm:p-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider">
-              <PieChart className="size-3.5 text-portfolio" aria-hidden="true" />
+              <PieChart className="size-3.5 text-muted-foreground" aria-hidden="true" />
               <span>Distribuição Meso por Setor</span>
             </div>
             {canToggleSectors && (
