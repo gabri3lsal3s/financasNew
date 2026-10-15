@@ -216,7 +216,7 @@ export function SecurityTab() {
               <ShieldCheck className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Conta &amp; Sessão</span>
             </span>
-            <Badge variant="muted" className="text-xs font-mono uppercase">
+            <Badge variant="muted" size="xs" className="font-mono uppercase">
               {userAccess.role}
             </Badge>
           </CardTitle>
@@ -232,7 +232,7 @@ export function SecurityTab() {
               </div>
               <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
               <div className="flex items-center gap-1.5 mt-1.5">
-                <Badge variant="positive" className="text-[10px] px-1.5 py-0">
+                <Badge variant="positive" size="xs">
                   Sessão Ativa
                 </Badge>
               </div>
@@ -272,7 +272,7 @@ export function SecurityTab() {
               <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
               <span>Autenticação em Duas Etapas (2FA / TOTP)</span>
             </div>
-            <Badge variant={userAccess.isAdmin ? "warning" : "muted"} className="text-xs font-normal">
+            <Badge variant={userAccess.isAdmin ? "warning" : "muted"} size="xs" className="font-normal">
               {userAccess.isAdmin ? "Obrigatório p/ Admin" : "Recomendado"}
             </Badge>
           </CardTitle>
@@ -286,7 +286,7 @@ export function SecurityTab() {
               <div>
                 <div className="font-semibold text-sm text-foreground flex items-center gap-2">
                   <span>Aplicativo Autenticador (TOTP)</span>
-                  <Badge variant="positive" className="text-[10px] py-0">Pronto</Badge>
+                  <Badge variant="positive" size="xs">Pronto</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                   Compatível com Google Authenticator, Microsoft Authenticator, 1Password e Authy. Adiciona uma camada extra de proteção ao solicitar um código de 6 dígitos no login.

@@ -337,7 +337,7 @@ export function AppearanceTab() {
             </span>
             <Badge
               variant={activePreset === "custom" ? "warning" : "positive"}
-              className="text-xs font-medium"
+              size="sm"
             >
               {activePreset === "custom" ? "Modo: Personalizado" : "Preset Ativo"}
             </Badge>

@@ -258,7 +258,7 @@ function StatusBlock({ subscription, onUpgrade }: StatusBlockProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <FlaskConical className="size-5 text-primary" aria-hidden="true" />
+            <FlaskConical className="size-5 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm font-semibold text-foreground">Teste Pro Ativo</span>
           </div>
           <Badge variant="default" size="sm">

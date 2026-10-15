@@ -25,7 +25,7 @@ export function TaxTab({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Landmark className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+            <Landmark className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
             <h3 className="text-sm sm:text-base font-bold text-foreground">Facilitador de Declaração de IRPF</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -47,7 +47,7 @@ export function TaxTab({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="size-5 text-warning-strong shrink-0" aria-hidden="true" />
+            <FileSpreadsheet className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
             <h3 className="text-sm sm:text-base font-bold text-foreground">Monitor Mensal de DARF & Isenção de R$ 20k</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">

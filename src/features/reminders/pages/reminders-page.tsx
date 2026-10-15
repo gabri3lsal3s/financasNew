@@ -8,6 +8,7 @@ import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
+import { cn } from "@/lib/utils";
 import {
   useMarkAllRemindersAsRead,
   usePermission,
@@ -143,67 +144,62 @@ export function RemindersPage() {
         {/* Sub-filtros secundários compactos quando em Pendentes e há itens */}
         {totalCount > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            <button
+            <Button
               type="button"
+              variant={subFilter === "all" ? "default" : "outline"}
+              size="sm"
               onClick={() => {
                 triggerSensory("action");
                 setSubFilter("all");
               }}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                subFilter === "all"
-                   ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-muted/60 text-muted-foreground hover:text-foreground"
-              }`}
+              className="text-xs h-7 px-2.5"
             >
               Todas ({totalCount})
-            </button>
+            </Button>
             {overdueCount > 0 && (
-              <button
+              <Button
                 type="button"
+                variant={subFilter === "overdue" ? "destructive" : "outline"}
+                size="sm"
                 onClick={() => {
                   triggerSensory("action");
                   setSubFilter("overdue");
                 }}
-                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                  subFilter === "overdue"
-                    ? "bg-critical text-critical-foreground font-semibold shadow-xs"
-                    : "bg-critical/10 text-critical hover:bg-critical/20"
-                }`}
+                className={cn(
+                  "text-xs h-7 px-2.5",
+                  subFilter !== "overdue" && "border-critical/30 text-critical hover:bg-critical/10",
+                )}
               >
                 Atrasadas ({overdueCount})
-              </button>
+              </Button>
             )}
             {billsCount > 0 && (
-              <button
+              <Button
                 type="button"
+                variant={subFilter === "bills" ? "default" : "outline"}
+                size="sm"
                 onClick={() => {
                   triggerSensory("action");
                   setSubFilter("bills");
                 }}
-                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                  subFilter === "bills"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                    : "bg-muted/60 text-muted-foreground hover:text-foreground"
-                }`}
+                className="text-xs h-7 px-2.5"
               >
                 Faturas ({billsCount})
-              </button>
+              </Button>
             )}
             {debtsCount > 0 && (
-              <button
+              <Button
                 type="button"
+                variant={subFilter === "debts" ? "default" : "outline"}
+                size="sm"
                 onClick={() => {
                   triggerSensory("action");
                   setSubFilter("debts");
                 }}
-                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                  subFilter === "debts"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                    : "bg-muted/60 text-muted-foreground hover:text-foreground"
-                }`}
+                className="text-xs h-7 px-2.5"
               >
                 Dívidas ({debtsCount})
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -306,7 +302,7 @@ export function RemindersPage() {
               Lembretes
             </h1>
             {totalCount > 0 && (
-              <Badge variant={overdueCount > 0 ? "critical" : "default"}>
+              <Badge variant={overdueCount > 0 ? "critical" : "default"} size="sm">
                 {totalCount} {totalCount === 1 ? "pendência" : "pendências"}
               </Badge>
             )}
@@ -338,6 +334,7 @@ export function RemindersPage() {
         <Tabs
           value={mainTab}
           onValueChange={(val) => {
+            triggerSensory("selection");
             setMainTabOverride(val as MainTab);
             setSubFilter("all");
           }}

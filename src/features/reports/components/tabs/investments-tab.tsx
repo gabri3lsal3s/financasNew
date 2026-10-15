@@ -1,6 +1,6 @@
 import { Fragment, useState, type Dispatch, type SetStateAction } from "react";
 import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { ReportAllocationDonuts } from "@/components/modules/reports";
 import { AllocationBreakdownDialog, AssetDetailSheet } from "@/features/investments/components";
@@ -59,7 +59,7 @@ export function InvestmentsTab({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <TrendingUp className="size-5 text-portfolio shrink-0" aria-hidden="true" />
+            <TrendingUp className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
             <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Alocação & Patrimônio (A4/PDF)</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -109,19 +109,19 @@ export function InvestmentsTab({
       <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <PieChart className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+            <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <h3 className="text-sm font-semibold text-foreground">Defasagem de Metas Hierárquica (Classe ➔ Setor ➔ Ativos)</h3>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             {allocationAnalysis.topDeficitClass ? (
-              <span className="text-[11px] font-semibold text-primary-strong bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+              <Badge variant="default" size="sm">
                 Prioridade Classe: {allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}
-              </span>
+              </Badge>
             ) : null}
             {allocationAnalysis.topDeficitSector ? (
-              <span className="text-[11px] font-semibold text-portfolio bg-portfolio/10 px-2 py-0.5 rounded-md border border-portfolio/20">
+              <Badge variant="portfolio" size="sm">
                 Prioridade Setor: {allocationAnalysis.topDeficitSector.sectorName}
-              </span>
+              </Badge>
             ) : null}
           </div>
         </div>

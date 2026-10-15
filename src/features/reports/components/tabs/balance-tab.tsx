@@ -28,7 +28,7 @@ export function BalanceTab({
         <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Scale className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
+              <Scale className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
               <h3 className="text-sm sm:text-base font-bold text-foreground">Balanço 360° & DRE Pessoal</h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -49,7 +49,7 @@ export function BalanceTab({
         <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Flame className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+              <Flame className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
               <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê de Liberdade Financeira</h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -76,7 +76,7 @@ export function BalanceTab({
             cents={numberToCents(consolidatedBalance.netWorthBRL)}
             tone="portfolio"
             animated
-            className="text-lg sm:text-xl font-bold font-display truncate"
+            className="text-lg sm:text-xl font-bold font-display tabular-nums whitespace-nowrap"
           />
         </div>
         <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">

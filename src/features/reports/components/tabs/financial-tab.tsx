@@ -4,6 +4,7 @@ import { Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { ReportTable } from "@/components/modules";
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
+import { triggerSensory } from "@/services/sensory";
 import {
   WEEKDAY_LABELS,
   mondayFirstWeekday,
@@ -60,7 +61,7 @@ export function FinancialTab({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Landmark className="size-5 text-primary-strong shrink-0" aria-hidden="true" />
+            <Landmark className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
             <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo de Finanças Pessoais & DRE (A4/PDF)</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -133,7 +134,10 @@ export function FinancialTab({
               type="button"
               variant={aggregationTab === "category" ? "default" : "outline"}
               size="sm"
-              onClick={() => setAggregationTab("category")}
+              onClick={() => {
+                triggerSensory("selection");
+                setAggregationTab("category");
+              }}
               className="px-2 sm:px-3 text-xs justify-center"
             >
               Categorias
@@ -142,7 +146,10 @@ export function FinancialTab({
               type="button"
               variant={aggregationTab === "method" ? "default" : "outline"}
               size="sm"
-              onClick={() => setAggregationTab("method")}
+              onClick={() => {
+                triggerSensory("selection");
+                setAggregationTab("method");
+              }}
               className="px-2 sm:px-3 text-xs justify-center"
             >
               Formas de Pgto
@@ -151,7 +158,10 @@ export function FinancialTab({
               type="button"
               variant={aggregationTab === "weekday" ? "default" : "outline"}
               size="sm"
-              onClick={() => setAggregationTab("weekday")}
+              onClick={() => {
+                triggerSensory("selection");
+                setAggregationTab("weekday");
+              }}
               className="px-2 sm:px-3 text-xs justify-center"
             >
               Dias da Semana

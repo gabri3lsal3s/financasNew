@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.37** registra o **Refinamento Holístico do Bloco 4 (Relatórios, Lembretes & Configurações - ReportsPage, RemindersPage e SettingsPage)** (2026-10-14):
+> - **(1) Central de Relatórios (`ReportsPage` & Sub-Aba Componentes)**:
+>   - Adição de feedback tátil e sonoro nativo (`triggerSensory("selection")`) nos botões de alternância de período ("Mensal", "Anual", "Personalizado") e na navegação de abas;
+>   - `FinancialTab`: Harmonização de ícones de cabeçalho do dossiê para `text-muted-foreground` (Regra 13) e feedback sensorial na alternância de agrupamentos ("Categorias", "Formas de Pgto", "Dias da Semana");
+>   - `BalanceTab`: Eliminação de `truncate` direto em `<MoneyText />` em conformidade com a Regra 11 (`whitespace-nowrap tabular-nums`) e saneamento de ícones de dossiê para tom neutro suave;
+>   - `TaxTab` & `InvestmentsTab`: Harmonização de ícones de cabeçalhos e substituição de spans com classes ad-hoc por `<Badge size="sm" variant="default">` e `<Badge size="sm" variant="portfolio">` (Regra 14);
+> - **(2) Central de Lembretes (`RemindersPage`)**:
+>   - Refatoração dos botões de subfiltros ("Todas", "Atrasadas", "Faturas", "Dívidas") para uso do primitivo canônico `<Button size="sm">` e variantes semânticas, respeitando a Regra DRY de UI (§4) e Regra 7 de controles;
+>   - Padronização do badge de pendências com `size="sm"` no cabeçalho e inclusão de micro-interações táteis no switch de abas principais;
+> - **(3) Configurações & Personalização (`SettingsPage` & Tabs)**:
+>   - `SubscriptionTab`: Ícone descritivo estático de teste Pro alinhado com a hierarquia da Regra 13 (`text-muted-foreground`);
+>   - `SecurityTab`: Canonicalização estrita de badges com remoção de classes arbitrárias de micro-padding (`text-[10px] px-1.5 py-0` substituído por `size="xs"`);
+>   - `AppearanceTab`: Saneamento do badge de preset ativo para `size="sm"`;
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck (`tsc -b`) passando com 0 erros;
+>   - ESLint (`eslint .`) limpo com 0 erros e 0 avisos;
+>   - Testes de Bloco 4 (6 arquivos / 41 testes) 100% verdes;
+>   - Build de produção Vite + PWA concluído com sucesso em 1.36s.
+
 > **v2.36** registra o **Refinamento Holístico do Bloco 3 (Investimentos & Rebalanceamento - ResumoTab, AporteTab e AporteResult)** (2026-10-14):
 > - **(1) Carteira & Posição Consolidada (`ResumoTab`)**:
 >   - Padronização de ícones de cabeçalhos e seções estruturais para `text-muted-foreground` (`size-4`) em Distribuição Patrimonial e Posição Consolidada, mitigando a fadiga de acento (*accent fatigue*) e obedecendo estritamente à Regra 13;
