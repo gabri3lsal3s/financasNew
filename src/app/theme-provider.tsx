@@ -5,6 +5,7 @@ import {
   setUserStorageItem,
   subscribeActiveUserId,
 } from "@/services/user-storage";
+import { syncStatusBarTheme } from "@/services/native";
 
 export type Theme = "light" | "dark" | "oled";
 export type ThemePreference = Theme | "system";
@@ -77,6 +78,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.style.colorScheme = theme === "light" ? "light" : "dark";
     // Sincroniza a cor da barra de título do SO/PWA e barra de status mobile
     updateMetaThemeColor(theme);
+    // Sincroniza a barra de status nativa no Android
+    void syncStatusBarTheme(theme);
   }, [theme]);
 
   const setPreference = useCallback((next: ThemePreference) => {

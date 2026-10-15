@@ -1,5 +1,22 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.54** registra a **Ergonomia Nativa de SO — Back Button, Status Bar Dinâmica, Haptics Refinado & Splash Screen (Fase 2 do Plano Android)** (2026-10-15):
+> - **(1) Hardware Back Button (`src/services/native/back-button.ts`)**:
+>   - Escuta ao botão voltar físico do Android via `@capacitor/app` com fechamento hierárquico e gracioso: handlers prioritários registrados (`registerBackHandler`) > fechamento da calculadora flutuante (`setCalculatorOpen(false)`) > despacho de tecla Escape para fechar modais/popovers ativos no DOM > recuo de histórico (`window.history.back()`) > minimização segura do app na raiz (`App.minimizeApp()`);
+> - **(2) Status Bar Dinâmica por Tema (`src/services/native/status-bar.ts`)**:
+>   - Sincronização automática com o `ThemeProvider`: tema Light pinta `#F4F7F9` com ícones escuros (`Style.Light`); temas Dark (`#0C1923`) e OLED (`#000000`) pintam com ícones claros (`Style.Dark`), eliminando quebras visuais e barras descoloridas;
+> - **(3) Gateway Sensorial e Haptics Refinado (`src/services/native/haptics.ts` & `src/services/haptics.ts`)**:
+>   - Integração com `@capacitor/haptics`: micro-interações táteis suaves via `Haptics.impact` (`Light` e `Medium`) e `Haptics.notification` (`Success`, `Warning`, `Error`);
+>   - Resposta tátil natural e suave em todas as teclas da calculadora flutuante e botões do sistema via gateway central sem duplos disparos;
+> - **(4) Splash Screen Suave (`src/services/native/splash-screen.ts` & `capacitor.config.ts`)**:
+>   - Configuração de transição suave em `capacitor.config.ts` (`launchAutoHide: false`, `backgroundColor: "#F4F7F9"`);
+>   - Ocultação programada e fluida (`hideNativeSplashScreen(300)`) após montagem do `#root` em `src/main.tsx`;
+> - **(5) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis nem caracteres decorativos);
+>   - Bateria completa de testes automatizados (308 arquivos / 2.239 testes) **100% verde**;
+>   - Build de produção PWA e sincronização nativa (`npm run build && npx cap sync android`) executados com sucesso.
+> 
 > **v2.53** registra o **Setup da Casca Android Nativa & Integração do Capacitor (Fase 1 do Plano Android)** (2026-10-15):
 > - **(1) Integração do Capacitor Core, CLI e Android Runtime**:
 >   - Instalação e compatibilização de `@capacitor/core`, `@capacitor/android` e `@capacitor/cli`;

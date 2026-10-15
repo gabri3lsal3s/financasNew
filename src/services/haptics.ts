@@ -22,11 +22,13 @@ const PATTERNS: Record<HapticPattern, number | number[]> = {
   error: [50, 40, 50, 40],
 };
 
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
+import { isNativePlatform, triggerNativeHaptic } from "./native";
+
 export function isHapticsSupported(): boolean {
+  if (isNativePlatform()) return true;
   return typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
 }
-
-import { getVisualCustomization } from "@/hooks/use-visual-customization";
 
 /**
  * Utilitário centralizado de controle de vibração (hapticsManager) com anti-concorrência e mute global.
@@ -84,6 +86,11 @@ export class HapticsManager {
     }
 
     this.lastTriggerTime = now;
+
+    if (isNativePlatform()) {
+      void triggerNativeHaptic(pattern);
+      return true;
+    }
 
     try {
       return navigator.vibrate(PATTERNS[pattern]);

@@ -14,6 +14,9 @@ function stubVibrate(): void {
 
 beforeEach(() => {
   vibrateMock.mockReset();
+  hapticsManager.reset();
+  hapticsManager.unmute();
+  updateVisualCustomization({ hapticEnabled: true });
 });
 
 afterEach(() => {
@@ -25,6 +28,16 @@ describe("haptics (F8 — Decisão 3)", () => {
   it("retorna false sem suporte a navigator.vibrate (jsdom/desktop)", () => {
     expect(isHapticsSupported()).toBe(false);
     expect(triggerHaptic("light")).toBe(false);
+  });
+
+  it("retorna true e dispara nativamente quando em plataforma nativa", async () => {
+    const nativeModule = await import("./native");
+    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
+    const nativeSpy = vi.spyOn(nativeModule, "triggerNativeHaptic").mockResolvedValue(true);
+
+    expect(isHapticsSupported()).toBe(true);
+    expect(triggerHaptic("light", true)).toBe(true);
+    expect(nativeSpy).toHaveBeenCalledWith("light");
   });
 
   it("dispara o padrão correto quando suportado", () => {

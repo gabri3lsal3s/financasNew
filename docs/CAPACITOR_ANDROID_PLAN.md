@@ -166,11 +166,11 @@ graph TD
 - [x] Adicionar scripts operacionais no `package.json` (`cap:sync`, `cap:open`, `cap:build`).
 - **DoD:** `npm run build && npx cap sync android` executa sem erros; PWA no navegador continua 100% idêntico.
 
-### Fase 2: Ergonomia Nativa de SO (Invisível & Confortável)
-- [ ] **Hardware Back Button:** Criar `src/services/native/back-button.ts` para fechar modais/gavetas ou recuar histórico (`navigate(-1)`).
-- [ ] **Status Bar Dinâmica:** Criar `src/services/native/status-bar.ts` integrado ao `ThemeProvider` (sincroniza fundo e contraste de ícones nos temas Light, Dark e OLED).
-- [ ] **Gateway Sensorial (Haptics):** Integrar `@capacitor/haptics` no `src/services/haptics.ts` com resposta na calculadora flutuante.
-- [ ] **Splash Screen Suave:** Integrar `@capacitor/splash-screen` à casca visual `#app-splash`.
+### Fase 2: Ergonomia Nativa de SO (Invisível & Confortável) [Concluída]
+- [x] **Hardware Back Button:** Criar `src/services/native/back-button.ts` para fechar modais/gavetas ou recuar histórico (`navigate(-1)`).
+- [x] **Status Bar Dinâmica:** Criar `src/services/native/status-bar.ts` integrado ao `ThemeProvider` (sincroniza fundo e contraste de ícones nos temas Light, Dark e OLED).
+- [x] **Gateway Sensorial (Haptics):** Integrar `@capacitor/haptics` no `src/services/haptics.ts` com resposta na calculadora flutuante.
+- [x] **Splash Screen Suave:** Integrar `@capacitor/splash-screen` à casca visual `#app-splash`.
 - **DoD:** O app no Android respeita o botão voltar sem fechar repentinamente; barra de status muda de cor dinamicamente com o tema.
 
 ### Fase 3: Segurança, Biometria & Privacy Shield
