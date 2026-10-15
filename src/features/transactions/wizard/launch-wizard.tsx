@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { Stepper } from "@/components/ui/stepper";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
 import { todayISO } from "@/domain/debts";
 import {
@@ -120,6 +121,7 @@ export function LaunchWizard({
     setState((prev) => ({ ...prev, [key]: value }));
 
   const goTo = (step: number) => {
+    triggerSensory("selection");
     setError(null);
     setState((prev) => ({ ...prev, step }));
   };
@@ -197,6 +199,7 @@ export function LaunchWizard({
         await createIncome.mutateAsync(input);
       }
 
+      triggerSensory("success");
       setState(defaultLaunchState);
       setPending(false);
       onSuccess?.();
@@ -205,6 +208,7 @@ export function LaunchWizard({
         navigate(-1);
       }
     } catch (err) {
+      triggerSensory("destructive");
       setError(getErrorMessage(err));
       setPending(false);
     }

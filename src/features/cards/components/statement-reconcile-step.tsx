@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Check, CheckCheck, RotateCcw, Sparkles } from "lucide-react";
 import { Alert, Badge, Button, Checkbox, MoneyText, Select, Tabs } from "@/components/ui";
+import { triggerSensory } from "@/services/sensory";
 import type { Category } from "@/types";
 import type { ExistingExpenseForReconciliation, ReconciliationItem } from "@/domain/reconciliation";
 
@@ -93,8 +94,11 @@ export function StatementReconcileStep({
             </span>
             <button
               type="button"
-              onClick={() => setFilter("app_only")}
-              className="text-[11px] font-medium underline hover:opacity-80 shrink-0"
+              onClick={() => {
+                triggerSensory("selection");
+                setFilter("app_only");
+              }}
+              className="text-[11px] font-medium underline hover:opacity-80 shrink-0 cursor-pointer"
             >
               Ver detalhes
             </button>
@@ -107,7 +111,10 @@ export function StatementReconcileStep({
         <div className="min-w-0 flex-1 overflow-hidden">
           <Tabs
             value={filter}
-            onValueChange={(val) => setFilter(val as FilterTab)}
+            onValueChange={(val) => {
+              triggerSensory("selection");
+              setFilter(val as FilterTab);
+            }}
             items={tabsList}
           />
         </div>
@@ -116,8 +123,11 @@ export function StatementReconcileStep({
             type="button"
             variant="ghost"
             size="sm"
-            className="shrink-0 text-xs"
-            onClick={() => onToggleAll(!allFilteredSelected)}
+            className="shrink-0 text-xs cursor-pointer"
+            onClick={() => {
+              triggerSensory("action");
+              onToggleAll(!allFilteredSelected);
+            }}
           >
             {allFilteredSelected ? "Desmarcar" : "Marcar todos"}
           </Button>
@@ -149,12 +159,12 @@ export function StatementReconcileStep({
                       </span>
 
                       {exp.installmentNumber && exp.installmentsTotal ? (
-                        <Badge variant="muted" className="text-[10px] py-0 px-1 font-mono">
+                        <Badge variant="muted" size="xs" className="font-mono">
                           {exp.installmentNumber}/{exp.installmentsTotal}
                         </Badge>
                       ) : null}
 
-                      <Badge variant="warning" className="text-[10px] py-0 px-1">
+                      <Badge variant="warning" size="xs">
                         Ausente no Extrato
                       </Badge>
                     </div>
@@ -202,7 +212,10 @@ export function StatementReconcileStep({
                   <div className="pt-0.5">
                     <Checkbox
                       checked={item.selected}
-                      onCheckedChange={() => onToggleItem(tx.id)}
+                      onCheckedChange={() => {
+                        triggerSensory("selection");
+                        onToggleItem(tx.id);
+                      }}
                       aria-label={`Selecionar ${tx.cleanDescription}`}
                     />
                   </div>
@@ -214,27 +227,27 @@ export function StatementReconcileStep({
                       </span>
 
                       {tx.installment ? (
-                        <Badge variant="muted" className="text-[10px] py-0 px-1 font-mono">
+                        <Badge variant="muted" size="xs" className="font-mono">
                           {tx.installment.current}/{tx.installment.total}
                         </Badge>
                       ) : null}
 
                       {item.status === "exact_match" ? (
-                        <Badge variant="positive" className="text-[10px] py-0 px-1 gap-1">
-                          <CheckCheck className="size-3" aria-hidden />
+                        <Badge variant="positive" size="xs">
+                          <CheckCheck className="size-3" aria-hidden="true" />
                           Conciliado ({item.score}%)
                         </Badge>
                       ) : item.status === "probable_match" ? (
-                        <Badge variant="warning" className="text-[10px] py-0 px-1 gap-1">
-                          <Sparkles className="size-3" aria-hidden />
+                        <Badge variant="warning" size="xs">
+                          <Sparkles className="size-3" aria-hidden="true" />
                           Sugestão ({item.score}%)
                         </Badge>
                       ) : item.ignoredByDefault ? (
-                        <Badge variant="muted" className="text-[10px] py-0 px-1 text-muted-foreground">
+                        <Badge variant="muted" size="xs">
                           Pagamento / Ignorado
                         </Badge>
                       ) : (
-                        <Badge variant="default" className="text-[10px] py-0 px-1">
+                        <Badge variant="default" size="xs">
                           Novo
                         </Badge>
                       )}
@@ -268,7 +281,7 @@ export function StatementReconcileStep({
                     <MoneyText
                       cents={tx.amountCents}
                       tone={tx.isRefund ? "positive" : "negative"}
-                      className="font-medium text-xs"
+                      className="font-medium text-xs tabular-nums whitespace-nowrap"
                     />
                   </div>
                 </div>
@@ -279,11 +292,11 @@ export function StatementReconcileStep({
       </div>
 
       {/* Sumário e Rodapé de Ações */}
-      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/40">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-border/40">
         <p className="text-xs text-muted-foreground min-w-0">
-          <span className="font-medium text-foreground">{selectedCount}</span> de {items.length} selecionados
+          <span className="font-semibold text-foreground">{selectedCount}</span> de {items.length} selecionados
           {selectedCount > 0 ? (
-            <> · <MoneyText cents={selectedTotalCents} className="font-medium text-foreground" /></>
+            <> · <MoneyText cents={selectedTotalCents} className="font-semibold text-foreground tabular-nums whitespace-nowrap" /></>
           ) : null}
         </p>
 

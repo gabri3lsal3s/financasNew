@@ -1,5 +1,25 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.38** registra o **Refinamento Holístico do Bloco 5 (Diálogos Operacionais de Entrada - LaunchWizard, BankStatementImportDialog e StatementImportDialog)** (2026-10-14):
+> - **(1) Assistente de Lançamento Rápido (`LaunchWizard`)**:
+>   - Adição de feedback tátil e sonoro nativo (`triggerSensory("selection")`) na navegação entre etapas (`goTo`) e nas alternâncias de abas de tipo (Despesa / Renda);
+>   - Conclusão comemorativa de lançamento com `triggerSensory("success")` e feedback destrutivo/erro em exceções;
+>   - `StepValue`: Pílulas de lançamentos habituais integradas com micro-interações táteis (`triggerSensory("action")`), preenchendo valor e metadados e mantendo o usuário na etapa de conferência de valor com badges de frequência oficiais `<Badge size="xs" variant="muted">` (Regra 14);
+>   - `StepDetails`: Pílulas de descrição frequente padronizadas com feedback tátil e badges de frequência canônicos;
+> - **(2) Conciliação Bancária de Extratos (`BankStatementImportDialog` / `BankStatementReconcileStep`)**:
+>   - Saneamento rigoroso da Regra 14: todos os badges de natureza financeira (Crédito / Débito) e status de conciliação (Conciliado, Sugestão, Novo) padronizados com `<Badge size="xs">`, eliminando classes manuais inline (`text-[10px] py-0 px-1.5`);
+>   - Integração sensorial suave com `triggerSensory("selection")` nos botões de filtro e checkboxes individuais, e `triggerSensory("action")` no seletor de lote "Marcar todos / Desmarcar";
+>   - Rodapé com totalizadores monetários selecionados formatados com auto-fit proporcional (`tabular-nums tracking-tight whitespace-nowrap`), garantindo visibilidade integral de centavos sem `truncate` (Regra 11);
+> - **(3) Importação & Conciliação de Faturas de Cartão (`StatementImportDialog` / `StatementReconcileStep`)**:
+>   - Canonicalização estrita de badges (ausente no extrato, parcelas, status) para `size="xs"` (Regra 14);
+>   - Feedback sensorial imediato na alternância de abas de filtro e seleção em lote;
+>   - Totalizadores de lançamentos e soma monetária com `whitespace-nowrap tabular-nums` (Regra 11);
+> - **(4) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis);
+>   - Suíte de testes 100% verde com **295 arquivos / 2.123 testes passando**;
+>   - Build de produção Vite + Workbox PWA gerado com sucesso em 1.60s.
+
 > **v2.37** registra o **Refinamento Holístico do Bloco 4 (Relatórios, Lembretes & Configurações - ReportsPage, RemindersPage e SettingsPage)** (2026-10-14):
 > - **(1) Central de Relatórios (`ReportsPage` & Sub-Aba Componentes)**:
 >   - Adição de feedback tátil e sonoro nativo (`triggerSensory("selection")`) nos botões de alternância de período ("Mensal", "Anual", "Personalizado") e na navegação de abas;

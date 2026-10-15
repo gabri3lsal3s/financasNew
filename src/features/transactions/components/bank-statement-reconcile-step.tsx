@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, CheckCheck, RotateCcw, Sparkles } from "lucide-react";
 import { Badge, Button, Checkbox, MoneyText, Select, Tabs } from "@/components/ui";
+import { triggerSensory } from "@/services/sensory";
 import type { Category } from "@/types";
 import type { BankTransactionItem } from "@/domain/reconciliation";
 
@@ -53,8 +54,6 @@ export function BankStatementReconcileStep({
     [categories],
   );
 
-
-
   const filteredItems = useMemo(() => {
     switch (filter) {
       case "expenses":
@@ -98,7 +97,10 @@ export function BankStatementReconcileStep({
         <div className="min-w-0 flex-1 overflow-hidden">
           <Tabs
             value={filter}
-            onValueChange={(val) => setFilter(val as FilterTab)}
+            onValueChange={(val) => {
+              triggerSensory("selection");
+              setFilter(val as FilterTab);
+            }}
             items={tabsList}
           />
         </div>
@@ -106,8 +108,11 @@ export function BankStatementReconcileStep({
           type="button"
           variant="ghost"
           size="sm"
-          className="shrink-0 text-xs"
-          onClick={() => onToggleAll(!allFilteredSelected)}
+          className="shrink-0 text-xs cursor-pointer"
+          onClick={() => {
+            triggerSensory("action");
+            onToggleAll(!allFilteredSelected);
+          }}
         >
           {allFilteredSelected ? "Desmarcar" : "Marcar todos"}
         </Button>
@@ -137,7 +142,10 @@ export function BankStatementReconcileStep({
                   <div className="pt-0.5">
                     <Checkbox
                       checked={item.selected}
-                      onCheckedChange={() => onToggleItem(tx.id)}
+                      onCheckedChange={() => {
+                        triggerSensory("selection");
+                        onToggleItem(tx.id);
+                      }}
                     />
                   </div>
 
@@ -147,37 +155,37 @@ export function BankStatementReconcileStep({
 
                       {/* Badge de Natureza */}
                       {kind === "card_payment_ignored" ? (
-                        <Badge variant="warning" className="text-[10px] py-0 px-1.5">
+                        <Badge variant="warning" size="xs">
                           Fatura de Cartão
                         </Badge>
                       ) : kind === "transfer_ignored" ? (
-                        <Badge variant="muted" className="text-[10px] py-0 px-1.5">
+                        <Badge variant="muted" size="xs">
                           Transferência / Aporte
                         </Badge>
                       ) : isIncome ? (
-                        <Badge variant="positive" className="text-[10px] py-0 px-1.5">
+                        <Badge variant="positive" size="xs">
                           Receita (+)
                         </Badge>
                       ) : (
-                        <Badge variant="muted" className="text-[10px] py-0 px-1.5">
+                        <Badge variant="muted" size="xs">
                           Despesa (-)
                         </Badge>
                       )}
 
                       {/* Badge de Status de Conciliação */}
                       {status === "exact_match" ? (
-                        <Badge variant="positive" className="gap-1 text-[10px] py-0 px-1.5">
-                          <CheckCheck className="size-3" aria-hidden />
+                        <Badge variant="positive" size="xs">
+                          <CheckCheck className="size-3" aria-hidden="true" />
                           Conciliado ({score}%)
                         </Badge>
                       ) : status === "probable_match" ? (
-                        <Badge variant="warning" className="gap-1 text-[10px] py-0 px-1.5">
-                          <Check className="size-3" aria-hidden />
+                        <Badge variant="warning" size="xs">
+                          <Check className="size-3" aria-hidden="true" />
                           Sugestão ({score}%)
                         </Badge>
                       ) : !isIgnored ? (
-                        <Badge variant="default" className="gap-1 text-[10px] py-0 px-1.5">
-                          <Sparkles className="size-3" aria-hidden />
+                        <Badge variant="default" size="xs">
+                          <Sparkles className="size-3" aria-hidden="true" />
                           Novo
                         </Badge>
                       ) : null}
@@ -193,14 +201,14 @@ export function BankStatementReconcileStep({
 
                     {/* Vínculo de Match Existente */}
                     {item.matchedExpenseDescription && (
-                      <p className="text-[10px] text-emerald-500/90 flex items-center gap-1">
+                      <p className="text-[10px] text-positive-strong flex items-center gap-1">
                         <span>Casou com despesa:</span>
                         <span className="font-medium truncate">{item.matchedExpenseDescription}</span>
                         <span>({item.matchedExpenseDate})</span>
                       </p>
                     )}
                     {item.matchedIncomeDescription && (
-                      <p className="text-[10px] text-emerald-500/90 flex items-center gap-1">
+                      <p className="text-[10px] text-positive-strong flex items-center gap-1">
                         <span>Casou com receita:</span>
                         <span className="font-medium truncate">{item.matchedIncomeDescription}</span>
                         <span>({item.matchedIncomeDate})</span>
@@ -209,7 +217,7 @@ export function BankStatementReconcileStep({
 
                     {/* Alerta de Item Ignorado */}
                     {item.ignoreReason && (
-                      <p className="text-[10px] text-amber-500/90 italic">
+                      <p className="text-[10px] text-warning-strong italic">
                         {item.ignoreReason}
                       </p>
                     )}
@@ -219,10 +227,11 @@ export function BankStatementReconcileStep({
                 {/* Lado Direito: Valor + Categoria / ReceiveType */}
                 <div className="flex sm:flex-col items-end justify-between sm:justify-center gap-2 w-full sm:w-auto shrink-0">
                   <div className="font-mono text-sm font-semibold">
-                    <span className={isIncome ? "text-emerald-500" : "text-foreground"}>
-                      {isIncome ? "+" : "-"}
-                      <MoneyText cents={tx.amountCents} />
-                    </span>
+                    <MoneyText
+                      cents={tx.amountCents}
+                      tone={isIncome ? "positive" : "negative"}
+                      className="tabular-nums whitespace-nowrap"
+                    />
                   </div>
 
                   <div className="w-40 sm:w-44">
@@ -250,14 +259,14 @@ export function BankStatementReconcileStep({
       </div>
 
       {/* Rodapé e Ações */}
-      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/40">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-border/40">
         <p className="text-xs text-muted-foreground min-w-0">
-          <span className="font-medium text-foreground">{selectedCount}</span> de {items.length} selecionados
+          <span className="font-semibold text-foreground">{selectedCount}</span> de {items.length} selecionados
           {selectedExpensesTotalCents > 0 && (
-            <span className="text-rose-500 font-medium"> · -<MoneyText cents={selectedExpensesTotalCents} /></span>
+            <span className="text-negative-strong font-medium"> · -<MoneyText cents={selectedExpensesTotalCents} tone="negative" className="inline text-xs font-semibold tabular-nums whitespace-nowrap" /></span>
           )}
           {selectedIncomesTotalCents > 0 && (
-            <span className="text-emerald-500 font-medium"> · +<MoneyText cents={selectedIncomesTotalCents} /></span>
+            <span className="text-positive-strong font-medium"> · +<MoneyText cents={selectedIncomesTotalCents} tone="positive" className="inline text-xs font-semibold tabular-nums whitespace-nowrap" /></span>
           )}
         </p>
 

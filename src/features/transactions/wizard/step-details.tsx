@@ -1,12 +1,13 @@
 import { Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
+import { Badge, NumberStepper, RadioGroup, Select } from "@/components/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
-import { NumberStepper, RadioGroup, Select } from "@/components/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL } from "@/services/masks";
 import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { MAX_RECURRENCE_OCCURRENCES, RECURRENCE_FREQUENCIES } from "@/domain/recurrences";
@@ -162,14 +163,17 @@ export function StepDetails({
                   type="button"
                   role="option"
                   aria-selected={false}
-                  onClick={() => onDescriptionChange(suggestion.description)}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    triggerSensory("action");
+                    onDescriptionChange(suggestion.description);
+                  }}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
                 >
                   <span className="truncate">{suggestion.description}</span>
                   {suggestion.frequency > 1 ? (
-                    <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    <Badge variant="muted" size="xs">
                       {suggestion.frequency}×
-                    </span>
+                    </Badge>
                   ) : null}
                 </button>
               ))}

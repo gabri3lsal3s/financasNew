@@ -1,6 +1,7 @@
 import { Clock } from "lucide-react";
-import { MoneyInput, NumberStepper, Tabs } from "@/components/ui";
+import { Badge, MoneyInput, NumberStepper, Tabs } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { triggerSensory } from "@/services/sensory";
 import type { HabitualEntry } from "@/domain/predictions";
 import type { LaunchState, EntryType } from "./wizard-state";
 
@@ -35,18 +36,21 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
               <button
                 key={`${habit.description}-${habit.categoryName}`}
                 type="button"
-                onClick={() => onApplyHabitual(habit)}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface-raised px-3 py-2.5 text-left transition-colors hover:border-border hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => {
+                  triggerSensory("action");
+                  onApplyHabitual(habit);
+                }}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface-raised px-3 py-2.5 text-left transition-colors hover:border-border hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
               >
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="truncate text-sm font-medium text-foreground">{habit.description}</span>
                   <span className="truncate text-[11px] text-muted-foreground">{habit.categoryName}</span>
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  <MoneyText cents={Math.round(habit.value * 100)} tone="default" className="num text-sm" />
-                  <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  <MoneyText cents={Math.round(habit.value * 100)} tone="default" className="num text-sm tabular-nums whitespace-nowrap" />
+                  <Badge variant="muted" size="xs">
                     {habit.frequency}×
-                  </span>
+                  </Badge>
                 </span>
               </button>
             ))}
@@ -56,7 +60,10 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
 
       <Tabs
         value={state.type}
-        onValueChange={(value) => onTypeChange(value as EntryType)}
+        onValueChange={(value) => {
+          triggerSensory("selection");
+          onTypeChange(value as EntryType);
+        }}
         items={[
           { value: "expense", label: "Despesa", content: null },
           { value: "income", label: "Renda", content: null },
