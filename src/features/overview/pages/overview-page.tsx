@@ -82,6 +82,7 @@ export function OverviewPage() {
   const rangeStart = `${startRange}-01`;
   const rangeEnd = `${shiftMonth(month, 1)}-01`;
   const today = todayISO();
+  const isCurrentMonth = month === currentMonth();
 
   // Queries TanStack (state).
   const incomesQuery = useIncomes(month);
@@ -124,12 +125,12 @@ export function OverviewPage() {
   const loading =
     incomesQuery.isLoading ||
     expensesQuery.isLoading ||
-    realCashData.isLoading;
+    (isCurrentMonth && realCashData.isLoading);
 
   const error =
     incomesQuery.error ??
     expensesQuery.error ??
-    realCashData.error;
+    (isCurrentMonth ? realCashData.error : null);
 
   // Computação pura dos totais do mês (§3.6). Padrão do app: BRUTO como métrica principal, informando ponderado quando houver.
   const incomeCents = weightedSum(incomesQuery.data ?? []);
@@ -264,7 +265,6 @@ export function OverviewPage() {
   const selectedExpenses = (expensesQuery.data ?? []).filter((e) => e.category_id === selectedCategoryId);
 
   // Projeção e ritmo de gastos (§3.8) para o mês atual.
-  const isCurrentMonth = month === currentMonth();
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const dayOfMonth = now.getDate();
@@ -431,7 +431,7 @@ export function OverviewPage() {
 
       {loading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
-          <SkeletonHeroCard />
+          {isCurrentMonth ? <SkeletonHeroCard /> : null}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <SkeletonKpi />
             <SkeletonKpi />
@@ -442,10 +442,12 @@ export function OverviewPage() {
         </div>
       ) : (
         <>
-          <RealCashHeroCard
-            realCashData={realCashData}
-            onCalibrate={() => guardAction(() => setCheckpointOpen(true), "Calibrar Saldo com o Banco")}
-          />
+          {isCurrentMonth ? (
+            <RealCashHeroCard
+              realCashData={realCashData}
+              onCalibrate={() => guardAction(() => setCheckpointOpen(true), "Calibrar Saldo com o Banco")}
+            />
+          ) : null}
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
           {visual.dashboardWidgets.kpis && (

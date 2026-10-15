@@ -72,11 +72,12 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 06: Condicional de Exibição do Card de Saldo no Dashboard
+### Tarefa 06: Condicional de Exibição do Card de Saldo no Dashboard [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Ocultar o card "Saldo Disponível na Conta" ao navegar em meses passados ou futuros.
 - **Ações:**
-  1. Comparar o mês/ano selecionado na navegação com o mês/ano corrente do sistema.
-  2. Exibir o card de saldo disponível apenas no mês atual; ocultá-lo nos demais meses sem quebrar a grade responsiva do dashboard.
+  1. Comparar o mês/ano selecionado na navegação com o mês/ano corrente do sistema. (Concluído: `isCurrentMonth = month === currentMonth()` verificado dinamicamente no hook de data local).
+  2. Exibir o card de saldo disponível apenas no mês atual; ocultá-lo nos demais meses sem quebrar a grade responsiva do dashboard. (Concluído: renderização condicional aplicada ao `RealCashHeroCard`, ao seu skeleton `SkeletonHeroCard` e ao isolamento de queries/erros de `realCashData` fora do mês corrente, mantendo o espaçamento e alinhamento dos KPIs e seções adjacentes sem quebra de layout, acompanhado de testes unitários automatizados cobrindo a transição entre meses).
 - **Commit:** `fix(dashboard): restrict account balance card visibility to current month only`
 
 ---

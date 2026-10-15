@@ -250,6 +250,34 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(walletIcon).toHaveClass("text-critical-strong");
   });
 
+  it("exibe o card 'Saldo Disponível em Conta' apenas no mês atual e o oculta em meses passados ou futuros", async () => {
+    const user = userEvent.setup();
+    render(<OverviewPage />);
+
+    // Mês atual ("2026-08"): o card de saldo em conta está presente
+    expect(screen.getByText("Saldo Disponível em Conta")).toBeInTheDocument();
+    expect(screen.getByText("Resultado do mês")).toBeInTheDocument();
+
+    // Navega para o mês anterior ("2026-07")
+    const prevMonthButton = screen.getByRole("button", { name: "Mês anterior" });
+    await user.click(prevMonthButton);
+
+    // O card de saldo disponível em conta não deve ser exibido em meses passados
+    expect(screen.queryByText("Saldo Disponível em Conta")).not.toBeInTheDocument();
+    // A grade de KPIs e o restante do dashboard continuam visíveis normalmente
+    expect(screen.getByText("Resultado do mês")).toBeInTheDocument();
+
+    // Navega de volta para o mês atual ("2026-08")
+    const nextMonthButton = screen.getByRole("button", { name: "Próximo mês" });
+    await user.click(nextMonthButton);
+    expect(screen.getByText("Saldo Disponível em Conta")).toBeInTheDocument();
+
+    // Navega para o mês futuro ("2026-09")
+    await user.click(nextMonthButton);
+    expect(screen.queryByText("Saldo Disponível em Conta")).not.toBeInTheDocument();
+    expect(screen.getByText("Resultado do mês")).toBeInTheDocument();
+  });
+
   it("calcula o saldo líquido de contas (receber 1.000 − pagar 500 − fatura 60)", () => {
     render(<OverviewPage />);
     expect(screen.getByText("Saldo líquido de contas")).toBeInTheDocument();
