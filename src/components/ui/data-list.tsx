@@ -48,7 +48,7 @@ export function DataList<T>({
   onRowClick,
 }: DataListProps<T>) {
   return (
-    <div className={cn("overflow-x-auto rounded-xl border border-border bg-surface shadow-sm", className)}>
+    <div className={cn("overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs", className)}>
       <div role="table" aria-label="Lista de dados" className="min-w-full">
         <div role="row" className="flex items-center gap-3 border-b border-border px-4 py-2.5">
           {columns.map((column) => (

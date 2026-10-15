@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v2.46** registra o **Refinamento Holístico de UI/UX — Camada 1: Contêineres, Tabelas & Scroll Global (PageShell, DataList, PositionTable, ReportClassTables, ReportRedemptionsTable e Admin Tables)** (2026-10-14):
+> - **(1) Contêiner Global & Padding Fluido (`PageShell`)**:
+>   - Adoção de padding horizontal fluido `px-3 sm:px-6 lg:px-8` no cabeçalho sticky e no contêiner principal `main`, liberando 8px de área útil crítica em smartphones ultracompactos (< 380px) sem esmagar métricas e evitando colisão de botões;
+>   - Blindagem contra overflow horizontal na viewport com `overflow-x-hidden min-w-0 w-full`;
+> - **(2) Primitivo de Listagem Tabular (`DataList`)**:
+>   - Enriquecimento com rolagem suave `overflow-x-auto no-scrollbar scroll-smooth` e elevação oficial `border-border/80 bg-surface shadow-xs` (Regra 16);
+> - **(3) Tabela de Custódia & Carteira (`PositionTable`)**:
+>   - Preservação da exibição em cards no mobile e tabela com `overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs` no desktop (Regra 16);
+> - **(4) Tabelas Contábeis de Relatórios (`ReportClassTables` & `ReportRedemptionsTable`)**:
+>   - Enclausuramento da rolagem horizontal com `overflow-x-auto no-scrollbar scroll-smooth` e largura mínima protegida `min-w-[580px] print:min-w-0`, eliminando vazamento de viewport no mobile e assegurando legibilidade das colunas contábeis;
+> - **(5) Tabelas Administrativas (`UsersTab`, `SystemTab` e `InvitesTab`)**:
+>   - Adição de `no-scrollbar scroll-smooth` nos contêineres desktop;
+> - **(6) Qualidade de Código & Verificação**:
+>   - Typecheck estrito (`tsc -b`) passando com **zero erros**;
+>   - ESLint (`npm run lint`) limpo (**zero erros e zero avisos**, sem emojis);
+>   - Testes de Custódia e Relatórios (2 arquivos / 24 testes) 100% verde;
+>   - Total conformidade com as decisões alinhadas no `/grill-me`.
+
 > **v2.45** registra o **Refinamento Holístico do Bloco 12 (Landing Page Pública, Apresentação Institucional & Simuladores - PricingSection, MinimalWealthSimulator e LandingPage)** (2026-10-14):
 > - **(1) Seção de Preços & Planos (`PricingSection`)**:
 >   - Adição de resposta tátil imediata via Gateway Central (`triggerSensory("selection")`) na alternância do ciclo de faturamento entre Mensal e Anual (Regra 17);

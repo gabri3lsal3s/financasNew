@@ -120,7 +120,7 @@ export function SystemTab() {
               </div>
 
               {/* Visualização em Tabela para Tablets e Desktop (sm+) */}
-              <div className="hidden sm:block overflow-x-auto">
+              <div className="hidden sm:block overflow-x-auto no-scrollbar scroll-smooth">
                 <table className="w-full min-w-[620px] text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground font-medium">

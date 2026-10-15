@@ -58,8 +58,8 @@ export function ReportRedemptionsTable({
       </div>
 
       {/* 2. Tabela de Resgates Líquidos (Sem Valor Aplicado, com deduções fiscais) */}
-      <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
-        <table className="w-full text-left text-xs border-collapse print:table-fixed">
+      <div className="rounded-lg border border-border/80 overflow-hidden overflow-x-auto no-scrollbar scroll-smooth shadow-2xs">
+        <table className="w-full min-w-[580px] print:min-w-0 text-left text-xs border-collapse print:table-fixed">
           <thead>
             <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
               <th className="py-1.5 px-3 print:w-[32%] w-[32%]">Título / Ativo</th>

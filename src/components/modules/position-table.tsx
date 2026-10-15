@@ -1387,7 +1387,7 @@ export function PositionTable({
 
       {/* Visão Desktop (Tabela sm+) */}
       <div className="hidden sm:block">
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
+        <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs">
           <div className="min-w-full">
             {/* Conteúdo da Tabela Desktop */}
             {filteredRows.length === 0 ? (

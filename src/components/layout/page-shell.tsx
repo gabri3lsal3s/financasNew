@@ -80,7 +80,7 @@ export function PageShell() {
               : "bg-surface/80 backdrop-blur-sm shadow-none",
           )}
         >
-          <div className="mx-auto flex w-full max-w-7xl items-center gap-1.5 px-4 sm:px-6 lg:px-8 app-region-no-drag">
+          <div className="mx-auto flex w-full max-w-7xl items-center gap-1.5 px-3 sm:px-6 lg:px-8 app-region-no-drag">
             {visual.headerButtons.logo && (
               <div className="flex items-center lg:hidden mr-1 shrink-0">
                 <LogoProfileButton />
@@ -98,7 +98,7 @@ export function PageShell() {
           </div>
         </header>
         <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
-          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-24 lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
+          <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-24 lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
             {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
             <div key={location.pathname} className="animate-route-in min-w-0 w-full">
               <Suspense fallback={<RouteFallback />}>

@@ -106,8 +106,8 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
             className="flex flex-col gap-1.5 break-inside-auto print:break-inside-auto"
           >
             {/* Tabela de Custódia com Cabeçalho de Classe no thead e Totais Contábeis no tfoot */}
-            <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
-              <table className="w-full text-left text-xs border-collapse print:table-fixed">
+            <div className="rounded-lg border border-border/80 overflow-hidden overflow-x-auto no-scrollbar scroll-smooth shadow-2xs">
+              <table className="w-full min-w-[580px] print:min-w-0 text-left text-xs border-collapse print:table-fixed">
                 <thead>
                   {/* Linha de Identificação da Classe (Repete automaticamente em quebra de página A4) */}
                   <tr className="border-b border-border/70 bg-muted/60 text-foreground font-bold text-[9.5px] uppercase tracking-wider print:bg-slate-100">
