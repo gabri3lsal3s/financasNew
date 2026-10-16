@@ -330,16 +330,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 11: Resiliência Nativa Android — Buffer Offline em Segundo Plano & Expansão de Bancos
 
-### Tarefa 27: Buffer Offline em Segundo Plano (SharedPreferences) e Expansão Multibanco [Pendente]
-- **Status:** ⏳ Pendente
+### Tarefa 27: Buffer Offline em Segundo Plano (SharedPreferences) e Expansão Multibanco [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Implementar buffer circular nativo em `SharedPreferences` para garantir que nenhuma notificação bancária seja perdida quando o app estiver fechado ou em segundo plano, e expandir a lista de pacotes monitorados para os maiores bancos e carteiras digitais brasileiras.
 - **Ações:**
-  1. **Buffer Circular em `SharedPreferences`:**
-     - Em `BankNotificationListenerService.java`, se `BankNotificationPlugin.getInstance() == null` (app fechado), persistir o payload JSON no armazenamento local seguro do Android (até 30 notificações).
-  2. **Esvaziamento Automático de Fila (`flushPendingNotifications`):**
-     - Criar método no plugin Capacitor para descarregar o buffer acumulado offline assim que a WebView/React iniciar, despachando para a fila de sugestões.
-  3. **Expansão de Bancos Monitorados:**
-     - Cadastrar pacotes de BTG Pactual, PicPay, PagBank, Neon, Next, XP Investimentos, Nomad e Wise no listener nativo e no mapeador de bancos.
+  1. **Buffer Circular em `SharedPreferences`:** (Concluído: implementado armazenamento atômico e thread-safe `saveToOfflineBuffer` em `BankNotificationListenerService.java`, retendo até 30 notificações em formato JSON em `SharedPreferences` [modo privado] com descarte automático do item mais antigo ao atingir a capacidade máxima quando o app estiver fechado ou sem instância ativa do plugin).
+  2. **Esvaziamento Automático de Fila (`flushPendingNotifications`):** (Concluído: adicionado método nativo `@PluginMethod flushPendingNotifications` em `BankNotificationPlugin.java` que extrai as notificações pendentes, limpa o buffer e retorna array estruturado; integrado no TypeScript em `bank-listener.ts` com fallback web seguro e execução automática via `flushPendingBankNotifications()` na inicialização do app).
+  3. **Expansão de Bancos Monitorados:** (Concluído: cadastrados pacotes de BTG Pactual, PicPay, PagBank, Neon, Next, XP Investimentos, Nomad, Wise e Santander Way no listener nativo e integrados ao mapeador multibanco `BANK_PACKAGE_MAP` no TypeScript, com compilação Java pelo Gradle e suíte de testes aprovados com 100% de sucesso).
 - **Commit:** `feat(android): add background offline notification buffer and expand monitored bank packages`
 
 ---

@@ -6,11 +6,15 @@ import android.content.Intent;
 import android.provider.Settings;
 import android.text.TextUtils;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 @CapacitorPlugin(name = "BankNotificationPlugin")
 public class BankNotificationPlugin extends Plugin {
@@ -47,6 +51,40 @@ public class BankNotificationPlugin extends Plugin {
         }
         JSObject ret = new JSObject();
         ret.put("granted", granted);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void flushPendingNotifications(PluginCall call) {
+        Context context = getContext();
+        JSObject ret = new JSObject();
+        JSArray items = new JSArray();
+
+        try {
+            android.content.SharedPreferences prefs = context.getSharedPreferences(
+                BankNotificationListenerService.PREFS_NAME,
+                Context.MODE_PRIVATE
+            );
+            String bufferJson = prefs.getString(BankNotificationListenerService.KEY_BUFFER, "[]");
+
+            // Limpa o buffer de pendentes atomicamente
+            prefs.edit().remove(BankNotificationListenerService.KEY_BUFFER).apply();
+
+            JSONArray array = new JSONArray(bufferJson);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject obj = array.getJSONObject(i);
+                JSObject notif = new JSObject();
+                notif.put("packageName", obj.optString("packageName"));
+                notif.put("title", obj.optString("title"));
+                notif.put("text", obj.optString("text"));
+                notif.put("timestamp", obj.optLong("timestamp"));
+                items.put(notif);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("BankNotificationPlugin", "Erro ao descarregar buffer offline de notificacoes", e);
+        }
+
+        ret.put("notifications", items);
         call.resolve(ret);
     }
 

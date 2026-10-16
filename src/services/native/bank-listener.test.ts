@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockPlugin = vi.hoisted(() => ({
   isPermissionGranted: vi.fn(),
   requestPermission: vi.fn(),
+  flushPendingNotifications: vi.fn(),
   addListener: vi.fn(),
 }));
 
@@ -16,6 +17,7 @@ vi.mock("@capacitor/core", async (importOriginal) => {
 
 import * as platformModule from "./platform";
 import {
+  flushPendingBankNotifications,
   initBankNotificationListener,
   isNotificationListenerGranted,
   processBankNotification,
@@ -103,5 +105,50 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
 
     await cleanup();
     expect(removeFn).toHaveBeenCalled();
+  });
+
+  describe("flushPendingBankNotifications", () => {
+    it("retorna 0 quando a plataforma não for nativa", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+
+      const count = await flushPendingBankNotifications();
+      expect(count).toBe(0);
+      expect(mockPlugin.flushPendingNotifications).not.toHaveBeenCalled();
+    });
+
+    it("descarrega e processa múltiplas notificações acumuladas no buffer nativo", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      const addSpy = vi.spyOn(suggestionsStoreModule, "addPendingSuggestion");
+
+      mockPlugin.flushPendingNotifications.mockResolvedValue({
+        notifications: [
+          {
+            packageName: "com.nu.production",
+            title: "Nubank",
+            text: "Compra de R$ 45,00 no cartão de crédito aprovada em Padaria",
+            timestamp: 1729000000000,
+          },
+          {
+            packageName: "com.picpay",
+            title: "PicPay",
+            text: "Você recebeu um Pix de R$ 120,00 de Mariana",
+            timestamp: 1729000010000,
+          },
+        ],
+      });
+
+      const count = await flushPendingBankNotifications();
+      expect(count).toBe(2);
+      expect(mockPlugin.flushPendingNotifications).toHaveBeenCalled();
+      expect(addSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("retorna 0 de forma segura quando a lista estiver vazia ou ocorrer erro", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      mockPlugin.flushPendingNotifications.mockRejectedValue(new Error("Storage error"));
+
+      const count = await flushPendingBankNotifications();
+      expect(count).toBe(0);
+    });
   });
 });

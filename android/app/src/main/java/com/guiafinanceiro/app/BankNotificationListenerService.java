@@ -11,15 +11,34 @@ import java.util.Set;
 
 public class BankNotificationListenerService extends NotificationListenerService {
 
+    public static final String PREFS_NAME = "bank_notifications_prefs";
+    public static final String KEY_BUFFER = "pending_notifications_buffer";
+    private static final int MAX_BUFFER_SIZE = 30;
+
     private static final Set<String> MONITORED_BANK_PACKAGES = new HashSet<>(Arrays.asList(
+        // Fintechs e carteiras digitais
         "com.nu.production",
-        "com.itau",
-        "com.itau.personnalite",
         "br.com.intermedium",
         "com.c6bank.app",
+        "com.mercadopago.wallet",
+        "com.picpay",
+        "br.com.uol.ps",
+        "br.com.uol.ps.myaccount",
+        "br.com.neon",
+        "br.com.bradesco.next",
+        "com.btg.pactual.banking",
+        "com.btgpactual.investimentos",
+        "br.com.xp.carteira",
+        "com.xpinc.investments",
+        "com.nomadfinancial.app",
+        "com.transferwise.android",
+
+        // Grandes bancos tradicionais
+        "com.itau",
+        "com.itau.personnalite",
         "com.bradesco",
         "com.santander.app",
-        "com.mercadopago.wallet",
+        "br.com.santander.way",
         "br.gov.caixa.tem",
         "br.com.gabba.Caixa",
         "br.com.bb.android"
@@ -59,6 +78,36 @@ public class BankNotificationListenerService extends NotificationListenerService
         BankNotificationPlugin plugin = BankNotificationPlugin.getInstance();
         if (plugin != null) {
             plugin.onNotificationReceived(packageName, title, text, timestamp);
+        } else {
+            saveToOfflineBuffer(packageName, title, text, timestamp);
+        }
+    }
+
+    /**
+     * Persiste notificações recebidas em segundo plano quando o aplicativo estiver fechado
+     * em um buffer circular seguro de SharedPreferences (capacidade para até 30 notificações).
+     */
+    private synchronized void saveToOfflineBuffer(String packageName, String title, String text, long timestamp) {
+        try {
+            android.content.SharedPreferences prefs = getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
+            String currentJson = prefs.getString(KEY_BUFFER, "[]");
+            org.json.JSONArray array = new org.json.JSONArray(currentJson);
+
+            while (array.length() >= MAX_BUFFER_SIZE) {
+                array.remove(0);
+            }
+
+            org.json.JSONObject item = new org.json.JSONObject();
+            item.put("packageName", packageName);
+            item.put("title", title);
+            item.put("text", text);
+            item.put("timestamp", timestamp);
+
+            array.put(item);
+
+            prefs.edit().putString(KEY_BUFFER, array.toString()).apply();
+        } catch (Exception e) {
+            android.util.Log.e("BankNotification", "Erro ao salvar notificacao offline no buffer", e);
         }
     }
 }

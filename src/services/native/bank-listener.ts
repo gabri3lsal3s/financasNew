@@ -12,6 +12,7 @@ import { scheduleInteractiveBankNotification } from "./interactive-notifications
 export interface BankNotificationPluginInterface {
   isPermissionGranted(): Promise<{ granted: boolean }>;
   requestPermission(): Promise<{ granted: boolean }>;
+  flushPendingNotifications(): Promise<{ notifications: BankNotificationPayload[] }>;
   addListener(
     eventName: "bankNotificationReceived",
     listenerFunc: (payload: BankNotificationPayload) => void,
@@ -31,6 +32,9 @@ export const BankNotificationPlugin = registerPlugin<BankNotificationPluginInter
       },
       async requestPermission() {
         return { granted: false };
+      },
+      async flushPendingNotifications() {
+        return { notifications: [] };
       },
       async addListener() {
         return { remove: async () => {} };
@@ -97,6 +101,24 @@ export async function requestNotificationListenerPermission(): Promise<boolean> 
 }
 
 /**
+ * Descarrega o buffer de notificações acumuladas em segundo plano quando o app estava fechado.
+ * Processa cada transação adicionando à fila de sugestões e emitindo notificações interativas.
+ */
+export async function flushPendingBankNotifications(): Promise<number> {
+  if (!isNativePlatform()) return 0;
+  try {
+    const result = await BankNotificationPlugin.flushPendingNotifications();
+    const list = result?.notifications || [];
+    for (const item of list) {
+      processBankNotification(item);
+    }
+    return list.length;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Inicializa a escuta de eventos nativos de compras e Pix compartilhados.
  * Retorna uma função de desinscrição para limpeza.
  */
@@ -106,6 +128,10 @@ export function initBankNotificationListener(): () => Promise<void> {
   }
 
   isInitialized = true;
+
+  // Esvazia imediatamente o buffer de notificações capturadas em segundo plano
+  void flushPendingBankNotifications();
+
   const notifHandlePromise = BankNotificationPlugin.addListener(
     "bankNotificationReceived",
     (payload) => {

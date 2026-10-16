@@ -207,7 +207,7 @@ graph TD
 - [x] **Feedback Dinâmico & Desfazer:** Notificação se atualiza para "Lançamento registrado" com botão temporário de `[Desfazer]` antes de fechar.
 - [x] **Resiliência Online First:** Tratamento de ausência de rede com aviso ao usuário e preservação na fila de sugestões.
 - [x] **Blacklist de Falsos Positivos:** Rejeição estrita de faturas fechadas, pagamentos de fatura, ofertas de crédito, limites pré-aprovados, recusas e tokens 2FA (`isBlacklistedNotification`).
-- [ ] **Buffer Offline em Background:** Buffer circular em `SharedPreferences` no Android para notificações recebidas com o app fechado e esvaziamento automático via `flushPendingNotifications`.
+- [x] **Buffer Offline em Background:** Buffer circular em `SharedPreferences` no Android para notificações recebidas com o app fechado e esvaziamento automático via `flushPendingNotifications`.
 - [x] **Extrator Multibanco de Merchants:** Captura com preposições "no", "na", delimitadores de travessão do Itaú/Bradesco e vírgulas do Banco do Brasil com sanitização de adquirentes (`PAG*`, `MP*`, etc.) e limpeza de ruídos.
 - [x] **Expansão de Bancos no Domínio:** Suporte e resolução de BTG Pactual, PicPay, PagBank, Neon, Next, XP, Nomad e Wise além dos grandes bancos tradicionais.
 - [ ] **Auto-Categorização e TTL:** Inferência de categoria por palavras-chave com pré-seleção no `LaunchWizard` e auto-expiração de 7 dias.
