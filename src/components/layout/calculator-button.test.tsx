@@ -58,4 +58,23 @@ describe("CalculatorButton — atalho da calculadora no header (pós-F10)", () =
     render(<FloatingCalculator />);
     expect(screen.getByRole("dialog")).toHaveTextContent("Calculadora");
   });
+
+  it("abre o painel da calculadora e permite fechar suavemente via Escape", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <header>
+          <CalculatorButton />
+        </header>
+        <FloatingCalculator />
+      </>,
+    );
+
+    const button = within(screen.getByRole("banner")).getByRole("button", { name: "Abrir calculadora" });
+    await user.click(button);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });

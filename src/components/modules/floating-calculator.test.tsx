@@ -267,4 +267,14 @@ describe("FloatingCalculator (F9)", () => {
     expect(injectDecimal).toHaveBeenCalledWith("540");
     expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
   });
+
+  it("fecha o painel da calculadora ao pressionar a tecla Escape", async () => {
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    expect(screen.getByText("Calculadora")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
+  });
 });

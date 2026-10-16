@@ -398,15 +398,15 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 15: Refinamento do Shell Global, Navegação e Experiência Sensorial
 
-### Tarefa 32: Auditoria e Refinamento do Shell Global, Mobile Navigation, Safe Areas, Toasts e Ferramentas Flutuantes
-- **Status:** ⏳ Pendente
+### Tarefa 32: Auditoria e Refinamento do Shell Global, Mobile Navigation, Safe Areas, Toasts e Ferramentas Flutuantes [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Garantir alinhamento ergonômico perfeito entre mobile e desktop, safe-areas de entalhe e barra de gestos no Android, ausência de sobreposição de toasts/bottom sheets e feedback sensorial único.
 - **Ações:**
-  1. **Auditoria de Safe Areas e Mobile Navigation:** Calibrar a ancoragem da barra de navegação inferior (`MobileNavBar`) com `env(safe-area-inset-bottom)` no Android, impedindo sobreposição em aparelhos com barra de gestos e garantindo que o FAB (`+`) central permaneça acessível sem deslocamentos.
-  2. **Ancoragem de Popups, Toasts e Sheets:** Garantir que modais, bottom sheets deslizantes (`bottom-0`), alertas e toasts (`ToastHost`) respeitem a folga de `80px` acima da barra de navegação mobile e nunca colidam com o menu inferior.
-  3. **Ferramentas Flutuantes & Calculadora:** Ajustar a calculadora flutuante (`FloatingCalculator`) e atalhos rápidos (`CalculatorButton`) para fechar suavemente via tecla Escape, botão voltar físico do Android e cliques externos.
-  4. **Padronização Visual do Shell & Brand:** Verificar a renderização das logos (`BrandLogo`, `LogoProfileButton`) nos 3 temas visuais (Light, Dark e OLED) e confirmar ausência de emojis em qualquer rótulo do shell.
-  5. **Testes Unitários e Validação:** Adicionar testes de regressão para safe-areas, fechamento hierárquico e execução estrita de `npm run typecheck` e `npm run lint`.
+  1. **Auditoria de Safe Areas e Mobile Navigation:** Calibrar a ancoragem da barra de navegação inferior (`MobileNavBar`) com `env(safe-area-inset-bottom)` no Android, impedindo sobreposição em aparelhos com barra de gestos e garantindo que o FAB (`+`) central permaneça acessível sem deslocamentos. (Concluído: ajustada a folga inferior do contêiner principal `#main-content > div` de `pb-24` para `pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-10`, assegurando respiro ergonômico entre 32px e 40px acima da barra inferior no Android, mantendo o FAB de lançamento rápido perfeitamente acessível).
+  2. **Ancoragem de Popups, Toasts e Sheets:** Garantir que modais, bottom sheets deslizantes (`bottom-0`), alertas e toasts (`ToastHost`) respeitem a folga de `80px` acima da barra de navegação mobile e nunca colidam com o menu inferior. (Concluído: verificado `ToastHost`, `Modal`, `Dialog` e `more-menu-sheet` com classes seguras de z-index e ancoragem com folga `bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]`, sem sobreposição de controles).
+  3. **Ferramentas Flutuantes & Calculadora:** Ajustar a calculadora flutuante (`FloatingCalculator`) e atalhos rápidos (`CalculatorButton`) para fechar suavemente via tecla Escape, botão voltar físico do Android e cliques externos. (Concluído: implementado interceptador de tecla `Escape` em `FloatingCalculator`, mantendo suporte nativo ao botão voltar de hardware do Android e cliques fora do diálogo Radix sem retenção de estado de foco residual).
+  4. **Padronização Visual do Shell & Brand:** Verificar a renderização das logos (`BrandLogo`, `LogoProfileButton`) nos 3 temas visuais (Light, Dark e OLED) e confirmar ausência de emojis em qualquer rótulo do shell. (Concluído: validada integridade vetorial das logos com tokens semânticos e conformidade estrita com a regra local/no-decorative-unicode, com zero emojis).
+  5. **Testes Unitários e Validação:** Adicionar testes de regressão para safe-areas, fechamento hierárquico e execução estrita de `npm run typecheck` e `npm run lint`. (Concluído: adicionados testes em `page-shell.test.tsx`, `floating-calculator.test.tsx` e `calculator-button.test.tsx`, com 100% de aprovação na suíte de testes de layout, typecheck e lint sem nenhum erro/aviso).
 - **Commit:** `refactor(shell): refine global navigation, mobile safe areas, and sensory tools`
 
 ---

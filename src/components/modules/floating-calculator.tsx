@@ -213,6 +213,9 @@ export function FloatingCalculator() {
       } else if (key === "=" || key === "Enter") {
         event.preventDefault();
         handleEquals();
+      } else if (key === "Escape") {
+        event.preventDefault();
+        setCalculatorOpen(false);
       } else if (key === "Backspace") {
         event.preventDefault();
         setState((current) => pressBackspace(current));
