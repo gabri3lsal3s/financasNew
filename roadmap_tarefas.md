@@ -533,14 +533,14 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 41: Refinamento e Validação em Tempo Real das Telas de Borda (Auth, Categorias e Checkout Pro)
-- **Status:** ⏳ Pendente
+### Tarefa 41: Refinamento e Validação em Tempo Real das Telas de Borda (Auth, Categorias e Checkout Pro) [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Implementar validação em tempo real com regras visuais, máscaras automáticas, checklist de requisitos de senha e anatomia canônica de formulários em Login, Cadastro, Recuperação de Senha, Categorias e Checkout de Assinatura.
 - **Ações:**
-  1. **Checklist e Força de Senha no Cadastro:** Adicionar feedback visual de requisitos de senha (mínimo 8 caracteres, letra maiúscula, número e caractere especial) com badges de status em `RegisterPage`.
-  2. **Validação e Máscaras em Tempo Real no Checkout:** Refinar campos de CPF (`formatCPF`), número de cartão, validade e CVV em `SubscriptionCheckoutPage` com feedback sonoro/tátil e prevenção de submissão inválida.
-  3. **Harmonização de Formulários e Modais de Categoria:** Alinhar `CategoryFormDialog` e `DeleteCategoryDialog` com a anatomia canônica de labels (`text-xs font-semibold`), helper text (`text-[11px]`) e prevenção de categorias órfãs.
-  4. **Testes Unitários:** Validar os novos checklists, máscaras e comportamento dos formulários de borda.
+  1. **Checklist e Força de Senha no Cadastro:** Adicionar feedback visual de requisitos de senha (mínimo 8 caracteres, letra maiúscula, número e caractere especial) com badges de status em `RegisterPage`. (Concluído: implementado checklist reativo com 4 requisitos de segurança [tamanho mínimo, maiúscula, número, caractere especial], barra de força de senha em 3 níveis [fraca, média, forte], alternador de visibilidade de senha `Eye`/`EyeOff` e guarda de submissão na `RegisterPage`).
+  2. **Validação e Máscaras em Tempo Real no Checkout:** Refinar campos de CPF (`formatCPF`), número de cartão, validade e CVV em `SubscriptionCheckoutPage` com feedback sonoro/tátil e prevenção de submissão inválida. (Concluído: `SubscriptionCheckoutPage` enriquecido com indicador em tempo real de CPF válido/inválido com auto-formatação e detecção dinâmica de bandeira de cartão de crédito [Visa, Mastercard, Elo, Amex, Hipercard] via função pura `detectCardBrand` e badge semântico).
+  3. **Harmonização de Formulários e Modais de Categoria:** Alinhar `CategoryFormDialog` e `DeleteCategoryDialog` com a anatomia canônica de labels (`text-xs font-semibold`), helper text (`text-[11px]`) e prevenção de categorias órfãs. (Concluído: `CategoryFormDialog` e `DeleteCategoryDialog` auditados e alinhados com a anatomia canônica de labels `text-xs font-semibold`, helper text `text-[11px]`, `size="md"` canônico e proteção estrita contra categorias órfãs na migração).
+  4. **Testes Unitários:** Validar os novos checklists, máscaras e comportamento dos formulários de borda. (Concluído: criados testes unitários em `src/domain/validation/password.test.ts`, `src/features/auth/pages/register-page.test.tsx`, `src/services/masks/card.test.ts` e ampliados os testes de `subscription-checkout-page.test.tsx` e `categories-page.test.tsx`, com 100% dos testes aprovados).
 - **Commit:** `refactor(auth-checkout): polish edge screens with real-time validation, masks, and canonical form anatomy`
 
 ---
