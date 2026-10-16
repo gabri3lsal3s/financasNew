@@ -412,10 +412,9 @@ export function CardsPage() {
         />
       ) : loading ? (
         <div className="flex flex-col gap-4">
-
           <Skeleton className="h-64 w-full rounded-2xl max-w-[440px] mx-auto" />
           <Skeleton className="h-12 w-full rounded-xl" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <Skeleton className="h-24 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
@@ -426,7 +425,8 @@ export function CardsPage() {
           icon={<WalletCards className="size-6" aria-hidden="true" />}
           title="Nenhum cartão cadastrado"
           description="Adicione seus cartões de crédito para acompanhar faturas, limites disponíveis, melhor data de compra e extrato."
-          tone="primary"
+          tone="default"
+          className="py-12 sm:py-16 px-6"
           action={
             <Button onClick={() => handleOpenForm(null)} className="gap-2">
               <Plus className="size-4" aria-hidden="true" />
@@ -442,7 +442,7 @@ export function CardsPage() {
           <section
             aria-label="Carteira de Cartões"
             className={cn(
-              "flex flex-col items-center justify-center p-3 sm:p-5 rounded-2xl bg-surface/50 border border-border/70 backdrop-blur-sm shadow-xs transition-all",
+              "flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl bg-surface border border-border/80 shadow-xs transition-all",
               selectedCard && isHighlighted(selectedCard.id) && "ring-2 ring-primary",
             )}
           >
@@ -461,17 +461,17 @@ export function CardsPage() {
           {/* =========================================================================
               SEÇÃO 2: SELETOR DE MÊS, STATUS DA FATURA E KPIS
              ========================================================================= */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 sm:gap-5">
             {/* Seletor rápido de faturas (Anterior, Atual, Próxima) + Navegador */}
-            <div className="flex flex-col gap-2.5">
-              <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Seletor rápido de faturas">
+            <div className="flex flex-col gap-2.5 sm:gap-3">
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-3" role="tablist" aria-label="Seletor rápido de faturas">
                 <button
                   type="button"
                   role="tab"
                   aria-selected={effectiveMonth === prevMonth}
                   onClick={() => handleSelectQuickMonth(prevMonth)}
                   className={cn(
-                    "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all text-center",
+                    "flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border transition-all text-center",
                     effectiveMonth === prevMonth
                       ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
                       : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
@@ -489,7 +489,7 @@ export function CardsPage() {
                   aria-selected={effectiveMonth === currMonth}
                   onClick={() => handleSelectQuickMonth(currMonth)}
                   className={cn(
-                    "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all text-center",
+                    "flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border transition-all text-center",
                     effectiveMonth === currMonth
                       ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
                       : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
@@ -507,7 +507,7 @@ export function CardsPage() {
                   aria-selected={effectiveMonth === nextMonth}
                   onClick={() => handleSelectQuickMonth(nextMonth)}
                   className={cn(
-                    "flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all text-center",
+                    "flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border transition-all text-center",
                     effectiveMonth === nextMonth
                       ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
                       : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
@@ -525,7 +525,7 @@ export function CardsPage() {
             </div>
 
             {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
               <KpiCard
                 label="Fatura Total (Bruto)"
                 cents={summary?.previstoBrutoCents ?? 0}
@@ -568,7 +568,7 @@ export function CardsPage() {
             </div>
 
             {selectedCard ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-surface border border-border">
+              <div className="flex flex-wrap items-center justify-between gap-3.5 p-4 sm:p-5 rounded-2xl bg-surface border border-border/80 shadow-xs">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground font-medium">Status da fatura:</span>
                   <InvoiceStatusBadge status={invStatus} />
@@ -594,8 +594,8 @@ export function CardsPage() {
           {/* =========================================================================
               SEÇÃO 3: EXTRATO DISCRIMINADO (DESPESAS E PAGAMENTOS)
              ========================================================================= */}
-          <section aria-label={`Despesas da fatura de ${monthLabel(effectiveMonth)}`} className="flex flex-col gap-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <section aria-label={`Despesas da fatura de ${monthLabel(effectiveMonth)}`} className="flex flex-col gap-4 sm:gap-5">
+            <div className="flex flex-col gap-2.5 pb-1 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Despesas · {monthLabel(effectiveMonth)}
@@ -646,15 +646,16 @@ export function CardsPage() {
 
             {competenceExpenses.length === 0 ? (
               <EmptyState
-                icon={<WalletCards className="size-6 text-muted-foreground" aria-hidden="true" />}
+                icon={<WalletCards className="size-6" aria-hidden="true" />}
                 title="Sem despesas nesta fatura"
                 description="As compras no cartão aparecem aqui de acordo com o fechamento da fatura."
+                className="py-10 sm:py-12 px-4"
               />
             ) : (
-              <>
+              <div className="flex flex-col gap-6 sm:gap-7">
                 {/* Parceladas — compras herdadas de meses anteriores (topo) */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between pb-0.5">
                     <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <Repeat className="size-3.5" aria-hidden="true" />
                       Parceladas
@@ -664,15 +665,19 @@ export function CardsPage() {
                     </span>
                   </div>
                   {installments.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhuma compra parcelada nesta fatura.</p>
+                    <div className="flex items-center justify-center rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground">
+                      Nenhuma compra parcelada nesta fatura.
+                    </div>
                   ) : (
-                    installments.map(renderInvoiceRow)
+                    <div className="flex flex-col gap-2 sm:gap-2.5">
+                      {installments.map(renderInvoiceRow)}
+                    </div>
                   )}
                 </div>
 
                 {/* À vista — gastos do próprio mês da fatura (abaixo) */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between pb-0.5">
                     <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <Zap className="size-3.5" aria-hidden="true" />
                       À vista
@@ -682,18 +687,22 @@ export function CardsPage() {
                     </span>
                   </div>
                   {regular.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhuma compra à vista nesta fatura.</p>
+                    <div className="flex items-center justify-center rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground">
+                      Nenhuma compra à vista nesta fatura.
+                    </div>
                   ) : (
-                    regular.map(renderInvoiceRow)
+                    <div className="flex flex-col gap-2 sm:gap-2.5">
+                      {regular.map(renderInvoiceRow)}
+                    </div>
                   )}
                 </div>
-              </>
+              </div>
             )}
           </section>
 
           {/* Pagamentos e estornos */}
-          <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
+          <section aria-label="Pagamentos e estornos" className="flex flex-col gap-3.5 sm:gap-4">
+            <div className="flex items-center justify-between pb-0.5">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Pagamentos e estornos
               </h2>
@@ -704,54 +713,57 @@ export function CardsPage() {
 
             {competencePayments.length === 0 ? (
               <EmptyState
-                icon={<WalletCards className="size-6 text-muted-foreground" aria-hidden="true" />}
+                icon={<WalletCards className="size-6" aria-hidden="true" />}
                 title="Nenhum pagamento"
                 description="Registre o pagamento ou estorno desta fatura quando for efetuado."
+                className="py-8 sm:py-10 px-4"
               />
             ) : (
-              competencePayments.map((payment) =>
-                payment.amount < 0 ? (
-                  <TransactionRow
-                    key={payment.id}
-                    title={payment.note || "Estorno"}
-                    date={payment.date}
-                    amountCents={Math.round(-payment.amount * 100)}
-                    kind="income"
-                    badges={
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeletePaymentClick(payment)}
-                        aria-label={`Excluir estorno ${payment.note || ""}`}
-                        className="size-7 p-0 text-muted-foreground hover:text-critical"
-                      >
-                        <Trash2 className="size-3.5" aria-hidden="true" />
-                      </Button>
-                    }
-                  />
-                ) : (
-                  <TransactionRow
-                    key={payment.id}
-                    title={payment.note || "Pagamento de fatura"}
-                    date={payment.date}
-                    amountCents={Math.round(payment.amount * 100)}
-                    kind="expense"
-                    badges={
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeletePaymentClick(payment)}
-                        aria-label={`Excluir pagamento ${payment.note || ""}`}
-                        className="size-7 p-0 text-muted-foreground hover:text-critical"
-                      >
-                        <Trash2 className="size-3.5" aria-hidden="true" />
-                      </Button>
-                    }
-                  />
-                ),
-              )
+              <div className="flex flex-col gap-2 sm:gap-2.5">
+                {competencePayments.map((payment) =>
+                  payment.amount < 0 ? (
+                    <TransactionRow
+                      key={payment.id}
+                      title={payment.note || "Estorno"}
+                      date={payment.date}
+                      amountCents={Math.round(-payment.amount * 100)}
+                      kind="income"
+                      badges={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePaymentClick(payment)}
+                          aria-label={`Excluir estorno ${payment.note || ""}`}
+                          className="size-7 p-0 text-muted-foreground hover:text-critical"
+                        >
+                          <Trash2 className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <TransactionRow
+                      key={payment.id}
+                      title={payment.note || "Pagamento de fatura"}
+                      date={payment.date}
+                      amountCents={Math.round(payment.amount * 100)}
+                      kind="expense"
+                      badges={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePaymentClick(payment)}
+                          aria-label={`Excluir pagamento ${payment.note || ""}`}
+                          className="size-7 p-0 text-muted-foreground hover:text-critical"
+                        >
+                          <Trash2 className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      }
+                    />
+                  ),
+                )}
+              </div>
             )}
           </section>
         </>

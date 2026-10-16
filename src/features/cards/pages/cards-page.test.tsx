@@ -17,17 +17,50 @@ const updateCardMock = vi.fn();
 const deleteCardMock = vi.fn();
 const deleteCardPaymentMock = vi.fn();
 
-beforeEach(() => {
-  paymentMock.mockClear();
-  refundMock.mockClear();
-  createCardMock.mockClear();
-  updateCardMock.mockClear();
-  deleteCardMock.mockClear();
-  deleteCardPaymentMock.mockClear();
-});
+const defaultCard = {
+  id: "c1",
+  name: "Nubank",
+  brand: "Mastercard",
+  credit_limit: 5000,
+  color: "#8B5CF6",
+  closing_day: 10,
+  due_day: 15,
+  is_active: true,
+};
+
+const defaultExpense = {
+  id: "e1",
+  description: "Supermercado",
+  date: "2026-08-05",
+  value: 150,
+  report_weight: 1,
+  bill_competence: "2026-08",
+  installments_total: 1,
+  installment_number: 1,
+};
+
+const defaultPayment = {
+  id: "p1",
+  competence_month: "2026-08",
+  amount: 100,
+  date: "2026-08-10",
+  note: null,
+};
 
 // Despesas da fatura variáveis por teste (para validar a separação parceladas × à vista).
 const stateMocks = vi.hoisted(() => ({
+  cards: [
+    {
+      id: "c1",
+      name: "Nubank",
+      brand: "Mastercard",
+      credit_limit: 5000,
+      color: "#8B5CF6",
+      closing_day: 10,
+      due_day: 15,
+      is_active: true,
+    },
+  ],
   expenses: [
     {
       id: "e1",
@@ -40,7 +73,22 @@ const stateMocks = vi.hoisted(() => ({
       installment_number: 1,
     },
   ],
+  payments: [
+    { id: "p1", competence_month: "2026-08", amount: 100, date: "2026-08-10", note: null },
+  ],
 }));
+
+beforeEach(() => {
+  paymentMock.mockClear();
+  refundMock.mockClear();
+  createCardMock.mockClear();
+  updateCardMock.mockClear();
+  deleteCardMock.mockClear();
+  deleteCardPaymentMock.mockClear();
+  stateMocks.cards = [{ ...defaultCard }];
+  stateMocks.expenses = [{ ...defaultExpense }];
+  stateMocks.payments = [{ ...defaultPayment }];
+});
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
@@ -57,18 +105,7 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useCreditCards: () => ({
-    data: [
-      {
-        id: "c1",
-        name: "Nubank",
-        brand: "Mastercard",
-        credit_limit: 5000,
-        color: "#8B5CF6",
-        closing_day: 10,
-        due_day: 15,
-        is_active: true,
-      },
-    ],
+    data: stateMocks.cards,
     isLoading: false,
     isError: false,
     error: null,
@@ -82,7 +119,7 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useCardPayments: () => ({
-    data: [{ id: "p1", competence_month: "2026-08", amount: 100, date: "2026-08-10", note: null }],
+    data: stateMocks.payments,
     isLoading: false,
     isError: false,
     error: null,
@@ -95,7 +132,7 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useAllCardPayments: () => ({
-    data: [{ id: "p1", competence_month: "2026-08", amount: 100, date: "2026-08-10", note: null }],
+    data: stateMocks.payments,
     isLoading: false,
     isError: false,
     error: null,
@@ -325,5 +362,49 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
     searchParamsMock.mockReturnValue([new URLSearchParams(), vi.fn()]);
+  });
+
+  it("exibe estado vazio harmonizado para compras parceladas quando só houver compras à vista", () => {
+    // stateMocks.expenses contém apenas 'Supermercado' à vista (installments_total: 1)
+    render(<CardsPage />);
+    expect(screen.getByText("Nenhuma compra parcelada nesta fatura.")).toBeInTheDocument();
+    expect(screen.getByText("Supermercado")).toBeInTheDocument();
+  });
+
+  it("exibe estado vazio harmonizado para compras à vista quando só houver compras parceladas", () => {
+    stateMocks.expenses = [
+      {
+        id: "e2",
+        description: "Celular 10x",
+        date: "2026-08-01",
+        value: 300,
+        report_weight: 1,
+        bill_competence: "2026-08",
+        installments_total: 10,
+        installment_number: 1,
+      },
+    ];
+    render(<CardsPage />);
+    expect(screen.getByText("Nenhuma compra à vista nesta fatura.")).toBeInTheDocument();
+    expect(screen.getByText("Celular 10x")).toBeInTheDocument();
+  });
+
+  it("exibe estado vazio harmonizado quando a fatura não possuir despesas", () => {
+    stateMocks.expenses = [];
+    render(<CardsPage />);
+    expect(screen.getByText("Sem despesas nesta fatura")).toBeInTheDocument();
+  });
+
+  it("exibe estado vazio harmonizado quando não houver pagamentos ou estornos na fatura", () => {
+    stateMocks.payments = [];
+    render(<CardsPage />);
+    expect(screen.getByText("Nenhum pagamento")).toBeInTheDocument();
+  });
+
+  it("exibe estado vazio harmonizado quando não houver nenhum cartão cadastrado", () => {
+    stateMocks.cards = [];
+    render(<CardsPage />);
+    expect(screen.getByText("Nenhum cartão cadastrado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /adicionar primeiro cartão/i })).toBeInTheDocument();
   });
 });

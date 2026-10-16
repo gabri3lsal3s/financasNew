@@ -574,3 +574,12 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
   - Valores monetários são sempre 100% visíveis em linha (`whitespace-nowrap tabular-nums tracking-tight`) com auto-fit dinâmico, sem reticências (Regra 11).
 - **Dimensionamento Responsivo Fluido:**
   - Escala progressiva do anel: `size-44` (mobile 176px) $\rightarrow$ `sm:size-48` (192px) $\rightarrow$ `md:size-52` (208px) $\rightarrow$ `lg:size-56` (224px) $\rightarrow$ `xl:size-60` (240px no desktop), centralizado verticalmente no card (`self-center md:items-center`).
+
+### 14.22 Harmonização de Espaçamentos e Sub-blocos na Gestão de Faturas (Cartões)
+- **Descompressão de Layout:** A hierarquia entre blocos principais (Carteira 3D $\rightarrow$ Seletor/Status/KPIs $\rightarrow$ Extrato de Despesas $\rightarrow$ Pagamentos e Estornos) utiliza espaçamentos desobstruídos (`gap-6` na página; `gap-4 sm:gap-5` dentro de seções; `gap-6 sm:gap-7` entre os grupos de compras *Parceladas* e *À vista*).
+- **Sub-blocos de Extrato:** Cada agrupamento de despesas (*Parceladas* e *À vista*) possui cabeçalho discriminado com ícone semântico, contador de itens e separação vertical dedicada (`flex flex-col gap-3`), agrupando as linhas em `gap-2 sm:gap-2.5`.
+- **Estados Vazios Sub-seccionais e Primários:**
+  - Estados vazios de página inteira (sem cartões cadastrados) utilizam `EmptyState` com `py-12 sm:py-16 px-6`, `tone="default"` e botão CTA destacado.
+  - Estados vazios de seção de fatura (sem despesas ou sem pagamentos) utilizam `EmptyState` com paddings calibrados (`py-10 sm:py-12` e `py-8 sm:py-10`).
+  - Sub-blocos vazios (*sem parceladas* ou *sem compras à vista* em faturas que possuem despesas no outro grupo) utilizam contêiner sutil padronizado com borda tracejada (`rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground`), garantindo ritmo e harmonia visual sem poluição.
+

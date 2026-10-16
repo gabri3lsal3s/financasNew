@@ -236,13 +236,14 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 20: Padronização e Harmonização de Espaçamentos na Página de Cartões
+### Tarefa 20: Padronização e Harmonização de Espaçamentos na Página de Cartões [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Eliminar a compressão visual na página de Cartões padronizando gaps e paddings.
 - **Ações:**
-  1. Descomprimir o layout entre blocos de compras parceladas, compras à vista e cards de resumo.
-  2. Harmonizar o espaçamento dos estados vazios ("nenhuma informação") com a escala do Design System.
+  1. Descomprimir o layout entre blocos de compras parceladas, compras à vista e cards de resumo. (Concluído: descomprimidos os gaps de transição vertical da página para `gap-4 sm:gap-5` no painel de controle e faturas, elevado o espaçamento entre os blocos de compras *Parceladas* e *À vista* para `gap-6 sm:gap-7` com contêineres e cabeçalhos dedicados `gap-3` e linhas de extrato com `gap-2 sm:gap-2.5`; cards de KPIs descompactados para `gap-3 sm:gap-4`; seletor rápido de faturas com botões expandidos `p-2.5 sm:p-3 rounded-xl`; e barra de status da fatura padronizada na superfície canônica `p-4 sm:p-5 rounded-2xl bg-surface border border-border/80 shadow-xs gap-3.5`).
+  2. Harmonizar o espaçamento dos estados vazios ("nenhuma informação") com a escala do Design System. (Concluído: padronizado o estado vazio geral de página sem cartões para `tone="default"` com `py-12 sm:py-16 px-6`; estados vazios de fatura sem despesas e sem pagamentos calibrados respectivamente para `py-10 sm:py-12` e `py-8 sm:py-10`; e estados vazios sub-seccionais quando não há parceladas ou à vista padronizados em contêiner sutil tracejado `rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground`, garantindo harmonia visual e cobertura de 100% dos testes).
 - **Commit:** `style(cards): harmonize layout spacing across installments, cash purchases, and empty states`
-EOF
+
 
 ---
 
