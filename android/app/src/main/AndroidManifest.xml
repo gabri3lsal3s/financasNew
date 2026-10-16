@@ -18,11 +18,6 @@
             android:exported="true">
 
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -41,6 +36,36 @@
                 android:resource="@xml/shortcuts" />
 
         </activity>
+
+        <!-- Launcher Oficial Padrão (Teal - Gratuito) -->
+        <activity-alias
+            android:name=".MainActivityDefault"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/title_activity_main"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Launcher Oficial Pro (Âmbar / Gold - Assinante Pro) -->
+        <activity-alias
+            android:name=".MainActivityPro"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_pro"
+            android:roundIcon="@mipmap/ic_launcher_pro_round"
+            android:label="@string/title_activity_main"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Serviço de escuta passiva de notificações bancárias -->
         <service

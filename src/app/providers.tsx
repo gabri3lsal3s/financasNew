@@ -10,6 +10,7 @@ import { resetAppState } from "@/services/auth-cleanup";
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { syncVisualWithCloud } from "@/hooks/use-visual-customization";
 import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
+import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
 import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
 import { initAppLockListener } from "@/services/native";
@@ -70,9 +71,10 @@ function CloudPreferencesSync({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function DynamicFaviconSync() {
+function DynamicBrandSync() {
   const isPro = useIsPro();
   useDynamicFavicon(isPro);
+  useDynamicAppIcon(isPro);
   return null;
 }
 
@@ -102,7 +104,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <AuthQuerySync>
         <CloudPreferencesSync>
           <SubscriptionProvider>
-            <DynamicFaviconSync />
+            <DynamicBrandSync />
             <ThemeProvider>
               <Toaster>
                 {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}

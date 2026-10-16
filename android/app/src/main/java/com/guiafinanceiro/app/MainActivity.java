@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(BankNotificationPlugin.class);
+        registerPlugin(AppIconPlugin.class);
         super.onCreate(savedInstanceState);
         handleSendIntent(getIntent());
     }

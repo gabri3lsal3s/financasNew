@@ -179,17 +179,22 @@ function encodeIco(pngBuffers) {
 // Imagens base oficiais da marca ÁXIS:
 // - sourceDark: letra 'A' branca (para superfícies escuras como splash screen)
 // - sourceLight: letra 'A' escura (para superfícies claras e ícones de launcher com fundo branco)
+// - sourceAmberLight: letra 'A' escura e asas âmbar (para ícone do launcher Pro em fundo branco)
 const darkPath = existsSync(join(root, "public", "brand", "logo-teal-dark.png"))
   ? join(root, "public", "brand", "logo-teal-dark.png")
   : join(root, "identidadeVisual", "axis-logo.png");
 const lightPath = existsSync(join(root, "public", "brand", "logo-teal-light.png"))
   ? join(root, "public", "brand", "logo-teal-light.png")
   : darkPath;
+const amberLightPath = existsSync(join(root, "public", "brand", "logo-amber-light.png"))
+  ? join(root, "public", "brand", "logo-amber-light.png")
+  : lightPath;
 
 const sourceDark = decodePng(readFileSync(darkPath));
 const sourceLight = decodePng(readFileSync(lightPath));
+const sourceAmberLight = decodePng(readFileSync(amberLightPath));
 
-console.log(`Carregadas imagens base da marca: Dark (${sourceDark.width}x${sourceDark.height}) e Light (${sourceLight.width}x${sourceLight.height})`);
+console.log(`Carregadas imagens base da marca: Dark (${sourceDark.width}x${sourceDark.height}), Light (${sourceLight.width}x${sourceLight.height}) e Amber Light (${sourceAmberLight.width}x${sourceAmberLight.height})`);
 
 function getBbox(source) {
   let minX = source.width, maxX = 0, minY = source.height, maxY = 0;
@@ -212,6 +217,7 @@ function getBbox(source) {
 
 const bboxDark = getBbox(sourceDark);
 const bboxLight = getBbox(sourceLight);
+const bboxAmberLight = getBbox(sourceAmberLight);
 
 // Amostragem bilinear de alta precisão
 function sampleImage(normX, normY, source, bbox) {
@@ -275,6 +281,34 @@ function renderTransparentIcon(size, scale = 0.96, useLight = false) {
     const normY = ((y + 0.5) / size - 0.5) / scale;
 
     return sampleImage(normX, normY, source, bbox);
+  });
+}
+
+// 3. Renderiza ícone Pro Âmbar sobre fundo branco (#FFFFFF) com 'A' escuro e asas âmbar (sourceAmberLight)
+function renderPwaWhiteAmberIcon(size, scale = 0.80) {
+  return encodePngRgba(size, size, (x, y) => {
+    const normX = ((x + 0.5) / size - 0.5) / scale;
+    const normY = ((y + 0.5) / size - 0.5) / scale;
+
+    const [r, g, b, a] = sampleImage(normX, normY, sourceAmberLight, bboxAmberLight);
+    if (a <= 0) return [255, 255, 255, 255]; // Branco puro
+
+    const alphaNorm = a / 255;
+    const outR = Math.round(r * alphaNorm + 255 * (1 - alphaNorm));
+    const outG = Math.round(g * alphaNorm + 255 * (1 - alphaNorm));
+    const outB = Math.round(b * alphaNorm + 255 * (1 - alphaNorm));
+
+    return [outR, outG, outB, 255];
+  });
+}
+
+// 4. Renderiza foreground adaptativo transparente Pro Âmbar com 'A' escuro e asas âmbar
+function renderTransparentAmberIcon(size, scale = 0.58) {
+  return encodePngRgba(size, size, (x, y) => {
+    const normX = ((x + 0.5) / size - 0.5) / scale;
+    const normY = ((y + 0.5) / size - 0.5) / scale;
+
+    return sampleImage(normX, normY, sourceAmberLight, bboxAmberLight);
   });
 }
 
@@ -380,14 +414,35 @@ if (existsSync(androidResDir)) {
     writeFileSync(join(targetDir, "ic_launcher_round.png"), legacyBuf);
 
     // (c) ic_launcher_foreground.png (adaptive foreground transparente com 'A' escuro para fundo branco: scale 0.58)
-    // No Android Adaptive Icons (108dp canvas), o corte circular/squircle ocorre em 72dp (~66.6% do canvas).
-    // A escala 0.58 posiciona a logo ocupando ~87% da área visível segura, garantindo ~13% de respiro
-    // até a borda da máscara, sem comprimir o ícone e sem tocar as bordas.
     const fgBuf = renderTransparentIcon(fgSize, 0.58, true);
     writeFileSync(join(targetDir, "ic_launcher_foreground.png"), fgBuf);
 
-    console.log(`✓ android/res/${dir} (launcher ${size}x${size}, fg ${fgSize}x${fgSize})`);
+    // (d) ic_launcher_pro.png (legacy icon Pro Âmbar com fundo branco: 0.74)
+    const proLegacyBuf = renderPwaWhiteAmberIcon(size, 0.74);
+    writeFileSync(join(targetDir, "ic_launcher_pro.png"), proLegacyBuf);
+
+    // (e) ic_launcher_pro_round.png (legacy round icon Pro Âmbar com fundo branco: 0.74)
+    writeFileSync(join(targetDir, "ic_launcher_pro_round.png"), proLegacyBuf);
+
+    // (f) ic_launcher_pro_foreground.png (adaptive foreground transparente Pro Âmbar: scale 0.58)
+    const proFgBuf = renderTransparentAmberIcon(fgSize, 0.58);
+    writeFileSync(join(targetDir, "ic_launcher_pro_foreground.png"), proFgBuf);
+
+    console.log(`✓ android/res/${dir} (launcher ${size}x${size}, fg ${fgSize}x${fgSize} [Default + Pro])`);
   }
+
+  // Gera os XMLs do Adaptive Icon para a variante Pro
+  const anydpiDir = join(androidResDir, "mipmap-anydpi-v26");
+  mkdirSync(anydpiDir, { recursive: true });
+  const proXmlContent = `<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_pro_foreground"/>
+</adaptive-icon>
+`;
+  writeFileSync(join(anydpiDir, "ic_launcher_pro.xml"), proXmlContent, "utf8");
+  writeFileSync(join(anydpiDir, "ic_launcher_pro_round.xml"), proXmlContent, "utf8");
+  console.log(`✓ android/res/mipmap-anydpi-v26/ (ic_launcher_pro.xml e ic_launcher_pro_round.xml)`);
 
   // Remove o vetor padrão de foreground do Capacitor (robô/escudo azul) para que o Android
   // utilize o @mipmap/ic_launcher_foreground real gerado a partir da marca.

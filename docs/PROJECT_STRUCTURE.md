@@ -247,12 +247,13 @@
     │                              #   use-sidebar-state, use-sign-out (logout unificado),
     │                              #   use-privacy-mask, use-visual-customization (F11),
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
+    │                              #   use-dynamic-favicon, use-dynamic-app-icon (sincronização de marca e ícone no Launcher),
     │                              #   use-container-scroll (monitoramento cirúrgico de rolagem a 120fps sem re-render),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
     ├── services/                  # Apresentação + integrações
     │   ├── native/                #   Gateway nativo (Capacitor/Android): platform, back-button,
     │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,
-    │   │                          #     deep-links, local-notifications, suggestions-store, bank-listener
+    │   │                          #     deep-links, local-notifications, suggestions-store, bank-listener, app-icon
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
     │   │                          #     formatPercent)

@@ -20,4 +20,5 @@ export type { UseContainerScrollOptions, UseContainerScrollResult } from "./use-
 export { useNetworkStatus } from "./use-network-status";
 export { useMutationGuard, type UseMutationGuardOptions, type UseMutationGuardReturn } from "./use-mutation-guard";
 export { useDynamicFavicon } from "./use-dynamic-favicon";
+export { useDynamicAppIcon } from "./use-dynamic-app-icon";
 export { useIsPro } from "./use-is-pro";
