@@ -384,11 +384,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   6. **Persistência das Preferências:** (Concluído: armazenamento com isolamento de usuário via `user-storage.ts`, sincronização com `user_preferences.custom_settings.bankAssistant` no Supabase e hook reativo `useBankAssistantPreferences` com 100% de testes verdes).
 - **Commit:** `feat(settings): add user preference toggles for bank notifications, quick-add, installments, and category inference`
 
-### Tarefa 31: Correção do Crash Loop na Troca Dinâmica de Ícone (Cache Pro & Anti-Restart) 
-- Objetivo: Impedir que o app feche sozinho em loop ao alterar o ícone do launcher para a versão Pro. 
-- Ações: 
-  1. Armazenar em cache local (last_applied_icon_tier) o estado do último ícone configurado ("FREE" ou "PRO"). 
-  2. Implementar delta check na inicialização: acionar a troca de ícone nativo unicamente se o status do usuário mudou em relação ao cache. 
-  3. Adicionar a flag PackageManager.DONT_KILL_APP na chamada nativa do Android para minimizar encerramentos abruptos. 
-  4. Garantir que os logos internos da aplicação leiam o cache na montagem imediata, evitando piscadas ou atrasos visuais. 
-- Commit: fix(launcher): prevent crash loop on dynamic icon switch using cached tier delta checks 
+### Tarefa 31: Correção do Crash Loop na Troca Dinâmica de Ícone (Cache Pro & Anti-Restart) [Concluída]
+- **Status:** ✅ Concluída
+- **Objetivo:** Impedir que o app feche sozinho em loop ao alterar o ícone do launcher para a versão Pro.
+- **Ações:**
+  1. **Armazenamento em Cache Local (`last_applied_icon_tier`):** (Concluído: implementadas funções síncronas `getCachedIconTier(): "FREE" | "PRO"` e `setCachedIconTier(tier)` em `src/services/native/app-icon.ts`, persistindo o último tier configurado com fallback defensivo para "FREE" em caso de restrições de storage).
+  2. **Delta Check Anti-Restart na Inicialização:** (Concluído: validação rigorosa de delta em `setNativeAppIcon` que compara o tier desejado com o cache local; se forem iguais, a função retorna `true` imediatamente sem chamar o plugin nativo Android, impedindo comutação redundante de activity-aliases e eliminando o crash loop de reinício de processo).
+  3. **Flag `PackageManager.DONT_KILL_APP` e Blindagem Nativa Android:** (Concluído: garantida a aplicação da flag `PackageManager.DONT_KILL_APP` em todas as chamadas de `setComponentEnabledSetting` em `AppIconPlugin.java` e encapsulamento em bloco `try/catch` defensivo para capturar qualquer exceção do PackageManager sem derrubar o processo do sistema operacional).
+  4. **Resolução Imediata das Logos Internas:** (Concluído: integração de `getCachedIconTier()` em `useIsPro`, `SubscriptionContext` e no fallback inicial de `useUserSubscription`, permitindo que `<BrandLogo />` e componentes visuais leiam o tier do usuário instantaneamente na montagem síncrona do frame zero, eliminando piscadas visuais [FOUC] e atrasos de renderização).
+- **Commit:** `fix(launcher): prevent crash loop on dynamic icon switch using cached tier delta checks`
+

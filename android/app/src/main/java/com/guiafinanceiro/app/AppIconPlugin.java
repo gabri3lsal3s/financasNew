@@ -26,42 +26,49 @@ public class AppIconPlugin extends Plugin {
         ComponentName defaultComponent = new ComponentName(context, DEFAULT_ALIAS);
         ComponentName proComponent = new ComponentName(context, PRO_ALIAS);
 
-        int currentProState = pm.getComponentEnabledSetting(proComponent);
-        boolean isCurrentlyPro = (currentProState == PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
+        try {
+            int currentProState = pm.getComponentEnabledSetting(proComponent);
+            boolean isCurrentlyPro = (currentProState == PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
 
-        if (isPro != isCurrentlyPro) {
-            if (isPro) {
-                // Habilita o alias Pro primeiro para que o app nunca fique sem um launcher ativo no Android
-                pm.setComponentEnabledSetting(
-                    proComponent,
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    PackageManager.DONT_KILL_APP
-                );
-                pm.setComponentEnabledSetting(
-                    defaultComponent,
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    PackageManager.DONT_KILL_APP
-                );
-            } else {
-                // Habilita o alias Default primeiro
-                pm.setComponentEnabledSetting(
-                    defaultComponent,
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    PackageManager.DONT_KILL_APP
-                );
-                pm.setComponentEnabledSetting(
-                    proComponent,
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    PackageManager.DONT_KILL_APP
-                );
+            if (isPro != isCurrentlyPro) {
+                if (isPro) {
+                    // Habilita o alias Pro primeiro para que o app nunca fique sem um launcher ativo no Android
+                    pm.setComponentEnabledSetting(
+                        proComponent,
+                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                        PackageManager.DONT_KILL_APP
+                    );
+                    pm.setComponentEnabledSetting(
+                        defaultComponent,
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        PackageManager.DONT_KILL_APP
+                    );
+                } else {
+                    // Habilita o alias Default primeiro
+                    pm.setComponentEnabledSetting(
+                        defaultComponent,
+                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                        PackageManager.DONT_KILL_APP
+                    );
+                    pm.setComponentEnabledSetting(
+                        proComponent,
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        PackageManager.DONT_KILL_APP
+                    );
+                }
             }
-        }
 
-        JSObject ret = new JSObject();
-        ret.put("success", true);
-        ret.put("currentIcon", isPro ? "pro" : "default");
-        ret.put("isPro", isPro);
-        call.resolve(ret);
+            JSObject ret = new JSObject();
+            ret.put("success", true);
+            ret.put("currentIcon", isPro ? "pro" : "default");
+            ret.put("isPro", isPro);
+            call.resolve(ret);
+        } catch (Exception e) {
+            JSObject ret = new JSObject();
+            ret.put("success", false);
+            ret.put("error", e.getMessage());
+            call.resolve(ret);
+        }
     }
 
     @PluginMethod

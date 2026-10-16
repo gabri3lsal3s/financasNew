@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMySubscription } from "@/data/repositories/subscriptions";
+import { getCachedIconTier } from "@/services/native/app-icon";
 import { useUserAccess, USER_SUBSCRIPTION_KEY } from "./use-user-access";
 import type { SubscriptionStatus, SubscriptionTier, SubscriptionPlan } from "@/types";
 
@@ -29,8 +30,12 @@ export function useUserSubscription(): SubscriptionStatus {
       return subData;
     }
 
-    // Estado inicial (loading) — permissivo com base em created_at para evitar flash de paywall
-    return buildFallbackStatus("trial", profile?.created_at ?? null);
+    // Estado inicial (loading) — se o cache já indica status PRO, honra visualmente
+    // para evitar piscadas e atrasos nas logos da aplicação durante a inicialização
+    const cachedTier = getCachedIconTier();
+    const fallbackTier = cachedTier === "PRO" ? "pro_monthly" : "trial";
+
+    return buildFallbackStatus(fallbackTier, profile?.created_at ?? null);
   }, [subData, profile?.created_at]);
 }
 

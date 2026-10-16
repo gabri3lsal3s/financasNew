@@ -52,6 +52,22 @@ describe("BrandLogo — Sistema de Identidade Oficial ÁXIS Finance", () => {
     const img = container.querySelector("img");
     expect(img?.getAttribute("src")).toContain("teal");
   });
+
+  it("lê o cache local ('PRO') na montagem imediata sem prop isPro explícita para evitar piscada", () => {
+    localStorage.setItem("last_applied_icon_tier", "PRO");
+    const { container } = render(<BrandLogo />);
+    const img = container.querySelector("img");
+    expect(img?.getAttribute("src")).toContain("amber");
+    localStorage.clear();
+  });
+
+  it("lê o cache local ('FREE') na montagem imediata sem prop isPro explícita", () => {
+    localStorage.setItem("last_applied_icon_tier", "FREE");
+    const { container } = render(<BrandLogo />);
+    const img = container.querySelector("img");
+    expect(img?.getAttribute("src")).toContain("teal");
+    localStorage.clear();
+  });
 });
 
 describe("LogoIcon — Componente Gráfico Áxis Finance", () => {
