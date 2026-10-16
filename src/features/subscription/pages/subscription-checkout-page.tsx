@@ -297,7 +297,7 @@ export function SubscriptionCheckoutPage() {
       {/* Header mínimo */}
       <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-          <BrandLogo markClassName="size-7" />
+          <BrandLogo isPro={true} markClassName="size-7" />
           <Button
             type="button"
             variant="ghost"

@@ -1,56 +1,100 @@
 import { cn } from "@/lib/utils";
+import { LogoIcon } from "./logo-icon";
+import type { LogoIconProps } from "./logo-icon";
+import { LogoFull } from "./logo-full";
+
+export type { LogoIconProps } from "./logo-icon";
+export { LogoIcon } from "./logo-icon";
+export type { LogoFullProps } from "./logo-full";
+export { LogoFull } from "./logo-full";
 
 export interface BrandLogoProps {
   className?: string;
-  /** Exibe o wordmark "AXIS" ao lado do símbolo (padrão: false). */
+  /** Exibe o wordmark "ÁXIS" ao lado do símbolo (padrão: false). */
   showWordmark?: boolean;
-  /** Exibe subtítulo "Guia Financeiro" abaixo do wordmark (padrão: false). */
+  /** Exibe subtítulo "Finance" abaixo do wordmark (padrão: false). */
   showSubtitle?: boolean;
-  /** Tamanho do símbolo (padrão: size-8). */
+  /** Texto do subtítulo (padrão: "Finance"). */
+  subtitleText?: string;
+  /** Tamanho e classes do símbolo (padrão: size-8). */
   markClassName?: string;
+  /** Classes adicionais para o texto "ÁXIS". */
   wordmarkClassName?: string;
+  /** Classes adicionais para o subtítulo. */
+  subtitleClassName?: string;
+  /** Força exibição da versão Pro (Âmbar/Dourada). Se omitido, detecta via assinatura ativa. */
+  isPro?: boolean;
+  /** Modo de tema visual ("light" | "dark" | "auto"). Padrão: "auto". */
+  themeMode?: LogoIconProps["themeMode"];
+  /** Mantido para retrocompatibilidade. */
+  accentReactive?: boolean;
+  /** Variante gráfica do símbolo ("default" | "monochrome" | "white" | "dark"). */
+  variant?: LogoIconProps["variant"];
+  /** Ação de clique opcional. */
+  onClick?: () => void;
 }
 
 /**
- * Logo oficial da marca AXIS (F10) — Carteira Orbital & Gestão Financeira.
- * Renderiza o símbolo com fundo transparente em alta resolução (srcSet multi-tamanho)
- * e tipografia de marca harmonizada com o design system Obsidian Glass (Dark e Light).
+ * BrandLogo — Ponto único de entrada para a identidade oficial da marca ÁXIS Finance.
+ * Utiliza o motor gráfico de alta resolução (LogoIcon e LogoFull), garantindo
+ * zero serrilhados em qualquer densidade de pixels, máxima nitidez e reatividade
+ * automática ao modo Pro (Âmbar/Dourado) e tema Claro/Escuro.
  */
 export function BrandLogo({
   className,
   showWordmark = false,
   showSubtitle = false,
+  subtitleText = "Finance",
   markClassName,
   wordmarkClassName,
+  subtitleClassName,
+  isPro,
+  themeMode,
+  accentReactive = true,
+  variant = "default",
+  onClick,
 }: BrandLogoProps) {
-  return (
-    <span className={cn("inline-flex items-center gap-2.5 select-none overflow-hidden min-w-0", className)}>
-      <img
-        src="/brand/logo-128.png"
-        srcSet="/brand/logo-64.png 64w, /brand/logo-128.png 128w, /brand/logo.png 512w"
-        sizes="(max-width: 640px) 32px, 48px"
-        alt={showWordmark ? "" : "AXIS"}
-        aria-hidden={showWordmark ? "true" : undefined}
-        className={cn("size-8 shrink-0 object-contain transition-transform duration-200 ease-out", markClassName)}
-        loading="eager"
+  if (showWordmark) {
+    return (
+      <LogoFull
+        className={className}
+        markClassName={markClassName}
+        wordmarkClassName={wordmarkClassName}
+        subtitleClassName={subtitleClassName}
+        showSubtitle={showSubtitle}
+        subtitleText={subtitleText}
+        isPro={isPro}
+        themeMode={themeMode}
+        accentReactive={accentReactive}
+        variant={variant}
+        onClick={onClick}
       />
-      {showWordmark ? (
-        <span className="flex flex-col justify-center min-w-0 overflow-hidden whitespace-nowrap animate-fade-slide-in">
-          <span
-            className={cn(
-              "font-display text-lg font-black leading-tight tracking-wider text-foreground whitespace-nowrap",
-              wordmarkClassName,
-            )}
-          >
-            AXIS
-          </span>
-          {showSubtitle ? (
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-              Guia Financeiro
-            </span>
-          ) : null}
-        </span>
-      ) : null}
+    );
+  }
+
+  return (
+    <span
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={cn(
+        "inline-flex items-center justify-center select-none overflow-hidden min-w-0",
+        onClick && "cursor-pointer hover:opacity-90 active:scale-[0.98]",
+        className,
+      )}
+    >
+      <LogoIcon
+        className={cn(
+          "size-8 shrink-0 transition-transform duration-200 ease-out",
+          markClassName,
+        )}
+        isPro={isPro}
+        themeMode={themeMode}
+        accentReactive={accentReactive}
+        variant={variant}
+        title="AXIS"
+        aria-hidden={false}
+      />
     </span>
   );
 }

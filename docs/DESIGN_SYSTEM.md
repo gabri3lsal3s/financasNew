@@ -463,10 +463,17 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 ### 14.9 Transições de Rota no PageShell ("App-like Transitions")
 - **Estilo:** Fade + micro-slide suave de 150ms na entrada de novas páginas no `<Outlet />` (`opacity: 0 → 1`, `translateY: 4px → 0px`), automaticamente desativado se `prefers-reduced-motion: reduce`.
 
-### 14.10 Identidade Visual & Assets Oficiais da Marca
-- **Componente:** `src/components/layout/brand-logo.tsx`.
-- **Assets:** Gerados a partir de `identidadeVisual/` em `public/brand/` (`logo.png`, `logo-192.png`, `logo-128.png`, `logo-64.png`, `logo-32.png`, `favicon-32.png`, `favicon-16.png`, `favicon.svg`, `logo-full.png`) e `public/pwa/icons/` (`icon-192.png`, `icon-512.png` com transparência icon-only `purpose: "any"`, `maskable-192.png`, `maskable-512.png` com fundo seguro `purpose: "maskable"`, `apple-touch-icon-180.png`, `favicon.ico`, `favicon.svg`).
-- **Padrão:** O `BrandLogo` renderiza o emblema oficial com antialiasing de alta resolução, suporte a modos símbolo único, marca horizontal e lockup completo com subtítulo ("Organização & Economia"), padronizado em Header mobile, Sidebar desktop, AuthShell, MoreMenu e PWA.
+### 14.10 Identidade Visual & Assets Oficiais da Marca (ÁXIS Finance)
+- **Componentes:** `src/components/layout/brand-logo.tsx`, `logo-icon.tsx`, `logo-full.tsx`.
+- **Arquitetura de Marca & Cores Dinâmicas:**
+  - **Regra de Assinatura (Pro vs Gratuito):** Usuários assinantes **Pro** (`subscription.isPro = true`) exibem automaticamente a logo **Âmbar/Dourada**. Usuários gratuitos ou visitantes exibem a assinatura **Teal Oficial**.
+  - **Adaptação de Superfície (Dark vs Light Mode):**
+    - *Dark Mode:* Glifo com a letra **'A' branca** e contorno dourado sobre fundo 100% transparente.
+    - *Light Mode:* Glifo com a letra **'A' escura/grafite** sobre fundo 100% transparente.
+  - **Favicon Dinâmico do Navegador:** Gerenciado via hook `src/hooks/use-dynamic-favicon.ts`, atualizando `<link rel="icon">` em tempo real para a versão Âmbar quando uma sessão Pro está ativa.
+  - **Tipografia Corporativa:** Wordmark **ÁXIS** com subtítulo **Finance** (substituindo a nomenclatura legada "Guia Financeiro").
+- **Assets Gráficos:** Gerados com fundo transparente com anti-aliasing e alta nitidez em `public/brand/` (`logo-teal-dark.*`, `logo-teal-light.*`, `logo-amber-dark.*`, `logo-amber-light.*` em PNG e WebP de 16px a 512px; favicons `favicon-32.png`, `favicon-16.png`, `favicon.ico`, `favicon-pro-32.png`, `favicon-pro.ico`) e `public/pwa/icons/` (`icon-192.png`, `icon-512.png`, `apple-touch-icon-180.png`, `icon-pro-192.png`, `icon-pro-512.png`).
+- **Padrão de Uso:** O `BrandLogo` é o ponto de entrada unificado com suporte a modos símbolo único, wordmark e lockup completo com subtítulo ("Finance"), integrado na Sidebar desktop, Header mobile, AuthShell, Telas de Checkout/Upgrade, Splash Screen e PWA.
 
 ### 14.11 Iconografia Sem Fundo ("Icon-Only") & Hierarquia Balanceada de Ícones em Cards
 - **Diretriz Global:** Todos os ícones da aplicação seguem o padrão *icon-only* limpo, sem containers visuais decorativos atrás (sem classes `bg-primary/10`, `rounded-full`, `rounded-lg`, `p-2` ou sombras/bordas ao redor do ícone). Contêineres de fundo (`size-7`/`size-8 rounded-lg bg-surface-hover`) são restritos exclusivamente a **botões com ação de clique direta** (ex.: fechar, editar inline, excluir).

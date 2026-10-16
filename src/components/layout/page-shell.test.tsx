@@ -10,6 +10,7 @@ const STORAGE_KEY = getUserStorageKey("sidebar_collapsed");
 
 vi.mock("@/app/theme-provider", () => ({
   useTheme: () => ({ theme: "light", preference: "light", setPreference: vi.fn() }),
+  useSafeTheme: () => "light",
 }));
 
 vi.mock("@/features/transactions", () => ({

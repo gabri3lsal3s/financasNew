@@ -9,6 +9,8 @@ import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
 import { syncVisualWithCloud } from "@/hooks/use-visual-customization";
+import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
+import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
 import { initAppLockListener } from "@/services/native";
 
@@ -68,6 +70,12 @@ function CloudPreferencesSync({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function DynamicFaviconSync() {
+  const isPro = useIsPro();
+  useDynamicFavicon(isPro);
+  return null;
+}
+
 /**
  * Providers globais. A política de retry materializa a regra Online First
  * (docs/ARCHITECTURE.md §5.1): leituras com retry limitado; mutações NUNCA
@@ -93,17 +101,20 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthQuerySync>
         <CloudPreferencesSync>
-          <ThemeProvider>
-            <Toaster>
-              {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}
-              <PWAUpdateToast />
-              {/* Host do bus de toasts (services/toast) — rollbacks otimistas etc. */}
-              <ToastHost />
-              {/* Overlay de bloqueio biométrico do aplicativo */}
-              <AppLockOverlay />
-              {children}
-            </Toaster>
-          </ThemeProvider>
+          <SubscriptionProvider>
+            <DynamicFaviconSync />
+            <ThemeProvider>
+              <Toaster>
+                {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}
+                <PWAUpdateToast />
+                {/* Host do bus de toasts (services/toast) — rollbacks otimistas etc. */}
+                <ToastHost />
+                {/* Overlay de bloqueio biométrico do aplicativo */}
+                <AppLockOverlay />
+                {children}
+              </Toaster>
+            </ThemeProvider>
+          </SubscriptionProvider>
         </CloudPreferencesSync>
       </AuthQuerySync>
     </QueryClientProvider>

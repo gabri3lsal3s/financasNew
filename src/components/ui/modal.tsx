@@ -177,8 +177,8 @@ export function Modal({
           onCloseAutoFocus={(e) => e.preventDefault()}
           style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
           className={cn(
-            // Mobile (base): bottom sheet ancorado acima da barra de navegação com compensação de safe area e alça; md+: diálogo centralizado com margens adequadas e animação.
-            "fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] w-full max-h-[calc(88dvh-4rem-env(safe-area-inset-bottom,0px))] overflow-y-auto rounded-t-2xl border border-primary/25 bg-surface p-4 sm:p-6 pb-4 shadow-xl focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background animate-sheet-in",
+            // Mobile (base): bottom sheet ancorado na base da tela (bottom-0) com cantos superiores arredondados, compensação de safe area e alça; md+: diálogo centralizado com margens adequadas e animação.
+            "fixed inset-x-0 bottom-0 w-full max-h-[90dvh] overflow-y-auto rounded-t-2xl border border-primary/25 bg-surface p-4 sm:p-6 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-xl focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background animate-sheet-in",
             "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-h-[calc(100dvh-3rem)] md:rounded-2xl md:pb-6 md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:duration-200",
             SIZE_MAX_W[size],
             z,
@@ -248,7 +248,7 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
     <div
       className={cn(
-        "flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-4 border-t border-primary/20 sticky bottom-0 bg-surface/95 backdrop-blur-sm -mx-4 sm:-mx-6 px-4 sm:px-6 -mb-2 pb-2 sm:pb-3",
+        "flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 pt-4 mt-4 border-t border-primary/20 sticky bottom-0 bg-surface/95 backdrop-blur-sm -mx-4 sm:-mx-6 px-4 sm:px-6 -mb-2 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] sm:pb-3",
         className,
       )}
     >

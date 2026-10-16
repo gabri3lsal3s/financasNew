@@ -5,6 +5,10 @@
  */
 export type { BrandLogoProps } from "./brand-logo";
 export { BrandLogo } from "./brand-logo";
+export type { LogoIconProps } from "./logo-icon";
+export { LogoIcon } from "./logo-icon";
+export type { LogoFullProps } from "./logo-full";
+export { LogoFull } from "./logo-full";
 export { CalculatorButton } from "./calculator-button";
 export type { NavItem } from "./nav-items";
 export { navItems } from "./nav-items";

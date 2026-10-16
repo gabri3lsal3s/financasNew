@@ -138,7 +138,7 @@
         color-scheme: dark;
       }
 
-      /* ---- Splash Screen Inline — Fundo acompanha o tema ativo com o ícone ---- */
+      /* ---- Splash Screen Inline — Fundo acompanha o tema ativo com transição de fade suave ---- */
       #app-splash {
         position: fixed;
         inset: 0;
@@ -147,10 +147,13 @@
         justify-content: center;
         background-color: #F4F7F9;
         color: #142531;
-        transition: opacity 0.22s ease-out;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s ease;
         z-index: 9999;
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        pointer-events: auto;
       }
 
       html[data-theme="dark"] #app-splash {
@@ -164,18 +167,19 @@
       }
 
       #app-splash-icon {
-        width: 144px;
-        height: 144px;
+        width: 140px;
+        height: 140px;
         display: block;
-        animation: splash-pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation: splash-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         user-select: none;
         -webkit-user-drag: none;
+        filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.08));
       }
 
       /* Keyframes */
       @keyframes splash-pulse {
         0%, 100% { opacity: 1; transform: scale(1); }
-        50%       { opacity: 0.92; transform: scale(0.97); }
+        50%       { opacity: 0.94; transform: scale(0.97); }
       }
 
       /* Redução de movimento */
@@ -189,27 +193,29 @@
         animation: none;
       }
 
-      /* Ocultar splash quando React montar */
-      #root:not(:empty) #app-splash {
+      /* Ocultar splash com fade suave quando o app for montado ou classe for adicionada */
+      #app-splash.splash-fade-out,
+      body.app-mounted #app-splash,
+      body:has(#root:not(:empty)) #app-splash {
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
       }
     </style>
   </head>
   <body>
-    <div id="root">
-      <!-- Splash screen inline (fundo sincronizado ao tema, somente o ícone) -->
-      <div id="app-splash" aria-hidden="true" role="presentation">
-        <img
-          id="app-splash-icon"
-          src="/brand/logo.png"
-          alt=""
-          width="144"
-          height="144"
-          decoding="async"
-        />
-      </div>
+    <!-- Splash screen inline inicial com fade suave (Web, PWA e Android WebView) -->
+    <div id="app-splash" aria-hidden="true" role="presentation">
+      <img
+        id="app-splash-icon"
+        src="/brand/logo.png"
+        alt=""
+        width="140"
+        height="140"
+        decoding="async"
+      />
     </div>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

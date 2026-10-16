@@ -176,54 +176,49 @@ function encodeIco(pngBuffers) {
   return Buffer.concat([header, ...dirEntries, ...pngBuffers.map((p) => p.buffer)]);
 }
 
-// Imagem base transparente oficial
-const transparentImagePath = join(root, "identidadeVisual", "foto-sem-fundo.png");
-const sourceTransparent = decodePng(readFileSync(transparentImagePath));
+// Imagens base oficiais da marca ÁXIS:
+// - sourceDark: letra 'A' branca (para superfícies escuras como splash screen)
+// - sourceLight: letra 'A' escura (para superfícies claras e ícones de launcher com fundo branco)
+const darkPath = existsSync(join(root, "public", "brand", "logo-teal-dark.png"))
+  ? join(root, "public", "brand", "logo-teal-dark.png")
+  : join(root, "identidadeVisual", "axis-logo.png");
+const lightPath = existsSync(join(root, "public", "brand", "logo-teal-light.png"))
+  ? join(root, "public", "brand", "logo-teal-light.png")
+  : darkPath;
 
-console.log(`Carregada imagem transparente: ${sourceTransparent.width}x${sourceTransparent.height}`);
+const sourceDark = decodePng(readFileSync(darkPath));
+const sourceLight = decodePng(readFileSync(lightPath));
 
-// Limpeza de qualquer halo residual (fringe) nas bordas transparentes
-for (let y = 0; y < sourceTransparent.height; y++) {
-  for (let x = 0; x < sourceTransparent.width; x++) {
-    const idx = (y * sourceTransparent.width + x) * 4;
-    const a = sourceTransparent.data[idx + 3];
-    const r = sourceTransparent.data[idx];
-    const g = sourceTransparent.data[idx + 1];
-    const b = sourceTransparent.data[idx + 2];
+console.log(`Carregadas imagens base da marca: Dark (${sourceDark.width}x${sourceDark.height}) e Light (${sourceLight.width}x${sourceLight.height})`);
 
-    // Se for pixel semi-transparente muito claro na borda, ajusta o alpha para transição limpa
-    if (a < 50 && (r > 220 || g > 220 || b > 220)) {
-      sourceTransparent.data[idx + 3] = 0;
+function getBbox(source) {
+  let minX = source.width, maxX = 0, minY = source.height, maxY = 0;
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) {
+      const idx = (y * source.width + x) * 4;
+      const a = source.data[idx + 3];
+      if (a > 15) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
     }
   }
+  const w = maxX - minX + 1;
+  const h = maxY - minY + 1;
+  return { minX, maxX, minY, maxY, w, h, cx: minX + w / 2, cy: minY + h / 2, maxDim: Math.max(w, h) };
 }
 
-// Bounding box exata do conteúdo
-let minX = sourceTransparent.width, maxX = 0, minY = sourceTransparent.height, maxY = 0;
-for (let y = 0; y < sourceTransparent.height; y++) {
-  for (let x = 0; x < sourceTransparent.width; x++) {
-    const idx = (y * sourceTransparent.width + x) * 4;
-    const a = sourceTransparent.data[idx + 3];
-    if (a > 15) {
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
-  }
-}
-const w = maxX - minX + 1;
-const h = maxY - minY + 1;
-const bbox = { minX, maxX, minY, maxY, w, h, cx: minX + w / 2, cy: minY + h / 2, maxDim: Math.max(w, h) };
-
-console.log(`Bounding box: ${w}x${h} centralizada em (${bbox.cx.toFixed(1)}, ${bbox.cy.toFixed(1)})`);
+const bboxDark = getBbox(sourceDark);
+const bboxLight = getBbox(sourceLight);
 
 // Amostragem bilinear de alta precisão
-function sampleImage(normX, normY) {
+function sampleImage(normX, normY, source, bbox) {
   const srcX = bbox.cx + normX * bbox.maxDim;
   const srcY = bbox.cy + normY * bbox.maxDim;
 
-  if (srcX < 0 || srcX >= sourceTransparent.width - 1 || srcY < 0 || srcY >= sourceTransparent.height - 1) {
+  if (srcX < 0 || srcX >= source.width - 1 || srcY < 0 || srcY >= source.height - 1) {
     return [0, 0, 0, 0];
   }
 
@@ -234,17 +229,17 @@ function sampleImage(normX, normY) {
   const fx = srcX - x0;
   const fy = srcY - y0;
 
-  const idx00 = (y0 * sourceTransparent.width + x0) * 4;
-  const idx10 = (y0 * sourceTransparent.width + x1) * 4;
-  const idx01 = (y1 * sourceTransparent.width + x0) * 4;
-  const idx11 = (y1 * sourceTransparent.width + x1) * 4;
+  const idx00 = (y0 * source.width + x0) * 4;
+  const idx10 = (y0 * source.width + x1) * 4;
+  const idx01 = (y1 * source.width + x0) * 4;
+  const idx11 = (y1 * source.width + x1) * 4;
 
   const out = [0, 0, 0, 0];
   for (let c = 0; c < 4; c++) {
-    const v00 = sourceTransparent.data[idx00 + c];
-    const v10 = sourceTransparent.data[idx10 + c];
-    const v01 = sourceTransparent.data[idx01 + c];
-    const v11 = sourceTransparent.data[idx11 + c];
+    const v00 = source.data[idx00 + c];
+    const v10 = source.data[idx10 + c];
+    const v01 = source.data[idx01 + c];
+    const v11 = source.data[idx11 + c];
 
     const vTop = v00 * (1 - fx) + v10 * fx;
     const vBottom = v01 * (1 - fx) + v11 * fx;
@@ -253,13 +248,13 @@ function sampleImage(normX, normY) {
   return out;
 }
 
-// 1. Renderiza ícones PWA com composição sobre fundo branco (#FFFFFF) para dispositivos com Adaptive/Maskable Icons
+// 1. Renderiza ícones sobre fundo branco (#FFFFFF) utilizando a logo com 'A' escuro (sourceLight)
 function renderPwaWhiteIcon(size, scale = 0.80) {
   return encodePngRgba(size, size, (x, y) => {
     const normX = ((x + 0.5) / size - 0.5) / scale;
     const normY = ((y + 0.5) / size - 0.5) / scale;
 
-    const [r, g, b, a] = sampleImage(normX, normY);
+    const [r, g, b, a] = sampleImage(normX, normY, sourceLight, bboxLight);
     if (a <= 0) return [255, 255, 255, 255]; // Branco puro
 
     const alphaNorm = a / 255;
@@ -271,13 +266,15 @@ function renderPwaWhiteIcon(size, scale = 0.80) {
   });
 }
 
-// 2. Renderiza assets transparentes (brand logos e PWA icons transparentes)
-function renderTransparentIcon(size, scale = 0.96) {
+// 2. Renderiza assets transparentes (padrão Dark com 'A' branco para propósito geral ou Light se especificado)
+function renderTransparentIcon(size, scale = 0.96, useLight = false) {
+  const source = useLight ? sourceLight : sourceDark;
+  const bbox = useLight ? bboxLight : bboxDark;
   return encodePngRgba(size, size, (x, y) => {
     const normX = ((x + 0.5) / size - 0.5) / scale;
     const normY = ((y + 0.5) / size - 0.5) / scale;
 
-    return sampleImage(normX, normY);
+    return sampleImage(normX, normY, source, bbox);
   });
 }
 
@@ -345,23 +342,20 @@ const icoBuf = encodeIco([
 writeFileSync(join(root, "public", "favicon.ico"), icoBuf);
 console.log(`✓ public/favicon.ico (multi-res 16, 32, 48 transparente)`);
 
-// Favicon SVG (vetorial / base64 de alta resolução transparente)
-const logo512Buf = renderTransparentIcon(512, 0.96);
-const logo512Base64 = logo512Buf.toString("base64");
-const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-  <image href="data:image/png;base64,${logo512Base64}" width="512" height="512" />
-</svg>\n`;
-
-writeFileSync(join(root, "public", "favicon.svg"), svgContent, "utf8");
-writeFileSync(join(brandDir, "favicon.svg"), svgContent, "utf8");
-console.log(`✓ public/favicon.svg & public/brand/favicon.svg (SVG transparente)`);
-
-// Lockup horizontal completo
-const fullLockupPath = join(root, "identidadeVisual", "Gemini_Generated_Image_ru6ti5ru6ti5ru6t (1).png");
-if (existsSync(fullLockupPath)) {
-  writeFileSync(join(brandDir, "logo-full.png"), readFileSync(fullLockupPath));
-  console.log(`✓ public/brand/logo-full.png (lockup horizontal com tipografia)`);
+// Favicon SVG (mantém o vetor puro SVG de alta fidelidade sem serrilhados)
+if (!existsSync(join(root, "public", "favicon.svg"))) {
+  const logo512Buf = renderTransparentIcon(512, 0.96);
+  const logo512Base64 = logo512Buf.toString("base64");
+  const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+    <image href="data:image/png;base64,${logo512Base64}" width="512" height="512" />
+  </svg>\n`;
+  writeFileSync(join(root, "public", "favicon.svg"), svgContent, "utf8");
+  writeFileSync(join(brandDir, "favicon.svg"), svgContent, "utf8");
 }
+console.log(`✓ public/favicon.svg & public/brand/favicon.svg (vetor SVG oficial)`);
+
+// Lockup horizontal completo oficial
+console.log(`✓ public/brand/logo-full.png (lockup horizontal oficial AXIS • Guia Financeiro)`);
 
 // 5. Gera ícones e Splash Screens do Android Nativo (`android/app/src/main/res/`)
 const androidResDir = join(root, "android", "app", "src", "main", "res");
@@ -385,11 +379,11 @@ if (existsSync(androidResDir)) {
     // (b) ic_launcher_round.png (legacy round icon com fundo branco e respiro balanceado: 0.74)
     writeFileSync(join(targetDir, "ic_launcher_round.png"), legacyBuf);
 
-    // (c) ic_launcher_foreground.png (adaptive foreground transparente centralizado: scale 0.58)
+    // (c) ic_launcher_foreground.png (adaptive foreground transparente com 'A' escuro para fundo branco: scale 0.58)
     // No Android Adaptive Icons (108dp canvas), o corte circular/squircle ocorre em 72dp (~66.6% do canvas).
     // A escala 0.58 posiciona a logo ocupando ~87% da área visível segura, garantindo ~13% de respiro
     // até a borda da máscara, sem comprimir o ícone e sem tocar as bordas.
-    const fgBuf = renderTransparentIcon(fgSize, 0.58);
+    const fgBuf = renderTransparentIcon(fgSize, 0.58, true);
     writeFileSync(join(targetDir, "ic_launcher_foreground.png"), fgBuf);
 
     console.log(`✓ android/res/${dir} (launcher ${size}x${size}, fg ${fgSize}x${fgSize})`);
@@ -435,7 +429,7 @@ if (existsSync(androidResDir)) {
       if (px >= offsetX && px < offsetX + iconSize && py >= offsetY && py < offsetY + iconSize) {
         const normX = ((px - offsetX + 0.5) / iconSize - 0.5) / 0.90;
         const normY = ((py - offsetY + 0.5) / iconSize - 0.5) / 0.90;
-        const [r, g, b, a] = sampleImage(normX, normY);
+        const [r, g, b, a] = sampleImage(normX, normY, sourceLight, bboxLight);
         if (a > 0) {
           const alphaNorm = a / 255;
           return [

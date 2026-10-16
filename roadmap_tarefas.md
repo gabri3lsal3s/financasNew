@@ -282,24 +282,3 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   3. Harmonizar o contraste e transparência dos containers/badges que envolvem ícones. (Concluído: criadas as classes utilitárias semânticas `.icon-box-primary`, `.icon-box-positive`, `.icon-box-negative`, `.icon-box-warning`, `.icon-box-critical`, `.icon-box-portfolio`, `.icon-box-neutral` e `.icon-box-accent` em `globals.css` com 10% de opacidade de fundo, cor de texto de alto contraste e bordas sutis `border border-.../20`; harmonizados os containers de ícones em `investments-showcase.tsx`, `legal-dialog.tsx` e `install-app-button.tsx`, garantindo contraste impecável nos temas Claro, Escuro e OLED; e adicionada suíte completa de testes unitários em `icon-system.test.ts` e `notifications-button.test.tsx`).
 - **Commit:** `style(icons): unify stroke weights, sizing scale, and dynamic theme reactivity`
 
----
-
-### Tarefa 24: Harmonização do Logotipo, Identidade Gráfica e Splash Screens
-- **Objetivo:** Refinar componentes vetoriais de logotipo e telas de carregamento para máxima elegância e fidelidade visual.
-- **Ações:**
-  1. Criar componentes SVG modulares do logo (`LogoFull` e `LogoIcon`).
-  2. Tornar o glifo cromático do logo reativo à cor de destaque configurada pelo usuário.
-  3. Padronizar a Splash Screen e telas de transição de carregamento com fade suave.
-  4. As logos devem ser profissionais e padronizadas, sem serrilhados mantendo um alto nível de desing. Refine e aprimore a logo gerando imagens de melhor qualidade.
-- **Commit:** `style(branding): harmonize vector logo components and splash screen transitions`
-
----
-
-### Tarefa 25: Padronização de Ativos do PWA e Logos Adaptativos do Android
-- **Objetivo:** Implementar as logos adaptativas nativos do Android (com suporte ao Material You) e manifestos PWA completos.
-- **Ações:**
-  1. Atualizar o manifesto PWA com ícones regulares e `maskable` de 192px e 512px.
-  2. Configurar layers `ic_launcher_background` e `ic_launcher_foreground` para o ecossistema Android em todas as densidades (mdpi até xxxhdpi).
-  3. Habilitar suporte as logos temáticos do sistema (Themed Logos) sem serrilhados e com um nível de desing profisional. Refine e aprimore a logo gerando imagens de melhor qualidade.
-  4. Deixar padronizado com o PWA e o app Android.
-- **Commit:** `feat(branding): configure standard adaptive android icons and PWA maskable manifests`

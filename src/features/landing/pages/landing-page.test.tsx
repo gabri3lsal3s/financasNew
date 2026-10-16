@@ -18,11 +18,11 @@ describe("LandingPage", () => {
 
   it("renderiza o cabeçalho com o logo e CTAs de navegação", () => {
     renderLanding();
-    expect(screen.getAllByText("AXIS").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ÁXIS|AXIS/i).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /Começar grátis/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /Entrar/i }).length).toBeGreaterThan(0);
     // Usuário deslogado na landing: o logo aponta para /landing para não chutar o visitante para /entrar
-    const logoLink = screen.getByRole("link", { name: /AXIS/i });
+    const logoLink = screen.getByRole("link", { name: /ÁXIS|AXIS/i });
     expect(logoLink).toHaveAttribute("href", "/landing");
   });
 

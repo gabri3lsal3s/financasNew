@@ -179,5 +179,6 @@ export { useRestoreBackup } from "./mutations/use-restore-backup";
 export { useLoadDemoData, useClearDemoData } from "./mutations/use-demo-data";
 
 export { useUserSubscription, USER_SUBSCRIPTION_KEY } from "./queries/use-user-subscription";
+export { SubscriptionProvider, useIsPro } from "./subscription-context";
 export { usePermission, type PermissionResult } from "./queries/use-permission";
 export type { SubscriptionStatus } from "@/types";

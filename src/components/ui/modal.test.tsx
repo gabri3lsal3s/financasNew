@@ -56,8 +56,8 @@ describe("Modal", () => {
       </Modal>,
     );
     const dialog = screen.getByRole("dialog");
-    // Base mobile + override md: o conteúdo é ancorado acima da bottom navigation bar com slide-up.
-    expect(dialog.className).toContain("bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]");
+    // Base mobile + override md: o conteúdo é ancorado na base da tela (bottom-0) com slide-up.
+    expect(dialog.className).toContain("bottom-0");
     expect(dialog.className).toContain("animate-sheet-in");
     expect(dialog.className).toContain("md:animate-none");
     expect(dialog.className).toContain("border-primary/25");
@@ -133,14 +133,14 @@ describe("Modal", () => {
 
     expect(onOpenChange).not.toHaveBeenCalled();
   });
-  it("adota ancoragem com safe areas inferiores acima do menu mobile e centralização com margens adequadas no desktop", () => {
+  it("adota ancoragem na base com safe areas inferiores e centralização com margens adequadas no desktop", () => {
     render(
       <Modal open onOpenChange={vi.fn()} title="Responsivo">
         <p>Conteúdo</p>
       </Modal>,
     );
     const dialog = screen.getByRole("dialog");
-    expect(dialog.className).toContain("bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]");
+    expect(dialog.className).toContain("bottom-0");
     expect(dialog.className).toContain("border-primary/25");
     expect(dialog.className).toContain("md:max-h-[calc(100dvh-3rem)]");
     expect(dialog.className).toContain("md:left-1/2");
@@ -193,7 +193,7 @@ describe("ModalFooter (Fase 68)", () => {
     const footer = screen.getByText("Salvar").parentElement;
     expect(footer).toBeInTheDocument();
     expect(footer).toHaveClass("flex-col-reverse", "sm:flex-row", "sm:justify-end", "border-primary/20");
-    expect(footer?.className).toContain("pb-2");
+    expect(footer?.className).toContain("pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))]");
   });
 });
 

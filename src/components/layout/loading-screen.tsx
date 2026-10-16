@@ -95,7 +95,8 @@ export function LoadingScreen({
       aria-live="polite"
       aria-busy="true"
       className={cn(
-        "flex flex-col items-center justify-center p-6 select-none",
+        "flex flex-col items-center justify-center p-6 select-none transition-opacity duration-300 ease-out",
+        isClosing && "opacity-0 pointer-events-none",
         fullScreen ? "min-h-dvh w-full bg-background" : "w-full py-16",
         className,
       )}
@@ -108,6 +109,7 @@ export function LoadingScreen({
             aria-hidden="true"
           />
           <BrandLogo
+            showWordmark
             markClassName="size-16 transition-transform duration-300"
             wordmarkClassName="text-xl font-bold tracking-tight"
             showSubtitle={false}

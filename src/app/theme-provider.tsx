@@ -99,3 +99,13 @@ export function useTheme(): ThemeContextValue {
   if (!ctx) throw new Error("useTheme deve ser usado dentro de <ThemeProvider>");
   return ctx;
 }
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useSafeTheme(): Theme {
+  const ctx = useContext(ThemeContext);
+  if (ctx) return ctx.theme;
+  if (typeof document !== "undefined" && document.documentElement.classList.contains("dark")) {
+    return "dark";
+  }
+  return "dark";
+}
