@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { BrandLogo } from "@/components/layout";
+import { BrandLogo, ThemeToggle } from "@/components/layout";
 import { triggerSensory } from "@/services/sensory";
 import type { SubscriptionPlan } from "@/types";
 
@@ -80,20 +80,28 @@ export function SubscriptionSuccessPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      {/* Header Minimalista */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
-          <BrandLogo isPro={true} markClassName="size-7" />
-          <Link to="/configuracoes">
-            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
-              Minha Conta
-            </Button>
-          </Link>
+      {/* Header unificado alinhado com PageShell e Landing Page */}
+      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs pt-[env(safe-area-inset-top,0px)]">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-12">
+          <BrandLogo
+            isPro={true}
+            showWordmark
+            wordmarkClassName="text-base sm:text-lg"
+            markClassName="size-8"
+          />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link to="/configuracoes">
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+                Minha Conta
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* Conteúdo Principal */}
-      <main className="flex-1 mx-auto w-full max-w-4xl px-4 sm:px-6 py-10 sm:py-14 flex flex-col items-center">
+      {/* Conteúdo Principal com largura canônica max-w-7xl */}
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-14 flex flex-col items-center">
         {/* Card de Boas-Vindas */}
         <div className="w-full max-w-2xl text-center space-y-4">
           <div className="inline-flex size-16 items-center justify-center rounded-2xl bg-positive/10 border border-positive/30 text-positive-strong shadow-xs">
@@ -116,10 +124,10 @@ export function SubscriptionSuccessPage() {
           </div>
         </div>
 
-        {/* Resumo da Assinatura e Recibo */}
-        <div className="mt-8 w-full max-w-2xl">
+        {/* Resumo da Assinatura e Recibo em Card Proporcional */}
+        <div className="mt-8 w-full max-w-3xl">
           <Card className="border-border/80 bg-surface shadow-xs">
-            <CardContent className="p-5 sm:p-7 space-y-6">
+            <CardContent className="p-6 sm:p-8 space-y-6">
               {/* Linha de Destaque da Fatura */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-border/80">
                 <div className="space-y-0.5">

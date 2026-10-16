@@ -92,18 +92,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
-// Contexto + hook no mesmo arquivo é o padrão shadcn; suprime o fast-refresh warning.
-// eslint-disable-next-line react-refresh/only-export-components
-export function useTheme(): ThemeContextValue {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme deve ser usado dentro de <ThemeProvider>");
-  return ctx;
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useSafeTheme(): Theme {
-  const ctx = useContext(ThemeContext);
-  if (ctx) return ctx.theme;
+function getSafeThemeFromDom(): Theme {
   if (typeof document !== "undefined") {
     const dataTheme = document.documentElement.getAttribute("data-theme");
     if (dataTheme === "light" || dataTheme === "dark" || dataTheme === "oled") {
@@ -114,4 +103,23 @@ export function useSafeTheme(): Theme {
     }
   }
   return "dark";
+}
+
+// Contexto + hook no mesmo arquivo é o padrão shadcn; suprime o fast-refresh warning.
+// eslint-disable-next-line react-refresh/only-export-components
+export function useTheme(): ThemeContextValue {
+  const ctx = useContext(ThemeContext);
+  if (ctx) return ctx;
+  return {
+    theme: getSafeThemeFromDom(),
+    preference: "system",
+    setPreference: () => {},
+  };
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useSafeTheme(): Theme {
+  const ctx = useContext(ThemeContext);
+  if (ctx) return ctx.theme;
+  return getSafeThemeFromDom();
 }

@@ -23,7 +23,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { BrandLogo, LoadingScreen } from "@/components/layout";
+import { BrandLogo, LoadingScreen, ThemeToggle } from "@/components/layout";
 import { useAuth, signInWithEmail, signUpWithEmail } from "@/hooks/use-auth";
 import { useUserSubscription, USER_SUBSCRIPTION_KEY } from "@/state";
 import { triggerSensory } from "@/services/sensory";
@@ -387,29 +387,42 @@ export function SubscriptionCheckoutPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      {/* Header mínimo */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-          <BrandLogo isPro={true} markClassName="size-7" />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            <ArrowLeft className="size-3.5" aria-hidden="true" />
-            Voltar
-          </Button>
+      {/* Header unificado alinhado com PageShell e Landing Page */}
+      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs pt-[env(safe-area-inset-top,0px)]">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-12">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              aria-label="Voltar para a página anterior"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer -ml-2 sm:ml-0"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden="true" />
+              <span>Voltar</span>
+            </Button>
+            <div className="h-5 w-px bg-border/80 hidden sm:block" aria-hidden="true" />
+            <BrandLogo
+              isPro={true}
+              showWordmark
+              wordmarkClassName="text-base sm:text-lg"
+              markClassName="size-8"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
-      {/* Corpo */}
-      <main className="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-6 pt-8 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:py-12">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12 items-start">
+      {/* Corpo com largura canônica max-w-7xl */}
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 pt-6 sm:pt-8 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:py-12">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 items-start">
 
-          {/* Coluna esquerda — Resumo do plano + seletor + benefícios */}
-          <aside className="space-y-6">
+          {/* Coluna esquerda — Resumo do plano + seletor + benefícios (5 colunas desktop, sticky) */}
+          <aside className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="size-5 text-primary" aria-hidden="true" />
@@ -499,8 +512,8 @@ export function SubscriptionCheckoutPage() {
             </div>
           </aside>
 
-          {/* Coluna direita — Formulário de identificação e pagamento */}
-          <section className="rounded-2xl border border-border/80 bg-surface shadow-xs p-6 sm:p-8 space-y-6">
+          {/* Coluna direita — Formulário de identificação e pagamento (7 colunas desktop) */}
+          <section className="lg:col-span-7 rounded-2xl border border-border/80 bg-surface shadow-xs p-6 sm:p-8 lg:p-9 space-y-6">
             <div>
               <h2 className="text-lg font-bold text-foreground">Forma de Pagamento</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
