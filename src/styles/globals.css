@@ -344,7 +344,7 @@
      modais (z-modal), painéis flutuantes (z-floating-tools) e paleta de busca
      ficam translúcidos com blur (permitido pelo DESIGN_SYSTEM §8). Cards de
      dados permanecem OPACOS (regra §8: glass em cards prejudica legibilidade).
-     flat/elevated (data-surface-style) mantêm o chrome opaco. */
+     flat (data-surface-style) mantém o chrome opaco. */
   @supports (backdrop-filter: blur(1px)) {
     html:not([data-surface-style]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
       background-color: hsl(var(--surface) / 0.82);

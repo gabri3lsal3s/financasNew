@@ -58,7 +58,6 @@ import {
   useRealCashBalance,
   useUserSubscription,
 } from "@/state";
-import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { cn } from "@/lib/utils";
@@ -71,7 +70,6 @@ export function OverviewPage() {
   const [month, setMonth] = useState(currentMonth);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
-  const visual = useVisualCustomization();
   const navigate = useNavigate();
   const subscription = useUserSubscription();
   const [checkpointOpen, setCheckpointOpen] = useState(false);
@@ -382,7 +380,7 @@ export function OverviewPage() {
       priority: cashGapResult.severity === "critical" ? 1 : 3,
       content: <CashGapAlert result={cashGapResult} />,
     },
-    visual.dashboardWidgets.contextBanners && showPaceAlert && {
+    showPaceAlert && {
       id: "pace-alert-banner",
       priority: projection.surplusCents !== null && projection.surplusCents < 0 ? 2 : 3,
       content: (
@@ -453,8 +451,7 @@ export function OverviewPage() {
           ) : null}
 
           {/* KPIs fundamentais (§3.6) com sparkline */}
-          {visual.dashboardWidgets.kpis && (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 min-w-0">
               <KpiCard
                 label="Receitas"
                 cents={totals.incomeCents}
@@ -513,73 +510,61 @@ export function OverviewPage() {
                 spark={balanceSpark}
               />
             </div>
-          )}
 
           {/* Análises do período: fluxo diário + distribuição por categoria */}
-          {(visual.dashboardWidgets.flow || (visual.dashboardWidgets.donut && donutSlices.length > 0)) && (
-            <section
-              aria-label="Análises do período"
-              className={cn("grid gap-3 min-w-0", visual.dashboardWidgets.flow && visual.dashboardWidgets.donut && donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
-            >
-              {visual.dashboardWidgets.flow && (
-                <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap sm:flex-nowrap">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Activity className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                      <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Fluxo diário</h2>
-                    </div>
-                    <div className="flex items-center gap-2 sm:gap-2.5 text-[11px] shrink-0">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <span className="size-1.5 rounded-full bg-positive-strong shrink-0" /> Receitas
-                      </span>
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <span className="size-1.5 rounded-full bg-negative-strong shrink-0" /> Despesas
-                      </span>
-                      {totals.investmentCents > 0 && (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <span className="size-1.5 rounded-full bg-portfolio shrink-0" /> Investimentos
-                        </span>
-                      )}
-                    </div>
-                  </div>
+          <section
+            aria-label="Análises do período"
+            className={cn("grid gap-3 min-w-0", donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
+          >
+            <section aria-label="Fluxo diário" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Activity className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Fluxo diário</h2>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-2.5 text-[11px] shrink-0">
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <span className="size-1.5 rounded-full bg-positive-strong shrink-0" /> Receitas
+                  </span>
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <span className="size-1.5 rounded-full bg-negative-strong shrink-0" /> Despesas
+                  </span>
+                  {totals.investmentCents > 0 && (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <span className="size-1.5 rounded-full bg-portfolio shrink-0" /> Investimentos
+                    </span>
+                  )}
+                </div>
+              </div>
 
-                  <DailyFlowChart days={dailyFlow} />
-                </section>
-              )}
-              {visual.dashboardWidgets.donut && donutSlices.length > 0 ? (
-                <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                      <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Distribuição por categoria</h2>
-                    </div>
-                    <Badge variant="muted" size="xs">{donutSlices.length} categorias</Badge>
-                  </div>
-                  <CategoryDonut
-                    slices={donutSlices}
-                    onSliceClick={(slice) => {
-                      if (slice.key) setSelectedCategoryId(slice.key);
-                    }}
-                  />
-                </section>
-              ) : null}
+              <DailyFlowChart days={dailyFlow} />
             </section>
-          )}
+            {donutSlices.length > 0 ? (
+              <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Distribuição por categoria</h2>
+                  </div>
+                  <Badge variant="muted" size="xs">{donutSlices.length} categorias</Badge>
+                </div>
+                <CategoryDonut
+                  slices={donutSlices}
+                  onSliceClick={(slice) => {
+                    if (slice.key) setSelectedCategoryId(slice.key);
+                  }}
+                />
+              </section>
+            ) : null}
+          </section>
 
           {/* Seção Integrada: Orçamentos do Mês + Resumo Financeiro (Lado a lado no Desktop) */}
-          {(visual.dashboardWidgets.budgets || visual.dashboardWidgets.summary) && (
-            <div
-              className={cn(
-                "grid gap-3 min-w-0 items-start",
-                visual.dashboardWidgets.budgets && visual.dashboardWidgets.summary ? "lg:grid-cols-2" : "",
-              )}
+          <div className="grid gap-3 min-w-0 items-start lg:grid-cols-2">
+            {/* Orçamentos (§3.6): Layout Revolut / Apple Wallet */}
+            <section
+              aria-label="Orçamentos"
+              className="flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden h-full"
             >
-              {/* Orçamentos (§3.6): Layout Revolut / Apple Wallet */}
-              {visual.dashboardWidgets.budgets && (
-                <section
-                  aria-label="Orçamentos"
-                  className="flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden h-full"
-                >
                   {/* Header do Card: Título + Botão de Ação */}
                   <div className="flex items-center justify-between gap-2 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
@@ -702,16 +687,11 @@ export function OverviewPage() {
                     </div>
                   )}
                 </section>
-              )}
 
-              {/* Resumo financeiro (§3.6): saldo líquido de contas e taxa de poupança */}
-              {visual.dashboardWidgets.summary && (
+                {/* Resumo financeiro (§3.6): saldo líquido de contas e taxa de poupança */}
                 <section
                   aria-label="Resumo financeiro"
-                  className={cn(
-                    "grid gap-3 min-w-0",
-                    visual.dashboardWidgets.budgets ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-1" : "grid-cols-1 sm:grid-cols-2",
-                  )}
+                  className="grid gap-3 min-w-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1"
                 >
                   <article className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
                     <div className="flex items-center justify-between gap-2 min-w-0">
@@ -779,9 +759,7 @@ export function OverviewPage() {
                     </div>
                   </article>
                 </section>
-              )}
-            </div>
-          )}
+              </div>
 
           {/* Diálogo Raio-X de Categoria (Responsivo / BottomSheet no mobile / Modal no desktop) */}
           <CategoryBreakdownDialog

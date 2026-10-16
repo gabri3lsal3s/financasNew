@@ -14,7 +14,7 @@ import {
 } from "@/domain/preferences";
 
 export type AccentTheme = "teal" | "emerald" | "gold" | "sapphire" | "violet" | "rose" | "mono";
-export type SurfaceStyle = "glass" | "flat" | "elevated";
+export type SurfaceStyle = "glass" | "flat";
 export type MotionLevel = "fluid" | "eco" | "reduced";
 export type DensityLevel = "comfortable" | "compact";
 export type { ExperiencePreset, SensoryIntent };
@@ -138,9 +138,9 @@ function readStoredConfig(userId?: string | null): VisualCustomization {
         ? rawAccent
         : "teal";
 
-    const rawSurface = getUserStorageItem(STORAGE_KEYS.surfaceStyle, userId) as SurfaceStyle | null;
+    const rawSurface = getUserStorageItem(STORAGE_KEYS.surfaceStyle, userId) as string | null;
     const surfaceStyle: SurfaceStyle =
-      rawSurface && ["glass", "flat", "elevated"].includes(rawSurface) ? rawSurface : "glass";
+      rawSurface === "flat" ? "flat" : "glass";
 
     const rawMotion = getUserStorageItem(STORAGE_KEYS.motionLevel, userId) as MotionLevel | null;
     const motionLevel: MotionLevel =
@@ -376,7 +376,9 @@ export function syncVisualWithCloud(
 
   const partial: Partial<VisualCustomization> = {};
   if (customSettings.experiencePreset) partial.experiencePreset = customSettings.experiencePreset;
-  if (customSettings.surfaceStyle) partial.surfaceStyle = customSettings.surfaceStyle;
+  if (customSettings.surfaceStyle) {
+    partial.surfaceStyle = customSettings.surfaceStyle === "flat" ? "flat" : "glass";
+  }
   if (customSettings.motionLevel) partial.motionLevel = customSettings.motionLevel;
   if (customSettings.density) partial.density = customSettings.density;
   if (customSettings.soundEnabled !== undefined) partial.soundEnabled = customSettings.soundEnabled;

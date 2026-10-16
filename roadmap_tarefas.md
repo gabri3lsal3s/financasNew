@@ -225,12 +225,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 19: Simplificação e Limpeza da Página de Configurações
+### Tarefa 19: Simplificação e Limpeza da Página de Configurações [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Remover personalizações granulares desnecessárias, manter apenas predefinições e padronizar temas.
 - **Ações:**
-  1. Remover controles de ajustes finos de som/vibração, mantendo unicamente as 3 predefinições existentes.
-  2. Eliminar o estilo visual 3D elevado, conservando apenas os estilos Glassmorphism e Minimalista/Flat.
-  3. Remover o seletor de widgets do Dashboard e fixar a exibição permanente de todos os widgets.
+  1. Remover controles de ajustes finos de som/vibração, mantendo unicamente as 3 predefinições existentes. (Concluído: removida a gaveta de ajustes finos e os controles manuais avulsos de som, vibração háptica, nível de animação individual e contador numérico na aba Personalização, conservando estritamente os 3 modos canônicos `Dinâmico`, `Foco` e `Discreto` com metadados claros, atalho de restauração rápida e zero caixas decorativas avulsas).
+  2. Eliminar o estilo visual 3D elevado, conservando apenas os estilos Glassmorphism e Minimalista/Flat. (Concluído: removida a opção `elevated` da interface e tokens CSS, atualizado o tipo `SurfaceStyle` para `"glass" | "flat"`, ajustado o grid para 2 colunas simétricas `grid-cols-1 sm:grid-cols-2` e garantida a normalização resiliente de registros legados para `"glass"`).
+  3. Remover o seletor de widgets do Dashboard e fixar a exibição permanente de todos os widgets. (Concluído: removido o seletor de widgets da aba de configurações e fixada a exibição contínua e equilibrada de todos os blocos na Visão Geral — KPIs com sparklines, gráfico de fluxo diário, distribuição por categorias, orçamentos do mês e resumo financeiro em layout lado a lado responsivo no desktop).
 - **Commit:** `refactor(settings): streamline options to 3 presets, remove 3D theme, and fix all dashboard widgets visible`
 
 ---

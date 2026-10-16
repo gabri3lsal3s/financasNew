@@ -104,20 +104,28 @@ describe("useVisualCustomization (F11)", () => {
   it("sincroniza configurações recebidas da nuvem via syncVisualWithCloud", () => {
     syncVisualWithCloud({
       experiencePreset: "minimal",
-      surfaceStyle: "elevated",
+      surfaceStyle: "flat",
       dashboardWidgets: { kpis: true, summary: false, flow: false, donut: true, budgets: true },
     });
 
     const config = getVisualCustomization();
     expect(config.experiencePreset).toBe("minimal");
-    expect(config.surfaceStyle).toBe("elevated");
+    expect(config.surfaceStyle).toBe("flat");
     expect(config.motionLevel).toBe("eco");
     expect(config.density).toBe("compact");
     expect(config.soundEnabled).toBe(false);
     expect(config.dashboardWidgets.summary).toBe(false);
-    expect(document.documentElement.getAttribute("data-surface-style")).toBe("elevated");
+    expect(document.documentElement.getAttribute("data-surface-style")).toBe("flat");
     expect(document.documentElement.getAttribute("data-motion")).toBe("eco");
     expect(document.documentElement.getAttribute("data-density")).toBe("compact");
+  });
+
+  it("normaliza estilo de superfície legado elevated para glass", () => {
+    // @ts-expect-error testando migração de estilo legado
+    syncVisualWithCloud({ surfaceStyle: "elevated" });
+    const config = getVisualCustomization();
+    expect(config.surfaceStyle).toBe("glass");
+    expect(document.documentElement.getAttribute("data-surface-style")).toBeNull();
   });
 
   it("reseta para configurações padrão no resetVisualCustomization", () => {

@@ -10,10 +10,6 @@ import {
   Sparkles,
   Zap,
   VolumeX,
-  Volume2,
-  Vibrate,
-  ChevronDown,
-  ChevronUp,
   RotateCcw,
   Bell,
   PanelTop,
@@ -21,7 +17,6 @@ import {
   Calculator,
   Monitor,
   Eye,
-  LayoutGrid,
 } from "lucide-react";
 import {
   Card,
@@ -42,9 +37,7 @@ import {
   type AccentTheme,
   type SurfaceStyle,
   type ExperiencePreset,
-  type MotionLevel,
   type HeaderButtonsConfig,
-  type DashboardWidgetsConfig,
 } from "@/hooks/use-visual-customization";
 import {
   PRESET_METADATA_LIST,
@@ -76,12 +69,6 @@ const DAILY_REMINDER_TIME_OPTIONS: SelectOption[] = [
   { value: "22:00", label: "22:00 (Final da noite)" },
 ];
 
-const MOTION_OPTIONS: { id: MotionLevel; label: string; desc: string }[] = [
-  { id: "fluid", label: "Cinemática / Fluida", desc: "Física spring, tickers animados e ripple tátil" },
-  { id: "eco", label: "Econômica", desc: "Transições suaves em fade com menor consumo" },
-  { id: "reduced", label: "Reduzida / A11y", desc: "Movimento mínimo para conforto visual e acessibilidade" },
-];
-
 const ACCENT_OPTIONS: { id: AccentTheme; label: string; bgClass: string; hex: string }[] = [
   { id: "teal", label: "Teal Vital (Oficial)", bgClass: "bg-[#2A9D8F]", hex: "#2A9D8F" },
   { id: "emerald", label: "Esmeralda Fintech", bgClass: "bg-[#10B981]", hex: "#10B981" },
@@ -102,7 +89,6 @@ const THEME_OPTIONS: { id: ThemePreference; label: string; icon: typeof Sun; des
 const SURFACE_OPTIONS: { id: SurfaceStyle; label: string; desc: string }[] = [
   { id: "glass", label: "Glassmorphism", desc: "Translúcido com desfoque e reflexo de borda" },
   { id: "flat", label: "Minimalista Flat", desc: "Bordas nítidas sem sombras ou gradientes" },
-  { id: "elevated", label: "Elevado 3D", desc: "Sombras em camadas com relevo sutil" },
 ];
 
 const REMINDER_DAYS_OPTIONS: SelectOption[] = [
@@ -125,7 +111,6 @@ export function AppearanceTab() {
   const preferencesQuery = useUserPreferences();
   const updateReminderPreferencesMutation = useUpdateReminderPreferences();
 
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const activePreset = visual.experiencePreset;
 
   const remindersEnabled = preferencesQuery.data?.reminders_enabled ?? true;
@@ -194,64 +179,6 @@ export function AppearanceTab() {
     });
   };
 
-  const handleToggleSound = (nextChecked: boolean) => {
-    triggerSensory("action");
-    visual.setSoundEnabled(nextChecked);
-    updateCustomSettingsMutation.mutate({
-      soundEnabled: nextChecked,
-      experiencePreset: "custom",
-    });
-    pushToast({
-      title: "Preferências salvas",
-      description: nextChecked ? "Feedback sonoro ativado." : "Feedback sonoro desativado.",
-      duration: 2200,
-    });
-  };
-
-  const handleToggleHaptic = (nextChecked: boolean) => {
-    triggerSensory("action");
-    visual.setHapticEnabled(nextChecked);
-    updateCustomSettingsMutation.mutate({
-      hapticEnabled: nextChecked,
-      experiencePreset: "custom",
-    });
-    pushToast({
-      title: "Preferências salvas",
-      description: nextChecked ? "Feedback tátil (vibração) ativado." : "Feedback tátil desativado.",
-      duration: 2200,
-    });
-  };
-
-  const handleSelectMotionLevel = (id: MotionLevel, label: string) => {
-    triggerSensory("selection");
-    visual.setMotionLevel(id);
-    updateCustomSettingsMutation.mutate({
-      motionLevel: id,
-      experiencePreset: "custom",
-    });
-    pushToast({
-      title: "Preferências salvas",
-      description: `Animações alteradas para ${label}.`,
-      duration: 2200,
-    });
-  };
-
-  const handleToggleNumberTicker = (nextChecked: boolean) => {
-    triggerSensory("toggle");
-    visual.setNumberTickerEnabled(nextChecked);
-    updateCustomSettingsMutation.mutate({
-      numberTickerEnabled: nextChecked,
-      experiencePreset: "custom",
-    });
-    pushToast({
-      title: "Preferências salvas",
-      description: nextChecked
-        ? "Contagem numérica animada ativada."
-        : "Contagem numérica animada desativada.",
-      duration: 2200,
-    });
-  };
-
   const handleToggleHeaderButton = (key: keyof HeaderButtonsConfig, label: string, nextChecked: boolean) => {
     triggerSensory("toggle");
     visual.setHeaderButton(key, nextChecked);
@@ -263,32 +190,6 @@ export function AppearanceTab() {
       description: nextChecked
         ? `Atalho "${label}" adicionado ao cabeçalho.`
         : `Atalho "${label}" removido do cabeçalho.`,
-      duration: 2200,
-    });
-  };
-
-  const handleToggleDashboardWidget = (key: keyof DashboardWidgetsConfig, label: string, nextChecked: boolean) => {
-    const activeWidgetsCount = Object.values(visual.dashboardWidgets).filter(Boolean).length;
-    if (!nextChecked && activeWidgetsCount <= 3) {
-      triggerSensory("warning");
-      pushToast({
-        title: "Limite mínimo atingido",
-        description: "Mantenha ao menos 3 widgets ativos para que a Visão Geral exiba uma composição equilibrada.",
-        duration: 3000,
-      });
-      return;
-    }
-
-    triggerSensory("action");
-    visual.setDashboardWidget(key, nextChecked);
-    updateCustomSettingsMutation.mutate({
-      dashboardWidgets: { [key]: nextChecked },
-    });
-    pushToast({
-      title: "Preferências salvas",
-      description: nextChecked
-        ? `Widget "${label}" exibido no início.`
-        : `Widget "${label}" ocultado do início.`,
       duration: 2200,
     });
   };
@@ -375,14 +276,6 @@ export function AppearanceTab() {
     handleSelectAccent("teal", "Teal Vital (Oficial)");
     handleSelectSurfaceStyle("glass", "Glassmorphism");
     updateCustomSettingsMutation.mutate({
-      dashboardWidgets: {
-        kpis: true,
-        summary: true,
-        flow: true,
-        donut: true,
-        budgets: true,
-        contextBanners: true,
-      },
       headerButtons: {
         logo: true,
         calculatorButton: true,
@@ -488,158 +381,6 @@ export function AppearanceTab() {
               </Button>
             </div>
           )}
-
-          {/* Gaveta Simplificada de Ajustes Avançados */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center justify-between w-full p-3 rounded-xl border border-border/80 bg-surface/60 hover:bg-surface-hover text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none"
-            >
-              <span className="flex items-center gap-2">
-                <Sliders className="size-3.5 text-muted-foreground" />
-                <span>Ajustes Finos de Som, Vibração &amp; Fluidez</span>
-              </span>
-              <div className="flex items-center gap-1.5">
-                {showAdvanced ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-              </div>
-            </button>
-
-            {showAdvanced && (
-              <div className="space-y-4 pt-3 mt-2 border-t border-border/60">
-                {/* Switches de Som e Vibração */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleToggleSound(!visual.soundEnabled)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleToggleSound(!visual.soundEnabled);
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
-                      visual.soundEnabled
-                        ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                        : "border-border bg-surface hover:bg-surface-hover",
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 pr-2">
-                      <Volume2 className="size-4 text-muted-foreground shrink-0" />
-                      <div>
-                        <div className="font-semibold text-xs text-foreground">Sons do Aplicativo</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {visual.soundEnabled ? "Áudio ativado" : "Áudio desativado"}
-                        </div>
-                      </div>
-                    </div>
-                    <Checkbox
-                      checked={visual.soundEnabled}
-                      onCheckedChange={(checked) => handleToggleSound(Boolean(checked))}
-                      aria-label="Sons do Aplicativo"
-                    />
-                  </div>
-
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleToggleHaptic(!visual.hapticEnabled)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleToggleHaptic(!visual.hapticEnabled);
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
-                      visual.hapticEnabled
-                        ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                        : "border-border bg-surface hover:bg-surface-hover",
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 pr-2">
-                      <Vibrate className="size-4 text-muted-foreground shrink-0" />
-                      <div>
-                        <div className="font-semibold text-xs text-foreground">Vibração Tátil (Haptic)</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {visual.hapticEnabled ? "Vibração tátil ativa" : "Vibração desativada"}
-                        </div>
-                      </div>
-                    </div>
-                    <Checkbox
-                      checked={visual.hapticEnabled}
-                      onCheckedChange={(checked) => handleToggleHaptic(Boolean(checked))}
-                      aria-label="Vibração Tátil"
-                    />
-                  </div>
-                </div>
-
-                {/* Nível de Animação */}
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold text-foreground">Nível de Animação</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {MOTION_OPTIONS.map((m) => {
-                      const isSelected = visual.motionLevel === m.id;
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => handleSelectMotionLevel(m.id, m.label)}
-                          className={cn(
-                            "flex flex-col items-start p-2.5 rounded-xl border text-left transition-all cursor-pointer",
-                            isSelected
-                              ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                              : "border-border bg-surface hover:bg-surface-hover",
-                          )}
-                        >
-                          <div className="flex items-center justify-between w-full mb-0.5">
-                            <span className="font-semibold text-xs text-foreground">{m.label}</span>
-                            {isSelected && <Check className="size-3 text-primary-strong" />}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground">{m.desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Contador Numérico Animado */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleToggleNumberTicker(!visual.numberTickerEnabled)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleToggleNumberTicker(!visual.numberTickerEnabled);
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
-                    visual.numberTickerEnabled
-                      ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                      : "border-border bg-surface hover:bg-surface-hover",
-                  )}
-                >
-                  <div className="pr-4">
-                    <div className="font-semibold text-xs text-foreground">
-                      Contagem Numérica Animada (Number Ticker)
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Anima números e saldos ao carregar valores em KPIs
-                    </div>
-                  </div>
-                  <Checkbox
-                    checked={visual.numberTickerEnabled}
-                    onCheckedChange={(checked) => handleToggleNumberTicker(Boolean(checked))}
-                    aria-label="Contagem Numérica Animada (Number Ticker)"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
@@ -731,7 +472,7 @@ export function AppearanceTab() {
               <Layers className="size-3.5 text-muted-foreground" />
               <span>Estilo de Superfícies &amp; Cards</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {SURFACE_OPTIONS.map((s) => {
                 const isSelected = visual.surfaceStyle === s.id;
                 return (
@@ -897,67 +638,6 @@ export function AppearanceTab() {
               })}
             </div>
           </div>
-
-          {/* Widgets da Visão Geral */}
-          {hasFeature("overview") && (
-            <div className="space-y-3 pt-3 border-t border-border/60">
-              <div className="text-xs font-semibold text-foreground flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <LayoutGrid className="size-3.5 text-muted-foreground" />
-                  <span>Widgets Visíveis na Visão Geral</span>
-                </span>
-                <span className="text-[11px] text-muted-foreground font-normal">Mínimo de 3 widgets ativos</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {(() => {
-                  const activeWidgetsCount = Object.values(visual.dashboardWidgets).filter(Boolean).length;
-                  return [
-                    { key: "kpis" as const, label: "Resumo de Saldo & KPIs", desc: "Entradas, Saídas, Investimentos e Saldo" },
-                    { key: "summary" as const, label: "Saldo Líquido & Poupança", desc: "A receber, a pagar, faturas e taxa de poupança" },
-                    { key: "flow" as const, label: "Gráfico de Fluxo Diário", desc: "Curva acumulada de receitas vs despesas" },
-                    { key: "donut" as const, label: "Distribuição por Categorias", desc: "Gráfico com maiores destinos de gastos" },
-                    { key: "budgets" as const, label: "Orçamentos por Categoria", desc: "Barras de consumo e limites mensais" },
-                    { key: "contextBanners" as const, label: "Banners Contextuais de Atenção", desc: "Avisos de ritmo de gastos e limites" },
-                  ].map((w) => {
-                    const isChecked = visual.dashboardWidgets[w.key];
-                    const isMinThresholdReached = isChecked && activeWidgetsCount <= 3;
-                    return (
-                      <div
-                        key={w.key}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleToggleDashboardWidget(w.key, w.label, !isChecked)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleToggleDashboardWidget(w.key, w.label, !isChecked);
-                          }
-                        }}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
-                          isChecked
-                            ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                            : "border-border bg-surface hover:bg-surface-hover",
-                        )}
-                      >
-                        <div className="pr-2 min-w-0">
-                          <div className="font-semibold text-xs text-foreground">{w.label}</div>
-                          <div className="text-[11px] text-muted-foreground truncate">{w.desc}</div>
-                        </div>
-                        <Checkbox
-                          checked={isChecked}
-                          disabled={isMinThresholdReached}
-                          onCheckedChange={(checked) => handleToggleDashboardWidget(w.key, w.label, Boolean(checked))}
-                          aria-label={w.label}
-                        />
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 

@@ -192,20 +192,21 @@ describe("SettingsPage (F11 — Centro de Personalização)", () => {
     expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({ remindersEnabled: false });
   });
 
-  it("permite configurar Atalhos do Header e Widgets da Visão Geral em Personalização", async () => {
+  it("permite configurar Atalhos do Header em Personalização e não exibe seletor de widgets", async () => {
     const user = userEvent.setup();
     renderSettings();
 
     expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
     expect(screen.getByText("Atalhos Rápidos do Cabeçalho")).toBeInTheDocument();
-    expect(screen.getByText("Widgets Visíveis na Visão Geral")).toBeInTheDocument();
+    expect(screen.queryByText("Widgets Visíveis na Visão Geral")).not.toBeInTheDocument();
+    expect(screen.queryByText("Banners Contextuais de Atenção")).not.toBeInTheDocument();
 
-    const bannerCheckbox = screen.getByRole("checkbox", { name: /Banners Contextuais de Atenção/i });
-    expect(bannerCheckbox).toBeChecked();
+    const calcCheckbox = screen.getByRole("checkbox", { name: /Calculadora/i });
+    expect(calcCheckbox).toBeChecked();
 
-    await user.click(bannerCheckbox);
+    await user.click(calcCheckbox);
     expect(mockUpdateCustomSettings).toHaveBeenCalledWith({
-      dashboardWidgets: { contextBanners: false },
+      headerButtons: { calculatorButton: false },
     });
   });
 
