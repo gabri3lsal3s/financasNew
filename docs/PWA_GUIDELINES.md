@@ -116,7 +116,7 @@ Referência completa (ajustar nomes à marca final):
 **Requisitos dos ícones:**
 - **Ícone Padrão PWA (Icon-Only / `purpose: "any"`):** PNG com **fundo 100% transparente**, sem caixa de fundo branca ou preta, permitindo visual livre e moderno no desktop (Windows, macOS, Linux, ChromeOS) e mobile.
 - **Maskable (`purpose: "maskable"`):** Conteúdo essencial dentro dos **80% centrais** (zona segura de recorte) com fundo preenchido uniforme `#FFFFFF`, garantindo que launchers adaptativos (Android One UI, Pixel Launcher, MIUI) apliquem suas máscaras sem cortar o logotipo.
-- Gerados pelo script `scripts/generate-icons.mjs` (`npm run icons`) a partir da marca "Guia Financeiro" (`identidadeVisual/foto-sem-fundo.png`).
+- Gerados pelo script `scripts/generate-icons.mjs` (`npm run icons`) a partir dos assets oficiais em `public/brand/`.
 
 ---
 

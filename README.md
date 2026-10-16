@@ -69,7 +69,7 @@ npm run db:types       # regenera src/types/database.ts a partir do banco local
 | `npm run build` | Build de produção (`tsc -b && vite build`) |
 | `npm run preview` | Pré-visualização do build |
 | `npm run format` | Prettier |
-| `npm run icons` | Regenera ícones PWA/brand a partir de `identidadeVisual/` |
+| `npm run icons` | Regenera ícones PWA/brand a partir de `public/brand/` |
 | `npm run quotes:deploy` | Deploy da edge function de cotações |
 | `npm run quotes:cron` | Gera/aplica o cron da edge function de cotações |
 

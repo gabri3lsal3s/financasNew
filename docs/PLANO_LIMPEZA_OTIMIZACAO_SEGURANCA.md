@@ -97,7 +97,7 @@ graph TD
   - **Validação:** Rodar `npx vitest run` nos componentes garantindo zero falhas ou timeouts.
   - **Critério de Saída:** 100% dos testes de importação verdes e rápidos.
 
-- [ ] **Tarefa 0.3 — Limpeza e Organização da Raiz do Projeto (Princípio "Nada Solto")**
+- [x] **Tarefa 0.3 — Limpeza e Organização da Raiz do Projeto (Princípio "Nada Solto")**
   - **Ação:** Auditar e reorganizar arquivos e diretórios fora do padrão na raiz do projeto:
     - **Arquivo `roadmap_tarefas.md` (89 KB):** Comparar com `docs/ROADMAP.md` e `docs/FASES_IMPLEMENTADAS.md`. Transferir itens de tarefas ainda pertinentes para a documentação canônica em `docs/` e remover o arquivo solto da raiz;
     - **Diretório `identidadeVisual/` (6.7 MB):** Auditar as imagens soltas (`Gemini_Generated_Image_...png` 5.4MB, `foto-original.png`, `foto-sem-fundo.png`, `axis-logo.png`). Mover assets de marca oficiais e definitivos para `public/brand/` ou documentação apropriada, e expurgar rascunhos pesados não utilizados em runtime.

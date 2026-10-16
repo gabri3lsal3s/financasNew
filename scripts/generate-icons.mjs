@@ -1,5 +1,5 @@
 // Gera e processa os assets oficiais da marca "Guia Financeiro" a partir
-// de identidadeVisual/foto-sem-fundo.png sobre fundo branco puro (#FFFFFF).
+// das imagens base em public/brand sobre fundo branco puro (#FFFFFF).
 // Elimina qualquer diferença de branco ou textura, garantindo uniformidade perfeita.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -182,7 +182,7 @@ function encodeIco(pngBuffers) {
 // - sourceAmberLight: letra 'A' escura e asas âmbar (para ícone do launcher Pro em fundo branco)
 const darkPath = existsSync(join(root, "public", "brand", "logo-teal-dark.png"))
   ? join(root, "public", "brand", "logo-teal-dark.png")
-  : join(root, "identidadeVisual", "axis-logo.png");
+  : join(root, "public", "brand", "axis-logo.png");
 const lightPath = existsSync(join(root, "public", "brand", "logo-teal-light.png"))
   ? join(root, "public", "brand", "logo-teal-light.png")
   : darkPath;
