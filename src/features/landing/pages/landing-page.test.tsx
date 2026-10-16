@@ -18,7 +18,7 @@ describe("LandingPage", () => {
 
   it("renderiza o cabeçalho com o logo e CTAs de navegação", () => {
     renderLanding();
-    expect(screen.getAllByText("Guia Financeiro").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AXIS").length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /Começar grátis/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /Entrar/i }).length).toBeGreaterThan(0);
   });

@@ -353,6 +353,11 @@
     }
   }
 
+  /* Unificação de bordas de modais e pop-ups com herança da cor de destaque do tema ativo */
+  :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
+    border-color: hsl(var(--primary) / 0.25);
+  }
+
   /* Glow suave na cor de acento */
   .glow-primary {
     box-shadow: 0 0 20px -3px hsl(var(--primary) / 0.35);

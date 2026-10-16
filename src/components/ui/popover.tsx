@@ -16,7 +16,7 @@ export interface PopoverContentProps
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   PopoverContentProps
->(({ className, align = "center", sideOffset = 8, collisionPadding = 8, elevated = false, ...props }, ref) => (
+>(({ className, align = "center", sideOffset = 8, collisionPadding = { top: 8, left: 8, right: 8, bottom: 80 }, elevated = false, ...props }, ref) => (
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       ref={ref}
@@ -24,7 +24,7 @@ const PopoverContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
       className={cn(
-        "z-dropdown w-72 rounded-2xl border border-border/80 bg-surface/95 p-4 text-foreground shadow-xl backdrop-blur-md outline-none",
+        "z-dropdown w-72 rounded-2xl border border-primary/25 bg-surface/95 p-4 text-foreground shadow-xl backdrop-blur-md outline-none",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         elevated && "z-floating-tools shadow-2xl",
         className,

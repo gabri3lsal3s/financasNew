@@ -215,11 +215,12 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 6: Refinamento Fino de Configurações e Polimento de Layout
 
-### Tarefa 18: Ajuste de Safe Area, Posicionamento e Bordas dos Pop-ups Mobile
+### Tarefa 18: Ajuste de Safe Area, Posicionamento e Bordas dos Pop-ups Mobile [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Ancorar pop-ups/sheets acima da bottom navigation bar no mobile e padronizar bordas com a cor de destaque do tema ativo.
 - **Ações:**
-  1. Adicionar compensação de safe area inferior para que modais e sheets não sobreponham o menu mobile.
-  2. Unificar a cor e espessura das bordas de todos os modais para herdar as variáveis do tema e cor de destaque do usuário.
+  1. Adicionar compensação de safe area inferior para que modais e sheets não sobreponham o menu mobile. (Concluído: modais e bottom sheets ancorados responsivamente em `bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] md:bottom-auto` com altura adaptativa `max-h-[calc(88dvh-4rem-env(safe-area-inset-bottom,0px))]`, alça ergonômica e padding ajustado, elevando o contêiner exatamente acima da `BottomNav` [64px/4rem + safe-area]; popovers, selects, datepickers, colorpickers e iconpickers calibrados com `collisionPadding={{ top: 8, left: 8, right: 8, bottom: 80 }}` no mobile, eliminando sobreposições ou colisões sob o menu mobile).
+  2. Unificar a cor e espessura das bordas de todos os modais para herdar as variáveis do tema e cor de destaque do usuário. (Concluído: unificada a espessura em `1px` [`border`] com acabamento semântico `border-primary/25` e divisores `border-primary/20` em `Modal`, `ModalFooter`, `Command`, `PopoverContent`, `Select`, `DatePicker`, `ColorPicker` e `IconPicker`, além da regra global em `globals.css` para `.z-modal` e `.z-floating-tools`, herdando dinamicamente o tema ativo e a cor de destaque do usuário [teal, esmeralda, ouro, safira, violeta, rosé, mono] com 100% de testes unitários aprovados).
 - **Commit:** `fix(ui): elevate bottom sheets above mobile nav bar and unify modal border themes`
 
 ---

@@ -170,9 +170,9 @@ $$\text{dropdowns (20)} < \text{tooltips (25)} < \text{bottom bar (30)} < \text{
 | `--z-toast` | 70 | Notificações do sistema (`Toaster`) | Sempre visível sobre qualquer diálogo ou ferramenta |
 
 **Regras de Reposicionamento Responsivo:**
-1. **Mobile (Bottom Sheet):** modais ancorados na base com `rounded-t-2xl`, safe area inferior (`pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]`) e backdrop em `z-modal (50)` cobrindo integralmente a `BottomNav (30)`. `ModalFooter` sticky adota espaçamento seguro `pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))]`. Foco inicial não abre teclado virtual automaticamente (`< 768px`).
+1. **Mobile (Bottom Sheet):** modais ancorados acima da barra de navegação inferior com `rounded-t-2xl`, compensação de safe area e menu mobile (`bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]`), altura máxima adaptativa `max-h-[calc(88dvh-4rem-env(safe-area-inset-bottom,0px))]` e bordas unificadas na cor de destaque do tema ativo (`border border-primary/25`). `ModalFooter` sticky adota espaçamento seguro e layout responsivo. Foco inicial não abre teclado virtual automaticamente (`< 768px`).
 2. **Desktop (Modal Centralizado):** centralização bidirecional (`md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2`) com margens mínimas de respiro (`md:max-h-[calc(100dvh-3rem)]`), isolamento de foco ativo e overlay cobrindo a `Sidebar (40)`.
-3. **Collision Padding em Popovers:** todo menu dropdown, seletor de data ou paleta adota `collisionPadding={8}`, evitando colisão com as bordas do viewport.
+3. **Collision Padding em Popovers e Seletores:** todo menu dropdown (`Select`), seletor de data (`DatePicker`), seletor de cor (`ColorPicker`) ou paleta (`PopoverContent`, `IconPicker`) adota `collisionPadding={{ top: 8, left: 8, right: 8, bottom: 80 }}` no mobile, evitando colisão ou sobreposição sob a `BottomNav (30)`.
 
 ---
 
@@ -389,8 +389,8 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
 ### 13.2 Modal & ResponsiveDialog (Diálogos Centrados & Bottom Sheets)
 - **Componentes:** `src/components/ui/modal.tsx` e `src/components/ui/responsive-dialog.tsx`.
 - **Mecânica Responsiva Dual-Mode:**
-  - **Mobile (< 768px):** Gaveta inferior (*Bottom Sheet*) com slide-up, alça ergonômica (`h-1 w-10 bg-border`) e fechamento por arrasto (*drag-to-close* com resistência elástica e velocity fling).
-  - **Tablet & Desktop (≥ 768px / `md:`):** Diálogo centralizado com backdrop blur suave (`bg-overlay backdrop-blur-sm`), bordas arredondadas `rounded-2xl` e dimensões proporcionais.
+  - **Mobile (< 768px):** Gaveta inferior (*Bottom Sheet*) ancorada acima da barra de navegação inferior (`bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]`) com compensação de safe area, alça ergonômica (`h-1 w-10 bg-primary/30 hover:bg-primary/50`), bordas unificadas na cor de destaque ativa do tema (`border border-primary/25`) e fechamento por arrasto (*drag-to-close* com resistência elástica e velocity fling).
+  - **Tablet & Desktop (≥ 768px / `md:`):** Diálogo centralizado com backdrop blur suave (`bg-overlay backdrop-blur-sm`), bordas arredondadas `rounded-2xl` com acabamento `border border-primary/25` e dimensões proporcionais.
 - **Matriz Canônica de Larguras (`ModalSize`):**
   - `sm` (`md:max-w-md` / 448px): Alertas de exclusão, confirmações breves e modal de perfil compacto.
   - `md` (`md:max-w-lg` / 512px): Formulários simples (metas, limites, categorias enxutas).

@@ -58,13 +58,13 @@ export function Select({
         <SelectPrimitive.Content
           position="popper"
           sideOffset={4}
-          collisionPadding={8}
+          collisionPadding={{ top: 8, left: 8, right: 8, bottom: 80 }}
           align="start"
           onCloseAutoFocus={(e) => {
             // Evita que o fechamento transfira o foco ou acione outros controles indesejados
             e.preventDefault();
           }}
-          className="z-floating-tools max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-lg border border-border/80 bg-surface p-1 shadow-xl backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className="z-floating-tools max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-lg border border-primary/25 bg-surface p-1 shadow-xl backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
           <SelectPrimitive.Viewport>
             {options.map((option) => (

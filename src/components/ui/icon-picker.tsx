@@ -81,8 +81,8 @@ export function IconPicker({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          collisionPadding={8}
-          className="z-modal w-72 rounded-xl border border-border/80 bg-surface p-3 shadow-xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          collisionPadding={{ top: 8, left: 8, right: 8, bottom: 80 }}
+          className="z-modal w-72 rounded-xl border border-primary/25 bg-surface p-3 shadow-xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
           <div className="flex flex-col gap-3">
             <Input
