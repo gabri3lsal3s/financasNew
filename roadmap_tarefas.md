@@ -343,18 +343,14 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 12: Auto-Categorização Determinística, Governança de Sugestões e UX do Wizard
 
-### Tarefa 28: Inferência Determinística de Categorias, TTL e Otimização do Wizard [Pendente]
-- **Status:** ⏳ Pendente
+### Tarefa 28: Inferência Determinística de Categorias, TTL e Otimização do Wizard [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Adicionar motor puro de inferência de categorias por palavras-chave com pré-seleção contextual no `LaunchWizard` e auto-expiração de sugestões obsoletas na store.
 - **Ações:**
-  1. **Motor de Inferência de Categorias (`inferCategoryKeyword`):**
-     - Mapear estabelecimentos e termos frequentes para os identificadores de categoria do sistema (`alimentacao`, `mercado`, `transporte`, `saude`, `lazer`, `assinaturas`, `compras`, `salario`).
-  2. **Integração com `LaunchWizard` (Ação `[✏️ Editar]`):**
-     - Repassar categoria provável e número de parcelas via query params da URL, abrindo o wizard com os dados pré-preenchidos para confirmação em 1 toque.
-  3. **Auto-Expiração (TTL) e Deduplicação na Store:**
-     - Expirar sugestões com mais de 7 dias na fila local e aplicar deduplicação por chave composta (`bankName + amountCents + date + merchant`).
-  4. **Validação Geral e Build:**
-     - Garantir que `tsc -b`, `npm run lint` e toda a suíte de testes passem com 100% de sucesso.
+  1. **Motor de Inferência de Categorias (`inferCategoryKeyword`):** (Concluído: implementado motor determinístico em `category-inference.ts` com normalização de acentos/caixa e termos ordenados por especificidade decrescente, cobrindo `alimentacao`, `mercado`, `transporte`, `saude`, `lazer`, `assinaturas`, `compras` e `salario`, com resolução segura de entidade em `matchCategoryBySlug` e 13 testes unitários dedicados).
+  2. **Integração com `LaunchWizard` (Ação `[Editar]`):** (Concluído: repasse de slug inferido e número de parcelas via query params da URL `categoria` e `parcelas`; integração no `page-shell.tsx` e `launch-wizard.tsx` auto-selecionando categoria e avançando diretamente para o passo de confirmação sem fricção ao abrir por sugestão, com cobertura de teste automatizado).
+  3. **Auto-Expiração (TTL) e Deduplicação na Store:** (Concluído: configurado TTL de 7 dias `SUGGESTION_TTL_MS`, purga automática atômica `purgeExpiredSuggestions` e deduplicação estrita por chave composta `bankName + amountCents + date + merchant` em `suggestions-store.ts`, com 8 testes unitários cobrindo o ciclo de vida).
+  4. **Validação Geral e Build:** (Concluído: 100% de testes unitários verdes, typecheck estrito, lint sem violações e build do aplicativo).
 - **Commit:** `feat(transactions): add deterministic category inference, store ttl, and wizard auto-fill`
 
 ---

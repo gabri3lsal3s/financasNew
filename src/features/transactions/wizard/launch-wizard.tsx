@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,11 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
 import { todayISO } from "@/domain/debts";
+import {
+  inferCategoryKeyword,
+  matchCategoryBySlug,
+  type CanonicalCategorySlug,
+} from "@/domain/notifications";
 import {
   useActiveCreditCards,
   useCategories,
@@ -135,6 +140,61 @@ export function LaunchWizard({
   const selectedCard = state.paymentMethod === "credit_card"
     ? cardsQuery.data?.find((card) => card.id === state.cardId)
     : undefined;
+
+  // Auto-seleção contextual de categoria e avanço para confirmação rápida em 1 toque (Fase 12 — Tarefa 28)
+  useEffect(() => {
+    if (!categoriesQuery.data || categoriesQuery.data.length === 0) return;
+
+    // Se a categoria selecionada atual já é válida no conjunto de categorias ativas, não sobrescreve
+    const currentValid = categoriesQuery.data.some((c) => c.id === state.categoryId);
+    if (currentValid) return;
+
+    // 1. Tenta resolver por initialValues?.categoryId (pode ser UUID ou slug canônico)
+    const target = initialValues?.categoryId || state.categoryId;
+    let matchedCategory = target
+      ? categoriesQuery.data.find((c) => c.id === target) ||
+        matchCategoryBySlug(categoriesQuery.data, target as CanonicalCategorySlug)
+      : undefined;
+
+    // 2. Se não encontrou por target, mas temos descrição preenchida, infere deterministicamente
+    if (!matchedCategory && state.description) {
+      const slug = inferCategoryKeyword(state.description);
+      if (slug) {
+        matchedCategory = matchCategoryBySlug(categoriesQuery.data, slug);
+      }
+    }
+
+    if (matchedCategory) {
+      const targetCategoryId = matchedCategory.id;
+      const timer = setTimeout(() => {
+        setState((prev) => {
+          // Se o valor estiver preenchido e a categoria foi resolvida/inferida,
+          // avança o step para 3 ("Detalhes") permitindo confirmação rápida em 1 toque
+          const nextStep = prev.valueCents > 0 && prev.step <= 2 ? 3 : prev.step;
+          return {
+            ...prev,
+            categoryId: targetCategoryId,
+            step: nextStep,
+          };
+        });
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [categoriesQuery.data, initialValues?.categoryId, state.categoryId, state.description]);
+
+  // Pré-seleção automática de cartão quando cartão de crédito selecionado e só há 1 cartão ativo
+  useEffect(() => {
+    if (state.type !== "expense" || state.paymentMethod !== "credit_card") return;
+    if (state.cardId || !cardsQuery.data || cardsQuery.data.length === 0) return;
+
+    if (cardsQuery.data.length === 1 && cardsQuery.data[0]) {
+      const singleCardId = cardsQuery.data[0].id;
+      const timer = setTimeout(() => {
+        setState((prev) => ({ ...prev, cardId: singleCardId }));
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [state.type, state.paymentMethod, state.cardId, cardsQuery.data]);
 
   const handleSubmit = async () => {
     setError(null);

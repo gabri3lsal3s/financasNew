@@ -210,7 +210,7 @@ graph TD
 - [x] **Buffer Offline em Background:** Buffer circular em `SharedPreferences` no Android para notificações recebidas com o app fechado e esvaziamento automático via `flushPendingNotifications`.
 - [x] **Extrator Multibanco de Merchants:** Captura com preposições "no", "na", delimitadores de travessão do Itaú/Bradesco e vírgulas do Banco do Brasil com sanitização de adquirentes (`PAG*`, `MP*`, etc.) e limpeza de ruídos.
 - [x] **Expansão de Bancos no Domínio:** Suporte e resolução de BTG Pactual, PicPay, PagBank, Neon, Next, XP, Nomad e Wise além dos grandes bancos tradicionais.
-- [ ] **Auto-Categorização e TTL:** Inferência de categoria por palavras-chave com pré-seleção no `LaunchWizard` e auto-expiração de 7 dias.
+- [x] **Auto-Categorização e TTL:** Inferência de categoria por palavras-chave com pré-seleção no `LaunchWizard` e auto-expiração de 7 dias.
 - [ ] **Painel de Preferências do Usuário:** Toggles independentes em Configurações > Notificações para ligar/desligar captura passiva, notificações interativas, cálculo de parcelas, inferência de categorias e seleção de bancos.
 - **DoD:** Registro em 1 toque sem abrir o app funcional, zero falsos positivos de faturas/limites, parcelas calculadas com precisão, controles de usuário ativos e 100% de testes verdes.
 

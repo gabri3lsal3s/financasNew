@@ -109,4 +109,59 @@ describe("suggestions-store (Fila de Sugestões Nativas)", () => {
     expect(getPendingSuggestions()).toHaveLength(1);
     expect(getPendingSuggestions()[0]!.id).toBe("sug_1");
   });
+
+  it("ignora duplicatas pela chave composta (bank + amount + date + merchant)", () => {
+    addPendingSuggestion(sample1);
+    expect(getPendingSuggestions().length).toBe(1);
+
+    // Mesmos dados principais com ID e rawText diferentes
+    const duplicateEvent: ParsedBankTransaction = {
+      id: "sug_completely_different_id_999",
+      bankName: "Nubank",
+      type: "expense",
+      amountCents: 4500,
+      description: "Almoço",
+      date: "2026-10-15",
+      paymentMethod: "credit_card",
+      rawText: "Texto ligeiramente diferente da mesma compra",
+    };
+
+    addPendingSuggestion(duplicateEvent);
+    expect(getPendingSuggestions().length).toBe(1);
+    expect(getPendingSuggestions()[0]!.id).toBe("sug_1");
+  });
+
+  it("expira automaticamente sugestões com mais de 7 dias", () => {
+    const now = Date.now();
+    const eightDaysAgo = now - 8 * 24 * 60 * 60 * 1000;
+
+    const expiredSample: ParsedBankTransaction = {
+      id: "sug_expired",
+      bankName: "Nubank",
+      type: "expense",
+      amountCents: 990,
+      description: "Café Antigo",
+      date: "2026-10-01",
+      timestamp: eightDaysAgo,
+      rawText: "Compra antiga de R$ 9,90",
+    };
+
+    const recentSample: ParsedBankTransaction = {
+      id: "sug_recent",
+      bankName: "Nubank",
+      type: "expense",
+      amountCents: 1500,
+      description: "Lanche Recente",
+      date: "2026-10-16",
+      timestamp: now,
+      rawText: "Compra recente de R$ 15,00",
+    };
+
+    addPendingSuggestion(expiredSample);
+    // Como a sugestão é antiga, não deve nem entrar na fila
+    expect(getPendingSuggestions()).toEqual([]);
+
+    addPendingSuggestion(recentSample);
+    expect(getPendingSuggestions()).toEqual([recentSample]);
+  });
 });

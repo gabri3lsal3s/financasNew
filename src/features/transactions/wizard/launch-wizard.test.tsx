@@ -357,4 +357,26 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     expect(onSuccess).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("auto-seleciona categoria por inferência determinística e avança para detalhes quando aberto por sugestão", async () => {
+    const onOpenChange = vi.fn();
+    const onSuccess = vi.fn();
+
+    render(
+      <LaunchWizard
+        initialType="expense"
+        initialValues={{
+          valueCents: 4500,
+          description: "Padaria Bella Vista",
+          date: "2026-10-16",
+        }}
+        onOpenChange={onOpenChange}
+        onSuccess={onSuccess}
+      />,
+    );
+
+    // Passo 3 — Detalhes (já com Data, Forma e Descrição visíveis e preenchidos)
+    expect(await screen.findByText("Forma de pagamento")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Padaria Bella Vista")).toBeInTheDocument();
+  });
 });

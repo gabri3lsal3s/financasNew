@@ -1,5 +1,6 @@
 import { toISODate } from "@/domain/money";
 import type { PaymentMethod } from "@/types/schema";
+import { inferCategoryKeyword } from "./category-inference";
 
 export interface ParsedBankTransaction {
   id: string;
@@ -13,6 +14,9 @@ export interface ParsedBankTransaction {
   installments?: number;
   currentInstallment?: number;
   installmentAmountCents?: number;
+  merchant?: string;
+  timestamp?: number;
+  categorySlug?: string;
 }
 
 export interface BankNotificationPayload {
@@ -577,12 +581,17 @@ export function parseBankNotification(
 
   const id = `sug_${payload.timestamp || Date.now()}_${cents}_${Math.random().toString(36).slice(2, 7)}`;
 
+  const inferredSlug = inferCategoryKeyword(merchant || defaultDesc);
+
   return {
     id,
     bankName,
     type,
     amountCents: cents,
     description: defaultDesc,
+    merchant: merchant || undefined,
+    timestamp: payload.timestamp || Date.now(),
+    categorySlug: inferredSlug,
     date: dateStr,
     paymentMethod,
     rawText: combinedText,
@@ -622,6 +631,7 @@ export function parsePixShareText(rawText: string): ParsedBankTransaction | null
       : `Pix Enviado (${bankName})`;
 
   const id = `pix_${Date.now()}_${cents}_${Math.random().toString(36).slice(2, 7)}`;
+  const inferredSlug = inferCategoryKeyword(recipient || description);
 
   return {
     id,
@@ -629,6 +639,9 @@ export function parsePixShareText(rawText: string): ParsedBankTransaction | null
     type: isIncome,
     amountCents: cents,
     description,
+    merchant: recipient || undefined,
+    timestamp: Date.now(),
+    categorySlug: inferredSlug,
     date: toISODate(new Date()),
     paymentMethod: "pix",
     rawText,

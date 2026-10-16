@@ -10,6 +10,7 @@ import {
   usePendingSuggestions,
 } from "@/services/native";
 import { cn } from "@/lib/utils";
+import { inferCategoryKeyword } from "@/domain/notifications";
 
 export interface PendingSuggestionsCardProps {
   className?: string;
@@ -35,8 +36,10 @@ export function PendingSuggestionsCard({
     date: string,
     method?: string,
     installments?: number,
+    categorySlug?: string,
   ) => {
     onSuggestionHandled?.(id);
+    const inferredSlug = categorySlug || inferCategoryKeyword(desc);
     const params = new URLSearchParams({
       novo: type,
       valor: String(cents),
@@ -45,6 +48,9 @@ export function PendingSuggestionsCard({
       forma: method || "pix",
       sug_id: id,
     });
+    if (inferredSlug) {
+      params.set("categoria", inferredSlug);
+    }
     if (installments && installments > 1) {
       params.set("parcelas", String(installments));
     }
@@ -169,6 +175,7 @@ export function PendingSuggestionsCard({
                     sug.date,
                     sug.paymentMethod,
                     sug.installments,
+                    sug.categorySlug,
                   )
                 }
                 className="h-8 gap-1.5 text-xs font-medium"

@@ -1,5 +1,9 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
-import type { ParsedBankTransaction } from "@/domain/notifications";
+import {
+  inferCategoryKeyword,
+  matchCategoryBySlug,
+  type ParsedBankTransaction,
+} from "@/domain/notifications";
 import { isNativePlatform } from "./platform";
 import { addPendingSuggestion, dismissPendingSuggestion } from "./suggestions-store";
 import { listCategories } from "@/data/repositories/categories";
@@ -70,51 +74,16 @@ export function formatMethodLabel(method?: string): string {
  */
 export function findMatchingCategory(categories: Category[], description: string): Category | undefined {
   if (!description || categories.length === 0) return undefined;
-  const desc = description.toLowerCase();
 
-  const keywordMap: Array<{ terms: string[]; catNames: string[] }> = [
-    {
-      terms: ["mercado", "supermercado", "hiper", "carrefour", "extra", "pao de acucar", "pão de açúcar", "assai", "atacadao", "atacadão"],
-      catNames: ["mercado", "supermercado", "alimentação", "alimentacao", "compras"],
-    },
-    {
-      terms: ["restaurante", "padaria", "panificadora", "lanchonete", "ifood", "habib", "mcdonald", "burger", "pizza", "sushi", "café", "cafe"],
-      catNames: ["alimentação", "alimentacao", "refeição", "refeicao", "restaurante"],
-    },
-    {
-      terms: ["uber", "99", "posto", "shell", "ipiranga", "combustivel", "combustível", "gasolina", "estacionamento", "pedágio", "pedagio"],
-      catNames: ["transporte", "combustível", "combustivel", "veículo", "veiculo"],
-    },
-    {
-      terms: ["droga", "drogasil", "raia", "farmacia", "farmácia", "hospital", "clinica", "clínica", "médico", "medico", "saude", "saúde", "exame"],
-      catNames: ["saúde", "saude", "farmácia", "farmacia", "cuidados"],
-    },
-    {
-      terms: ["netflix", "spotify", "amazon", "prime", "disney", "youtube", "assinatura"],
-      catNames: ["assinaturas", "serviços", "servicos", "lazer"],
-    },
-    {
-      terms: ["cinema", "show", "teatro", "ingresso", "viagem", "hotel", "resort", "passeio"],
-      catNames: ["lazer", "entretenimento", "viagem", "viagens"],
-    },
-    {
-      terms: ["salario", "salário", "folha", "adicional", "empresa", "pagamento"],
-      catNames: ["salário", "salario", "remuneração", "remuneracao", "renda", "receita"],
-    },
-  ];
-
-  for (const group of keywordMap) {
-    const hasTerm = group.terms.some((term) => desc.includes(term));
-    if (hasTerm) {
-      for (const targetName of group.catNames) {
-        const matched = categories.find((c) => c.name.toLowerCase().includes(targetName));
-        if (matched) return matched;
-      }
-    }
+  const slug = inferCategoryKeyword(description);
+  if (slug) {
+    const matched = matchCategoryBySlug(categories, slug);
+    if (matched) return matched;
   }
 
+  const descLower = description.toLowerCase();
   for (const cat of categories) {
-    if (desc.includes(cat.name.toLowerCase())) {
+    if (descLower.includes(cat.name.toLowerCase())) {
       return cat;
     }
   }
