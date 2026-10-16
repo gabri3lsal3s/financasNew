@@ -110,7 +110,7 @@ graph TD
     - **Governança SaaS:** Sincronizar `docs/PROJETO_SAAS.md` com as regras recentes de trial de 30 dias e planos de assinatura.
   - **Critério de Saída:** Acervo documental coeso, sem páginas redundantes, com referências cruzadas válidas e em conformidade estrita com `AGENTS.md`.
 
-- [ ] **Tarefa 0.5 — Auditoria e Reorganização Arquitetural das Pastas em `src/`**
+- [x] **Tarefa 0.5 — Auditoria e Reorganização Arquitetural das Pastas em `src/`**
   - **Ação:** Verificar o alinhamento das pastas de código com `docs/PROJECT_STRUCTURE.md`:
     - **Páginas e Módulos Órfãos:** Inspecionar `src/features/categories/`. Visto que a rota `/categorias` redireciona para `/orcamentos`, reestruturar componentes compartilhados (como `CategoryFormDialog`) para `src/features/budgets/components/` ou `src/components/modules/`, eliminando pastas de páginas que não são mais rotas ativas;
     - **Barrels de Export (`index.ts`):** Garantir que todas as pastas de features, componentes e domínio possuam barrels `index.ts` com exports nomeados consistentes, sem default exports.

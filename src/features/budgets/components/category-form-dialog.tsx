@@ -7,7 +7,7 @@ import { suggestCategory } from "@/domain/budgets";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
 import { useCreateCategory, useUpdateCategory } from "@/state";
-import { DeleteCategoryDialog } from "@/features/categories/components/delete-category-dialog";
+import { DeleteCategoryDialog } from "@/features/budgets/components/delete-category-dialog";
 import type { Category, CategoryType } from "@/types";
 
 /** Opções de ícone (lucide-react, sem emojis) montadas uma única vez. */

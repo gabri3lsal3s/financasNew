@@ -35,11 +35,11 @@ import {
 } from "@/state";
 import {
   BudgetAdjustDialog,
+  CategoryFormDialog,
   IncomeGoalDialog,
   LimitDialog,
   type BudgetAdjustCategoryItem,
 } from "@/features/budgets/components";
-import { CategoryFormDialog } from "@/features/categories/components/category-form-dialog";
 import type { Category } from "@/types";
 
 /** Categorias & Orçamentos (§3.5.2) e metas de renda (§3.5.3) — Opção C unificada. */
