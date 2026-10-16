@@ -100,4 +100,32 @@ describe("DailyFlowChart (F8)", () => {
     const { container } = render(<DailyFlowChart days={days} />);
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it("renderiza empty state calmo quando a lista de dias estiver vazia", () => {
+    render(<DailyFlowChart days={[]} />);
+    expect(screen.getByTestId("daily-flow-empty")).toBeInTheDocument();
+    expect(screen.getByText("Sem movimentações registradas neste período")).toBeInTheDocument();
+  });
+
+  it("aplica clamp no posicionamento horizontal do tooltip próximo aos extremos", () => {
+    const { container } = render(<DailyFlowChart days={days} />);
+    const chart = container.firstChild as HTMLElement;
+    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      width: 310,
+      top: 0,
+      height: 120,
+      right: 310,
+      bottom: 120,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    // Posição no extremo esquerdo
+    fireEvent.pointerMove(chart, { clientX: 0 });
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip.style.left).toContain("clamp(76px");
+  });
 });

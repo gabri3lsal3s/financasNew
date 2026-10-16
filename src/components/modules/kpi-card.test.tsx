@@ -51,4 +51,18 @@ describe("KpiCard (F12 — valores monetários via NumberTicker)", () => {
     const { container } = render(<KpiCard label="Receitas" cents={100} />);
     expect(container.querySelector("[role=button]")).toBeNull();
   });
+
+  it("aplica tipografia adaptativa em valores de 7+ e 8+ dígitos sem reticências", () => {
+    // 7 dígitos (>= R$ 100.000,00 -> 10.000.000 centavos)
+    const { container: container7 } = render(<KpiCard label="Receitas" cents={15000000} />);
+    const p7 = container7.querySelector("p");
+    expect(p7?.className).toContain("text-base sm:text-lg lg:text-xl");
+    expect(p7?.className).not.toContain("truncate");
+
+    // 8 dígitos (>= R$ 1.000.000,00 -> 100.000.000 centavos)
+    const { container: container8 } = render(<KpiCard label="Patrimônio" cents={250000000} />);
+    const p8 = container8.querySelector("p");
+    expect(p8?.className).toContain("text-sm sm:text-base lg:text-lg");
+    expect(p8?.className).not.toContain("truncate");
+  });
 });

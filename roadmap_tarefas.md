@@ -413,15 +413,15 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 16: Refinamento da Visão Geral (Dashboard) e KPIs
 
-### Tarefa 33: Auditoria 360° do Dashboard, Gráficos de Fluxo Diário, Distribuição por Categorias e Card do Assistente
-- **Status:** ⏳ Pendente
+### Tarefa 33: Auditoria 360° do Dashboard, Gráficos de Fluxo Diário, Distribuição por Categorias e Card do Assistente [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Padronizar a visualização de métricas monetárias, garantir a tríade de estados (Skeleton/Empty/Error) em todos os blocos do Dashboard e certificar a responsividade em telas ultra-compactas.
 - **Ações:**
-  1. **Tipografia Monetária e Auto-Fit:** Aplicar `<MoneyText />` adaptativo em todos os KPIs do Dashboard (Saldo Disponível, Receitas, Despesas e Total Investido), eliminando reticências em valores de 7+ dígitos.
-  2. **Gráficos Responsivos de Fluxo Diário e Categorias:** Harmonizar tooltips, eixos e legendas do gráfico de fluxo diário e do gráfico de rosca de categorias, garantindo transição fluida entre mobile e desktop sem overflow horizontal.
-  3. **Card de Notificações Bancárias Pendentes:** Refinar a lista de sugestões pendentes (`PendingSuggestionsCard`) na Home com ações rápidas contextuais, feedback sensorial único ao aprovar/descartar e animações suaves de saída.
-  4. **Tríade Canônica de Estados:** Certificar que o Dashboard apresente Skeletons estruturais harmoniosos durante o carregamento, EmptyStates calmos (`tone="default"`) e tratamento de erro via Gateway com ação de retry.
-  5. **Testes Automatizados:** Cobrir cenários de borda com valores extremos, alternância de meses e renderização dos widgets.
+  1. **Tipografia Monetária e Auto-Fit:** Aplicar `<MoneyText />` adaptativo em todos os KPIs do Dashboard (Saldo Disponível, Receitas, Despesas e Total Investido), eliminando reticências em valores de 7+ dígitos. (Concluído: `KpiCard` atualizado para integrar `<MoneyText />` adaptativo com redução proporcional de escala tipográfica em 7+ dígitos [>= R$ 100.000,00] e 8+ dígitos [>= R$ 1.000.000,00], auto-fit em `RealCashHeroCard`, saldo no teto de orçamentos e saldo líquido de contas com zero reticências).
+  2. **Gráficos Responsivos de Fluxo Diário e Categorias:** Harmonizar tooltips, eixos e legendas do gráfico de fluxo diário e do gráfico de rosca de categorias, garantindo transição fluida entre mobile e desktop sem overflow horizontal. (Concluído: adicionado clamp no posicionamento horizontal do tooltip de `DailyFlowChart` com `clamp(76px, ${scrubLeft}, calc(100% - 76px))` evitando clipping nas margens de mobile, legenda com flex-wrap sem overflow e tratamento de estado vazio calmo quando `days` for vazio).
+  3. **Card de Notificações Bancárias Pendentes:** Refinar a lista de sugestões pendentes (`PendingSuggestionsCard`) na Home com ações rápidas contextuais, feedback sensorial único ao aprovar/descartar e animações suaves de saída. (Concluído: animação de entrada com fade-in e slide vertical, botões de ação ergonômicos com cursor-pointer, transição suave em cada item e feedback sensorial centralizado via `<Button />` sem risco de double-haptic).
+  4. **Tríade Canônica de Estados:** Certificar que o Dashboard apresente Skeletons estruturais harmoniosos durante o carregamento, EmptyStates calmos (`tone="default"`) e tratamento de erro via Gateway com ação de retry. (Concluído: implementada a tríade estrita na Visão Geral com skeletons harmoniosos para Hero, 4 KPIs e grade dupla de gráficos, `ErrorState` prioritário com callback `onRetry` refazendo as queries ativas da tela, e `EmptyState` calmo quando não houver lançamentos no mês).
+  5. **Testes Automatizados:** Cobrir cenários de borda com valores extremos, alternância de meses e renderização dos widgets. (Concluído: adicionados testes em `overview-page.test.tsx`, `kpi-card.test.tsx` e `daily-flow-chart.test.tsx` cobrindo carregamento com skeletons, erro com retry, estado vazio, clamp de tooltip e valores extremos de 8+ dígitos, totalizando 54 testes aprovados).
 - **Commit:** `refactor(dashboard): audit and optimize kpis, daily flow charts, and pending transactions card`
 
 ---

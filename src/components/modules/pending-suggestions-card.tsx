@@ -71,7 +71,7 @@ export function PendingSuggestionsCard({
       role="region"
       aria-label="Sugestões de transações detectadas"
       className={cn(
-        "rounded-2xl border border-border/80 bg-surface shadow-xs p-4 sm:p-5 flex flex-col gap-3.5 transition-all",
+        "rounded-2xl border border-border/80 bg-surface shadow-xs p-4 sm:p-5 flex flex-col gap-3.5 transition-all animate-in fade-in slide-in-from-top-2 duration-200",
         className,
       )}
     >
@@ -92,7 +92,8 @@ export function PendingSuggestionsCard({
             variant="ghost"
             size="xs"
             onClick={handleDismissAll}
-            className="text-xs text-muted-foreground hover:text-foreground self-start sm:self-auto"
+            className="text-xs text-muted-foreground hover:text-negative-strong hover:bg-surface-hover self-start sm:self-auto cursor-pointer"
+            aria-label="Descartar todas as sugestões"
           >
             <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
             <span>Descartar todas</span>
@@ -104,7 +105,7 @@ export function PendingSuggestionsCard({
         {suggestions.map((sug) => (
           <div
             key={sug.id}
-            className="pt-2.5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            className="pt-2.5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-150 ease-out"
           >
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -155,10 +156,10 @@ export function PendingSuggestionsCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleDismiss(sug.id)}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                 aria-label={`Descartar sugestão de ${sug.description}`}
               >
-                <X className="size-4 sm:mr-1" aria-hidden="true" />
+                <X className="size-4 sm:mr-1 shrink-0" aria-hidden="true" />
                 <span className="hidden sm:inline">Descartar</span>
               </Button>
 
@@ -178,12 +179,12 @@ export function PendingSuggestionsCard({
                     sug.categorySlug,
                   )
                 }
-                className="h-8 gap-1.5 text-xs font-medium"
+                className="h-8 gap-1.5 text-xs font-medium cursor-pointer"
                 aria-label={`Conferir e salvar sugestão de ${sug.description}`}
               >
-                <Check className="size-3.5" aria-hidden="true" />
+                <Check className="size-3.5 shrink-0" aria-hidden="true" />
                 <span>Conferir e Salvar</span>
-                <ArrowUpRight className="size-3 hidden sm:inline" aria-hidden="true" />
+                <ArrowUpRight className="size-3 hidden sm:inline shrink-0" aria-hidden="true" />
               </Button>
             </div>
           </div>

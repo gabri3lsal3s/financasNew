@@ -125,6 +125,17 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
   const lastExpense = expensePointList.length > 0 ? expensePointList[expensePointList.length - 1] : undefined;
   const lastInvestment = hasInvestments && investmentPointList.length > 0 ? investmentPointList[investmentPointList.length - 1] : undefined;
 
+  if (days.length === 0) {
+    return (
+      <div
+        className={cn("flex h-44 w-full items-center justify-center text-xs text-muted-foreground", className)}
+        data-testid="daily-flow-empty"
+      >
+        Sem movimentações registradas neste período
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -219,11 +230,11 @@ export function DailyFlowChart({ days, className }: DailyFlowChartProps) {
         <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-px bg-foreground/20" style={{ left: scrubLeft }} />
       ) : null}
 
-      {/* Tooltip flutuante limpo (sem sombras pesadas) */}
+      {/* Tooltip flutuante limpo (sem sombras pesadas nem clipping nas bordas) */}
       {scrubDay ? (
         <div
           className="pointer-events-none absolute top-0 z-tooltip -translate-x-1/2 rounded-xl border border-border/80 bg-surface/95 backdrop-blur-md p-2.5 text-xs min-w-36 animate-in fade-in zoom-in-95 duration-100"
-          style={{ left: scrubLeft }}
+          style={{ left: `clamp(76px, ${scrubLeft}, calc(100% - 76px))` }}
           role="tooltip"
         >
           <div className="flex items-center justify-between border-b border-border/50 pb-1 mb-1.5">

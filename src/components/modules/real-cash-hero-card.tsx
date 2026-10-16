@@ -72,13 +72,20 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
           </div>
         </div>
 
-        {/* Valor Principal em Destaque */}
-        <div className="flex items-baseline gap-2 pt-0.5">
+        {/* Valor Principal em Destaque com Auto-Fit para 7+ e 8+ dígitos */}
+        <div className="flex items-baseline gap-2 pt-0.5 min-w-0 overflow-x-auto no-scrollbar">
           <MoneyText
             cents={cashBalance.currentBalanceCents}
             tone={cashBalance.currentBalanceCents >= 0 ? "default" : "negative"}
             animated
-            className="text-2xl sm:text-3xl font-bold tracking-tight"
+            className={cn(
+              "font-bold tracking-tight whitespace-nowrap",
+              Math.abs(cashBalance.currentBalanceCents) >= 100_000_000
+                ? "text-xl sm:text-2xl"
+                : Math.abs(cashBalance.currentBalanceCents) >= 10_000_000
+                  ? "text-2xl sm:text-3xl"
+                  : "text-2xl sm:text-3xl",
+            )}
           />
         </div>
 

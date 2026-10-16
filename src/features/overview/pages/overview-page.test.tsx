@@ -1,9 +1,20 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubscriptionStatus } from "@/types";
 import * as nativeModule from "@/services/native";
 import { OverviewPage } from "./overview-page";
+
+const testQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+  },
+});
+
+const testWrapper = ({ children }: { children: React.ReactNode }) => (
+  <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
+);
 
 vi.mock("react-router", () => ({
   useNavigate: () => navigateMock,
@@ -76,22 +87,34 @@ const defaultSubscriptionMock: SubscriptionStatus = {
 
 let subscriptionMock: SubscriptionStatus = { ...defaultSubscriptionMock };
 
+let incomesMock = {
+  data: (month: string) =>
+    month === "2026-08"
+      ? [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05" }]
+      : [{ id: "i0", value: 4000, report_weight: 1, date: "2026-07-05" }],
+  isLoading: false,
+  error: null as Error | null,
+};
+
+let expensesMock = {
+  data: (month: string) => monthData(month),
+  isLoading: false,
+  error: null as Error | null,
+};
+
 vi.mock("@/state", () => ({
   useIncomes: (month: string) => ({
-    data:
-      month === "2026-08"
-        ? [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05" }]
-        : [{ id: "i0", value: 4000, report_weight: 1, date: "2026-07-05" }],
-    isLoading: false,
-    isError: false,
-    error: null,
+    data: incomesMock.data(month),
+    isLoading: incomesMock.isLoading,
+    isError: Boolean(incomesMock.error),
+    error: incomesMock.error,
     refetch: vi.fn(),
   }),
   useExpenses: (month: string) => ({
-    data: monthData(month),
-    isLoading: false,
-    isError: false,
-    error: null,
+    data: expensesMock.data(month),
+    isLoading: expensesMock.isLoading,
+    isError: Boolean(expensesMock.error),
+    error: expensesMock.error,
     refetch: vi.fn(),
   }),
   // Sparklines dos KPIs: mesmo dataset do mês — caem no último ponto.
@@ -190,6 +213,19 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
     ];
     subscriptionMock = { ...defaultSubscriptionMock };
+    incomesMock = {
+      data: (month: string) =>
+        month === "2026-08"
+          ? [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05" }]
+          : [{ id: "i0", value: 4000, report_weight: 1, date: "2026-07-05" }],
+      isLoading: false,
+      error: null,
+    };
+    expensesMock = {
+      data: (month: string) => monthData(month),
+      isLoading: false,
+      error: null,
+    };
   });
 
   afterEach(() => {
@@ -477,6 +513,33 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getByText("Transações Detectadas")).toBeInTheDocument();
     expect(screen.getByText("Restaurante Bom Sabor")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Conferir e Salvar/i })).toBeInTheDocument();
+  });
+
+  it("renderiza os skeletons estruturais harmoniosos durante o carregamento de dados", () => {
+    incomesMock.isLoading = true;
+    render(<OverviewPage />);
+    expect(screen.getByTestId("overview-loading-skeleton")).toBeInTheDocument();
+  });
+
+  it("renderiza o ErrorState canônico com ação de retry quando ocorre erro nas queries", () => {
+    incomesMock.error = new Error("Falha ao carregar receitas do servidor");
+    render(<OverviewPage />, { wrapper: testWrapper });
+    expect(screen.getByRole("alert")).toHaveTextContent("Falha ao carregar receitas do servidor");
+    expect(screen.getByRole("button", { name: /Tentar novamente/i })).toBeInTheDocument();
+  });
+
+  it("renderiza o EmptyState calmo quando não houver lançamentos no mês", () => {
+    incomesMock.data = () => [];
+    expensesMock.data = () => [];
+    render(<OverviewPage />);
+    expect(screen.getByText("Sem lançamentos neste mês")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Novo lançamento/i })).toBeInTheDocument();
+  });
+
+  it("renderiza valores extremos de 8+ dígitos adaptativamente sem reticências", () => {
+    incomesMock.data = () => [{ id: "i_huge", value: 2500000, report_weight: 1, date: "2026-08-05" }]; // R$ 2.500.000,00
+    render(<OverviewPage />);
+    expect(screen.getByText("R$ 2.500.000,00")).toBeInTheDocument();
   });
 });
 

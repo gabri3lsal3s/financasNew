@@ -418,20 +418,19 @@ export function OverviewPage() {
 
       <PendingSuggestionsCard />
 
-      {error ? <ErrorState message={getErrorMessage(error)} /> : null}
-
-      {!loading && !error && hasDemoData && <DemoModeBanner />}
-
-      {!loading && !error && <DashboardAlertsCarousel items={alertItems} />}
-
-      {!loading && !error && subscription.isReadOnly && <ReadOnlyBanner />}
-
-      {!loading && !error && showOnboarding && !hasDemoData && (
-        <OnboardingCard counts={onboardingCounts} />
-      )}
-
-      {loading ? (
-        <div className="flex flex-col gap-3" aria-hidden="true">
+      {error ? (
+        <ErrorState
+          message={getErrorMessage(error)}
+          onRetry={() => {
+            void incomesQuery.refetch();
+            void expensesQuery.refetch();
+            if (isCurrentMonth) {
+              void realCashData.refetch();
+            }
+          }}
+        />
+      ) : loading ? (
+        <div className="flex flex-col gap-3" aria-hidden="true" data-testid="overview-loading-skeleton">
           {isCurrentMonth ? <SkeletonHeroCard /> : null}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <SkeletonKpi />
@@ -439,10 +438,23 @@ export function OverviewPage() {
             <SkeletonKpi />
             <SkeletonKpi />
           </div>
-          <SkeletonChart />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <SkeletonChart />
+            <SkeletonChart />
+          </div>
         </div>
       ) : (
         <>
+          {hasDemoData && <DemoModeBanner />}
+
+          <DashboardAlertsCarousel items={alertItems} />
+
+          {subscription.isReadOnly && <ReadOnlyBanner />}
+
+          {showOnboarding && !hasDemoData && (
+            <OnboardingCard counts={onboardingCounts} />
+          )}
+
           {isCurrentMonth ? (
             <RealCashHeroCard
               realCashData={realCashData}
@@ -522,7 +534,7 @@ export function OverviewPage() {
                   <Activity className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Fluxo diário</h2>
                 </div>
-                <div className="flex items-center gap-2 sm:gap-2.5 text-[11px] shrink-0">
+                <div className="flex items-center justify-end gap-2 sm:gap-2.5 text-[11px] shrink-0 flex-wrap">
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <span className="size-1.5 rounded-full bg-positive-strong shrink-0" /> Receitas
                   </span>
@@ -608,8 +620,11 @@ export function OverviewPage() {
                               cents={Math.abs(totalRemainingCents)}
                               tone="default"
                               className={cn(
-                                "text-2xl sm:text-3xl font-bold tracking-tight",
+                                "font-bold tracking-tight whitespace-nowrap tabular-nums",
                                 totalRemainingCents >= 0 ? "text-positive-strong" : "text-critical-strong",
+                                Math.abs(totalRemainingCents) >= 100_000_000
+                                  ? "text-xl sm:text-2xl"
+                                  : "text-2xl sm:text-3xl",
                               )}
                             />
                             <span className="text-xs text-muted-foreground font-normal">
@@ -714,7 +729,12 @@ export function OverviewPage() {
                         tone="auto"
                         sign="auto"
                         animated
-                        className="text-2xl sm:text-3xl tracking-tight whitespace-nowrap"
+                        className={cn(
+                          "tracking-tight whitespace-nowrap font-bold",
+                          Math.abs(accountsBalance) >= 100_000_000
+                            ? "text-xl sm:text-2xl"
+                            : "text-2xl sm:text-3xl",
+                        )}
                       />
                     </div>
                     <div className="grid grid-cols-3 gap-1.5 sm:gap-2 border-t border-border/50 pt-2.5 sm:pt-3 text-[11px] text-muted-foreground min-w-0">
