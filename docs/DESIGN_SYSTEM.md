@@ -173,6 +173,7 @@ $$\text{dropdowns (20)} < \text{tooltips (25)} < \text{bottom bar (30)} < \text{
 1. **Mobile (Bottom Sheet):** modais ancorados acima da barra de navegação inferior com `rounded-t-2xl`, compensação de safe area e menu mobile (`bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]`), altura máxima adaptativa `max-h-[calc(88dvh-4rem-env(safe-area-inset-bottom,0px))]` e bordas unificadas na cor de destaque do tema ativo (`border border-primary/25`). `ModalFooter` sticky adota espaçamento seguro e layout responsivo. Foco inicial não abre teclado virtual automaticamente (`< 768px`).
 2. **Desktop (Modal Centralizado):** centralização bidirecional (`md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2`) com margens mínimas de respiro (`md:max-h-[calc(100dvh-3rem)]`), isolamento de foco ativo e overlay cobrindo a `Sidebar (40)`.
 3. **Collision Padding em Popovers e Seletores:** todo menu dropdown (`Select`), seletor de data (`DatePicker`), seletor de cor (`ColorPicker`) ou paleta (`PopoverContent`, `IconPicker`) adota `collisionPadding={{ top: 8, left: 8, right: 8, bottom: 80 }}` no mobile, evitando colisão ou sobreposição sob a `BottomNav (30)`.
+4. **Posicionamento e Desobstrução de Toasts (`Toaster`):** o contêiner `ToastPrimitive.Viewport` flutua acima da `BottomNav (30)` no mobile com `bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]`, centralizado horizontalmente na tela (`left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-sm`) com respiro seguro sem encobrir o botão central FAB nem as abas de navegação. No desktop, ancora no canto inferior direito (`sm:right-6 sm:bottom-6 sm:max-w-sm`). `pointer-events-none` no Viewport assegura que toques fora do card do toast não sejam interceptados.
 
 ---
 
@@ -619,5 +620,16 @@ Padrão oficial de entrada de valores do app — herdado do app antigo (estilo N
     - `.icon-box-neutral`: `bg-surface-hover text-muted-foreground border border-border/80` (apoio e informativo);
     - `.icon-box-accent`: `bg-accent/15 text-accent-foreground border border-accent/25` (destaque executivo e dourado).
 - **Proibição de Cores Estáticas:** É expressamente proibido usar classes de cores hard-coded do Tailwind (`bg-emerald-500`, `text-indigo-600`, `bg-amber-500`, etc.) em ícones ou badges de domínio, utilizando unicamente a escala de categorias (`cat-1..10`) ou semânticas financeiras.
+
+### 14.24 Badges Pop de Notificação (Toasts) e Reatividade à Cor de Destaque (Fase 8 — Tarefa 24)
+- **Componentes:** `src/components/ui/toast.tsx`, `src/components/ui/toast-host.tsx`.
+- **Animação Bottom-Up Suave:** Entrada ascendente com spring elástico (`translateY(100%) scale(0.96) -> translateY(0) scale(1)` em `0.22s cubic-bezier(0.16, 1, 0.3, 1)`) e descida com fade na saída (`translateY(12px) scale(0.96)` em `0.15s ease-in`), com suporte nativo ao gesto de deslizar para baixo (`swipeDirection="down"`).
+- **Herança da Cor de Destaque Ativa (`data-accent`):**
+  - Variantes de sucesso (`success`) e informação (`info`) utilizam `border-primary/40` e badge de ícone em `bg-primary/15 text-primary-strong`, refletindo a paleta do usuário (Teal, Esmeralda, Ouro Âmbar, Safira Petróleo, Violeta Íris, Coral Rosé ou Mono) nos 3 temas (Claro, Escuro e OLED).
+  - Variantes `default` (`border-border/90`), `warning` (`border-warning/40` + `bg-warning/15 text-warning-strong`) e `destructive` (`border-critical/40` + `bg-critical/15 text-critical-strong`) mantêm semântica estrita conforme DESIGN_SYSTEM §11.
+- **Anatomia Padronizada:**
+  - Badge circular de ícone canônico `flex size-7 shrink-0 items-center justify-center rounded-full`, com ícone Lucide centralizado em `size-4` (`Check`, `Info`, `TriangleAlert`, `XCircle`).
+  - Botão de fechar (X) em contêiner circular `size-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors`.
+
 
 

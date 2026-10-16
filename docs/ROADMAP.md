@@ -878,6 +878,12 @@
 | **F81** | Automação Contínua de Renda Fixa & Indexador CDI do Banco Central | Indicadores BCB em cascata, cálculo de rendimento projetado e testes unitários de macro indicadores | Renda Fixa & Cotações |
 | **F82** | Alinhamento Contábil de Rentabilidade, Moeda Nativa (USD) e Tabela Dedicada de Resgates | Resgates do período, moeda nativa nos relatórios e convergência com Retorno Total | Relatórios & Contabilidade |
 | **F83** | Otimização PWA Stale-While-Revalidate & Monitoramento de Conectividade | Cache para imagens e fontes, hook reativo useNetworkStatus e auditoria automatizada | PWA & Infraestrutura |
+| **F84** | Gráficos Donut de Distribuição por Classes e Setores nos Relatórios | Visualização de alocação patrimonial e setorial em relatórios executivos | Relatórios & Gráficos |
+| **F85** | Saneamento de Warnings de Produção PWA & Blindagem de Cotações | Eliminação de avisos de build e tolerância a falhas em cotações | PWA & Cotações |
+| **F86** | Reorganização dos Donuts em Largura Total ao Final dos Relatórios | Restauração editorial A4 e expansão de fatias para até 12 setores | Relatórios & Diagramação |
+| **F87** | Responsividade da Tabela de Resgates & Saneamento Visual dos Donuts | Scroll horizontal responsivo e limpeza visual de cards de alocação | UI & Relatórios |
+| **F88** | Padronização Visual de Resgates & Rentabilidade com Dedução de IR | Alinhamento de bordas, rentabilidade líquida e tabela regressiva de IR | Fiscal & Relatórios |
+| **F89** | Refinamento, Precisão & Buffer Offline do Assistente Passivo de Notificações | Eliminação de falsos positivos, buffer Android em segundo plano e auto-categorização | Nativo Android & Assistente |
 
 
 
@@ -5009,6 +5015,91 @@ flowchart TD
 - [x] Testes unitários atualizados e aprovados em `period-redemptions.test.ts`.
 - [x] Typecheck e lint limpos sem advertências.
 - [x] Build de produção limpo e testado.
+
+---
+
+### 🔔 FASE 89 — Refinamento, Detecção de Parcelas, Notificações Interativas & Ação "Adicionar Rápido" sem Abrir o App
+
+> **Status:** ⏳ Planejada (2026-10-16) — **Alta Fidelidade, Ação Direta no SO & Inteligência de Parcelas**: Detecção e cálculo de compras parceladas (`3x de R$ 50` ou `R$ 300 em 3x`); emissão de notificação interativa rica pelo próprio Guia Financeiro com ações `[➕ Adicionar Rápido]` (salva em segundo plano no Supabase com categoria e cartão inferidos) e `[✏️ Editar]` (abre o formulário); feedback com botão `Desfazer`; eliminação de falsos positivos (faturas fechadas, pagamentos de fatura, limite, recusas e propagandas); buffer offline em segundo plano no Android (`SharedPreferences`); expansão de pacotes monitorados para os maiores bancos brasileiros; auto-categorização determinística e resiliência Online First.
+>
+> **Objetivo:** Permitir que o usuário registre despesas e receitas instantaneamente a partir das notificações bancárias com 1 toque no painel do Android sem precisar abrir o app, com suporte a parcelas e governança financeira estrita.
+
+#### 1. Entregas Planejadas
+
+- **Frente 1: Motor de Inteligência de Parsing, Parcelas & Blacklist (`src/domain/notifications/bank-parser.ts`)**:
+  - **Detecção e Cálculo de Parcelas (`installmentsTotal` & `installmentValueCents`)**:
+    - Reconhecimento de padrões compostos:
+      - *Valor total + parcelas*: `"Compra de R$ 300,00 em 3x no cartão Nubank"` $\rightarrow$ `amountCents: 30000`, `installments: 3`;
+      - *Valor da parcela*: `"Compra de R$ 50,00 em 3x"` ou `"em 3x de R$ 50,00"` $\rightarrow$ calcula o total (`3 * 50 = R$ 150,00`), `amountCents: 15000`, `installments: 3`;
+      - Parcelas isoladas de controle mensal (`"Parcela 2/10 de R$ 45,00"`);
+  - **Blacklist Semântica de Falsos Positivos**:
+    - Rejeição imediata de faturas fechadas (`fatura fechou`, `fechamento da fatura`), pagamentos de fatura (`fatura paga com sucesso`), recusas/bloqueios (`não autorizada`, `recusada`, `saldo insuficiente`), ofertas/crédito (`limite aumentou`, `empréstimo pré-aprovado`, `cdb`, `cashback`), tokens 2FA e agendamentos futuros;
+  - **Extrator Multibanco de Estabelecimentos (Merchants)**:
+    - Suporte a preposições contraídas `"no"` e `"na"` além de `"em"`, `"para"` e `"de"`;
+    - Suporte a delimitadores com travessão e vírgulas dos cartões Itaú, Bradesco, Banco do Brasil e Santander (`ITAUCARD final 1234 - LOJAS AMERICANAS R$ 89,90`, `BB: Compra no cartao final 1234, R$ 45,00, DROGASIL`);
+    - Higienização de ruídos de maquininhas/adquirentes (`PAG*`, `MP*`, `IFOOD*`, `UBER *TRIP HELP`, sufixos como `SAO PAULO BR`);
+  - **Dicionário Expandido de Rendas (Receitas)**:
+    - Detecção de salários, reembolsos, estornos no cartão, devoluções de Pix, transferências recebidas (TED/DOC) e proventos/dividendos com desambiguação de contexto;
+  - **Alinhamento de Meios de Pagamento**:
+    - Suporte a `"transfer"` e detecção de boletos;
+
+- **Frente 2: Notificação Interativa Rica & Ação "Adicionar Rápido" sem Abrir o App**:
+  - **Emissão de Notificação Interativa Local pelo Guia Financeiro**:
+    - Ao detectar uma notificação bancária válida, o app dispara uma notificação local enriquecida:
+      - Título: *"Nova compra detectada: R$ 42,90"* (ou *"Nova compra em 3x de R$ 50,00"*);
+      - Corpo: *"Padaria Estrela · Nubank (Crédito) · Categoria: Alimentação"*;
+      - Botões de Ação nativos: `[➕ Adicionar Rápido]` e `[✏️ Editar]`;
+  - **Serviço Nativo de Salvamento em Segundo Plano (`QuickAddTransactionReceiver / Service`)**:
+    - Ao tocar em `[➕ Adicionar Rápido]`, executa a gravação no Supabase via worker nativo usando a sessão autenticada com categoria e cartão inferidos;
+    - Em caso de ambiguidade de cartão ou categoria, adota fallback seguro (cartão principal do banco ou conta corrente, e categoria "Outros/Diversos");
+  - **Feedback Dinâmico e Desfazer**:
+    - A notificação é atualizada instantaneamente para feedback de sucesso: *"✅ R$ XX,XX adicionado em [Categoria]"*, com botão temporário de `[Desfazer]` por alguns segundos antes da auto-dispensa;
+  - **Resiliência Online First**:
+    - Se o dispositivo estiver sem internet no momento do clique, atualiza a notificação informando *"Sem conexão à internet. Toque para tentar novamente ao reconectar"* e mantém a transação na fila de sugestões do app;
+
+- **Frente 3: Buffer Offline em Segundo Plano & Expansão de Bancos (`BankNotificationListenerService.java`)**:
+  - **Buffer Persistente em `SharedPreferences`**:
+    - Armazenamento em fila circular (até 30 itens) caso a notificação chegue com a WebView descarregada, sincronizando automaticamente no boot via `flushPendingNotifications`;
+  - **Expansão de Bancos Monitorados (`MONITORED_BANK_PACKAGES`)**:
+    - BTG Pactual, PicPay, PagBank, Neon, Next, XP Investimentos, Nomad e Wise;
+
+- **Frente 4: Auto-Categorização, Store Reativa & UX do Wizard**:
+  - **Inferência Determinística de Categoria (`inferCategoryKeyword`)**:
+    - Mapeamento determinístico de estabelecimentos para categorias do sistema (`alimentacao`, `mercado`, `transporte`, `saude`, `lazer`, `assinaturas`, `compras`, `salario`);
+  - **Pré-seleção Contextual no `LaunchWizard` (Ação `[✏️ Editar]`)**:
+    - Ao tocar em `[✏️ Editar]`, abre o app diretamente com valor, descrição, parcelas e categoria pré-selecionados na revisão;
+  - **Auto-Expiração (TTL 7 dias) & Deduplicação Composta**:
+    - Limpeza automática de sugestões antigas e chave de unicidade combinada;
+
+- **Frente 5: Bateria de Homologação Multibanco & Qualidade Rigorosa**:
+  - Suíte de testes em `bank-parser.test.ts` cobrindo casos reais de Nubank, Itaú, Inter, C6, Bradesco, Santander, Mercado Pago, Caixa, Banco do Brasil e PicPay (à vista e parcelado);
+  - Testes negativos de descarte de falsos positivos;
+  - Typecheck estrito (`tsc -b`) e lint (`npm run lint`) limpos sem violações;
+  - Sincronização nativa Capacitor (`npx cap sync android`).
+
+- **Frente 6: Painel de Controle e Preferências Granulares do Usuário (`AppearanceTab`)**:
+  - Seção dedicada em Configurações > Notificações / Personalização com toggles independentes para:
+    - *Captura Passiva de Notificações*: ativação/desativação da escuta de sistema;
+    - *Notificações Interativas Locais*: envio de push com botões rápidos ou apenas card silencioso na Home;
+    - *Detecção Automática de Parcelas*: ligar/desligar cálculo de parcelamento;
+    - *Inferência Automática de Categorias*: ligar/desligar auto-sugestão de categorias;
+    - *Bancos Monitorados*: seleção granular de quais bancos o usuário deseja escutar;
+  - Persistência isolada e segura por usuário.
+
+**✅ DoD (Definition of Done da Fase 89):**
+- [ ] Detecção de parcelas implementada para formatos "total em N vezes" e "N vezes de R$ X".
+- [ ] Notificação interativa rica disparada com botões nativos `[➕ Adicionar Rápido]` e `[✏️ Editar]`.
+- [ ] Salvamento em segundo plano sem abrir o app funcional via autenticação ativa no Supabase.
+- [ ] Feedback visual de sucesso emitido na notificação com ação temporária de "Desfazer".
+- [ ] Tratamento estrito de ausência de rede (Online First) com aviso e retenção na fila.
+- [ ] Blacklist semântica ativa rejeitando faturas fechadas, pagamentos de fatura, 2FA, limites e recusas.
+- [ ] Extrator com preposições "no", "na", travessões do Itaú/Bradesco e vírgulas do Banco do Brasil.
+- [ ] Buffer offline nativo em `SharedPreferences` no Android com sincronização via `flushPendingNotifications`.
+- [ ] Mapeamento expandido para BTG, PicPay, PagBank, Neon, Next, XP, Nomad e Wise.
+- [ ] Inferência determinística de categorias e pré-seleção no `LaunchWizard`.
+- [ ] Painel de preferências integrado em Configurações com toggles individuais para cada recurso do assistente.
+- [ ] Bateria completa de testes automatizados 100% verde.
+- [ ] Typecheck (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
 
 
 

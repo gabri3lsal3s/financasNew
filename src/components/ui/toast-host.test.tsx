@@ -99,5 +99,41 @@ describe("ToastHost (bus de toasts imperativos)", () => {
     expect(screen.queryByText("Primeiro toast")).not.toBeInTheDocument();
     expect(screen.getByText("Segundo toast")).toBeInTheDocument();
   });
+
+  it("aplica borda primary/40 e badge primary/15 na variante success para herdar data-accent", () => {
+    const { container } = renderHost();
+
+    act(() => {
+      pushToast({ title: "Ação concluída com sucesso", variant: "success" });
+    });
+
+    const root = container.querySelector("[data-state='open']");
+    expect(root).toHaveClass("border-primary/40");
+
+    const badge = container.querySelector(".size-7.rounded-full");
+    expect(badge).toHaveClass("bg-primary/15", "text-primary-strong");
+  });
+
+  it("renderiza o viewport posicionado acima da bottom bar mobile com pointer-events-none", () => {
+    const { container } = renderHost();
+
+    const viewport = container.querySelector("ol");
+    expect(viewport).toHaveClass("pointer-events-none");
+    expect(viewport).toHaveClass("bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]");
+    expect(viewport).toHaveClass("left-1/2");
+    expect(viewport).toHaveClass("sm:left-auto");
+    expect(viewport).toHaveClass("sm:right-6");
+  });
+
+  it("renderiza botão de fechar circular com size-7 e acessibilidade", () => {
+    renderHost();
+
+    act(() => {
+      pushToast({ title: "Toast de teste" });
+    });
+
+    const closeBtn = screen.getByRole("button", { name: "Fechar" });
+    expect(closeBtn).toHaveClass("size-7", "rounded-full");
+  });
 });
 

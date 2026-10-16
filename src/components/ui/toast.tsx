@@ -1,5 +1,5 @@
 import * as ToastPrimitive from "@radix-ui/react-toast";
-import { CheckCircle2, Info, TriangleAlert, X, XCircle } from "lucide-react";
+import { Check, Info, TriangleAlert, X, XCircle } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
@@ -23,26 +23,26 @@ export interface ToastProps {
 
 const variantIcon: Record<ToastVariant, typeof Info> = {
   default: Info,
-  success: CheckCircle2,
+  success: Check,
   info: Info,
   warning: TriangleAlert,
   destructive: XCircle,
 };
 
 const variantClass: Record<ToastVariant, string> = {
-  default: "border-border/80",
-  success: "border-positive/40",
+  default: "border-border/90",
+  success: "border-primary/40",
   info: "border-primary/40",
   warning: "border-warning/40",
   destructive: "border-critical/40",
 };
 
-const variantIconClass: Record<ToastVariant, string> = {
-  default: "text-muted-foreground",
-  success: "text-positive-strong",
-  info: "text-primary-strong",
-  warning: "text-warning-strong",
-  destructive: "text-critical-strong",
+const variantIconBadgeClass: Record<ToastVariant, string> = {
+  default: "bg-muted text-muted-foreground",
+  success: "bg-primary/15 text-primary-strong",
+  info: "bg-primary/15 text-primary-strong",
+  warning: "bg-warning/15 text-warning-strong",
+  destructive: "bg-critical/15 text-critical-strong",
 };
 
 /** Toast próprio do app (Radix) — feedback de ações; substitui alert() nativo (DESIGN_SYSTEM §13). */
@@ -72,8 +72,15 @@ export function Toast({
         variantClass[variant],
       )}
     >
-      <Icon className={cn("mt-0.5 size-5 shrink-0", variantIconClass[variant])} aria-hidden="true" />
-      <div className="flex-1">
+      <div
+        className={cn(
+          "flex size-7 shrink-0 items-center justify-center rounded-full",
+          variantIconBadgeClass[variant],
+        )}
+      >
+        <Icon className="size-4 shrink-0" aria-hidden="true" />
+      </div>
+      <div className="flex-1 min-w-0 pt-0.5">
         <ToastPrimitive.Title className="text-sm font-semibold text-foreground">{title}</ToastPrimitive.Title>
         {description ? (
           <ToastPrimitive.Description className="mt-0.5 text-sm text-muted-foreground">{description}</ToastPrimitive.Description>
@@ -90,7 +97,7 @@ export function Toast({
       ) : null}
       <ToastPrimitive.Close
         aria-label="Fechar"
-        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="size-7 shrink-0 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <X className="size-4" aria-hidden="true" />
       </ToastPrimitive.Close>
@@ -105,9 +112,9 @@ export function Toast({
  */
 export function Toaster({ children, ...props }: ComponentProps<typeof ToastPrimitive.Provider>) {
   return (
-    <ToastPrimitive.Provider duration={3000} {...props}>
+    <ToastPrimitive.Provider duration={3000} swipeDirection="down" {...props}>
       {children}
-      <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-toast flex w-full max-w-sm flex-col gap-2 p-4 outline-none" />
+      <ToastPrimitive.Viewport className="fixed z-toast flex flex-col gap-2 outline-none pointer-events-none bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-sm px-0 sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm" />
     </ToastPrimitive.Provider>
   );
 }

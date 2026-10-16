@@ -200,6 +200,20 @@ graph TD
 - [x] **Card Discreto de Confirmação:** Card sutil no topo da Visão Geral (`PendingSuggestionsCard`) exibindo compras pendentes para confirmação rápida em 1 toque (nada é gravado no banco sem o OK do usuário).
 - **DoD:** Notificação bancária ou compartilhamento Pix gera sugestão automática discreta; com 1 toque o formulário abre pronto para salvar.
 
+### Fase 5.1: Refinamento, Detecção de Parcelas & Ação "Adicionar Rápido" sem Abrir o App (Fase 89 do Roadmap)
+- [ ] **Detecção de Compras Parceladas:** Identificação de parcelamento (`3x de R$ 50` ou `R$ 300 em 3x`) com cálculo do valor total e divisão de parcelas mensais no domínio.
+- [ ] **Notificação Interativa Rica no Android:** O próprio app dispara notificação local contendo valor, estabelecimento, banco, categoria e os botões nativos `[➕ Adicionar Rápido]` e `[✏️ Editar]`.
+- [ ] **Ação "Adicionar Rápido" em Segundo Plano:** Gravação direta no Supabase via worker nativo autenticado com cartão e categoria inferidos (com fallback seguro para cartão principal e 'Outros').
+- [ ] **Feedback Dinâmico & Desfazer:** Notificação se atualiza para `✅ Salvo com sucesso` com botão temporário de `Desfazer` antes de fechar.
+- [ ] **Resiliência Online First:** Tratamento de ausência de rede com aviso ao usuário e preservação na fila de sugestões.
+- [ ] **Blacklist de Falsos Positivos:** Rejeição estrita de faturas fechadas, pagamentos de fatura, ofertas de crédito, limites pré-aprovados, recusas e tokens 2FA.
+- [ ] **Buffer Offline em Background:** Buffer circular em `SharedPreferences` no Android para notificações recebidas com o app fechado e esvaziamento automático via `flushPendingNotifications`.
+- [ ] **Extrator Multibanco de Merchants:** Captura com preposições "no", "na", delimitadores de travessão do Itaú/Bradesco e vírgulas do Banco do Brasil com sanitização de adquirentes (`PAG*`, `MP*`, etc.).
+- [ ] **Expansão de Bancos:** Adição de BTG Pactual, PicPay, PagBank, Neon, Next, XP, Nomad e Wise.
+- [ ] **Auto-Categorização e TTL:** Inferência de categoria por palavras-chave com pré-seleção no `LaunchWizard` e auto-expiração de 7 dias.
+- [ ] **Painel de Preferências do Usuário:** Toggles independentes em Configurações > Notificações para ligar/desligar captura passiva, notificações interativas, cálculo de parcelas, inferência de categorias e seleção de bancos.
+- **DoD:** Registro em 1 toque sem abrir o app funcional, zero falsos positivos de faturas/limites, parcelas calculadas com precisão, controles de usuário ativos e 100% de testes verdes.
+
 ### Fase 6: Automação de Build & Distribuição do APK
 - [x] **Chave Criptográfica de Release:** Keystore de assinatura gerado via `keytool` com RSA 2048 bits (`release-key.keystore`) e configurado em `android/app/build.gradle`.
 - [x] **Script de Automação de 1 Comando:** Criado `scripts/build-apk.sh` (e comando npm `npm run build:apk`) que compila o bundle web Vite, sincroniza com Capacitor e constrói Debug e Release via Gradle.

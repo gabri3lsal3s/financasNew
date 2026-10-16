@@ -1,6 +1,6 @@
 # Roadmap de Refatoração e Melhorias
 
-Este documento consolida as tarefas de aprimoramento do aplicativo, organizadas em 5 fases sequenciais.
+Este documento consolida as tarefas de aprimoramento do aplicativo, organizadas em 14 fases sequenciais.
 Para rodar qualquer tarefa no CLI, instrua o agente:
 > "Leia a Tarefa XX de @roadmap_tarefas.md, execute todas as implementações, testes, documentação, build, commit e push."
 
@@ -282,3 +282,129 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   3. Harmonizar o contraste e transparência dos containers/badges que envolvem ícones. (Concluído: criadas as classes utilitárias semânticas `.icon-box-primary`, `.icon-box-positive`, `.icon-box-negative`, `.icon-box-warning`, `.icon-box-critical`, `.icon-box-portfolio`, `.icon-box-neutral` e `.icon-box-accent` em `globals.css` com 10% de opacidade de fundo, cor de texto de alto contraste e bordas sutis `border border-.../20`; harmonizados os containers de ícones em `investments-showcase.tsx`, `legal-dialog.tsx` e `install-app-button.tsx`, garantindo contraste impecável nos temas Claro, Escuro e OLED; e adicionada suíte completa de testes unitários em `icon-system.test.ts` e `notifications-button.test.tsx`).
 - **Commit:** `style(icons): unify stroke weights, sizing scale, and dynamic theme reactivity`
 
+---
+
+### Tarefa 24: Padronização, Reposicionamento Responsivo e Animação dos Badges Pop de Notificação (Toasts) [Concluída]
+- **Status:** ✅ Concluída
+- **Objetivo:** Padronizar os badges pop de notificação (`Toast`) do aplicativo, garantindo que suas bordas e ícones herdem fielmente a cor de destaque escolhida (`data-accent`) e as cores do tema ativo (Light/Dark/OLED), reposicionar o contêiner responsivo acima do menu de navegação inferior mobile sem sobrepor abas ou o botão central FAB, e converter a animação de entrada lateral em uma animação ascendente suave (*bottom-up*).
+- **Ações:**
+  1. **Desobstrução e Reposicionamento no Mobile:** (Concluído: ajustado o contêiner `ToastPrimitive.Viewport` em `src/components/ui/toast.tsx` com `bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]` acima dos 64px da `BottomNav` somada à safe area; centralizado no mobile com `left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-sm px-0` sem cobrir a aba "Início" nem o botão FAB; mantida ancoragem no desktop `sm:left-auto sm:translate-x-0 sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm`; mantido `pointer-events-none` no Viewport e `pointer-events-auto` no card).
+  2. **Animação Bottom-Up Suave (Entrada Ascendente e Saída Descendente):** (Concluído: tokens `--animate-toast-in` e `--animate-toast-out` atualizados em `globals.css`; keyframe `@keyframes toast-in` convertido de slide lateral para `translateY(100%) scale(0.96) -> translateY(0) scale(1)` com easing `0.22s cubic-bezier(0.16, 1, 0.3, 1)`; `@keyframes toast-out` atualizado para `translateY(0) scale(1) -> translateY(12px) scale(0.96)` em `0.15s ease-in`; configurado `swipeDirection="down"` no provider).
+  3. **Padronização dos Ícones e Harmonização com Tema e Cor de Destaque (`data-accent`):** (Concluído: variantes `success` e `info` conectadas a `border-primary/40` e badge circular `bg-primary/15 text-primary-strong` herdando reativamente `--primary` e `data-accent`; variante `default` com `border-border/90` e `bg-muted text-muted-foreground`; `warning` com `border-warning/40` e `bg-warning/15 text-warning-strong`; `destructive` com `border-critical/40` e `bg-critical/15 text-critical-strong`; ícone de sucesso padronizado com `Check` `size-4` em badge circular `size-7`; botão de fechar X padronizado com `size-7` circular e efeito hover suave).
+  4. **Testes, Documentação e Qualidade:** (Concluído: testes adicionados e aprovados em `src/components/ui/toast-host.test.tsx` cobrindo variantes de borda/badge e classes do viewport; `docs/DESIGN_SYSTEM.md` atualizado na Seção 6.1 [Regra 4 - Posicionamento e Desobstrução de Toasts] e Seção 14.24 [Anatomia e Padrão Canônico do Toast]; validação de testes 100% verde).
+- **Commit:** `fix(ui): standardize notification pop badges, position above mobile nav, and apply bottom-up animation`
+
+
+
+---
+
+## FASE 9: Motor Puro de Domínio — Parsing Avançado, Detecção de Parcelas e Blacklist Semântica
+
+### Tarefa 25: Inteligência de Parsing no Domínio, Detecção de Parcelas e Blacklist Semântica [Pendente]
+- **Status:** ⏳ Pendente
+- **Objetivo:** Refinar o motor puro de parsing (`src/domain/notifications/bank-parser.ts`), implementando detecção e cálculo de compras parceladas, blacklist semântica de falsos positivos (faturas fechadas, pagamentos de fatura, limite, recusas e propagandas), extrator avançado de comerciantes e dicionário expandido de receitas.
+- **Ações:**
+  1. **Detecção e Cálculo de Parcelas:**
+     - Identificar formatos com valor total e parcelas (`"Compra de R$ 300,00 em 3x"`) setando `amountCents: 30000` e `installments: 3`.
+     - Identificar formatos com valor da parcela (`"em 3x de R$ 50,00"`) calculando o total (`3 * 50 = R$ 150,00`) e setando `amountCents: 15000` e `installments: 3`.
+     - Tratar parcelas isoladas de controle mensal (`"Parcela 2/10 de R$ 45,00"`).
+  2. **Blacklist Semântica Anti-Falsos Positivos:**
+     - Descartar notificações de faturas fechadas (`fatura fechou`, `fechamento da fatura`), pagamentos de fatura confirmados (`pagamento da fatura recebido`), recusas/não autorizadas (`recusada`, `saldo insuficiente`), ofertas de crédito/aumento de limite (`limite aumentou`, `empréstimo pré-aprovado`), tokens 2FA e agendamentos futuros.
+  3. **Extrator Multibanco de Estabelecimentos e Limpeza:**
+     - Reconhecer comerciantes com preposições contraídas `"no"` e `"na"` além de `"em"`, `"para"` e `"de"`.
+     - Tratar padrões com travessão e vírgulas dos cartões Itaú, Bradesco, Banco do Brasil e Santander.
+     - Sanitizar prefixos de maquininhas/adquirentes (`PAG*`, `MP*`, `IFOOD*`, `UBER *TRIP HELP`, cidades/estados).
+  4. **Expansão de Rendas e Meios de Pagamento:**
+     - Suportar salários, reembolsos, estornos, devoluções Pix e transferências (TED/DOC).
+     - Alinhar com `PAYMENT_METHODS` adicionando suporte a `"transfer"` e detecção de boletos.
+  5. **Testes Unitários:**
+     - Criar suíte abrangente em `bank-parser.test.ts` cobrindo casos positivos dos 10 maiores bancos e casos negativos estritos de falsos positivos.
+- **Commit:** `feat(notifications): add installment parsing, semantic blacklist, and multibank merchant extraction`
+
+---
+
+## FASE 10: Notificações Interativas Ricas no Android & Ação Rápida no SO sem Abrir o App
+
+### Tarefa 26: Notificação Interativa Nativa no Android e Ação "Adicionar Rápido" sem Abrir o App [Pendente]
+- **Status:** ⏳ Pendente
+- **Objetivo:** Disparar notificação interativa rica do próprio Guia Financeiro no Android ao detectar compras/rendas, com ações `[➕ Adicionar Rápido]` (salvamento direto no Supabase em segundo plano com categoria e cartão inferidos) e `[✏️ Editar]` (abertura no wizard), feedback com botão `Desfazer` e tratamento Online First.
+- **Ações:**
+  1. **Disparo de Notificação Local Rica:**
+     - Ao capturar notificação bancária válida, emitir notificação local formatada (`"Nova compra: R$ 42,90 · Padaria Estrela"`) com os botões `[➕ Adicionar Rápido]` e `[✏️ Editar]`.
+  2. **Mecanismo de Gravação em Segundo Plano (`QuickAdd`):**
+     - Criar `BroadcastReceiver` / worker nativo Android associado à ação `[➕ Adicionar Rápido]`, disparando chamada de rede com o token de sessão do usuário no Supabase sem abrir a interface gráfica.
+     - Fallback seguro para resolução de cartão e categoria em caso de ambiguidade (cartão principal do banco e categoria 'Outros/Diversos').
+  3. **Feedback Visual e Desfazer:**
+     - Atualizar a notificação para `"✅ R$ XX,XX adicionado em [Categoria]"` com botão de `[Desfazer]` por tempo limitado antes do auto-dismiss.
+  4. **Resiliência Online First:**
+     - Em caso de falha de conexão, atualizar a notificação para alertar ausência de rede e reter a sugestão na fila interna do app para confirmação posterior.
+  5. Deve seguir a regra de sem emojis, somente lucid icons quando possível 
+- **Commit:** `feat(android): implement interactive rich notification and headless quick-add background action`
+
+---
+
+## FASE 11: Resiliência Nativa Android — Buffer Offline em Segundo Plano & Expansão de Bancos
+
+### Tarefa 27: Buffer Offline em Segundo Plano (SharedPreferences) e Expansão Multibanco [Pendente]
+- **Status:** ⏳ Pendente
+- **Objetivo:** Implementar buffer circular nativo em `SharedPreferences` para garantir que nenhuma notificação bancária seja perdida quando o app estiver fechado ou em segundo plano, e expandir a lista de pacotes monitorados para os maiores bancos e carteiras digitais brasileiras.
+- **Ações:**
+  1. **Buffer Circular em `SharedPreferences`:**
+     - Em `BankNotificationListenerService.java`, se `BankNotificationPlugin.getInstance() == null` (app fechado), persistir o payload JSON no armazenamento local seguro do Android (até 30 notificações).
+  2. **Esvaziamento Automático de Fila (`flushPendingNotifications`):**
+     - Criar método no plugin Capacitor para descarregar o buffer acumulado offline assim que a WebView/React iniciar, despachando para a fila de sugestões.
+  3. **Expansão de Bancos Monitorados:**
+     - Cadastrar pacotes de BTG Pactual, PicPay, PagBank, Neon, Next, XP Investimentos, Nomad e Wise no listener nativo e no mapeador de bancos.
+- **Commit:** `feat(android): add background offline notification buffer and expand monitored bank packages`
+
+---
+
+## FASE 12: Auto-Categorização Determinística, Governança de Sugestões e UX do Wizard
+
+### Tarefa 28: Inferência Determinística de Categorias, TTL e Otimização do Wizard [Pendente]
+- **Status:** ⏳ Pendente
+- **Objetivo:** Adicionar motor puro de inferência de categorias por palavras-chave com pré-seleção contextual no `LaunchWizard` e auto-expiração de sugestões obsoletas na store.
+- **Ações:**
+  1. **Motor de Inferência de Categorias (`inferCategoryKeyword`):**
+     - Mapear estabelecimentos e termos frequentes para os identificadores de categoria do sistema (`alimentacao`, `mercado`, `transporte`, `saude`, `lazer`, `assinaturas`, `compras`, `salario`).
+  2. **Integração com `LaunchWizard` (Ação `[✏️ Editar]`):**
+     - Repassar categoria provável e número de parcelas via query params da URL, abrindo o wizard com os dados pré-preenchidos para confirmação em 1 toque.
+  3. **Auto-Expiração (TTL) e Deduplicação na Store:**
+     - Expirar sugestões com mais de 7 dias na fila local e aplicar deduplicação por chave composta (`bankName + amountCents + date + merchant`).
+  4. **Validação Geral e Build:**
+     - Garantir que `tsc -b`, `npm run lint` e toda a suíte de testes passem com 100% de sucesso.
+- **Commit:** `feat(transactions): add deterministic category inference, store ttl, and wizard auto-fill`
+
+---
+
+## FASE 13: Homologação Multibanco, Testes E2E de Notificações e Qualidade Rigorosa
+
+### Tarefa 29: Suíte E2E de Notificações Bancárias, Matriz dos 10 Maiores Bancos e Certificação [Pendente]
+- **Status:** ⏳ Pendente
+- **Objetivo:** Construir suíte de validação automatizada de ponta a ponta cobrindo os 10 maiores bancos do Brasil, estresse da blacklist semântica com 30 variações de falsos positivos, integridade de parcelas e build de produção.
+- **Ações:**
+  1. **Matriz de Validação Multibanco:**
+     - Validar payloads sintéticos fiéis de Nubank, Itaú, Bradesco, Santander, Banco do Brasil, Inter, C6 Bank, Mercado Pago, Caixa e PicPay cobrindo compras à vista, compras parceladas, Pix e transferências.
+  2. **Estresse da Blacklist Semântica:**
+     - Testar e blindar o motor contra mais de 30 formatos reais de falsos positivos (faturas fechadas, limites pré-aprovados, recusas, 2FA, ofertas).
+  3. **Certificação de Build e Regressão:**
+     - Rodar typecheck estrito (`tsc -b`), linter (`npm run lint`), suíte completa de testes (`npm test`) e build de produção PWA e Android.
+- **Commit:** `test(notifications): add multibank e2e regression suite and validation matrix`
+
+
+
+---
+
+## FASE 14: Central de Governança & Controles de Ativação do Assistente Passivo nas Configurações
+
+### Tarefa 30: Painel de Controle e Preferências do Assistente Passivo em Configurações [Pendente]
+- **Status:** ⏳ Pendente
+- **Objetivo:** Criar seção de controles visuais e preferências granulares em Configurações > Personalização / Notificações (`AppearanceTab`), permitindo que o usuário ative ou desative cada recurso de forma independente.
+- **Ações:**
+  1. **Toggle Mestre de Captura Passiva:** Habilitar/desabilitar a escuta de notificações bancárias no Android (`isNotificationListenerGranted`, desativação segura sem polling).
+  2. **Toggle de Notificações Interativas no Celular:** Ativar/desativar o envio de push local rico do app com os botões `[➕ Adicionar Rápido]` e `[✏️ Editar]`. Se desativado, as compras detectadas continuam aparecendo apenas de forma silenciosa no card discreto `PendingSuggestionsCard` na Home.
+  3. **Toggle de Detecção Automática de Parcelas:** Permitir que o usuário opte por ligar/desligar o cálculo e desmembramento automático de parcelas em compras no cartão (se desligado, trata todo lançamento como parcela única do valor total).
+  4. **Toggle de Inferência Automática de Categorias:** Ligar/desligar a sugestão automática de categoria pelo nome do estabelecimento (se desligado, exige que o usuário sempre selecione manualmente).
+  5. **Filtro de Bancos Homologados:** Checkboxes ou lista de bancos ativos para o usuário escolher quais bancos deseja monitorar (ex.: monitorar apenas Nubank e Itaú, ignorando Inter).
+  6. **Persistência das Preferências:** Salvar as preferências com isolamento de usuário via `user-storage.ts` / Supabase `user_preferences`, com reatividade instantânea no aplicativo.
+- **Commit:** `feat(settings): add user preference toggles for bank notifications, quick-add, installments, and category inference`
