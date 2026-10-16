@@ -19,9 +19,10 @@ export function checkPasswordRequirements(password: string): PasswordRequirement
   };
 }
 
-export function getPasswordStrength(requirements: PasswordRequirements): PasswordStrength {
+export function getPasswordStrength(password: string): PasswordStrength {
+  if (!password) return "empty";
+  const requirements = checkPasswordRequirements(password);
   const metCount = Object.values(requirements).filter(Boolean).length;
-  if (metCount === 0) return "empty";
   if (metCount <= 2) return "weak";
   if (metCount === 3) return "medium";
   return "strong";

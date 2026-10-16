@@ -19,9 +19,9 @@ describe("Password Validation Domain", () => {
   });
 
   it("calcula corretamente a força da senha", () => {
-    expect(getPasswordStrength(checkPasswordRequirements(""))).toBe("empty");
-    expect(getPasswordStrength(checkPasswordRequirements("curta"))).toBe("weak");
-    expect(getPasswordStrength(checkPasswordRequirements("Senha123"))).toBe("medium");
-    expect(getPasswordStrength(checkPasswordRequirements("Senha123!"))).toBe("strong");
+    expect(getPasswordStrength("")).toBe("empty");
+    expect(getPasswordStrength("curta")).toBe("weak");
+    expect(getPasswordStrength("Senha123")).toBe("medium");
+    expect(getPasswordStrength("Senha123!")).toBe("strong");
   });
 });
