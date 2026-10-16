@@ -394,3 +394,122 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   4. **Resolução Imediata das Logos Internas:** (Concluído: integração de `getCachedIconTier()` em `useIsPro`, `SubscriptionContext` e no fallback inicial de `useUserSubscription`, permitindo que `<BrandLogo />` e componentes visuais leiam o tier do usuário instantaneamente na montagem síncrona do frame zero, eliminando piscadas visuais [FOUC] e atrasos de renderização).
 - **Commit:** `fix(launcher): prevent crash loop on dynamic icon switch using cached tier delta checks`
 
+---
+
+## FASE 15: Refinamento do Shell Global, Navegação e Experiência Sensorial
+
+### Tarefa 32: Auditoria e Refinamento do Shell Global, Mobile Navigation, Safe Areas, Toasts e Ferramentas Flutuantes
+- **Status:** ⏳ Pendente
+- **Objetivo:** Garantir alinhamento ergonômico perfeito entre mobile e desktop, safe-areas de entalhe e barra de gestos no Android, ausência de sobreposição de toasts/bottom sheets e feedback sensorial único.
+- **Ações:**
+  1. **Auditoria de Safe Areas e Mobile Navigation:** Calibrar a ancoragem da barra de navegação inferior (`MobileNavBar`) com `env(safe-area-inset-bottom)` no Android, impedindo sobreposição em aparelhos com barra de gestos e garantindo que o FAB (`+`) central permaneça acessível sem deslocamentos.
+  2. **Ancoragem de Popups, Toasts e Sheets:** Garantir que modais, bottom sheets deslizantes (`bottom-0`), alertas e toasts (`ToastHost`) respeitem a folga de `80px` acima da barra de navegação mobile e nunca colidam com o menu inferior.
+  3. **Ferramentas Flutuantes & Calculadora:** Ajustar a calculadora flutuante (`FloatingCalculator`) e atalhos rápidos (`CalculatorButton`) para fechar suavemente via tecla Escape, botão voltar físico do Android e cliques externos.
+  4. **Padronização Visual do Shell & Brand:** Verificar a renderização das logos (`BrandLogo`, `LogoProfileButton`) nos 3 temas visuais (Light, Dark e OLED) e confirmar ausência de emojis em qualquer rótulo do shell.
+  5. **Testes Unitários e Validação:** Adicionar testes de regressão para safe-areas, fechamento hierárquico e execução estrita de `npm run typecheck` e `npm run lint`.
+- **Commit:** `refactor(shell): refine global navigation, mobile safe areas, and sensory tools`
+
+---
+
+## FASE 16: Refinamento da Visão Geral (Dashboard) e KPIs
+
+### Tarefa 33: Auditoria 360° do Dashboard, Gráficos de Fluxo Diário, Distribuição por Categorias e Card do Assistente
+- **Status:** ⏳ Pendente
+- **Objetivo:** Padronizar a visualização de métricas monetárias, garantir a tríade de estados (Skeleton/Empty/Error) em todos os blocos do Dashboard e certificar a responsividade em telas ultra-compactas.
+- **Ações:**
+  1. **Tipografia Monetária e Auto-Fit:** Aplicar `<MoneyText />` adaptativo em todos os KPIs do Dashboard (Saldo Disponível, Receitas, Despesas e Total Investido), eliminando reticências em valores de 7+ dígitos.
+  2. **Gráficos Responsivos de Fluxo Diário e Categorias:** Harmonizar tooltips, eixos e legendas do gráfico de fluxo diário e do gráfico de rosca de categorias, garantindo transição fluida entre mobile e desktop sem overflow horizontal.
+  3. **Card de Notificações Bancárias Pendentes:** Refinar a lista de sugestões pendentes (`PendingSuggestionsCard`) na Home com ações rápidas contextuais, feedback sensorial único ao aprovar/descartar e animações suaves de saída.
+  4. **Tríade Canônica de Estados:** Certificar que o Dashboard apresente Skeletons estruturais harmoniosos durante o carregamento, EmptyStates calmos (`tone="default"`) e tratamento de erro via Gateway com ação de retry.
+  5. **Testes Automatizados:** Cobrir cenários de borda com valores extremos, alternância de meses e renderização dos widgets.
+- **Commit:** `refactor(dashboard): audit and optimize kpis, daily flow charts, and pending transactions card`
+
+---
+
+## FASE 17: Refinamento de Transações, Extrato, Assistente de Lançamento e Importadores
+
+### Tarefa 34: Auditoria de Transações, Filtros de Busca, LaunchWizard Rápido e Staging de Importação
+- **Status:** ⏳ Pendente
+- **Objetivo:** Proporcionar agilidade máxima no lançamento de despesas/receitas, filtros instantâneos sem engasgos no extrato e validação segura nos importadores de dados.
+- **Ações:**
+  1. **Filtros e Abas de Extrato:** Refinar a barra de busca e os seletores de tipo (Todas, Receitas, Despesas) em `TransactionListPage`, assegurando scroll suave no mobile sem esmagamento de botões.
+  2. **LaunchWizard (Assistente de Lançamento):** Otimizar o fluxo de preenchimento rápido (valor com `MoneyInput`, seletor de categorias, parcelas de 1 a 60x e forma de pagamento), com validação Zod rigorosa e avanço por teclado/toque.
+  3. **Staging Area de Importação (OFX/CSV/Texto):** Calibrar a edição em linha na tabela intermediária antes de salvar, permitindo alterar categorias, datas e valores sem recarregar o arquivo.
+  4. **Ações em Lote e Exclusão Segura:** Garantir diálogo canônico de confirmação para exclusão de lançamentos e parcelamentos futuros com feedback atômico.
+  5. **Testes Unitários:** Cobrir fluxo de lançamento, divisão de parcelas e conciliação de extratos.
+- **Commit:** `refactor(transactions): harmonize statement filters, launch wizard flow, and import staging`
+
+---
+
+## FASE 18: Refinamento de Cartões de Crédito, Ciclo de Faturas e Dívidas
+
+### Tarefa 35: Auditoria do Ciclo de Faturas de Cartão, Compras Parceladas/À Vista e Cronograma de Quitação de Dívidas
+- **Status:** ⏳ Pendente
+- **Objetivo:** Blindar os cálculos de fatura aberta/fechada, preenchimento automático de pagamento, distinção clara de parceladas vs à vista e projeção de dívidas.
+- **Ações:**
+  1. **Ciclo de Vida das Faturas:** Validar o cálculo das competências de fatura (data de fechamento e vencimento), preenchimento automático do valor ao registrar pagamento e recálculo dinâmico do limite disponível.
+  2. **Visualização Descomprimida de Despesas no Cartão:** Manter a separação harmoniosa entre compras parceladas e à vista com badges padronizados e contadores de parcelas legíveis.
+  3. **Gestão de Dívidas e Empréstimos:** Refinar o cronograma de amortização, indicadores de progresso de quitação e o modal de cadastro/edição de empréstimos sem controles nativos de data.
+  4. **Modais Responsivos de Cartões e Dívidas:** Utilizar a escala canônica `size="xl"` para criação de cartões com preview do plástico virtual e empilhamento seguro no mobile.
+  5. **Testes Unitários:** Validar cálculos de amortização, status da fatura e limite de crédito.
+- **Commit:** `refactor(cards-debts): polish invoice payment cycle, installment views, and loan schedules`
+
+---
+
+## FASE 19: Refinamento de Investimentos, Carteira, Proventos e Aporte
+
+### Tarefa 36: Auditoria da Carteira de Investimentos, Motor de Rebalanceamento, Calendário de Proventos e Snapshots Históricos
+- **Status:** ⏳ Pendente
+- **Objetivo:** Assegurar precisão matemática no cálculo de rentabilidade, preço médio, alocação de classes e motor de cálculo de aporte inteligente.
+- **Ações:**
+  1. **Motor de Aporte e Rebalanceamento:** Validar a sugestão de aporte por ativo/classe com base nas metas percentuais definidas pelo usuário e valor disponível em caixa, impedindo divisões por zero ou sugestões negativas.
+  2. **Subseletores e Mês de Referência:** Consolidar a navegação em pills nos proventos (Mensal, Calendário, Por Ativo, Bola de Neve) com o seletor de mês fixado logo abaixo, sem saltos de layout.
+  3. **Visualização de Caixa e Rentabilidade:** Refinar o card exclusivo de Caixa & Liquidez, cálculo do custo investido e rentabilidade consolidada com `<MoneyText />` tabular.
+  4. **Snapshots Históricos e EmptyStates:** Assegurar que consultas a meses anteriores exibam os dados históricos gravados sem fallback silencioso para o mês atual.
+  5. **Testes Unitários:** Cobrir o motor de aporte, cálculo de preço médio e agrupamentos de proventos.
+- **Commit:** `refactor(investments): calibrate portfolio balance engine, dividend views, and historical snapshots`
+
+---
+
+## FASE 20: Refinamento de Relatórios, Projeções e Insights Analíticos
+
+### Tarefa 37: Auditoria dos Relatórios Financeiros, Dossiê Patrimonial A4 (Wealth Tear Sheet), Projeção e Blocos de Insights
+- **Status:** ⏳ Pendente
+- **Objetivo:** Entregar visualizações executivas de alta fidelidade para impressão/exportação, projeções financeiras realistas e cartões de insights acionáveis.
+- **Ações:**
+  1. **Relatório de Fechamento Mensal e Anual:** Verificar agrupamento de receitas, despesas por categoria, fluxo líquido e evolução patrimonial com gráficos adaptativos.
+  2. **Dossiê Patrimonial A4 (`WealthTearSheetModal`):** Otimizar o layout de impressão executiva para folhas A4 (CSS print, quebras de página controladas e ausência de elementos interativos no papel).
+  3. **Projeção Financeira Futura:** Validar a curva de projeção considerando médias históricas de gastos, receitas recorrentes e compras parceladas já contratadas.
+  4. **Blocos Desacoplados de Insights:** Harmonizar os blocos de inteligência (Gastos Fantasma, Burn Rate, Meta de Poupança e Alertas de Desvio) com ícones semânticos neutros e badges discretos.
+  5. **Testes Unitários:** Validar gerador de dossiê A4, cálculos de projeção e isolamento de insights.
+- **Commit:** `refactor(reports): optimize financial close reports, a4 wealth sheet, and modular insights`
+
+---
+
+## FASE 21: Refinamento de Configurações, Segurança, Backup e Assistente Passivo
+
+### Tarefa 38: Auditoria de Configurações, Biometria/Privacy Shield, Assistente de Restauração com Desduplicação e Governança Passiva
+- **Status:** ⏳ Pendente
+- **Objetivo:** Consolidar todas as preferências de usuário, alternância de temas, segurança nativa e rotina de backup em uma experiência sem atritos.
+- **Ações:**
+  1. **Aba de Aparência e Personalização:** Verificar a transição fluida entre temas (Light, Dark e OLED), estilos de superfície (Glass e Flat) e predefinições sensoriais (Dinâmico, Foco, Discreto).
+  2. **Segurança, Biometria e Privacy Shield:** Testar tolerância do App Lock, bloqueio de capturas de tela no Android e reautenticação graciosa sem perda de formulários.
+  3. **Wizard de Backup Completo:** Validar integridade do JSON gerado com checksum 64-bit e o fluxo de restauração modular em 4 etapas com desduplicação.
+  4. **Central de Notificações Bancárias:** Checar os toggles de captura passiva, parcelamento automático, inferência de categorias e filtros por banco com persistência atômica no Supabase.
+  5. **Testes Unitários:** Cobrir serialização de backup, desduplicação de entidades e preferências do assistente.
+- **Commit:** `refactor(settings): audit biometric privacy shield, backup restore wizard, and passive assistant preferences`
+
+---
+
+## FASE 22: Homologação Integrada, Suíte de Regressão, Build Web e Geração de APK
+
+### Tarefa 39: Certificação Global de Produção, Bateria Completa de Testes, Build Web PWA e Compilação dos APKs Android Release/Debug
+- **Status:** ⏳ Pendente
+- **Objetivo:** Realizar a verificação final exaustiva de todo o ecossistema (Web/PWA e Android nativo), certificando prontidão para produção e distribuição comercial.
+- **Ações:**
+  1. **Auditoria de Conformidade com AGENTS.md:** Validar zero emojis em produção, zero controles nativos nos formulários, conformidade estrita de tokens e links de documentação.
+  2. **Typecheck e Linter Estritos:** Executar `npm run typecheck` (`tsc -b`) e `npm run lint` (`eslint .`), garantindo 0 erros e 0 warnings.
+  3. **Bateria Completa de Testes Automatizados:** Rodar a suíte inteira de mais de 320 arquivos de teste via Vitest, alcançando 100% de testes verdes.
+  4. **Build de Produção PWA:** Executar `npm run build` gerando assets otimizados com service workers e manifest válidos.
+  5. **Compilação e Assinatura dos APKs Android:** Executar `npm run build:apk` via script idempotente gerando os binários `guia-financeiro-debug.apk` e `guia-financeiro-release.apk` (assinado) em `dist-apk/` com hashes SHA-256 de integridade.
+- **Commit:** `chore(release): complete global regression audit, pwa build, and android apk generation`
