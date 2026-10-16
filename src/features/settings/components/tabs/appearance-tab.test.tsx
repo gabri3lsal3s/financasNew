@@ -37,7 +37,7 @@ function renderAppearanceTab() {
   );
 }
 
-describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.2)", () => {
+describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)", () => {
   beforeEach(() => {
     localStorage.clear();
     mockMutate.mockClear();
@@ -45,13 +45,14 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.2)
     vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
   });
 
-  it("renderiza os cards de Modo de Experiência, Identidade Visual e Interface", () => {
+  it("renderiza os cards de Modo de Experiência, Identidade Visual e Interface, e não renderiza estilo de superfície", () => {
     renderAppearanceTab();
 
     expect(screen.getByText("Modo de Experiência do Aplicativo")).toBeInTheDocument();
     expect(screen.getByText("Aparência & Identidade Visual")).toBeInTheDocument();
     expect(screen.getByText("Interface & Composição")).toBeInTheDocument();
     expect(screen.getByText("Restaurar Padrões de Personalização")).toBeInTheDocument();
+    expect(screen.queryByText(/Estilo de Superfícies/i)).not.toBeInTheDocument();
   });
 
   it("permite selecionar presets de experiência", async () => {

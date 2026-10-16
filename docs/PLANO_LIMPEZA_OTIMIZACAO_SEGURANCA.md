@@ -143,7 +143,7 @@ graph TD
     4. **Plano & Assinatura (`subscription`):** Plano ativo, recursos inclusos e upgrade Pro.
   - **Critério de Saída:** Layout balanceado, fim da superlotação visual e navegação sem abas gigantes.
 
-- [ ] **Tarefa 1.3 — Desinchaço de Opções Cosméticas Irrelevantes & Decomposição de Componentes**
+- [x] **Tarefa 1.3 — Desinchaço de Opções Cosméticas Irrelevantes & Decomposição de Componentes**
   - **Ação:** Limpar opções de micro-customização de baixo impacto visual:
     - Remover a seleção de estilo de superfície Flat vs Glassmorphism (manter o padrão de superfície limpo do Design System);
     - Simplificar os presets de experiência para opções diretas e claras sem duplicidade de toggles;
