@@ -90,7 +90,7 @@ graph TD
   - **Validação:** Rodar `npm run typecheck` e `npm run lint` atestando zero erros e zero avisos.
   - **Critério de Saída:** Working tree validada e estável.
 
-- [ ] **Tarefa 0.2 — Estabilização e Homologação dos Testes Unitários de Importação**
+- [x] **Tarefa 0.2 — Estabilização e Homologação dos Testes Unitários de Importação**
   - **Ação:** Executar e validar a suíte de testes de extratos e cartões:
     - `src/features/cards/components/statement-import-dialog.test.tsx`
     - `src/features/transactions/components/bank-statement-import-dialog.test.tsx`
