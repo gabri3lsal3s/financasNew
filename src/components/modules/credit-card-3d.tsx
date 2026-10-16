@@ -197,7 +197,7 @@ export function CreditCard3D({
         onKeyDown={handleKeyDown}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        aria-label={`Cartão ${card.name}, fatura atual ${formatCentsAsBRL(usedLimitCents)}${usedLimitPonderadoCents !== undefined ? `, ponderada ${formatCentsAsBRL(usedLimitPonderadoCents)}` : ""}`}
+        aria-label={`Cartão ${card.name}, fatura atual ${formatCentsAsBRL(usedLimitCents)}${limit.availableLimitCents !== null ? `, disponível ${formatCentsAsBRL(limit.availableLimitCents)}` : ""}${usedLimitPonderadoCents !== undefined ? `, ponderada ${formatCentsAsBRL(usedLimitPonderadoCents)}` : ""}`}
         aria-pressed={isInteractive ? isSelected : undefined}
         style={{
           transform: tilt.isHovered
@@ -280,9 +280,18 @@ export function CreditCard3D({
           </div>
 
           {limit.totalLimitCents !== null && (
-            <div className="shrink-0 text-right">
-              <span className="text-white/70">Limite: </span>
-              <strong className="text-white font-semibold">{formatCentsAsBRL(limit.totalLimitCents)}</strong>
+            <div className="shrink-0 text-right flex items-center gap-1 sm:gap-1.5">
+              <span>
+                <span className="text-white/70">Disp.: </span>
+                <strong className="text-white font-semibold">
+                  {formatCentsAsBRL(limit.availableLimitCents ?? 0)}
+                </strong>
+              </span>
+              <span className="text-white/40 hidden sm:inline">/</span>
+              <span className="hidden sm:inline">
+                <span className="text-white/70">Total: </span>
+                <span className="text-white/90">{formatCentsAsBRL(limit.totalLimitCents)}</span>
+              </span>
             </div>
           )}
         </div>

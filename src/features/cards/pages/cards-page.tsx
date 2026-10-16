@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Download, FileUp, Plus, Printer, Repeat, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
 
 
 import {
@@ -195,12 +195,19 @@ export function CardsPage() {
         key={expense.id}
         title={title}
         date={expense.date}
-        subtitle={expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : undefined}
+        subtitle={category?.name && expense.description ? category.name : undefined}
         amountCents={Math.round(expense.value * 100)}
         reportWeight={expense.report_weight}
         kind="expense"
         icon={category?.icon}
         iconColor={category?.color}
+        badges={
+          expense.installments_total > 1 ? (
+            <Badge variant="muted" size="xs" className="font-mono">
+              {expense.installment_number}/{expense.installments_total}
+            </Badge>
+          ) : undefined
+        }
         onClick={() => setSelectedExpense(expense)}
       />
     );
@@ -569,9 +576,25 @@ export function CardsPage() {
 
             {selectedCard ? (
               <div className="flex flex-wrap items-center justify-between gap-3.5 p-4 sm:p-5 rounded-2xl bg-surface border border-border/80 shadow-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground font-medium">Status da fatura:</span>
-                  <InvoiceStatusBadge status={invStatus} />
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-medium">Status da fatura:</span>
+                    <InvoiceStatusBadge status={invStatus} />
+                  </div>
+                  {selectedCard.credit_limit !== null && selectedCard.credit_limit !== undefined && selectedCard.credit_limit > 0 && (
+                    <>
+                      <span className="text-muted-foreground/40 hidden sm:inline">·</span>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span>Limite disponível:</span>
+                        <span className="font-semibold text-foreground">
+                          <MoneyText
+                            cents={Math.max(0, Math.round(selectedCard.credit_limit * 100) - (summary?.saldoBrutoCents ?? 0))}
+                            tone="default"
+                          />
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">

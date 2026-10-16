@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CalendarDays, Edit2, Trash2 } from "lucide-react";
-import { Button, ConfirmDialog } from "@/components/ui";
+import { Badge, Button, ConfirmDialog } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { AMORTIZATION_SYSTEM_LABELS, LOAN_TYPE_LABELS } from "@/domain/loans";
 import { numberToCents } from "@/domain/money";
@@ -45,7 +45,7 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 {LOAN_TYPE_LABELS[loan.loan_type] ?? "Contrato"}
               </span>
-              <span className="text-muted-foreground/60">•</span>
+              <span className="text-muted-foreground/40">/</span>
               <span className="text-[11px] text-muted-foreground">
                 {AMORTIZATION_SYSTEM_LABELS[loan.amortization_system]} ({loan.interest_rate_monthly}% a.m.)
               </span>
@@ -82,7 +82,7 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
         <div className="flex flex-col gap-1.5 min-w-0">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Progresso de quitação</span>
-            <span>
+            <span className="font-mono font-medium text-foreground">
               {paidCount} de {totalCount} parcelas ({progressPercent}%)
             </span>
           </div>
@@ -124,7 +124,7 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
                 Amortizar
               </Button>
             ) : (
-              <span className="text-xs font-semibold text-positive-strong">Quitado</span>
+              <Badge variant="positive" size="sm">Quitado</Badge>
             )}
           </div>
         </div>

@@ -2,10 +2,15 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DebtsPage } from "./debts-page";
+import type { Loan } from "@/types";
 
 vi.mock("react-router", () => ({
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
   useNavigate: () => vi.fn(),
+}));
+
+const debtsStateMocks = vi.hoisted(() => ({
+  loans: [] as Loan[],
 }));
 
 const createDebtMock = vi.fn();
@@ -91,7 +96,7 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useLoans: () => ({
-    data: [],
+    data: debtsStateMocks.loans,
     isLoading: false,
     isError: false,
     error: null,
@@ -103,6 +108,7 @@ vi.mock("@/state", () => ({
 
 describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
   beforeEach(() => {
+    debtsStateMocks.loans = [];
     mockDownloadCsv.mockClear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-09-15T12:00:00Z"));
@@ -290,6 +296,35 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     expect(content).toContain("Nome / Descrição;Tipo;Status;Valor (R$);Vencimento;Data de quitação;Observações");
     expect(content).toContain("Conta de luz");
     expect(content).toContain("Pendente");
+  });
+
+  it("exibe contratos de empréstimo e financiamento na aba Financiamentos com progresso e saldo a pagar", async () => {
+    debtsStateMocks.loans = [
+      {
+        id: "l1",
+        user_id: "u1",
+        name: "Financiamento Imóvel",
+        loan_type: "financing",
+        principal_amount: 200000,
+        interest_rate_monthly: 0.8,
+        amortization_system: "sac",
+        total_installments: 120,
+        start_date: "2026-01-10",
+        installment_group_id: "ig-loan-1",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ];
+
+    const user = userEvent.setup();
+    render(<DebtsPage />);
+
+    const loansTab = screen.getByRole("tab", { name: /contratos/i });
+    await user.click(loansTab);
+
+    expect(screen.getByText("Financiamento Imóvel")).toBeInTheDocument();
+    expect(screen.getByText(/Tabela SAC/)).toBeInTheDocument();
+    expect(screen.getByText("Progresso de quitação")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cronograma" })).toBeInTheDocument();
   });
 });
 

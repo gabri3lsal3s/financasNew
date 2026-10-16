@@ -443,15 +443,15 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 18: Refinamento de Cartões de Crédito, Ciclo de Faturas e Dívidas
 
-### Tarefa 35: Auditoria do Ciclo de Faturas de Cartão, Compras Parceladas/À Vista e Cronograma de Quitação de Dívidas
-- **Status:** ⏳ Pendente
+### Tarefa 35: Auditoria do Ciclo de Faturas de Cartão, Compras Parceladas/À Vista e Cronograma de Quitação de Dívidas [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Blindar os cálculos de fatura aberta/fechada, preenchimento automático de pagamento, distinção clara de parceladas vs à vista e projeção de dívidas.
 - **Ações:**
-  1. **Ciclo de Vida das Faturas:** Validar o cálculo das competências de fatura (data de fechamento e vencimento), preenchimento automático do valor ao registrar pagamento e recálculo dinâmico do limite disponível.
-  2. **Visualização Descomprimida de Despesas no Cartão:** Manter a separação harmoniosa entre compras parceladas e à vista com badges padronizados e contadores de parcelas legíveis.
-  3. **Gestão de Dívidas e Empréstimos:** Refinar o cronograma de amortização, indicadores de progresso de quitação e o modal de cadastro/edição de empréstimos sem controles nativos de data.
-  4. **Modais Responsivos de Cartões e Dívidas:** Utilizar a escala canônica `size="xl"` para criação de cartões com preview do plástico virtual e empilhamento seguro no mobile.
-  5. **Testes Unitários:** Validar cálculos de amortização, status da fatura e limite de crédito.
+  1. **Ciclo de Vida das Faturas:** Validar o cálculo das competências de fatura (data de fechamento e vencimento), preenchimento automático do valor ao registrar pagamento e recálculo dinâmico do limite disponível. (Concluído: `CreditCard3D` atualizado para exibir o limite disponível em tempo real ao lado do limite total no rodapé do plástico virtual e aria-label com auto-fit, barra de status da fatura em `CardsPage` enriquecida com indicador dinâmico de Limite Disponível calculado a partir do saldo bruto em aberto, e preenchimento integral automático garantido em `PaymentDialog` com ação rápida "Restaurar total").
+  2. **Visualização Descomprimida de Despesas no Cartão:** Manter a separação harmoniosa entre compras parceladas e à vista com badges padronizados e contadores de parcelas legíveis. (Concluído: particionamento puro via `partitionInvoiceExpenses` mantendo ordenação temporal decrescente, e `renderInvoiceRow` aprimorado com `<Badge variant="muted" size="xs" className="font-mono">` dedicado na prop `badges` de `TransactionRow`, mantendo a contagem `1/10` isolada e a descrição/categoria desobstruída).
+  3. **Gestão de Dívidas e Empréstimos:** Refinar o cronograma de amortização, indicadores de progresso de quitação e o modal de cadastro/edição de empréstimos sem controles nativos de data. (Concluído: `LoanCard` limpo de bullets decorativos conforme Regra 8 de `AGENTS.md`, barra de progresso refinada com fonte mono e badge padronizado `Quitado`, cronograma discriminando Amortização, Juros e Saldo Devedor em `LoanScheduleDialog` [size="2xl"], e modais com `DatePicker`, `MoneyInput` e `NumberStepperInput` sem controles nativos).
+  4. **Modais Responsivos de Cartões e Dívidas:** Utilizar a escala canônica `size="xl"` para criação de cartões com preview do plástico virtual e empilhamento seguro no mobile. (Concluído: `CardFormDialog` com preview em split 5/7 e `size="xl"`, `LoanFormDialog` com `size="xl"` e calculadora, e todos os diálogos de quitação/edição com empilhamento `flex-col-reverse sm:flex-row`).
+  5. **Testes Unitários:** Validar cálculos de amortização, status da fatura e limite de crédito. (Concluído: adicionados testes em `cards-page.test.tsx` cobrindo o recálculo dinâmico do limite disponível e badges de compras parceladas, e teste em `debts-page.test.tsx` cobrindo renderização da aba Contratos com progresso e cronograma SAC/Price; suíte completa de testes aprovada).
 - **Commit:** `refactor(cards-debts): polish invoice payment cycle, installment views, and loan schedules`
 
 ---

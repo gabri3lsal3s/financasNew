@@ -103,6 +103,7 @@ describe("user-preferences repository", () => {
         soundEnabled: true,
         dashboardWidgets: {},
         headerButtons: {},
+        bankAssistant: {},
       },
     });
   });

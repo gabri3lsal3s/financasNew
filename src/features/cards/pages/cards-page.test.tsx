@@ -407,4 +407,32 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     expect(screen.getByText("Nenhum cartão cadastrado")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /adicionar primeiro cartão/i })).toBeInTheDocument();
   });
+
+  it("exibe limite disponível recalculado dinamicamente na barra de status da fatura", () => {
+    // defaultCard.credit_limit = 5000 (R$ 5.000,00)
+    // defaultExpense = 150 (R$ 150,00)
+    // defaultPayment = 100 (R$ 100,00)
+    // saldo aberto = R$ 50,00 -> Limite disponível = R$ 4.950,00
+    render(<CardsPage />);
+    expect(screen.getByText("Limite disponível:")).toBeInTheDocument();
+    expect(screen.getByText(/4\.950,00/)).toBeInTheDocument();
+  });
+
+  it("renderiza badge padronizado para compras parceladas", () => {
+    stateMocks.expenses = [
+      {
+        id: "e2",
+        description: "Notebook 10x",
+        date: "2026-08-01",
+        value: 300,
+        report_weight: 1,
+        bill_competence: "2026-08",
+        installments_total: 10,
+        installment_number: 2,
+      },
+    ];
+    render(<CardsPage />);
+    expect(screen.getByText("Notebook 10x")).toBeInTheDocument();
+    expect(screen.getByText("2/10")).toBeInTheDocument();
+  });
 });
