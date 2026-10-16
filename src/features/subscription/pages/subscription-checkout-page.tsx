@@ -295,7 +295,7 @@ export function SubscriptionCheckoutPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       {/* Header mínimo */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-background/80 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
           <BrandLogo markClassName="size-7" />
           <Button
@@ -312,7 +312,7 @@ export function SubscriptionCheckoutPage() {
       </header>
 
       {/* Corpo */}
-      <main className="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
+      <main className="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-6 pt-10 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:py-14">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12 items-start">
 
           {/* Coluna esquerda — Resumo do plano + benefícios */}

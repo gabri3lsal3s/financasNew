@@ -7,6 +7,7 @@ import { BrandLogo, ThemeToggle } from "@/components/layout";
 import { cn } from "@/lib/utils";
 import { useLandingCta, useScrollSpy } from "@/features/landing/hooks";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { registerBackHandler } from "@/services/native";
 
 export function LandingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -58,6 +59,15 @@ export function LandingHeader() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Botão voltar nativo/gestual do Android fecha o menu mobile
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    return registerBackHandler(() => {
+      setMobileMenuOpen(false);
+      return true;
+    });
+  }, [mobileMenuOpen]);
+
   const scrollToSection = (id: string) => {
     setMobileMenuOpen(false);
     const element = document.getElementById(id);
@@ -69,7 +79,7 @@ export function LandingHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 w-full transition-all duration-300",
+        "sticky top-0 z-40 w-full transition-all duration-300 pt-[env(safe-area-inset-top,0px)]",
         isScrolled
           ? "border-b border-border/80 bg-background/85 backdrop-blur-md shadow-xs"
           : "border-b border-border/30 bg-background/60 backdrop-blur-xs",
@@ -242,7 +252,12 @@ export function LandingHeader() {
 
       {/* Mobile dropdown */}
       {mobileMenuOpen ? (
-        <div className="relative z-40 border-b border-border bg-background p-4 shadow-xl sm:hidden animate-fade-slide-in">
+        <div
+          role="dialog"
+          aria-label="Menu principal"
+          data-mobile-menu="open"
+          className="relative z-40 border-b border-border bg-background p-4 shadow-xl sm:hidden animate-fade-slide-in"
+        >
           <nav className="flex flex-col gap-2 text-sm font-medium">
             {isSubpage ? (
               <button

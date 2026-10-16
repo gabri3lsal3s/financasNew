@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="description" content="Gestão financeira pessoal, controle de cartões de crédito e motor determinístico de rebalanceamento de carteira. 100% Online First e seguro." />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F7F9" />
@@ -118,6 +118,12 @@
         overflow-x: hidden;
         overscroll-behavior: none;
         overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      a, button, input, select, textarea, [role="button"], [role="tab"] {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
       }
 
       html[data-theme="dark"], html[data-theme="dark"] body {

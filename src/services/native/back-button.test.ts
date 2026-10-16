@@ -67,6 +67,57 @@ describe("Gateway Nativo — Hardware Back Button", () => {
     expect(escapeTriggered).toBe(true);
   });
 
+  it("prioriza o overlay mais recente (topmost) e ignora overlays fechados", async () => {
+    const dialogClosed = document.createElement("div");
+    dialogClosed.setAttribute("role", "dialog");
+    dialogClosed.setAttribute("data-state", "closed");
+    document.body.appendChild(dialogClosed);
+
+    const dialogBottom = document.createElement("div");
+    dialogBottom.setAttribute("role", "dialog");
+    dialogBottom.setAttribute("data-state", "open");
+    document.body.appendChild(dialogBottom);
+
+    const dialogTopmost = document.createElement("div");
+    dialogTopmost.setAttribute("role", "dialog");
+    dialogTopmost.setAttribute("data-state", "open");
+    document.body.appendChild(dialogTopmost);
+
+    let topmostEscaped = false;
+    dialogTopmost.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        topmostEscaped = true;
+      }
+    });
+
+    await handleHardwareBackButton();
+
+    expect(topmostEscaped).toBe(true);
+  });
+
+  it("quando o app estiver com bloqueio biométrico ativo (AppLock), minimiza sem fechar overlay nem navegar histórico", async () => {
+    const { setAppLocked } = await import("./app-lock");
+    setAppLocked(true);
+
+    const historyBackSpy = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    document.body.appendChild(dialog);
+
+    let escapeTriggered = false;
+    dialog.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") escapeTriggered = true;
+    });
+
+    await handleHardwareBackButton(true);
+
+    expect(App.minimizeApp).toHaveBeenCalledTimes(1);
+    expect(escapeTriggered).toBe(false);
+    expect(historyBackSpy).not.toHaveBeenCalled();
+
+    setAppLocked(false);
+  });
+
   it("chama window.history.back quando estiver em rota diferente da raiz", async () => {
     const historyBackSpy = vi.spyOn(window.history, "back").mockImplementation(() => {});
     Object.defineProperty(window, "location", {

@@ -54,7 +54,9 @@ describe("Auditoria PWA (instalabilidade)", () => {
     const html = readFileSync(resolve(root, "index.html"), "utf8");
 
     expect(html).toContain('rel="manifest"');
-    expect(html).toContain('name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"');
+    expect(html).toContain(
+      'name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"',
+    );
     expect(html).toContain('name="color-scheme" content="light dark"');
     expect(html).toContain('name="theme-color" media="(prefers-color-scheme: light)"');
     expect(html).toContain('name="theme-color" media="(prefers-color-scheme: dark)"');

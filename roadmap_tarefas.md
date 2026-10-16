@@ -260,12 +260,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ---
 
-### Tarefa 22: Otimização Global do Aplicativo para o Ambiente Android
+### Tarefa 22: Otimização Global do Aplicativo para o Ambiente Android [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Adaptar todas as páginas do app para viewport, safe areas, toques e teclado virtual do Android.
 - **Ações:**
-  1. Configurar safe areas (`env(safe-area-inset-*)`) para barra de status e navegação por gestos do Android.
-  2. Implementar `touch-action: manipulation`, prevenir recarregamento elástico da página e evitar compressão de layouts pelo teclado virtual.
-  3. Vincular o botão de voltar físico/gestual do Android para fechar modais e navegar pelo histórico.
+  1. Configurar safe areas (`env(safe-area-inset-*)`) para barra de status e navegação por gestos do Android. (Concluído: adicionadas classes utilitárias canônicas `.pt-safe`, `.pb-safe`, `.pl-safe`, `.pr-safe` e `.p-safe` no `globals.css`; integrados insets de safe-area superior no `<header>` da `LandingHeader` e `SubscriptionCheckoutPage`, além de insets inferior e superior no `AuthShell` e `AppLockOverlay`, garantindo que entalhes [notches/punch-holes] e a barra de navegação por gestos do Android nunca sobreponham botões ou conteúdos essenciais).
+  2. Implementar `touch-action: manipulation`, prevenir recarregamento elástico da página e evitar compressão de layouts pelo teclado virtual. (Concluído: configurada a meta tag viewport com `interactive-widget=resizes-content` em `index.html` e `pwa-audit.test.ts`, impedindo distorção e compressão indevida de layouts pelo teclado virtual do Android; aplicadas regras globais em `globals.css` e inline em `index.html` com `touch-action: manipulation` e `-webkit-tap-highlight-color: transparent` em todos os controles interativos [links, botões, inputs, selects, textareas e roles afins] para eliminar o atraso tátil de 300ms e zoom acidental; blindado o recarregamento elástico indesejado do Android Chrome via `overscroll-behavior-y: none`).
+  3. Vincular o botão de voltar físico/gestual do Android para fechar modais e navegar pelo histórico. (Concluído: aprimorado o gateway `handleHardwareBackButton` em `src/services/native/back-button.ts` com proteção estrita de `AppLock` [minimizando o app sem vazar dados confidenciais], descarte prioritário em pilha LIFO do overlay mais recente [topmost layer] no DOM despachando `Escape` com isolamento de menus e overlays fechados, vínculo reativo no menu mobile da `LandingHeader` via `registerBackHandler`, e fallback para histórico de navegação `window.history.back()` e minimização limpa do app na raiz `/`).
 - **Commit:** `feat(android): optimize global layouts, safe areas, touch behaviors, and hardware back button`
 
 ---
@@ -288,8 +289,7 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   1. Criar componentes SVG modulares do logo (`LogoFull` e `LogoIcon`).
   2. Tornar o glifo cromático do logo reativo à cor de destaque configurada pelo usuário.
   3. Padronizar a Splash Screen e telas de transição de carregamento com fade suave.
-  4. As logos devem ser profissionais e padronizadas, sem serrilhados mantendo um alto nível de desing.
-  5. Recuperar a logo Anterior / Original mantendo o novo nome do app. Deixar padronizado com o PWA e o app Android.
+  4. As logos devem ser profissionais e padronizadas, sem serrilhados mantendo um alto nível de desing. Refine e aprimore a logo gerando imagens de melhor qualidade.
 - **Commit:** `style(branding): harmonize vector logo components and splash screen transitions`
 
 ---
@@ -299,6 +299,6 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 - **Ações:**
   1. Atualizar o manifesto PWA com ícones regulares e `maskable` de 192px e 512px.
   2. Configurar layers `ic_launcher_background` e `ic_launcher_foreground` para o ecossistema Android em todas as densidades (mdpi até xxxhdpi).
-  3. Habilitar suporte as logos temáticos do sistema (Themed Logos) sem serrilhados e com um nível de desing profisional.
-  4. Recuperar a logo Anterior / Original mantendo o novo nome do app. Deixar padronizado com o PWA e o app Android.
+  3. Habilitar suporte as logos temáticos do sistema (Themed Logos) sem serrilhados e com um nível de desing profisional. Refine e aprimore a logo gerando imagens de melhor qualidade.
+  4. Deixar padronizado com o PWA e o app Android.
 - **Commit:** `feat(branding): configure standard adaptive android icons and PWA maskable manifests`
