@@ -1,5 +1,5 @@
-import { Link } from "react-router";
-import { ArrowRight, Menu, X, Download } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { ArrowLeft, ArrowRight, Menu, X, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui";
 import { buttonVariants } from "@/components/ui";
@@ -10,9 +10,33 @@ import { usePWAInstall } from "@/hooks/use-pwa-install";
 
 export function LandingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
   const { isLoggedIn } = useLandingCta();
   const { activeSection, scrollProgress, isScrolled } = useScrollSpy();
   const { canInstall, install } = usePWAInstall();
+
+  const isSubpage =
+    location.pathname === "/precos" ||
+    location.pathname === "/planos" ||
+    location.pathname === "/vendas";
+
+  const homeUrl = isLoggedIn ? "/" : "/landing";
+
+  // Reseta o menu mobile durante a renderização ao trocar de rota (padrão oficial React)
+  const currentRouteKey = location.pathname + location.hash;
+  const [prevRouteKey, setPrevRouteKey] = useState(currentRouteKey);
+  if (prevRouteKey !== currentRouteKey) {
+    setPrevRouteKey(currentRouteKey);
+    setMobileMenuOpen(false);
+  }
+
+  // Liberação garantida da rolagem na desmontagem do cabeçalho
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   // Trava de rolagem do body quando o menu mobile está aberto
   useEffect(() => {
@@ -21,9 +45,6 @@ export function LandingHeader() {
     } else {
       document.body.style.overflow = "";
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [mobileMenuOpen]);
 
   // Fechamento com tecla Escape
@@ -55,9 +76,31 @@ export function LandingHeader() {
       )}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-12">
-        <Link to="/" className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
-          <BrandLogo markClassName="size-8" showWordmark wordmarkClassName="text-base sm:text-lg" />
-        </Link>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {isSubpage ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate(homeUrl);
+                }
+              }}
+              aria-label="Voltar para a página anterior"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer -ml-2 sm:ml-0"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden="true" />
+              <span>Voltar</span>
+            </Button>
+          ) : null}
+
+          <Link to={homeUrl} className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg">
+            <BrandLogo markClassName="size-8" showWordmark wordmarkClassName="text-base sm:text-lg" />
+          </Link>
+        </div>
 
         {/* Desktop Navigation com Pílulas de Foco Ativo */}
         <nav className="hidden items-center gap-1.5 text-sm font-medium md:flex" aria-label="Navegação Principal">
@@ -190,8 +233,9 @@ export function LandingHeader() {
       {/* Backdrop do Menu Mobile */}
       {mobileMenuOpen ? (
         <div
-          className="fixed inset-0 top-16 bg-background/75 backdrop-blur-xs z-30 sm:hidden animate-fade-in"
+          className="fixed inset-0 top-16 bg-background/75 backdrop-blur-xs z-30 sm:hidden animate-fade-in cursor-pointer"
           onClick={() => setMobileMenuOpen(false)}
+          onTouchStart={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
       ) : null}
@@ -200,6 +244,23 @@ export function LandingHeader() {
       {mobileMenuOpen ? (
         <div className="relative z-40 border-b border-border bg-background p-4 shadow-xl sm:hidden animate-fade-slide-in">
           <nav className="flex flex-col gap-2 text-sm font-medium">
+            {isSubpage ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate(homeUrl);
+                  }
+                }}
+                className="flex items-center gap-2 py-2 px-2.5 rounded-lg text-left text-muted-foreground hover:text-foreground cursor-pointer font-semibold border-b border-border/60 pb-2.5 mb-1"
+              >
+                <ArrowLeft className="size-4" aria-hidden="true" />
+                <span>Voltar à Apresentação</span>
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => scrollToSection("recursos")}

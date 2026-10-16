@@ -1,17 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { BrowserRouter } from "react-router";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { ThemeProvider } from "@/app/theme-provider";
 import { LandingPage } from "@/features/landing";
 
 describe("LandingPage", () => {
-  const renderLanding = () => {
+  const renderLanding = (initialPath = "/") => {
     return render(
       <ThemeProvider>
-        <BrowserRouter>
+        <MemoryRouter initialEntries={[initialPath]}>
           <LandingPage />
-        </BrowserRouter>
+        </MemoryRouter>
       </ThemeProvider>,
     );
   };
@@ -21,6 +21,14 @@ describe("LandingPage", () => {
     expect(screen.getAllByText("AXIS").length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /Começar grátis/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /Entrar/i }).length).toBeGreaterThan(0);
+    // Usuário deslogado na landing: o logo aponta para /landing para não chutar o visitante para /entrar
+    const logoLink = screen.getByRole("link", { name: /AXIS/i });
+    expect(logoLink).toHaveAttribute("href", "/landing");
+  });
+
+  it("exibe botão explícito de voltar quando renderizado em subpáginas de vendas ou planos (/vendas, /planos, /precos)", () => {
+    renderLanding("/vendas");
+    expect(screen.getByRole("button", { name: /Voltar para a página anterior/i })).toBeInTheDocument();
   });
 
   it("renderiza a seção Hero Editorial com headline e métricas de caixa real", () => {

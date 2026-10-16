@@ -59,8 +59,8 @@ export function ScrollReveal({
         isInView
           ? "opacity-100 translate-y-0"
           : direction === "up"
-            ? "opacity-0 translate-y-3 sm:translate-y-4"
-            : "opacity-0",
+            ? "opacity-0 translate-y-3 sm:translate-y-4 pointer-events-none"
+            : "opacity-0 pointer-events-none",
         className,
       )}
       {...props}

@@ -13,6 +13,7 @@ import { BackToTop } from "@/features/landing/components/back-to-top";
 import { MobileCtaDock } from "@/features/landing/components/mobile-cta-dock";
 import { ScrollRevealProvider } from "@/features/landing/components/scroll-reveal-context";
 import { useScrollSpy } from "@/features/landing/hooks";
+import { cn } from "@/lib/utils";
 
 export function LandingPage() {
   const { showBackToTop, resetKey, activeSection } = useScrollSpy();
@@ -23,6 +24,7 @@ export function LandingPage() {
     if (
       location.pathname === "/precos" ||
       location.pathname === "/planos" ||
+      location.pathname === "/vendas" ||
       location.hash === "#precos"
     ) {
       const el = document.getElementById("precos");
@@ -37,7 +39,10 @@ export function LandingPage() {
 
   return (
     <ScrollRevealProvider resetKey={resetKey}>
-      <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
+      <div className={cn(
+        "min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary",
+        isDockVisible && "pb-16 sm:pb-0",
+      )}>
         {/* Skip to main content (a11y para teclado e leitores de tela) */}
         <a
           href="#conteudo-principal"

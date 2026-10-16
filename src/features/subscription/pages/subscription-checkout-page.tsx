@@ -71,9 +71,21 @@ export function SubscriptionCheckoutPage() {
   const { session, loading: authLoading } = useAuth();
   const subscription = useUserSubscription();
 
-  const [method, setMethod] = useState<CheckoutPaymentMethod>("credit_card");
+  // Resolve o plano e método da URL: pro-anual (default) ou pro-mensal; metodo=pix ou cartao
+  const planoParam = searchParams.get("plano");
+  const metodoParam = searchParams.get("metodo");
+  const plan: SubscriptionPlan = planoParam === "pro-mensal" ? "monthly" : "annual";
+  const planInfo = PLAN_LABELS[plan];
+
+  const [method, setMethod] = useState<CheckoutPaymentMethod>(
+    metodoParam === "pix" && plan === "annual" ? "pix" : "credit_card",
+  );
   const [isPending, setIsPending] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => {
+    return searchParams.get("status") === "cancelado"
+      ? "O pagamento não foi concluído. Você pode tentar novamente com outra forma de pagamento."
+      : null;
+  });
 
   // Campos do formulário
   const [cpf, setCpf] = useState("");
@@ -86,12 +98,29 @@ export function SubscriptionCheckoutPage() {
   const [pixResult, setPixResult] = useState<PixCheckoutResult | null>(null);
   const [copiedPix, setCopiedPix] = useState(false);
 
-  // Resolve o plano da URL: pro-anual (default) ou pro-mensal
-  const planoParam = searchParams.get("plano");
-  const plan: SubscriptionPlan = planoParam === "pro-mensal" ? "monthly" : "annual";
-  const planInfo = PLAN_LABELS[plan];
-
   const queryClient = useQueryClient();
+
+  // Tratamento de callbacks e redirecionamentos de gateways
+  useEffect(() => {
+    const statusParam = searchParams.get("status");
+    if (statusParam === "pendente") {
+      pushToast({
+        title: "Pagamento em análise",
+        description: "Seu pagamento está sendo processado pelo gateway. Assim que confirmado, sua conta será atualizada.",
+        variant: "default",
+      });
+    }
+  }, [searchParams]);
+
+  // Navegação de retorno segura vinculada ao histórico ou fallback aos planos
+  const handleBack = () => {
+    triggerSensory("action");
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/planos");
+    }
+  };
 
   // Polling automático e inteligente quando o PIX estiver gerado e aguardando pagamento
   useEffect(() => {
@@ -123,9 +152,11 @@ export function SubscriptionCheckoutPage() {
   // Aguardar autenticação
   if (authLoading) return null;
 
-  // Sem sessão → redirecionar para cadastro preservando o plano
+  // Sem sessão → redirecionar para cadastro preservando todos os parâmetros
   if (!session) {
-    return <Navigate to={`/cadastro?plano=${planoParam ?? "pro-anual"}`} replace />;
+    const forwardParams = new URLSearchParams(searchParams);
+    if (!forwardParams.has("plano")) forwardParams.set("plano", planoParam ?? "pro-anual");
+    return <Navigate to={`/cadastro?${forwardParams.toString()}`} replace />;
   }
 
   // Já é Pro (e não acabou de ativar via PIX, que já possui efeito dedicado) → redirecionar para o app
@@ -271,8 +302,8 @@ export function SubscriptionCheckoutPage() {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => void navigate(-1)}
-            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            onClick={handleBack}
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
           >
             <ArrowLeft className="size-3.5" aria-hidden="true" />
             Voltar
@@ -494,6 +525,54 @@ export function SubscriptionCheckoutPage() {
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground text-center">
                   <Clock className="size-3.5 shrink-0" aria-hidden="true" />
                   <span>Aguardando pagamento... A ativação é automática.</span>
+                </div>
+
+                {/* Ações de Desbloqueio e Saída sem Prender o Usuário */}
+                <div className="flex flex-col w-full gap-2 pt-2 border-t border-border/80">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      triggerSensory("selection");
+                      setPixResult(null);
+                      setMethod("credit_card");
+                    }}
+                    className="w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <CreditCard className="size-3.5" aria-hidden="true" />
+                    Pagar com cartão de crédito em vez de PIX
+                  </Button>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        triggerSensory("action");
+                        setPixResult(null);
+                        navigate("/planos");
+                      }}
+                      className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <ArrowLeft className="size-3.5" aria-hidden="true" />
+                      Voltar aos planos
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        triggerSensory("action");
+                        navigate("/");
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      Ir para o painel
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (

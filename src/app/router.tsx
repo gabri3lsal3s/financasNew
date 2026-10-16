@@ -145,6 +145,7 @@ export function AppRouter() {
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/precos" element={<LandingPage />} />
         <Route path="/planos" element={<LandingPage />} />
+        <Route path="/vendas" element={<LandingPage />} />
 
         {/* Telas de auth — fora do shell (sem sidebar/bottom nav) */}
         <Route path="/entrar" element={<LoginPage />} />

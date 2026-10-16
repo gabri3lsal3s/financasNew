@@ -22,13 +22,17 @@ export function RegisterPage() {
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [pending, setPending] = useState(false);
 
-  // Parâmetro de plano passado pela Landing Page (ex.: ?plano=pro-anual ou ?plano=pro-mensal)
+  // Parâmetro de plano e método passados pela Landing Page / Vendas (ex.: ?plano=pro-anual&metodo=pix)
   const planoParam = searchParams.get("plano");
+  const metodoParam = searchParams.get("metodo");
 
   // Sessão criada no signup (confirmação desativada) → redireciona para checkout se há plano, ou para o app.
   if (!loading && session) {
     if (planoParam) {
-      return <Navigate to={`/assinatura?plano=${planoParam}`} replace />;
+      const checkoutQuery = new URLSearchParams();
+      checkoutQuery.set("plano", planoParam);
+      if (metodoParam) checkoutQuery.set("metodo", metodoParam);
+      return <Navigate to={`/assinatura?${checkoutQuery.toString()}`} replace />;
     }
     return <Navigate to="/" replace />;
   }

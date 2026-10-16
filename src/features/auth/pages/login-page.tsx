@@ -12,7 +12,19 @@ import { triggerSensory } from "@/services/sensory";
 export function LoginPage() {
   const { session, loading, configError } = useAuth();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? "/";
+  const searchParams = new URLSearchParams(location.search);
+  const planoParam = searchParams.get("plano");
+  const metodoParam = searchParams.get("metodo");
+
+  const checkoutQuery = new URLSearchParams();
+  if (planoParam) checkoutQuery.set("plano", planoParam);
+  if (metodoParam) checkoutQuery.set("metodo", metodoParam);
+
+  const fallbackFrom = planoParam ? `/assinatura?${checkoutQuery.toString()}` : "/";
+  const from =
+    (location.state as { from?: { pathname?: string; search?: string } } | null)?.from
+      ? `${(location.state as { from: { pathname?: string; search?: string } }).from.pathname ?? "/"}${(location.state as { from: { pathname?: string; search?: string } }).from.search ?? ""}`
+      : fallbackFrom;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

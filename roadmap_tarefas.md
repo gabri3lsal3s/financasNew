@@ -249,12 +249,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 7: Estabilidade Comercial e Otimização Nativa Android
 
-### Tarefa 21: Desbloqueio e Correção de Navegação na Landing Page, Vendas e Checkout
+### Tarefa 21: Desbloqueio e Correção de Navegação na Landing Page, Vendas e Checkout [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Resolver travamento de cliques, restaurar interatividade e botões de voltar na Landing Page, página de vendas e checkout de assinaturas.
 - **Ações:**
-  1. Eliminar overlays ou backdrops residuais com `pointer-events` ativo bloqueando cliques na área útil.
-  2. Adicionar botões explícitos de voltar e vincular ao histórico de navegação.
-  3. Garantir suporte a redirecionamentos, deep links de PIX e gateways de pagamento sem prender o usuário.
+  1. Eliminar overlays ou backdrops residuais com `pointer-events` ativo bloqueando cliques na área útil. (Concluído: adicionado `pointer-events-none` defensivo em `ScrollReveal` quando `!isInView` evitando interceptação de cliques por contêineres transparentes; implementado reset atômico durante renderização do menu mobile e restauração de `overflow` em `LandingHeader` ao alternar rotas; adicionado dismiss tátil `onTouchStart` e cursor pointer no backdrop; e inserido padding de segurança `pb-16 sm:pb-0` na `LandingPage` prevenindo sobreposição e bloqueio de links do rodapé pelo dock mobile flutuante).
+  2. Adicionar botões explícitos de voltar e vincular ao histórico de navegação. (Concluído: implementados botões de voltar dedicados no cabeçalho desktop e menu mobile em subpáginas de vendas e planos `/vendas`, `/planos`, `/precos` com fallback seguro para a apresentação ou dashboard; corrigido o link da logo para `/landing` quando não autenticado prevenindo redirecionamento forçado para login; e adicionada navegação de retorno ergonômica com histórico em `SubscriptionCheckoutPage`).
+  3. Garantir suporte a redirecionamentos, deep links de PIX e gateways de pagamento sem prender o usuário. (Concluído: registrado suporte oficial da rota `/vendas` no roteador; suporte completo a deep links com inicialização por `?metodo=pix` e captura de status de retorno do gateway `?status=cancelado` e `?status=pendente`; implementadas opções de desbloqueio na tela de PIX ativo — "Pagar com cartão de crédito", "Voltar aos planos" e "Ir para o painel" — garantindo que o usuário nunca fique preso; e preservação dos parâmetros de plano e método em `LoginPage` e `RegisterPage` ao autenticar).
 - **Commit:** `fix(navigation): unblock user interaction and back navigation on landing, sales, and checkout pages`
 
 ---
@@ -287,7 +288,8 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   1. Criar componentes SVG modulares do logo (`LogoFull` e `LogoIcon`).
   2. Tornar o glifo cromático do logo reativo à cor de destaque configurada pelo usuário.
   3. Padronizar a Splash Screen e telas de transição de carregamento com fade suave.
-  4. As logos devem ser profissionais e padronizadas, sem serrilhados mantendo um alto nível de desing. 
+  4. As logos devem ser profissionais e padronizadas, sem serrilhados mantendo um alto nível de desing.
+  5. Recuperar a logo Anterior / Original mantendo o novo nome do app. Deixar padronizado com o PWA e o app Android.
 - **Commit:** `style(branding): harmonize vector logo components and splash screen transitions`
 
 ---
@@ -298,4 +300,5 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
   1. Atualizar o manifesto PWA com ícones regulares e `maskable` de 192px e 512px.
   2. Configurar layers `ic_launcher_background` e `ic_launcher_foreground` para o ecossistema Android em todas as densidades (mdpi até xxxhdpi).
   3. Habilitar suporte as logos temáticos do sistema (Themed Logos) sem serrilhados e com um nível de desing profisional.
+  4. Recuperar a logo Anterior / Original mantendo o novo nome do app. Deixar padronizado com o PWA e o app Android.
 - **Commit:** `feat(branding): configure standard adaptive android icons and PWA maskable manifests`
