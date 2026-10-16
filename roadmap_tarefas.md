@@ -490,15 +490,15 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 21: Refinamento de Configurações, Segurança, Backup e Assistente Passivo
 
-### Tarefa 38: Auditoria de Configurações, Biometria/Privacy Shield, Assistente de Restauração com Desduplicação e Governança Passiva
-- **Status:** ⏳ Pendente
+### Tarefa 38: Auditoria de Configurações, Biometria/Privacy Shield, Assistente de Restauração com Desduplicação e Governança Passiva [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Consolidar todas as preferências de usuário, alternância de temas, segurança nativa e rotina de backup em uma experiência sem atritos.
 - **Ações:**
-  1. **Aba de Aparência e Personalização:** Verificar a transição fluida entre temas (Light, Dark e OLED), estilos de superfície (Glass e Flat) e predefinições sensoriais (Dinâmico, Foco, Discreto).
-  2. **Segurança, Biometria e Privacy Shield:** Testar tolerância do App Lock, bloqueio de capturas de tela no Android e reautenticação graciosa sem perda de formulários.
-  3. **Wizard de Backup Completo:** Validar integridade do JSON gerado com checksum 64-bit e o fluxo de restauração modular em 4 etapas com desduplicação.
-  4. **Central de Notificações Bancárias:** Checar os toggles de captura passiva, parcelamento automático, inferência de categorias e filtros por banco com persistência atômica no Supabase.
-  5. **Testes Unitários:** Cobrir serialização de backup, desduplicação de entidades e preferências do assistente.
+  1. **Aba de Aparência e Personalização:** Verificar a transição fluida entre temas (Light, Dark e OLED), estilos de superfície (Glass e Flat) e predefinições sensoriais (Dinâmico, Foco, Discreto). (Concluído: `AppearanceTab` em `src/features/settings/components/tabs/appearance-tab.tsx` operando com transição em tempo real de temas visuais, estilos `glass`/`flat`, paletas de destaque semântico e predefinições de feedback tátil e sonoro centralizadas via `triggerSensory`).
+  2. **Segurança, Biometria e Privacy Shield:** Testar tolerância do App Lock, bloqueio de capturas de tela no Android e reautenticação graciosa sem perda de formulários. (Concluído: `SecurityTab` em `src/features/settings/components/tabs/security-tab.tsx` integrado ao plugin biométrico e `@capacitor-community/privacy-screen` com seletor de tolerância em segundo plano [imediato, 1 min, 5 min, 15 min, 30 min] e persistência blindada).
+  3. **Wizard de Backup Completo:** Validar integridade do JSON gerado com checksum 64-bit e o fluxo de restauração modular em 4 etapas com desduplicação. (Concluído: `RestoreWizardDialog` e motor `src/domain/export/backup.ts` operando com validação estrita via Zod, cálculo de hash 64-bit, seleção granular de módulos e estratégias de desduplicação `skip`, `overwrite`, `keep_both` e `wipe_all` com prévia de contadores).
+  4. **Central de Notificações Bancárias:** Checar os toggles de captura passiva, parcelamento automático, inferência de categorias e filtros por banco com persistência atômica no Supabase. (Concluído: card do Assistente Passivo em `AppearanceTab` e preferências em `src/domain/notifications/preferences.ts` com alternância atômica de captura passiva, parcelamento preditivo, inferência inteligente e lista de bancos monitorados com ações em lote "Todos" / "Nenhum").
+  5. **Testes Unitários:** Cobrir serialização de backup, desduplicação de entidades e preferências do assistente. (Concluído: suíte de 11 arquivos e 183 testes de configurações, exportação/backup e notificações bancárias 100% aprovada, incluindo novos testes de tolerância do app lock, escudo de privacidade e abertura guiada do assistente de restauração).
 - **Commit:** `refactor(settings): audit biometric privacy shield, backup restore wizard, and passive assistant preferences`
 
 ---

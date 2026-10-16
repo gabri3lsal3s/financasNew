@@ -106,4 +106,36 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
 
     expect(nativeServices.setPrivacyShieldEnabled).toHaveBeenCalledWith(true);
   });
+
+  it("permite alterar o tempo de tolerância para bloqueio quando a biometria está ativada", async () => {
+    vi.mocked(nativeServices.isBiometricLockEnabled).mockReturnValue(true);
+    const user = userEvent.setup();
+    renderSecurityTab();
+
+    expect(screen.getByText("Tolerância para bloqueio")).toBeInTheDocument();
+    const selectTrigger = screen.getByRole("combobox", {
+      name: "Selecione o tempo de tolerância para bloqueio",
+    });
+    expect(selectTrigger).toBeInTheDocument();
+
+    await user.click(selectTrigger);
+    const option5 = await screen.findByRole("option", { name: "Após 5 minutos em segundo plano" });
+    await user.click(option5);
+
+    expect(nativeServices.setAppLockGraceMinutes).toHaveBeenCalledWith(5);
+  });
+
+  it("permite abrir o assistente de restauração modular ao acionar a importação guiada", async () => {
+    const user = userEvent.setup();
+    renderSecurityTab();
+
+    const openWizardBtn = screen.getByRole("button", { name: /Restaurar com Assistente/i });
+    expect(openWizardBtn).toBeInTheDocument();
+
+    await user.click(openWizardBtn);
+
+    expect(screen.getByText("Assistente de Restauração de Backup")).toBeInTheDocument();
+    expect(screen.getByText("Validação")).toBeInTheDocument();
+  });
 });
+
