@@ -78,3 +78,29 @@ A gestão financeira pessoal opera em ciclos mensais (recebimento de salário, p
 - **Simplicidade Extrema (KISS):** Elimina a necessidade de contadores de transações, cotas mensais e regras condicionais espalhadas em 15 telas.
 - **Robustez no Backend:** Uma única verificação de assinatura ativa (`isPro || inTrial`) protege as escritas sem risco de bugs de borda.
 - **Alta Conversão:** O usuário que já usou o app por 30 dias tem forte incentivo para assinar o Pro no momento em que precisar adicionar novas transações.
+
+---
+
+## 6. REGRAS DE TRIAL POR CONTA & ELEGIBILIDADE
+
+- **Escopo do Ciclo de Trial:** 30 dias corridos calculados a partir da data de criação da conta (`created_at` do perfil/usuário).
+- **Invariante de Elegibilidade:** A elegibilidade ao período de teste gratuito é avaliada no nível da conta (`isAccountTrialEligible` em `src/domain/subscription/trial.ts`). O benefício do trial é intransferível e único por cadastro.
+- **Contagem Regressiva e Alertas:** A interface exibe avisos sutis no Dashboard apenas quando restam $\le 5$ dias para o término do trial (`TrialEndingBanner`), mantendo a experiência desobstruída nos primeiros 25 dias.
+- **Transição Automática e Suave:** Ao término do 30º dia, a conta transiciona imediatamente para o Modo Somente-Leitura (`read_only`), mantendo todos os dados intactos e sem qualquer cobrança surpresa.
+
+---
+
+## 7. CONFORMIDADE LEGAL (CDC) & POLÍTICA DE CANCELAMENTO / REEMBOLSO
+
+O modelo de contratação está 100% blindado em conformidade com o **Código de Defesa do Consumidor (Lei nº 8.078/1990)** e as melhores práticas de transparência:
+
+1. **Direito de Arrependimento (Art. 49 do CDC — 7 Dias Incondicionais):**
+   - Todo usuário possui garantia incondicional de 7 (sete) dias a contar da confirmação do pagamento para cancelar a assinatura com **reembolso integral (100%)** do valor pago (`calculateResidualRefundCents` retorna o valor total faturado).
+   - O estorno é acionado automaticamente sem burocracia ou retenção.
+2. **Cancelamento Pós-7 Dias & Cálculo Residual (Pro-Rata):**
+   - Em caso de cancelamento voluntário após o 7º dia no plano anual, o cálculo residual proporcional aos dias/meses não usufruídos é computado com transparência conforme as diretrizes do CDC.
+3. **Cancelamento em 1 Clique:**
+   - O usuário pode gerenciar e cancelar sua renovação a qualquer momento diretamente pela aba de Configurações (`src/features/settings/components/tabs/subscription-tab.tsx`), sem menus ocultos ou necessidade de atendimento humano.
+4. **Checkout Transparente Multimodal:**
+   - Suporte a **PIX Instantâneo** com QR Code e chave copia-e-cola gerados dinamicamente;
+   - Suporte a **Cartão de Crédito** com validação de bandeira em tempo real (Visa, Mastercard, Elo, Amex, Hipercard) e criptografia ponta a ponta.

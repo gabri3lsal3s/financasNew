@@ -40,13 +40,13 @@
 │   ├── DATA_MIGRATION_GUIDE.md    # Guia de migração e batimento de dados legados
 │   ├── DEPLOYMENT.md              # Guia de deploy (Cloudflare Pages + Supabase) e env vars
 │   ├── DESIGN_SYSTEM.md           # Identidade visual e design tokens
-│   ├── FASES_IMPLEMENTADAS.md     # Histórico de fases e soluções implementadas
+│   ├── PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md # Plano mestre de governança, limpeza e segurança
 │   ├── PROJECT_STRUCTURE.md       # Este documento
-│   ├── PROJETO_SAAS.md            # Modelo de precificação SaaS, 30 dias de trial e restrições
+│   ├── PROJETO_SAAS.md            # Modelo de precificação SaaS, 30 dias de trial e conformidade CDC
 │   ├── PWA_GUIDELINES.md          # Requisitos PWA (manifest, SW, instalação)
 │   ├── RELEASE.md                 # Checklist de release e homologação
-│   ├── ROADMAP.md                 # Fases de execução e Definition of Done
-│   └── security-audit/            # Artefatos da Auditoria de Segurança SAST
+│   ├── ROADMAP.md                 # Fases de execução consolidadas e Definition of Done
+│   └── SECURITY_AUDIT/            # Artefatos da Auditoria de Segurança SAST
 │       ├── generate_report.py     #   Script gerador do relatório em PDF (ReportLab/Matplotlib)
 │       └── relatorio-auditoria-seguranca.pdf # Relatório executivo oficial de auditoria
 │
@@ -371,7 +371,7 @@ src/features/transactions/
 | Script operacional fora do bundle (deploy/cron de edge function) | `scripts/` (ex.: `deploy-quotes.mjs`) |
 | SQL de operação manual (cron da edge function de cotações) | `supabase/quotes-cron.sql` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
-| Proposta oficial de próximas fases (F14–F20) | `docs/NEXT_PHASES.md` (Trilha A: UI/UX · Trilha B: Investimentos) |
+| Roadmap canônico e histórico de fases | `docs/ROADMAP.md` (Fases consolidadas de 0 a 91+) |
 | Motor puro de gestos (axis-lock, thresholds, flick, resistência de borda) | `src/domain/gestures/` (ex.: `swipe.ts` — F20) |
 | Hook de navegação por gesto (swipe horizontal) | `src/hooks/use-swipe-navigation.ts` (F20) |
 | Script de manutenção/ETL fora do bundle (ex.: migração de dados legados) | `scripts/` (ver `docs/DATA_MIGRATION_GUIDE.md`) |

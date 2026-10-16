@@ -103,7 +103,7 @@ graph TD
     - **Diretório `identidadeVisual/` (6.7 MB):** Auditar as imagens soltas (`Gemini_Generated_Image_...png` 5.4MB, `foto-original.png`, `foto-sem-fundo.png`, `axis-logo.png`). Mover assets de marca oficiais e definitivos para `public/brand/` ou documentação apropriada, e expurgar rascunhos pesados não utilizados em runtime.
   - **Critério de Saída:** Raiz do projeto contendo estritamente os arquivos de configuração e governança permitidos por `PROJECT_STRUCTURE.md`.
 
-- [ ] **Tarefa 0.4 — Consolidação e Saneamento do Acervo Documental (`docs/`)**
+- [x] **Tarefa 0.4 — Consolidação e Saneamento do Acervo Documental (`docs/`)**
   - **Ação:** Realizar auditoria rigorosa contra duplicação de informações em `docs/`:
     - **Duplicações de Histórico e Roadmaps:** Analisar o overlap entre `docs/ROADMAP.md` (646 KB), `docs/FASES_IMPLEMENTADAS.md` (198 KB), `docs/NEXT_PHASES.md` (70 KB) e `docs/STATEMENT_RECONCILIATION_PLAN.md` (13 KB). Consolidar fases concluídas no `ROADMAP.md` histórico canônico e unificar planos vigentes, expurgando arquivos de planejamento intermediários já absorvidos;
     - **Padronização de Nomenclatura:** Garantir que 100% dos arquivos em `docs/` adotem `UPPER_SNAKE_CASE.md` (ex.: pasta `docs/security-audit/` padronizada ou formalizada conforme convenção);

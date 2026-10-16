@@ -637,8 +637,8 @@
 
 > **v2.13** registra a **Conclusão da Auditoria de Segurança Completa, Relatório Executivo em PDF e Remediações (Migration 0039, Feature Flags Triggers & Cron Hardening)** (2026-08-29):
 > - **(1) Auditoria Completa das 5 Categorias de Segurança**: Varredura em 100% do código (Frontend React 19, Backend PostgreSQL/RLS, Edge Functions Deno, CI/CD e Histórico Git);
-> - **(2) Relatório Executivo em PDF Gerado (`docs/security-audit/relatorio-auditoria-seguranca.pdf`)**: Documento oficial com resumo executivo, gráficos de rosca e barras de alta resolução, tabela detalhada de achados e issues prontas para o GitHub;
-> - **(3) Script Automatizado de Auditoria (`docs/security-audit/generate_report.py`)**: Script independente com ReportLab e Matplotlib para regerar o relatório;
+> - **(2) Relatório Executivo em PDF Gerado (`docs/SECURITY_AUDIT/relatorio-auditoria-seguranca.pdf`)**: Documento oficial com resumo executivo, gráficos de rosca e barras de alta resolução, tabela detalhada de achados e issues prontas para o GitHub;
+> - **(3) Script Automatizado de Auditoria (`docs/SECURITY_AUDIT/generate_report.py`)**: Script independente com ReportLab e Matplotlib para regerar o relatório;
 > - **(4) Blindagem de Status Ativo na RPC `delete_card_payment` (Migration 0039)**: Inclusão de `is_current_user_active()` para barrar contas suspensas ou inativas;
 > - **(5) Validação de Feature Flags no PostgreSQL (Migration 0039)**: Triggers `BEFORE INSERT OR UPDATE` vinculadas a `is_feature_enabled()` para `portfolio_assets`, `portfolio_transactions`, `loans` e `budgets`, garantindo bloqueio no banco de módulos desativados por Kill-Switch;
 > - **(6) Hardening de Permissões no Agendador `pg_cron`**: Revogação de acesso ao schema `cron` para roles públicas (`public`, `anon`, `authenticated`) em `quotes-cron.sql` e `deploy-quotes.mjs`;
@@ -1795,7 +1795,7 @@
 
 ### Fase 19 — Inteligência & Consistência dos Insights (Trilha A)
 
-**Objetivo:** tornar a funcionalidade de insights mais inteligente, precisa, organizada e consistente — **sem repetições desnecessárias**: uma única implementação para cada regra, zero código morto e motores 100% aproveitados pela UI. Fase de **evolução** (sem reconstruir motores) originada da auditoria funcional de Insights (2026-08-15) — diagnóstico completo em `NEXT_PHASES.md` §1.4.
+**Objetivo:** tornar a funcionalidade de insights mais inteligente, precisa, organizada e consistente — **sem repetições desnecessárias**: uma única implementação para cada regra, zero código morto e motores 100% aproveitados pela UI. Fase de **evolução** (sem reconstruir motores) originada da auditoria funcional de Insights (2026-08-15) — diagnóstico consolidado nesta seção.
 
 **Entregas (na ordem):**
 1. **Limpeza de código morto F8** — remover `SmartSpendingPaceCard`, `SmartInvoiceProjectionCard`, `SmartAnomaliesCard`, `SavingsHealthCard` + `smart-cards.test.tsx` + exports do barrel (a F12 já os substituiu pelo widget `summary`); remover ou reaproveitar os órfãos `runwayMonths`/`cumulativeBalance` (`runwayMonths` pode virar KPI de meses de reserva na F16/17).
@@ -1831,7 +1831,7 @@
 
 ### Fase 20 — Sistema de Gestos & Navegação por Swipe (Mobile Gesture UX) (Trilha A)
 
-**Objetivo:** navegação horizontal fluida no mobile (meses/períodos e sub-abas) com **rigor técnico absoluto** — zero falsos positivos e coexistência com componentes interativos existentes (Swipe-to-Action de despesas, gráficos com scrub, formulários, modais). Mapeamento arquitetural e matriz de riscos em `NEXT_PHASES.md` §1.5.
+**Objetivo:** navegação horizontal fluida no mobile (meses/períodos e sub-abas) com **rigor técnico absoluto** — zero falsos positivos e coexistência com componentes interativos existentes (Swipe-to-Action de despesas, gráficos com scrub, formulários, modais). Mapeamento arquitetural consolidado nesta seção.
 
 **Entregas (na ordem):**
 1. **Motor puro de gestos** — `src/domain/gestures/swipe.ts` (funções puras testáveis): `resolveSwipeIntent` (direção/distância/velocidade/flick), `isHorizontalLock` (axis-lock **±30°**: `|dy| ≤ |dx|·tan(30°)` + **descarte imediato** se `|dy| > |dx|` no ponto de lock — Thumb Drift), `isFlick` (`velocity > 0.3 px/ms` com `|dx| ≥ 30px`), `activationDistance(vw)` (`max(60px, 15% viewport)`) e `boundaryResistance` (elastic overscroll).
@@ -2197,7 +2197,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 
 ## 6. PRÓXIMAS FASES (PROPOSTA OFICIAL — INSERIDAS)
 
-> **Auditoria concluída (2026-08-15):** as fases F0–F15, F19 e F20 estão implementadas e testadas. A proposta oficial com o diagnóstico completo, fases da Trilha B e novas fases de evolução está registrada neste roadmap e em `docs/NEXT_PHASES.md`.
+> **Auditoria concluída (2026-08-15):** as fases F0–F15, F19 e F20 estão implementadas e testadas. A proposta oficial com o diagnóstico completo, fases da Trilha B e novas fases de evolução está registrada e consolidada neste roadmap canônico.
 >
 > **Decisões default aplicadas:**
 > - **P1 = (a)** cotações: edge function (F1.7/Yahoo) + preço manual como fonte primária — deploy/cron da F1.7 é pré-requisito da F16.
@@ -2415,7 +2415,7 @@ Sempre composição fina: layout (`components/layout`) + módulos (`components/m
 4. **Módulos 4 e 5 (Empréstimos, Financiamentos e Amortização Antecipada):** tabela `loans` no Supabase + motor puro `src/domain/loans/` (cronogramas Price/SAC e amortização com desconto) + RPCs `create_loan_contract` e `early_amortize_loan` + `LoanCard`, `LoanFormDialog` e `EarlyAmortizationDialog` integrados à `DebtsPage`.
 5. **Qualidade & Blindagens:** 0 erros no typecheck (`tsc -b`), 0 erros no ESLint, e suíte de testes unitários/integração com **149 arquivos de teste e 1.217 testes 100% verdes**.
 
-**Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status acima + seção detalhada (§3) + `NEXT_PHASES.md`, rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.
+**Regra do ciclo (AGENTS.md §9):** a cada fase implementada — atualizar o status canônico (§1 e §2) + seção detalhada (§3), rodar typecheck/lint/testes/build e commitar antes de avançar para a próxima.
 
 ---
 

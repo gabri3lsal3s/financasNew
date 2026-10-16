@@ -17,8 +17,8 @@ Aplicativo web **100% Online First** de **gestão financeira pessoal** (receitas
 | [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) | Árvore de pastas e onde criar cada arquivo |
 | [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) | Identidade visual e design tokens |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Plano de execução canônico — fases, ordem e Definition of Done |
-| [`docs/FASES_IMPLEMENTADAS.md`](docs/FASES_IMPLEMENTADAS.md) | Resumo de cada fase implementada (F0–F29): problema e solução |
-| [`docs/NEXT_PHASES.md`](docs/NEXT_PHASES.md) | Propostas de novas fases (Trilha A: UI/UX · Trilha B: Investimentos) |
+| [`docs/PROJETO_SAAS.md`](docs/PROJETO_SAAS.md) | Modelo de precificação SaaS, trial de 30 dias e conformidade CDC |
+| [`docs/PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md`](docs/PLANO_LIMPEZA_OTIMIZACAO_SEGURANCA.md) | Plano de governança, limpeza, otimização e blindagem de segurança |
 | [`docs/PWA_GUIDELINES.md`](docs/PWA_GUIDELINES.md) | Requisitos PWA (manifest, service worker, instalação) |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploy (Cloudflare Pages + Supabase), env vars e checklist de prontidão |
 

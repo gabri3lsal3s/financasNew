@@ -7,10 +7,11 @@ coverage
 .env.*
 !.env.example
 
-# Editor / SO
+# Editor / SO / Python venv
 .DS_Store
 .idea
 .vscode
+.venv/
 
 # Build / tooling
 *.tsbuildinfo

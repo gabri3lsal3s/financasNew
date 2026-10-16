@@ -534,6 +534,6 @@ Se uma role não-administrativa obtiver privilégios indevidos de leitura no sch
     print(f"[OK] Relatório gerado com sucesso em: {output_path}")
 
 if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else "docs/security-audit/relatorio-auditoria-seguranca.pdf"
+    target = sys.argv[1] if len(sys.argv) > 1 else "docs/SECURITY_AUDIT/relatorio-auditoria-seguranca.pdf"
     build_security_audit_pdf(target)
 
