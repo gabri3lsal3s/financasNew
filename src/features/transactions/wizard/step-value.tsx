@@ -14,10 +14,12 @@ export interface StepValueProps {
   onApplyHabitual: (habit: HabitualEntry) => void;
   /** Lançamentos habituais derivados do histórico (F21) — vazio oculta. */
   habits: HabitualEntry[];
+  /** Callback para avançar de etapa no Enter */
+  onNext?: () => void;
 }
 
 /** Passo 1 — tipo, valor e parcelas (defaults inteligentes: focar no valor). */
-export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsChange, onApplyHabitual, habits }: StepValueProps) {
+export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsChange, onApplyHabitual, habits, onNext }: StepValueProps) {
   const isExpense = state.type === "expense";
   // Fase 32 — parcelamento e recorrência são mutuamente exclusivos; o stepper
   // de parcelas vale para despesas E rendas parceladas.
@@ -79,6 +81,12 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
           cents={state.valueCents}
           onCentsChange={onValueChange}
           aria-label="Valor do lançamento"
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && state.valueCents > 0) {
+              event.preventDefault();
+              onNext?.();
+            }
+          }}
         />
       </div>
 

@@ -428,15 +428,15 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 17: Refinamento de Transações, Extrato, Assistente de Lançamento e Importadores
 
-### Tarefa 34: Auditoria de Transações, Filtros de Busca, LaunchWizard Rápido e Staging de Importação
-- **Status:** ⏳ Pendente
+### Tarefa 34: Auditoria de Transações, Filtros de Busca, LaunchWizard Rápido e Staging de Importação [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Proporcionar agilidade máxima no lançamento de despesas/receitas, filtros instantâneos sem engasgos no extrato e validação segura nos importadores de dados.
 - **Ações:**
-  1. **Filtros e Abas de Extrato:** Refinar a barra de busca e os seletores de tipo (Todas, Receitas, Despesas) em `TransactionListPage`, assegurando scroll suave no mobile sem esmagamento de botões.
-  2. **LaunchWizard (Assistente de Lançamento):** Otimizar o fluxo de preenchimento rápido (valor com `MoneyInput`, seletor de categorias, parcelas de 1 a 60x e forma de pagamento), com validação Zod rigorosa e avanço por teclado/toque.
-  3. **Staging Area de Importação (OFX/CSV/Texto):** Calibrar a edição em linha na tabela intermediária antes de salvar, permitindo alterar categorias, datas e valores sem recarregar o arquivo.
-  4. **Ações em Lote e Exclusão Segura:** Garantir diálogo canônico de confirmação para exclusão de lançamentos e parcelamentos futuros com feedback atômico.
-  5. **Testes Unitários:** Cobrir fluxo de lançamento, divisão de parcelas e conciliação de extratos.
+  1. **Filtros e Abas de Extrato:** Refinar a barra de busca e os seletores de tipo (Todas, Receitas, Despesas, Parceladas, Recorrentes) em `TransactionListPage`, assegurando scroll suave no mobile sem esmagamento de botões (Regra 9 de `AGENTS.md`) e busca instantânea com input controlado + botão limpar acessível e EmptyState contextual. (Concluído: implementada barra de busca com ícone `Search` e botão de limpar com `X`, filtragem em tempo real de `feedItems` por descrição e categoria com memoização estrita de `categoryById`, EmptyState dedicado quando a busca não retorna resultados com ação de limpeza e exportação de CSV sincronizada com os resultados visíveis).
+  2. **LaunchWizard (Assistente de Lançamento):** Otimizar o fluxo de preenchimento rápido (valor com `MoneyInput`, seletor de categorias, parcelas de 1 a 60x e forma de pagamento), com validação Zod rigorosa e avanço por teclado/toque. (Concluído: criados `step1ValueSchema`, `step2CategorySchema`, `step3DetailsSchema` e `launchStateSchema` com Zod e método `validateLaunchStep`, e implementado avanço rápido via `onKeyDown` de Enter no campo de valor e descrição).
+  3. **Staging Area de Importação (OFX/CSV/Texto):** Calibrar a edição em linha na tabela intermediária antes de salvar, permitindo alterar categorias, datas e valores sem recarregar o arquivo. (Concluído: edição modal na staging area atualiza data, descrição, valor, tipo e categoria recalculando o statementHash automaticamente com seleção garantida e suporte a inclusão de linhas manuais).
+  4. **Ações em Lote e Exclusão Segura:** Garantir diálogo canônico de confirmação para exclusão de lançamentos e parcelamentos futuros com feedback atômico. (Concluído: integrados toasts atômicos de sucesso com rollback em falha para exclusão de lançamentos únicos, parcelamentos e ocorrências recorrentes em `ExpenseDetailDialog` e `IncomeDetailDialog`).
+  5. **Testes Unitários:** Cobrir fluxo de lançamento, divisão de parcelas e conciliação de extratos. (Concluído: adicionados testes em `transaction-list-page.test.tsx` e `wizard-state.test.ts`, totalizando 71 testes aprovados em `src/features/transactions/` com 100% de sucesso).
 - **Commit:** `refactor(transactions): harmonize statement filters, launch wizard flow, and import staging`
 
 ---

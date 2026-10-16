@@ -7,8 +7,13 @@ import {
   defaultLaunchState,
   effectiveReportWeight,
   isPresetWeight,
+  launchStateSchema,
   recurrenceRuleFromLaunchState,
   reportWeightLabel,
+  step1ValueSchema,
+  step2CategorySchema,
+  step3DetailsSchema,
+  validateLaunchStep,
   weightToPercentText,
 } from "./wizard-state";
 
@@ -212,3 +217,115 @@ describe("peso no relatório — presets e valor personalizado", () => {
     ).toBe(1);
   });
 });
+
+describe("Validação Zod dos Passos do Wizard (D10 / Fase 17)", () => {
+  it("step1ValueSchema valida valor positivo e limite de 1 a 60 parcelas", () => {
+    expect(step1ValueSchema.safeParse({ type: "expense", valueCents: 100, installments: 1 }).success).toBe(true);
+    expect(step1ValueSchema.safeParse({ type: "expense", valueCents: 0, installments: 1 }).success).toBe(false);
+    expect(step1ValueSchema.safeParse({ type: "expense", valueCents: -50, installments: 1 }).success).toBe(false);
+    expect(step1ValueSchema.safeParse({ type: "income", valueCents: 500, installments: 0 }).success).toBe(false);
+    expect(step1ValueSchema.safeParse({ type: "income", valueCents: 500, installments: 60 }).success).toBe(true);
+    expect(step1ValueSchema.safeParse({ type: "income", valueCents: 500, installments: 61 }).success).toBe(false);
+  });
+
+  it("step2CategorySchema exige categoria não vazia", () => {
+    expect(step2CategorySchema.safeParse({ categoryId: "cat-123" }).success).toBe(true);
+    expect(step2CategorySchema.safeParse({ categoryId: "" }).success).toBe(false);
+    expect(step2CategorySchema.safeParse({ categoryId: "   " }).success).toBe(false);
+  });
+
+  it("step3DetailsSchema valida cartão obrigatório no crédito e cobranças", () => {
+    const baseValid = {
+      type: "expense" as const,
+      date: "2026-08-15",
+      paymentMethod: "pix" as const,
+      cardId: null,
+      receiveType: "pix" as const,
+      description: "Supermercado",
+      reportWeight: 1,
+      reportCustomAmountCents: 0,
+      debtEnabled: false,
+      debtType: "payable" as const,
+      debtAmountCents: 0,
+      debtDueDate: "",
+      recurring: false,
+      recurrenceFrequency: "monthly" as const,
+      recurrenceEndMode: "date" as const,
+      recurrenceEndDate: "",
+      recurrenceCount: 12,
+      valueCents: 10000,
+    };
+
+    expect(step3DetailsSchema.safeParse(baseValid).success).toBe(true);
+
+    // Cartão de crédito exige cardId
+    expect(
+      step3DetailsSchema.safeParse({
+        ...baseValid,
+        paymentMethod: "credit_card",
+        cardId: null,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      step3DetailsSchema.safeParse({
+        ...baseValid,
+        paymentMethod: "credit_card",
+        cardId: "card-abc",
+      }).success,
+    ).toBe(true);
+
+    // Cobrança vinculada exige valor maior que zero
+    expect(
+      step3DetailsSchema.safeParse({
+        ...baseValid,
+        debtEnabled: true,
+        debtAmountCents: 0,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      step3DetailsSchema.safeParse({
+        ...baseValid,
+        debtEnabled: true,
+        debtAmountCents: 5000,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("launchStateSchema valida o objeto de estado completo", () => {
+    const fullState = {
+      ...defaultLaunchState("expense"),
+      valueCents: 15000,
+      categoryId: "cat-mercado",
+      date: "2026-08-15",
+    };
+    expect(launchStateSchema.safeParse(fullState).success).toBe(true);
+  });
+
+  it("validateLaunchStep retorna mensagem de erro amigável quando inválido", () => {
+    const base = defaultLaunchState();
+    const step1Result = validateLaunchStep(base, 1);
+    expect(step1Result.success).toBe(false);
+    expect(step1Result.error).toBe("O valor deve ser maior que zero.");
+
+    const step2Result = validateLaunchStep({ ...base, valueCents: 100, step: 2 }, 2);
+    expect(step2Result.success).toBe(false);
+    expect(step2Result.error).toBe("Selecione uma categoria.");
+
+    const step3Result = validateLaunchStep(
+      {
+        ...base,
+        valueCents: 100,
+        categoryId: "c1",
+        step: 3,
+        paymentMethod: "credit_card",
+        cardId: null,
+      },
+      3,
+    );
+    expect(step3Result.success).toBe(false);
+    expect(step3Result.error).toBe("Selecione o cartão de crédito.");
+  });
+});
+

@@ -41,6 +41,8 @@ export interface StepDetailsProps {
   cards: { id: string; name: string }[] | undefined;
   cardsLoading: boolean;
   cardsError: unknown;
+  /** Callback para avançar no Enter */
+  onNext?: () => void;
 }
 
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
@@ -87,6 +89,7 @@ export function StepDetails({
   cards,
   cardsLoading,
   cardsError,
+  onNext,
 }: StepDetailsProps) {
   const isExpense = state.type === "expense";
 
@@ -146,6 +149,12 @@ export function StepDetails({
           value={state.description}
           onChange={(event) => onDescriptionChange(event.target.value)}
           placeholder={isExpense ? "Ex.: Supermercado do mês" : "Ex.: Salário"}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              onNext?.();
+            }
+          }}
         />
         {/* Sugestões de descrição pura (hotfix): o clique preenche APENAS o campo
             de descrição — valor, data e forma já preenchidos nas etapas

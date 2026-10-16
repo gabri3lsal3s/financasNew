@@ -330,6 +330,11 @@ export function LaunchWizard({
               }
             }}
             habits={habits}
+            onNext={() => {
+              if (canProceed(state)) {
+                goTo(2);
+              }
+            }}
           />
         ) : null}
 
@@ -379,6 +384,11 @@ export function LaunchWizard({
             cards={cardsQuery.data}
             cardsLoading={cardsQuery.isLoading}
             cardsError={cardsQuery.error}
+            onNext={() => {
+              if (canProceed(state)) {
+                goTo(4);
+              }
+            }}
           />
         ) : null}
 

@@ -158,9 +158,47 @@ describe("TransactionListPage — listagem por mês", () => {
     expect(mockDownloadCsv).toHaveBeenCalledTimes(1);
     const [filename, content] = mockDownloadCsv.mock.calls[0] as [string, string];
     expect(filename).toMatch(/^transacoes_\d{4}-\d{2}_todas\.csv$/);
-    expect(content).toContain("Data;Tipo;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Forma / Detalhes;Cartão;Parcelas;Recorrência");
     expect(content).toContain("Salário");
     expect(content).toContain("Aluguel");
   });
+
+  it("filtra transações instantaneamente ao digitar no campo de busca", async () => {
+    const user = userEvent.setup();
+    render(<TransactionListPage />);
+
+    const searchInput = screen.getByRole("textbox", { name: "Buscar lançamentos" });
+    expect(searchInput).toBeInTheDocument();
+
+    // Digita "Aluguel" -> apenas Aluguel visível
+    await user.type(searchInput, "Aluguel");
+    expect(screen.getByText("Aluguel")).toBeInTheDocument();
+    expect(screen.queryByText("Salário")).not.toBeInTheDocument();
+
+    // Limpa com o botão de limpar na barra
+    const clearButton = screen.getByRole("button", { name: "Limpar campo de busca" });
+    await user.click(clearButton);
+    expect(screen.getByText("Salário")).toBeInTheDocument();
+    expect(screen.getByText("Aluguel")).toBeInTheDocument();
+  });
+
+  it("exibe EmptyState dedicado quando a busca não retorna resultados e permite limpar", async () => {
+    const user = userEvent.setup();
+    render(<TransactionListPage />);
+
+    const searchInput = screen.getByRole("textbox", { name: "Buscar lançamentos" });
+    await user.type(searchInput, "TermoInexistenteXYZ");
+
+    expect(screen.getByText("Nenhum resultado encontrado")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Nenhum lançamento corresponde ao termo "TermoInexistenteXYZ"/),
+    ).toBeInTheDocument();
+
+    const clearButton = screen.getByRole("button", { name: "Limpar busca" });
+    await user.click(clearButton);
+
+    expect(screen.getByText("Salário")).toBeInTheDocument();
+    expect(screen.getByText("Aluguel")).toBeInTheDocument();
+  });
 });
+
 

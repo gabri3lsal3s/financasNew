@@ -3,6 +3,7 @@
  * Derivados calculados aqui (D12): parcelas em centavos + competência
  * snapshot quando cartão. O servidor valida invariantes (soma = total, 1–60).
  */
+import { z } from "zod";
 import { parcelar, toISODate } from "@/domain/money";
 import { resolveBillCompetence } from "@/domain/competence";
 import type { RecurrenceFrequency, RecurrenceRule } from "@/domain/recurrences";
@@ -125,26 +126,171 @@ export function effectiveReportWeight(state: LaunchState): number {
   return Math.min(1, Math.max(0, Number(ratio.toFixed(4))));
 }
 
-/** Pode avançar do passo atual (validações por etapa). */
-export function canProceed(state: LaunchState): boolean {
-  if (state.step === 1) return state.valueCents > 0;
-  if (state.step === 2) return state.categoryId !== "";
-  if (state.step === 3) {
-    if (!state.date) return false;
-    if (state.type === "expense" && state.paymentMethod === "credit_card" && !state.cardId) return false;
-    if (state.debtEnabled && state.debtAmountCents <= 0) return false;
-    // Recorrência formal exige fim definido (data ou nº de ocorrências).
-    if (state.recurring) {
-      if (state.recurrenceEndMode === "date" && !state.recurrenceEndDate) return false;
-      if (state.recurrenceEndMode === "count" && state.recurrenceCount < 1) return false;
+export const step1ValueSchema = z.object({
+  type: z.enum(["expense", "income"]),
+  valueCents: z.number().int().positive("O valor deve ser maior que zero."),
+  installments: z
+    .number()
+    .int()
+    .min(1, "O número mínimo de parcelas é 1.")
+    .max(60, "O número máximo de parcelas é 60."),
+});
+
+export const step2CategorySchema = z.object({
+  categoryId: z.string().trim().min(1, "Selecione uma categoria."),
+});
+
+export const step3DetailsSchema = z
+  .object({
+    type: z.enum(["expense", "income"]),
+    date: z.string().min(1, "Informe a data do lançamento."),
+    paymentMethod: z.enum(["cash", "debit", "credit_card", "pix", "transfer", "other"]),
+    cardId: z.string().nullable(),
+    receiveType: z.enum(["cash", "pix", "transfer", "other"]),
+    description: z.string(),
+    reportWeight: z.number(),
+    reportCustomAmountCents: z.number().int(),
+    debtEnabled: z.boolean(),
+    debtType: z.enum(["payable", "receivable"]),
+    debtAmountCents: z.number().int(),
+    debtDueDate: z.string(),
+    recurring: z.boolean(),
+    recurrenceFrequency: z.enum(["weekly", "monthly", "quarterly", "yearly"]),
+    recurrenceEndMode: z.enum(["date", "count"]),
+    recurrenceEndDate: z.string(),
+    recurrenceCount: z.number().int(),
+    valueCents: z.number().int(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === "expense" && data.paymentMethod === "credit_card" && (!data.cardId || data.cardId.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cardId"],
+        message: "Selecione o cartão de crédito.",
+      });
     }
-    // Peso personalizado: exige valor válido maior ou igual a zero e menor/igual ao valor total.
-    if (!isPresetWeight(state.reportWeight)) {
-      if (state.reportCustomAmountCents < 0 || state.reportCustomAmountCents > state.valueCents) return false;
+    if (data.debtEnabled && data.debtAmountCents <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["debtAmountCents"],
+        message: "O valor da cobrança vinculada deve ser maior que zero.",
+      });
     }
-    return true;
+    if (data.recurring) {
+      if (data.recurrenceEndMode === "date" && !data.recurrenceEndDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["recurrenceEndDate"],
+          message: "Informe a data de fim da recorrência.",
+        });
+      }
+      if (data.recurrenceEndMode === "count" && data.recurrenceCount < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["recurrenceCount"],
+          message: "O número de ocorrências deve ser ao menos 1.",
+        });
+      }
+    }
+    if (!isPresetWeight(data.reportWeight)) {
+      if (data.reportCustomAmountCents < 0 || data.reportCustomAmountCents > data.valueCents) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["reportCustomAmountCents"],
+          message: "O valor considerado no relatório deve ser entre zero e o valor total do lançamento.",
+        });
+      }
+    }
+  });
+
+export const launchStateSchema = z
+  .object({
+    step: z.number().int().min(1).max(4),
+    type: z.enum(["expense", "income"]),
+    valueCents: z.number().int().positive("O valor deve ser maior que zero."),
+    installments: z.number().int().min(1).max(60),
+    categoryId: z.string().trim().min(1, "Selecione uma categoria."),
+    date: z.string().min(1, "Informe a data do lançamento."),
+    paymentMethod: z.enum(["cash", "debit", "credit_card", "pix", "transfer", "other"]),
+    cardId: z.string().nullable(),
+    receiveType: z.enum(["cash", "pix", "transfer", "other"]),
+    description: z.string(),
+    reportWeight: z.number(),
+    reportCustomAmountCents: z.number().int(),
+    debtEnabled: z.boolean(),
+    debtType: z.enum(["payable", "receivable"]),
+    debtAmountCents: z.number().int(),
+    debtDueDate: z.string(),
+    recurring: z.boolean(),
+    recurrenceFrequency: z.enum(["weekly", "monthly", "quarterly", "yearly"]),
+    recurrenceEndMode: z.enum(["date", "count"]),
+    recurrenceEndDate: z.string(),
+    recurrenceCount: z.number().int(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === "expense" && data.paymentMethod === "credit_card" && (!data.cardId || data.cardId.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cardId"],
+        message: "Selecione o cartão de crédito.",
+      });
+    }
+    if (data.debtEnabled && data.debtAmountCents <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["debtAmountCents"],
+        message: "O valor da cobrança vinculada deve ser maior que zero.",
+      });
+    }
+    if (data.recurring) {
+      if (data.recurrenceEndMode === "date" && !data.recurrenceEndDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["recurrenceEndDate"],
+          message: "Informe a data de fim da recorrência.",
+        });
+      }
+      if (data.recurrenceEndMode === "count" && data.recurrenceCount < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["recurrenceCount"],
+          message: "O número de ocorrências deve ser ao menos 1.",
+        });
+      }
+    }
+    if (!isPresetWeight(data.reportWeight)) {
+      if (data.reportCustomAmountCents < 0 || data.reportCustomAmountCents > data.valueCents) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["reportCustomAmountCents"],
+          message: "O valor considerado no relatório deve ser entre zero e o valor total do lançamento.",
+        });
+      }
+    }
+  });
+
+export function validateLaunchStep(
+  state: LaunchState,
+  step: number,
+): { success: boolean; error?: string } {
+  if (step === 1) {
+    const res = step1ValueSchema.safeParse(state);
+    return res.success ? { success: true } : { success: false, error: res.error.issues[0]?.message };
   }
-  return true;
+  if (step === 2) {
+    const res = step2CategorySchema.safeParse(state);
+    return res.success ? { success: true } : { success: false, error: res.error.issues[0]?.message };
+  }
+  if (step === 3) {
+    const res = step3DetailsSchema.safeParse(state);
+    return res.success ? { success: true } : { success: false, error: res.error.issues[0]?.message };
+  }
+  return { success: true };
+}
+
+/** Pode avançar do passo atual (validações por etapa com Zod). */
+export function canProceed(state: LaunchState): boolean {
+  return validateLaunchStep(state, state.step).success;
 }
 
 const parseISO = (iso: string): Date => new Date(`${iso}T00:00:00`);

@@ -1,8 +1,9 @@
 import { useNavigate, useSearchParams } from "react-router";
 import { useMemo, useState } from "react";
-import { ArrowLeftRight, Calendar, Download, FileSpreadsheet, Plus } from "lucide-react";
+import { ArrowLeftRight, Calendar, Download, FileSpreadsheet, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -123,7 +124,10 @@ export function TransactionListPage() {
     expensesQuery.isLoading || incomesQuery.isLoading || categoriesQuery.isLoading || recurrencesQuery.isLoading;
   const error = expensesQuery.error ?? incomesQuery.error ?? categoriesQuery.error ?? recurrencesQuery.error;
 
-  const categoryById = new Map((categoriesQuery.data ?? []).map((c) => [c.id, c]));
+  const categoryById = useMemo(
+    () => new Map((categoriesQuery.data ?? []).map((c) => [c.id, c])),
+    [categoriesQuery.data],
+  );
 
   const incomesTotalCents = sumCents(incomesQuery.data ?? []);
   const expensesTotalCents = sumCents(expensesQuery.data ?? []);
@@ -139,12 +143,25 @@ export function TransactionListPage() {
   const balanceWeightedCents = incomesWeightedCents - expensesWeightedCents;
 
   const [filter, setFilter] = useState<FeedFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const feedItems = useMemo(
     () => buildUnifiedFeedItems(expensesQuery.data ?? [], incomesQuery.data ?? [], filter),
     [expensesQuery.data, incomesQuery.data, filter],
   );
-  const feedGroups = useMemo(() => groupFeedByDay(feedItems), [feedItems]);
+
+  const filteredFeedItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return feedItems;
+    return feedItems.filter((item) => {
+      const desc = (item.description ?? "").toLowerCase();
+      const catName = (categoryById.get(item.categoryId)?.name ?? "").toLowerCase();
+      return desc.includes(q) || catName.includes(q);
+    });
+  }, [feedItems, searchQuery, categoryById]);
+
+  const feedGroups = useMemo(() => groupFeedByDay(filteredFeedItems), [filteredFeedItems]);
+  const isSearching = searchQuery.trim().length > 0;
 
   // Frequência por template (Fase 32) — subtítulo "Mensal", "Semanal", etc.
   const frequencyById = new Map(
@@ -177,8 +194,8 @@ export function TransactionListPage() {
   );
 
   const handleExportCsv = () => {
-    if (feedItems.length === 0) return;
-    const rows: ExportUnifiedTransactionRow[] = feedItems.map((item) => {
+    if (filteredFeedItems.length === 0) return;
+    const rows: ExportUnifiedTransactionRow[] = filteredFeedItems.map((item) => {
       const isExpense = item.kind === "expense";
       const exp = item.rawExpense ?? null;
       const inc = item.rawIncome ?? null;
@@ -309,27 +326,51 @@ export function TransactionListPage() {
           variant="outline"
           className="w-full sm:w-auto gap-1.5"
           onClick={handleExportCsv}
-          disabled={feedItems.length === 0}
+          disabled={filteredFeedItems.length === 0}
           aria-label="Exportar CSV"
-          title={feedItems.length === 0 ? "Nenhum lançamento para exportar" : "Exportar lançamentos filtrados em CSV"}
+          title={filteredFeedItems.length === 0 ? "Nenhum lançamento para exportar" : "Exportar lançamentos filtrados em CSV"}
         >
           <Download className="size-4" aria-hidden="true" />
           <span className="hidden sm:inline">Exportar </span>CSV
         </Button>
       </div>
 
-      <Tabs
-        value={filter}
-        onValueChange={(val) => setFilter(val as FeedFilter)}
-        fullWidth={false}
-        items={[
-          { value: "all", label: "Tudo" },
-          { value: "incomes", label: "Receitas" },
-          { value: "expenses", label: "Despesas" },
-          { value: "installments", label: "Parceladas" },
-          { value: "recurring", label: "Recorrentes" },
-        ]}
-      />
+      <div className="flex flex-col gap-3">
+        <Tabs
+          value={filter}
+          onValueChange={(val) => setFilter(val as FeedFilter)}
+          fullWidth={false}
+          items={[
+            { value: "all", label: "Tudo" },
+            { value: "incomes", label: "Receitas" },
+            { value: "expenses", label: "Despesas" },
+            { value: "installments", label: "Parceladas" },
+            { value: "recurring", label: "Recorrentes" },
+          ]}
+        />
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
+          <Input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por descrição ou categoria…"
+            className="pl-9 pr-9 text-xs sm:text-sm h-9.5 bg-surface"
+            aria-label="Buscar lançamentos"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              aria-label="Limpar campo de busca"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-full hover:bg-surface-hover transition-colors cursor-pointer"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       {error ? (
         <ErrorState
@@ -343,34 +384,43 @@ export function TransactionListPage() {
       ) : feedGroups.length === 0 ? (
         <EmptyState
           icon={<ArrowLeftRight className="size-6" aria-hidden="true" />}
-          title="Nenhum lançamento encontrado"
+          title={isSearching ? "Nenhum resultado encontrado" : "Nenhum lançamento encontrado"}
           description={
-            filter === "incomes"
-              ? "Nenhuma receita registrada neste mês."
-              : filter === "expenses"
-                ? "Nenhuma despesa registrada neste mês."
-                : filter === "recurring"
-                  ? "Nenhum lançamento recorrente neste mês."
-                  : filter === "installments"
-                    ? "Nenhum lançamento parcelado neste mês."
-                    : "Registre sua primeira transação do mês ou importe seu extrato bancário."
+            isSearching
+              ? `Nenhum lançamento corresponde ao termo "${searchQuery.trim()}". Tente buscar por outro termo ou limpe a busca.`
+              : filter === "incomes"
+                ? "Nenhuma receita registrada neste mês."
+                : filter === "expenses"
+                  ? "Nenhuma despesa registrada neste mês."
+                  : filter === "recurring"
+                    ? "Nenhum lançamento recorrente neste mês."
+                    : filter === "installments"
+                      ? "Nenhum lançamento parcelado neste mês."
+                      : "Registre sua primeira transação do mês ou importe seu extrato bancário."
           }
           action={
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-              <Button size="sm" onClick={handleNewTransaction} className="gap-1.5 cursor-pointer">
-                <Plus className="size-4" aria-hidden="true" />
-                Nova transação
+            isSearching ? (
+              <Button size="sm" variant="outline" onClick={() => setSearchQuery("")} className="mt-2 cursor-pointer gap-1.5">
+                <X className="size-3.5" aria-hidden="true" />
+                Limpar busca
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleImportStatement}
-                className="gap-1.5 cursor-pointer"
-              >
-                <FileSpreadsheet className="size-4" aria-hidden="true" />
-                Importar extrato
-              </Button>
-            </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                <Button size="sm" onClick={handleNewTransaction} className="gap-1.5 cursor-pointer">
+                  <Plus className="size-4" aria-hidden="true" />
+                  Nova transação
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleImportStatement}
+                  className="gap-1.5 cursor-pointer"
+                >
+                  <FileSpreadsheet className="size-4" aria-hidden="true" />
+                  Importar extrato
+                </Button>
+              </div>
+            )
           }
         />
       ) : (

@@ -420,15 +420,27 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
    * Exclusão otimista (F30): fecha os diálogos e remove o item da lista na
    * hora; o hook faz rollback + toast se o servidor rejeitar.
    */
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!expense) return;
     setError(null);
     setConfirmOpen(false);
     onOpenChange(false);
-    if (isRecurring) {
-      void Promise.resolve(deleteRecurrence.mutateAsync({ occurrenceId: expense.id, mode })).catch(() => undefined);
-    } else {
-      void Promise.resolve(deleteExpense.mutateAsync({ expenseId: expense.id, mode })).catch(() => undefined);
+    try {
+      if (isRecurring) {
+        await deleteRecurrence.mutateAsync({ occurrenceId: expense.id, mode });
+        pushToast({
+          title: mode === "single" ? "Ocorrência excluída com sucesso" : "Recorrências excluídas com sucesso",
+          variant: "success",
+        });
+      } else {
+        await deleteExpense.mutateAsync({ expenseId: expense.id, mode });
+        pushToast({
+          title: isInstallment && mode !== "single" ? "Parcelas excluídas com sucesso" : "Despesa excluída com sucesso",
+          variant: "success",
+        });
+      }
+    } catch {
+      // Falha tratada no onError da mutation com rollback automático e toast de erro
     }
   };
 

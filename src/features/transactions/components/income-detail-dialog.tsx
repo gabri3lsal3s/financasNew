@@ -297,17 +297,33 @@ export function IncomeDetailDialog({ income, open, onOpenChange }: IncomeDetailD
    * Exclusão otimista (F30): fecha os diálogos e remove a renda da lista na
    * hora; o hook faz rollback + toast se o servidor rejeitar.
    */
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!income) return;
     setError(null);
     setConfirmOpen(false);
     onOpenChange(false);
-    if (isRecurring) {
-      void Promise.resolve(deleteRecurrence.mutateAsync({ occurrenceId: income.id, mode })).catch(() => undefined);
-    } else if (isGrouped) {
-      void Promise.resolve(deleteIncomeGrouped.mutateAsync({ id: income.id, mode })).catch(() => undefined);
-    } else {
-      void Promise.resolve(deleteIncome.mutateAsync(income.id)).catch(() => undefined);
+    try {
+      if (isRecurring) {
+        await deleteRecurrence.mutateAsync({ occurrenceId: income.id, mode });
+        pushToast({
+          title: mode === "single" ? "Ocorrência excluída com sucesso" : "Recorrências excluídas com sucesso",
+          variant: "success",
+        });
+      } else if (isGrouped) {
+        await deleteIncomeGrouped.mutateAsync({ id: income.id, mode });
+        pushToast({
+          title: mode !== "single" ? "Parcelas excluídas com sucesso" : "Receita excluída com sucesso",
+          variant: "success",
+        });
+      } else {
+        await deleteIncome.mutateAsync(income.id);
+        pushToast({
+          title: "Receita excluída com sucesso",
+          variant: "success",
+        });
+      }
+    } catch {
+      // Falha tratada no onError da mutation com rollback automático e toast de erro
     }
   };
 
