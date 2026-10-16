@@ -5087,19 +5087,19 @@ flowchart TD
   - Persistência isolada e segura por usuário.
 
 **✅ DoD (Definition of Done da Fase 89):**
-- [ ] Detecção de parcelas implementada para formatos "total em N vezes" e "N vezes de R$ X".
-- [ ] Notificação interativa rica disparada com botões nativos `[➕ Adicionar Rápido]` e `[✏️ Editar]`.
-- [ ] Salvamento em segundo plano sem abrir o app funcional via autenticação ativa no Supabase.
-- [ ] Feedback visual de sucesso emitido na notificação com ação temporária de "Desfazer".
-- [ ] Tratamento estrito de ausência de rede (Online First) com aviso e retenção na fila.
-- [ ] Blacklist semântica ativa rejeitando faturas fechadas, pagamentos de fatura, 2FA, limites e recusas.
-- [ ] Extrator com preposições "no", "na", travessões do Itaú/Bradesco e vírgulas do Banco do Brasil.
-- [ ] Buffer offline nativo em `SharedPreferences` no Android com sincronização via `flushPendingNotifications`.
-- [ ] Mapeamento expandido para BTG, PicPay, PagBank, Neon, Next, XP, Nomad e Wise.
-- [ ] Inferência determinística de categorias e pré-seleção no `LaunchWizard`.
-- [ ] Painel de preferências integrado em Configurações com toggles individuais para cada recurso do assistente.
-- [ ] Bateria completa de testes automatizados 100% verde.
-- [ ] Typecheck (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
+- [x] Detecção de parcelas implementada para formatos "total em N vezes" e "N vezes de R$ X".
+- [x] Notificação interativa rica disparada com botões nativos `[➕ Adicionar Rápido]` e `[✏️ Editar]`.
+- [x] Salvamento em segundo plano sem abrir o app funcional via autenticação ativa no Supabase.
+- [x] Feedback visual de sucesso emitido na notificação com ação temporária de "Desfazer".
+- [x] Tratamento estrito de ausência de rede (Online First) com aviso e retenção na fila.
+- [x] Blacklist semântica ativa rejeitando faturas fechadas, pagamentos de fatura, 2FA, limites e recusas.
+- [x] Extrator com preposições "no", "na", travessões do Itaú/Bradesco e vírgulas do Banco do Brasil.
+- [x] Buffer offline nativo em `SharedPreferences` no Android com sincronização via `flushPendingNotifications`.
+- [x] Mapeamento expandido para BTG, PicPay, PagBank, Neon, Next, XP, Nomad e Wise.
+- [x] Inferência determinística de categorias e pré-seleção no `LaunchWizard`.
+- [x] Painel de preferências integrado em Configurações com toggles individuais para cada recurso do assistente.
+- [x] Bateria completa de testes automatizados 100% verde.
+- [x] Typecheck (`tsc -b`) e lint (`npm run lint`) limpos sem erros.
 
 
 

@@ -128,7 +128,7 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 4: Investimentos e Relatórios Temporais
 
-### Tarefa 11: Sincronização Temporal dos Relatórios de Investimentos e Snapshots
+### Tarefa 11: Sincronização Temporal dos Relatórios de Investimentos e Snapshots [Concluída]
 - **Status:** ✅ Concluída
 - **Objetivo:** Garantir que composição, métricas e relatórios de investimentos reflitam fielmente o mês/ano selecionado.
 - **Ações:**
