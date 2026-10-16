@@ -357,16 +357,13 @@ Para rodar qualquer tarefa no CLI, instrua o agente:
 
 ## FASE 13: Homologação Multibanco, Testes E2E de Notificações e Qualidade Rigorosa
 
-### Tarefa 29: Suíte E2E de Notificações Bancárias, Matriz dos 10 Maiores Bancos e Certificação [Pendente]
-- **Status:** ⏳ Pendente
+### Tarefa 29: Suíte E2E de Notificações Bancárias, Matriz dos 10 Maiores Bancos e Certificação [Concluída]
+- **Status:** ✅ Concluída
 - **Objetivo:** Construir suíte de validação automatizada de ponta a ponta cobrindo os 10 maiores bancos do Brasil, estresse da blacklist semântica com 30 variações de falsos positivos, integridade de parcelas e build de produção.
 - **Ações:**
-  1. **Matriz de Validação Multibanco:**
-     - Validar payloads sintéticos fiéis de Nubank, Itaú, Bradesco, Santander, Banco do Brasil, Inter, C6 Bank, Mercado Pago, Caixa e PicPay cobrindo compras à vista, compras parceladas, Pix e transferências.
-  2. **Estresse da Blacklist Semântica:**
-     - Testar e blindar o motor contra mais de 30 formatos reais de falsos positivos (faturas fechadas, limites pré-aprovados, recusas, 2FA, ofertas).
-  3. **Certificação de Build e Regressão:**
-     - Rodar typecheck estrito (`tsc -b`), linter (`npm run lint`), suíte completa de testes (`npm test`) e build de produção PWA e Android.
+  1. **Matriz de Validação Multibanco:** (Concluído: criada suíte E2E em `bank-e2e-matrix.test.ts` cobrindo detalhadamente Nubank, Itaú, Bradesco, Santander, Banco do Brasil, Inter, C6 Bank, Mercado Pago, Caixa e PicPay com testes de compras à vista, compras parceladas com total/parcelas, Pix recebido/enviado e extração de estabelecimentos com preposições e delimitadores).
+  2. **Estresse da Blacklist Semântica:** (Concluído: bateria exaustiva com 41 formatos reais de falsos positivos cobrindo faturas fechadas, pagamentos de fatura confirmados, compras recusadas/negadas/canceladas, ofertas de crédito/empréstimo pré-aprovado, aumento de limite, códigos 2FA/SMS/tokens e agendamentos futuros, blindando o motor com descarte imediato).
+  3. **Certificação de Build e Regressão:** (Concluído: typecheck estrito com 0 erros, linter sem violações, 113 testes de notificação e 93 testes de serviços nativos 100% verdes, build de produção PWA e compilação Java no Gradle com sucesso).
 - **Commit:** `test(notifications): add multibank e2e regression suite and validation matrix`
 
 

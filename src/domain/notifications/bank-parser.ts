@@ -68,18 +68,23 @@ export const BANK_PACKAGE_MAP: Record<string, string> = {
  */
 const BLACKLIST_EXPRESSIONS: RegExp[] = [
   // Faturas fechadas / resumos / abertas
-  /\b(?:sua\s+)?fatura\s+(?:fechou|fechada|est[áa]\s+fechada|abriu|aberta|dispon[íi]vel|pronta)\b/i,
-  /\bfechamento\s+d[aeo]\s+fatura\b/i,
+  /\bfatura\b.*?\b(?:fechou|fechada|est[áa]\s+fechada|abriu|aberta|dispon[íi]vel|pronta|fechamento)\b/i,
+  /\bfechamento\b.*?\bfatura\b/i,
   /\bresumo\s+d[aeo]\s+fatura\b/i,
+  /\bpague\s+o\s+valor\s+m[íi]nimo\b/i,
 
   // Pagamento de fatura confirmado (já computado pelas compras individuais no cartão)
-  /\bpagamento\s+d[aeo]\s+(?:sua\s+)?fatura\s+(?:recebido|confirmado|processado|realizado)\b/i,
+  /\bpagamento\s+d[aeo]\s+(?:sua\s+)?fatura\b/i,
+  /\bpagamento\s+efetuado\s+da\s+(?:sua\s+)?fatura\b/i,
+  /\brecebemos\s+o\s+pagamento\s+da\s+(?:sua\s+)?fatura\b/i,
   /\bfatura\s+paga\b/i,
   /\bconfirmamos\s+o\s+pagamento\s+da\s+(?:sua\s+)?fatura\b/i,
 
   // Transações não autorizadas, recusas, bloqueios e falhas
   /\b(?:n[ãa]o\s+foi\s+autorizad[ao]|n[ãa]o\s+autorizad[ao])\b/i,
-  /\b(?:compra|transa[çc][ãa]o)\s+(?:n[ãa]o\s+aprovada|recusada|cancelada)\b/i,
+  /\b(?:compra|transa[çc][ãa]o)\s+(?:n[ãa]o\s+aprovada|recusada|cancelada|negada)\b/i,
+  /\btransa[çc][ãa]o\s+negada\b/i,
+  /\bcompra\s+negada\b/i,
   /\brecusad[ao]\s+por\b/i,
   /\brecusad[ao]\b/i,
   /\bsaldo\s+insuficiente\b/i,
@@ -89,12 +94,15 @@ const BLACKLIST_EXPRESSIONS: RegExp[] = [
   /\bestorno\s+negado\b/i,
 
   // Ofertas de crédito, aumento de limite, empréstimos e promoções
-  /\blimite\s+(?:aumentou|aprovado|pr[ée]-aprovado|dispon[íi]vel)\b/i,
+  /\blimite\s+(?:aumentou|aprovado|pr[ée]-aprovado|dispon[íi]vel|foi\s+ajustado)\b/i,
   /\baumento\s+de\s+limite\b/i,
   /\bnovo\s+limite\b/i,
   /\b(?:empr[ée]stimo|cr[ée]dito)\s+pr[ée]-aprovado\b/i,
+  /\boferta\s+(?:especial\s+)?de\s+empr[ée]stimo\b/i,
+  /\bliberamos\s+.*de\s+cr[ée]dito\b/i,
   /\bdinheiro\s+extra\s+dispon[íi]vel\b/i,
   /\baproveite\s+a\s+oferta\b/i,
+  /\baproveite\s+.*cashback\b/i,
   /\bconhe[çc]a\s+o\s+novo\b/i,
   /\bganhe\s+cashback\b/i,
   /\bpontos\s+(?:acumulados|do\s+cart[ãa]o)\b/i,
@@ -103,14 +111,16 @@ const BLACKLIST_EXPRESSIONS: RegExp[] = [
 
   // Segurança, 2FA e tokens
   /\bc[óo]digo\s+de\s+(?:seguran[çc]a|verifica[çc][ãa]o|acesso|autoriza[çc][ãa]o)\b/i,
-  /\b(?:seu\s+)?token\s+(?:de\s+acesso)?\b/i,
+  /\bc[óo]digo\b.*?\b(?:para\s+autorizar|autorizar\s+o\s+acesso|de\s+acesso)\b/i,
+  /\b(?:seu\s+)?token\s+(?:de\s+(?:acesso|seguran[çc]a))?\b/i,
   /\bc[óo]digo\s+2fa\b/i,
   /\bautoriza[çc][ãa]o\s+de\s+acesso\b/i,
   /\bnovo\s+(?:dispositivo|acesso)\s+identificado\b/i,
 
   // Agendamentos futuros e lembretes
-  /\b(?:transfer[êe]ncia|pagamento|boleto)\s+agendad[ao]\b/i,
-  /\bagendamento\s+(?:realizado|confirmado)\b/i,
+  /\b(?:pix|transfer[êe]ncia|pagamento|boleto|ted|doc)\b.*?\b(?:foi\s+)?agendad[ao]\b/i,
+  /\bagendad[ao]\b/i,
+  /\bagendamento\b/i,
   /\blembrete\s+de\s+(?:pagamento|vencimento)\b/i,
   /\bvencimento\s+da\s+fatura\b/i,
   /\bsua\s+fatura\s+vence\b/i,
@@ -509,7 +519,7 @@ export function extractMerchantOrRecipient(text: string): string {
   // Ex BB: "R$ 45,00, DROGASIL" ou "R$ 45,00, DROGASIL, Cartao..."
   // Ex Santander: "R$ 32,50, FARMACIA PAGUE MENOS, Cartao final 5678"
   const commaPattern =
-    /(?:R\$\s*\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\s*,\s*([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s*,\s*(?:Cart[aã]o|final|\d)|$)/i;
+    /(?:R\$\s*\d{1,3}(?:\.\d{3})*|\d+),(\d{2})\s*,\s*([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s*,|$)/i;
   const commaMatch = commaPattern.exec(text);
   if (commaMatch && commaMatch[2]) {
     const cleaned = cleanMerchantName(commaMatch[2]);
@@ -518,9 +528,9 @@ export function extractMerchantOrRecipient(text: string): string {
 
   // 3. Padrão de preposições e contrações: em, no, na, nos, nas, para, de, do, da, pelo, pela
   // Ex: "em Padaria Estrela aprovada", "no Restaurante Fogão", "na Droga Raia", "na Tok&Stok"
-  // Ignora preposições seguidas de valores (de R$, de 50), dígitos ou palavras de parcelamento
+  // Ignora preposições seguidas de valores (de R$, de 50), dígitos ou palavras de forma de pagamento/parcelamento
   const prepRegex =
-    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela)\s+(?!(?:R\$\s*|\d|parcela\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|realizada|realizado|com|via|pelo|pela|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|em\s+\d+x|\.|$)|$)/gi;
+    /\b(?:em|no|na|nos|nas|para|de|do|da|pelo|pela)\s+(?!(?:R\$\s*|\d|parcela\b|cr[ée]dito\b|d[ée]bito\b|cart[ãa]o\b|conta\b))([A-Za-zÀ-ÿ0-9&.*_\s'-]{2,35}?)(?:\s+(?:aprovada|aprovado|realizada|realizado|com|via|pelo|pela|no\s+cartão|no\s+cartao|no\s+crédito|no\s+credito|no\s+débito|no\s+debito|cart[aã]o\s+final|em\s+\d+x|\.|$)|$)/gi;
   const matches = Array.from(text.matchAll(prepRegex));
 
   for (const match of matches) {
